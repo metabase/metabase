@@ -95,7 +95,7 @@
                                                           org.bouncycastle/bcpkix-jdk18on
                                                           org.bouncycastle/bcprov-jdk18on]}
   metabase/throttle                         {:mvn/version "1.0.2"}              ; Tools for throttling access to API endpoints and other code pathways
-  metosin/malli                             {:mvn/version "0.14.0"}             ; Data-driven Schemas for Clojure/Script and babashka
+  metosin/malli                             {:mvn/version "0.16.3"}             ; Data-driven Schemas for Clojure/Script and babashka
   nano-id/nano-id                           {:mvn/version "1.1.0"}              ; NanoID generator for generating entity_ids
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.clojars.wkok/openai-clojure           {:mvn/version "0.16.0"
@@ -125,6 +125,7 @@
   org.apache.sshd/sshd-core                 {:mvn/version "2.12.1"              ; ssh tunneling and test server
                                              :exclusions  [org.slf4j/slf4j-api
                                                            org.slf4j/jcl-over-slf4j]}
+  org.apache.tika/tika-core                 {:mvn/version "2.9.2"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.17"}               ; SVG -> image
   org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.78"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
   org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.78"}
@@ -368,7 +369,7 @@
                                         :git/sha "490c9b04fbf5861dbd47c0c5281dad2d113bd285"}
     org.clojars.mmb90/cljs-cache       {:mvn/version "0.1.4"}
     refactor-nrepl/refactor-nrepl      {:mvn/version "3.10.0"}
-    thheller/shadow-cljs               {:mvn/version "2.27.5"}}}
+    thheller/shadow-cljs               {:mvn/version "2.28.12"}}}
 
   ;; for local dev -- include the drivers locally with :dev:drivers
   :drivers

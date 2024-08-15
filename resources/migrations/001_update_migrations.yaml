@@ -6831,6 +6831,21 @@ databaseChangeLog:
             indexName: idx_data_permissions_group_id
 
   - changeSet:
+      id: v50.2024-01-10T03:27:20
+      author: noahmoss
+      comment: Analyze permissions table in preparation for subsequent migrations
+      validCheckSum: ANY
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: ANALYZE permissions;
+            dbms: postgresql
+        - sql:
+            sql: ANALYZE TABLE permissions;
+            dbms: mysql,mariadb
+      rollback: # not needed
+
+  - changeSet:
       id: v50.2024-01-10T03:27:29
       author: noahmoss
       comment: Drop foreign key constraint on sandboxes.permissions_id
@@ -6851,10 +6866,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:30
       author: noahmoss
       comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_data_access.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6887,10 +6908,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:32
       author: noahmoss
       comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_download_results.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6910,10 +6937,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:33
       author: noahmoss
       comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_manage_table_metadata.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -7041,6 +7074,7 @@ databaseChangeLog:
                   name: db_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:53
@@ -7065,6 +7099,7 @@ databaseChangeLog:
                   name: table_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:54
@@ -8256,19 +8291,18 @@ databaseChangeLog:
               column:
                 name: dashboard_id
 
-  # last_used_at is used to determine if a report card is stale and should be cleaned up
-  # if the card is imported with serialization, we don't want to automatically clean up
-  # newly imported cards, and we don't want to have to make it nullable.
+  # After this migration, last_used_at becomes the lowest timestamp after which we know that
+  # the card has not been used. last_used_at will be used to determine if a report
+  # card is stale and should be cleaned up if the card is imported with serialization.
+  # Because we weren't collecting last_used_at before, we have to populate all existing cards
+  # with the current timestamp to provide a "lower bound" after which the card has not been used.
   - changeSet:
-      id: v50.2024-07-09T20:04:01
+      id: v50.2024-07-09T20:04:00
       author: calherries
       comment: Populate default value for report_card.last_used_at
       changes:
         - sql:
-            sql: >-
-              UPDATE report_card
-              SET last_used_at = current_timestamp
-              WHERE last_used_at IS NULL;
+            sql: UPDATE report_card SET last_used_at = current_timestamp
       rollback: # nothing to do, since this is backwards compatible
 
   - changeSet:
@@ -8299,6 +8333,22 @@ databaseChangeLog:
               CHANGE last_used_at
               last_used_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
       rollback: # nothing to do, since this is backwards compatible
+
+  - changeSet:
+      id: v50.2024-08-08T20:04:03
+      author: qnkhuat
+      comment: Added 0.50.0 - Add index on user_parameter_value(user_id, parameter_id, dashboard_id)
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_user_id_dashboard_id_parameter_id
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: dashboard_id
+              - column:
+                  name: parameter_id
 
   - changeSet:
       id: v51.2024-05-13T15:30:57
@@ -8420,6 +8470,494 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:37
+      author: escherize
+      comment: Add embedding_client column to query_execution for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: query_execution
+              columnName: embedding_client
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_client
+                  remarks: Used by the embedding team to track SDK usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:38
+      author: escherize
+      comment: Add embedding_version column to query_execution for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: query_execution
+              columnName: embedding_version
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_version
+                  remarks: Used by the embedding team to track SDK version usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:39
+      author: escherize
+      comment: Add embedding_client column to view_log for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: view_log
+              columnName: embedding_client
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_client
+                  remarks: Used by the embedding team to track SDK usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:40
+      author: escherize
+      comment: Add embedding_version column to view_log for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: view_log
+              columnName: embedding_version
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_version
+                  remarks: Used by the embedding team to track SDK version usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-25T11:56:27
+      author: crisptrutski
+      comment: Wipe stale query fields, so we can add new non-nullable columns
+      rollback: # none, entries will be recreated by sweeper
+      changes:
+        - delete:
+            tableName: query_field
+            remarks: remove stale analysis, so the new fields can be non-nullable
+
+  - changeSet:
+      id: v51.2024-07-25T11:57:27
+      author: crisptrutski
+      comment: Add `column` column to query fields
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: column
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: column
+                  type: varchar(254) # matching metabase_field.name
+                  remarks: name of the table or card being referenced
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-25T11:58:27
+      author: crisptrutski
+      comment: Add `table` column to query fields
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: table
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: table
+                  type: varchar(254) # matching metabase_table.name
+                  remarks: name of the table or card being referenced
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-25T12:02:21
+      author: crisptrutski
+      comment: Make `field_id` nullable on query fields
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_field
+            columnDataType: int
+            columnName: field_id
+            remarks: This value is null if the field does not exist, or is created within a model
+
+  - changeSet:
+      id: v51.2024-07-26T11:56:27
+      author: crisptrutski
+      comment: Add `table_id` column to query fields
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: table_id
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: track the table directly, in case the field does not exist
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-29T09:22:12
+      author: crisptrutski
+      comment: Add the query_analysis table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists:
+              tableName: query_analysis
+      changes:
+        - createTable:
+            tableName: query_analysis
+            remarks: Parent node for query analysis records
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_analysis_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the analysis was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the analysis was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-29T09:23:12
+      author: crisptrutski
+      comment: Index query_analysis.card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_analysis
+            indexName: idx_query_analysis_card_id
+            columns:
+              column:
+                name: card_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:24:13
+      author: crisptrutski
+      comment: Add the query_table join table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists:
+              tableName: query_table
+      changes:
+        - createTable:
+            tableName: query_table
+            remarks: Tables used by a card's query
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_card_id
+                    deleteCascade: true
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_analysis_id
+                    deleteCascade: true
+              - column:
+                  name: table_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_table_id
+                    deleteCascade: true
+              - column:
+                  name: schema
+                  type: varchar(254) # matching metabase_table.schema
+                  remarks: name of the schema of the table being referenced
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254) # matching metabase_table.name
+                  remarks: name of the table or card being referenced
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:13
+      author: crisptrutski
+      comment: Index query_table.card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_table_card_id
+            columns:
+              column:
+                name: card_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:14
+      author: crisptrutski
+      comment: Index query_table.analysis_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_table_analysis_id
+            columns:
+              column:
+                name: analysis_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:15
+      author: crisptrutski
+      comment: Index query_table.table_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_table_table_id
+            columns:
+              column:
+                name: table_id
+
+  - changeSet:
+      id: v51.2024-07-29T10:03:27
+      author: crisptrutski
+      comment: Wipe stale query fields, so we can add new non-nullable columns
+      rollback: # none, entries will be recreated by sweeper
+      changes:
+        - delete:
+            tableName: query_field
+            remarks: remove stale analysis, so the new fields can be non-nullable
+
+  - changeSet:
+      id: v51.2024-07-29T10:04:13
+      author: crisptrutski
+      comment: Put Query Fields under a parent Query Analysis record
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: analysis_id
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_analysis_id
+                    deleteCascade: true
+                    deleteCascadeForce: true # its safe as we have truncated the table
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: query_field
+            constraintName: fk_query_field_analysis_id
+        - dropColumn:
+            tableName: query_field
+            columnName: analysis_id
+
+  - changeSet:
+      id: v51.2024-07-29T11:25:13
+      author: crisptrutski
+      comment: Index query_field.analysis_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_field
+            indexName: idx_query_field_analysis_id
+            columns:
+              column:
+                name: analysis_id
+
+  - changeSet:
+      id: v51.2024-08-02T11:56:27
+      author: crisptrutski
+      comment: Add `schema` column to query fields
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: query_field
+                columnName: schema
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: schema
+                  type: varchar(254) # matching metabase_table.schema
+                  remarks: name of the schema of the table being referenced
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-08-02T12:02:21
+      author: crisptrutski
+      comment: Make `table` nullable on query fields
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_field
+            columnDataType: varchar(254) # matching metabase_table.name
+            columnName: table
+            remarks: This value is null if the field does not exist, and macaw could not determine the table
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:00
+      author: metamben
+      comment: Add source card reference to report_card to support metrics based models and questions
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: source_card_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: source_card_id
+                  remarks: The ID of the model or question this card is based on
+                  type: int
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:01
+      author: metamben
+      comment: Add FK constraint to report_card.source_card_id
+      preConditions:
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            deleteCascade: true
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:02
+      author: metamben
+      comment: Index report_card.source_card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_source_card_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_source_card_id
+            columns:
+              column:
+                name: source_card_id
+
+
+  - changeSet:
+      id: v51.2024-08-07T10:00:00
+      author: ranquild
+      comment: Remove field refs from report_card.visualization_settings.column_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInCardVizSettings"
+
+  - changeSet:
+      id: v51.2024-08-07T11:00:00
+      author: ranquild
+      comment: Remove field refs from report_dashboardcard.visualization_settings.column_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

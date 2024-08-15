@@ -1,4 +1,5 @@
 import { createAction } from "@reduxjs/toolkit";
+import type { Query } from "history";
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
@@ -37,7 +38,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: Record<string, any>;
+      queryParams: Query;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },

@@ -1,6 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  appBar,
+  commandPalette,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -97,8 +99,16 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Orders").click();
       });
       addAggregation({ operatorName: "Count of rows" });
-      saveMetric();
+      saveMetric({ name: "my new metric" });
       verifyScalarValue("18,760");
+
+      cy.log(
+        "newly created metric should be visible in recents (metabase#44223)",
+      );
+      appBar()
+        .findByText(/search/i)
+        .click();
+      commandPalette().findByText("my new metric").should("be.visible");
     });
 
     it("should be able to rename a metric", () => {
@@ -238,22 +248,6 @@ describe("scenarios > metrics > editing", () => {
       verifyScalarValue("5");
     });
 
-    it("should create a metric based on a single-stage metric", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      addStringCategoryFilter({
-        tableName: "Product",
-        columnName: "Category",
-        values: ["Gadget"],
-      });
-      saveMetric();
-      verifyScalarValue("4,939");
-    });
-
     it("should not allow to create a multi-stage metric", () => {
       startNewMetric();
       entityPickerModal().within(() => {
@@ -303,7 +297,7 @@ describe("scenarios > metrics > editing", () => {
       });
     });
 
-    it("should not be possible to join data on the first stage of a metric-based query", () => {
+    it("should be possible to join data on the first stage of a metric-based query", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewQuestion();
       entityPickerModal().within(() => {
@@ -312,7 +306,7 @@ describe("scenarios > metrics > editing", () => {
       });
       getNotebookStep("data").within(() => {
         getActionButton("Custom column").should("be.visible");
-        getActionButton("Join data").should("not.exist");
+        getActionButton("Join data").should("be.visible");
       });
     });
   });
@@ -350,57 +344,6 @@ describe("scenarios > metrics > editing", () => {
       addAggregation({ operatorName: "Average of ...", columnName: "Price2" });
       saveMetric();
       verifyScalarValue("111.38");
-    });
-
-    it("should be able to use a custom column in a metric-based query", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      startNewCustomColumn();
-      enterCustomColumnDetails({
-        formula: "[Total] / 2",
-        name: "Total2",
-      });
-      popover().button("Done").click();
-      addNumberBetweenFilter({
-        columnName: "Total2",
-        minValue: 60,
-        maxValue: 100,
-      });
-      saveMetric();
-      verifyScalarValue("3,326");
-    });
-
-    it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      startNewAggregation();
-      cy.findByTestId("expression-editor").should("be.visible");
-    });
-  });
-
-  describe("filters", () => {
-    it("should add a filter to a metric based on a metric with a filter", () => {
-      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).click();
-      });
-      addStringCategoryFilter({
-        tableName: "Product",
-        columnName: "Category",
-        values: ["Widget"],
-      });
-      saveMetric();
-      verifyScalarValue("1,652");
     });
   });
 

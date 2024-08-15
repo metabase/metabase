@@ -75,8 +75,6 @@ describe("scenarios > visualizations > line chart", () => {
     openSeriesSettings("Count");
 
     popover().within(() => {
-      cy.findByText("Style").click();
-
       // For line chart
       cy.findByText("Line shape").should("exist");
       cy.findByText("Line style").should("exist");
@@ -97,6 +95,25 @@ describe("scenarios > visualizations > line chart", () => {
       cy.findByText("Line size").should("not.be.visible");
       cy.findByText("Show dots on lines").should("not.be.visible");
     });
+  });
+
+  it("should allow changing formatting settings", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "line",
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+    openSeriesSettings("Count");
+
+    popover().within(() => {
+      cy.findByText("Formatting").click();
+
+      cy.findByText("Add a prefix").should("exist");
+      cy.findByPlaceholderText("$").type("prefix").blur();
+    });
+
+    echartsContainer().findByText("prefix0");
   });
 
   it("should reset series settings when switching to line chart", () => {

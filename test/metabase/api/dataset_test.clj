@@ -115,7 +115,9 @@
                   :cache_hash   false
                   :database_id  (mt/id)
                   :started_at   true
-                  :running_time true}
+                  :running_time true
+                  :embedding_client nil
+                  :embedding_version nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
 
 (deftest failure-test

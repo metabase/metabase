@@ -47,7 +47,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.button("Visualize").click();
 
@@ -831,7 +831,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.get("@metricId").then(metricId => {
       const questionDetails = {
         query: {
-          "source-table": `card__${metricId}`,
+          "source-table": ORDERS_ID,
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],

@@ -1,4 +1,4 @@
-import { merge } from "lodash";
+import { merge } from "icepick";
 
 import type {
   SdkDashCardMenuPluginsConfig,
@@ -17,11 +17,7 @@ const getDashcardMenu = (plugins: SdkPluginsConfig) => {
   if (typeof plugins?.dashboard?.dashcardMenu === "function") {
     return plugins?.dashboard?.dashcardMenu;
   }
-  return merge(
-    {},
-    DEFAULT_DASHCARD_MENU_ITEMS,
-    plugins?.dashboard?.dashcardMenu,
-  );
+  return merge(DEFAULT_DASHCARD_MENU_ITEMS, plugins?.dashboard?.dashcardMenu);
 };
 
 export const addDefaultDashboardPluginValues = (

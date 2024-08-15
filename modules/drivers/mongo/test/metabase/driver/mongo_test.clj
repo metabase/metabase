@@ -265,6 +265,50 @@
        (finally
         (t2/delete! :model/Database (mt/id)))))))
 
+(deftest sync-indexes-top-level-and-nested-column-with-same-name-test
+  (mt/test-driver :mongo
+    (testing "when a table has fields at the top level and nested level with the same name
+             we shouldn't mistakenly mark both of them as indexed if one is(#46312)"
+      (mt/dataset (mt/dataset-definition "index-duplicate-name"
+                    ["top-level-indexed"
+                     [{:field-name "name" :indexed? true :base-type :type/Text}
+                      {:field-name "class" :indexed? false :base-type :type/Text}]
+                     [["Metabase" {"name" "Physics"}]]]
+                    ["nested-indexed"
+                     [{:field-name "name" :indexed? false :base-type :type/Text}
+                      {:field-name "class" :indexed? false :base-type :type/Text}]
+                     [["Metabase" {"name" "Physics"}]]])
+        (mongo.connection/with-mongo-database [db (mt/db)]
+          (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
+       (sync/sync-database! (mt/db) {:scan :schema})
+       (testing "top level indexed, nested not"
+         (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                      :table_id (mt/id :top-level-indexed) :name "name")]
+           (testing "sanity check that we have 2 `name` fields"
+             (is (= 2 (count name-fields))))
+
+           (testing "only the top level field is indexed"
+             (is (=? [{:name             "name"
+                       :parent_id        nil
+                       :database_indexed true}
+                      {:name             "name"
+                       :parent_id        (mt/malli=? int?)
+                       :database_indexed false}]
+                     (sort-by :parent_id name-fields))))))
+       (testing "nested field indexed, top level not"
+         (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                      :table_id (mt/id :nested-indexed) :name "name")]
+           (testing "sanity check that we have 2 `name` fields"
+             (is (= 2 (count name-fields))))
+           (testing "only the nested field is indexed"
+             (is (=? [{:name             "name"
+                       :parent_id        nil
+                       :database_indexed false}
+                      {:name             "name"
+                       :parent_id        (mt/malli=? int?)
+                       :database_indexed true}]
+                     (sort-by :parent_id name-fields))))))))))
+
 (deftest describe-table-indexes-test
   (mt/test-driver :mongo
     (mt/dataset (mt/dataset-definition "indexing"
@@ -493,15 +537,27 @@
           (is (= [[3 "Unlucky Raven" nil]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:is-empty $bird_id]
-                             :fields [$id $name $bird_id]})))))
+                             :fields [$id $name $bird_id]}))))))
 
         (testing "treat non-null ObjectId as not-empty (#15801)"
           (is (= [[1 "Rasta Toucan" (ObjectId. "012345678901234567890123")]
                   [2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:not-empty $bird_id]
-                             :fields [$id $name $bird_id]}))))))
-
+                             :fields [$id $name $bird_id]})))))
+        (testing "can order by ObjectId (#46259)"
+          (is (= [[3 nil]
+                  [1 (ObjectId. "012345678901234567890123")]
+                  [2 (ObjectId. "abcdefabcdefabcdefabcdef")]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_id]
+                             :order-by [[:asc $bird_id]]}))))
+          (is (= [[2 (ObjectId. "abcdefabcdefabcdefabcdef")]
+                  [1 (ObjectId. "012345678901234567890123")]
+                  [3 nil]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_id]
+                             :order-by [[:desc $bird_id]]})))))
       (testing "BSON UUIDs"
         (testing "Check that we support Mongo BSON UUID and can filter by it"
           (is (= [[2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
@@ -526,7 +582,20 @@
                 [2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                (mt/rows (mt/run-mbql-query birds
                           {:filter [:not-empty $bird_uuid]
-                           :fields [$id $name $bird_uuid]}))))))))
+                           :fields [$id $name $bird_uuid]})))))
+      (testing "can order by UUID (#46259)"
+          (is (= [[3 nil]
+                  [1 "11111111-1111-1111-1111-111111111111"]
+                  [2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_uuid]
+                             :order-by [[:asc $bird_uuid]]}))))
+          (is (= [[2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                  [1 "11111111-1111-1111-1111-111111111111"]
+                  [3 nil]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_uuid]
+                             :order-by [[:desc $bird_uuid]]}))))))))
 
 
 (deftest ^:parallel bson-fn-call-forms-test
@@ -561,8 +630,8 @@
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
            (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
-                                  :dashcards
-                                  (mapcat (comp :breakout :query :dataset_query :card)))
+                                      :dashcards
+                                      (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
 
 (deftest no-values-test

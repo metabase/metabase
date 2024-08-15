@@ -52,7 +52,7 @@ describe("issue 6010", () => {
       name: "Question",
       display: "line",
       query: {
-        "source-table": `card__${metric_id}`,
+        "source-table": ORDERS_ID,
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
         aggregation: [["metric", metric_id]],
       },
@@ -76,7 +76,7 @@ describe("issue 6010", () => {
 
     cartesianChartCircle().eq(0).click();
 
-    popover().findByText("See these Metrics").click();
+    popover().findByText("See these Orders").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {

@@ -99,7 +99,7 @@ export const DashCardMenuItems = ({
       fw="bold"
       {...item}
       key={item.key}
-      icon={<Icon name={item.iconName} />}
+      icon={<Icon name={item.iconName} aria-hidden />}
     >
       {item.label}
     </Menu.Item>

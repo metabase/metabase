@@ -51,6 +51,10 @@ export function isModelPath(pathname: string): boolean {
   return pathname.startsWith("/model");
 }
 
+export function isMetricPath(pathname: string): boolean {
+  return pathname.startsWith("/metric");
+}
+
 function isDashboardPath(pathname: string): boolean {
   return pathname.startsWith("/dashboard");
 }

@@ -19,7 +19,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.realize :as t2.realize])
   (:import
    (java.time.temporal Temporal)))
 
@@ -332,21 +333,38 @@
   (into [:and] (for [[k v] sync-tables-kv-args]
                  [:= k v])))
 
-(defn db->sync-tables
-  "Returns all the Tables that have their metadata sync'd for `database-or-id`."
-  [database-or-id]
-  (t2/select :model/Table, :db_id (u/the-id database-or-id), {:where sync-tables-clause}))
-
-(defn db->reducible-sync-tables
+(defn reducible-sync-tables
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id & {:keys [schema-names table-names]}]
-  (t2/reducible-select :model/Table
-                       :db_id (u/the-id database-or-id)
-                       {:where [:and sync-tables-clause
-                                (when (seq schema-names) [:in :schema schema-names])
-                                (when (seq table-names) [:in :name table-names])]}))
+  (eduction (map t2.realize/realize)
+            (t2/reducible-select :model/Table
+                                 :db_id (u/the-id database-or-id)
+                                 {:where [:and sync-tables-clause
+                                          (when (seq schema-names) [:in :schema schema-names])
+                                          (when (seq table-names) [:in :name table-names])]})))
 
-(defn db->sync-schemas
+(defn sync-tables-count
+  "The count of all tables that should be synced for `database-or-id`."
+  [database-or-id]
+  (t2/count :model/Table :db_id (u/the-id database-or-id) {:where sync-tables-clause}))
+
+(defn refingerprint-reducible-sync-tables
+  "A reducible collection of all the Tables that should go through the sync processes for `database-or-id`, in the
+   order they should be refingerprinted (by earliest last_analyzed timestamp)."
+  [database-or-id]
+  (eduction (map t2.realize/realize)
+            (t2/reducible-select :model/Table
+                                 {:select    [:t.*]
+                                  :from      [[(t2/table-name :model/Table) :t]]
+                                  :left-join [[{:select   [:table_id
+                                                           [[:min :last_analyzed] :earliest_last_analyzed]]
+                                                :from     [(t2/table-name :model/Field)]
+                                                :group-by [:table_id]} :sub]
+                                              [:= :t.id :sub.table_id]]
+                                  :where     [:and sync-tables-clause [:= :t.db_id (u/the-id database-or-id)]]
+                                  :order-by  [[:sub.earliest_last_analyzed :asc]]})))
+
+(defn sync-schemas
   "Returns all the Schemas that have their metadata sync'd for `database-or-id`.
   Assumes the database supports schemas."
   [database-or-id]

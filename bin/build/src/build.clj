@@ -49,29 +49,30 @@
 (defn- build-licenses!
   [edition]
   {:pre [(#{:oss :ee} edition)]}
-  (u/step "Generate backend license information from jar files"
-    (let [basis                     (b/create-basis {:project (u/filename u/project-root-directory "deps.edn")})
-          output-filename           (u/filename u/project-root-directory
-                                                "resources"
-                                                "license-backend-third-party.txt")
-          {:keys [without-license]} (license/generate {:basis           basis
-                                                       :backfill        (edn/read-string
-                                                                         (slurp (io/resource "overrides.edn")))
-                                                       :output-filename output-filename
-                                                       :report?         false})]
-      (when (seq without-license)
-        (run! (comp (partial u/error "Missing License: %s") first)
-              without-license))
-      (u/announce "License information generated at %s" output-filename)))
+  (when-not (= (env/env :skip-licenses) "true")
+    (u/step "Generate backend license information from jar files"
+      (let [basis                     (b/create-basis {:project (u/filename u/project-root-directory "deps.edn")})
+            output-filename           (u/filename u/project-root-directory
+                                                  "resources"
+                                                  "license-backend-third-party.txt")
+            {:keys [without-license]} (license/generate {:basis           basis
+                                                         :backfill        (edn/read-string
+                                                                           (slurp (io/resource "overrides.edn")))
+                                                         :output-filename output-filename
+                                                         :report?         false})]
+        (when (seq without-license)
+          (run! (comp (partial u/error "Missing License: %s") first)
+                without-license))
+        (u/announce "License information generated at %s" output-filename)))
 
-  (u/step "Run `yarn licenses generate-disclaimer`"
-    (let [license-text (str/join \newline
-                                 (u/sh {:dir    u/project-root-directory
-                                        :quiet? true}
-                                       "yarn" "licenses" "generate-disclaimer"))]
-      (spit (u/filename u/project-root-directory
-                        "resources"
-                        "license-frontend-third-party.txt") license-text))))
+    (u/step "Run `yarn licenses generate-disclaimer`"
+      (let [license-text (str/join \newline
+                                   (u/sh {:dir    u/project-root-directory
+                                          :quiet? true}
+                                         "yarn" "licenses" "generate-disclaimer"))]
+        (spit (u/filename u/project-root-directory
+                          "resources"
+                          "license-frontend-third-party.txt") license-text)))))
 
 (defn- build-uberjar! [edition]
   {:pre [(#{:oss :ee} edition)]}

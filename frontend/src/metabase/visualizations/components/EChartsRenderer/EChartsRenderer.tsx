@@ -20,6 +20,7 @@ export interface EChartsRendererProps {
   width: number | "auto";
   height: number | "auto";
   onInit?: (chart: EChartsType) => void;
+  notMerge?: boolean;
 }
 
 export const EChartsRenderer = ({
@@ -29,6 +30,7 @@ export const EChartsRenderer = ({
   width,
   height,
   onInit,
+  notMerge = true,
 }: EChartsRendererProps) => {
   const chartElemRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
@@ -40,12 +42,12 @@ export const EChartsRenderer = ({
       renderer: "svg",
     });
 
-    chartRef.current?.setOption(option, true);
+    chartRef.current?.setOption(option, notMerge);
     onInit?.(chartRef.current);
   });
 
   useUpdateEffect(() => {
-    chartRef.current?.setOption(option, true);
+    chartRef.current?.setOption(option, notMerge);
   }, [option]);
 
   useUpdateEffect(() => {

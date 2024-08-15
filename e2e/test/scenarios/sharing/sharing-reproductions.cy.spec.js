@@ -32,6 +32,9 @@ import {
   filterWidget,
   getFullName,
   openAndAddEmailsToSubscriptions,
+  createQuestionAndDashboard,
+  createQuestion,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -329,54 +332,57 @@ describe("issue 21559", { tags: "@external" }, () => {
     },
     display: "scalar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
     setupSMTP();
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: q1Details,
     }).then(({ body: { dashboard_id } }) => {
-      cy.createQuestion(q2Details);
+      createQuestion(q2Details);
 
       visitDashboard(dashboard_id);
+      cy.findByTestId("scalar-value").should("have.text", "80.52");
       editDashboard();
     });
   });
 
-  it(
-    "should respect dashboard card visualization (metabase#21559)",
-    { tags: "@flaky" },
-    () => {
-      cy.findByTestId("add-series-button").click({ force: true });
+  it("should respect dashboard card visualization (metabase#21559)", () => {
+    cy.findByTestId("add-series-button").click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByTestId("add-series-modal").within(() => {
       cy.findByText(q2Details.name).click();
-      cy.findByTestId("add-series-modal").within(() => {
-        // wait for elements to appear inside modal
-        chartPathWithFillColor("#A989C5").should("have.length", 1);
-        chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
-        cy.button("Done").click();
-      });
-
-      // Make sure visualization changed to bars
+      // wait for elements to appear inside modal
       chartPathWithFillColor("#A989C5").should("have.length", 1);
       chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
-      saveDashboard();
+      cy.button("Done").click();
+    });
 
-      openAndAddEmailsToSubscriptions([
-        `${admin.first_name} ${admin.last_name}`,
-      ]);
+    cy.findByTestId("add-series-modal").should("not.exist");
 
-      sendEmailAndAssert(email => {
-        expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
-        expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
-      });
-    },
-  );
+    // Make sure visualization changed to bars
+    getDashboardCard(0).within(() => {
+      chartPathWithFillColor("#A989C5").should("have.length", 1);
+      chartPathWithFillColor("#88BF4D").should("have.length", 1);
+    });
+
+    saveDashboard();
+    // Wait for "Edited a few seconds ago" to disappear because the whole
+    // dashboard re-renders after that!
+    cy.findByTestId("revision-history-button").should("not.be.visible");
+
+    openAndAddEmailsToSubscriptions([`${admin.first_name} ${admin.last_name}`]);
+
+    sendEmailAndAssert(email => {
+      expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
+      expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
+    });
+  });
 });
 
 describe("issue 22524", () => {

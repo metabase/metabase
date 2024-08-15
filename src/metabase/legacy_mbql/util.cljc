@@ -234,6 +234,27 @@
      [:relative-datetime 1 unit]
      [:relative-datetime n unit]]))
 
+(defn desugar-relative-time-interval
+  "Transform `:relative-time-interval` to `:and` expression."
+  [m]
+  (lib.util.match/replace
+   m
+   [:relative-time-interval col value bucket offset-value offset-bucket]
+   (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
+                              (update 2 assoc :temporal-unit :default))
+         offset [:interval offset-value offset-bucket]
+         lower-bound (if (neg? value)
+                       [:relative-datetime value bucket]
+                       [:relative-datetime 1 bucket])
+         upper-bound (if (neg? value)
+                       [:relative-datetime 0 bucket]
+                       [:relative-datetime (inc value) bucket])
+         lower-with-offset [:+ lower-bound offset]
+         upper-with-offset [:+ upper-bound offset]]
+     [:and
+      [:>= col-default-bucket lower-with-offset]
+      [:<  col-default-bucket upper-with-offset]])))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -376,6 +397,7 @@
       desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
+      desugar-relative-time-interval
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
@@ -800,15 +822,17 @@
 (defn matching-locations
   "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
   [form pred]
-  (loop [stack [[[] form]], matches []]
+  ;; Surprisingly enough, a list works better as a stack here than a vector.
+  (loop [stack (list [[] form]), matches []]
     (if-let [[loc form :as top] (peek stack)]
       (let [stack (pop stack)
-            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
+            map-onto-stack #(transduce (map (fn [[k v]] [(conj loc k) v])) conj stack %)
+            seq-onto-stack #(transduce (map-indexed (fn [i v] [(conj loc i) v])) conj stack %)]
         (cond
-          (pred form)        (recur stack                                  (conj matches top))
-          (map? form)        (recur (onto-stack form)                      matches)
-          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
-          :else              (recur stack                                  matches)))
+          (pred form)        (recur stack                 (conj matches top))
+          (map? form)        (recur (map-onto-stack form) matches)
+          (sequential? form) (recur (seq-onto-stack form) matches)
+          :else              (recur stack                 matches)))
       matches)))
 
 (defn wrap-field-id-if-needed

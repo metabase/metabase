@@ -7,6 +7,8 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   #_{:clj-kondo/ignore [:unused-namespace]}
+   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
@@ -506,3 +508,114 @@
                                     "1969-10-12"
                                     "1971-10-12"]]}]}
               (lib/query mp query))))))
+
+#?(:clj
+   (deftest ^:synchronized cache-test
+     (let [query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
+           viz-cols   lib.metadata.calculation/visible-columns-method
+           calls      (atom 0)
+           exp-fields (into #{} cat
+                            [(map #(meta/id :orders %)   (meta/fields :orders))
+                             (map #(meta/id :people %)   (meta/fields :people))
+                             (map #(meta/id :products %) (meta/fields :products))])]
+       (testing "CLJ query cache"
+         (testing "is properly attached, and is maplike"
+           (is (= {} (-> query meta :lib/__cache))))
+
+         (testing "is effective for visible-columns on a whole stage"
+           (with-redefs [lib.metadata.calculation/visible-columns-method
+                         (fn [query stage-number x options]
+                           (when (= x (lib.util/query-stage query stage-number))
+                             (swap! calls inc))
+                           (viz-cols query stage-number x options))]
+             (is (= 0 @calls))
+             (is (= exp-fields
+                    (into #{} (map :id) (lib/visible-columns query))))
+             (is (= 1 @calls))
+             (is (= exp-fields
+                    (into #{} (map :id) (lib/visible-columns query))))
+             (is (= 1 @calls))
+
+             (testing "gets overwritten when the query changes"
+               (reset! calls 0)
+               (let [query'     (-> query
+                                    (lib/aggregate (lib/count))
+                                    (lib/append-stage))
+                     agg-fields [{:name       "count"
+                                  :lib/source :source/previous-stage}]]
+                 (is (= 0 @calls))
+                 (is (=? agg-fields
+                         (lib/visible-columns query')))
+                 (is (= 1 @calls))
+                 (is (=? agg-fields
+                         (lib/visible-columns query')))
+                 (is (= 1 @calls))))
+
+             (testing "but treats duplicate queries separately"
+               (reset! calls 0)
+               (let [query2 (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+                 (is (= 0 @calls))
+                 ;; Call for the original query twice - no new calls recorded since it's cached.
+                 (is (= exp-fields
+                        (into #{} (map :id) (lib/visible-columns query))))
+                 (is (= exp-fields
+                        (into #{} (map :id) (lib/visible-columns query))))
+                 (is (= 0 @calls))
+                 ;; Call for the new query; that adds a call.
+                 (is (= exp-fields
+                        (into #{} (map :id) (lib/visible-columns query2))))
+                 (is (= 1 @calls))
+                 (is (= exp-fields
+                        (into #{} (map :id) (lib/visible-columns query2))))
+                 (is (= 1 @calls))))))))))
+
+(deftest ^:parallel metric-based-question-test
+  (let [question-id 100
+        model-id 101
+        table-based-metric-id 102
+        model-based-metric-id 103
+        base-card {:name        "Sum of Cans"
+                   :database-id (meta/id)
+                   :table-id    (meta/id :venues)
+                   :dataset-query
+                   (-> lib.tu/venues-query
+                       (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/breakout (meta/field-metadata :venues :latitude))
+                       (lib/breakout (meta/field-metadata :venues :longitude))
+                       lib.convert/->legacy-MBQL)}
+        base-mp (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [(assoc base-card :id question-id           :type :question)
+                          (assoc base-card :id model-id              :type :model)
+                          (assoc base-card :id table-based-metric-id :type :metric)]})
+        mp (lib.tu/mock-metadata-provider
+            base-mp
+            {:cards [{:id          model-based-metric-id
+                      :name        "Model based metric"
+                      :database-id (meta/id)
+                      :table-id    (meta/id :venues)
+                      :source-card-id model-id
+                      :dataset-query
+                      (-> (lib/query base-mp (lib.metadata/card base-mp model-id))
+                          (lib/aggregate (lib/count))
+                          lib.convert/->legacy-MBQL)
+                      :type :metric}]})]
+    (is (=? {:lib/type :mbql/query
+             :database (meta/id)
+             :stages
+             [{:lib/type :mbql.stage/mbql
+               :source-table (meta/id :venues)
+               :aggregation [[:metric {} table-based-metric-id]]
+               :breakout [[:field {} (meta/id :venues :category-id)]
+                          [:field {} (meta/id :venues :latitude)]
+                          [:field {} (meta/id :venues :longitude)]]}]}
+            (lib/query base-mp (lib.metadata/card base-mp table-based-metric-id))))
+    (is (=? {:lib/type :mbql/query
+             :database (meta/id)
+             :stages
+             [{:lib/type :mbql.stage/mbql
+               :source-card model-id
+               :aggregation [[:metric {} model-based-metric-id]]}]}
+            (lib/query base-mp (lib.metadata/card mp model-based-metric-id))))))

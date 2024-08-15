@@ -35,7 +35,7 @@ frontend_specs: &frontend_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
-  - "jest.config.json"
+  - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
 release_source: &release_sources
@@ -61,6 +61,7 @@ backend_ci: &backend_ci
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
   - "**/presto_jdbc.clj"
+  - ".github/workflows/presto-kerberos-integration-test.yml"
 
 backend_sources: &backend_sources
   - *shared_sources

@@ -7,18 +7,10 @@
   event -- see [[metabase.events.view-log]]."
   (:require
    [java-time.api :as t]
+   [metabase.analytics.sdk :as sdk]
    [metabase.events :as events]
-   #_
-   [metabase.lib.core :as lib]
-   #_
-   [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
-   [metabase.models.query-execution
-    :as query-execution
-    :refer [QueryExecution]]
    [metabase.query-processor.schema :as qp.schema]
-   #_
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
@@ -63,7 +55,7 @@
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
-    (let [qe-id (t2/insert-returning-pk! QueryExecution (dissoc query-execution :json_query))]
+    (let [qe-id (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))]
       (when (seq field-usages)
         (let [queue @field-usages-queue]
           (doseq [field-usage field-usages]
@@ -72,19 +64,21 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info field-usages]
-  (qp.util/with-execute-async
-    ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-    ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-    ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-    ;;
-    ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-    ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-    ;;    attempt to use closed DB connections
-    (fn []
-      (let [execution-info (add-running-time execution-info)]
+  (let [execution-info' (sdk/include-analytics execution-info)
+        ;; `sdk/assoc-analytics` reads values from dynamic vars, so we need to set them here, on the same thread:
+        ]
+    (qp.util/with-execute-async
+      ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
+      ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
+      ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
+      ;;
+      ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
+      ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
+      ;;    attempt to use closed DB connections
+      (fn []
         (log/trace "Saving QueryExecution info")
         (try
-          (save-execution-metadata!* execution-info field-usages)
+          (save-execution-metadata!* (add-running-time execution-info') field-usages)
           (catch Throwable e
             (log/error e "Error saving query execution info")))))))
 

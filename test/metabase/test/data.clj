@@ -247,7 +247,7 @@
   *  An inline dataset definition:
 
      (data/dataset (get-dataset-definition) ...)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [dataset & body]
   `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
                                         (format "using %s dataset" dataset)

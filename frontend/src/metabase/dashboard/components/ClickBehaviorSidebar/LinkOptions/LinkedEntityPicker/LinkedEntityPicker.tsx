@@ -20,11 +20,11 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardId,
-  QuestionDashboardCard,
   CardId,
   ClickBehavior,
   EntityCustomDestinationClickBehavior,
   DashboardTab,
+  DashboardCard,
 } from "metabase-types/api";
 
 import { Heading } from "../../ClickBehaviorSidebar.styled";
@@ -104,7 +104,7 @@ function TargetClickMappings({
 }: {
   isDashboard: boolean;
   clickBehavior: EntityCustomDestinationClickBehavior;
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {
   const Entity = isDashboard ? Dashboards : Questions;
@@ -131,7 +131,7 @@ export function LinkedEntityPicker({
   clickBehavior,
   updateSettings,
 }: {
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   clickBehavior: EntityCustomDestinationClickBehavior;
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }) {

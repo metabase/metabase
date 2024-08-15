@@ -52,8 +52,9 @@
     "Return active (non-archived) metadatas associated with a particular Table, either Fields, Metrics, or
   Segments -- `metadata-type` must be one of either `:metadata/column`, `:metadata/metric`, or `:metadata/segment`.")
 
-  (metadatas-for-tables [metadata-provider metadata-type table-ids]
-    "As [[metadatas-for-table]], but for multiple tables and returning a lazy sequence instead of a vector.")
+  (metadatas-for-card [metadata-provider metadata-type card-id]
+    "Return active (non-archived) metadatas associated with a particular Card, currently only Metrics, so
+  `metadata-type` must be `:metadata/metric`.")
 
   (setting [metadata-provider setting-key]
     "Return the value of the given Metabase setting with keyword `setting-name`."))
@@ -61,7 +62,8 @@
 (defn metadata-provider?
   "Whether `x` is a valid [[MetadataProvider]]."
   [x]
-  (satisfies? MetadataProvider x))
+  #?(:clj (extends? MetadataProvider (class x))
+     :cljs (satisfies? MetadataProvider x)))
 
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
@@ -158,7 +160,8 @@
 (defn cached-metadata-provider?
   "Whether `x` is a valid [[CachedMetadataProvider]]."
   [x]
-  (satisfies? CachedMetadataProvider x))
+   #?(:clj (extends? CachedMetadataProvider (class x))
+      :cljs (satisfies? CachedMetadataProvider x)))
 
 (mr/def ::cached-metadata-provider
   [:fn

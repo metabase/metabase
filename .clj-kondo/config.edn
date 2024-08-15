@@ -28,7 +28,6 @@
   :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
   :metabase/validate-deftest                                           {:level :warning}
   :metabase/validate-logging                                           {:level :warning}
-  :metabase/warn-about-schema=                                         {:level :warning}
 
   ;;
   ;; disabled linters
@@ -151,7 +150,8 @@
    {metabase.actions               #{metabase.actions.core}
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
-                                     metabase.analytics.stats}                                      ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.stats
+                                     metabase.analytics.sdk}                                      ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
@@ -265,6 +265,7 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
+    metabase.auth-provider         #{metabase.util}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
@@ -369,6 +370,7 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
+    metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
@@ -608,7 +610,9 @@
     toucan.models                                                 models}}}
 
  :lint-as
- {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
+ {cljs.cache/defcache                                                                  clojure.core/deftype
+  clojure.core.cache/defcache                                                          clojure.core/deftype
+  clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
@@ -774,6 +778,7 @@
    metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
+   metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
@@ -815,7 +820,7 @@
    metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.query-field-test/with-test-setup                             macros.metabase.models.query-field-test/with-test-setup
+   metabase.models.query-analysis-test/with-test-setup                          macros.metabase.models.query-analysis-test/with-test-setup
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world
@@ -859,10 +864,18 @@
   ;;
   {:pattern "metabase(?:(?:(?:-enterprise\\.sandbox)?\\.query-processor\\.)|(?:\\.driver\\.)).*(?<!-test)$"
    :name    qp-and-driver-source-namespaces}
-
+  ;;
   ;; driver namespaces
+  ;;
   {:pattern "metabase\\.driver.*$"
-   :name    driver-namespaces}]
+   :name    driver-namespaces}
+  ;;
+  ;; general QP tests are ones that run across multiple drivers. Anything `metabase.query-processor*-test`,
+  ;; `metabase.driver.sql*-test` (excluding SQLServer and SQLite), or
+  ;; `metabase-enterprise.sandbox.query-processor*-test`
+  ;;
+  {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
+   :name    general-qp-and-driver-test-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -940,4 +953,8 @@
     {medley.core/map-keys              {:message "Use clojure.core/update-keys"}
      medley.core/map-vals              {:message "Use clojure.core/update-vals"}
      metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}}}
+     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+
+  general-qp-and-driver-test-namespaces
+  {:linters
+   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}

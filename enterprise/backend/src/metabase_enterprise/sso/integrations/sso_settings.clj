@@ -4,6 +4,7 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
    [malli.core :as mc]
+   [metabase-enterprise.scim.api :as scim]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
@@ -28,6 +29,11 @@ don''t have one.")
   :type    :boolean
   :default true
   :feature :sso-saml
+  :getter  (fn []
+             (if (scim/scim-enabled)
+               ;; Disable SAML provisioning automatically when SCIM is enabled
+               false
+               (setting/get-value-of-type :boolean :saml-user-provisioning-enabled?)))
   :audit   :getter)
 
 (defsetting jwt-user-provisioning-enabled?

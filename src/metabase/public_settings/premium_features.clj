@@ -512,6 +512,10 @@
   :enhancements
   :getter #(and config/ee-available? (has-any-features?)))
 
+(define-premium-feature ^{:added "0.51.0"} enable-collection-cleanup?
+  "Should we enable Collection Cleanup?"
+  :collection-cleanup)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Defenterprise Macro                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+

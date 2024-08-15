@@ -72,7 +72,13 @@ export function setParameterType(
   sectionId: string,
 ): Parameter {
   // reset default value
-  const { default: _, ...rest } = parameter;
+  const {
+    default: _,
+    values_source_type,
+    values_source_config,
+    values_query_type,
+    ...rest
+  } = parameter;
 
   return {
     ...rest,

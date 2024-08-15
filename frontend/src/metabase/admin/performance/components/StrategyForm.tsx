@@ -344,6 +344,7 @@ const ScheduleStrategyFormFields = () => {
       onScheduleChange={onScheduleChange}
       verb={c("A verb in the imperative mood").t`Invalidate`}
       timezone={timezone}
+      aria-label={t`Describe how often the cache should be invalidated`}
     />
   );
 };

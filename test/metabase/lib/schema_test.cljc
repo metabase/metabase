@@ -12,7 +12,7 @@
     (is (not (mc/explain ::lib.schema/query lib.schema.util-test/query-with-no-duplicate-uuids))))
   (testing "should not validate if UUIDs are duplicated"
     (is (mc/explain ::lib.schema/query lib.schema.util-test/query-with-duplicate-uuids))
-    (is (= ["Duplicate :lib/uuid \"00000000-0000-0000-0000-000000000001\""]
+    (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
            (me/humanize (mc/explain ::lib.schema/query lib.schema.util-test/query-with-duplicate-uuids))))))
 
 (def ^:private valid-ag-1

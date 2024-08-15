@@ -5,6 +5,7 @@ import {
   hourTo24HourFormat,
   hourToTwelveHourFormat,
 } from "metabase/admin/performance/utils";
+import { capitalize } from "metabase/lib/formatting/strings";
 import { useSelector } from "metabase/lib/redux";
 import { has24HourModeSetting } from "metabase/lib/time";
 import { getSetting } from "metabase/selectors/settings";
@@ -16,6 +17,7 @@ import type {
   ScheduleDayType,
   ScheduleFrameType,
   ScheduleSettings,
+  ScheduleType,
 } from "metabase-types/api";
 
 import {
@@ -24,6 +26,7 @@ import {
   getHours,
   getScheduleStrings,
   minutes,
+  getScheduleComponentLabel,
 } from "./constants";
 import type { UpdateSchedule } from "./types";
 import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";
@@ -34,11 +37,46 @@ export type SelectFrameProps = {
   frames?: { label: string; value: ScheduleFrameType }[];
 };
 
+/** A Select that changes the schedule frequency (e.g., daily, hourly, monthly, etc.),
+ * also known as the schedule 'type'. */
+export const SelectFrequency = ({
+  scheduleType,
+  updateSchedule,
+  scheduleOptions,
+}: {
+  scheduleType?: ScheduleType | null;
+  updateSchedule: UpdateSchedule;
+  scheduleOptions: ScheduleType[];
+}) => {
+  const { scheduleOptionNames } = getScheduleStrings();
+
+  const scheduleTypeOptions = useMemo(
+    () =>
+      scheduleOptions.map(option => ({
+        label: scheduleOptionNames[option] || capitalize(option),
+        value: option,
+      })),
+    [scheduleOptions, scheduleOptionNames],
+  );
+
+  const label = useMemo(() => getScheduleComponentLabel("frequency"), []);
+  return (
+    <AutoWidthSelect
+      display="flex"
+      value={scheduleType}
+      onChange={(value: ScheduleType) => updateSchedule("schedule_type", value)}
+      data={scheduleTypeOptions}
+      aria-label={label}
+    />
+  );
+};
+
 export const SelectFrame = ({
   schedule,
   updateSchedule,
   frames = getScheduleStrings().frames,
 }: SelectFrameProps) => {
+  const label = useMemo(() => getScheduleComponentLabel("frame"), []);
   return (
     <AutoWidthSelect
       value={schedule.schedule_frame}
@@ -46,6 +84,7 @@ export const SelectFrame = ({
         updateSchedule("schedule_frame", value)
       }
       data={frames}
+      aria-label={label}
     />
   );
 };
@@ -60,7 +99,6 @@ export const SelectTime = ({
   timezone?: string | null;
 }) => {
   const { amAndPM } = getScheduleStrings();
-  const applicationName = useSelector(getApplicationName);
   const isClock12Hour = !has24HourModeSetting();
   const hourIn24HourFormat =
     schedule.schedule_hour !== undefined &&
@@ -74,6 +112,10 @@ export const SelectTime = ({
   const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
   const hourIndex = isClock12Hour && hour === 12 ? 0 : hour;
   const value = hourIndex === 0 && isClock12Hour ? "12" : hourIndex.toString();
+  const timeSelectLabel = useMemo(() => getScheduleComponentLabel("time"), []);
+  const amPmControlLabel = useMemo(() => getScheduleComponentLabel("amPm"), []);
+  const applicationName = useSelector(getApplicationName);
+  const timezoneTooltipText = t`Your ${applicationName} timezone`;
   return (
     <Group spacing={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
       {/* Select the hour */}
@@ -87,6 +129,7 @@ export const SelectTime = ({
             isClock12Hour ? hourTo24HourFormat(num, amPm) : num,
           );
         }}
+        aria-label={timeSelectLabel}
       />
       {/* Choose between AM and PM */}
       <Group spacing="sm">
@@ -101,11 +144,17 @@ export const SelectTime = ({
               )
             }
             data={amAndPM}
+            aria-label={amPmControlLabel}
           />
         )}
         {timezone && (
-          <Tooltip label={t`Your ${applicationName} timezone`}>
-            <Box tabIndex={0}>{timezone}</Box>
+          <Tooltip label={timezoneTooltipText}>
+            <Box
+              aria-label={timezoneTooltipText}
+              tabIndex={0} // Ensure tooltip can be triggered by the keyboard
+            >
+              {timezone}
+            </Box>
           </Tooltip>
         )}
       </Group>
@@ -123,6 +172,7 @@ export const SelectWeekday = ({
   updateSchedule,
 }: SelectWeekdayProps) => {
   const { weekdays } = getScheduleStrings();
+  const label = useMemo(() => getScheduleComponentLabel("weekday"), []);
   return (
     <AutoWidthSelect
       value={schedule.schedule_day}
@@ -130,6 +180,7 @@ export const SelectWeekday = ({
         updateSchedule("schedule_day", value)
       }
       data={weekdays}
+      aria-label={label}
     />
   );
 };
@@ -143,13 +194,15 @@ export type SelectWeekdayOfMonthProps = {
   )[];
 };
 
-/** Selects the weekday of the month, e.g. the first Monday of the month
-  "First" is selected via SelectFrame. This component provides the weekday */
+/** Selects the weekday of the month, such as the first Monday of the month or the last Tuesday of the month.
+  (The SelectFrame component offers a choice between 'first', '15th' and 'last'.
+  This component offers a choice of weekday.) */
 export const SelectWeekdayOfMonth = ({
   schedule,
   updateSchedule,
   weekdayOfMonthOptions = getScheduleStrings().weekdayOfMonthOptions,
 }: SelectWeekdayOfMonthProps) => {
+  const label = useMemo(() => getScheduleComponentLabel("weekdayOfMonth"), []);
   return (
     <AutoWidthSelect
       value={schedule.schedule_day || "calendar-day"}
@@ -157,6 +210,7 @@ export const SelectWeekdayOfMonth = ({
         updateSchedule("schedule_day", value === "calendar-day" ? null : value)
       }
       data={weekdayOfMonthOptions}
+      aria-label={label}
     />
   );
 };
@@ -171,6 +225,7 @@ export const SelectMinute = ({
   const minuteOfHour = isNaN(schedule.schedule_minute as number)
     ? 0
     : schedule.schedule_minute;
+  const label = useMemo(() => getScheduleComponentLabel("minute"), []);
   return (
     <AutoWidthSelect
       value={(minuteOfHour || 0).toString()}
@@ -178,6 +233,7 @@ export const SelectMinute = ({
       onChange={(value: string) =>
         updateSchedule("schedule_minute", Number(value))
       }
+      aria-label={label}
     />
   );
 };

@@ -1,24 +1,19 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
-import { NightModeButtonIcon } from "metabase/dashboard/components/DashboardActions.styled";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
-import type { EmbedNightModeControls } from "metabase/dashboard/types";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
+import type { DashboardNightModeControls } from "metabase/dashboard/types";
 
 export const NightModeToggleButton = ({
   isNightMode,
   onNightModeChange,
-}: Pick<EmbedNightModeControls, "isNightMode" | "onNightModeChange">) => (
-  <Tooltip tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}>
-    <span>
-      <DashboardHeaderButton
-        icon={
-          <NightModeButtonIcon
-            isNightMode={isNightMode}
-            onClick={() => onNightModeChange(!isNightMode)}
-          />
-        }
-      />
-    </span>
-  </Tooltip>
-);
+}: Pick<DashboardNightModeControls, "isNightMode" | "onNightModeChange">) => {
+  const label = isNightMode ? t`Daytime mode` : t`Nighttime mode`;
+  return (
+    <ToolbarButton
+      icon={isNightMode ? "sun" : "moon"}
+      onClick={() => onNightModeChange?.(!isNightMode)}
+      tooltipLabel={label}
+      aria-label={label}
+    />
+  );
+};

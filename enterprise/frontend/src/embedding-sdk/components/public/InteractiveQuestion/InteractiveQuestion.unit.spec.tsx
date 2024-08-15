@@ -17,7 +17,7 @@ import {
 } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
@@ -101,7 +101,7 @@ const setup = ({
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockConfig({
+        config: createMockJwtConfig({
           jwtProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
