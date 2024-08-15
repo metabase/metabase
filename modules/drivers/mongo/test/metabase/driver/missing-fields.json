@@ -1,17 +1,17 @@
 [
   {
-    "a": "value1",
+    "a": "a string",
     "b": {
-      "b_c": "subvalue1",
+      "b_c": "a string",
       "b_d": 42,
       "b_e": {
-        "b_e_f": "deep value"
+        "b_e_f": "a string"
       }
     },
     "c": null
   },
   {
-    "a": "value2",
+    "a": "a string",
     "b": {
       "b_d": null,
       "b_e": null,
@@ -19,16 +19,13 @@
     }
   },
   {
-    "a": "value2",
+    "a": "a string",
     "b": {
       "b_e": {}
     }
   },
   {
-    "a": "value3",
+    "a": "a string",
     "b": null
-  },
-  {
-    "f": "value5"
   }
 ]

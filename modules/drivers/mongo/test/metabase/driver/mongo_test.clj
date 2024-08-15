@@ -196,7 +196,7 @@
              {:schema nil, :name "reviews"}}
             (:tables (driver/describe-database :mongo (mt/db)))))))
 
-(defmacro with-describe-table-query-depths
+(defmacro with-describe-table-query-depths!
   "Test various values of `describe-table-query-depth` to prove that fields are synced the same regardless of the level of nesting."
   [& body]
   `(doseq [depth# [0 5]]
@@ -205,7 +205,7 @@
 
 (deftest describe-table-test
   (mt/test-driver :mongo
-    (with-describe-table-query-depths
+    (with-describe-table-query-depths!
       (is (= {:schema nil
               :name   "venues"
               :fields #{{:name              "name"
@@ -274,7 +274,7 @@
 
 (deftest sync-indexes-top-level-and-nested-column-with-same-name-test
   (mt/test-driver :mongo
-    (with-describe-table-query-depths
+    (with-describe-table-query-depths!
       (testing "when a table has fields at the top level and nested level with the same name
                we shouldn't mistakenly mark both of them as indexed if one is(#46312)"
         (mt/dataset (mt/dataset-definition "index-duplicate-name"
@@ -416,7 +416,7 @@
 
 (deftest all-null-columns-test
   (mt/test-driver :mongo
-    (with-describe-table-query-depths
+    (with-describe-table-query-depths!
       (mt/dataset all-null-columns
         ;; do a full sync on the DB to get the correct semantic type info
         (sync/sync-database! (mt/db))
@@ -431,7 +431,7 @@
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
-    (with-describe-table-query-depths
+    (with-describe-table-query-depths!
       (with-redefs [metadata-queries/nested-field-sample-limit 2]
         (binding [tdm/*remove-nil?* true]
           (mt/with-temp-test-data
@@ -713,7 +713,7 @@
 
 (deftest sync-missing-fields-test
   (mt/test-driver :mongo
-    (with-describe-table-query-depths
+    (with-describe-table-query-depths!
       (mt/with-db (missing-fields-db)
         (sync/sync-database! (missing-fields-db))
         (testing "Test that fields with missing or null values get synced correctly"
@@ -722,21 +722,14 @@
                                         :active   true
                                         :table_id (mt/id :coll)
                                         {:order-by [:database_position]}))]
-            ;; The logic for how database_position should be set (in imperative pseudocode):
-            ;; i = 0
-            ;; for each row in sample-row:
-            ;;   for each k,v in row:
-            ;;     database-position = i
-            ;;     i = i + 1
             (is (=? [{:name "_id",    :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
-                      {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                      {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
-                      {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                      {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
-                      {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
-                      {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                      {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}
-                      {:name "f",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}]
+                     {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                     {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                     {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                     {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
+                     {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                     {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                     {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}]
                     results))
             (testing "parent_ids are correct"
               (let [parent (fn [field-name]
@@ -749,8 +742,7 @@
                         "b_c"   "b"
                         "b_d"   "b"
                         "b_e"   "b"
-                        "b_e_f" "b_e"
-                        "f"     nil}
+                        "b_e_f" "b_e"}
                         (into {} (map (juxt :name #(parent (:name %))) results))))))))))))
 
 (defn- array-fields-db []

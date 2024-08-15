@@ -147,7 +147,7 @@
 
 (defn- sample-stages
   "Query stages which get a sample of the data in the collection, of size `n`. Half of the sample is from the first
-   inserted documents and the other half from the last inserted documents."
+  inserted documents and the other half from the last inserted documents."
   [collection-name n]
   (let [start-n (quot n 2)
         end-n   (- n start-n)]
@@ -158,131 +158,87 @@
        "pipeline" [{"$sort" {"_id" -1}}
                    {"$limit" end-n}]}}]))
 
-(defn- depth-k    [depth] (str "depth" depth "K"))
-(defn- depth-type [depth] (str "depth" depth "Type"))
-(defn- depth-idx  [depth] (str "depth" depth "Index"))
-(defn- depth-kvs  [depth] (str "depth" depth "Kvs"))
+(defn- facet-stage [depth]
+  [{"$facet"
+    {"prev" [{"$match" {"d" {"$lte" (dec depth)}}}]
+     "curr" [{"$match" {"d" depth}}
+             {"$group" {"_id"   {"t" "$t"
+                                 "p" "$p"}
+                        "count" {"$sum" 1}
+                        "i"     {"$first" "$i"}}}
+             {"$match" {"_id.t" {"$ne" "null"}}}
+             {"$sort" {"count" -1}}
+             {"$group" {"_id" "$_id.p"
+                        "t"   {"$first" "$_id.t"}
+                        "i"   {"$first" "$i"}}}
+             {"$project" {"p" "$_id"
+                          "d" {"$literal" depth}
+                          "t" 1
+                          "v" nil
+                          "i" 1}}]
+     "next" [{"$match" {"t" "object"
+                        "d" depth}}
+             {"$project" {"p"      1
+                          "i"      1
+                          "nested" {"$map" {"input" {"$objectToArray" "$v"},
+                                            "as"    "item",
+                                            "in"    {"k" "$$item.k",
+                                                     "v" "$$item.v"
+                                                     "t" {"$type" "$$item.v"}}}}}}
+             {"$unwind" {"path"              "$nested"
+                         "includeArrayIndex" "i"}}
+             {"$project" {"p" {"$concat" ["$p" "." "$nested.k"]}
+                          "t" "$nested.t"
+                          "d" {"$literal" (inc depth)}
+                          "v" {"$cond" {"if"   {"$eq" ["$nested.t", "object"]}
+                                        "then" "$nested.v"
+                                        "else" nil}}
+                          "i" 1}}]}}
+   {"$project" {"combined" {"$concatArrays" ["$prev" "$curr" "$next"]}}}
+   {"$unwind" "$combined"}
+   {"$replaceRoot" {"newRoot" "$combined"}}])
 
-(defn- project-nested-fields [max-depth depth]
-  (cond-> [{"$addFields"
-            (merge
-             {(depth-k depth)    (str "$" (depth-kvs depth) ".k")
-              (depth-idx depth)  (str "$" (depth-idx depth))
-              (depth-type depth) {"$type" (str "$" (depth-kvs depth) ".v")}})}]
-    ;; if depth is not the max-depth, add explode kvs from any objects
-    (not= depth max-depth)
-    (into [{"$addFields"
-            {(depth-kvs (inc depth))
-             {"$cond" {"if"   {"$eq" [{"$type" (str "$" (depth-kvs depth) ".v")}, "object"]}
-                       "then" {"$concatArrays" [[{"k" nil "v" nil}] ; so the object is selected as well
-                                                {"$objectToArray" (str "$" (depth-kvs depth) ".v")}]}
-                       "else" [{"k" nil "v" nil}]}}}}
-           {"$unwind"
-            {"path"                       (str "$" (depth-kvs (inc depth)))
-             "includeArrayIndex"          (depth-idx (inc depth))
-             "preserveNullAndEmptyArrays" true}}])))
-
-(defn- facet-stage [path depth]
-  (let [depths (range (inc depth))]
-    [{"$match" {(depth-k depth) {"$ne" nil}}}
-     {"$group" {"_id" (into {"type" (str "$" (depth-type depth))
-                             "path" {"$concat" (concat (when (not= path "$ROOT") [path "."])
-                                                       (interpose "."
-                                                                  (map #(str "$" (depth-k %)) depths)))}
-                             "k"    (str "$" (depth-k depth))})
-                ;; "sortKey" is constructed so that sorting fields by "sortKey" under each parent field
-                ;; yields a stable database-position. The way database-position would be set with imperative
-                ;; pseudocode:
-                ;; i = 0
-                ;; for each row in sample-row:
-                ;;   for each k,v in row:
-                ;;     database-position = i
-                ;;     i = i + 1
-                "sortKey" {"$min" {"$concat" [{"$toString" "$_id"}
-                                              "."
-                                              {"$toString" (str "$" (depth-idx depth))}]}}
-                "count"   {"$sum" 1}}}
-     {"$sort" {"count" -1}}
-     {"$group" {"_id"     {"path" "$_id.path", "k" "$_id.k"}
-                "sortKey" {"$min" "$sortKey"}
-                "types"   {"$push" {"type" (str "$_id.type")}}}}
-     {"$project" {"_id"            0
-                  "path"           "$_id.path"
-                  "k"              "$_id.k"
-                  "sortKey"        1
-                  "mostCommonType" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types.type", 0]}, "null"]}
-                                             "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
-                                             "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
-
-(defn- project-from-root [path]
-  [{"$project" {"path" path, (depth-kvs 0) {"$objectToArray" (str "$" path)}}}
-   {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}])
-
-(defn- describe-table-query [& {:keys [collection-name sample-size max-depth path-or-root]}]
-  (let [path       (if (= path-or-root :root)
-                     "$ROOT"
-                     path-or-root)
-        all-depths (range (inc max-depth))
-        facets     (into {} (map (juxt #(str "depth" %) #(facet-stage path %)) all-depths))]
-    (concat (sample-stages collection-name sample-size)
-            (project-from-root path)
-            (mapcat #(project-nested-fields max-depth %) all-depths)
-            [{"$facet" facets}
-             {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
-             {"$unwind" "$allFields"}])))
-
-(defn- path->depth
-  "e.g. 'a' has depth 0, 'a.b' has depth 1"
-  [path]
-  (dec (count (str/split path #"\."))))
+(defn- describe-table-query [& {:keys [collection-name sample-size max-depth]}]
+  (concat (sample-stages collection-name sample-size)
+          [{"$project" {"path" "$ROOT", "kvs" {"$objectToArray" "$$ROOT"}}}
+           {"$unwind" {"path" "$kvs", "includeArrayIndex" "i"}}
+           {"$project" {"p" "$kvs.k"
+                        "d" {"$literal" 0}
+                        "v" {"$cond" {"if"   {"$eq" [{"$type" "$kvs.v"}, "object"]}
+                                      "then" "$kvs.v"
+                                      "else" nil}}
+                        "t" {"$type" "$kvs.v"}
+                        "i" 1}}]
+          (mapcat facet-stage (range max-depth))
+          [{"$project" {"_id"   0
+                        "path"  "$p"
+                        "type"  "$t"
+                        "index" "$i"}}]))
 
 (def describe-table-query-depth
   "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
-   fields under `root-path`, and nested fields will be queried with further executions. If set to K, the query will
-   return fields at K levels of nesting. Setting its value involves a trade-off: the lower it is, the faster
-   describe-table-query executes, but the more queries we might have to execute."
-  5)
+  fields under `root-path`, and nested fields will be queried with further executions. If set to K, the query will
+  return fields at K levels of nesting. Setting its value involves a trade-off: the lower it is, the faster
+  describe-table-query executes, but the more queries we might have to execute."
+  200)
 
 (mu/defn- describe-table :- [:sequential
                              [:map {:closed true}
-                              [:path           ::lib.schema.common/non-blank-string]
-                              [:k              ::lib.schema.common/non-blank-string]
-                              [:sortKey        ::lib.schema.common/non-blank-string]
-                              [:mostCommonType ::lib.schema.common/non-blank-string]]]
+                              [:path  ::lib.schema.common/non-blank-string]
+                              [:type  ::lib.schema.common/non-blank-string]
+                              [:index :int]]]
   "Queries the database for a sample of the data in `table` and returns a list of field information. Because Mongo
-   documents can have many levels of nesting (up to 200) than we can query with one query, we query the fields at the
-   root first, which gets all the fields until a depth of [[describe-table-query-depth]]. Then for any objects at that
-   depth, we recursively query the database for fields nested inside those objects."
+   documents can have many levels of nesting (up to 200), we query up to that level of nesting."
   [db table]
-  (let [query! (fn [path-or-root]
-                 ;; Cal 2024-08-14: sample-size is twice [[metadata-queries/nested-field-sample-limit]] for backwards
-                 ;; compatibility to match how the sample was created before. I'm not sure why it was this way.
-                 (let [query (describe-table-query {:collection-name (:name table)
-                                                    :sample-size     (* metadata-queries/nested-field-sample-limit 2)
-                                                    :max-depth       describe-table-query-depth
-                                                    :path-or-root    path-or-root})]
-                   (flatten (:rows (:data (qp/process-query {:database (:id db)
-                                                             :type     "native"
-                                                             :native   {:collection (:name table)
-                                                                        :query      (json/generate-string query)}}))))))
-        paths-to-explore   (fn [fields max-possible-depth]
-                             (->> fields
-                                  (filter (fn [x]
-                                            (and (= (:mostCommonType x) "object")
-                                                 (= (path->depth (:path x)) max-possible-depth))))
-                                  (map :path)))
-        nested-fields      (fn nested-fields [path]
-                             (let [fields             (query! path)
-                                   ;; + 1 because with a describe-table-query-depth of 0 we explore one level
-                                   max-possible-depth (+ (path->depth path) describe-table-query-depth 1)
-                                   next-paths         (paths-to-explore fields max-possible-depth)
-                                   nested             (mapcat nested-fields next-paths)]
-                               (concat fields nested)))
-        fields             (query! :root)
-        max-possible-depth describe-table-query-depth
-        next-paths         (paths-to-explore fields max-possible-depth)
-        nested             (mapcat nested-fields next-paths)]
-    (concat fields nested)))
+  (let [query (describe-table-query {:collection-name (:name table)
+                                     :sample-size     (* metadata-queries/nested-field-sample-limit 2)
+                                     :max-depth       describe-table-query-depth})
+        data  (:data (qp/process-query {:database (:id db)
+                                        :type     "native"
+                                        :native   {:collection (:name table)
+                                                   :query      (json/generate-string query)}}))
+        cols   (map (comp keyword :name) (:cols data))]
+    (map #(zipmap cols %) (:rows data))))
 
 (defn- type-alias->base-type [type-alias]
   ;; Mongo types from $type aggregation operation
@@ -310,7 +266,7 @@
   "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
   [fields i]
   (->> fields
-       (sort-by :sortKey)
+       (sort-by :index)
        (reduce (fn [[fields i] field]
                  (let [field             (assoc field :database-position i)
                        i                 (inc i)
@@ -320,7 +276,7 @@
                                            [nested-fields i])
                        field             (-> field
                                              (m/assoc-some :nested-fields nested-fields)
-                                             (dissoc :sortKey))]
+                                             (dissoc :index))]
                    [(conj fields field) i]))
                [#{} i])))
 
@@ -328,15 +284,17 @@
   [_driver database table]
   (let [fields (->> (describe-table database table)
                     (map (fn [x]
-                           (cond-> {:name              (:k x)
-                                    :database-type     (:mostCommonType x)
-                                    :base-type         (type-alias->base-type (:mostCommonType x))
-                                    ; sortKey is used by `set-database-position`, and not present in final result
-                                    :sortKey           (:sortKey x)
-                                    ; path and depth are used to nest fields, and not present in final result
-                                    :path              (str/split (:path x) #"\.")}
-                             (= (:k x) "_id")
-                             (assoc :pk? true)))))
+                           (let [path (str/split (:path x) #"\.")
+                                 name (last path)]
+                             (cond-> {:name              name
+                                      :database-type     (:type x)
+                                      :base-type         (type-alias->base-type (:type x))
+                                      ; index is used by `set-database-position`, and not present in final result
+                                      :index             (:index x)
+                                      ; path is used to nest fields, and not present in final result
+                                      :path              path}
+                               (= name "_id")
+                               (assoc :pk? true))))))
         ;; convert the flat list of fields into deeply-nested map.
         ;; `fields` and `:nested-fields` values are maps from name to field
         fields (reduce
