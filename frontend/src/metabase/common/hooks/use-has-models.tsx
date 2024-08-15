@@ -6,7 +6,6 @@ import { useFetchModels } from "./use-fetch-models";
 export const useHasModels = (req: Partial<SearchRequest> = {}) => {
   const modelsResult = useFetchModels({
     limit: 1,
-    model_ancestors: false,
     ...req,
   });
   const modelsLength = modelsResult.data?.data.length;
