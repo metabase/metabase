@@ -19,13 +19,8 @@
 
 (deftest ^:parallel test-round
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (if (or (not= driver/*driver* :mongo)
-            ;; mongo supports $round since version 4.2
-            (driver.u/semantic-version-gte
-             (-> (mt/db) :dbms_version :semantic-version)
-             [4 2]))
-      (is (= 1.0 (test-math-expression [:round 0.7])))
-      (is (= 0 0)))))
+    (is (= 1.0
+           (test-math-expression [:round 0.7])))))
 
 (deftest ^:parallel test-floor
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

@@ -20,8 +20,11 @@
 
 (tx/add-test-extensions! :mongo)
 
-(defmethod tx/supports-time-type? :mongo [_driver] false)
-(defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:mongo feature]
+    [_driver _feature _database]
+    false))
 
 ;; During tests don't treat Mongo as having FK support
 (defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] (not config/is-test?))
