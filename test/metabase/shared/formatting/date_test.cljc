@@ -4,7 +4,7 @@
    [metabase.shared.formatting.date :as date]
    [metabase.shared.formatting.internal.date-formatters :as formatters]
    [metabase.shared.util.time :as shared.ut]
-   [metabase.test :as mt]
+   [metabase.util.log.capture :as log.capture]
    #?@(:cljs
        [[metabase.test-runner.assert-exprs.approximately-equal]]))
   #?(:clj (:import
@@ -288,7 +288,7 @@
     (let [result (atom nil)]
       ;; Clear the cache, because it only generates the warning the first time this gets constructured.
       (reset! @#'formatters/options->formatter-cache {})
-      (mt/with-log-messages-for-level [messages :warn]
+      (log.capture/with-log-messages-for-level [messages :warn]
         (reset! result
                 (date/format-datetime-with-unit "2022-04-07T19:08:45.123" {:unit         :asdf
                                                                            :date-style   "asdf"
