@@ -129,15 +129,15 @@ export function buildColumnTarget(
   column: Lib.ColumnMetadata,
 ): StructuredParameterDimensionTarget {
   const fieldRef = Lib.legacyRef(query, stageIndex, column);
-  if (stageIndex !== -1) {
-    fieldRef[2] = { ...fieldRef[2], "stage-number": stageIndex };
-  }
 
   if (!isConcreteFieldReference(fieldRef)) {
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
   }
 
-  return ["dimension", fieldRef];
+  if (stageIndex === -1) {
+    return ["dimension", fieldRef];
+  }
+  return ["dimension", fieldRef, { "stage-number": stageIndex }];
 }
 
 export function buildTemplateTagVariableTarget(
