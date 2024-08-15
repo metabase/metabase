@@ -14,6 +14,7 @@ import type {
   Alert,
   Channel,
   ChannelSpec,
+  ChannelApiResponse,
   ChannelType,
   FormInput,
   Pulse,
@@ -31,7 +32,7 @@ interface PulseEditChannelsProps {
   pulse: Pulse;
   pulseId: Alert["id"];
   pulseIsValid: boolean;
-  formInput: FormInput;
+  formInput: ChannelApiResponse;
   user: User;
   users: User[];
   setPulse: (value: Pulse) => void;
