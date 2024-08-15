@@ -30,26 +30,31 @@
   {:value {:in  mi/json-in
            :out json-out}})
 
-(mu/defn upsert!
-  "Upsert or delete parameter value set by the user."
-  [user-id      :- ms/PositiveInt
-   dashboard-id :- ms/PositiveInt
-   parameter]
-  (let [{:keys [value default] parameter-id :id} parameter]
-    (if (or value default)
-        (t2/with-transaction [_conn]
-          (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
-                                                           :dashboard_id dashboard-id
-                                                           :parameter_id parameter-id}
-                                {:value value}))
-              (t2/insert! :model/UserParameterValue {:user_id      user-id
-                                                     :dashboard_id dashboard-id
-                                                     :parameter_id parameter-id
-                                                     :value        value})))
+(mu/defn batched-upsert!
+  "Delete param with nil value and upsert the rest."
+  [user-id         :- ms/PositiveInt
+   dashboard-id    :- ms/PositiveInt
+   parameters      :- [:sequential :map]]
+  (let [;; delete param with nil value and no default
+        to-delete-pred (fn [{:keys [value default]}]
+                         (and (nil? value) (nil? default)))
+        to-delete      (filter to-delete-pred parameters)
+        to-upsert      (filter (complement to-delete-pred) parameters)]
+    (t2/with-transaction [_conn]
+      (doseq [{:keys [id value]} to-upsert]
+        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
+                                                         :dashboard_id dashboard-id
+                                                         :parameter_id id}
+                              {:value value}))
+            (t2/insert! :model/UserParameterValue {:user_id      user-id
+                                                   :dashboard_id dashboard-id
+                                                   :parameter_id id
+                                                   :value        value})))
+      (when (seq to-delete)
         (t2/delete! :model/UserParameterValue
-                    :user_id      user-id
+                    :user_id user-id
                     :dashboard_id dashboard-id
-                    :parameter_id parameter-id))))
+                    :parameter_id [:in (map :id to-delete)])))))
 
 ;; hydration
 
@@ -57,19 +62,18 @@
   "Hydrate a map of parameter-id->last-used-value for the dashboards."
   [_model _k dashboards]
   (if-let [user-id api/*current-user-id*]
-    (let [all-parameter-ids (into #{} (comp (mapcat :parameters) (map :id)) dashboards)
-          last-used-values  (fn last-used-values [dashboard-id]
-                              (when (seq all-parameter-ids)
-                                (into {}
-                                      (t2/select-fn-reducible
-                                       (fn [{:keys [parameter_id value]}]
-                                         [parameter_id value])
-                                       :model/UserParameterValue
-                                       :user_id user-id
-                                       :dashboard_id dashboard-id
-                                       :parameter_id [:in all-parameter-ids]))))]
-      (map
-       (fn [{dashboard-id :id :as dashboard}]
-         (let [param-ids (mapv :id (:parameters dashboard))]
-           (assoc dashboard :last_used_param_values (select-keys (last-used-values dashboard-id) param-ids)))) dashboards))
+    (mi/instances-with-hydrated-data
+     dashboards
+     :last_used_param_values
+     (fn [] ;; return a map of {dashboard-id {parameter-id value}}
+       (let [upvs (t2/select :model/UserParameterValue
+                             :dashboard_id [:in (map :id dashboards)]
+                             :user_id user-id)]
+         (as-> upvs result
+           (group-by :dashboard_id result)
+           (update-vals result (fn [upvs]
+                                 (into {}
+                                       (map (juxt :parameter_id :value) upvs)))))))
+     :id
+     {:default {}})
     dashboards))
