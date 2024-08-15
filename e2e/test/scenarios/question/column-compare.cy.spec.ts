@@ -1068,6 +1068,7 @@ function verifyNotebookText(options: CheckTextOpts) {
     .click();
 
   popover().within(() => {
+    cy.findByText("Basic Metrics").click();
     cy.findByText(options.itemName).should("be.visible").click();
 
     if (options.step1Title) {
