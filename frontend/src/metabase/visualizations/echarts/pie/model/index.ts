@@ -5,12 +5,15 @@ import { findWithIndex } from "metabase/lib/arrays";
 import { checkNotNull } from "metabase/lib/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
-import { getAggregatedRows } from "metabase/visualizations/shared/settings/pie";
+import {
+  getAggregatedRows,
+  getKeyFromDimensionValue,
+} from "metabase/visualizations/shared/settings/pie";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RawSeries, RowValue } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
 import { OTHER_SLICE_KEY, OTHER_SLICE_MIN_PERCENTAGE } from "../constants";
@@ -76,17 +79,12 @@ export function getPieChartModel(
     colDescs.dimensionDesc.column,
   );
 
-  const rowValuesByKey = new Map<string, [RowValue, number]>();
+  const rowValuesByKey = new Map<string | number, number>();
   aggregatedRows.map(row =>
-    rowValuesByKey.set(String(row[colDescs.dimensionDesc.index]), [
-      // We need to use the preserve dimension value from the results, rather
-      // than just using the key from the `pie.rows` setting, because if the
-      // dimension is a number then its type needs to be preserved. Binned
-      // dimension values will not be formatted correctly if they are cast to
-      // strings.
-      row[colDescs.dimensionDesc.index],
+    rowValuesByKey.set(
+      getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]),
       getNumberOr(row[colDescs.metricDesc.index], 0),
-    ]),
+    ),
   );
 
   const pieRows = settings["pie.rows"];
@@ -95,38 +93,38 @@ export function getPieChartModel(
   }
 
   const pieRowsWithValues = pieRows.map(pieRow => {
-    const values = rowValuesByKey.get(pieRow.key);
-    if (values === undefined) {
+    const value = rowValuesByKey.get(pieRow.key);
+    if (value === undefined) {
       throw Error(`No row values found for key ${pieRow.key}`);
     }
 
     return {
       ...pieRow,
-      metricValue: values[1],
+      value,
     };
   });
 
   // We allow negative values if every single metric value is negative or 0
   // (`isNonPositive` = true). If the values are mixed between positives and
   // negatives, we'll simply ignore the negatives in all calculations.
-  const isNonPositive = pieRowsWithValues.every(row => row.metricValue <= 0);
+  const isNonPositive = pieRowsWithValues.every(row => row.value <= 0);
 
-  const total = pieRowsWithValues.reduce((currTotal, { metricValue }) => {
-    if (!isNonPositive && metricValue < 0) {
+  const total = pieRowsWithValues.reduce((currTotal, { value }) => {
+    if (!isNonPositive && value < 0) {
       showWarning?.(pieNegativesWarning().text);
       return currTotal;
     }
 
-    return currTotal + metricValue;
+    return currTotal + value;
   }, 0);
 
   const [slices, others] = _.chain(pieRowsWithValues)
-    .map(({ metricValue, color, name }, index): PieSliceData => {
+    .map(({ value, color, name }, index): PieSliceData => {
       return {
         key: name, // TODO rename this to name to avoid confusion with viz settings value and to be more explicit
-        value: isNonPositive ? -1 * metricValue : metricValue,
-        displayValue: metricValue,
-        normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
+        value: isNonPositive ? -1 * value : value,
+        displayValue: value,
+        normalizedPercentage: value / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: index,
         color,
         isOther: false,

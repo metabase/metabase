@@ -19,7 +19,7 @@ export function getPieChartFormatters(
 ): PieChartFormatters {
   const { column: getColumnSettings } = settings;
   if (!getColumnSettings) {
-    throw Error(`"settings.column" is undefined`);
+    throw Error("`settings.column` is undefined");
   }
 
   const dimensionColSettings = getColumnSettings(

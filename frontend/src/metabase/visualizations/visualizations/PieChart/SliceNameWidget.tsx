@@ -8,9 +8,9 @@ export function SliceNameWidget({
   pieRows,
   updateRowName,
 }: {
-  initialKey: string;
+  initialKey: string | number;
   pieRows: PieRow[];
-  updateRowName: (newName: string, key: string) => void;
+  updateRowName: (newName: string, key: string | number) => void;
 }) {
   const row = pieRows.find(row => row.key === initialKey);
   if (row == null) {
@@ -23,8 +23,15 @@ export function SliceNameWidget({
     <Box w="100%" px="2rem" pb="0.5rem">
       <SliceNameInput
         value={row.name}
-        subtitle={row.key !== row.name ? row.key : undefined}
-        onBlurChange={event => updateRowName(event.target.value, initialKey)}
+        subtitle={row.key !== row.name ? String(row.key) : undefined}
+        onBlurChange={event => {
+          const newName = event.target.value;
+
+          const nameChanged = newName !== String(row.key);
+          if (nameChanged) {
+            updateRowName(event.target.value, row.key);
+          }
+        }}
       />
     </Box>
   );

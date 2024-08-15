@@ -31,6 +31,7 @@ interface ChartSettingOrderedSimpleProps {
   series: Series;
   hasEditSettings: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  formatItemName?: (itemName: string) => string;
 }
 
 export const ChartSettingOrderedSimple = ({
@@ -39,6 +40,7 @@ export const ChartSettingOrderedSimple = ({
   onShowWidget,
   hasEditSettings = true,
   onChangeSeriesColor,
+  formatItemName,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = useCallback(
     (selectedItem: SortableItem) => {
@@ -58,9 +60,18 @@ export const ChartSettingOrderedSimple = ({
     [orderedItems, onChange],
   );
 
-  const getItemTitle = useCallback((item: SortableItem) => {
-    return isEmpty(item.name) ? NULL_DISPLAY_VALUE : item.name;
-  }, []);
+  const getItemTitle = useCallback(
+    (item: SortableItem) => {
+      if (isEmpty(item.name)) {
+        return NULL_DISPLAY_VALUE;
+      }
+      if (formatItemName != null) {
+        return formatItemName(item.name);
+      }
+      return item.name;
+    },
+    [formatItemName],
+  );
 
   const handleOnEdit = useCallback(
     (item: SortableItem, ref: HTMLElement | undefined) => {

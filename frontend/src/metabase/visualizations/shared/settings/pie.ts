@@ -1,11 +1,17 @@
 import { getColorsForValues } from "metabase/lib/colors/charts";
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { isNumber } from "metabase/lib/types";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { unaggregatedDataWarningPie } from "metabase/visualizations/lib/warnings";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { DatasetColumn, RawSeries, RowValues } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  RawSeries,
+  RowValue,
+  RowValues,
+} from "metabase-types/api";
 
 export const getDefaultShowLegend = () => true;
 
@@ -14,6 +20,16 @@ export const getDefaultShowTotal = () => true;
 export const getDefaultPercentVisibility = () => "legend";
 
 export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
+
+export function getKeyFromDimensionValue(dimensionValue: RowValue) {
+  if (dimensionValue == null) {
+    return NULL_DISPLAY_VALUE;
+  }
+  if (typeof dimensionValue === "boolean") {
+    return String(dimensionValue);
+  }
+  return dimensionValue;
+}
 
 export function getAggregatedRows(
   rows: RowValues[],

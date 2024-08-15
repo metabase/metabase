@@ -2,7 +2,6 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
@@ -20,6 +19,7 @@ import {
   getDefaultPercentVisibility,
   getDefaultShowLegend,
   getDefaultSliceThreshold,
+  getKeyFromDimensionValue,
   getSortedAggregatedRows,
 } from "metabase/visualizations/shared/settings/pie";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
@@ -122,14 +122,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
 
         return sortedRows.map(row => {
           const dimensionValue = row[dimensionIndex];
-          let key: string | number;
-          if (dimensionValue == null) {
-            key = NULL_DISPLAY_VALUE;
-          } else if (typeof dimensionValue === "boolean") {
-            key = String(dimensionValue);
-          } else {
-            key = dimensionValue;
-          }
+          const key = getKeyFromDimensionValue(dimensionValue);
+
           if (!settings["pie.colors"]) {
             throw Error("missing `pie.colors` setting");
           }
@@ -137,7 +131,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           // since Batik does not support hsl.
           const color = Color(
             // Historically we have used the dimension value in the `pie.colors`
-            // setting instead of the above defined key, e.g. `null` instead of
+            // setting instead of the key computed above, e.g. `null` instead of
             // `(empty)`. For compatibility with existing questions we will
             // continue to use the dimension value.
             settings["pie.colors"][String(dimensionValue)],
@@ -151,23 +145,53 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           };
         });
       },
-      getProps: (_series, vizSettings, onChange) => ({
-        onChangeSeriesColor: (sliceKey: string, color: string) => {
-          const pieRows = vizSettings["pie.rows"];
-          if (pieRows == null) {
-            throw Error("Missing `pie.rows` setting");
-          }
+      getProps: (
+        rawSeries,
+        vizSettings: ComputedVisualizationSettings,
+        onChange,
+      ) => {
+        const [
+          {
+            data: { cols },
+          },
+        ] = rawSeries;
 
-          onChange(
-            pieRows.map(row => {
-              if (row.key !== sliceKey) {
-                return row;
-              }
-              return { ...row, color, defaultColor: false };
-            }),
+        const getColumnSettings = vizSettings["column"];
+        if (!getColumnSettings) {
+          throw Error("`settings.column` is undefined");
+        }
+
+        const dimensionCol = cols.find(
+          c => c.name === vizSettings["pie.dimension"],
+        );
+        if (dimensionCol == null) {
+          throw Error(
+            `Could not find column based on "pie.dimension setting with value ${vizSettings["pie.dimension"]}`,
           );
-        },
-      }),
+        }
+
+        const dimensionColSettings = getColumnSettings(dimensionCol);
+
+        return {
+          onChangeSeriesColor: (sliceKey: string, color: string) => {
+            const pieRows = vizSettings["pie.rows"];
+            if (pieRows == null) {
+              throw Error("Missing `pie.rows` setting");
+            }
+
+            onChange(
+              pieRows.map(row => {
+                if (row.key !== sliceKey) {
+                  return row;
+                }
+                return { ...row, color, defaultColor: false };
+              }),
+            );
+          },
+          formatItemName: (itemName: string) =>
+            formatValue(itemName, dimensionColSettings),
+        };
+      },
       readDependencies: ["pie.dimension", "pie.metric", "pie.colors"],
     },
     ...seriesSetting({
@@ -190,7 +214,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
 
           return {
             pieRows,
-            updateRowName: (newName: string, key: string) => {
+            updateRowName: (newName: string, key: string | number) => {
               onChangeSettings({
                 "pie.rows": pieRows.map(row => {
                   if (row.key !== key) {
