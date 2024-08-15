@@ -21,38 +21,42 @@
    ;; First row is the header
    (rest (csv/read-csv response))))
 
-(deftest date-columns-should-be-emitted-without-time
-  (is (= [["1" "April 7, 2014" "5" "12"]
-          ["2" "September 18, 2014" "1" "31"]
-          ["3" "September 15, 2014" "8" "56"]
-          ["4" "March 11, 2014" "5" "4"]
-          ["5" "May 5, 2013" "3" "49"]]
-         (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                            (json/generate-string (mt/mbql-query checkins)))]
-           (take 5 (parse-and-sort-csv result))))))
+(defmethod driver/database-supports? [::driver/driver ::date-columns-should-be-emitted-without-time]
+  [_driver _feature _database]
+  true)
+
+;;; FIXME -- not working for Athena -- test is returning dates including time (#46849)
+(defmethod driver/database-supports? [:athena ::date-columns-should-be-emitted-without-time]
+  [_driver _feature _database]
+  false)
+
+;;; FIXME -- not working for MongoDB -- test is returning dates including time (#46856)
+(defmethod driver/database-supports? [:mongo ::date-columns-should-be-emitted-without-time]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel date-columns-should-be-emitted-without-time
+  (mt/test-drivers (mt/normal-drivers-with-feature ::date-columns-should-be-emitted-without-time)
+    (is (= [["1" "April 7, 2014"      "5" "12"]
+            ["2" "September 18, 2014" "1" "31"]
+            ["3" "September 15, 2014" "8" "56"]
+            ["4" "March 11, 2014"     "5" "4"]
+            ["5" "May 5, 2013"        "3" "49"]]
+           (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
+                                              (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
+             (take 5 (parse-and-sort-csv result)))))))
 
 (deftest check-an-empty-date-column
   (testing "NULL values should be written correctly"
     (mt/dataset defs/test-data-null-date
       (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
                                          (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
-        (is (= [["1" "April 7, 2014" "" "5" "12"]
+        (is (= [["1" "April 7, 2014"      "" "5" "12"]
                 ["2" "September 18, 2014" "" "1" "31"]
                 ["3" "September 15, 2014" "" "8" "56"]
-                ["4" "March 11, 2014" "" "5" "4"]
-                ["5" "May 5, 2013" "" "3" "49"]]
+                ["4" "March 11, 2014"     "" "5" "4"]
+                ["5" "May 5, 2013"        "" "3" "49"]]
                (parse-and-sort-csv result)))))))
-
-(deftest sqlite-datetime-test
-  (mt/test-driver :sqlite
-    (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
-                                       (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
-      (is (= [["1" "April 7, 2014" "5" "12"]
-              ["2" "September 18, 2014" "1" "31"]
-              ["3" "September 15, 2014" "8" "56"]
-              ["4" "March 11, 2014" "5" "4"]
-              ["5" "May 5, 2013" "3" "49"]]
-             (parse-and-sort-csv result))))))
 
 (deftest datetime-fields-are-untouched-when-exported
   (let [result (mt/user-http-request :crowberto :post 200 "dataset/csv" :query
