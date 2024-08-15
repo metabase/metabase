@@ -2,7 +2,7 @@
 {:config-paths ["macros" "src"]
  :linters
  {:aliased-namespace-symbol     {:level :warning}
-  :invalid-arity                {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
+  :invalid-arity                {:skip-args [metabase.lib.util.match/match]}           ; TODO (cam): can we fix these?
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
   :misplaced-docstring          {:level :warning}
@@ -20,14 +20,143 @@
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
 
-  :metabase/defsetting-must-specify-export                             {:level :warning}
-  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
-  :metabase/mbql-query-first-arg                                       {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
-  :metabase/require-shape-checker                                      {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
-  :metabase/validate-deftest                                           {:level :warning}
-  :metabase/validate-logging                                           {:level :warning}
+  :metabase/defsetting-must-specify-export             {:level :warning}
+  :metabase/mbql-query-first-arg                       {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
+  :metabase/require-shape-checker                      {:level :warning}
+  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}
+  :metabase/validate-logging                           {:level :warning}
+
+  :metabase/validate-deftest
+  {:level :warning
+
+   ;; calling these functions will result in an error in tests marked `^:parallel`
+   ;;
+   ;; TODO -- these should all be made thread safe if possible or renamed so they end in `!`. Then we can remove them
+   ;; from this list because by default anything ending in `!` is considered to be thread-unsafe
+   :disallowed
+   #{clojure.core/alter-var-root
+     clojure.core/with-redefs
+     clojure.core/with-redefs-fn
+     metabase-enterprise.sandbox.test-util/with-user-attributes
+     metabase-enterprise.test/with-user-attributes
+     metabase.actions.test-util/with-actions
+     metabase.actions.test-util/with-actions-disabled
+     metabase.actions.test-util/with-actions-enabled
+     metabase.actions.test-util/with-actions-test-data
+     metabase.actions.test-util/with-actions-test-data-and-actions-enabled
+     metabase.actions.test-util/with-actions-test-data-tables
+     metabase.analytics.snowplow-test/with-fake-snowplow-collector
+     metabase.email-test/with-expected-messages
+     metabase.email-test/with-fake-inbox
+     metabase.test.data.users/with-group
+     metabase.test.data.users/with-group-for-user
+     metabase.test.persistence/with-persistence-enabled
+     metabase.test.util.log/with-log-level
+     metabase.test.util.misc/with-single-admin-user
+     metabase.test.util/with-all-users-permission
+     metabase.test.util/with-discarded-collections-perms-changes
+     metabase.test.util/with-env-keys-renamed-by
+     metabase.test.util/with-locale
+     metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
+     metabase.test.util/with-non-admin-groups-no-root-collection-perms
+     metabase.test.util/with-temp-env-var-value
+     metabase.test.util/with-temp-vals-in-db
+     metabase.test.util/with-temporary-raw-setting-values
+     metabase.test.util/with-temporary-setting-values
+     metabase.test.util/with-user-in-groups
+     metabase.test/with-actions
+     metabase.test/with-actions-disabled
+     metabase.test/with-actions-enabled
+     metabase.test/with-actions-test-data
+     metabase.test/with-actions-test-data-and-actions-enabled
+     metabase.test/with-actions-test-data-tables
+     metabase.test/with-all-users-permission
+     metabase.test/with-discarded-collections-perms-changes
+     metabase.test/with-env-keys-renamed-by
+     metabase.test/with-expected-messages
+     metabase.test/with-fake-inbox
+     metabase.test/with-group
+     metabase.test/with-group-for-user
+     metabase.test/with-locale
+     metabase.test/with-log-level
+     metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
+     metabase.test/with-non-admin-groups-no-root-collection-perms
+     metabase.test/with-persistence-enabled
+     metabase.test/with-single-admin-user
+     metabase.test/with-temp-env-var-value
+     metabase.test/with-temp-vals-in-db
+     metabase.test/with-temporary-raw-setting-values
+     metabase.test/with-temporary-setting-values
+     metabase.test/with-user-in-groups}
+
+   ;; these functions are allowed in `^:parallel` tests even tho they end in `!`
+   :allowed
+   #{clojure.core/assoc!
+     clojure.core/compare-and-set!
+     clojure.core/conj!
+     clojure.core/disj!
+     clojure.core/dissoc!
+     clojure.core/persistent!
+     clojure.core/pop!
+     clojure.core/reset!
+     clojure.core/reset-vals!
+     clojure.core/run!
+     clojure.core/swap!
+     clojure.core/swap-vals!
+     clojure.core/volatile!
+     clojure.core/vreset!
+     clojure.core/vswap!
+     clojure.core.async/<!
+     clojure.core.async/<!!
+     clojure.core.async/>!
+     clojure.core.async/>!!
+     clojure.core.async/alt!
+     clojure.core.async/alt!!
+     clojure.core.async/alts!
+     clojure.core.async/alts!!
+     clojure.core.async/close!
+     clojure.core.async/ioc-alts!
+     clojure.core.async/offer!
+     clojure.core.async/onto-chan!
+     clojure.core.async/onto-chan!!
+     clojure.core.async/poll!
+     clojure.core.async/put!
+     clojure.core.async/take!
+     clojure.core.async/to-chan!
+     clojure.core.async/to-chan!!
+     metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.pulse/send-pulse!
+     metabase.query-processor.store/store-database!
+     next.jdbc/execute!}}
+
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
+  {:level      :warning
+   :max-length 180}
+
+  ;; this is not enabled here, it is enabled below only for specific namespaces.
+  :metabase/disallow-hardcoded-driver-names-in-tests
+  ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
+  ;; middleware or compilation behavior with just H2 since it's the default.
+  {:drivers #{ ;; core drivers
+              #_:h2
+              :postgres
+              :mysql
+              ;; module drivers
+              :athena
+              :bigquery-cloud-sdk
+              :druid
+              :druid-jdbc
+              :googleanalytics
+              :mongo
+              :oracle
+              :presto-jdbc
+              :redshift
+              :snowflake
+              :sparksql
+              :sqlite
+              :sqlserver
+              :vertica}}
 
   ;;
   ;; disabled linters
@@ -151,48 +280,48 @@
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
-                                     metabase.analytics.sdk}                                      ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.sdk}    ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
                                      metabase.api.permission-graph
-                                     metabase.api.routes}                                           ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
+                                     metabase.api.routes} ; TODO -- consolidate these into a real API namespace. I think the `*current-user*` type stuff might need to be moved into a separate module.
     metabase.async                 #{metabase.async.streaming-response
                                      metabase.async.streaming-response.thread-pool
-                                     metabase.async.util}                                           ; TODO -- consolidate these into a real API namespace.
+                                     metabase.async.util}       ; TODO -- consolidate these into a real API namespace.
     metabase.audit                 #{metabase.audit}
     metabase.bootstrap             #{metabase.bootstrap}
-    metabase.cmd                   #{}                                                              ; there are no namespaces here since you shouldn't be using this in any other module.
+    metabase.cmd                   #{} ; there are no namespaces here since you shouldn't be using this in any other module.
     metabase.channel               #{metabase.channel.core}
     metabase.config                #{metabase.config}
-    metabase.core                  #{metabase.core.initialization-status}                           ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
+    metabase.core                  #{metabase.core.initialization-status} ; TODO -- only namespace used outside of EE, this probably belongs in `metabase.server` anyway since that's the only place it's used.
     metabase.db                    #{metabase.db
-                                     metabase.db.metadata-queries                                   ; TODO this should probably be separate from metabase.db
-                                     metabase.db.query                                              ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
-                                     metabase.db.setup}                                             ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
-    metabase.driver                :any                                                             ; TODO -- 19 namespaces!!!! CRY
+                                     metabase.db.metadata-queries ; TODO this should probably be separate from metabase.db
+                                     metabase.db.query ; TODO this is mostly util stuff like `metabase.db.query/query` that we don't even need anymore.
+                                     metabase.db.setup} ; TODO these are only calling `metabase.db.setup/setup-db!` and there's a slightly different version in `metabase.db`
+    metabase.driver                :any                 ; TODO -- 19 namespaces!!!! CRY
     metabase.email                 #{metabase.email
-                                     metabase.email.messages}                                       ; TODO -- consolidate these into a real API namespace.
+                                     metabase.email.messages}   ; TODO -- consolidate these into a real API namespace.
     metabase.embed                 #{metabase.embed.settings}
     metabase.events                #{metabase.events}
     metabase.formatter             #{metabase.formatter}
     metabase.integrations          #{metabase.integrations.common
                                      metabase.integrations.google
                                      metabase.integrations.ldap
-                                     metabase.integrations.slack}                                   ; TODO -- consolidate these into a real API namespace.
+                                     metabase.integrations.slack} ; TODO -- consolidate these into a real API namespace.
     metabase.legacy-mbql           #{metabase.legacy-mbql.normalize
                                      metabase.legacy-mbql.predicates
                                      metabase.legacy-mbql.schema
                                      metabase.legacy-mbql.schema.helpers
-                                     metabase.legacy-mbql.util}                                     ; TODO -- consolidate these into a real API namespace.
-    metabase.lib                   :any                                                             ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
+                                     metabase.legacy-mbql.util} ; TODO -- consolidate these into a real API namespace.
+    metabase.lib                   :any ; TODO -- :cry: 34 externally referenced namespaces, but maybe half of them are schema namespaces which technically don't need to be required.
     metabase.logger                #{metabase.logger}
     metabase.metabot               #{metabase.metabot}
-    metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
+    metabase.models                :any ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
-    metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
+    metabase.permissions           #{metabase.permissions.util} ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
-                                     metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
+                                     metabase.plugins.classloader} ; TODO -- not 100% sure the classloader belongs here
     metabase.public-settings       #{metabase.public-settings
                                      metabase.public-settings.premium-features}
     metabase.pulse                 #{metabase.pulse
@@ -202,8 +331,8 @@
                                      metabase.pulse.render
                                      metabase.pulse.render.image-bundle
                                      metabase.pulse.render.js-svg
-                                     metabase.pulse.render.style}                                   ; TODO -- consolidate these into a real API namespace.
-    metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
+                                     metabase.pulse.render.style} ; TODO -- consolidate these into a real API namespace.
+    metabase.query-processor       :any     ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
     metabase.query-analysis        #{metabase.query-analysis
                                      metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
@@ -218,7 +347,7 @@
                                      metabase.server.middleware.offset-paging
                                      metabase.server.middleware.session
                                      metabase.server.protocols
-                                     metabase.server.request.util}                                  ; TODO -- consolidate these into a real API namespace.
+                                     metabase.server.request.util} ; TODO -- consolidate these into a real API namespace.
     metabase.setup                 #{metabase.setup}
     metabase.shared                #{metabase.shared.dashboards.constants
                                      metabase.shared.formatting.constants
@@ -230,7 +359,7 @@
                                      metabase.shared.util.i18n
                                      metabase.shared.util.internal.time-common
                                      metabase.shared.util.namespaces
-                                     metabase.shared.util.time}                                     ; TODO -- consolidate these into a real API namespace.
+                                     metabase.shared.util.time} ; TODO -- consolidate these into a real API namespace.
     metabase.sync                  #{metabase.sync
                                      metabase.sync.analyze
                                      metabase.sync.concurrent
@@ -239,14 +368,14 @@
                                      metabase.sync.sync-metadata
                                      metabase.sync.sync-metadata.fields
                                      metabase.sync.sync-metadata.tables
-                                     metabase.sync.util}                                            ; TODO -- consolidate these into a real API namespace.
+                                     metabase.sync.util}        ; TODO -- consolidate these into a real API namespace.
     metabase.task                  #{metabase.task
                                      metabase.task.index-values
-                                     metabase.task.persist-refresh}                                 ; TODO -- consolidate these into a real API namespace.
+                                     metabase.task.persist-refresh} ; TODO -- consolidate these into a real API namespace.
     metabase.troubleshooting       #{metabase.troubleshooting}
     metabase.types                 #{metabase.types}
     metabase.upload                #{metabase.upload}
-    metabase.util                  :any                                                             ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
+    metabase.util                  :any ; I think util being `:any` is actually something I am ok with. But this has 32 namespaces.
     metabase.xrays                 #{metabase.xrays}}
 
    ;; Map of module => other modules you're allowed to use there. You have two options here:
@@ -319,11 +448,11 @@
    ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
    ;; together, e.g. `metabase.lib.metadata.jvm`.
    :ignored-namespace-patterns
-   #{"-test$"                           ; anything ending in `-test`
-     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                      ; anything that contains `test.impl`
-     "^metabase\\.test"                 ; anything starting with `metabase.test`
-     "^metabase\\.http-client$"}}       ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                                ; anything ending in `-test`
+     "test[-.]util"                          ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                           ; anything that contains `test.impl`
+     "^metabase\\.test"                      ; anything starting with `metabase.test`
+     "^metabase\\.http-client$"}}            ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases
@@ -335,7 +464,7 @@
     clj-time.coerce                                               time.coerce
     clj-time.format                                               time.format
     clojure.core.async                                            a
-    clojure.core.match                                            clojure.core.match ; Prefer :refer [match]
+    clojure.core.match                                            clojure.core.match           ; Prefer :refer [match]
     clojure.data                                                  data
     clojure.math.combinatorics                                    math.combo
     clojure.pprint                                                pprint

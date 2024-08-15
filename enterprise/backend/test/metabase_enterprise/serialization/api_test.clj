@@ -58,60 +58,66 @@
       (throw (ex-info "[test] deliberate error message" {:test true}))
       (orig model-name opts instance))))
 
-(deftest export-test
+(deftest ^:parallel export-test
+  (testing "Serialization API export"
+    (testing "Should require a token with `:serialization`"
+      (mt/with-premium-features #{}
+        (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+               (mt/user-http-request :rasta :post 402 "ee/serialization/export")))))))
+
+(deftest export-test-2
+  (testing "Serialization API export"
+    (mt/with-premium-features #{:serialization}
+      (testing "POST /api/ee/serialization/export"
+        (mt/with-empty-h2-app-db
+          (mt/with-temp [Collection    coll  {:name "API Collection"}
+                         Dashboard     _     {:collection_id (:id coll)}
+                         Card          card  {:collection_id (:id coll)}]
+            (testing "API respects parameters"
+              (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                            :all_collections false :data_model false :settings true)]
+                (is (= #{:log :dir :settings}
+                       (tar-file-types f)))))
+
+            (testing "We can export just a single collection"
+              (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                            :collection (:id coll) :data_model false :settings false)]
+                (is (= #{:log :dir :dashboard :card :collection}
+                       (tar-file-types f)))))
+
+            (testing "We can export that collection using entity id"
+              (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                            :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
+                (is (= #{:log :dir :dashboard :card :collection}
+                       (tar-file-types f)))))
+
+            (testing "Default export: all-collections, data-model, settings"
+              (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
+                (is (= #{:log :dir :dashboard :card :collection :settings :schema :database}
+                       (tar-file-types f)))))
+
+            (testing "On exception API returns log"
+              (mt/with-dynamic-redefs [serdes/extract-one (extract-one-error (:entity_id card)
+                                                                             (mt/dynamic-value serdes/extract-one))]
+                (let [res (binding [api.serialization/*additive-logging* false]
+                            (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
+                                                  :collection (:id coll) :data_model false :settings false))
+                      log (slurp (io/input-stream res))]
+                  (testing "In logs we get an entry for the dashboard, then card, and then an error"
+                    (is (= #{"Dashboard" "Card"}
+                           (log-types (str/split-lines log))))
+                    (is (re-find #"deliberate error message" log))))))
+
+            (testing "You can pass specific directory name"
+              (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                            :dirname "check" :all_collections false :data_model false :settings false)]
+                (is (= "check/"
+                       (with-open [tar (open-tar f)]
+                         (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))))))))
+
+(deftest ^:parallel export-test-3
   (testing "Serialization API export"
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
-      (testing "Should require a token with `:serialization`"
-        (mt/with-premium-features #{}
-          (is (= "Serialization is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
-                 (mt/user-http-request :rasta :post 402 "ee/serialization/export")))))
-      (mt/with-premium-features #{:serialization}
-        (testing "POST /api/ee/serialization/export"
-          (mt/with-empty-h2-app-db
-            (mt/with-temp [Collection    coll  {:name "API Collection"}
-                           Dashboard     _     {:collection_id (:id coll)}
-                           Card          card  {:collection_id (:id coll)}]
-              (testing "API respects parameters"
-                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                              :all_collections false :data_model false :settings true)]
-                  (is (= #{:log :dir :settings}
-                         (tar-file-types f)))))
-
-              (testing "We can export just a single collection"
-                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                              :collection (:id coll) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
-                         (tar-file-types f)))))
-
-              (testing "We can export that collection using entity id"
-                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                              :collection (str "eid:" (:entity_id coll)) :data_model false :settings false)]
-                  (is (= #{:log :dir :dashboard :card :collection}
-                         (tar-file-types f)))))
-
-              (testing "Default export: all-collections, data-model, settings"
-                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {})]
-                  (is (= #{:log :dir :dashboard :card :collection :settings :schema :database}
-                         (tar-file-types f)))))
-
-              (testing "On exception API returns log"
-                (mt/with-dynamic-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                                (mt/dynamic-value serdes/extract-one))]
-                  (let [res (binding [api.serialization/*additive-logging* false]
-                              (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
-                                                    :collection (:id coll) :data_model false :settings false))
-                        log (slurp (io/input-stream res))]
-                    (testing "In logs we get an entry for the dashboard, then card, and then an error"
-                      (is (= #{"Dashboard" "Card"}
-                             (log-types (str/split-lines log))))
-                      (is (re-find #"deliberate error message" log))))))
-
-              (testing "You can pass specific directory name"
-                (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
-                                              :dirname "check" :all_collections false :data_model false :settings false)]
-                  (is (= "check/"
-                         (with-open [tar (open-tar f)]
-                           (.getName ^TarArchiveEntry (first (u.compress/entries tar))))))))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files

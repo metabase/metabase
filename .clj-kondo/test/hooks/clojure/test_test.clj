@@ -2,6 +2,7 @@
   (:require
    [clj-kondo.hooks-api :as api]
    [clj-kondo.impl.utils]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [hooks.clojure.test]))
@@ -14,10 +15,14 @@
                                         :ignores    (atom nil)
                                         :findings   (atom [])
                                         :namespaces (atom {})}]
-    (hooks.clojure.test/deftest {:node (api/parse-string form)})
+    (hooks.clojure.test/deftest {:node   (api/parse-string form)
+                                 :config {:linters
+                                          {:metabase/disallow-hardcoded-driver-names-in-tests
+                                           {:drivers
+                                            #{:athena}}}}})
     (mapv :message @(:findings clj-kondo.impl.utils/*ctx*))))
 
-(deftest disallow-hardcoded-driver-names-in-tests-test
+(deftest ^:parallel disallow-hardcoded-driver-names-in-tests-test
   (is (= []
          (deftest-warnings
            "(mt/test-drivers (mt/normal-drivers)
@@ -35,10 +40,13 @@
                 (when-not (= driver/*driver* :athena)
                   (do-something)))")))))
 
-(deftest check-driver-keywords-test
+(deftest ^:parallel check-driver-keywords-test
   (testing "Make sure we keep hooks.clojure.test/driver-keywords up to date"
-    (doseq [^java.io.File file (.listFiles (io/file "modules/drivers"))
-            :when (.isDirectory file)
-            :let [driver (keyword (.getName file))]]
-      (is (contains? hooks.clojure.test/driver-keywords driver)
-          (format "hooks.clojure.test/driver-keywords should contain %s, please add it" driver)))))
+    (let [driver-keywords (-> (slurp ".clj-kondo/config.edn")
+                              edn/read-string
+                              (get-in [:linters :metabase/disallow-hardcoded-driver-names-in-tests :drivers]))]
+      (doseq [^java.io.File file (.listFiles (io/file "modules/drivers"))
+              :when (.isDirectory file)
+              :let [driver (keyword (.getName file))]]
+        (is (contains? driver-keywords driver)
+            (format "hooks.clojure.test/driver-keywords should contain %s, please add it" driver))))))
