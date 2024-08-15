@@ -21,21 +21,39 @@
 
 (defn cards-with-reference-errors
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
-  with invalid references."
+  with invalid references (problematic query fields or query tables)."
   [card-query-map]
   (-> card-query-map
-      (sql.helpers/join
-       [(t2/table-name :model/QueryField) :qf]
-       [:and
-        [:= :qf.card_id :c.id]
-        [:= :qf.explicit_reference true]])
-      (sql.helpers/left-join
-       [(t2/table-name :model/Field) :f]
-       [:= :qf.field_id :f.id])
+      (sql.helpers/with
+       [:problematic_query_fields
+        {:select [:qf.card_id]
+         :from [[(t2/table-name :model/QueryField) :qf]]
+         :left-join [[(t2/table-name :model/Field) :f]
+                     [:= :qf.field_id :f.id]]
+         :where [:and
+                 [:= :qf.explicit_reference true]
+                 [:not= :qf.table nil]
+                 [:or
+                  [:= :f.id nil]
+                  [:= :f.active false]]]}]
+
+       [:problematic_query_tables
+        {:select [:qt.card_id]
+         :from [[(t2/table-name :model/QueryTable) :qt]]
+         :left-join [[(t2/table-name :model/Table) :t]
+                     [:= :qt.table_id :t.id]]
+         :where [:or
+                 [:= :qt.table_id nil]
+                 [:= :t.active false]]}])
+
       (sql.helpers/where
        [:or
-        [:= :f.id nil]
-        [:= :f.active false]])))
+        [:exists {:select [1]
+                  :from [[:problematic_query_fields :pqf]]
+                  :where [:= :c.id :pqf.card_id]}]
+        [:exists {:select [1]
+                  :from [[:problematic_query_tables :pqt]]
+                  :where [:= :c.id :pqt.card_id]}]])))
 
 (defn- group-errors [errors]
   (reduce (fn [acc [id error]]

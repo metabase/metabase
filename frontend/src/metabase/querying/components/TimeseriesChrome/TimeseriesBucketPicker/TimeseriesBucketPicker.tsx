@@ -11,6 +11,7 @@ interface TimeseriesBucketPickerProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
+  breakout: Lib.BreakoutClause;
   onChange: (newColumn: Lib.ColumnMetadata) => void;
 }
 
@@ -18,14 +19,15 @@ export function TimeseriesBucketPicker({
   query,
   stageIndex,
   column,
+  breakout,
   onChange,
 }: TimeseriesBucketPickerProps) {
   const [isOpened, setIsOpened] = useState(false);
 
-  const columnBucketInfo = useMemo(() => {
-    const bucket = Lib.temporalBucket(column);
+  const bucketInfo = useMemo(() => {
+    const bucket = Lib.temporalBucket(breakout);
     return bucket ? Lib.displayInfo(query, stageIndex, bucket) : undefined;
-  }, [query, stageIndex, column]);
+  }, [query, stageIndex, breakout]);
 
   const handleChange = (newColumn: Lib.ColumnMetadata) => {
     onChange(newColumn);
@@ -40,7 +42,7 @@ export function TimeseriesBucketPicker({
           data-testid="timeseries-bucket-button"
           onClick={() => setIsOpened(!isOpened)}
         >
-          {columnBucketInfo ? columnBucketInfo.displayName : t`Unbinned`}
+          {bucketInfo ? bucketInfo.displayName : t`Unbinned`}
         </Button>
       </Popover.Target>
       <Popover.Dropdown>
@@ -48,7 +50,7 @@ export function TimeseriesBucketPicker({
           query={query}
           stageIndex={stageIndex}
           column={column}
-          columnBucketInfo={columnBucketInfo}
+          bucketInfo={bucketInfo}
           onChange={handleChange}
         />
       </Popover.Dropdown>
@@ -60,7 +62,7 @@ interface TimeseriesBucketDropdownProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  columnBucketInfo: Lib.BucketDisplayInfo | undefined;
+  bucketInfo: Lib.BucketDisplayInfo | undefined;
   onChange: (newColumn: Lib.ColumnMetadata) => void;
 }
 
@@ -68,7 +70,7 @@ function TimeseriesBucketDropdown({
   query,
   stageIndex,
   column,
-  columnBucketInfo,
+  bucketInfo,
   onChange,
 }: TimeseriesBucketDropdownProps) {
   const availableBuckets = Lib.availableTemporalBuckets(
@@ -100,7 +102,7 @@ function TimeseriesBucketDropdown({
 
   return (
     <TemporalUnitPicker
-      value={columnBucketInfo?.shortName}
+      value={bucketInfo?.shortName}
       availableItems={availableItems}
       canRemove
       onChange={handleChange}

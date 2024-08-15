@@ -43,11 +43,8 @@ runs:
       if: steps.node-modules-cache.outputs.cache-hit != 'true'
       with:
         path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-        # if global cache is used, we don't care if it's the latest or not
-        # current github actions settings will invalidate saved cache after
-        # a week or so, new cache will be fresh we'll not need to spend time
-        # on it's saving for a specific hash of yarn.lock
-        key: ${{ runner.os }}-yarn-
+        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+        restore-keys: ${{ runner.os }}-yarn-
 
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash

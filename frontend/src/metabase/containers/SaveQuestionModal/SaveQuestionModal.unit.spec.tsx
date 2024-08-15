@@ -105,7 +105,7 @@ const setup = async (
       originalQuestion={originalQuestion}
       onCreate={onCreateMock}
       onSave={onSaveMock}
-      onClose={onCloseMock}
+      onCancel={onCloseMock}
     />,
     {
       storeInitialState: state,
@@ -120,7 +120,7 @@ const setup = async (
         originalQuestion={originalQuestion}
         onCreate={onCreateMock}
         onSave={onSaveMock}
-        onClose={onCloseMock}
+        onCancel={onCloseMock}
       />,
     );
   };

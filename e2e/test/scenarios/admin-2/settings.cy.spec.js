@@ -29,6 +29,7 @@ import {
   visitQuestion,
   visitQuestionAdhoc,
   tableHeaderClick,
+  mockSessionPropertiesTokenFeatures,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -1129,6 +1130,51 @@ describe("scenarios > admin > settings > map settings", () => {
       cy.findByText("Load").click();
       cy.findByText(
         "Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude",
+      );
+    });
+  });
+});
+
+describe("admin > upload settings", () => {
+  describe("scenarios > admin > uploads (OSS)", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should show the uploads settings page", () => {
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+    });
+  });
+  describeEE("scenarios > admin > uploads (EE)", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it("without attached-dwh should show the uploads settings page", () => {
+      mockSessionPropertiesTokenFeatures({ attached_dwh: false });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+    });
+
+    it("with attached-dwh should not show the uploads settings page", () => {
+      mockSessionPropertiesTokenFeatures({ attached_dwh: true });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items")
+        .findByText("Uploads")
+        .should("not.exist");
+
+      cy.findAllByLabelText("error page").findByText(
+        "The page you asked for couldn't be found.",
       );
     });
   });

@@ -57,26 +57,49 @@
                                  :target [:variable [:template-tag (name field)]]
                                  :value  param-value}]))))
 
-(deftest ^:parallel template-tag-param-test
+(defn- count-with-params [table param-name param-type value & [options]]
+  (run-count-query
+   (template-tag-count-query table param-name param-type value options)))
+
+(defn- template-tag-do-test-with-different-options-combos [f]
+  (doseq [[message options] {"Query with all supplied parameters" nil
+                             "Query using default values"         {:defaults? true}}]
+    (testing message
+      (f options))))
+
+(deftest ^:parallel template-tag-text-param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
-    (letfn [(count-with-params [table param-name param-type value & [options]]
-              (run-count-query
-               (template-tag-count-query table param-name param-type value options)))]
-      (doseq [[message options] {"Query with all supplied parameters" nil
-                                 "Query using default values"         {:defaults? true}}]
-        (testing message
-          (testing "text params"
-            (is (= 1
-                   (count-with-params :venues :name :text "In-N-Out Burger" options))))
-          (testing "number params"
-            (is (= 22
-                   (count-with-params :venues :price :number "1" options))))
-          ;; FIXME — This is not currently working on SQLite, probably because SQLite's implementation of temporal types
-          ;; is wacko.
-          (when (not= driver/*driver* :sqlite)
-            (testing "date params"
-              (is (= 1
-                     (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))))
+    (template-tag-do-test-with-different-options-combos
+     (fn [options]
+       (testing "text params"
+         (is (= 1
+                (count-with-params :venues :name :text "In-N-Out Burger" options))))))))
+
+(deftest ^:parallel template-tag-number-param-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+    (template-tag-do-test-with-different-options-combos
+     (fn [options]
+       (testing "number params"
+         (is (= 22
+                (count-with-params :venues :price :number "1" options))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::template-tag-date-param-test]
+  [_driver _feature _database]
+  true)
+
+;;; FIXME — This is not currently working on SQLite, probably because SQLite's implementation of temporal types is
+;;; wacko.
+(defmethod driver/database-supports? [:sqlite ::template-tag-date-param-test]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel template-tag-date-param-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::template-tag-date-param-test)
+    (template-tag-do-test-with-different-options-combos
+     (fn [options]
+       (testing "date params"
+         (is (= 1
+                (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))
 
 (deftest ^:parallel template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
@@ -128,46 +151,56 @@
 ;; Tried manually syncing the DB (with attempted-murders dataset), and storing it to an initialized QP, to no avail.
 
 ;; this isn't a complete test for all possible field filter types, but it covers mostly everything
-(deftest ^:parallel field-filter-param-test
-  (letfn [(is-count-= [expected-count table field value-type value]
-            (let [query (field-filter-count-query table field value-type value)]
-              (mt/with-native-query-testing-context query
-                (is (= expected-count
-                       (run-count-query query))))))]
-    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
-      (testing "temporal field filters"
-        ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't
-        ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
-        ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
-        (when (mt/supports-time-type? driver/*driver*)
-          (mt/dataset attempted-murders
-            (doseq [field
-                    [:datetime
-                     :date
-                     :datetime_tz]
+(defn- field-filter-param-test-is-count-= [expected-count table field value-type value]
+  (let [query (field-filter-count-query table field value-type value)]
+    (mt/with-native-query-testing-context query
+      (is (= expected-count
+             (run-count-query query))))))
 
-                    [value-type value expected-count]
-                    [[:date/relative     "past30days" 0]
-                     [:date/range        "2019-11-01~2020-01-09" 20]
-                     [:date/single       "2019-11-12" 1]
-                     [:date/quarter-year "Q4-2019" 20]
-                     [:date/month-year   "2019-11" 20]]]
-              (testing (format "\nField filter with %s Field" field)
-                (testing (format "\nfiltering against %s value '%s'" value-type value)
-                  (is-count-= expected-count
-                              :attempts field value-type value)))))))
-      ;; FIXME — Field Filters don't seem to be working correctly for SparkSQL
-      (when-not (= driver/*driver* :sparksql)
-        (testing "text params"
-          (is-count-= 1
-                      :venues :name :text "In-N-Out Burger"))
-        (testing "number params"
-          (is-count-= 22
-                      :venues :price :number "1"))
-        (testing "boolean params"
-          (mt/dataset places-cam-likes
-            (is-count-= 2
-                        :places :liked :boolean true)))))))
+(deftest ^:parallel field-filter-param-test
+  ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't currently
+  ;; work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load the dataset
+  ;; and run tests using this dataset such as these, which doesn't even use the TIME type.
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/time-type)
+    (testing "temporal field filters"
+      (mt/dataset attempted-murders
+        (doseq [field
+                [:datetime
+                 :date
+                 :datetime_tz]
+
+                [value-type value expected-count]
+                [[:date/relative     "past30days" 0]
+                 [:date/range        "2019-11-01~2020-01-09" 20]
+                 [:date/single       "2019-11-12" 1]
+                 [:date/quarter-year "Q4-2019" 20]
+                 [:date/month-year   "2019-11" 20]]]
+          (testing (format "\nField filter with %s Field" field)
+            (testing (format "\nfiltering against %s value '%s'" value-type value)
+              (field-filter-param-test-is-count-= expected-count
+                                                  :attempts field value-type value))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::field-filter-param-test-2]
+  [_driver _feature _database]
+  true)
+
+;;; FIXME — Field Filters don't seem to be working correctly for SparkSQL
+(defmethod driver/database-supports? [:sparksql ::field-filter-param-test-2]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel field-filter-param-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::field-filter-param-test-2)
+    (testing "text params"
+      (field-filter-param-test-is-count-= 1
+                                          :venues :name :text "In-N-Out Burger"))
+    (testing "number params"
+      (field-filter-param-test-is-count-= 22
+                                          :venues :price :number "1"))
+    (testing "boolean params"
+      (mt/dataset places-cam-likes
+        (field-filter-param-test-is-count-= 2
+                                            :places :liked :boolean true)))))
 
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
@@ -346,17 +379,25 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
+(defmethod driver/database-supports? [::driver/driver ::get-parameter-count]
+  [_driver _feature _database]
+  true)
+
+;;; These do not support ParameterMetadata.getParameterCount
+(doseq [driver #{:athena
+                 :bigquery-cloud-sdk
+                 :presto-jdbc
+                 :redshift
+                 :snowflake
+                 :sparksql
+                 :vertica}]
+  (defmethod driver/database-supports? [driver ::get-parameter-count]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel better-error-when-parameter-mismatch
-  (mt/test-drivers (->> (mt/normal-drivers-with-feature :native-parameters)
-                        (filter #(isa? driver/hierarchy % :sql))
-                        ;; These do not support ParameterMetadata.getParameterCount
-                        (remove #{:athena
-                                  :bigquery-cloud-sdk
-                                  :presto-jdbc
-                                  :redshift
-                                  :snowflake
-                                  :sparksql
-                                  :vertica}))
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :native-parameters ::get-parameter-count)
+                        (filter #(isa? driver/hierarchy % :sql)))
     (is (thrown-with-msg?
           Exception
           #"It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."

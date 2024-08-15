@@ -1,3 +1,8 @@
+# this file uses MBA https://github.com/metabase/mba to spin up a Metabase
+# instance then runs the test script in the MBA instance sharing the same
+# network to interact with presto container
+# TODO: get rid of MBA and use actions/prepare-backend instead
+
 name: Kerberized Presto Integration Test
 
 on:
@@ -5,10 +10,10 @@ on:
   push:
     branches:
       - master
-      - 'release**'
-      - 'feature**'
+      - "release**"
+      - "feature**"
     tags:
-      - '**'
+      - "**"
 
 jobs:
   files-changed:
@@ -52,7 +57,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: presto-kerberos-docker
       - name: Bring up Presto+Kerberos cluster
-        run: cd presto-kerberos-docker && docker-compose up -d && cd ..
+        run: cd presto-kerberos-docker && docker compose up -d && cd ..
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
       # Since we are managing the Docker containers from the GitHub action container, we need to copy all the
@@ -63,6 +68,7 @@ jobs:
         run: docker cp presto-kerberos:/etc/krb5.conf resources
       - name: Copy client.keytab file to resources
         run: docker cp presto-kerberos:/home/presto/client.keytab resources
+
       - name: Checkout mba
         uses: actions/checkout@v4
         with:
@@ -74,11 +80,30 @@ jobs:
         run: ls -latr mba-src
       - name: Symlink mba
         run: cd mba-src && sudo ln -s $(pwd)/src/main.clj /usr/local/bin/mba && chmod +x /usr/local/bin/mba && cd ..
+
       - name: Ensure mba
         run: which mba
+
       - name: Run Metabase via MBA
-        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com up
+        run: mba --mb . --data-db postgres-data -n example.com compose config > mba-compose.yml
+
+      - name: Adjust generated docker-compose config
+        uses: actions/github-script@v7
+        with:
+          script: | #js
+            const fs = require("fs");
+            const config = fs.readFileSync("mba-compose.yml", "utf8");
+            const newConfig = config.replace(
+              /name:\s+example.com/,
+              "name: example.com\n    external: true",
+            );
+            fs.writeFileSync("mba-compose.yml", newConfig);
+
+      - name: Print compose config
+        run: cat mba-compose.yml
+
+      - name: Run mba
+        run: docker compose -f mba-compose.yml up -d
+
       - name: Run test script in MBA instance
-        run: >
-          mba --mb . --data-db postgres-data -n example.com \
-           run .github/scripts/run-presto-kerberos-integration-test.sh
+        run: docker compose -f mba-compose.yml exec metabase .github/scripts/run-presto-kerberos-integration-test.sh

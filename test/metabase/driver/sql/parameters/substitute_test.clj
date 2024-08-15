@@ -13,7 +13,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -810,9 +811,17 @@
                                 :target [:dimension [:template-tag "checkin_date"]]
                                 :value  "thismonth"}]))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::e2e-exclude-date-parts-test]
+  [driver _feature _database]
+  (contains? (sql-parameters-engines) driver))
+
+;;; Exclude bigquery from this test, because there's a bug with bigquery and exclusion of date parts (metabase#30790)
+(defmethod driver/database-supports? [:bigquery-cloud-sdk ::e2e-exclude-date-parts-test]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel e2e-exclude-date-parts-test
-  ;; Exclude bigquery from this test, because there's a bug with bigquery and exclusion of date parts (metabase#30790)
-  (mt/test-drivers (disj (sql-parameters-engines) :bigquery-cloud-sdk)
+  (mt/test-drivers (mt/normal-drivers-with-feature ::e2e-exclude-date-parts-test)
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
                   "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
@@ -822,18 +831,19 @@
         (testing (format "test that excluding dates with %s works correctly" exclusion-string)
           (is (= [expected]
                  (mt/first-row
-                  (mt/format-rows-by [int]
-                    (process-native
-                      :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{last_login_date}}"
-                                                          (table-identifier :users))
-                                   :template-tags {"last_login_date" {:name         "last_login_date"
-                                                                      :display-name "Last Login Date"
-                                                                      :type         :dimension
-                                                                      :widget-type  :date/all-options
-                                                                      :dimension    [:field (mt/id :users :last_login) nil]}}}
-                      :parameters [{:type   :date/all-options
-                                    :target [:dimension [:template-tag "last_login_date"]]
-                                    :value  exclusion-string}]))))))))))
+                  (mt/format-rows-by
+                   [int]
+                   (process-native
+                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{last_login_date}}"
+                                                        (table-identifier :users))
+                                 :template-tags {"last_login_date" {:name         "last_login_date"
+                                                                    :display-name "Last Login Date"
+                                                                    :type         :dimension
+                                                                    :widget-type  :date/all-options
+                                                                    :dimension    [:field (mt/id :users :last_login) nil]}}}
+                    :parameters [{:type   :date/all-options
+                                  :target [:dimension [:template-tag "last_login_date"]]
+                                  :value  exclusion-string}]))))))))))
 
 (deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
@@ -856,15 +866,35 @@
                                 :target [:dimension [:template-tag "checkin_date"]]
                                 :value  "2015-07-01"}]))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::e2e-parse-native-dates-test]
+  [driver _feature _database]
+  (contains? (sql-parameters-engines) driver))
+
+;;; TODO -- not clear why SQLite is getting skipped here, there was no comment explaining why in the code I migrated.
+(defmethod driver/database-supports? [:sqlite ::e2e-parse-native-dates-test]
+  [_driver _feature _database]
+  false)
+
+(defmulti e2e-parse-native-dates-test-sql
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod e2e-parse-native-dates-test-sql ::driver/driver
+  [_driver]
+  "SELECT cast({{date}} as date)")
+
+(defmethod e2e-parse-native-dates-test-sql :oracle
+  [_driver]
+  "SELECT cast({{date}} as date) from dual")
+
 (deftest e2e-parse-native-dates-test
   (testing "Native dates should be parsed with the report timezone"
-    (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
+    (mt/test-drivers (mt/normal-drivers-with-feature ::e2e-parse-native-dates-test)
       (mt/with-report-timezone-id! "America/Los_Angeles"
         (let [query {:database   (mt/id)
                      :type       :native
-                     :native     {:query         (if (= driver/*driver* :oracle)
-                                                   "SELECT cast({{date}} as date) from dual"
-                                                   "SELECT cast({{date}} as date)")
+                     :native     {:query         (e2e-parse-native-dates-test-sql driver/*driver*)
                                   :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
                      :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]}]
           (mt/with-native-query-testing-context query

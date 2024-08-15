@@ -31,7 +31,9 @@
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -86,7 +88,8 @@
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
              require-initialized-db?]
@@ -105,28 +108,38 @@
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
+(defn- stripped-error [e]
+  (let [m (ex-data e)]
+    (ex-info (ex-message e) m)))
+
 (mu/defn v2-load!
   "SerDes v2 load entry point.
 
    opts are passed to load-metabase"
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]]
-  (let [start    (System/nanoTime)
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :int]]]]
+  (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
                    (v2-load-internal! path opts :token-check? true)
+                   (catch ExceptionInfo e
+                     (if (:error (ex-data e))
+                       (reset! err (stripped-error e))
+                       (reset! err e)))
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
     (snowplow/track-event! ::snowplow/serialization nil
                            {:direction     "import"
                             :source        "cli"
-                            :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                            :duration_ms   (int (u/since-ms timer))
                             :models        (str/join "," imported)
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
                                              (count (:seen report)))
+                            :error_count   (count (:errors report))
                             :success       (nil? @err)
                             :error_message (some-> @err str)})
     (when @err
@@ -238,15 +251,12 @@
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
   (let [start  (System/nanoTime)
         err    (atom nil)
+        opts   (cond-> opts
+                 (seq collection-ids)
+                 (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
         report (try
                  (serdes/with-cache
-                   (-> (cond-> opts
-                         (seq collection-ids)
-                         (assoc :targets
-                                (v2.extract/make-targets-of-type
-                                 "Collection"
-                                 collection-ids)))
-                       v2.extract/extract
+                   (-> (v2.extract/extract opts)
                        (v2.storage/store! path)))
                  (catch Exception e
                    (reset! err e)))]
@@ -255,6 +265,7 @@
                             :source          "cli"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
+                            :error_count     (count (:errors report))
                             :collection      (str/join "," collection-ids)
                             :all_collections (and (empty? collection-ids)
                                                   (not (:no-collections opts)))
