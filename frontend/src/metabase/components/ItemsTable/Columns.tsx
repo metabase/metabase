@@ -197,7 +197,7 @@ export const Columns = {
       onSortingOptionsChange,
       isTrashed,
     }: HeaderProps & {
-      isTrashed: boolean;
+      isTrashed?: boolean;
     }) => (
       <SortableColumnHeader
         name="last_edited_by"
@@ -245,7 +245,7 @@ export const Columns = {
       onSortingOptionsChange,
       isTrashed,
     }: HeaderProps & {
-      isTrashed: boolean;
+      isTrashed?: boolean;
     }) => (
       <SortableColumnHeader
         name="last_edited_at"

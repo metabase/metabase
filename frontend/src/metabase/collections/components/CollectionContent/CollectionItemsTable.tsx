@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { type ComponentType, useCallback, useEffect, useState } from "react";
-import DataGrid from 'react-data-grid';
+import DataGrid, { type RenderRowProps } from "react-data-grid";
+import CollectionItemsTableS from "./CollectionItemsTable.module.css";
 
 import {
   ALL_MODELS,
@@ -30,6 +31,11 @@ import {
   CollectionEmptyContent,
   CollectionTable,
 } from "./CollectionContent.styled";
+import {
+  DefaultItemRenderer,
+  ItemRendererProps,
+} from "metabase/components/ItemsTable/DefaultItemRenderer";
+import { Columns } from "metabase/components/ItemsTable/Columns";
 
 const getDefaultSortingOptions = (
   collection: Collection | undefined,
@@ -184,43 +190,118 @@ export const CollectionItemsTable = ({
           return <EmptyContentComponent collection={collection} />;
         }
 
+        // <ItemsTable
+        //   databases={databases}
+        //   bookmarks={bookmarks}
+        //   createBookmark={createBookmark}
+        //   deleteBookmark={deleteBookmark}
+        //   items={unpinnedItems}
+        //   collection={collection}
+        //   sortingOptions={unpinnedItemsSorting}
+        //   onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+        //   selectedItems={selected}
+        //   hasUnselected={hasUnselected}
+        //   getIsSelected={getIsSelected}
+        //   onToggleSelected={toggleItem}
+        //   onDrop={clear}
+        //   onMove={handleMove}
+        //   onCopy={handleCopy}
+        //   onSelectAll={handleSelectAll}
+        //   onSelectNone={clear}
+        //   onClick={onClick}
+        //   showActionMenu={showActionMenu}
+        // />
+        // <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
+        //   {hasPagination && (
+        //     <PaginationControls
+        //       showTotal
+        //       page={page}
+        //       pageSize={pageSize}
+        //       total={total ?? undefined}
+        //       itemsLength={unpinnedItems.length}
+        //       onNextPage={handleNextPage}
+        //       onPreviousPage={handlePreviousPage}
+        //     />
+        //   )}
+        // </div>
+
+        // {canSelect && <Columns.Select.Col />}
+        // <Columns.Type.Col />
+        // <Columns.Name.Col isInDragLayer={isInDragLayer} />
+        // <Columns.LastEditedBy.Col />
+        // <Columns.LastEditedAt.Col />
+        // {showActionMenu && <Columns.ActionMenu.Col />}
+
         return (
           <CollectionTable data-testid="collection-table">
-            <DataGrid rows={unpinnedItems} columns={}>
-            {/* <ItemsTable */}
-            {/*   databases={databases} */}
-            {/*   bookmarks={bookmarks} */}
-            {/*   createBookmark={createBookmark} */}
-            {/*   deleteBookmark={deleteBookmark} */}
-            {/*   items={unpinnedItems} */}
-            {/*   collection={collection} */}
-            {/*   sortingOptions={unpinnedItemsSorting} */}
-            {/*   onSortingOptionsChange={handleUnpinnedItemsSortingChange} */}
-            {/*   selectedItems={selected} */}
-            {/*   hasUnselected={hasUnselected} */}
-            {/*   getIsSelected={getIsSelected} */}
-            {/*   onToggleSelected={toggleItem} */}
-            {/*   onDrop={clear} */}
-            {/*   onMove={handleMove} */}
-            {/*   onCopy={handleCopy} */}
-            {/*   onSelectAll={handleSelectAll} */}
-            {/*   onSelectNone={clear} */}
-            {/*   onClick={onClick} */}
-            {/*   showActionMenu={showActionMenu} */}
-            {/* /> */}
-            {/* <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}> */}
-            {/*   {hasPagination && ( */}
-            {/*     <PaginationControls */}
-            {/*       showTotal */}
-            {/*       page={page} */}
-            {/*       pageSize={pageSize} */}
-            {/*       total={total ?? undefined} */}
-            {/*       itemsLength={unpinnedItems.length} */}
-            {/*       onNextPage={handleNextPage} */}
-            {/*       onPreviousPage={handlePreviousPage} */}
-            {/*     /> */}
-            {/*   )} */}
-            {/* </div> */}
+            <DataGrid
+              className={CollectionItemsTableS.collectionItemsTable}
+              rowClass={(_row, _rowIndex) => "collection-item-row"}
+              rows={unpinnedItems.map(
+                (item: CollectionItem) =>
+                  ({
+                    item,
+                    isSelected: false,
+                    isPinned: false,
+                    onToggleSelected: () => null,
+                    collection: { ...item.collection, can_write: true },
+                    onCopy: () => null,
+                    showActionMenu: true,
+                  } as ItemRendererProps),
+              )}
+              columns={[
+                {
+                  key: "select",
+                  name: "",
+                  width: 70,
+                  renderHeaderCell: props => <Columns.Select.Header />,
+                },
+                {
+                  key: "type",
+                  name: "Type",
+                  width: 70,
+                  renderHeaderCell: props => <Columns.Type.Header />,
+                },
+                {
+                  key: "name",
+                  name: "Name",
+                  renderCell: props => <Columns.Name.Cell item={props.row} />,
+                  renderHeaderCell: props => <Columns.Name.Header />,
+                },
+                {
+                  key: "last_edited_by",
+                  name: "Last edited by",
+                  width: 140,
+                  renderCell: props => (
+                    <Columns.LastEditedBy.Cell item={props.row} />
+                  ),
+                  renderHeaderCell: props => <Columns.LastEditedBy.Header />,
+                },
+                {
+                  key: "last_edited_at",
+                  name: "Last edited at",
+                  width: 140,
+                  renderCell: props => (
+                    <Columns.LastEditedAt.Cell {...props.row} />
+                  ),
+                  renderHeaderCell: props => <Columns.LastEditedAt.Header />,
+                },
+                { key: "action_menu", name: "", width: 100 },
+                { key: "right_edge", name: "" },
+              ]}
+              defaultColumnOptions={{
+                sortable: true,
+                resizable: true,
+              }}
+              renderers={{
+                renderRow: (key, props: RenderRowProps<ItemRendererProps>) => (
+                  <tr>
+                    <DefaultItemRenderer key={key} {...props.row} />
+                  </tr>
+                ),
+              }}
+              rowHeight={50}
+            />
           </CollectionTable>
         );
       }}
