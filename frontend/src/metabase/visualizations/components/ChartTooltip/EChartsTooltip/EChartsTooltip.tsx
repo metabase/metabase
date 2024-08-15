@@ -48,8 +48,15 @@ export const EChartsTooltip = ({
   });
 
   return (
-    <div>
-      {header != null && <div className={TooltipStyles.Header}>{header}</div>}
+    <div data-testid="echarts-tooltip">
+      {header != null && (
+        <div
+          data-testid="echarts-tooltip-header"
+          className={TooltipStyles.Header}
+        >
+          {header}
+        </div>
+      )}
       <table
         className={cx(TooltipStyles.Table, {
           [TooltipStyles.TableNoHeader]: header == null,
