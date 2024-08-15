@@ -24,9 +24,3 @@ export const ColumnPickerHeaderTitle = styled.span`
   font-weight: 700;
   font-size: 1.17em;
 `;
-
-export const PopoverWrapper = styled.span`
-  display: flex;
-  align-items: center;
-  padding-right: 0.5rem;
-`;

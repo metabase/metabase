@@ -19,7 +19,7 @@ import { ExpressionWidgetHeader } from "metabase/query_builder/components/expres
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Icon } from "metabase/ui";
+import { Box, Icon, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
@@ -29,7 +29,6 @@ import {
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitle,
   ColumnPickerHeaderTitleContainer,
-  PopoverWrapper,
 } from "./AggregationPicker.styled";
 
 interface AggregationPickerProps {
@@ -391,14 +390,14 @@ function renderItemIcon(item: ListItem) {
   }
 
   return (
-    <PopoverWrapper>
+    <Flex pr="sm" align="center">
       <Popover position="right" content={<Box p="md">{item.description}</Box>}>
         <span aria-label={t`More info`}>
           <PopoverDefaultIcon name="empty" size={18} />
           <PopoverHoverTarget name="info_filled" hasDescription size={18} />
         </span>
       </Popover>
-    </PopoverWrapper>
+    </Flex>
   );
 }
 
