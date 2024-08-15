@@ -66,7 +66,7 @@ export const getTooltipModel = (
     footer: isShowingTotalSensible
       ? {
           name: t`Total`,
-          values: [formatters.formatMetric(rowsTotal), "100%"],
+          values: [formatPercent(getPercent(rowsTotal, chartModel.total) ?? 0)],
         }
       : undefined,
   };

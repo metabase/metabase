@@ -533,7 +533,10 @@ export const getStackedTooltipModel = (
     footer: isShowingTotalSensible
       ? {
           name: t`Total`,
-          values: [formatter(rowsTotal), "100%"],
+          values: [
+            formatter(rowsTotal),
+            formatPercent(getPercent(rowsTotal, rowsTotal) ?? 0),
+          ],
         }
       : undefined,
   };

@@ -128,9 +128,12 @@ export function tooltipHeader() {
   return cy.findByTestId("echarts-tooltip-header");
 }
 
-export function assertTooltipRow(name, { color, value, secondaryValue } = {}) {
-  cy.get("tr")
-    .contains("td", name)
+export function assertTooltipRow(
+  name,
+  { color, value, secondaryValue, index } = {},
+) {
+  cy.findAllByText(name)
+    .eq(index ?? 0)
     .parent("tr")
     .within(() => {
       if (color) {
@@ -141,11 +144,11 @@ export function assertTooltipRow(name, { color, value, secondaryValue } = {}) {
       }
 
       if (value) {
-        cy.get("td").eq(2).should("have.text", value);
+        cy.findByText(value);
       }
 
       if (secondaryValue) {
-        cy.get("td").eq(3).should("have.text", secondaryValue);
+        cy.findByText(secondaryValue);
       }
     });
 }
