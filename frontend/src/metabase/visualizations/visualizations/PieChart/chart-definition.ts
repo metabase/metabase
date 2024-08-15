@@ -142,6 +142,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             name: key,
             color,
             defaultColor: true,
+            enabled: true,
           };
         });
       },

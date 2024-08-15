@@ -92,7 +92,9 @@ export function getPieChartModel(
     throw Error("missing `pie.rows` setting");
   }
 
-  const pieRowsWithValues = pieRows.map(pieRow => {
+  const enabledPieRows = pieRows.filter(row => row.enabled);
+
+  const pieRowsWithValues = enabledPieRows.map(pieRow => {
     const value = rowValuesByKey.get(pieRow.key);
     if (value === undefined) {
       throw Error(`No row values found for key ${pieRow.key}`);
