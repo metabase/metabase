@@ -13,7 +13,7 @@
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.util :as u]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
-       :clj  ([java-time.api :as jt]
+       :clj  ([java-time.api :as t]
               [metabase.util.malli.fn :as mu.fn]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -98,9 +98,9 @@
              (-> (js/Date.UTC year (dec month))
                  (js/Date.)
                  (.toISOString)))
-     :clj  (let [last-month (-> (jt/zoned-date-time (jt/year) (jt/month))
-                                (jt/minus (jt/months 1)))]
-             (jt/format :iso-offset-date-time last-month))))
+     :clj  (let [last-month (-> (t/zoned-date-time (t/year) (t/month))
+                                (t/minus (t/months 1)))]
+             (t/format :iso-offset-date-time last-month))))
 
 (defn- underlying-state [query agg-index agg-value breakout-values exp-filters-fn]
   (let [columns                         (lib/returned-columns query)
