@@ -17,6 +17,17 @@ const queryWithCountAndSumAggregations = createQueryWithClauses({
   ],
 });
 
+const queryWithYearBreakout = createQueryWithClauses({
+  aggregations: [{ operatorName: "count" }],
+  breakouts: [
+    {
+      tableName: "ORDERS",
+      columnName: "CREATED_AT",
+      temporalBucketName: "Year",
+    },
+  ],
+});
+
 interface SetupOpts {
   query: Lib.Query;
 }
@@ -116,31 +127,146 @@ describe("CompareAggregations", () => {
     });
   });
 
-  describe("offset input", () => {
-    it("does not allow negative values", async () => {
-      setup({ query: queryWithCountAggregation });
+  describe("offset", () => {
+    describe("presets", () => {
+      it("should show relevant presets for the breakout", async () => {
+        setup({ query: queryWithCountAggregation });
 
-      await userEvent.click(screen.getByText("Custom..."));
-      const input = screen.getByLabelText("Offset");
+        expect(screen.getByText("Previous month")).toBeInTheDocument();
+        expect(screen.getByText("Previous year")).toBeInTheDocument();
+        expect(screen.getByText("Custom...")).toBeInTheDocument();
 
-      await userEvent.clear(input);
-      await userEvent.type(input, "-5");
-      await userEvent.tab();
-
-      expect(input).toHaveValue(5);
+        expect(screen.getByText("Done")).toBeEnabled();
+      });
     });
 
-    it("does not allow non-integer values", async () => {
+    describe("custom period", () => {
+      describe("offset input", () => {
+        it("does not allow negative values", async () => {
+          setup({ query: queryWithCountAggregation });
+
+          await userEvent.click(screen.getByText("Custom..."));
+          const input = screen.getByLabelText("Offset");
+
+          await userEvent.clear(input);
+          await userEvent.type(input, "-5");
+          await userEvent.tab();
+
+          expect(input).toHaveValue(5);
+        });
+
+        it("does not allow zero value", async () => {
+          setup({ query: queryWithCountAggregation });
+
+          await userEvent.click(screen.getByText("Custom..."));
+          const input = screen.getByLabelText("Offset");
+
+          await userEvent.clear(input);
+          await userEvent.type(input, "0");
+          await userEvent.tab();
+
+          expect(input).toHaveValue(1);
+        });
+
+        it("does not allow non-integer values", async () => {
+          setup({ query: queryWithCountAggregation });
+
+          await userEvent.click(screen.getByText("Custom..."));
+          const input = screen.getByLabelText("Offset");
+
+          await userEvent.clear(input);
+          await userEvent.type(input, "1.234");
+          await userEvent.tab();
+
+          expect(input).toHaveValue(1);
+        });
+      });
+
+      describe("unit input", () => {
+        it("should render with the currently picked bucket", async () => {
+          setup({ query: queryWithYearBreakout });
+
+          await userEvent.click(screen.getByText("Custom..."));
+          const input = screen.getByLabelText("Unit");
+          expect(input).toHaveValue("Year");
+        });
+
+        it("should pluralize the unit when appropriate", async () => {
+          setup({ query: queryWithYearBreakout });
+
+          await userEvent.click(screen.getByText("Custom..."));
+
+          const offsetInput = screen.getByLabelText("Offset");
+
+          await userEvent.clear(offsetInput);
+          await userEvent.type(offsetInput, "2");
+          await userEvent.tab();
+
+          const input = screen.getByLabelText("Unit");
+          expect(input).toHaveValue("Years");
+        });
+      });
+    });
+  });
+
+  describe("moving average", () => {
+    it("allows switching to moving averages", async () => {
       setup({ query: queryWithCountAggregation });
+      expect(screen.getByText("Moving average")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Moving average"));
 
-      await userEvent.click(screen.getByText("Custom..."));
-      const input = screen.getByLabelText("Offset");
+      expect(screen.getByText("Include this month")).toBeInTheDocument();
+    });
 
-      await userEvent.clear(input);
-      await userEvent.type(input, "1.234");
-      await userEvent.tab();
+    describe("input", () => {
+      it("should not allow setting a moving average for less than 2 periods", async () => {
+        setup({ query: queryWithCountAggregation });
 
-      expect(input).toHaveValue(1);
+        expect(screen.getByText("Moving average")).toBeInTheDocument();
+        await userEvent.click(screen.getByText("Moving average"));
+
+        const input = screen.getByLabelText("Offset");
+        expect(input).toHaveValue(2);
+
+        await userEvent.clear(input);
+        await userEvent.type(input, "1");
+        await userEvent.tab();
+
+        expect(input).toHaveValue(2);
+      });
+    });
+    describe("unit input", () => {
+      it("should not pluralize the unit", async () => {
+        setup({ query: queryWithCountAggregation });
+
+        expect(screen.getByText("Moving average")).toBeInTheDocument();
+        await userEvent.click(screen.getByText("Moving average"));
+
+        const input = screen.getByLabelText("Unit");
+        expect(input).toHaveValue("Month");
+      });
+    });
+
+    describe("current period checkbox", () => {
+      it("should be disabled by default", async () => {
+        setup({ query: queryWithCountAggregation });
+
+        expect(screen.getByText("Moving average")).toBeInTheDocument();
+        await userEvent.click(screen.getByText("Moving average"));
+
+        const input = screen.getByLabelText("Include this month");
+        expect(input).not.toBeChecked();
+      });
+
+      it("respect the selected bucket name", async () => {
+        setup({ query: queryWithYearBreakout });
+
+        expect(screen.getByText("Moving average")).toBeInTheDocument();
+        await userEvent.click(screen.getByText("Moving average"));
+
+        const input = screen.getByLabelText("Include this year");
+        expect(input).not.toBeChecked();
+      });
     });
   });
 
@@ -201,32 +327,6 @@ describe("CompareAggregations", () => {
       const [_, aggregations] = onSubmit.mock.lastCall;
       expect(onSubmit).toHaveBeenCalled();
       expect(aggregations).toHaveLength(2);
-    });
-  });
-
-  describe("moving average", () => {
-    it("allows switching to moving averages", async () => {
-      setup({ query: queryWithCountAggregation });
-      expect(screen.getByText("Moving average")).toBeInTheDocument();
-      await userEvent.click(screen.getByText("Moving average"));
-
-      expect(screen.getByText("Include this month")).toBeInTheDocument();
-    });
-
-    it("should not allow setting a moving average for less than 2 periods", async () => {
-      setup({ query: queryWithCountAggregation });
-
-      expect(screen.getByText("Moving average")).toBeInTheDocument();
-      await userEvent.click(screen.getByText("Moving average"));
-
-      const input = screen.getByLabelText("Offset");
-      expect(input).toHaveValue(2);
-
-      await userEvent.clear(input);
-      await userEvent.type(input, "1");
-      await userEvent.tab();
-
-      expect(input).toHaveValue(2);
     });
   });
 });
