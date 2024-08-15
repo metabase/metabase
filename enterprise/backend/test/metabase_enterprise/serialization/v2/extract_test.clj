@@ -455,7 +455,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards include their Dashcards"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id other-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" other-dash-id)]
           (is (=? {:serdes/meta            [{:model "Dashboard" :id other-dash :label "dave_s_dash"}]
                    :entity_id              other-dash
                    :dashcards
@@ -496,7 +496,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards with parameters where the source is a card"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id param-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -515,7 +515,7 @@
                  (set (serdes/dependencies ser))))))
 
       (testing "Cards with parameters where the source is a card"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id param-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -579,7 +579,7 @@
          :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
         (testing "Inlined dashcards include their series' card entity IDs"
           (let [ser (t2/with-call-count [q]
-                      (u/prog1 (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id dash-id]}))
+                      (u/prog1 (ts/extract-one "Dashboard" dash-id)
                         (is (< (q) 13))))]
             (is (=? {:entity_id dash-eid
                      :dashcards [{:entity_id dc1-eid
@@ -626,7 +626,7 @@
                                                              :field_id fk-id
                                                              :human_readable_field_id cust-name}]
       (testing "dimensions without foreign keys are inlined into their Fields\n"
-        (let [ser (u/rfirst (serdes/extract-all "Field" {:where [:= :id email-id]}))]
+        (let [ser (ts/extract-one "Field" email-id)]
           (is (malli= [:map
                        [:serdes/meta [:= [{:model "Database", :id "My Database"}
                                           {:model "Table", :id "Schemaless Table"}
@@ -648,7 +648,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "foreign key dimensions are inlined into their Fields"
-        (let [ser (u/rfirst (serdes/extract-all "Field" {:where [:= :id fk-id]}))]
+        (let [ser (ts/extract-one "Field" fk-id)]
           (is (malli= [:map
                        [:serdes/meta        [:= [{:model "Database" :id "My Database"}
                                                  {:model "Schema" :id "PUBLIC"}
