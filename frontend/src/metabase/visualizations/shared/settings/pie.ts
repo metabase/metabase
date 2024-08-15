@@ -112,7 +112,7 @@ export function getSortedAggregatedRows(
 export function getColors(
   rawSeries: RawSeries,
   currentSettings: Partial<ComputedVisualizationSettings>,
-): ComputedVisualizationSettings["pie.colors"] {
+) {
   const [
     {
       data: { rows, cols },

@@ -94,14 +94,13 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
       // TODO re-use in static viz
-      getValue: (
-        [
+      getValue: (rawSeries, settings) => {
+        const [
           {
             data: { cols, rows },
           },
-        ],
-        settings,
-      ) => {
+        ] = rawSeries;
+
         const savedPieRows = settings["pie.rows"];
         if (savedPieRows != null) {
           // TODO merge saved and new rows from query
@@ -124,17 +123,23 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           const dimensionValue = row[dimensionIndex];
           const key = getKeyFromDimensionValue(dimensionValue);
 
-          if (!settings["pie.colors"]) {
-            throw Error("missing `pie.colors` setting");
+          let colors = getColors(rawSeries, settings);
+          // `pie.colors` is a legacy setting used by old questions for their
+          // colors. We'll still read it to preserve those color selections, but
+          // will no longer write values to it, instead storing colors here in
+          // `pie.rows`.
+          if (settings["pie.colors"] != null) {
+            colors = { ...colors, ...settings["pie.colors"] };
           }
-          // Older viz settings can have hsl values that need to be converted
-          // since Batik does not support hsl.
+
+          // Older viz settings can have hsl values that need to be converted to
+          // hex since Batik does not support hsl.
           const color = Color(
             // Historically we have used the dimension value in the `pie.colors`
             // setting instead of the key computed above, e.g. `null` instead of
             // `(empty)`. For compatibility with existing questions we will
             // continue to use the dimension value.
-            settings["pie.colors"][String(dimensionValue)],
+            colors[String(dimensionValue)],
           ).hex();
 
           return {
@@ -282,69 +287,6 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       title: t`Minimum slice percentage`,
       widget: "number",
       getDefault: getDefaultSliceThreshold,
-    },
-    "pie.colors": {
-      section: t`Display`,
-      title: t`Colors`,
-      widget: "colors",
-      getValue: getColors,
-      getProps: (series, settings) => ({
-        seriesValues: settings["pie._dimensionValues"] || [],
-        seriesTitles: settings["pie._dimensionTitles"] || [],
-      }),
-      getDisabled: (series, settings) => !settings["pie._dimensionValues"],
-    },
-    "pie._dimensionIndex": {
-      getValue: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => _.findIndex(cols, col => col.name === settings["pie.dimension"]),
-      readDependencies: ["pie.dimension"],
-    },
-    "pie._dimensionValues": {
-      getValue: (
-        [
-          {
-            data: { rows },
-          },
-        ],
-        settings,
-      ) => {
-        const dimensionIndex = settings["pie._dimensionIndex"];
-        if (dimensionIndex == null || dimensionIndex < 0) {
-          return null;
-        }
-
-        return rows.map(row => String(row[dimensionIndex]));
-      },
-      readDependencies: ["pie._dimensionIndex"],
-    },
-    "pie._dimensionTitles": {
-      getValue: (
-        [
-          {
-            data: { rows, cols },
-          },
-        ],
-        settings,
-      ) => {
-        const dimensionIndex = settings["pie._dimensionIndex"];
-        if (dimensionIndex == null || dimensionIndex < 0) {
-          return null;
-        }
-
-        return rows.map(row =>
-          formatValue(
-            row[dimensionIndex],
-            settings.column(cols[dimensionIndex]),
-          ),
-        );
-      },
-      readDependencies: ["pie._dimensionIndex"],
     },
   } as VisualizationSettingsDefinitions,
 };
