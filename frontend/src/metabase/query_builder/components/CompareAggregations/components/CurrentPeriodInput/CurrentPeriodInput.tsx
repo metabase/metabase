@@ -1,14 +1,14 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { Checkbox } from "metabase/ui";
+import { Switch } from "metabase/ui";
 
 type Props = {
   value: boolean;
   onChange: (value: boolean) => void;
 };
 
-export function CurrentPerionInput({ value, onChange }: Props) {
+export function CurrentPeriodInput({ value, onChange }: Props) {
   const handleChange = useCallback(
     (evt: React.ChangeEvent<HTMLInputElement>) => {
       onChange(evt.target.checked);
@@ -17,10 +17,11 @@ export function CurrentPerionInput({ value, onChange }: Props) {
   );
 
   return (
-    <Checkbox
+    <Switch
       checked={value}
       onChange={handleChange}
       label={t`Include current period`}
+      size="xs"
     />
   );
 }

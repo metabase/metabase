@@ -13,7 +13,7 @@ import {
   OffsetInput,
   ReferenceAggregationPicker,
   ComparisonTypePicker,
-  CurrentPerionInput,
+  CurrentPeriodInput,
   OffsetPresets,
   BucketInput,
 } from "./components";
@@ -191,7 +191,7 @@ export const CompareAggregations = ({
               </Stack>
 
               {comparisonType === "moving-average" && (
-                <CurrentPerionInput
+                <CurrentPeriodInput
                   value={includeCurrentPeriod}
                   onChange={setIncludeCurrentPeriod}
                 />
