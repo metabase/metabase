@@ -2,13 +2,15 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { Switch } from "metabase/ui";
+import type { TemporalUnit } from "metabase-types/api";
 
 type Props = {
   value: boolean;
   onChange: (value: boolean) => void;
+  bucket: TemporalUnit;
 };
 
-export function CurrentPeriodInput({ value, onChange }: Props) {
+export function CurrentPeriodInput({ value, onChange, bucket }: Props) {
   const handleChange = useCallback(
     (evt: React.ChangeEvent<HTMLInputElement>) => {
       onChange(evt.target.checked);
@@ -16,11 +18,15 @@ export function CurrentPeriodInput({ value, onChange }: Props) {
     [onChange],
   );
 
+  if (!bucket) {
+    return null;
+  }
+
   return (
     <Switch
       checked={value}
       onChange={handleChange}
-      label={t`Include current period`}
+      label={t`Include this ${bucket}`}
       size="xs"
     />
   );

@@ -194,6 +194,7 @@ export const CompareAggregations = ({
                 <CurrentPeriodInput
                   value={includeCurrentPeriod}
                   onChange={setIncludeCurrentPeriod}
+                  bucket={bucket}
                 />
               )}
 
