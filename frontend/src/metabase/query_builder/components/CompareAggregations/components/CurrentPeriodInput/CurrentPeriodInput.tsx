@@ -7,7 +7,7 @@ import type { TemporalUnit } from "metabase-types/api";
 type Props = {
   value: boolean;
   onChange: (value: boolean) => void;
-  bucket: TemporalUnit;
+  bucket: TemporalUnit | null;
 };
 
 export function CurrentPeriodInput({ value, onChange, bucket }: Props) {
@@ -26,7 +26,7 @@ export function CurrentPeriodInput({ value, onChange, bucket }: Props) {
     <Switch
       checked={value}
       onChange={handleChange}
-      label={t`Include this ${bucket}`}
+      label={t`Include this ${bucket ?? "period"}`}
       size="xs"
     />
   );
