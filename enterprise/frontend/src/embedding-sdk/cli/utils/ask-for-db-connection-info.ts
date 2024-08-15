@@ -33,19 +33,6 @@ export async function askForDatabaseConnectionInfo(options: Options) {
       continue;
     }
 
-    const visibleIf = field["visible-if"];
-
-    const shouldShowField =
-      !visibleIf ||
-      Object.entries(visibleIf).every(
-        ([key, expected]) => connection[key] === expected,
-      );
-
-    // Skip fields that should be hidden
-    if (!shouldShowField) {
-      continue;
-    }
-
     const name = field["display-name"];
     const helperText = field["helper-text"];
 
