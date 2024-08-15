@@ -222,7 +222,7 @@
                           log (slurp (io/input-stream res))]
                       (testing "3 header lines, then cards+database+collection, then the error"
                         (is (= #{"Card" "Database" "Collection"}
-                               (log-types #p (str/split-lines log))))
+                               (log-types (str/split-lines log))))
                         (is (re-find #"Failed to read file for Collection DoesNotExist" log))
                         (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
                                 :error      :metabase-enterprise.serialization.v2.load/not-found,
