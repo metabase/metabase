@@ -396,6 +396,7 @@
                     (:continue-on-error opts))
         (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
                         {:model     model
+                         :table     (->> model (keyword "model") t2/table-name)
                          :id        (:id instance)
                          :entity_id (:entity_id instance)
                          :cause     (.getMessage e)}
