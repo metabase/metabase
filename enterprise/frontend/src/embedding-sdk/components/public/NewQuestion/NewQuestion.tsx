@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { usePreviousDistinct } from "react-use";
 
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   Notebook,
   QuestionVisualization,
@@ -96,7 +97,7 @@ const NewQuestionInner = () => {
   );
 };
 
-export const NewQuestion = () => (
+export const NewQuestion = withPublicComponentWrapper(() => (
   <InteractiveQuestionProvider options={{}}>
     {/* 
     We can't inline this component, I *think* due to re-rendering reasons. 
@@ -104,4 +105,4 @@ export const NewQuestion = () => (
      */}
     <NewQuestionInner />
   </InteractiveQuestionProvider>
-);
+));
