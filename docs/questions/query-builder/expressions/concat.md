@@ -24,9 +24,9 @@ concat(value1, value2, ...)
 
 ### Metabase will use unformatted values for non-string columns
 
-When you use non-string columns in `concat`, Metabase will not apply any of the [formatting](../../../data-modeling/formatting.md) you applied to the columns when converting them to text.
+When you use non-string columns in `concat`, Metabase will ignore any [formatting](../../../data-modeling/formatting.md) that you applied to the columns when converting the column to a string.
 
-For example, if you formatted a floating point number to display only the first two decimal digits in the table results, the results of `concat` would still include additional decimal digits (if any) found in the raw results
+For example, if you formatted a number to display only the first two decimal digits in the table results, the results of `concat` would still include additional decimal digits (if any) found in the raw results.
 
 | Formatted display | Value                     | `concat("Result:", " ", [Value])` |
 | ----------------- | ------------------------- | --------------------------------- |
@@ -77,7 +77,7 @@ concat([City], ", ", [Country])
 
 ### Spreadsheets
 
-If our sample data is in a spreadsheet where "City" is in column A, and "Country" in column B, we can create a third column "Location" like this,
+If our sample data is in a spreadsheet where "City" is in column A, and "Country" in column B, we can create a third column "Location" like this:
 
 ```
 =CONCATENATE(A2, ", ", B2)
@@ -91,7 +91,7 @@ concat([City], ", ", [Country])
 
 ### Python
 
-Assuming the sample data is in a dataframe column called df,
+Assuming the sample data is in a dataframe column called `df`:
 
 ```
 df["Location"] = df["City"] + ", " + df["Country"]
