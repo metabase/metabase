@@ -1,0 +1,24 @@
+.collectionItemsTable {
+  background-color: var(--mb-color-bg-white);
+  table-layout: fixed;
+  border-radius: 0.5rem;
+
+  /* thead { */
+  /*   th { */
+  /*     border-top: 1px solid var(--mb-color-border); */
+
+  /*     &:first-of-type { */
+  /*       border-start-start-radius: 8px; */
+  /*       border-inline-start: 1px solid var(--mb-color-border); */
+  /*     } */
+
+  /*     &:last-child { */
+  /*       border-start-end-radius: 8px; */
+  /*       border-inline-end: 1px solid var(--mb-color-border); */
+  /*     } */
+  /*   } */
+  /* } */
+  [role="row"] {
+    display: grid;
+  }
+}
