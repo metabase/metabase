@@ -231,6 +231,17 @@
                    (lib/available-drill-thrus query -1)
                    (m/find-first #(= (:type %) :drill-thru/column-filter))))))))
 
+(deftest ^:parallel column-filter-unavailable-for-broken-ref-test
+  (testing "do not return column filter drill when the corresponding filterable column cannot be found"
+    (let [query      (lib/query meta/metadata-provider (meta/table-metadata :orders))
+          subtotal   (m/find-first #(= (:name %) "SUBTOTAL") (lib/returned-columns query))]
+      (is (nil?
+           (->> {:column     subtotal
+                 :column-ref [:field {:lib/uuid (str (random-uuid))} 999]
+                 :value      nil}
+                (lib/available-drill-thrus query -1)
+                (m/find-first #(= (:type %) :drill-thru/column-filter))))))))
+
 (deftest ^:parallel native-models-with-renamed-columns-test
   (testing "Generate sane queries for native query models with renamed columns (#22715 #36583)"
     (let [metadata-provider (lib.tu/mock-metadata-provider

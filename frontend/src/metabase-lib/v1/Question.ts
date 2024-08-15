@@ -459,6 +459,10 @@ class Question {
     const metadata = this.metadataProvider();
     const tableId = getQuestionVirtualTableId(this.id());
     const table = Lib.tableOrCardMetadata(metadata, tableId);
+    if (!table) {
+      return this;
+    }
+
     const query = Lib.queryFromTableOrCardMetadata(metadata, table);
     return this.setQuery(query);
   }

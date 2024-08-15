@@ -120,7 +120,7 @@ describe("CompareAggregations", () => {
     it("does not allow negative values", async () => {
       setup({ query: queryWithCountAggregation });
 
-      const input = screen.getByLabelText("Previous period");
+      const input = screen.getByLabelText("Compare to");
 
       await userEvent.clear(input);
       await userEvent.type(input, "-5");
@@ -132,7 +132,7 @@ describe("CompareAggregations", () => {
     it("does not allow non-integer values", async () => {
       setup({ query: queryWithCountAggregation });
 
-      const input = screen.getByLabelText("Previous period");
+      const input = screen.getByLabelText("Compare to");
 
       await userEvent.clear(input);
       await userEvent.type(input, "1.234");
@@ -146,7 +146,7 @@ describe("CompareAggregations", () => {
     it("is submittable by default", () => {
       setup({ query: queryWithCountAggregation });
 
-      expect(screen.getByLabelText("Previous period")).toHaveValue(1);
+      expect(screen.getByLabelText("Compare to")).toHaveValue(1);
       expect(screen.getByText("Previous value")).toBeInTheDocument();
       expect(screen.getByText("Percentage difference")).toBeInTheDocument();
       expect(screen.queryByText("Value difference")).not.toBeInTheDocument();
@@ -156,7 +156,7 @@ describe("CompareAggregations", () => {
     it("disables the submit button when offset input is empty", async () => {
       setup({ query: queryWithCountAggregation });
 
-      const input = screen.getByLabelText("Previous period");
+      const input = screen.getByLabelText("Compare to");
 
       await userEvent.clear(input);
 
@@ -184,7 +184,7 @@ describe("CompareAggregations", () => {
       await userEvent.click(within(listBox).getByText("Previous value"));
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      const [aggregations] = onSubmit.mock.lastCall;
+      const [_, aggregations] = onSubmit.mock.lastCall;
       expect(onSubmit).toHaveBeenCalled();
       expect(aggregations).toHaveLength(1);
     });
@@ -194,9 +194,34 @@ describe("CompareAggregations", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      const [aggregations] = onSubmit.mock.lastCall;
+      const [_, aggregations] = onSubmit.mock.lastCall;
       expect(onSubmit).toHaveBeenCalled();
       expect(aggregations).toHaveLength(2);
+    });
+  });
+
+  describe("moving average", () => {
+    it("allows switching to moving averages", async () => {
+      setup({ query: queryWithCountAggregation });
+      expect(screen.getByText("Moving average")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Moving average"));
+
+      expect(screen.getByText("Include current period")).toBeInTheDocument();
+    });
+
+    it("should not allow setting a moving average for less than 2 periods", async () => {
+      setup({ query: queryWithCountAggregation });
+
+      expect(screen.getByText("Moving average")).toBeInTheDocument();
+      await userEvent.click(screen.getByText("Moving average"));
+
+      const input = screen.getByLabelText("Compare to");
+      expect(input).toHaveValue(2);
+      await userEvent.clear(input);
+      await userEvent.type(input, "1");
+      await userEvent.tab();
+
+      expect(input).toHaveValue(2);
     });
   });
 });

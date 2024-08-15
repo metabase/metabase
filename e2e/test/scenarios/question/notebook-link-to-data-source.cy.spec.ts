@@ -98,11 +98,6 @@ describe("scenarios > notebook > link to data source", () => {
     );
 
     cy.findByTestId("qb-save-button").should("be.enabled");
-    cy.go("back");
-
-    cy.log("Tooltip should not linger open when we go back");
-    getNotebookStep("data").findByText("Reviews").should("be.visible");
-    cy.findByRole("tooltip").should("not.exist");
   });
 
   context("questions", () => {

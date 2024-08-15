@@ -206,8 +206,11 @@
   ;; this only works if the map is small enough that it's an still an array map and thus preserving the original order
   (zipmap col-names (vals row)))
 
-;; see also `metabase.query-processor.streaming.xlsx-test/report-timezone-test`
-;; TODO this test doesn't seem to run?
+;;; see also [[metabase.query-processor.streaming.xlsx-test/report-timezone-test]] (UPDATE: THIS TEST DOESN'T ACTUALLY
+;;; EXIST ANYMORE, BUT MAYBE YOU CAN GO LOOKING FOR IT IF YOU NEED TO?)
+;;;
+;;; This is only running against Postgres since we're just testing general behavior for formatting different types
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest report-timezone-test
   (testing "Export downloads should format stuff with the report timezone rather than UTC (#13677)"
     (mt/test-driver :postgres

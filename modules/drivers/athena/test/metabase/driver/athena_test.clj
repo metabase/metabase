@@ -13,9 +13,13 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
+   [metabase.query-processor-test.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
+   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2])
   (:import
    (java.sql Connection)))
@@ -285,3 +289,102 @@
                  (-> @executed-query
                      :native
                      (update :query #(str/split-lines (driver/prettify-native-form :athena %)))))))))))
+
+;;; Athena version of [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
+(deftest datetime-diff-mixed-types-test
+  (mt/test-driver :athena
+    (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
+      (mt/with-temp [:model/Card card (qp.test-util/card-with-source-metadata-for-query
+                                       (mt/native-query {:query (str "select"
+                                                                     " date '2022-01-01' as d,"
+                                                                     " timestamp '2022-01-01 00:00:00.000' as dt,"
+                                                                     " with_timezone(timestamp '2022-01-01 00:00:00.000', 'Africa/Lagos') as dt_tz")}))]
+        (let [d       [:field "d" {:base-type :type/Date}]
+              dt      [:field "dt" {:base-type :type/DateTime}]
+              dt_tz   [:field "dt_tz" {:base-type :type/DateTimeWithZoneID}]
+              results (mt/process-query
+                       {:database (mt/id)
+                        :type     :query
+                        :query    {:fields   [[:expression "tz,dt"]
+                                              [:expression "tz,d"]]
+                                   :expressions
+                                   {"tz,dt" [:datetime-diff dt_tz dt :second]
+                                    "tz,d"  [:datetime-diff dt_tz d :second]}
+                                   :source-table (str "card__" (u/the-id card))}})]
+          (is (= [3600 3600]
+                 (->> results
+                      (mt/formatted-rows [int int])
+                      first))))))))
+
+;;; Athena version of [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-time-zones-test]]
+(mt/defdataset diff-time-zones-athena-cases
+  ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without the time zones.
+  ;; It is needed to test `datetime-diff` with Athena, since Athena supports `timestamp with time zone`
+  ;; in query expressions but not in a table. [[diff-time-zones-athena-cases-query]] uses this dataset
+  ;; to recreate [[diff-time-zones-cases]] for Athena as a query.
+  [["times"
+    [{:field-name "dt",      :base-type :type/DateTime}
+     {:field-name "dt_text", :base-type :type/Text}]
+    (for [dt [#t "2022-10-02T00:00:00"
+              #t "2022-10-02T01:00:00"
+              #t "2022-10-03T00:00:00"
+              #t "2022-10-09T00:00:00"
+              #t "2022-11-02T00:00:00"
+              #t "2023-01-02T00:00:00"
+              #t "2023-10-02T00:00:00"]]
+      [dt (u.date/format dt)])]])
+
+(def ^:private diff-time-zones-athena-cases-query
+  ;; This query recreates [[diff-time-zones-cases]] for Athena from [[diff-time-zones-athena-cases]].
+  "with x as (
+     select
+     with_timezone(dt, 'UTC') as dt
+     , concat(dt_text, 'Z') as dt_text -- e.g. 2022-10-02T00:00:00Z
+     , 'UTC' as time_zone
+   from diff_time_zones_athena_cases.times
+   union
+   select
+     with_timezone(dt, 'Africa/Lagos') as dt
+     , concat(dt_text, '+01:00') as dt_text -- e.g. 2022-10-02T00:00:00+01:00
+     , 'Africa/Lagos' as time_zone
+   from diff_time_zones_athena_cases.times
+   )
+   select
+     a.dt as a_dt_tz
+     , a.dt_text as a_dt_tz_text
+     , b.dt as b_dt_tz
+     , b.dt_text as b_dt_tz_text
+   from x a
+   join x b on a.dt < b.dt and a.time_zone <> b.time_zone")
+
+(deftest datetime-diff-time-zones-test
+  ;; Athena needs special treatment. It supports the `timestamp with time zone` type in query expressions
+  ;; but not at rest. Here we create a native query that returns a `timestamp with time zone` type and then
+  ;; run another query with `datetime-diff` against it.
+  (mt/test-driver :athena
+    (mt/dataset diff-time-zones-athena-cases
+      (mt/with-temp [:model/Card card (qp.test-util/card-with-source-metadata-for-query
+                                       (mt/native-query {:query diff-time-zones-athena-cases-query}))]
+        (let [diffs
+              (fn [a-str b-str]
+                (let [units   [:second :minute :hour :day :week :month :quarter :year]
+                      results (mt/process-query
+                               {:database (mt/id)
+                                :type     :query
+                                :query    {:filter [:and
+                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/DateTime}]]
+                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/DateTime}]]]
+                                           :expressions  (into {}
+                                                               (for [unit units]
+                                                                 [(name unit) [:datetime-diff
+                                                                               [:field "a_dt_tz" {:base-type :type/DateTime}]
+                                                                               [:field "b_dt_tz" {:base-type :type/DateTime}]
+                                                                               unit]]))
+                                           :fields       (into [] (for [unit units]
+                                                                    [:expression (name unit)]))
+                                           :source-table (str "card__" (u/the-id card))}})]
+                  (->> results
+                       (mt/formatted-rows (repeat (count units) int))
+                       first
+                       (zipmap units))))]
+          (qp-test.date-time-zone-functions-test/run-datetime-diff-time-zone-tests! diffs))))))
