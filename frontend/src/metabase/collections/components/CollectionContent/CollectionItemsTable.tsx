@@ -1,11 +1,5 @@
 /* eslint-disable react/prop-types */
-import {
-  type ComponentType,
-  useCallback,
-  useEffect,
-  useState,
-  useMemo,
-} from "react";
+import { type ComponentType, useCallback, useEffect, useState } from "react";
 import DataGrid, { type RenderRowProps } from "react-data-grid";
 import CollectionItemsTableS from "./CollectionItemsTable.module.css";
 
@@ -33,10 +27,7 @@ import type {
 } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import {
-  CollectionEmptyContent,
-  CollectionTable,
-} from "./CollectionContent.styled";
+import { CollectionEmptyContent } from "./CollectionContent.styled";
 import {
   DefaultItemRenderer,
   ItemRendererProps,
@@ -192,14 +183,28 @@ export const CollectionItemsTable = ({
         const isEmpty =
           !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
-        const manyItems = [
-          ...unpinnedItems,
-          ...unpinnedItems,
-          ...unpinnedItems,
-          ...unpinnedItems,
-          ...unpinnedItems,
-          ...unpinnedItems,
-        ];
+        const manyItems =
+          unpinnedItems.length < 50
+            ? [
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+                ...unpinnedItems,
+              ]
+            : unpinnedItems;
 
         if (isEmpty && !loadingUnpinnedItems) {
           return <EmptyContentComponent collection={collection} />;
@@ -253,99 +258,1172 @@ export const CollectionItemsTable = ({
 
         // FIXME: Note I have removed <CollectionTable> which used to wrap this datagrid
         return (
-          <DataGrid
-            className={CollectionItemsTableS.collectionItemsTable}
-            rows={unpinnedItems.map(
-              (item: CollectionItem) =>
-                ({
-                  item,
-                  isSelected: false,
-                  isPinned: false,
-                  onToggleSelected: () => null,
-                  collection: { ...item.collection, can_write: true },
-                  onCopy: () => null,
-                  showActionMenu: true,
-                  onSortingOptionsChange: handleUnpinnedItemsSortingChange,
-                } as ItemRendererProps),
-            )}
-            columns={[
-              {
-                key: "select",
-                name: "",
-                width: 70,
-                renderHeaderCell: _props => <Columns.Select.Header />,
-                renderCell: props => <Columns.Select.Cell {...props.row} />,
-              },
-              {
-                key: "type",
-                name: "Type",
-                width: 70,
+          <>
+            <div
+              className={S.testGrid}
+              role="grid"
+              aria-colcount="7"
+              aria-rowcount="500"
+              class="rdg rnvodz5"
+              dir="ltr"
+              style={{
+                gridTemplateColumns:
+                  "80px 393.641px 395.188px 427.094px 425.516px 415.484px 200px",
+                gridTemplateRows: "repeat(1, 35px) repeat(499, 35px)",
+                "--rdg-header-row-height": "35px",
+                "--rdg-scroll-height": "17517px",
+                "scroll-padding-inline-start": "0px",
+                "scroll-padding-block": "35px 0px",
+              }}
+            >
+              <div role="row" aria-rowindex="1" class="rdg-header-row h10tskcx">
+                <div
+                  role="columnheader"
+                  aria-colindex="1"
+                  aria-rowspan="1"
+                  aria-selected="false"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="inset-block-start: 0px; grid-area: 1 / 1 / 2 / 2; padding-block-start: calc(0 * var(--rdg-header-row-height));"
+                >
+                  ID
+                </div>
+                <div
+                  role="columnheader"
+                  aria-colindex="2"
+                  aria-rowspan="1"
+                  aria-selected="false"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="inset-block-start: 0px; grid-area: 1 / 2 / 2 / 3; padding-block-start: calc(0 * var(--rdg-header-row-height));"
+                >
+                  Title
+                </div>
+                <div
+                  role="columnheader"
+                  aria-colindex="3"
+                  aria-rowspan="1"
+                  aria-selected="false"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="inset-block-start: 0px; grid-area: 1 / 3 / 2 / 4; padding-block-start: calc(0 * var(--rdg-header-row-height));"
+                >
+                  Priority
+                </div>
+                <div
+                  role="columnheader"
+                  aria-colindex="4"
+                  aria-rowspan="1"
+                  aria-selected="false"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="inset-block-start: 0px; grid-area: 1 / 4 / 2 / 5; padding-block-start: calc(0 * var(--rdg-header-row-height));"
+                >
+                  Issue Type
+                </div>
+                <div
+                  role="columnheader"
+                  aria-colindex="5"
+                  aria-rowspan="1"
+                  aria-selected="false"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="inset-block-start: 0px; grid-area: 1 / 5 / 2 / 6; padding-block-start: calc(0 * var(--rdg-header-row-height));"
+                >
+                  % Complete
+                </div>
+                <div
+                  role="columnheader"
+                  aria-colindex="6"
+                  aria-rowspan="1"
+                  aria-selected="false"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="inset-block-start: 0px; grid-area: 1 / 6 / 2 / 7; padding-block-start: calc(0 * var(--rdg-header-row-height));"
+                >
+                  Start Date
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-even"
+                aria-rowindex="2"
+                style="--rdg-grid-row-start: 2;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  1
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 1
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  High
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  93
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  9/7/2020
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-odd"
+                aria-rowindex="3"
+                style="--rdg-grid-row-start: 3;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  2
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 2
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Low
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Story
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  25
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  2/27/2023
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-even"
+                aria-rowindex="4"
+                style="--rdg-grid-row-start: 4;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  3
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 3
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  High
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  100
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  12/3/2023
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-odd"
+                aria-rowindex="5"
+                style="--rdg-grid-row-start: 5;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  4
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="true"
+                  aria-readonly="true"
+                  tabindex="0"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 4
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Low
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Epic
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  100
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  4/19/2024
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-even"
+                aria-rowindex="6"
+                style="--rdg-grid-row-start: 6;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  5
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 5
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Medium
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Story
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  46
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  6/2/2021
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-odd"
+                aria-rowindex="7"
+                style="--rdg-grid-row-start: 7;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  6
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 6
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Medium
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  90
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  12/28/2023
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-even"
+                aria-rowindex="8"
+                style="--rdg-grid-row-start: 8;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  7
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 7
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Low
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  49
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  6/28/2015
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-odd"
+                aria-rowindex="9"
+                style="--rdg-grid-row-start: 9;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  8
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 8
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  High
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  7
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  12/27/2018
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-even"
+                aria-rowindex="10"
+                style="--rdg-grid-row-start: 10;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  9
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 9
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Low
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Epic
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  39
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  2/28/2023
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-odd"
+                aria-rowindex="11"
+                style="--rdg-grid-row-start: 11;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  10
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 10
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Medium
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Epic
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  11
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  5/13/2023
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-even"
+                aria-rowindex="12"
+                style="--rdg-grid-row-start: 12;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  11
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 11
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Low
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  22
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  5/15/2020
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-odd"
+                aria-rowindex="13"
+                style="--rdg-grid-row-start: 13;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  12
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 12
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  High
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  100
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  8/19/2015
+                </div>
+              </div>
+              <div
+                role="row"
+                class="rdg-row r1upfr80 rdg-row-even"
+                aria-rowindex="14"
+                style="--rdg-grid-row-start: 14;"
+              >
+                <div
+                  role="gridcell"
+                  aria-colindex="1"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 1 / 2;"
+                >
+                  13
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="2"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 2 / 3;"
+                >
+                  Task 13
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="3"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 3 / 4;"
+                >
+                  Low
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="4"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 4 / 5;"
+                >
+                  Improvement
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="5"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 5 / 6;"
+                >
+                  70
+                </div>
+                <div
+                  role="gridcell"
+                  aria-colindex="6"
+                  aria-selected="false"
+                  aria-readonly="true"
+                  tabindex="-1"
+                  class="rdg-cell cj343x0"
+                  style="grid-column: 6 / 7;"
+                >
+                  2/7/2024
+                </div>
+              </div>
+              <div
+                class="mlln6zg"
+                data-measuring-cell-key="id"
+                style="grid-column-start: 1; min-width: 50px;"
+              ></div>
+              <div
+                class="mlln6zg"
+                data-measuring-cell-key="task"
+                style="grid-column-start: 2; min-width: 50px;"
+              ></div>
+              <div
+                class="mlln6zg"
+                data-measuring-cell-key="priority"
+                style="grid-column-start: 3; min-width: 50px;"
+              ></div>
+              <div
+                class="mlln6zg"
+                data-measuring-cell-key="issueType"
+                style="grid-column-start: 4; min-width: 50px;"
+              ></div>
+              <div
+                class="mlln6zg"
+                data-measuring-cell-key="complete"
+                style="grid-column-start: 5; min-width: 50px;"
+              ></div>
+              <div
+                class="mlln6zg"
+                data-measuring-cell-key="startDate"
+                style="grid-column-start: 6; min-width: 50px;"
+              ></div>
+            </div>
+            <DataGrid
+              enableVirtualization
+              className={CollectionItemsTableS.collectionItemsTable}
+              rows={manyItems.map(
+                (item: CollectionItem) =>
+                  ({
+                    item: { ...item, getUrl: () => "" },
+                    isSelected: false,
+                    isPinned: false,
+                    onToggleSelected: () => null,
+                    collection: { ...item.collection, can_write: true },
+                    onCopy: () => null,
+                    showActionMenu: false,
+                    onSortingOptionsChange: handleUnpinnedItemsSortingChange,
+                    icon: { name: "model" }, // FIXME
+                  } as ItemRendererProps),
+              )}
+              rowHeight={50}
+              columns={[
+                {
+                  key: "select",
+                  name: "",
+                  width: 70,
+                  renderHeaderCell: _props => <Columns.Select.Header />,
+                  renderCell: props => <Columns.Select.Cell {...props.row} />,
+                },
+                {
+                  key: "type",
+                  name: "Type",
+                  width: 70,
+                  sortable: true,
+                  renderHeaderCell: _props => (
+                    <Columns.Type.Header {...headerSortingProps} />
+                  ),
+                  renderCell: props => <Columns.Type.Cell {...props.row} />,
+                },
+                {
+                  key: "name",
+                  name: "Name",
+                  width: 300,
+                  sortable: true,
+                  renderCell: props => <Columns.Name.Cell {...props.row} />,
+                  renderHeaderCell: _props => (
+                    <Columns.Name.Header {...headerSortingProps} />
+                  ),
+                },
+                {
+                  key: "last_edited_by",
+                  name: "Last edited by",
+                  width: 140,
+                  sortable: true,
+                  renderCell: props => (
+                    <Columns.LastEditedBy.Cell item={props.row} />
+                  ),
+                  renderHeaderCell: _props => (
+                    <Columns.LastEditedBy.Header {...headerSortingProps} />
+                  ),
+                },
+                {
+                  key: "last_edited_at",
+                  name: "Last edited at",
+                  width: 140,
+                  sortable: true,
+                  renderCell: props => (
+                    <Columns.LastEditedAt.Cell {...props.row} />
+                  ),
+                  renderHeaderCell: _props => (
+                    <Columns.LastEditedAt.Header {...headerSortingProps} />
+                  ),
+                },
+                {
+                  key: "action_menu",
+                  name: "",
+                  width: 100,
+                  renderCell: props => (
+                    <Columns.ActionMenu.Cell {...props.row} />
+                  ),
+                  renderHeaderCell: _props => <Columns.ActionMenu.Header />,
+                },
+                {
+                  key: "right_edge",
+                  name: "",
+                  width: 5,
+                  renderCell: _props => <Columns.RightEdge.Cell />,
+                  renderHeaderCell: _props => <Columns.RightEdge.Header />,
+                },
+              ]}
+              defaultColumnOptions={{
                 sortable: true,
-                renderHeaderCell: props => (
-                  <Columns.Type.Header {...headerSortingProps} />
-                ),
-                renderCell: props => <Columns.Type.Cell {...props.row} />,
-              },
-              {
-                key: "name",
-                name: "Name",
-                renderCell: props => <Columns.Name.Cell item={props.row} />,
-                sortable: true,
-                renderHeaderCell: _props => (
-                  <Columns.Name.Header {...headerSortingProps} />
-                ),
-              },
-              {
-                key: "last_edited_by",
-                name: "Last edited by",
-                width: 140,
-                sortable: true,
-                renderCell: props => (
-                  <Columns.LastEditedBy.Cell item={props.row} />
-                ),
-                renderHeaderCell: _props => (
-                  <Columns.LastEditedBy.Header {...headerSortingProps} />
-                ),
-              },
-              {
-                key: "last_edited_at",
-                name: "Last edited at",
-                width: 140,
-                sortable: true,
-                renderCell: props => (
-                  <Columns.LastEditedAt.Cell {...props.row} />
-                ),
-                renderHeaderCell: _props => (
-                  <Columns.LastEditedAt.Header {...headerSortingProps} />
-                ),
-              },
-              {
-                key: "action_menu",
-                name: "",
-                width: 100,
-                renderCell: props => <Columns.ActionMenu.Cell {...props.row} />,
-                renderHeaderCell: _props => <Columns.ActionMenu.Header />,
-              },
-              {
-                key: "right_edge",
-                name: "",
-                renderCell: _props => <Columns.RightEdge.Cell />,
-                renderHeaderCell: _props => <Columns.RightEdge.Header />,
-              },
-            ]}
-            defaultColumnOptions={{
-              sortable: true,
-              resizable: true,
-            }}
-            renderers={{
-              renderRow: (key, props: RenderRowProps<ItemRendererProps>) => (
-                <tr>
-                  <DefaultItemRenderer key={key} {...props.row} />
-                </tr>
-              ),
-            }}
-            rowHeight={50}
-          />
+                resizable: true,
+              }}
+              //renderers={{
+              //  renderRow: (key, props: RenderRowProps<ItemRendererProps>) => (
+              //    <tr>
+              //      <DefaultItemRenderer key={key} {...props.row} />
+              //    </tr>
+              //  ),
+              //}}
+            />
+          </>
         );
       }}
     </Search.ListLoader>

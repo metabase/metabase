@@ -71,26 +71,20 @@ export const SortableColumnHeader = ({
   }, [direction, isSortable, name, onSortingOptionsChange]);
 
   return (
-    <ColumnHeader
-      hideAtContainerBreakpoint={hideAtContainerBreakpoint}
-      containerName={containerName}
-      {...columnHeaderProps}
+    <SortingControlContainer
+      {...props}
+      isActive={isSortingThisColumn}
+      onClick={onSortingControlClick}
+      role="button"
+      isSortable={isSortable}
     >
-      <SortingControlContainer
-        {...props}
-        isActive={isSortingThisColumn}
-        onClick={onSortingControlClick}
-        role="button"
-        isSortable={isSortable}
-      >
-        {children}
-        {isSortable && (
-          <SortingIcon
-            name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
-          />
-        )}
-      </SortingControlContainer>
-    </ColumnHeader>
+      {children}
+      {isSortable && (
+        <SortingIcon
+          name={direction === SortDirection.Asc ? "chevronup" : "chevrondown"}
+        />
+      )}
+    </SortingControlContainer>
   );
 };
 

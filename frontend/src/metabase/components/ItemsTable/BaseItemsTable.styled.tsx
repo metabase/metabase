@@ -54,8 +54,9 @@ export const hideResponsively = ({
     })}
   `;
 
-export const ColumnHeader = styled.th<ResponsiveProps>`
-  th& {
+// FIXME: Changed this from <th>
+export const ColumnHeader = styled.div<ResponsiveProps>`
+  div& {
     padding: 0.75em 1em 0.75em;
   }
 

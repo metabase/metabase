@@ -1,6 +1,6 @@
 .collectionItemsTable {
   background-color: var(--mb-color-bg-white);
-  table-layout: fixed;
+  /*table-layout: fixed;*/
   border-radius: 0.5rem;
 
   /* thead { */
@@ -18,7 +18,7 @@
   /*     } */
   /*   } */
   /* } */
-  [role="row"] {
-    display: grid;
-  }
+  /* [role="row"] { */
+  /*   display: grid; */
+  /* } */
 }

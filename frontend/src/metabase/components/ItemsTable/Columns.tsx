@@ -48,8 +48,17 @@ const ItemLinkComponent = ({
   if (isEmbeddingSdk) {
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
+
+  console.log("item in itemlinkcomponent", item);
+  console.log("item.getUrl()", item?.getUrl?.());
   return (
-    <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
+    <ItemLink
+      to={
+        // FIXME: remove workaround
+        "getUrl" in item ? item.getUrl() : ""
+      }
+      onClick={() => onClick?.(item)}
+    >
       {children}
     </ItemLink>
   );
@@ -160,6 +169,7 @@ export const Columns = {
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
     }) => {
+      console.log("item in namecell", item);
       return (
         <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
