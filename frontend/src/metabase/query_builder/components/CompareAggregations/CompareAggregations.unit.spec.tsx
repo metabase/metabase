@@ -120,7 +120,8 @@ describe("CompareAggregations", () => {
     it("does not allow negative values", async () => {
       setup({ query: queryWithCountAggregation });
 
-      const input = screen.getByLabelText("Compare to");
+      await userEvent.click(screen.getByText("Custom..."));
+      const input = screen.getByLabelText("Offset");
 
       await userEvent.clear(input);
       await userEvent.type(input, "-5");
@@ -132,7 +133,8 @@ describe("CompareAggregations", () => {
     it("does not allow non-integer values", async () => {
       setup({ query: queryWithCountAggregation });
 
-      const input = screen.getByLabelText("Compare to");
+      await userEvent.click(screen.getByText("Custom..."));
+      const input = screen.getByLabelText("Offset");
 
       await userEvent.clear(input);
       await userEvent.type(input, "1.234");
@@ -143,10 +145,11 @@ describe("CompareAggregations", () => {
   });
 
   describe("submit", () => {
-    it("is submittable by default", () => {
+    it("is submittable by default", async () => {
       setup({ query: queryWithCountAggregation });
 
-      expect(screen.getByLabelText("Compare to")).toHaveValue(1);
+      await userEvent.click(screen.getByText("Custom..."));
+      expect(screen.getByLabelText("Offset")).toHaveValue(1);
       expect(screen.getByText("Previous value")).toBeInTheDocument();
       expect(screen.getByText("Percentage difference")).toBeInTheDocument();
       expect(screen.queryByText("Value difference")).not.toBeInTheDocument();
@@ -156,8 +159,8 @@ describe("CompareAggregations", () => {
     it("disables the submit button when offset input is empty", async () => {
       setup({ query: queryWithCountAggregation });
 
-      const input = screen.getByLabelText("Compare to");
-
+      await userEvent.click(screen.getByText("Custom..."));
+      const input = screen.getByLabelText("Offset");
       await userEvent.clear(input);
 
       expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
@@ -166,6 +169,7 @@ describe("CompareAggregations", () => {
     it("disables the submit button when no columns are selected", async () => {
       setup({ query: queryWithCountAggregation });
 
+      await userEvent.click(screen.getByText("Custom..."));
       await userEvent.click(screen.getByLabelText("Columns to create"));
 
       const listBox = screen.getByRole("listbox");
@@ -206,7 +210,7 @@ describe("CompareAggregations", () => {
       expect(screen.getByText("Moving average")).toBeInTheDocument();
       await userEvent.click(screen.getByText("Moving average"));
 
-      expect(screen.getByText("Include current period")).toBeInTheDocument();
+      expect(screen.getByText("Include this month")).toBeInTheDocument();
     });
 
     it("should not allow setting a moving average for less than 2 periods", async () => {
@@ -215,8 +219,9 @@ describe("CompareAggregations", () => {
       expect(screen.getByText("Moving average")).toBeInTheDocument();
       await userEvent.click(screen.getByText("Moving average"));
 
-      const input = screen.getByLabelText("Compare to");
+      const input = screen.getByLabelText("Offset");
       expect(input).toHaveValue(2);
+
       await userEvent.clear(input);
       await userEvent.type(input, "1");
       await userEvent.tab();
