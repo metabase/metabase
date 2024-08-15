@@ -27,6 +27,7 @@ import {
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
 const questionWith2BreakoutsDetails: StructuredQuestionDetails = {
+  name: "Test question",
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -50,6 +51,7 @@ const questionWith2BreakoutsDetails: StructuredQuestionDetails = {
 };
 
 const questionWith5BreakoutsAndLimitDetails: StructuredQuestionDetails = {
+  name: "Test question",
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -297,7 +299,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         popover().findAllByText("Created At").eq(1).click();
         saveDashboard();
 
-        cy.log("set parameter values");
+        cy.log("set parameter values and check query results");
         filterWidget().eq(0).click();
         popover().findByText("Quarter").click();
         cy.wait("@dashcardQuery");
@@ -308,6 +310,15 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.findByText("Created At: Quarter").should("be.visible");
           cy.findByText("Created At: Week").should("be.visible");
         });
+
+        cy.log("drill-thru to the QB and check query results");
+        getDashboardCard().findByText("Test question").click();
+        cy.wait("@dataset");
+        tableInteractive().within(() => {
+          cy.findByText("Created At: Quarter").should("be.visible");
+          cy.findByText("Created At: Week").should("be.visible");
+        });
+        assertQueryBuilderRowCount(223);
       });
     });
   });
