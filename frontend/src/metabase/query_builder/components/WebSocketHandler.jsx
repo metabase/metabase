@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Icon } from "metabase/ui";
 import Input from "metabase/core/components/Input";
@@ -14,13 +14,14 @@ import Modal from "metabase/components/Modal";
 
 const WebSocketHandler = () => {
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
-    console.log(assistant_url);
     const [inputValue, setInputValue] = useState("");
     const [messages, setMessages] = useState([]);
     const [card, setCard] = useState(null);
     const [result, setResult] = useState(null);
     const [defaultQuestion, setDefaultQuestion] = useState(null);
     const [dataInfo, setDataInfo] = useState("");
+    const [isDBModalOpen, setIsDBModalOpen] = useState(false);
+    const [dbInputValue, setDBInputValue] = useState("");
     const dispatch = useDispatch();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [id, setId] = useState(0);
@@ -128,7 +129,7 @@ const WebSocketHandler = () => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [1],
+                    configData: [dbInputValue || 8],
                 }),
             );
         }
@@ -163,6 +164,23 @@ const WebSocketHandler = () => {
                     width: "100%",
                 }}
             >
+                <Button
+                    variant="outlined"
+                    style={{
+                        position: "absolute",
+                        top: "16px",
+                        right: "16px",
+                        cursor: "pointer",
+                        padding: "8px",
+
+                        color: "#FFF",
+                        borderRadius: "50%",
+                    }}
+                    onClick={() => setIsDBModalOpen(true)}
+                >
+
+                </Button>
+
                 <div
                     style={{
                         flex: card ? "0 1 auto" : "1 1 auto",
@@ -175,7 +193,7 @@ const WebSocketHandler = () => {
                     <ChatMessageList messages={messages} />
                 </div>
 
-                {card && (
+                {card && defaultQuestion && result && (
                     <>
                         <div
                             style={{
@@ -238,6 +256,30 @@ const WebSocketHandler = () => {
                     </Button>
                 </div>
             </Box>
+
+            {isDBModalOpen && (
+                <Modal isOpen={isDBModalOpen} onClose={() => setIsDBModalOpen(false)}>
+                    <div style={{ padding: "20px" }}>
+                        <h2 style={{ marginBottom: "10px" }}>Enter DB Value</h2>
+                        <Input
+                            id="dbInput"
+                            type="text"
+                            value={dbInputValue}
+                            onChange={(e) => setDBInputValue(e.target.value)}
+                            style={{ marginBottom: "20px" }}
+                        />
+                        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                            <Button variant="outlined" style={{ marginRight: "10px" }} onClick={() => setIsDBModalOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="filled" onClick={() => setIsDBModalOpen(false)}>
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
             {isModalOpen && (
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
                     <div style={{ padding: "20px" }}>
