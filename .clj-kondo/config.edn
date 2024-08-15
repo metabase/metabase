@@ -2,7 +2,7 @@
 {:config-paths ["macros" "src"]
  :linters
  {:aliased-namespace-symbol     {:level :warning}
-  :invalid-arity                {:skip-args [metabase.lib.util.match/match]}           ; TODO (cam): can we fix these?
+  :invalid-arity                {:skip-args [metabase.lib.util.match/match]} ; TODO (cam): can we fix these?
   :keyword-binding              {:level :warning}
   :main-without-gen-class       {:level :warning}
   :misplaced-docstring          {:level :warning}
