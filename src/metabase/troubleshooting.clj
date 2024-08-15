@@ -30,21 +30,22 @@
   "Make it easy for the user to tell us what they're using"
   []
   (merge
-   {:databases                    (->> (t2/select :model/Database) (map :engine) distinct)
-    :hosting-env                  (stats/environment-type)
-    :application-database         (mdb/db-type)
-    :application-database-details (t2/with-connection [^java.sql.Connection conn]
-                                    (let [metadata (.getMetaData conn)]
-                                      {:database    {:name    (.getDatabaseProductName metadata)
-                                                     :version (.getDatabaseProductVersion metadata)}
-                                       :jdbc-driver {:name    (.getDriverName metadata)
-                                                     :version (.getDriverVersion metadata)}}))
-    :run-mode                     (config/config-kw :mb-run-mode)
+   {:databases  (->> (t2/select :model/Database) (map :engine) distinct)
+    :run-mode   (config/config-kw :mb-run-mode)
     :plan-alias (or (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :plan-alias) "")
-    :version                      config/mb-version-info
-    :settings                     {:report-timezone (driver/report-timezone)}}
+    :version    config/mb-version-info
+    :settings   {:report-timezone (driver/report-timezone)}
+    :hosting-env                  (stats/environment-type)
+    :application-database         (mdb/db-type)}
+   (when-not (premium-features/is-hosted?)
+     {:application-database-details (t2/with-connection [^java.sql.Connection conn]
+                                      (let [metadata (.getMetaData conn)]
+                                        {:database    {:name    (.getDatabaseProductName metadata)
+                                                       :version (.getDatabaseProductVersion metadata)}
+                                         :jdbc-driver {:name    (.getDriverName metadata)
+                                                       :version (.getDriverVersion metadata)}}))})
    (when (premium-features/is-airgapped?)
-     {:airgap-token :enabled
-      :max-users (premium-features/max-users-allowed)
+     {:airgap-token       :enabled
+      :max-users          (premium-features/max-users-allowed)
       :current-user-count (premium-features/cached-active-users-count)
-      :valid-thru (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :valid-thru)})))
+      :valid-thru         (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :valid-thru)})))
