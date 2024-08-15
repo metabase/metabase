@@ -166,14 +166,15 @@
                                  "p" "$p"}
                         "count" {"$sum" 1}
                         "i"     {"$first" "$i"}}}
-             {"$match" {"_id.t" {"$ne" "null"}}}
              {"$sort" {"count" -1}}
              {"$group" {"_id" "$_id.p"
-                        "t"   {"$first" "$_id.t"}
-                        "i"   {"$first" "$i"}}}
+                        "types" {"$push" "$_id.t"}
+                        "i"     {"$first" "$i"}}}
              {"$project" {"p" "$_id"
                           "d" {"$literal" depth}
-                          "t" 1
+                          "t" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types", 0]}, "null"]},
+                                        "then" {"$ifNull" [{"$arrayElemAt" ["$types", 1]}, "null"]},
+                                        "else" {"$arrayElemAt" ["$types", 0]}}}
                           "v" nil
                           "i" 1}}]
      "next" [{"$match" {"t" "object"
