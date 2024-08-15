@@ -427,6 +427,26 @@ describe("scenarios > metrics > editing", () => {
       visualize();
       verifyScalarValue("18,760");
     });
+
+    it("should for searching for metrics", () => {
+      createQuestion(ORDERS_SCALAR_METRIC);
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
+      createQuestion(PRODUCTS_SCALAR_METRIC);
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      startNewAggregation();
+      popover().within(() => {
+        cy.findByPlaceholderText("Find...").type("with filter");
+        cy.findByText("Common Metrics").should("be.visible");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+      });
+    });
   });
 });
 
