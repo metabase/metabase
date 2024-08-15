@@ -48,7 +48,7 @@
       ;; Weeks are (previous/this) start of Sunday to end of Saturday
       "2022-12-18~2022-12-24" "2022-12-18T00:03:19" "week"    ; Sunday
       "2022-12-18~2022-12-24" "2022-12-19T00:03:19" "week"    ; Monday
-      "2022-12-18~2022-12-24" "2022-12-24T23:03:19" "week")))Saturday
+      "2022-12-18~2022-12-24" "2022-12-24T23:03:19" "week"))) ; Saturday
 
 (deftest ^:parallel format-range-with-unit-test
   (letfn [(week-of [d]
