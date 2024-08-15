@@ -33,9 +33,11 @@ Cypress.on("test:after:run", (test, runnable) => {
     }
     filename += `${titleToFileName(test.title)} (failed).png`;
 
-    Cypress.Mochawesome.context.forEach(ctx => {
-      addContext({ test }, ctx);
-    });
+    if (Cypress.env("CI")) {
+      Cypress.Mochawesome.context.forEach(ctx => {
+        addContext({ test }, ctx);
+      });
+    }
 
     addContext(
       { test },
