@@ -43,20 +43,20 @@
          `(perms/grant-collection-read-permissions! (perms-group/all-users) ~collection-symb))
      ~@body))
 
-(defn- do-with-french-user-and-personal-collection [f]
+(defn- do-with-french-user-and-personal-collection! [f]
   (binding [collection/*allow-deleting-personal-collections* true]
-    (mt/with-mock-i18n-bundles {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
+    (mt/with-mock-i18n-bundles! {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
       (t2.with-temp/with-temp [User       user       {:locale     "fr"
                                                       :first_name "Taco"
                                                       :last_name  "Bell"}
                                Collection collection {:personal_owner_id (:id user)}]
         (f user collection)))))
 
-(defmacro ^:private with-french-user-and-personal-collection
+(defmacro ^:private with-french-user-and-personal-collection!
   "Create a user with locale's fr and a collection associated with it"
   {:style/indent 2}
   [user collection & body]
-  `(do-with-french-user-and-personal-collection
+  `(do-with-french-user-and-personal-collection!
     (fn [~user ~collection]
       ~@body)))
 
@@ -109,7 +109,7 @@
 (deftest list-collections-personal-collection-locale-test
   (testing "GET /api/collection"
     (testing "Personal Collection's name and slug should be returned in user's locale"
-      (with-french-user-and-personal-collection user _collection
+      (with-french-user-and-personal-collection! user _collection
         (is (= [{:name "Collection personnelle de Taco Bell"
                  :slug "collection_personnelle_de_taco_bell"}]
                (->> (mt/user-http-request user :get 200 "collection")
@@ -441,7 +441,7 @@
 (deftest collection-tree-user-locale-test
   (testing "GET /api/collection/tree"
     (testing "for personal collections, it should return name and slug in user's locale"
-      (with-french-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection! user collection
         (is (partial= {:description       nil
                        :archived          false
                        :entity_id         (:entity_id collection)
@@ -549,7 +549,7 @@
                  (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection))))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
-      (with-french-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection! user collection
         (is (=? {:name "Collection personnelle de Taco Bell"
                  :slug "collection_personnelle_de_taco_bell"}
                 (mt/user-http-request (:id user) :get 200 (str "collection/" (:id collection)))))))))

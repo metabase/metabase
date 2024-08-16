@@ -79,7 +79,7 @@
   A `matcher` function takes a zipper location `loc`, and should return `true` or `false`. An `edit-fn` function takes
   a location `loc`, and returns a `loc`, which is easiest to modify with `zip/replace` or `zip/edit`.
 
-  See the [[render-card-as-hickory]] function for an example usage of this function."
+  See the [[render-card-as-hickory!]] function for an example usage of this function."
   [tree matcher edit-fn]
   (loop [loc (hiccup-zip tree)]
     (if (zip/end? loc)
@@ -100,8 +100,8 @@
 (defn- img-node->svg-node
   "Modifies an intentionally malformed [:img {:src \"<svg>...</svg>\"}] node by parsing the svg string and replacing the
   entire :img node with the `svg-content` hiccup tree. The malformed node is a result of the
-  [[render-card-as-hickory]] function which redefines some functionality of the static-viz rendering pipeline. See
-  [[render-card-as-hickory]] in this namespace for details."
+  [[render-card-as-hickory!]] function which redefines some functionality of the static-viz rendering pipeline. See
+  [[render-card-as-hickory!]] in this namespace for details."
   [loc]
   (let [[_ attrs] (zip/node loc)
         svg-content (-> attrs :src parse-svg document-tag-hiccup)]
@@ -133,7 +133,7 @@
        (tree-seq #(and (seqable? %) (not (map? %))) (fn [s] (remove #(or (map? %) (string? %) (keyword? %)) s)))
        (filter #(#{tag} (first %)))))
 
-(defn render-card-as-hickory
+(defn render-card-as-hickory!
   "Render the card with `card-id` using the static-viz rendering pipeline as a hickory data structure. Redefines some
   internal rendering functions to keep svg from being rendered into a png. Functions from `hickory.select` can be used
   on the output of this function and are particularly useful for writing test assertions."
@@ -153,11 +153,11 @@
             hik/parse
             hik/as-hickory)))))
 
-(defn render-dashcard-as-hickory
+(defn render-dashcard-as-hickory!
   "Render the dashcard with `dashcard-id` using the static-viz rendering pipeline as a hickory data structure. Redefines
   some internal rendering functions to keep svg from being rendered into a png. Functions from `hickory.select` can be
   used on the output of this function and are particularly useful for writing test assertions."
-  ([dashcard-id] (render-dashcard-as-hickory dashcard-id []))
+  ([dashcard-id] (render-dashcard-as-hickory! dashcard-id []))
   ([dashcard-id parameters]
    (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
          card                      (t2/select-one :model/Card :id (:card_id dashcard))

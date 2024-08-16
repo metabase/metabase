@@ -3029,7 +3029,7 @@
               "in cols (important for the saved metadata)"))))))
 
 (defn- do-with-persistence-setup! [f]
-  ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
+  ;; mt/with-temp-scheduler! actually just reuses the current scheduler. The scheduler factory caches by name set in
   ;; the resources/quartz.properties file and we reuse that scheduler
   (let [sched (.getScheduler
                (StdSchedulerFactory. (doto (java.util.Properties.)

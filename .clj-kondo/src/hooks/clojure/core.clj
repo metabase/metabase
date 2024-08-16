@@ -152,7 +152,7 @@
               (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
                 (when (and (not (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
                            (or (end-with-exclamation? qualified-symbol)
-                               (contains? (get-in config [:linters :metabase/validate-deftest :parallel/disallowed]) qualified-symbol)))
+                               (contains? (get-in config [:linters :metabase/validate-deftest :parallel/unsafe]) qualified-symbol)))
                   (hooks/reg-finding! (assoc (meta form-name)
                                              :message (format "The name of this %s should end with `!` because it contains calls to non thread safe form `%s`. [:metabase/test-helpers-use-non-thread-safe-functions]"
                                                               (:string-value defn-or-defmacro) qualified-symbol)

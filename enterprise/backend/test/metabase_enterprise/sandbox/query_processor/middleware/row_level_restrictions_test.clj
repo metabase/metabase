@@ -1084,7 +1084,7 @@
                                               ["dimension"
                                                [:field (mt/id :products :category)
                                                 nil]]}}}}
-        (mt/with-persistence-enabled [persist-models!]
+        (mt/with-persistence-enabled! [persist-models!]
           (mt/with-temp [Card model {:type          :model
                                      :dataset_query (mt/mbql-query
                                                       products

@@ -5,6 +5,8 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test.util.thread-local :as tu.thread-local]))
 
+;;; This is actually thread-safe by default unless you're using [[metabase.test/test-helpers-set-global-values!]]
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defn do-with-premium-features
   [features thunk]
   (let [features (set (map name features))]

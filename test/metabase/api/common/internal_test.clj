@@ -209,7 +209,7 @@
              (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
 
       (testing "malli schema message are localized"
-        (mt/with-mock-i18n-bundles  {"es" {:messages
+        (mt/with-mock-i18n-bundles!  {"es" {:messages
                                            {"value must be a non-blank string."
                                             "el valor debe ser una cadena que no esté en blanco."}}}
           (mt/with-temporary-setting-values [site-locale "es"]

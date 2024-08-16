@@ -12,7 +12,7 @@
 (def ^:private default-cron "0 0 0/12 * * ? *")
 
 (defn- do-with-setup! [f]
-  (mt/with-temp-scheduler
+  (mt/with-temp-scheduler!
     (#'task.persist-refresh/job-init!)
     (mt/with-temporary-setting-values [:persisted-models-enabled true]
       (mt/with-temp [Database db {:settings {:persist-models-enabled true}}]

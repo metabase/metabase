@@ -69,17 +69,17 @@
           (f)))
       (finally (.shutDown *ldap-server* true)))))
 
-(defmacro with-ldap-server
+(defmacro with-ldap-server!
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`."
   [& body]
   `(do-with-ldap-server! (fn [] ~@body)
-                        {:ldif-resource "ldap.ldif"
-                         :schema        (get-default-schema)}))
+                         {:ldif-resource "ldap.ldif"
+                          :schema        (get-default-schema)}))
 
-(defmacro with-active-directory-ldap-server
+(defmacro with-active-directory-ldap-server!
   "Bind `*ldap-server*` and the relevant settings to an in-memory LDAP testing server and executes `body`.
   This version of the macro uses options that simulate an Active Directory server with memberOf attributes."
   [& body]
   `(do-with-ldap-server! (fn [] ~@body)
-                        {:ldif-resource "active_directory.ldif"
-                         :schema        nil}))
+                         {:ldif-resource "active_directory.ldif"
+                          :schema        nil}))

@@ -16,6 +16,12 @@
   random-id-offset
   (* (rand-int 100) 1000))
 
+(defn x []
+  (let [y 1]
+    (let [z 2]
+      ;; whatever
+      )))
+
 (defn id
   "Get the ID associated with the test metadata Database, one of its Tables, or one of its Fields.
 

@@ -1678,7 +1678,7 @@
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
     (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
       (letfn [(do-test []
-                (api.database-test/with-db-scheduler-setup
+                (api.database-test/with-db-scheduler-setup!
                   (let [db-with-full-schedules (new-instance-with-default :metabase_database
                                                                           {:metadata_sync_schedule      "0 0 * * * ? *"
                                                                            :cache_field_values_schedule "0 0 1 * * ? *"
