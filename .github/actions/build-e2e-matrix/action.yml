@@ -24,7 +24,7 @@ runs:
             context: "folder"
           };
 
-          const testSets = [
+          const _testSets = [
             ["actions", {} ],
             ["admin", {} ],
             ["admin-2", {} ],
@@ -56,6 +56,10 @@ runs:
             ["slow", { context: "special" } ],
             ["flaky", { context: "special" } ],
             ["mongo", { context: "qa-database" } ],
+          ];
+
+          const testSets = [
+            ["dashboard_", {}]
           ];
 
           const config = testSets.map(([name, specialOptions]) => {
