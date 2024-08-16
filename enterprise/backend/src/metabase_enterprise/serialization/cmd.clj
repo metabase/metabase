@@ -32,7 +32,9 @@
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -107,6 +109,10 @@
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
+(defn- stripped-error [e]
+  (let [m (ex-data e)]
+    (ex-info (ex-message e) m)))
+
 (mu/defn v2-load!
   "SerDes v2 load entry point.
 
@@ -115,17 +121,21 @@
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
             [:continue-on-error {:optional true} [:maybe :int]]]]
-  (let [start    (System/nanoTime)
+  (let [timer    (System/nanoTime)
         err      (atom nil)
         report   (try
                    (v2-load-internal! path opts :token-check? true)
+                   (catch ExceptionInfo e
+                     (if (:error (ex-data e))
+                       (reset! err (stripped-error e))
+                       (reset! err e)))
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
     (snowplow/track-event! ::snowplow/serialization nil
                            {:direction     "import"
                             :source        "cli"
-                            :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                            :duration_ms   (int (/ (- (System/nanoTime) timer) 1e6))
                             :models        (str/join "," imported)
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
