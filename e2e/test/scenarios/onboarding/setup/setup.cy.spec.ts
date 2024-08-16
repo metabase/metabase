@@ -191,7 +191,9 @@ describe("scenarios > setup", () => {
       );
       cy.button("Finish").click();
 
-      cy.intercept(SUBSCRIBE_URL, { mocked: true }).as("subscribe");
+      // we need a mocked response to make sure we're not hitting the real endpoint
+      const mockedResponse = {};
+      cy.intercept(SUBSCRIBE_URL, mockedResponse).as("subscribe");
 
       // Finish & Subscribe
       cy.findByText(
