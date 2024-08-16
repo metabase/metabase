@@ -36,7 +36,7 @@ export const ParametersList = ({
   setEditingParameter,
   enableParameterRequiredBehavior,
 }: ParametersListProps) => {
-  const [showFilterList, setShowFilterList] = useState(true);
+  const [showFilterList, setShowFilterList] = useState(false);
   const [showRequiredFilters, setShowRequiredFilters] = useState(true);
 
   const pointerSensor = useSensor(PointerSensor, {
@@ -125,7 +125,7 @@ export const ParametersList = ({
 
   return (
     <>
-      {(hasNonHiddenParameters || requiredFilters.length > 0) && (
+      {question && (hasNonHiddenParameters || requiredFilters.length > 0) && (
         <div
           style={{
             display: "flex",
@@ -133,6 +133,16 @@ export const ParametersList = ({
             marginBottom: "10px",
           }}
         >
+          {requiredFilters.length > 0 && (
+            <FilterButton
+              borderless
+              primary
+              icon="filter"
+              onClick={toggleRequiredFilters}
+            >
+              {showRequiredFilters ? `Required Filters` : `Required Filters`}
+            </FilterButton>
+          )}
           {hasNonHiddenParameters && (
             <FilterButton
               borderless
@@ -141,21 +151,7 @@ export const ParametersList = ({
               onClick={toggleFilterList}
               style={{ marginRight: "10px" }}
             >
-              {showFilterList
-                ? `Hide Filters (${visibleValuePopulatedParameters.length})`
-                : `Show Filters (${visibleValuePopulatedParameters.length})`}
-            </FilterButton>
-          )}
-          {requiredFilters.length > 0 && (
-            <FilterButton
-              borderless
-              primary
-              icon="filter"
-              onClick={toggleRequiredFilters}
-            >
-              {showRequiredFilters
-                ? `Hide Required Filters (${requiredFilters.length})`
-                : `Show Required Filters (${requiredFilters.length})`}
+              {showFilterList ? `Filters ` : `Filters `}
             </FilterButton>
           )}
         </div>
