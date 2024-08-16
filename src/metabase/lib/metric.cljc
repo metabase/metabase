@@ -127,4 +127,4 @@
                 (comp (filter (fn [metric-card]
                                 (= 1 (lib.query/stage-count (lib.query/query query (:dataset-query metric-card))))))
                       (map maybe-add-aggregation-pos))
-                (sort-by :display-name metrics))))))))
+                (sort-by (some-fn :display-name :name) metrics))))))))
