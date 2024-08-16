@@ -16,7 +16,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -38,7 +38,7 @@
                           :padding     :16px})}
            (trs "There was a problem with this question.")]}))
 
-(def ^:private error-rendered-message (trs "An error occurred while displaying this card."))
+(def ^:private error-rendered-message (deferred-trs "An error occurred while displaying this card."))
 
 (def ^:private error-rendered-info
   "Default rendered-info map when there is an error displaying a card on the static viz side.
