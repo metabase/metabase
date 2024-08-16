@@ -119,3 +119,60 @@ export function pieSliceWithColor(color) {
     `path[stroke-linejoin='bevel'][fill='${color}']`,
   );
 }
+
+export function echartsTooltip() {
+  // ECharts may keep two dom instances of the tooltip
+  return cy
+    .findAllByTestId("echarts-tooltip")
+    .filter(":visible")
+    .should("have.length", 1)
+    .eq(0);
+}
+
+export function tooltipHeader() {
+  return cy.findByTestId("echarts-tooltip-header");
+}
+
+export function assertTooltipRow(
+  name,
+  { color, value, secondaryValue, index } = {},
+) {
+  cy.findAllByText(name)
+    .eq(index ?? 0)
+    .parent("tr")
+    .within(() => {
+      if (color) {
+        cy.get("td")
+          .eq(0)
+          .find("span")
+          .should("have.class", `marker-${color.replace("#", "")}`);
+      }
+
+      if (value) {
+        cy.findByText(value);
+      }
+
+      if (secondaryValue) {
+        cy.findByText(secondaryValue);
+      }
+    });
+}
+
+export function assertEChartsTooltip({ header, rows, blurAfter }) {
+  echartsTooltip().within(() => {
+    if (header != null) {
+      tooltipHeader().should("have.text", header);
+    }
+
+    if (rows != null) {
+      rows.forEach(row => {
+        const { name, ...rest } = row;
+        assertTooltipRow(name, rest);
+      });
+    }
+  });
+
+  if (blurAfter) {
+    echartsTriggerBlur();
+  }
+}

@@ -1,20 +1,27 @@
-import { ANONYMOUS_TRACKING_INFO } from "embedding-sdk/cli/constants/messages";
-import { printEmptyLines, printInfo } from "embedding-sdk/cli/utils/print";
+import chalk from "chalk";
 
+import {
+  PREMIUM_TOKEN_REQUIRED_MESSAGE,
+  getMetabaseInstanceSetupCompleteMessage,
+} from "./constants/messages";
 import {
   addEmbeddingToken,
   checkIsDockerRunning,
   createApiKey,
   generateCredentials,
-  generateCodeSample,
   pollMetabaseInstance,
   setupMetabaseInstance,
   showMetabaseCliTitle,
   startLocalMetabaseContainer,
   checkIfReactProject,
   checkSdkAvailable,
+  addDatabaseConnectionStep,
+  pickDatabaseTables,
+  createModelsAndXrays,
+  generateReactComponentFiles,
 } from "./steps";
 import type { CliState } from "./types/cli";
+import { printEmptyLines, printInfo } from "./utils/print";
 
 export const CLI_STEPS = [
   { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
@@ -30,7 +37,13 @@ export const CLI_STEPS = [
   { id: "pollMetabaseInstance", executeStep: pollMetabaseInstance },
   { id: "setupMetabaseInstance", executeStep: setupMetabaseInstance },
   { id: "createApiKey", executeStep: createApiKey },
-  { id: "generateCodeSample", executeStep: generateCodeSample },
+  { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
+  { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
+  { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
+  {
+    id: "generateReactComponentFiles",
+    executeStep: generateReactComponentFiles,
+  },
 ] as const;
 
 export async function runCli() {
@@ -52,16 +65,12 @@ export async function runCli() {
     state = nextState;
   }
 
-  printEmptyLines(2);
-  console.log(ANONYMOUS_TRACKING_INFO);
+  console.log(getMetabaseInstanceSetupCompleteMessage(state.instanceUrl ?? ""));
 
   if (!state.token) {
-    printEmptyLines(2);
-    printInfo(
-      "Don't forget to add your premium token to your Metabase instance in the admin settings!",
-    );
+    console.log(chalk.bold(PREMIUM_TOKEN_REQUIRED_MESSAGE));
   }
 
-  printEmptyLines(2);
+  printEmptyLines(1);
   printInfo("All done! 🚀 You can now embed Metabase into your React app.");
 }

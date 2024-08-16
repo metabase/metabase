@@ -30,7 +30,6 @@ import {
   startNewQuestion,
   visitDashboard,
   visualize,
-  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -90,8 +89,6 @@ describe("scenarios > question > download", () => {
           accessed_via: "internal",
           export_type: fileType,
         });
-
-        dismissDownloadStatus();
       });
     });
   });
@@ -136,8 +133,6 @@ describe("scenarios > question > download", () => {
         },
       );
 
-      dismissDownloadStatus();
-
       downloadAndAssert(
         {
           ...opts,
@@ -160,9 +155,8 @@ describe("scenarios > question > download", () => {
         cy.findByTestId("legend-caption").realHover();
       });
 
+      // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
       assertOrdersExport(18760);
-
-      dismissDownloadStatus();
 
       editDashboard();
 
@@ -186,9 +180,8 @@ describe("scenarios > question > download", () => {
         cy.findByTestId("legend-caption").realHover();
       });
 
+      // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
       assertOrdersExport(1);
-
-      dismissDownloadStatus();
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -262,8 +255,6 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
-
-            dismissDownloadStatus();
           });
         });
       });

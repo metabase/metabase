@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type {
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
@@ -26,6 +24,10 @@ import {
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: builder => ({
+    /**
+     * @deprecated This endpoint is extremely slow on large instances, it should not be used
+     * you probably only need a few collections, just fetch those
+     */
     listCollections: builder.query<Collection[], ListCollectionsRequest>({
       query: params => ({
         method: "GET",

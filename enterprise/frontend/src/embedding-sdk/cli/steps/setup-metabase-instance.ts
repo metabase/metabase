@@ -87,13 +87,14 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
             },
           }),
           headers: { "content-type": "application/json" },
-          signal: AbortSignal.timeout(2500),
+          signal: AbortSignal.timeout(15_000),
         }),
-      { retries: 20, delay: 1000 },
+      { retries: 5, delay: 1000 },
     );
 
     if (!res.ok) {
       const errorMessage = await res.text();
+      spinner.fail();
 
       // Error message: The /api/setup route can only be used to create the first user, however a user currently exists.
       if (errorMessage.includes("a user currently exists")) {
@@ -162,6 +163,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
 
     if (!res.ok) {
       const errorMessage = await res.text();
+      spinner.fail();
 
       if (errorMessage.includes("Unauthenticated")) {
         return onInstanceConfigured();
@@ -177,11 +179,6 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
     }
 
     spinner.succeed();
-
-    printInfo(
-      "Metabase instance setup complete. You can find your login credentials at METABASE_LOGIN.json",
-    );
-    console.log("Don't forget to put this file in your .gitignore.");
 
     return [
       {

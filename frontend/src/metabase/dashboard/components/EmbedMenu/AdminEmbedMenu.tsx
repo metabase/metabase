@@ -11,6 +11,7 @@ import {
 } from "metabase/dashboard/components/PublicLinkPopover";
 import { useSelector } from "metabase/lib/redux";
 import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
+import { ViewFooterSharingButton } from "metabase/query_builder/components/view/ViewFooterSharingButton";
 import { getSetting } from "metabase/selectors/settings";
 import { Menu, Title, Text, Stack, Center, Icon } from "metabase/ui";
 
@@ -31,9 +32,12 @@ export const AdminEmbedMenu = ({
     getSetting(state, "enable-embedding"),
   );
 
-  const target = (
-    <ResourceEmbedButton hasBackground={resourceType === "dashboard"} />
-  );
+  const target =
+    resourceType === "dashboard" ? (
+      <ResourceEmbedButton hasBackground={true} />
+    ) : (
+      <ViewFooterSharingButton />
+    );
 
   if (menuMode === "public-link-popover") {
     return resourceType === "dashboard" ? (

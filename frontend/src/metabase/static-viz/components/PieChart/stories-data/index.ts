@@ -1,6 +1,7 @@
 import allNegative from "./all-negative.json";
 import allSettings from "./all-settings.json";
 import allZeroMetric44847 from "./all-zero-metric-44847.json";
+import autoCompactTotal from "./auto-compact-total.json";
 import binnedDimension from "./binned-dimension.json";
 import booleanDimension from "./boolean-dimension.json";
 import colors from "./colors.json";
@@ -35,6 +36,7 @@ import singleDimension from "./single-dimension.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
 import sortedMetricCol from "./sorted-metric-col.json";
 import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
+import truncatedTotal from "./truncated-total.json";
 import unaggregatedDimension from "./unaggregated-dimension.json";
 import zeroMinimumSlicePercentage from "./zero-min-slice-percentage.json";
 
@@ -63,6 +65,7 @@ export const data = {
   nullDimension,
   numDecimalPlacesChart,
   numDecimalPlacesLegend,
+  truncatedTotal,
   unaggregatedDimension,
   singleDimension,
   longDimensionName,
@@ -75,6 +78,7 @@ export const data = {
   invalidDimensionSetting44085,
   percentagesOnChartBooleanDimensionCrashes44085,
   allZeroMetric44847,
+  autoCompactTotal,
   noSingleColumnLegend45149,
   numericSQLColumnCrashes28568,
   missingLabelLargeSlice38424,

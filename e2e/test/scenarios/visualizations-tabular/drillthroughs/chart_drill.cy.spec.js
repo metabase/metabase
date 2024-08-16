@@ -21,6 +21,8 @@ import {
   entityPickerModalTab,
   tableHeaderClick,
   pieSliceWithColor,
+  assertEChartsTooltip,
+  echartsTriggerBlur,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -395,19 +397,29 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     cartesianChartCircle().eq(0).realHover();
-    popover().within(() => {
-      cy.findByText("January 1, 2026");
-      cy.findByText("10");
+    assertEChartsTooltip({
+      header: "January 1, 2026",
+      rows: [
+        {
+          color: "#EF8C8C",
+          name: "c",
+          value: "10",
+        },
+      ],
     });
 
-    queryBuilderMain()
-      .findByText("This question is written in SQL.")
-      .realHover();
+    echartsTriggerBlur();
 
     cartesianChartCircle().eq(1).realHover();
-    popover().within(() => {
-      cy.findByText("January 2, 2026");
-      cy.findByText("5");
+    assertEChartsTooltip({
+      header: "January 2, 2026",
+      rows: [
+        {
+          color: "#EF8C8C",
+          name: "c",
+          value: "5",
+        },
+      ],
     });
   });
 
@@ -429,7 +441,21 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     chartPathWithFillColor("#7172AD").first().trigger("mousemove");
-    popover().findByText("12");
+    assertEChartsTooltip({
+      header: "2",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "9",
+          value: "(empty)",
+        },
+        {
+          color: "#7172AD",
+          name: "10",
+          value: "12",
+        },
+      ],
+    });
   });
 
   it.skip("should drill-through a custom question that joins a native SQL question (metabase#14495)", () => {
@@ -607,9 +633,30 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       .as("doohickeyChart")
       .trigger("mousemove");
 
-    popover().within(() => {
-      cy.findByText("Doohickey");
-      cy.findByText("42");
+    assertEChartsTooltip({
+      header: "Category",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Doohickey",
+          value: "42",
+        },
+        {
+          color: "#F9D45C",
+          name: "Gadget",
+          value: "53",
+        },
+        {
+          color: "#A989C5",
+          name: "Gizmo",
+          value: "51",
+        },
+        {
+          color: "#F2A86F",
+          name: "Widget",
+          value: "54",
+        },
+      ],
     });
 
     cy.get("@doohickeyChart").click();

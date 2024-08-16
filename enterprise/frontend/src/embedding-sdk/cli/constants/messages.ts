@@ -1,17 +1,5 @@
 import { CONTAINER_NAME } from "./config";
 
-// eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
-export const ANONYMOUS_TRACKING_INFO = `
-  Metabase will phone home some data collected via Google Analytics and Snowplow. 
-  We don’t collect any usernames, emails, server IPs, database details of any kind, or 
-  any personally identifiable information (PII).
-  
-  This anonymous data helps us understand how people are actually using Metabase, which 
-  in turn helps us prioritize what to work on next.
-  
-  Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
-`;
-
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
   Please run this command from the root of your project.
@@ -37,4 +25,26 @@ export const INSTANCE_CONFIGURED_MESSAGE = `
 export const EMBEDDING_FAILED_MESSAGE = `
   Failed to enable embedding features.
   ${DELETE_CONTAINER_MESSAGE}
+`;
+
+export const PREMIUM_TOKEN_REQUIRED_MESSAGE =
+  "  Don't forget to add your premium token to your Metabase instance in the admin settings! The embedding demo will not work without a license.";
+
+export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
+  // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
+  `
+  Metabase instance is ready for embedding.
+  Go to ${instanceUrl} to start using Metabase.
+
+  You can find your login credentials at METABASE_LOGIN.json
+  Don't forget to put this file in your .gitignore.
+
+  Metabase will phone home some data collected via Snowplow.
+  We don’t collect any usernames, emails, server IPs, database details of any kind, or
+  any personally identifiable information (PII).
+
+  This anonymous data helps us understand how people are actually using Metabase, which
+  in turn helps us prioritize what to work on next.
+
+  Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;

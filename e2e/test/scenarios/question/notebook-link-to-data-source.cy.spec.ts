@@ -1,5 +1,8 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
+  ALL_USERS_GROUP_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -11,12 +14,30 @@ import {
   openReviewsTable,
   popover,
   restore,
+  setTokenFeatures,
   tableInteractive,
   visitModel,
   visitQuestion,
+  visitQuestionAdhoc,
   visualize,
+  describeEE,
   type NativeQuestionDetails,
+  openProductsTable,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { METAKEY } from "metabase/lib/browser";
+
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+  PEOPLE_ID,
+  PRODUCTS,
+} = SAMPLE_DATABASE;
 
 // https://docs.cypress.io/api/cypress-api/platform
 const macOSX = Cypress.platform === "darwin";
@@ -36,7 +57,7 @@ describe("scenarios > notebook > link to data source", () => {
       cy.stub(win, "open").callsFake(url => {
         expect(win.open).to.be.calledOnce;
         // replace the current page with the linked data source upon ctrl/meta click
-        win.location.replace(url);
+        win.location.assign(url);
       });
     });
   });
@@ -68,6 +89,17 @@ describe("scenarios > notebook > link to data source", () => {
       "Deselecting columns should have no effect on the linked data source in new tab/window",
     );
     openNotebook();
+
+    cy.log("Make sure tooltip is being shown on hover");
+    getNotebookStep("data")
+      .findByText("Reviews")
+      .should("be.visible")
+      .realHover();
+    cy.findByRole("tooltip").should(
+      "have.text",
+      `${METAKEY}+click to open in new tab`,
+    );
+
     getNotebookStep("data").findByText("Reviews").click(clickConfig);
     cy.wait("@dataset"); // already intercepted in `visualize()`
 
@@ -451,6 +483,282 @@ describe("scenarios > notebook > link to data source", () => {
 
         // TODO update the following once metabase##46398 is fixed
         // cy.visit(`/question/${nestedQuestion.id}/notebook`);
+      });
+    });
+
+    describeEE("sandboxing", () => {
+      beforeEach(() => {
+        setTokenFeatures("all");
+
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP_ID]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": DataPermissionValue.BLOCKED,
+            },
+          },
+        });
+
+        // @ts-expect-error - Non-trivial types in `sandboxTable` that should be addressed separately
+        cy.sandboxTable({
+          table_id: ORDERS_ID,
+          attribute_remappings: {
+            attr_uid: [
+              "dimension",
+              ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }],
+            ],
+          },
+        });
+
+        cy.signInAsSandboxedUser();
+      });
+
+      it("should work for sandboxed users when opening a table/question/model", () => {
+        visitModel(ORDERS_MODEL_ID);
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+        openNotebook();
+        getNotebookStep("data").findByText("Orders Model").click(clickConfig);
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+      });
+
+      it("should work for sandboxed users when joined table is sandboxed", () => {
+        openProductsTable({ mode: "notebook" });
+        cy.findByTestId("action-buttons").button("Join data").click();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
+
+        getNotebookStep("join")
+          .findByLabelText("Right table")
+          .should("have.text", "Orders")
+          .click(clickConfig);
+
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+      });
+    });
+  });
+
+  context("joins", () => {
+    const getQuery = (id: number) => {
+      return {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+            joins: [
+              {
+                fields: "all",
+                strategy: "left-join",
+                alias: "Orders Model",
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+                  [
+                    "field",
+                    "PRODUCT_ID",
+                    {
+                      "base-type": "type/Integer",
+                      "join-alias": "Orders Model",
+                    },
+                  ],
+                ],
+                "source-table": `card__${ORDERS_MODEL_ID}`,
+              },
+              {
+                fields: "all",
+                strategy: "right-join",
+                alias: "People - User",
+                condition: [
+                  "=",
+                  [
+                    "field",
+                    ORDERS.USER_ID,
+                    {
+                      "base-type": "type/Integer",
+                      "join-alias": "Orders Model",
+                    },
+                  ],
+                  [
+                    "field",
+                    "ID",
+                    {
+                      "base-type": "type/BigInteger",
+                      "join-alias": "People - User",
+                    },
+                  ],
+                ],
+                "source-table": `card__${id}`,
+              },
+              {
+                fields: "all",
+                strategy: "inner-join",
+                alias: "Reviews",
+                condition: [
+                  "=",
+                  ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+                  [
+                    "field",
+                    REVIEWS.PRODUCT_ID,
+                    { "base-type": "type/Integer", "join-alias": "Reviews" },
+                  ],
+                ],
+                "source-table": REVIEWS_ID,
+              },
+            ],
+          },
+          parameters: [],
+        },
+      };
+    };
+
+    it("rhs joined data sources should open in a new tab on the meta/ctrl click", () => {
+      createQuestion({
+        name: "People - Saved Question",
+        query: {
+          "source-table": PEOPLE_ID,
+        },
+      }).then(({ body: savedQuestion }) => {
+        const queryWithMultipleJoins = getQuery(savedQuestion.id);
+        visitQuestionAdhoc(queryWithMultipleJoins, { mode: "notebook" });
+
+        (function testModel() {
+          cy.log("Model should open in a new tab");
+
+          getNotebookStep("join", { stage: 0, index: 0 }).within(() => {
+            // Clicking on a left join cell does not have any effect
+            cy.findByLabelText("Left table").click(clickConfig);
+
+            cy.findByLabelText("Right table")
+              .should("have.text", "Orders Model")
+              .click(clickConfig);
+          });
+
+          cy.location("pathname").should(
+            "eq",
+            `/model/${ORDERS_MODEL_ID}-orders-model`,
+          );
+          cy.findAllByTestId("header-cell").should("contain", "Subtotal");
+          tableInteractive().should("contain", "37.65");
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing first 2,000 rows",
+          );
+
+          // Model is not dirty
+          cy.findByTestId("qb-save-button").should("not.exist");
+          cy.go("back");
+        })();
+
+        (function testSavedQuestion() {
+          cy.log("Saved question should open in a new tab");
+
+          getNotebookStep("join", { stage: 0, index: 1 }).within(() => {
+            // Clicking on a left join cell does not have any effect
+            cy.findByLabelText("Left table").click(clickConfig);
+
+            cy.findByLabelText("Right table")
+              .should("have.text", savedQuestion.name)
+              .click(clickConfig);
+          });
+
+          cy.location("pathname").should(
+            "eq",
+            `/question/${savedQuestion.id}-people-saved-question`,
+          );
+          cy.findAllByTestId("header-cell").should("contain", "City");
+          tableInteractive().should("contain", "Beaver Dams");
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing first 2,000 rows",
+          );
+
+          // Question is not dirty
+          cy.findByTestId("qb-save-button").should("not.exist");
+          cy.go("back");
+        })();
+
+        (function testRawTable() {
+          cy.log("Raw table should open in a new tab");
+          getNotebookStep("join", { stage: 0, index: 2 }).within(() => {
+            // Clicking on a left join cell does not have any effect
+            cy.findByLabelText("Left table").click(clickConfig);
+
+            cy.findByLabelText("Right table")
+              .should("have.text", "Reviews")
+              .click(clickConfig);
+          });
+
+          cy.findAllByTestId("header-cell").should("contain", "Reviewer");
+          tableInteractive().should("contain", "xavier");
+          cy.findByTestId("question-row-count").should(
+            "have.text",
+            "Showing 1,112 rows",
+          );
+
+          // Raw table is dirty by default
+          cy.findByTestId("qb-save-button").should("be.enabled");
+          cy.go("back");
+        })();
+
+        (function testNegativeCases() {
+          cy.log(
+            "Join type selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Change join type")
+            .click(clickConfig);
+          popover().should("contain", "Inner join");
+
+          cy.log(
+            "Pick columns selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Pick columns")
+            .click(clickConfig);
+          popover().should("contain", "Discount");
+
+          cy.log(
+            "Left column join condition selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Left column")
+            .click(clickConfig);
+          popover().should("contain", "Vendor");
+
+          cy.log(
+            "Operator selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Change operator")
+            .click(clickConfig);
+          popover().should("contain", ">=");
+
+          cy.log(
+            "Right column join condition selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Right column")
+            .click(clickConfig);
+          popover().should("contain", "Discount");
+
+          cy.log(
+            "New join condition button behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Add condition")
+            .click(clickConfig);
+          cy.findByTestId("new-join-condition").should("be.visible");
+        })();
       });
     });
   });

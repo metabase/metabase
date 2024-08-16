@@ -4,12 +4,11 @@ import { createRef, Component } from "react";
 import { t } from "ttag";
 
 import Popover from "metabase/components/Popover";
+import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
-import AlertListPopoverContent from "../AlertListPopoverContent";
-
-import { AlertIcon } from "./QuestionAlertWidget.styled";
+import { AlertListPopoverContent } from "../AlertListPopoverContent";
 
 export default class QuestionAlertWidget extends Component {
   state = {
@@ -69,12 +68,11 @@ export default class QuestionAlertWidget extends Component {
       );
     } else {
       return (
-        <AlertIcon
-          name="bell"
-          tooltip={t`Get alerts`}
-          size={20}
-          className={className}
+        <ViewFooterButton
+          icon="bell"
+          tooltipLabel={t`Get alerts`}
           onClick={onCreateAlert}
+          className={className}
         />
       );
     }

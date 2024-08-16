@@ -813,9 +813,6 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-query "Card" [_ opts]
-  (serdes/extract-query-collections Card opts))
-
 (defn- export-result-metadata [metadata]
   (when metadata
     (for [m metadata]
@@ -840,12 +837,10 @@
                                      (when (:id m)       #{(serdes/field->path (:id m))})])))))
 
 (defmethod serdes/make-spec "Card"
-  [_model-name]
+  [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
-   :skip [;; always instance-specific
-          :id :updated_at
-          ;; cache invalidation is instance-specific
+   :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
           :view_count :last_used_at :initially_published_at
@@ -854,28 +849,17 @@
           ;; this column is not used anymore
           :cache_ttl]
    :transform
-   {:database_id            [#(serdes/*export-fk-keyed* % 'Database :name)
-                             #(serdes/*import-fk-keyed* % 'Database :name)]
-    :table_id               [serdes/*export-table-fk*
-                             serdes/*import-table-fk*]
-    :source_card_id         [#(serdes/*export-fk* % :model/Card)
-                             #(serdes/*import-fk* % :model/Card)]
-    :collection_id          [#(serdes/*export-fk* % 'Collection)
-                             #(serdes/*import-fk* % 'Collection)]
-    :creator_id             [serdes/*export-user*
-                             serdes/*import-user*]
-    :made_public_by_id      [serdes/*export-user*
-                             serdes/*import-user*]
-    :dataset_query          [serdes/export-mbql
-                             serdes/import-mbql]
-    :parameters             [serdes/export-parameters
-                             serdes/import-parameters]
-    :parameter_mappings     [serdes/export-parameter-mappings
-                             serdes/import-parameter-mappings]
-    :visualization_settings [serdes/export-visualization-settings
-                             serdes/import-visualization-settings]
-    :result_metadata        [export-result-metadata
-                             import-result-metadata]}})
+   {:database_id            (serdes/fk :model/Database :name)
+    :table_id               (serdes/fk :model/Table)
+    :source_card_id         (serdes/fk :model/Card)
+    :collection_id          (serdes/fk :model/Collection)
+    :creator_id             (serdes/fk :model/User)
+    :made_public_by_id      (serdes/fk :model/User)
+    :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
+    :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
+    :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
+    :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
+    :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings

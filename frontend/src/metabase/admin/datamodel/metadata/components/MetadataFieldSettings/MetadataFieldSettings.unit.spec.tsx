@@ -235,7 +235,7 @@ describe("MetadataFieldSettings", () => {
       await userEvent.click(screen.getByText("Don't cast"));
       await userEvent.type(screen.getByPlaceholderText("Find..."), "Micro");
       expect(
-        screen.getByText("Coercion/UNIXMicroSeconds->DateTime"),
+        screen.getByText("UNIX microseconds → Datetime"),
       ).toBeInTheDocument();
     });
 

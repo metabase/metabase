@@ -397,14 +397,13 @@
     (mt/with-column-remappings [orders.user_id people.name]
       (binding [api/*current-user-permissions-set* (atom #{"/"})]
         (t2.with-temp/with-temp
-          [Dashboard {dashboard-a-id :id} {:name             "Test Dashboard"
-                                           :creator_id       (mt/user->id :crowberto)
-                                           :embedding_params {:id "enabled"}
-                                           :parameters       [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
-           Dashboard {dashboard-b-id :id} {:name             "Test Dashboard"
-                                           :creator_id       (mt/user->id :crowberto)
-                                           :embedding_params {:id "enabled"}
-                                           :parameters       [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
+          [Dashboard {dashboard-a-id :id} {:name       "Test Dashboard"
+                                           :creator_id (mt/user->id :crowberto)
+                                           :parameters [{:name    "Name", :slug "name", :id "a" :type :string/contains
+                                                         :default ["default_value"]}]}
+           Dashboard {dashboard-b-id :id} {:name       "Test Dashboard"
+                                           :creator_id (mt/user->id :crowberto)
+                                           :parameters [{:name "Name", :slug "name", :id "a" :type :string/contains}]}
            Card {card-id :id} {:database_id   (mt/id)
                                :query_type    :native
                                :name          "test question"
@@ -416,8 +415,7 @@
                                                                    :display-name "name"
                                                                    :type         :dimension
                                                                    :dimension    [:field (mt/id :people :name) nil]
-                                                                   :widget-type  :string/contains
-                                                                   :default      nil}}}
+                                                                   :widget-type  :string/contains}}}
                                                :database (mt/id)}}
            DashboardCard {dashcard-a-id :id} {:parameter_mappings [{:parameter_id "a", :card_id card-id, :target [:dimension [:template-tag "id"]]}]
                                               :card_id            card-id
@@ -436,7 +434,17 @@
             (is (= {:dashboard-a {:a ["new value"]}
                     :dashboard-b {:a ["initial value"]}}
                    {:dashboard-a (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))
-                    :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))}))))))))
+                    :dashboard-b (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-b-id)))})))
+          (testing "If a User unsets a parameter's value, the default is NOT used."
+            ;; api request mimicking a user clearing parameter value, and no default exists
+            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                             {:parameters [{:id "a" :value nil}]})))
+            (is (= {}
+                   (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))
+            (is (some? (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query" dashboard-a-id dashcard-a-id card-id)
+                                             {:parameters [{:id "a" :value nil :default ["default value"]}]})))
+            (is (= {:a nil}
+                   (:last_used_param_values (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-a-id)))))))))))
 
 (deftest fetch-dashboard-test
   (testing "GET /api/dashboard/:id"
@@ -657,13 +665,13 @@
                    (into {} (for [[field-id m] response]
                               [field-id (update m :values (partial take 3))]))))))))))
 
-(deftest fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
+(deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
     (mt/with-temp
       [:model/Card          {card-id :id} {:name "Native card"
                                            :database_id   (mt/id)
                                            :dataset_query (mt/native-query
-                                                           {:query "SELECT category FROM products LIMIT 10;"})
+                                                            {:query "SELECT category FROM products LIMIT 10;"})
                                            :type          :model}
        :model/Dashboard     {dash-id :id} {:parameters [{:name      "Text"
                                                          :slug      "text"
@@ -675,10 +683,11 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (is (= (repeat 2 [:error nil
-                        "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"])
-             (mt/with-log-messages-for-level ['metabase.models.params :error]
-               (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))))))))
+      (mt/with-log-messages-for-level [messages [metabase.models.params :error]]
+        (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
+        (is (=? (repeat 2 {:level   :error
+                           :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"})
+                (messages)))))))
 
 (deftest param-values-not-fetched-on-load-test
   (testing "Param values are not needed on initial dashboard load and should not be fetched. #38826"

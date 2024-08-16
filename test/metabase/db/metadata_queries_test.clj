@@ -2,36 +2,42 @@
   (:require
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :as models :refer [Database Field Table]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
-(defn- metadata-queries-test-drivers []
-  (mt/normal-drivers-except #{:redshift}))
+;;; whether to run `field-count` and `field-distinct-count` tests.
+(defmethod driver/database-supports? [::driver/driver ::field-count-tests]
+  [_driver _feature _database]
+  true)
+
+;;; Redshift tests are randomly failing -- see https://github.com/metabase/metabase/issues/2767
+(defmethod driver/database-supports? [:redshift ::field-count-tests]
+  [_driver _feature _database]
+  false)
 
 (deftest ^:parallel field-distinct-count-test
-  (mt/test-drivers (metadata-queries-test-drivers)
+  (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 100
-           (metadata-queries/field-distinct-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))
+           (metadata-queries/field-distinct-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))))
+
+(deftest ^:parallel field-distinct-count-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 15
            (metadata-queries/field-distinct-count (t2/select-one Field :id (mt/id :checkins :user_id)))))))
 
-(deftest field-count-test
-  (mt/test-drivers (metadata-queries-test-drivers)
+(deftest ^:parallel field-count-test
+  (mt/test-drivers (mt/normal-drivers-with-feature ::field-count-tests)
     (is (= 1000
            (metadata-queries/field-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))))
 
-(deftest field-distinct-values-test
-  (mt/test-drivers (metadata-queries-test-drivers)
-    (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-           (map (comp int first) (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
-
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (let [expected [["20th Century Cafe"]
                     ["25°"]
@@ -40,19 +46,23 @@
                     ["BCD Tofu House"]]
           table    (t2/select-one Table :id (mt/id :venues))
           fields   [(t2/select-one Field :id (mt/id :venues :name))]
-          fetch!   #(->> (metadata-queries/table-rows-sample table fields (constantly conj) (when % {:truncation-size %}))
+          fetch   (fn [truncation-size]
+                    (->> (metadata-queries/table-rows-sample table fields (constantly conj)
+                                                             (when truncation-size
+                                                               {:truncation-size truncation-size}))
                          ;; since order is not guaranteed do some sorting here so we always get the same results
                          (sort-by first)
-                         (take 5))]
+                         (take 5)))]
       (is (= :type/Text (-> fields first :base_type)))
-      (is (= expected (fetch! nil)))
+      (is (= expected (fetch nil)))
       (testing "truncates text fields (see #13288)"
         (doseq [size [1 4 80]]
           (is (= (mapv (fn [[s]] [(subs (or s "") 0 (min size (count s)))])
                        expected)
-                 (fetch! size))
-              "Did not truncate a text field")))))
+                 (fetch size))
+              "Did not truncate a text field"))))))
 
+(deftest table-rows-sample-substring-test
   (testing "substring checking"
     (with-redefs [driver.u/database->driver (constantly (:engine (mt/db)))
                   table/database (constantly (mi/instance Database {:id 5678}))]
@@ -83,10 +93,14 @@
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
       (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
               (get-in (#'metadata-queries/table-rows-sample-query table [field1] {}) [:query :filter]))))
-    (testing "the field mbql on a table that requires a filter will include a filter"
+    (testing "the mbql on a table that requires a filter will include a filter"
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
-      (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
-              (get (#'metadata-queries/field-mbql-query table {}) :filter))))))
+      (let [query (atom nil)]
+        (with-redefs [qp/process-query (fn [& args]
+                                         (reset! query (-> args first :query)))]
+          (metadata-queries/table-query (:id table) {})
+          (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
+                  (:filter @query))))))))
 
 (deftest ^:parallel text-field?-test
   (testing "recognizes fields suitable for fingerprinting"

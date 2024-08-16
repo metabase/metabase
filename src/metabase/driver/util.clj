@@ -19,7 +19,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.snake-hating-map :refer [snake-hating-map?]])
   (:import
    (java.io ByteArrayInputStream)
    (java.security KeyFactory KeyStore PrivateKey)
@@ -244,11 +245,18 @@
       (u/with-timeout supports?-timeout-ms
         (driver/database-supports? driver feature database))
       (catch Throwable e
-        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
+        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
         false))))
 
 (def ^:private memoized-supports?*
-  (mdb/memoize-for-application-db supports?*))
+  (memoize/memo
+   (-> supports?*
+       (vary-meta assoc ::memoize/args-fn
+                  (fn [[driver feature database]]
+                    [driver feature (mdb/unique-identifier) (:id database)
+                     (if (snake-hating-map? database)
+                       (:updated-at database)
+                       (:updated_at database))])))))
 
 (defn supports?
   "A defensive wrapper around [[database-supports?]]. It adds logging, caching, and error handling to avoid crashing the app

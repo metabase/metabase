@@ -41,7 +41,7 @@ import {
   assertQueryBuilderRowCount,
   visitDashboard,
   getDashboardCard,
-  testTooltipPairs,
+  assertEChartsTooltip,
   join,
   visitQuestion,
   tableHeaderClick,
@@ -1207,11 +1207,12 @@ describe("issue 31960", () => {
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).realHover();
     });
-    testTooltipPairs([
-      ["Created At:", "July 10–16, 2022"],
-      ["Count:", String(rowCount)],
-      ["Compared to previous week", "+10%"],
-    ]);
+    assertEChartsTooltip({
+      header: "July 10–16, 2022",
+      rows: [
+        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
+      ],
+    });
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
@@ -1249,7 +1250,7 @@ describe("issue 43294", () => {
 
     cy.log("compare action");
     cy.button("Add column").click();
-    popover().findByText("Compare “Count” to previous months").click();
+    popover().findByText("Compare to the past").click();
     popover().button("Done").click();
 
     cy.log("extract action");

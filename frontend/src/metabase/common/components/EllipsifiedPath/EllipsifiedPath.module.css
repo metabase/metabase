@@ -1,0 +1,51 @@
+.path {
+  flex-grow: 1;
+  display: flex;
+  flex-flow: row nowrap;
+  overflow-x: hidden;
+  container-type: inline-size;
+}
+
+.slash {
+  opacity: 0.5;
+  min-width: 0;
+  flex-shrink: 0;
+  padding-inline: 0.1rem;
+}
+
+.item,
+.slash {
+  @container (max-width: 6rem) {
+    &:not(&:last-child) {
+      display: none;
+    }
+  }
+}
+
+.dots {
+  opacity: 0.5;
+  display: none;
+
+  @container (max-width: 6rem) {
+    display: flex;
+  }
+}
+
+.item {
+  flex-grow: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: fit-content;
+
+  /* The first path item should try to be a bit bigger than average */
+  &:nth-child(2) {
+    flex-basis: 100%;
+  }
+
+  /* The last path item should show all of itself if possible */
+  &:last-child {
+    flex-basis: 1000%;
+  }
+}
