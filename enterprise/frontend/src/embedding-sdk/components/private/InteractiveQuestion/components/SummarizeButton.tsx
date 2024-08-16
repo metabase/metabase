@@ -1,6 +1,6 @@
 import cx from "classnames";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { QuestionSummarizeWidget } from "metabase/query_builder/components/view/ViewHeader/components";
 import * as Lib from "metabase-lib";

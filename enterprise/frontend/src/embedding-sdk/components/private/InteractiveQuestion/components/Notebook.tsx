@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { default as QBNotebook } from "metabase/query_builder/components/notebook/Notebook";
 import {
@@ -9,10 +10,14 @@ import {
 } from "metabase/query_builder/utils/question";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
+  // Loads databases and metadata so we can show notebook steps for the selected data source
+  useDatabaseListQuery();
+
   const { question, originalQuestion, updateQuestion, runQuestion } =
     useInteractiveQuestionContext();
 
@@ -38,11 +43,11 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           isResultDirty={isDirty}
           reportTimezone={reportTimezone}
           readOnly={false}
-          updateQuestion={nextQuestion =>
-            updateQuestion(nextQuestion, { run: false })
+          updateQuestion={async (nextQuestion: Question) =>
+            await updateQuestion(nextQuestion, { run: false })
           }
-          runQuestionQuery={() => {
-            runQuestion();
+          runQuestionQuery={async () => {
+            await runQuestion();
             onApply();
           }}
           setQueryBuilderMode={() => {}}

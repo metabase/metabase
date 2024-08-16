@@ -377,6 +377,30 @@ These components are available via the `InteractiveQuestion` namespace (i.e. `<I
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
 
+### Creating a Question
+
+With the `NewQuestion` component, you can create a new question from scratch using the Metabase Notebook Editor.
+
+#### Parameters
+
+No parameters are required for this component.
+
+```tsx
+import React from "react";
+import { MetabaseProvider, NewQuestion } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  return (
+    <MetabaseProvider config={config}>
+        <NewQuestion />
+    </MetabaseProvider>
+  );
+}
+
+```
+
 ### Embedding a static dashboard
 
 After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
