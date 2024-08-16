@@ -6,9 +6,9 @@ import {
   getDashboardCard,
   chartPathWithFillColor,
   echartsContainer,
-  testPairedTooltipValues,
   multiAutocompleteInput,
   removeMultiAutocompleteValue,
+  assertEChartsTooltip,
 } from "e2e/support/helpers";
 
 import {
@@ -84,10 +84,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         .and("not.contain", "TX");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
-
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        blurAfter: true,
       });
 
       openFilterOptions("City");
@@ -105,9 +105,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
       });
     });
 
@@ -157,9 +157,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        blurAfter: true,
       });
 
       openFilterOptions("City");
@@ -180,9 +181,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
       });
     });
 
@@ -202,9 +203,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        blurAfter: true,
       });
 
       openFilterOptions("City");
@@ -222,9 +224,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
       });
     });
 
@@ -243,9 +245,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "68");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "68" }],
+        blurAfter: true,
       });
 
       filterWidget().should("have.length", 1).and("contain", "City").click();
@@ -263,9 +266,9 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
-      popover().within(() => {
-        testPairedTooltipValues("STATE", "AK");
-        testPairedTooltipValues("Count", "1");
+      assertEChartsTooltip({
+        header: "AK",
+        rows: [{ color: "#509EE3", name: "Count", value: "1" }],
       });
     });
 
