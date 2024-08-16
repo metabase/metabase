@@ -580,10 +580,6 @@
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(t2/hydrate % :tabs [:dashcards :series]))
-            (serdes/extract-query-collections Dashboard opts)))
-
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
   {:copy      [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_position
                :description :embedding_params :enable_embedding :entity_id :initially_published_at :name

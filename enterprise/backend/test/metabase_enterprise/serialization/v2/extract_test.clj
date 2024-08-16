@@ -1706,3 +1706,44 @@
                                   :no-data-model true})]
         (is (= #{(:entity_id c)}
                (by-model "Collection" ser)))))))
+
+(deftest extract-nested-test
+  (testing "extract-nested working"
+    (mt/with-temp [:model/Dashboard           d   {:name "Top Dash"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d) :card_id (:id c1)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (let [spec (serdes/make-spec "DashboardCard" nil)]
+        (is (= {(:id dc1) [s]}
+               (#'serdes/transform->nested (-> spec :transform :series) [dc1])))
+        (is (=? (assoc dc1 :series [s])
+                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+      (let [spec (serdes/make-spec "Dashboard" nil)]
+        (is (= {(:id d) [(assoc dc1 :series [s])]}
+               (#'serdes/transform->nested (-> spec :transform :dashcards) [d])))
+        (is (=? (assoc d
+                       :dashcards [(assoc dc1 :series [s])]
+                       :tabs nil)
+                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]})))))))
+  (testing "extract-nested is efficient"
+    (mt/with-temp [:model/Dashboard           d1  {:name "Top Dash 1"}
+                   :model/Dashboard           d2  {:name "Top Dash 2"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/Card                c3  {:name "Card for Dash 2"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d1) :card_id (:id c1)}
+                   :model/DashboardCard       dc2 {:dashboard_id (:id d2) :card_id (:id c2)}
+                   :model/DashboardCard       dc3 {:dashboard_id (:id d2) :card_id (:id c3)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (t2/with-call-count [qc]
+        (is (=? [(assoc d1
+                        :dashcards [(assoc dc1 :series [s])]
+                        :tabs nil)
+                 (assoc d2
+                        :dashcards [(assoc dc2 :series nil)
+                                    (assoc dc3 :series nil)]
+                        :tabs nil)]
+                  (into [] (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+          ;; 1 per dashboard/dashcard/series/tabs
+        (is (= 4 (qc)))))))
