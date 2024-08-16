@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createAlert,
+  createPulse,
   getCurrentUser,
   modal,
   restore,
@@ -151,7 +152,7 @@ describe("scenarios > account > notifications", () => {
         cy.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
-          cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
+          createPulse(getPulseDetails({ card_id, dashboard_id }));
         });
       });
     });
