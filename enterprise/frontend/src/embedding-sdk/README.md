@@ -27,7 +27,7 @@ Features currently supported:
 - subscribing to events
 - editing dashboards - requires upgrade to metabase v50
 - creating dashboards
--
+
 Features not yet supported:
 
 - letting users create new questions from scratch
@@ -501,7 +501,7 @@ Dashboards that support editing if a user has permissions for this, could be emb
 
 ### Creating Dashboards
 
-Creating dashboard could be done with `useDashboardCreate` hook or `DashboardCreateModal` component.
+Creating dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
 
 #### Hook
 
@@ -512,7 +512,7 @@ Supported parameters:
 - **collectionId**: `number | 'root' | 'personal' | null` - collection where to create a new dashboard. You can use predefined system values like `root` or `personal`.
 
 ```typescript jsx
-const { createDashboard } = useDashboardCreate();
+const { createDashboard } = useCreateDashboardApi();
 
 const handleDashboardCreate = async () => {
     const dashboard = await createDashboard(props);
@@ -539,7 +539,7 @@ if (dashboard) {
 }
 
 return (
-    <DashboardCreateModal onClose={handleClose} onCreate={setDashboard} />
+    <CreateDashboardModal onClose={handleClose} onCreate={setDashboard} />
 );
 ```
 

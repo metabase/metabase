@@ -6,14 +6,14 @@ import { screen, renderWithProviders } from "__support__/ui";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import type { Dashboard } from "metabase-types/api";
 
-import type { DashboardCreateParameters } from "./use-dashboard-create";
-import { useDashboardCreate } from "./use-dashboard-create";
+import type { DashboardCreateParameters } from "./use-create-dashboard-api";
+import { useCreateDashboardApi } from "./use-create-dashboard-api";
 
 const TEST_COLLECTION_ID = 11;
 const TEST_DASHBOARD_ID = 123;
 const TEST_DASHBOARD_NAME = "TestDashboard";
 
-describe("useDashboardCreate", () => {
+describe("useCreateDashboardApi", () => {
   it('should create a new dashboard after "createDashboard" is called', async () => {
     setup();
 
@@ -45,7 +45,7 @@ const TestComponent = (
   },
 ) => {
   const { onDashboardCreate, ...restProps } = props;
-  const { createDashboard } = useDashboardCreate();
+  const { createDashboard } = useCreateDashboardApi();
 
   const handleCreate = async () => {
     const dashboard = await createDashboard(restProps);
@@ -60,26 +60,24 @@ const TestComponent = (
   );
 };
 
-function setup(
-  { props }: { props: DashboardCreateParameters } = {
-    props: {
-      name: TEST_DASHBOARD_NAME,
-      description: null,
-      collectionId: TEST_COLLECTION_ID,
-    },
-  },
-) {
+function setup() {
+  const mockProps = {
+    name: TEST_DASHBOARD_NAME,
+    description: null,
+    collectionId: TEST_COLLECTION_ID,
+  };
+
   setupDashboardCreateEndpoint({
     id: TEST_DASHBOARD_ID,
-    collection_id: props.collectionId,
-    name: props.name,
-    description: props.description,
+    collection_id: mockProps.collectionId,
+    name: mockProps.name,
+    description: mockProps.description,
   });
 
   const onDashboardCreateSpy = jest.fn();
 
   renderWithProviders(
-    <TestComponent {...props} onDashboardCreate={onDashboardCreateSpy} />,
+    <TestComponent {...mockProps} onDashboardCreate={onDashboardCreateSpy} />,
     {
       mode: "sdk",
       sdkProviderProps: {

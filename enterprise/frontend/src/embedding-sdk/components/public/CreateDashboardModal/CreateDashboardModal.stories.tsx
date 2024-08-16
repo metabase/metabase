@@ -7,21 +7,21 @@ import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper"
 import { Box, Button } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
-import { DashboardCreateModal } from "./DashboardCreateModal";
+import { CreateDashboardModal } from "./CreateDashboardModal";
 import {
   type DashboardCreateParameters,
-  useDashboardCreate,
-} from "./use-dashboard-create";
+  useCreateDashboardApi,
+} from "./use-create-dashboard-api";
 
 // eslint-disable-next-line import/no-default-export
 export default {
-  title: "EmbeddingSDK/DashboardCreateModal",
-  component: DashboardCreateModal,
+  title: "EmbeddingSDK/CreateDashboardModal",
+  component: CreateDashboardModal,
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: ComponentStory<typeof DashboardCreateModal> = () => (
-  <DashboardCreateModal
+const Template: ComponentStory<typeof CreateDashboardModal> = () => (
+  <CreateDashboardModal
     onClose={action("onClose")}
     onCreate={action("onCreate")}
   />
@@ -33,7 +33,7 @@ const HookTemplate: ComponentStory<
   JSXElementConstructor<Record<string, never>>
 > = () => {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
-  const { createDashboard } = useDashboardCreate();
+  const { createDashboard } = useCreateDashboardApi();
 
   const props: DashboardCreateParameters = {
     name: "Test",
@@ -58,7 +58,7 @@ const HookTemplate: ComponentStory<
   );
 };
 
-export const Hook = HookTemplate.bind({});
+export const useCreateDashboardApiHook = HookTemplate.bind({});
 
 const FullWorkflowExampleTemplate: ComponentStory<
   JSXElementConstructor<Record<string, never>>
@@ -70,7 +70,7 @@ const FullWorkflowExampleTemplate: ComponentStory<
   }
 
   return (
-    <DashboardCreateModal onClose={action("onClose")} onCreate={setDashboard} />
+    <CreateDashboardModal onClose={action("onClose")} onCreate={setDashboard} />
   );
 };
 

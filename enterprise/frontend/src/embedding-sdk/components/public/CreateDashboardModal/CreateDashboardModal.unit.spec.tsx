@@ -17,9 +17,9 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  DashboardCreateModal,
-  type DashboardCreateModalProps,
-} from "./DashboardCreateModal";
+  CreateDashboardModal,
+  type CreateDashboardModalProps,
+} from "./CreateDashboardModal";
 
 const CURRENT_USER = createMockUser({
   id: getNextId(),
@@ -42,7 +42,7 @@ const PERSONAL_COLLECTION = createMockCollection({
 
 const COLLECTIONS = [ROOT_COLLECTION, PERSONAL_COLLECTION];
 
-describe("DashboardCreateModal", () => {
+describe("CreateDashboardModal", () => {
   it("should render", () => {
     setup();
 
@@ -106,10 +106,10 @@ describe("DashboardCreateModal", () => {
   });
 });
 
-function setup({ props }: { props?: Partial<DashboardCreateModalProps> } = {}) {
+function setup({ props }: { props?: Partial<CreateDashboardModalProps> } = {}) {
   setupCollectionByIdEndpoint({ collections: COLLECTIONS });
 
-  renderWithProviders(<DashboardCreateModal {...props} />, {
+  renderWithProviders(<CreateDashboardModal {...props} />, {
     mode: "sdk",
     sdkProviderProps: {
       config: createMockJwtConfig(),

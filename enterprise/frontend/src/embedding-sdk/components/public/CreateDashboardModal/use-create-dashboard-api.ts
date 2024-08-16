@@ -11,7 +11,7 @@ export interface DashboardCreateParameters
   collectionId: CollectionId | null;
 }
 
-export const useDashboardCreate = () => {
+export const useCreateDashboardApi = () => {
   const store = useSdkStore();
 
   const [createDashboard] = useCreateDashboardMutation();
