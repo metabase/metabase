@@ -3,7 +3,7 @@ import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
 
-const _useGetDefaultCollectionId = (
+export const _useGetDefaultCollectionId = (
   sourceCollectionId?: CollectionId | null,
 ): CollectionId | null => {
   // TODO: refactor this selector to be this hook and fetch the necessary collections
@@ -18,5 +18,12 @@ const _useGetDefaultCollectionId = (
   return initialCollectionId;
 };
 
-export const useGetDefaultCollectionId =
-  PLUGIN_COLLECTIONS.useGetDefaultCollectionId ?? _useGetDefaultCollectionId;
+export const useGetDefaultCollectionId = (
+  sourceCollectionId?: CollectionId | null,
+): CollectionId | null => {
+  if (PLUGIN_COLLECTIONS.useGetDefaultCollectionId) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- this won't change at runtime, so it's safe
+    return PLUGIN_COLLECTIONS.useGetDefaultCollectionId(sourceCollectionId);
+  }
+  return _useGetDefaultCollectionId(sourceCollectionId);
+};
