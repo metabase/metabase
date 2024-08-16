@@ -25,12 +25,12 @@ Features currently supported:
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
-- editing dashboards - requires upgrade to the next metabase platform version
+- editing dashboards - requires upgrade to metabase v50
+- creating dashboards
 
 Features not yet supported:
 
 - letting users create new questions from scratch
-- creating dashboards
 
 # Changelog
 
@@ -377,6 +377,30 @@ These components are available via the `InteractiveQuestion` namespace (i.e. `<I
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
 
+### Creating a Question
+
+With the `NewQuestion` component, you can create a new question from scratch using the Metabase Notebook Editor.
+
+#### Parameters
+
+No parameters are required for this component.
+
+```tsx
+import React from "react";
+import { MetabaseProvider, NewQuestion } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  return (
+    <MetabaseProvider config={config}>
+        <NewQuestion />
+    </MetabaseProvider>
+  );
+}
+
+```
+
 ### Embedding a static dashboard
 
 After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
@@ -478,7 +502,7 @@ export default function App() {
 }
 ```
 
-### Editable Dashboard
+### Editing dashboards
 
 Dashboards that support editing if a user has permissions for this, could be embedded using `EditableDashboard` component.
 
@@ -499,28 +523,48 @@ Dashboards that support editing if a user has permissions for this, could be emb
   but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
   loaded.
 
-### Creating a Question
+### Creating Dashboards
 
-With the `NewQuestion` component, you can create a new question from scratch using the Metabase Notebook Editor. 
+Creating dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
 
-#### Parameters
+#### Hook
 
-No parameters are required for this component.
+Supported parameters:
 
-```tsx
-import React from "react";
-import { MetabaseProvider, NewQuestion } from "@metabase/embedding-sdk-react";
+- **name**: `string` (required) - dashboard title
+- **description**: `string | null` - optional dashboard description
+- **collectionId**: `number | 'root' | 'personal' | null` - collection where to create a new dashboard. You can use predefined system values like `root` or `personal`.
 
-const config = {...}
+```typescript jsx
+const { createDashboard } = useCreateDashboardApi();
 
-export default function App() {
-  return (
-    <MetabaseProvider config={config}>
-        <NewQuestion />
-    </MetabaseProvider>
-  );
+const handleDashboardCreate = async () => {
+    const dashboard = await createDashboard(props);
+
+    // do something with created empty dashboard, e.g. use it in EditableDashboard component
+};
+
+return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>
+```
+
+#### Component
+
+Supported props:
+
+- **collectionId?** : `number | 'root' | 'personal' | null` - initial collection field value. You can use predefined system values like `root` or `personal`.
+- **onCreate**: `(dashboard: Dashboard) => void`; - handler to react on dashboard creation.
+- **onClose?**: `() => void`; - handler to close modal component
+
+```typescript jsx
+const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+
+if (dashboard) {
+    return <EditableDashboard dashboardId={dashboard.id} />;
 }
 
+return (
+    <CreateDashboardModal onClose={handleClose} onCreate={setDashboard} />
+);
 ```
 
 ### Embedding the collection browser
