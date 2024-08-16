@@ -1003,7 +1003,6 @@
                   :channel/email first :message first :content
                   (re-find #"<h1>dashboard description</h1>")))))))
 
-
 (deftest attachments-test
   (tests!
    {:card (pulse.test-util/checkins-query-card {})}
@@ -1042,3 +1041,32 @@
                                                 pulse.test-util/png-attachment]})
               (-> (mt/summarize-multipart-single-email email
                                                        #"Aviary KPIs")))))}}))
+
+(deftest multi-series-test
+  (mt/with-temp
+    [:model/Card                {card-1 :id}      {:name          "Source card"
+                                                   :dataset_query (mt/mbql-query orders
+                                                                                 {:aggregation [[:sum $orders.total]]
+                                                                                  :breakout [$orders.created_at]})}
+     :model/Card                {card-2 :id}      {:name          "Serie card"
+                                                   :dataset_query (mt/mbql-query orders
+                                                                                 {:aggregation [[:sum $orders.subtotal]]
+                                                                                  :breakout [$orders.created_at]})}
+     :model/Dashboard           {dash-id :id}     {}
+     :model/DashboardCard       {dash-card-1 :id} {:dashboard_id dash-id
+                                                   :card_id      card-1}
+     :model/DashboardCardSeries _                 {:dashboardcard_id dash-card-1
+                                                   :card_id          card-2
+                                                   :position         0}
+     :model/Pulse               {pulse-id :id}    {:dashboard_id dash-id}
+     :model/PulseCard            _                {:pulse_id pulse-id
+                                                   :card_id   card-1
+                                                   :position 0}
+
+     :model/PulseChannel        _                 {:pulse_id pulse-id}]
+    (testing "Able to sendn pulse with multi series card #46892"
+      ;; not sure what to assert here as the multi serie result is in the image
+      (is (some? (-> (pulse.test-util/with-captured-channel-send-messages!
+                       (metabase.pulse/send-pulse! (t2/select-one :model/Pulse)))
+                     :channel/email
+                     first))))))
