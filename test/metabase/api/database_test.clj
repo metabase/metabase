@@ -2094,7 +2094,7 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest ^:paralell log-an-error-if-contains-undefined-setting-test
+(deftest ^:parallel log-an-error-if-contains-undefined-setting-test
   (testing "should log an error message if database contains undefined settings"
     (t2.with-temp/with-temp [Database {db-id :id} {:settings {:undefined-setting true}}]
       (mt/with-log-messages-for-level [messages :error]

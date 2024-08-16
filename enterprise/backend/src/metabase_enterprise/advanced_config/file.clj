@@ -97,8 +97,7 @@
    [clojure.walk :as walk]
    [environ.core :as env]
    [metabase-enterprise.advanced-config.file.databases]
-   [metabase-enterprise.advanced-config.file.interface
-    :as advanced-config.file.i]
+   [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase.driver.common.parameters]
