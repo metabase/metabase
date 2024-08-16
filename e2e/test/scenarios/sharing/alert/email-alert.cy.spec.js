@@ -159,5 +159,6 @@ function saveAlert() {
   });
   cy.wait("@saveCard");
 
-  cy.button("Done").click();
+  openSharingMenu("Create alert");
+  modal().button("Done").click();
 }

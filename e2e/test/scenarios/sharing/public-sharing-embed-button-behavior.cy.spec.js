@@ -264,13 +264,12 @@ describe("#39152 sharing an unsaved question", () => {
     openSharingMenu();
 
     modal().within(() => {
-      cy.findByText("Save new question").should("be.visible");
+      cy.findByText("First, save your question").should("be.visible");
       cy.findByText("Save").click();
     });
 
-    modal().findByText("Not now").click();
-
     openSharingMenu("Create a public link");
+
     assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
   });
 });
