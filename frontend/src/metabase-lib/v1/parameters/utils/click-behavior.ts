@@ -162,6 +162,7 @@ function getTargetsForStructuredQuestion(question: Question): Target[] {
       sourceFilters: {
         column: (sourceColumn, sourceQuestion) => {
           const sourceQuery = sourceQuestion.query();
+          const stageIndex = -1;
 
           return Lib.isAssignableType(
             Lib.fromLegacyColumn(sourceQuery, stageIndex, sourceColumn),
