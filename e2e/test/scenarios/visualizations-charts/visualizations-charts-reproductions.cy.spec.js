@@ -130,9 +130,14 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       cartesianChartCircle().eq(-2).trigger("mousemove");
 
-      popover().within(() => {
-        testPairedTooltipValues("Created At", "2019");
-        testPairedTooltipValues("Count", "6,524");
+      assertEChartsTooltip({
+        header: "2019",
+        rows: [
+          {
+            name: "Count",
+            value: "6,524",
+          },
+        ],
       });
     });
   });

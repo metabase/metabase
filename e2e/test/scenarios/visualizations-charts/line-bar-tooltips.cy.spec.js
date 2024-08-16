@@ -141,7 +141,10 @@ const AVG_OF_TOTAL_CUM_SUM_QUANTITY = {
   display: "line",
 };
 
-function testCumSumChange(testFirstTooltip = true) {
+function testCumSumChange(
+  testFirstTooltip = true,
+  seriesName = "Cumulative sum of Quantity",
+) {
   // In the multi series question with added question spec, this first circle
   // ends up hidden behind another circle, so we'll just skip it in that
   // specific spec
@@ -149,7 +152,7 @@ function testCumSumChange(testFirstTooltip = true) {
     showTooltipForCircleInSeries("#88BF4D", 0);
     echartsTooltip().within(() => {
       tooltipHeader("2022");
-      assertTooltipRow("Cumulative sum of Quantity", {
+      assertTooltipRow(seriesName, {
         color: "#88BF4D",
         value: "3,236",
       });
@@ -159,7 +162,7 @@ function testCumSumChange(testFirstTooltip = true) {
   showTooltipForCircleInSeries("#88BF4D", 1);
   echartsTooltip().within(() => {
     tooltipHeader("2023");
-    assertTooltipRow("Cumulative sum of Quantity", {
+    assertTooltipRow(seriesName, {
       color: "#88BF4D",
       value: "17,587",
       secondaryValue: "+443.48%",
@@ -180,11 +183,11 @@ const AVG_DISCOUNT_SUM_DISCOUNT = {
   display: "line",
 };
 
-function testAvgDiscountChange() {
+function testAvgDiscountChange(seriesName = "Average of Discount") {
   showTooltipForCircleInSeries("#509EE3", 0);
   echartsTooltip().within(() => {
     tooltipHeader("2022");
-    assertTooltipRow("Average of Discount", {
+    assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.03",
     });
@@ -193,7 +196,7 @@ function testAvgDiscountChange() {
   showTooltipForCircleInSeries("#509EE3", 1);
   echartsTooltip().within(() => {
     tooltipHeader("2023");
-    assertTooltipRow("Average of Discount", {
+    assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.41",
       secondaryValue: "+7.54%",
@@ -201,11 +204,11 @@ function testAvgDiscountChange() {
   });
 }
 
-function testSumDiscountChange() {
+function testSumDiscountChange(seriesName = "Sum of Discount") {
   showTooltipForCircleInSeries("#98D9D9", 0);
   echartsTooltip().within(() => {
     tooltipHeader("2022");
-    assertTooltipRow("Sum of Discount", {
+    assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "342.09",
     });
@@ -214,7 +217,7 @@ function testSumDiscountChange() {
   showTooltipForCircleInSeries("#98D9D9", 1);
   echartsTooltip().within(() => {
     tooltipHeader("2023");
-    assertTooltipRow("Sum of Discount", {
+    assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "1,953.08",
       secondaryValue: "+470.93%",
@@ -418,12 +421,12 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       const originalSeriesColors = ["#A989C5", "#88BF4D"];
       const addedSeriesColors = ["#509EE3", "#98D9D9"];
-      const originalAvgSeriesName = "Average of Total";
-      const originalCumSumSeriesName = "Cumulative sum of Quantity";
+      const originalAvgSeriesName = "Q1: Average of Total";
+      const originalCumSumSeriesName = "Q1: Cumulative sum of Quantity";
       const updatedOriginalAvgSeriesName = "Q1 Custom 1";
       const updatedOriginalCumSumSeriesName = "Q1 Custom 2";
-      const addedAvgSeriesName = "Average of Discount";
-      const addedSumSeriesName = "Sum of Discount";
+      const addedAvgSeriesName = "Q2: Average of Discount";
+      const addedSumSeriesName = "Q2: Sum of Discount";
       const updatedAddedAvgSeriesName = "Q2 Custom 1";
       const updatedAddedSumSeriesName = "Q2 Custom 2";
 
@@ -458,17 +461,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       openDashCardVisualizationOptions();
 
+      updateColumnTitle(originalAvgSeriesName, updatedOriginalAvgSeriesName);
       updateColumnTitle(
-        `Q1: ${originalAvgSeriesName}`,
-        updatedOriginalAvgSeriesName,
-      );
-      updateColumnTitle(
-        `Q1: ${originalCumSumSeriesName}`,
+        originalCumSumSeriesName,
         updatedOriginalCumSumSeriesName,
       );
 
-      updateColumnTitle(`Q2: ${addedAvgSeriesName}`, updatedAddedAvgSeriesName);
-      updateColumnTitle(`Q2: ${addedSumSeriesName}`, updatedAddedSumSeriesName);
+      updateColumnTitle(addedAvgSeriesName, updatedAddedAvgSeriesName);
+      updateColumnTitle(addedSumSeriesName, updatedAddedSumSeriesName);
 
       saveDashCardVisualizationOptions();
 
@@ -503,10 +503,10 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
     });
 
     it("should show percent change in tooltip for timeseries axis", () => {
-      testAvgTotalChange();
-      testCumSumChange(false);
-      testAvgDiscountChange();
-      testSumDiscountChange();
+      testAvgTotalChange(showTooltipForCircleInSeries, "Q1: Average of Total");
+      testCumSumChange(false, "Q1: Cumulative sum of Quantity");
+      testAvgDiscountChange("Q2: Average of Discount");
+      testSumDiscountChange("Q2: Sum of Discount");
     });
   });
 
