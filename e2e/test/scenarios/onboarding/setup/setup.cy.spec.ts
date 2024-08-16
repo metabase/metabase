@@ -203,13 +203,13 @@ describe("scenarios > setup", () => {
 
     cy.location("pathname").should("eq", "/");
 
+    main().findByText("Embed Metabase in your app").should("not.exist");
+
     cy.wait("@subscribe").then(({ request }) => {
       const formData = request.body;
       // the body is encoded as formData, but it should contain the email in plan text
       expect(formData).to.include(admin.email);
     });
-
-    main().findByText("Embed Metabase in your app").should("not.exist");
   });
 
   // Values in this test are set through MB_USER_DEFAULTS environment variable!
