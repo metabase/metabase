@@ -34,12 +34,10 @@
    ;;
    ;; TODO -- these should all be made thread safe if possible or renamed so they end in `!`. Then we can remove them
    ;; from this list because by default anything ending in `!` is considered to be thread-unsafe
-   :disallowed
+   :parallel/disallowed
    #{clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
-     metabase-enterprise.sandbox.test-util/with-user-attributes
-     metabase-enterprise.test/with-user-attributes
      metabase.actions.test-util/with-actions
      metabase.actions.test-util/with-actions-disabled
      metabase.actions.test-util/with-actions-enabled
@@ -93,7 +91,7 @@
      metabase.test/with-user-in-groups}
 
    ;; these functions are allowed in `^:parallel` tests even tho they end in `!`
-   :allowed
+   :parallel/allowed
    #{clojure.core/assoc!
      clojure.core/compare-and-set!
      clojure.core/conj!
@@ -828,7 +826,7 @@
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
    metabase.api.automagic-dashboards-test/with-indexed-model                                                                 hooks.metabase.api.automagic-dashboards-test/with-indexed-model
-   metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
+   metabase.api.alert-test/with-alert-in-collection!                                                                         hooks.common/with-four-bindings
    metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
@@ -863,14 +861,14 @@
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
-   metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
+   metabase.models.collection-test/with-collection-hierarchy!                                                                hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
-   metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
+   metabase.models.dashboard-test/with-dash-in-collection!                                                                   hooks.common/with-three-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
    metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
-   metabase.models.pulse-test/with-dashboard-subscription-in-collection                                                      hooks.common/with-four-bindings
-   metabase.models.pulse-test/with-pulse-in-collection                                                                       hooks.common/with-four-bindings
+   metabase.models.pulse-test/with-dashboard-subscription-in-collection!                                                     hooks.common/with-four-bindings
+   metabase.models.pulse-test/with-pulse-in-collection!                                                                      hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
    metabase.models.setting/defsetting                                                                                        hooks.metabase.models.setting/defsetting
    metabase.public-settings.premium-features/defenterprise                                                                   hooks.metabase.public-settings.premium-features/defenterprise
@@ -934,7 +932,7 @@
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.test/with-gtaps-for-user!                                macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
-   metabase-enterprise.query-reference-validation.api-test/with-test-setup      macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup
+   metabase-enterprise.query-reference-validation.api-test/with-test-setup!     macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup!
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection

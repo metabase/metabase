@@ -75,8 +75,8 @@
      (with-test-email
        ~@body)))
 
-(defn- do-with-alert-in-collection [f]
-  (pulse-test/with-pulse-in-collection [db collection alert card]
+(defn- do-with-alert-in-collection! [f]
+  (pulse-test/with-pulse-in-collection! [db collection alert card]
     (assert (t2/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
     ;; Make this Alert actually be an alert
     (t2/update! Pulse (u/the-id alert) {:alert_condition "rows"})
@@ -87,7 +87,7 @@
       (let [card (t2/select-one Card :id (u/the-id card))]
         (f db collection alert card)))))
 
-(defmacro ^:private with-alert-in-collection
+(defmacro ^:private with-alert-in-collection!
   "Do `body` with a temporary Alert whose Card is in a Collection, setting the stage to write various tests below. (Make
   sure to grant All Users permissions to the Collection if needed.)"
   {:style/indent 1}
@@ -97,7 +97,7 @@
     (assert (not= alert-binding 'card)))
   (when card-binding
     (assert (not= card-binding 'alert)))
-  `(do-with-alert-in-collection
+  `(do-with-alert-in-collection!
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or alert-binding '_) ~(or card-binding '_)]
       ~@body)))
 
@@ -149,8 +149,8 @@
 (deftest get-alerts-test
   (testing "archived alerts should be excluded"
     (is (= #{"Not Archived"}
-           (with-alert-in-collection [_ _ not-archived-alert]
-             (with-alert-in-collection [_ _ archived-alert]
+           (with-alert-in-collection! [_ _ not-archived-alert]
+             (with-alert-in-collection! [_ _ archived-alert]
                (t2/update! Pulse (u/the-id not-archived-alert) {:name "Not Archived"})
                (t2/update! Pulse (u/the-id archived-alert)     {:name "Archived", :archived true})
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
@@ -158,8 +158,8 @@
 
   (testing "fetch archived alerts"
     (is (= #{"Archived"}
-           (with-alert-in-collection [_ _ not-archived-alert]
-             (with-alert-in-collection [_ _ archived-alert]
+           (with-alert-in-collection! [_ _ not-archived-alert]
+             (with-alert-in-collection! [_ _ archived-alert]
                (t2/update! Pulse (u/the-id not-archived-alert) {:name "Not Archived"})
                (t2/update! Pulse (u/the-id archived-alert)     {:name "Archived", :archived true})
                (with-alerts-in-readable-collection [not-archived-alert archived-alert]
@@ -167,9 +167,9 @@
 
   (testing "fetch alerts by user ID -- should return alerts created by the user,
            or alerts for which the user is a known recipient"
-    (with-alert-in-collection [_ _ creator-alert]
-      (with-alert-in-collection [_ _ recipient-alert]
-        (with-alert-in-collection [_ _ other-alert]
+    (with-alert-in-collection! [_ _ creator-alert]
+      (with-alert-in-collection! [_ _ recipient-alert]
+        (with-alert-in-collection! [_ _ other-alert]
           (with-alerts-in-readable-collection [creator-alert recipient-alert other-alert]
             (t2/update! Pulse (u/the-id creator-alert) {:name "LuckyCreator" :creator_id (mt/user->id :lucky)})
             (t2/update! Pulse (u/the-id recipient-alert) {:name "LuckyRecipient"})
@@ -196,7 +196,7 @@
 
 (deftest get-alert-test
   (testing "an alert can be fetched by ID"
-    (with-alert-in-collection [_ _ alert]
+    (with-alert-in-collection! [_ _ alert]
       (with-alerts-in-readable-collection [alert]
         (is (= (u/the-id alert)
                (:id (mt/user-http-request :rasta :get 200 (str "alert/" (u/the-id alert)))))))))
@@ -618,7 +618,7 @@
 
   (testing "Non-admin users can update alerts in collection they have view permisisons"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (with-alert-in-collection [_ collection alert card]
+      (with-alert-in-collection! [_ collection alert card]
         (mt/with-temp [PulseCard pc (pulse-card alert card)]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
 

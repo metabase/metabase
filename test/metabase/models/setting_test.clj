@@ -511,18 +511,18 @@
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
-(defn- fetch-csv-setting-value [v]
+(defn- fetch-csv-setting-value! [v]
   (with-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
   (testing "should be able to fetch a simple CSV setting"
     (is (= ["A" "B" "C"]
-           (fetch-csv-setting-value "A,B,C"))))
+           (fetch-csv-setting-value! "A,B,C"))))
 
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
-            (fetch-csv-setting-value "A,B,\"C1,C2\",ddd")))))
+            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)

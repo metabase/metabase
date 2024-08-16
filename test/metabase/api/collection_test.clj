@@ -38,7 +38,7 @@
   [collection-bindings & body]
   {:pre [(vector? collection-bindings)
          (every? symbol? collection-bindings)]}
-  `(collection-test/with-collection-hierarchy [{:keys ~collection-bindings}]
+  `(collection-test/with-collection-hierarchy! [{:keys ~collection-bindings}]
      ~@(for [collection-symb collection-bindings]
          `(perms/grant-collection-read-permissions! (perms-group/all-users) ~collection-symb))
      ~@body))
@@ -515,7 +515,7 @@
       ;; A* -+-> E*
       ;;     |
       ;;     +-> F* -> G*
-      (collection-test/with-collection-hierarchy [{:keys [a b e f g], :as collections}]
+      (collection-test/with-collection-hierarchy! [{:keys [a b e f g], :as collections}]
         (doseq [collection [a b e f g]]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection))
         (is (= [{:name     "A"

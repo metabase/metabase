@@ -471,7 +471,7 @@
                                                         :order-by    [[:asc $venue_id->venues.price]]
                                                         :breakout    [$venue_id->venues.price $user_id->users.name]}))))))))))
 
-(defn- run-query-returning-remark [run-query-fn]
+(defn- run-query-returning-remark! [run-query-fn]
   (let [remark (atom nil)
         orig   qp.util/query->remark]
     (with-redefs [qp.util/query->remark (fn [driver outer-query]
@@ -487,7 +487,7 @@
     (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
       (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash>" (mt/user->id :rasta))
-             (run-query-returning-remark
+             (run-query-returning-remark!
               (fn []
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
 
@@ -763,7 +763,7 @@
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Run the query with different User attributes, should not get the cached result"
-          (met/with-user-attributes :rasta {"cat" 40}
+          (met/with-user-attributes! :rasta {"cat" 40}
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
               (is (= {"cat" 40}
@@ -1107,7 +1107,7 @@
                                    :database (mt/id)}
                     regular-result (mt/with-test-user :crowberto
                                      (qp/process-query query))
-                    sandboxed-result (met/with-user-attributes :rasta {"category" "Gizmo"}
+                    sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
                                        (mt/with-test-user :rasta
                                          (qp/process-query query)))]
                 (testing "Unsandboxed"
