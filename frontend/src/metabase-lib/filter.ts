@@ -75,10 +75,6 @@ export function filterableColumns(
   return ML.filterable_columns(query, stageIndex);
 }
 
-export function dashboardFilterStageIndex(query: Query): number {
-  return ML.dashboard_filter_stage_index(query);
-}
-
 export function filterableColumnOperators(
   column: ColumnMetadata,
 ): FilterOperator[] {

@@ -134,10 +134,7 @@ export function buildColumnTarget(
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
   }
 
-  if (stageIndex === -1) {
-    return ["dimension", fieldRef];
-  }
-  return ["dimension", fieldRef, { "stage-number": stageIndex }];
+  return ["dimension", fieldRef];
 }
 
 export function buildTemplateTagVariableTarget(
@@ -157,7 +154,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     question.type() !== "question"
       ? question.composeQuestionAdhoc().query()
       : question.query();
-  const stageIndex = Lib.dashboardFilterStageIndex(query);
+  const stageIndex = -1;
   const availableColumns =
     parameter && isTemporalUnitParameter(parameter)
       ? Lib.breakouts(query, stageIndex).map(breakout =>

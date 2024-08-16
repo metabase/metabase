@@ -1,4 +1,3 @@
-import { DimensionOption } from "metabase-lib/v1/queries/StructuredQuery";
 import type { CardId } from "./card";
 import type { RowValue, TemporalUnit } from "./dataset";
 import type { ConcreteFieldReference, ExpressionReference } from "./query";
@@ -86,14 +85,9 @@ export type ParameterDimensionTarget =
 
 export type NativeParameterDimensionTarget = ["dimension", VariableTarget];
 
-export type ParameterTargetOptions = {
-  "stage-number"?: number;
-};
-
 export type StructuredParameterDimensionTarget = [
   "dimension",
   ConcreteFieldReference | ExpressionReference,
-  ParameterTargetOptions?,
 ];
 
 export type ParameterValueOrArray = string | number | Array<any>;
