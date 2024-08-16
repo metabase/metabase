@@ -147,14 +147,14 @@
 
 (defn- describe-table-query-step
   "A single reduction step in the `describe-table-query` pipeline.
-   At the end of each step the output is a combination of 'result' and 'item' objects. There is one 'result' for each
-   path which has the most common type for that path. 'item' objects have yet to be aggregated into 'result' objects.
-   Each object has the following keys:
-   - result: true means the object represents a 'result', false means it represents a 'item' to be further processed.
-   - path:   The path to the field in the document.
-   - type:   If 'item', the type of the field's value. If 'result', the most common type for the field.
-   - index:  If 'item', the index of the field in the parent object. If 'result', it is the minimum of such indices.
-   - object: If 'item', the value of the field if it's an object. If 'result', it is null."
+  At the end of each step the output is a combination of 'result' and 'item' objects. There is one 'result' for each
+  path which has the most common type for that path. 'item' objects have yet to be aggregated into 'result' objects.
+  Each object has the following keys:
+  - result: true means the object represents a 'result', false means it represents a 'item' to be further processed.
+  - path:   The path to the field in the document.
+  - type:   If 'item', the type of the field's value. If 'result', the most common type for the field.
+  - index:  If 'item', the index of the field in the parent object. If 'result', it is the minimum of such indices.
+  - object: If 'item', the value of the field if it's an object. If 'result', it is null."
   [max-depth depth]
   [{"$facet"
     (cond-> {"results"    [{"$match" {"result" true}}]
@@ -162,8 +162,8 @@
                            {"$group" {"_id"   {"type" "$type"
                                                "path" "$path"}
                                       ;; count is zero if type is "null" so we only select "null" as the type if there
-                                      ;; is no other type
-                                      "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type", "null"]}
+                                      ;; is no other type for the path
+                                      "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type" "null"]}
                                                                 "then" 0
                                                                 "else" 1}}}
                                       "index" {"$min" "$index"}}}
@@ -177,22 +177,22 @@
                                         "object" nil
                                         "index"  1}}]}
       (not= depth max-depth)
-      (assoc "nextItems" [{"$match" {"result" false, "type" "object"}}
-                           {"$project" {"path" 1
-                                        "kvs"  {"$map" {"input" {"$objectToArray" "$v"},
-                                                        "as"    "item",
-                                                        "in"    {"k"      "$$item.k",
-                                                                 ;; we only need v if it's an object
-                                                                 "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"}, "object"]}
-                                                                                    "then" "$$item.v"
-                                                                                    "else" nil}}
-                                                                 "type"   {"$type" "$$item.v"}}}}}}
-                           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
-                           {"$project" {"path"   {"$concat" ["$path" "." "$kvs.k"]}
-                                        "type"   {"$type" "$kvs.type"}
-                                        "result" {"$literal" false}
-                                        "object" "$kvs.v"
-                                        "index"  1}}]))}
+      (assoc "nextItems" [{"$match" {"result" false, "object" {"$ne" nil}}}
+                          {"$project" {"path" 1
+                                       "kvs"  {"$map" {"input" {"$objectToArray" "$object"}
+                                                       "as"    "item"
+                                                       "in"    {"k"      "$$item.k"
+                                                                ;; we only need v in the next step it's an object
+                                                                "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
+                                                                                   "then" "$$item.v"
+                                                                                   "else" nil}}
+                                                                "type"   {"$type" "$$item.v"}}}}}}
+                          {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+                          {"$project" {"path"   {"$concat" ["$path" "." "$kvs.k"]}
+                                       "type"   "$kvs.type"
+                                       "result" {"$literal" false}
+                                       "index"  1
+                                       "object" "$kvs.object"}}]))}
    {"$project" {"acc" {"$concatArrays" (cond-> ["$results" "$newResults"]
                                          (not= depth max-depth)
                                          (conj "$nextItems"))}}}
@@ -200,7 +200,7 @@
    {"$replaceRoot" {"newRoot" "$acc"}}])
 
 (defn- describe-table-query
-  "See the comment block below for a translation of this query into clojure."
+  "To understand how this works, see the comment block below for a rough translation of this query into Clojure."
   [& {:keys [collection-name sample-size max-depth]}]
   (let [start-n       (quot sample-size 2)
         end-n         (- sample-size start-n)
@@ -211,66 +211,68 @@
                          "pipeline" [{"$sort" {"_id" -1}}
                                      {"$limit" end-n}]}}]
         initial-items [{"$project" {"path" "$ROOT"
-                                    "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"},
-                                                   "as"    "item",
-                                                   "in"    {"k"      "$$item.k",
-                                                            "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"}, "object"]}
+                                    "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"}
+                                                   "as"    "item"
+                                                   "in"    {"k"      "$$item.k"
+                                                            "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
                                                                                "then" "$$item.v"
                                                                                "else" nil}}
                                                             "type"   {"$type" "$$item.v"}}}}}}
-                       {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"   "$kvs.k"
-                                    "object" "$kvs.v"
                                     "result" {"$literal" false}
                                     "type"   "$kvs.type"
-                                    "index"  1}}]]
+                                    "index"  1
+                                    "object" "$kvs.object"}}]]
     (concat sample
             initial-items
             (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
-            [{"$project" {"_id"   0
-                          "path"  "$path"
-                          "type"  "$type"
-                          "index" "$index"}}])))
+            [{"$project" {"_id" 0, "path" 1, "type" 1, "index" 1}}])))
 
 (comment
-  ;; describe-table-clojure is logically equivalent to [[describe-table-query]], excluding minor details like taking the
-  ;; sample and dealing with null values.
-  (defn describe-table-clojure [data max-depth]
-    (let [initial-items (mapcat (fn [x]
+  ;; `describe-table-clojure` is a reference implementation for [[describe-table-query]] in Clojure.
+  ;; It is almost logically equivalent, excluding minor details like how the sample is taken, and dealing with null
+  ;; values. It is arguably easier to understand the Clojure version and translate it into MongoDB query language
+  ;; than to understand the MongoDB query version directly.
+  (defn describe-table-clojure [sample-data max-depth]
+    (let [;; initial items is a list of maps, each map a field in a document in the sample
+          initial-items (mapcat (fn [x]
                                   (for [[i [k v]] (map vector (range) x)]
-                                    {:path   k
+                                    {:path   (name k)
                                      :object (if (map? v) v nil)
                                      :index  i
                                      :type   (type v)}))
-                                data)]
+                                sample-data)
+          most-common (fn [xs]
+                        (key (apply max-key val (frequencies xs))))]
       (:results (reduce
-                 (fn [{:keys [results items]} depth]
-                   {:results (concat results
-                                     (for [[path group] (group-by :path items)]
-                                       {:path   path
-                                        :type   (key (apply max-key val (frequencies (map :type group))))
-                                        :index  (apply min (map :index group))}))
-                    :items   (when (not= depth max-depth)
-                               (->> (keep :object items)
-                                    (mapcat (fn [x]
-                                              (for [[i [k v]] (map vector (range) x)]
-                                                {:path   (str (:path x) "." k)
-                                                 :object (if (map? v) v nil)
-                                                 :index  i
-                                                 :type   (type v)})))))})
-                 {:results [] :items initial-items}
+                 (fn [{:keys [results next-items]} depth]
+                   {:results    (concat results
+                                        (for [[path group] (group-by :path next-items)]
+                                          {:path  path
+                                           :type  (most-common (map :type group))
+                                           :index (apply min (map :index group))}))
+                    :next-items (when (not= depth max-depth)
+                                  (->> (keep :object next-items)
+                                       (mapcat (fn [x]
+                                                 (for [[i [k v]] (map vector (range) x)]
+                                                   {:path   (str (:path x) "." (name k))
+                                                    :object (if (map? v) v nil)
+                                                    :index  i
+                                                    :type   (type v)})))))})
+                 {:results [], :next-items initial-items}
                  (range (inc max-depth))))))
   ;; Example:
   (def sample-data
     [{:a 1 :b {:c "hello" :d [1 2 3]}}
      {:a 2 :b {:c "world"}}])
   (describe-table-clojure sample-data 0)
-  ;; => ({:path :a, :type java.lang.Long, :index 0} {:path :b, :type clojure.lang.PersistentArrayMap, :index 1})
+  ;; => ({:path "a", :type java.lang.Long, :index 0}
+  ;;     {:path "b", :type clojure.lang.PersistentArrayMap, :index 1})
   (describe-table-clojure sample-data 1)
-  ;; => ({:path :a, :type java.lang.Long, :index 0}
-  ;;     {:path :b, :type clojure.lang.PersistentArrayMap, :index 1}
-  ;;     {:path ".:c", :type java.lang.String, :index 0}
-  ;;     {:path ".:d", :type clojure.lang.PersistentVector, :index 1})
+  ;; => ({:path "a", :type java.lang.Long, :index 0}
+  ;;     {:path "b", :type clojure.lang.PersistentArrayMap, :index 1}
+  ;;     {:path ".c", :type java.lang.String, :index 0}
+  ;;     {:path ".d", :type clojure.lang.PersistentVector, :index 1})
   )
 
 (def describe-table-query-depth
