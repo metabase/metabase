@@ -451,6 +451,31 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
         assertQueryBuilderRowCount(1);
       });
+
+      it("should be able to add post-aggregation breakouts for each breakout column", () => {
+        createQuestion(questionWith2BreakoutsDetails, { visitQuestion: true });
+        openNotebook();
+
+        cy.log("add an aggregation for the year column");
+        getNotebookStep("summarize").button("Summarize").click();
+        popover().findByText("Count of rows").click();
+
+        cy.log("add an aggregation for the month column");
+        getNotebookStep("summarize", { stage: 1 }).icon("add").click();
+        popover().within(() => {
+          cy.findByText("Minimum of ...").click();
+          cy.findByText("Created At: Month").click();
+        });
+
+        cy.log("assert query results");
+        cy.button("Visualize").click();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: ["Max of Created At: Year", "Min of Created At: Month"],
+          firstRows: [["January 1, 2026, 12:00 AM", "April 1, 2022, 12:00 AM"]],
+        });
+        assertQueryBuilderRowCount(1);
+      });
     });
   });
 });
