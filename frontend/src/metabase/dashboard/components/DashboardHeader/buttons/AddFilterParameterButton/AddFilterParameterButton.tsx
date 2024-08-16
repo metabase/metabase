@@ -29,8 +29,8 @@ export const AddFilterParameterButton = () => {
               ? dispatch(hideAddParameterPopover())
               : dispatch(showAddParameterPopover())
           }
-          aria-label={t`Add a filter`}
-          tooltipLabel={t`Add a filter`}
+          aria-label={t`Add a filter or parameter`}
+          tooltipLabel={t`Add a filter or parameter`}
         />
       </Popover.Target>
       <Popover.Dropdown data-testid="add-filter-parameter-dropdown">

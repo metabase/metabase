@@ -28,7 +28,7 @@ describe("AddFilterParameterButton", () => {
 
   it("should render the button with correct icon and tooltip", () => {
     setup();
-    const button = screen.getByLabelText("Add a filter");
+    const button = screen.getByLabelText("Add a filter or parameter");
     expect(button).toBeInTheDocument();
     expect(screen.getByLabelText("filter icon")).toBeInTheDocument();
   });
@@ -54,7 +54,7 @@ describe("AddFilterParameterButton", () => {
       expect(
         screen.queryByTestId("add-filter-parameter-dropdown"),
       ).not.toBeInTheDocument();
-      await userEvent.click(screen.getByLabelText("Add a filter"));
+      await userEvent.click(screen.getByLabelText("Add a filter or parameter"));
       expect(
         screen.getByTestId("add-filter-parameter-dropdown"),
       ).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe("AddFilterParameterButton", () => {
       expect(
         screen.getByTestId("add-filter-parameter-dropdown"),
       ).toBeInTheDocument();
-      await userEvent.click(screen.getByLabelText("Add a filter"));
+      await userEvent.click(screen.getByLabelText("Add a filter or parameter"));
       expect(
         screen.queryByTestId("add-filter-parameter-dropdown"),
       ).not.toBeInTheDocument();
@@ -88,7 +88,7 @@ describe("AddFilterParameterButton", () => {
   it("should show the popover when the button is clicked", async () => {
     setup();
 
-    const button = screen.getByLabelText("Add a filter");
+    const button = screen.getByLabelText("Add a filter or parameter");
     await userEvent.click(button);
     expect(screen.getByText("Add a filter or parameter")).toBeInTheDocument();
   });

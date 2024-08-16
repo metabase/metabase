@@ -170,7 +170,7 @@ export const ParameterSettings = ({
       {sectionId && (
         <>
           <Box mb="xl">
-            <SettingLabel>{t`Filter type`}</SettingLabel>
+            <SettingLabel>{t`Type`}</SettingLabel>
             <Select
               data={dataTypeSectionsData}
               value={sectionId}

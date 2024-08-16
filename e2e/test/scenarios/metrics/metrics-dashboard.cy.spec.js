@@ -163,7 +163,7 @@ describe("scenarios > metrics > dashboard", () => {
     getDashboardCard().findByText("18,760").should("be.visible");
     cy.findByTestId("dashboard-header").within(() => {
       cy.findByLabelText("Edit dashboard").click();
-      cy.findByLabelText("Add a filter").click();
+      cy.findByLabelText("Add a filter or parameter").click();
     });
     popover().findByText("Text or Category").click();
     getDashboardCard().findByText("Select…").click();
