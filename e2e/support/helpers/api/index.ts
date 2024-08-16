@@ -8,6 +8,7 @@ export { createCollection } from "./createCollection";
 export { createDashboard } from "./createDashboard";
 export type { DashboardDetails } from "./createDashboard";
 export { createDashboardWithTabs } from "./createDashboardWithTabs";
+export { createModerationReview } from "./createModerationReview";
 export { createNativeQuestion } from "./createNativeQuestion";
 export type { NativeQuestionDetails } from "./createNativeQuestion";
 export { createQuestion } from "./createQuestion";
