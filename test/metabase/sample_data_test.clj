@@ -196,7 +196,3 @@
           (let [sample-db (t2/select-one :model/Database :is_sample true)]
             (is (= (task.sync-databases-test/all-db-sync-triggers-name sample-db)
                    (task.sync-databases-test/query-all-db-sync-triggers-name sample-db)))))))))
-
-(deftest ^:parallel whatever-test
-  (with-redefs [clojure.core/+ (constantly 0)]
-    (is (zero? (+ 1 2)))))
