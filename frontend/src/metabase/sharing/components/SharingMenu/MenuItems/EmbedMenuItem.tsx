@@ -28,7 +28,10 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
       {isEmbeddingEnabled ? (
         <Title order={4}>{t`Embed`}</Title>
       ) : (
-        <Link to="/admin/settings/embedding-in-other-applications">
+        <Link
+          to="/admin/settings/embedding-in-other-applications"
+          target="_blank"
+        >
           <Stack spacing="xs">
             <Title order={4}>{t`Embedding is off`}</Title>
             <Text size="sm">{t`Enable it in settings`}</Text>

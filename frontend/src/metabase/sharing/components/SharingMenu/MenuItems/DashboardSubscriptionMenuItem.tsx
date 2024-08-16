@@ -47,7 +47,7 @@ export function DashboardSubscriptionMenuItem({
           <Text
             size="sm"
             color="inherit"
-          >{t`As your admin to set up email`}</Text>
+          >{t`Ask your admin to set up email`}</Text>
         </Stack>
       </Menu.Item>
     );

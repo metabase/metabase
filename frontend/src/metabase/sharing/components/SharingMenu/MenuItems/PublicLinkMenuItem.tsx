@@ -33,7 +33,7 @@ export function PublicLinkMenuItem({
             {hasPublicLink ? t`Public link` : t`Create a public link`}
           </Title>
         ) : (
-          <Link to="/admin/settings/public-sharing">
+          <Link to="/admin/settings/public-sharing" target="_blank">
             <Stack spacing="xs">
               <Title order={4}>{t`Public links are off`}</Title>
               <Text size="sm">{t`Enable them in settings`}</Text>
