@@ -16,6 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -259,9 +260,23 @@
                      (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
                                                  :throw-exceptions? true))
 
-    (let [table-ids (sandbox->table-ids sandbox)]
-      {:perms/view-data (zipmap table-ids (repeat :unrestricted))
+    (let [table-ids (sandbox->table-ids sandbox)
+          table-id->db-id (if (seq table-ids)
+                            (m/index-by :id (t2/select :model/Table :id [:in table-ids]))
+                            {})
+          unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
+                                                     api/*current-user-id*
+                                                     :perms/view-data
+                                                     :unrestricted
+                                                     (get table-id->db-id table-id)
+                                                     table-id))
+                                      table-ids)]
+      {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
+       ;; grant create-queries to only unblocked table ids. Otherwise sandboxed users with a joined table that's
+       ;; _blocked_ can be queried against from the query builder, but we never want that.
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
+
+
 
 (defn- merge-perms
   "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
