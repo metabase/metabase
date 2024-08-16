@@ -32,7 +32,6 @@ import type {
   DateRange,
   TimeSeriesXAxisModel,
   NumericXAxisModel,
-  ShowWarning,
   NumericAxisScaleTransforms,
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -58,6 +57,8 @@ import type {
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
+import type { ShowWarning } from "../../types";
 
 import { getAxisTransforms } from "./transforms";
 import { getFormattingOptionsWithoutScaling } from "./util";

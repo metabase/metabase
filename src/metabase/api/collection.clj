@@ -121,7 +121,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -961,7 +961,9 @@
 (defn- effective-children-ids
   "Returns effective children ids for collection."
   [collection permissions-set]
-  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids permissions-set))
+  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids
+                                     permissions-set
+                                     {:permission-level :write}))
         all-descendants (map :id (collection/descendants-flat collection))]
     (filterv visible-collection-ids all-descendants)))
 

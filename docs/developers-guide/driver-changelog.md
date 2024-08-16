@@ -104,14 +104,20 @@ title: Driver interface changelog
   `metabase.test.data.sql.ddl/insert-rows-dml-statements`, since `INSERT` is DML, not DDL. Please update your method
   implementations accordingly.
 
-- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that support
-  foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature instead. The
-  default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based drivers
-  by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`,
+- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that
+  support foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature
+  instead. The default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based
+  drivers by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`,
   the test for remapping and implicit joins will be now executed.
 
 -  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in
    tests. Currently, this is disabled only for `:sparksql`.
+
+- The test methods `metabase.test.data.interface/supports-time-type?` and
+  `metabase.test.data.interface/supports-timestamptz-type?` have been removed and replaced by the features
+  `:test/time-type` and `:test/timestamptz-type` respectively. If you implemented these methods, replace
+  implementations with implementations of `metabase.driver/database-supports?` for your driver and the equivalent
+  feature keyword instead.
 
 ## Metabase 0.50.17
 

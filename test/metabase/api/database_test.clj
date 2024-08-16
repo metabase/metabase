@@ -133,6 +133,7 @@
     :display_name     (:name card)
     :schema           "Everything else"
     :moderated_status nil
+    :metrics          nil
     :description      nil
     :type             "question"}
    kvs))
@@ -192,7 +193,7 @@
   (testing "GET /api/database/:id"
     (testing "Invalid `?include` should return an error"
       (is (= {:errors          {:include "nullable enum of tables, tables.fields"},
-              :specific-errors {:include ["should be either tables or tables.fields, received: \"schemas\""]}}
+              :specific-errors {:include ["should be either \"tables\" or \"tables.fields\", received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
 (deftest get-database-legacy-no-self-service-test
@@ -1668,6 +1669,7 @@
         (testing "Should be able to get saved questions in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
+                   :metrics          nil
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
@@ -1694,6 +1696,7 @@
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
                             :display_name     "Card 2"
+                            :metrics          nil
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
                             :description      nil
@@ -1708,6 +1711,14 @@
                      Card       card-1 (assoc (card-with-native-query "Card 1")
                                               :collection_id (:id coll)
                                               :type :model)
+                     Card       metric {:type :metric
+                                        :name "Metric"
+                                        :database_id (mt/id)
+                                        :collection_id (:id coll)
+                                        :dataset_query {:type :query
+                                                        :database (mt/id)
+                                                        :query {:source-table (str "card__" (:id card-1))
+                                                                :aggregation [[:count]]}}}
                      Card       card-2 (assoc (card-with-native-query "Card 2")
                                               :type :model)
                      Card       _card-3 (assoc (card-with-native-query "error")
@@ -1718,15 +1729,22 @@
           (is (=? {:status "completed"}
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))))
         (testing "Should be able to get datasets in a specific collection"
-          (is (= [{:id               (format "card__%d" (:id card-1))
-                   :db_id            (mt/id)
-                   :moderated_status nil
-                   :display_name     "Card 1"
-                   :schema           "My Collection"
-                   :description      nil
-                   :type             "model"}]
-                 (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
+          (is (=? [{:id               (format "card__%d" (:id card-1))
+                    :db_id            (mt/id)
+                    :metrics          [{:id             (:id metric)
+                                        :name           "Metric"
+                                        :type           "metric"
+                                        :source_card_id (:id card-1)
+                                        :database_id    (mt/id)}]
+                    :display_name     "Card 1"
+                    :schema           "My Collection"
+                    :type             "model"}
+                   {:id           (format "card__%d" (:id metric))
+                    :db_id        (mt/id)
+                    :display_name "Metric"
+                    :schema       "My Collection"}]
+                  (mt/user-http-request :lucky :get 200
+                                        (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
 
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
@@ -1745,6 +1763,7 @@
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
                             :display_name     "Card 2"
+                            :metrics          nil
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
                             :description      nil
@@ -2075,16 +2094,17 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest log-an-error-if-contains-undefined-setting-test
+(deftest ^:paralell log-an-error-if-contains-undefined-setting-test
   (testing "should log an error message if database contains undefined settings"
     (t2.with-temp/with-temp [Database {db-id :id} {:settings {:undefined-setting true}}]
-      (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
-             (-> (mt/with-log-messages-for-level :error
-                   (testing "does not includes undefined keys by default"
-                     (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
-                                         :undefined-setting)))))
-                 first
-                 last))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (testing "does not includes undefined keys by default"
+          (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                              :undefined-setting))))
+        (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+               (-> (messages)
+                   first
+                   :message)))))))
 
 (deftest persist-database-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)

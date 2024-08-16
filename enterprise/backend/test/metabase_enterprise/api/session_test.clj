@@ -23,6 +23,7 @@
                               :no-upsell
                               :official-collections
                               :sandboxes
+                              :scim
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -48,6 +49,7 @@
                   :llm_autodescription            true
                   :official_collections           true
                   :sandboxes                      true
+                  :scim                           true
                   :session_timeout_config         true
                   :snippet_collections            true
                   :sso_google                     true

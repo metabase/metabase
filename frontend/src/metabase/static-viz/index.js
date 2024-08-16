@@ -10,6 +10,7 @@ import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
   measureTextWidth,
   measureTextEChartsAdapter,
+  measureTextHeight,
 } from "metabase/static-viz/lib/text";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 
@@ -38,6 +39,7 @@ export function RenderChart(rawSeries, dashcardSettings, colors) {
     formatValue: formatStaticValue,
     measureText: (text, style) =>
       measureTextWidth(text, style.size, style.weight),
+    measureTextHeight: (_, style) => measureTextHeight(style.size),
     fontFamily: "Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif",
     theme: DEFAULT_VISUALIZATION_THEME,
   };

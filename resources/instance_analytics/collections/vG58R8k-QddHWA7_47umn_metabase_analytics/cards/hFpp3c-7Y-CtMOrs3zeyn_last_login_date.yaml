@@ -29,10 +29,10 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    '["ref",["field",["Internal Metabase Database","public","v_users","date_joined"],null]]':
+    '["name","date_joined"]':
       date_abbreviate: true
       time_enabled: null
-    '["ref",["field",["Internal Metabase Database","public","v_users","last_login"],null]]':
+    '["name","last_login"]':
       date_abbreviate: true
       time_enabled: null
   scalar.field: last_login

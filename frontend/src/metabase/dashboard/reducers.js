@@ -33,6 +33,7 @@ import {
   CANCEL_FETCH_CARD_DATA,
   RESET,
   SET_PARAMETER_VALUES,
+  RESET_PARAMETERS,
   UNDO_REMOVE_CARD_FROM_DASH,
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
@@ -291,6 +292,14 @@ const draftParameterValues = handleActions(
     },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [RESET_PARAMETERS]: {
+      next: (state, { payload: parameters }) => {
+        return parameters.reduce(
+          (result, parameter) => assoc(result, parameter.id, parameter.value),
+          state ?? {},
+        );
+      },
     },
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),

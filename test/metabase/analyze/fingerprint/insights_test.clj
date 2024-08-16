@@ -96,6 +96,8 @@
                    ["2018-12-02",179,3311]
                    ["2018-12-03",144,2525]])
 
+(def ^:private larger-ts (concat ts ts ts ts))
+
 (defn- round-to-precision
   "Round (presumably floating-point) `number` to a precision of `sig-figures`. Returns a `Double`.
 
@@ -160,6 +162,27 @@
                        ["2018-11-05" Double/NaN]
                        ["2018-11-08" Double/POSITIVE_INFINITY]])))))
 
+(defn- prepeatedly
+  "basic parallel version of `repeatedly`."
+  [n f]
+  (let [futures (doall (repeatedly n #(future (f))))]
+    (map deref futures)))
+
+(deftest consistent-timeseries-insight-test
+  (testing "Timeseries insights remain stable when sampling. (#44349)"
+    (let [insights (fn []
+                     (-> (transduce identity
+                                    (insights/insights [{:base_type :type/DateTime}
+                                                        {:base_type :type/Number}
+                                                        {:base_type :type/Number}])
+                                    ;; intentionally make a dataset larger than
+                                    ;; `insights/validation-set-size` to induce the random sampling
+                                    larger-ts)
+                                        ; This value varies between machines (M1 Macs? JVMs?) so round it to avoid test failures.
+                         (update-in [0 :best-fit 1] #(round-to-precision 6 %))))]
+      (is (= 1
+             (count (distinct (prepeatedly 100 insights))))))))
+
 (deftest change-test
   (is (= 0.0 (insights/change 1 1)))
   (is (= -0.5 (insights/change 1 2)))
@@ -171,3 +194,15 @@
   (is (= 1.0 (insights/change -1 -2)))
   (is (= nil (insights/change -1 0)))
   (is (= 1.0 (insights/change 0 -1))))
+
+(deftest insights-with-custom-epxression-columns-test
+  (testing "If valid timeseries columns exist, insights should be computed even with custom expressions. (#46244)"
+    (is (some?
+         (transduce identity
+                    (insights/insights [{:base_type :type/DateTime}
+                                        {:base_type :type/Number}
+                                        ;; Any column with a base type that is not number or temporal previously
+                                        ;; prevented timeseries insights from being calculated
+                                        {:base_type :type/Text}])
+                    [["2024-08-09" 10.0 "weekday"]
+                     ["2024-08-10" 20.0 "weekend"]])))))

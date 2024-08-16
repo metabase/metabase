@@ -1,4 +1,3 @@
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -7,6 +6,7 @@ import {
   setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
 } from "__support__/server-mocks";
+import { setupPulseEndpoint } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
 import { getDefaultTab } from "metabase/dashboard/actions";
@@ -16,10 +16,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockLocation,
-} from "metabase-types/store/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { DashboardHeader, type DashboardHeaderProps } from "../DashboardHeader";
 
@@ -98,7 +95,7 @@ export const setup = async ({
     };
   }
 
-  fetchMock.get("path:/api/pulse/form_input", channelData);
+  setupPulseEndpoint(channelData);
 
   const dashboardHeaderProps: DashboardHeaderProps = {
     dashboard,
@@ -111,7 +108,7 @@ export const setup = async ({
     onRefreshPeriodChange: jest.fn(),
     onNightModeChange: jest.fn(),
     onFullscreenChange: jest.fn(),
-    location: createMockLocation(),
+    parameterQueryParams: {},
   };
 
   renderWithProviders(

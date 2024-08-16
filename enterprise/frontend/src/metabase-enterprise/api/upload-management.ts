@@ -1,11 +1,12 @@
-import { Api } from "metabase/api";
 import { provideTableListTags, invalidateTags, tag } from "metabase/api/tags";
 import type {
   DeleteUploadTableRequest,
   UploadManagementResponse,
 } from "metabase-types/api";
 
-export const uploadManagementApi = Api.injectEndpoints({
+import { EnterpriseApi } from "./api";
+
+export const uploadManagementApi = EnterpriseApi.injectEndpoints({
   endpoints: builder => ({
     listUploadTables: builder.query<UploadManagementResponse, void>({
       query: () => ({

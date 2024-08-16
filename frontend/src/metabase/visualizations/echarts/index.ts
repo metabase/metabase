@@ -1,4 +1,10 @@
-import { LineChart, BarChart, ScatterChart, CustomChart } from "echarts/charts";
+import {
+  LineChart,
+  BarChart,
+  ScatterChart,
+  SunburstChart,
+  CustomChart,
+} from "echarts/charts";
 import {
   BrushComponent,
   DataZoomComponent,
@@ -6,6 +12,8 @@ import {
   MarkLineComponent,
   ToolboxComponent,
   DatasetComponent,
+  GraphicComponent,
+  TooltipComponent,
 } from "echarts/components";
 import { use } from "echarts/core";
 import { LabelLayout } from "echarts/features";
@@ -17,6 +25,8 @@ export const registerEChartsModules = () => {
     BarChart,
     ScatterChart,
     CustomChart,
+    SunburstChart,
+    GraphicComponent,
     GridComponent,
     BarChart,
     SVGRenderer,
@@ -26,5 +36,6 @@ export const registerEChartsModules = () => {
     BrushComponent,
     DatasetComponent,
     LabelLayout,
+    TooltipComponent,
   ]);
 };

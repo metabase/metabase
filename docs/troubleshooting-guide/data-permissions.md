@@ -119,12 +119,10 @@ If you can’t solve your problem using the troubleshooting guides:
 [known-issues]: ./known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/permissions
 [native-query-editing]: ../permissions/data.md#query-builder-and-native-create-queries-permission
-[no-self-service]: ../permissions/data.md#no-self-service-access
 [pricing]: https://www.metabase.com/pricing
 [proxies]: ./proxies.md
 [sql-access]: ./data-permissions.md#a-user-group-cant-access-the-sql-editor
 [sql-sandboxing]: ./sandboxing.md#is-the-question-written-in-sql
-[table-schema-access]: ./data-permissions.md#people-have-the-wrong-access-to-a-table-or-schema
 [troubleshooting-data-sandboxing]: ./sandboxing.md
 [troubleshooting-permissions]: ./permissions.md
 [unrestricted]: ../permissions/data.md#can-view-data-permission

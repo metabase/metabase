@@ -27,7 +27,7 @@ export const UpsellHosting = ({ source }: { source: string }) => {
       maxWidth={UPSELL_CARD_WIDTH}
     >
       {jt`${(
-        <strong>{t`Migrate to Metabase Cloud`}</strong>
+        <strong key="migrate">{t`Migrate to Metabase Cloud`}</strong>
       )} for fast, reliable, and secure deployment.`}
     </UpsellCard>
   );
@@ -51,7 +51,7 @@ export const UpsellHostingUpdates = ({ source }: { source: string }) => {
       maxWidth={UPSELL_CARD_WIDTH}
     >
       {jt`${(
-        <strong>{t`Migrate to Metabase Cloud`}</strong>
+        <strong key="migrate">{t`Migrate to Metabase Cloud`}</strong>
       )} for fast, reliable, and secure deployment.`}
     </UpsellCard>
   );

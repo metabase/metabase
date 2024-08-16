@@ -1,3 +1,4 @@
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -7,6 +8,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import { METAKEY } from "metabase/lib/browser";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -21,6 +23,10 @@ import {
   createSavedStructuredCard,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import {
+  createMockEmbedState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 
@@ -50,12 +56,21 @@ const createQueryWithBreakout = () => {
 
 const setup = (
   step = createMockNotebookStep(),
-  { readOnly = false }: { readOnly?: boolean } = {},
+  {
+    readOnly = false,
+    isEmbeddingSdk = false,
+  }: { readOnly?: boolean; isEmbeddingSdk?: boolean } = {},
 ) => {
+  const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
+
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+  const storeInitialState = createMockState({
+    embed: createMockEmbedState({ isEmbeddingSdk }),
+  });
 
   renderWithProviders(
     <DataStep
@@ -68,6 +83,7 @@ const setup = (
       reportTimezone="UTC"
       updateQuery={updateQuery}
     />,
+    { storeInitialState },
   );
 
   const getNextQuery = (): Lib.Query => {
@@ -89,7 +105,7 @@ const setup = (
     return Lib.displayInfo(nextQuery, 0, column);
   };
 
-  return { getNextQuery, getNextTableName, getNextColumn };
+  return { getNextQuery, getNextTableName, getNextColumn, mockWindowOpen };
 };
 
 const setupEmptyQuery = () => {
@@ -148,7 +164,6 @@ describe("DataStep", () => {
   it.each<{ type: CardType; icon: IconName }>([
     { type: "question", icon: "table2" },
     { type: "model", icon: "model" },
-    { type: "metric", icon: "metric" },
   ])("should render with a selected card", ({ type, icon }) => {
     const card = createSavedStructuredCard({
       id: 1,
@@ -288,6 +303,125 @@ describe("DataStep", () => {
       setup(step);
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("link to data source", () => {
+    it("should show the tooltip on hover", async () => {
+      setup();
+
+      await userEvent.hover(screen.getByText("Orders"));
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
+        `${METAKEY}+click to open in new tab`,
+      );
+    });
+
+    it("should not show the tooltip when there is no table selected", async () => {
+      setupEmptyQuery();
+
+      const modal = await screen.findByTestId("entity-picker-modal");
+      const closeButton = await screen.findByRole("button", { name: /close/i });
+
+      await userEvent.click(closeButton);
+      expect(modal).not.toBeInTheDocument();
+
+      await userEvent.hover(screen.getByText("Pick your starting data"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
+    it("meta click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { metaKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("ctrl click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { ctrlKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("middle click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      const middleClick = new MouseEvent("auxclick", {
+        bubbles: true,
+        button: 1,
+      });
+
+      fireEvent(dataSource, middleClick);
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("regular click should open the entity picker", async () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+
+      fireEvent.click(dataSource);
+
+      expect(
+        await screen.findByTestId("entity-picker-modal"),
+      ).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    describe("embedding SDK context", () => {
+      it("should not show the tooltip", async () => {
+        setup(createMockNotebookStep(), { isEmbeddingSdk: true });
+
+        await userEvent.hover(screen.getByText("Orders"));
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
+
+      it.each([{ metaKey: true }, { ctrlKey: true }])(
+        "meta/ctrl click should not open the data source",
+        async clickConfig => {
+          const { mockWindowOpen } = setup(createMockNotebookStep(), {
+            isEmbeddingSdk: true,
+          });
+
+          const dataSource = screen.getByText("Orders");
+          fireEvent.click(dataSource, clickConfig);
+
+          expect(
+            await screen.findByTestId("entity-picker-modal"),
+          ).toBeInTheDocument();
+          expect(mockWindowOpen).not.toHaveBeenCalled();
+          mockWindowOpen.mockClear();
+        },
+      );
+
+      it("middle click should not open the data source", async () => {
+        const { mockWindowOpen } = setup(createMockNotebookStep(), {
+          isEmbeddingSdk: true,
+        });
+
+        const dataSource = screen.getByText("Orders");
+        const middleClick = new MouseEvent("auxclick", {
+          bubbles: true,
+          button: 1,
+        });
+
+        fireEvent(dataSource, middleClick);
+
+        expect(
+          await screen.findByTestId("entity-picker-modal"),
+        ).toBeInTheDocument();
+        expect(mockWindowOpen).not.toHaveBeenCalled();
+        mockWindowOpen.mockClear();
+      });
     });
   });
 });

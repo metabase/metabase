@@ -9,7 +9,7 @@ import {
   summarize,
   echartsContainer,
   chartPathWithFillColor,
-  testPairedTooltipValues,
+  assertEChartsTooltip,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -303,7 +303,18 @@ describe("scenarios > visualizations > waterfall", () => {
 
     chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
 
-    testPairedTooltipValues("C2:", "0.2");
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "C1",
+          value: "a",
+        },
+        {
+          name: "C2",
+          value: "0.2",
+        },
+      ],
+    });
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {
