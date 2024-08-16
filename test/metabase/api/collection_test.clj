@@ -31,7 +31,7 @@
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
-(defmacro ^:private with-collection-hierarchy
+(defmacro ^:private with-collection-hierarchy!
   "Totally-rad macro that creates a Collection hierarchy and grants the All Users group perms for all the Collections
   you've bound. See docs for [[metabase.models.collection-test/with-collection-hierarchy]] for more details."
   {:style/indent 1}
@@ -233,7 +233,7 @@
     (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
       (testing "sanity check"
         (is (some? personal-collection)))
-      (with-collection-hierarchy [a b c d e f g]
+      (with-collection-hierarchy! [a b c d e f g]
         (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
               response (mt/user-http-request :rasta :get 200 "collection/tree")]
           (testing "Make sure overall tree shape of the response is as is expected"
@@ -264,7 +264,7 @@
 
 (deftest collections-tree-exclude-other-user-collections-test
   (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
-    (with-collection-hierarchy [a b c d e f g]
+    (with-collection-hierarchy! [a b c d e f g]
       (collection/move-collection! a (collection/children-location personal-collection))
       (let [ids                 (set (map :id (cons personal-collection [a b c d e f g])))
             response-rasta      (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
@@ -290,7 +290,7 @@
 
 (deftest collection-tree-here-and-below-test
   (testing "Tree should properly indicate contents"
-    (with-collection-hierarchy [a b]
+    (with-collection-hierarchy! [a b]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
         (t2.with-temp/with-temp [Card _ {:name "Personal Card"
                                          :collection_preview false
@@ -315,7 +315,7 @@
 
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
-    (with-collection-hierarchy [a b c d e f g]
+    (with-collection-hierarchy! [a b c d e f g]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))
             ids                 (set (map :id (cons personal-collection [a b c d e f g])))]
         (let [response (mt/user-http-request :rasta :get 200 "collection/tree?shallow=true")]
@@ -353,7 +353,7 @@
 
 (deftest select-collections-shallow-test
   (testing "Selecting collections based off collection-id equaling nil works."
-    (with-collection-hierarchy [a b c d e f g]
+    (with-collection-hierarchy! [a b c d e f g]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :crowberto))
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
         (mt/with-test-user :crowberto
@@ -556,7 +556,7 @@
 
 ;;; ------------------------------------------------ Collection Items ------------------------------------------------
 
-(defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
+(defn- do-with-some-children-of-collection! [collection-or-id-or-nil f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
@@ -581,8 +581,8 @@
             :dashboard-subscription-pulse-id dashboard-sub-pulse-id
             :dashboard-sub-pulse-card-id     dashboard-sub-pulse-card-id})))))
 
-(defmacro ^:private with-some-children-of-collection {:style/indent 1} [collection-or-id-or-nil & body]
-  `(do-with-some-children-of-collection
+(defmacro ^:private with-some-children-of-collection! {:style/indent 1} [collection-or-id-or-nil & body]
+  `(do-with-some-children-of-collection!
     ~collection-or-id-or-nil
     (fn [~'&ids]
       ~@body)))
@@ -740,7 +740,7 @@
     (testing "check that you get to see the children as appropriate"
       (t2.with-temp/with-temp [Collection collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-        (with-some-children-of-collection collection
+        (with-some-children-of-collection! collection
           (is (partial= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
                                                 {:name               "Birthday Card", :description nil,     :model     "card",
                                                  :collection_preview false,           :display     "table", :entity_id true}
@@ -753,7 +753,7 @@
       (testing "...and that you can also filter so that you only see the children you want to see"
         (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (with-some-children-of-collection collection
+          (with-some-children-of-collection! collection
             (is (partial= ()
                           (mt/boolean-ids-and-timestamps
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "no_models")))))
@@ -1334,7 +1334,7 @@
 
 (deftest effective-ancestors-and-children-test
   (testing "does a top-level Collection like A have the correct Children?"
-    (with-collection-hierarchy [a b c d g]
+    (with-collection-hierarchy! [a b c d g]
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -1345,7 +1345,7 @@
 
 (deftest effective-ancestors-and-children-second-level-collection-test
   (testing "does a second-level Collection have its parent and its children?"
-    (with-collection-hierarchy [a b c d g]
+    (with-collection-hierarchy! [a b c d g]
       (testing "ancestors"
         (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
@@ -1356,7 +1356,7 @@
 
 (deftest effective-ancestors-and-children-third-level-collection-test
   (testing "Does a third-level Collection? have its parent and its children?"
-    (with-collection-hierarchy [a b c d g]
+    (with-collection-hierarchy! [a b c d g]
       (testing "ancestors"
         (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}
                                       {:name "C", :type nil, :id true, :can_write false, :personal_owner_id nil}]
@@ -1369,7 +1369,7 @@
 (deftest effective-ancestors-and-children-of-d-test
   (testing (str "for D: if we remove perms for C we should only have A as an ancestor; effective_location should lie "
                 "and say we are a child of A")
-    (with-collection-hierarchy [a b d g]
+    (with-collection-hierarchy! [a b d g]
       (testing "ancestors"
         (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
@@ -1378,7 +1378,7 @@
         (is (= []
                (api-get-collection-children d))))))
   (testing "for D: If, on the other hand, we remove A, we should see C as the only ancestor and as a root-level Collection."
-    (with-collection-hierarchy [b c d g]
+    (with-collection-hierarchy! [b c d g]
       (testing "ancestors"
         (is (= {:effective_ancestors [{:name "C", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/C/"}
@@ -1389,7 +1389,7 @@
 
 (deftest effective-ancestors-and-children-of-c-test
   (testing "for C: if we remove D we should get E and F as effective children"
-    (with-collection-hierarchy [a b c e f g]
+    (with-collection-hierarchy! [a b c e f g]
       (testing "ancestors"
         (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
@@ -1400,7 +1400,7 @@
 
 (deftest effective-ancestors-and-children-collapse-multiple-generations-test
   (testing "Make sure we can collapse multiple generations. For A: removing C and D should move up E and F"
-    (with-collection-hierarchy [a b e f g]
+    (with-collection-hierarchy! [a b e f g]
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -1411,7 +1411,7 @@
 
 (deftest effective-ancestors-and-children-archived-test
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
-    (with-collection-hierarchy [a b c]
+    (with-collection-hierarchy! [a b c]
       (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id b))
                             {:archived true})
       (testing "ancestors"
@@ -1458,7 +1458,7 @@
               :parent_id           nil
               :is_personal         false
               :can_delete          false}
-             (with-some-children-of-collection nil
+             (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 
 (defn results-matching [collection-items parameters]
@@ -1476,7 +1476,7 @@
                          (assoc :fully_parameterized true))
                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                      (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
-                    (with-some-children-of-collection nil
+                    (with-some-children-of-collection! nil
                       (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                           (remove-non-test-items &ids)
                           remove-non-personal-collections
@@ -1484,7 +1484,7 @@
 
 (deftest fetch-root-items-limit-and-offset-test
   (testing "GET /api/collection/root/items"
-    (with-some-children-of-collection nil
+    (with-some-children-of-collection! nil
       (letfn [(items [limit offset]
                 (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :limit (str limit), :offset (str offset))))]
@@ -1500,7 +1500,7 @@
 (deftest fetch-root-items-total-test
   (testing "GET /api/collection/root/items"
     (testing "Include :total, even with limit and offset"
-      (with-some-children-of-collection nil
+      (with-some-children-of-collection! nil
         ;; `:total` should be at least 4 items based on `with-some-children-of-collection`. Might be a bit more if
         ;; other stuff was created
         (is (<= 4 (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))))
@@ -1510,12 +1510,12 @@
     (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (is (= []
              ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
-             (with-some-children-of-collection nil
+             (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
                    mt/boolean-ids-and-timestamps))))
       (testing "...but if they have read perms for the Root Collection they should get to see them"
-        (with-some-children-of-collection nil
+        (with-some-children-of-collection! nil
           (t2.with-temp/with-temp [PermissionsGroup           group {}
                                    PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
@@ -1695,23 +1695,23 @@
     (is (collection/user->personal-collection (mt/user->id :rasta))))
   (testing "GET /api/collection/root/items"
     (testing "Do top-level collections show up as children of the Root Collection?"
-      (with-collection-hierarchy [a b c d e f g]
+      (with-collection-hierarchy! [a b c d e f g]
         (testing "children"
           (is (partial= (map collection-item ["A"])
                         (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "...and collapsing children should work for the Root Collection as well"
-      (with-collection-hierarchy [b d e f g]
+      (with-collection-hierarchy! [b d e f g]
         (testing "children"
           (is (partial= (map collection-item ["B" "D" "F"])
                         (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "does `archived` work on Collections as well?"
-      (with-collection-hierarchy [a b d e f g]
+      (with-collection-hierarchy! [a b d e f g]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
                             {:archived true})
         (is (= [] (remove-non-test-collections (api-get-root-collection-children)))))
-      (with-collection-hierarchy [a b d e f g]
+      (with-collection-hierarchy! [a b d e f g]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
                               {:archived true})
         (is (= [] (remove-non-test-collections (api-get-root-collection-children))))))
@@ -1830,7 +1830,7 @@
   (testing "POST /api/collection"
     (testing "\nCan I create a Collection as a child of an existing collection?"
       (mt/with-model-cleanup [Collection]
-        (with-collection-hierarchy [a c d]
+        (with-collection-hierarchy! [a c d]
           (is (partial= (merge
                          (mt/object-defaults Collection)
                          {:id          true
@@ -1946,7 +1946,7 @@
 (deftest move-collection-test
   (testing "PUT /api/collection/:id"
     (testing "Can I *change* the `location` of a Collection? (i.e. move it into a different parent Collection)"
-      (with-collection-hierarchy [a b e]
+      (with-collection-hierarchy! [a b e]
         (is (partial= (merge
                        (mt/object-defaults Collection)
                        {:id        true

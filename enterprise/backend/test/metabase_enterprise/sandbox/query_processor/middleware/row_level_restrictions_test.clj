@@ -736,7 +736,7 @@
                     (mt/rows (run-query)))))))))))
 
 (deftest dont-cache-sandboxes-test
-  (cache-test/with-mock-cache [save-chan]
+  (cache-test/with-mock-cache! [save-chan]
     (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
       (letfn [(run-query []
@@ -1134,7 +1134,7 @@
                                           :table_id      (mt/id :categories)
                                           :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
-          (process-userland-query-test/with-query-execution [qe query]
+          (process-userland-query-test/with-query-execution! [qe query]
             (qp/process-query (qp/userland-query query))
             (is (=? {:is_sandboxed true}
                     (qe)))))))))

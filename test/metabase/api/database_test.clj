@@ -1434,7 +1434,7 @@
    (with-redefs [h2/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
-(defn- test-connection-details [engine details]
+(defn- test-connection-details! [engine details]
   (with-redefs [h2/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
@@ -1447,7 +1447,7 @@
 
     (testing "Underlying `test-connection-details` function should work"
       (is (= (:details (mt/db))
-             (test-connection-details "h2" (:details (mt/db))))))
+             (test-connection-details! "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
       (is (= (merge (:details (mt/db)) {:valid true})
@@ -1458,7 +1458,7 @@
         (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."
                 :valid   false}
-               (test-connection-details "h2" {:db "ABC"}))))
+               (test-connection-details! "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
         (is (= {:errors  {:db "check your connection string"}

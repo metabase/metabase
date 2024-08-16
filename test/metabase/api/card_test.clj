@@ -139,7 +139,7 @@
   `(do-with-temp-native-card! (fn [~(or db-binding '_) ~(or card-binding '_)]
                                 ~@body)))
 
-(defn do-with-cards-in-a-collection [card-or-cards-or-ids grant-perms-fn! f]
+(defn do-with-cards-in-a-collection! [card-or-cards-or-ids grant-perms-fn! f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection collection]
       ;; put all the Card(s) in our temp `collection`
@@ -152,18 +152,18 @@
       ;; call (f)
       (f))))
 
-(defmacro with-cards-in-readable-collection
+(defmacro with-cards-in-readable-collection!
   "Execute `body` with `card-or-cards-or-ids` added to a temporary Collection that All Users have read permissions for."
   {:style/indent 1}
   [card-or-cards-or-ids & body]
-  `(do-with-cards-in-a-collection ~card-or-cards-or-ids perms/grant-collection-read-permissions! (fn [] ~@body)))
+  `(do-with-cards-in-a-collection! ~card-or-cards-or-ids perms/grant-collection-read-permissions! (fn [] ~@body)))
 
-(defmacro with-cards-in-writeable-collection
+(defmacro with-cards-in-writeable-collection!
   "Execute `body` with `card-or-cards-or-ids` added to a temporary Collection that All Users have *write* permissions
   for."
   {:style/indent 1}
   [card-or-cards-or-ids & body]
-  `(do-with-cards-in-a-collection ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
+  `(do-with-cards-in-a-collection! ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
 
 (defn- do-with-temp-native-card-with-params! [f]
   (mt/with-temp
@@ -248,7 +248,7 @@
   (mt/with-temp [Database db {}
                  :model/Card     card-1 {:database_id (mt/id)}
                  :model/Card     card-2 {:database_id (u/the-id db)}]
-    (with-cards-in-readable-collection [card-1 card-2]
+    (with-cards-in-readable-collection! [card-1 card-2]
       (is (= true
              (card-returned? :database (mt/id) card-1)))
       (is (= false
@@ -271,7 +271,7 @@
                    Table    table-2  {:db_id (u/the-id db)}
                    :model/Card     card-1   {:table_id (u/the-id table-1)}
                    :model/Card     card-2   {:table_id (u/the-id table-2)}]
-      (with-cards-in-readable-collection [card-1 card-2]
+      (with-cards-in-readable-collection! [card-1 card-2]
         (is (= true
                (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
         (is (= false
@@ -289,7 +289,7 @@
     (mt/with-temp [:model/Card card-1 {:name "Card 1"}
                    :model/Card card-2 {:name "Card 2"}
                    :model/Card card-3 {:name "Card 3"}]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
+      (with-cards-in-readable-collection! [card-1 card-2 card-3]
         (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-2)) {:archived true})
         (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-3)) {:archived true})
         (is (= #{"Card 2" "Card 3"}
@@ -353,7 +353,7 @@
                    :model/Card         card-3 {:name "Card 3"}
                    CardBookmark _ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}
                    CardBookmark _ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
+      (with-cards-in-readable-collection! [card-1 card-2 card-3]
         (is (= [{:name "Card 1"}]
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
@@ -443,7 +443,7 @@
                                      :archived true
                                      :dataset_query {:query {:source-table (str "card__" model-id)}}}]
     (testing "list cards using a model"
-      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
+      (with-cards-in-readable-collection! [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))
@@ -457,7 +457,7 @@
 (deftest get-cards-with-last-edit-info-test
   (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
                  :model/Card {card-2-id :id} {:name "Card 2"}]
-    (with-cards-in-readable-collection [card-1-id card-2-id]
+    (with-cards-in-readable-collection! [card-1-id card-2-id]
       (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
         (revision/push-revision!
          {:entity       :model/Card
@@ -550,7 +550,7 @@
                                   {:name       "A Native query table"
                                    :display    :table
                                    :query_type "native"})]
-      (with-cards-in-readable-collection [line bar area scalar scalar-2 native pie table native-2 metric metric-2]
+      (with-cards-in-readable-collection! [line bar area scalar scalar-2 native pie table native-2 metric metric-2]
        (doseq [:let [excluded #{"A Scalar 2" "Another Metric" "A Line with no access" "A pie" "A table" "A Native query table"}]
                [card-id display-type expected excluded]
                [[(:id line)   :line   #{"A Native query" "An Area" "A Bar" "A Metric"} excluded]
@@ -1315,7 +1315,7 @@
 
 (deftest test-that-we-can-edit-a-card
   (t2.with-temp/with-temp [:model/Card card {:name "Original Name"}]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (is (= "Original Name"
              (t2/select-one-fn :name :model/Card, :id (u/the-id card))))
       (is (= {:timestamp true, :first_name "Rasta", :last_name "Toucan", :email "rasta@metabase.com", :id true}
@@ -1327,7 +1327,7 @@
 
 (deftest can-we-update-a-card-s-archived-status-
   (t2.with-temp/with-temp [:model/Card card]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (let [archived?     (fn [] (:archived (t2/select-one :model/Card :id (u/the-id card))))
             set-archived! (fn [archived]
                             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived archived})
@@ -1358,13 +1358,13 @@
 (deftest clear-description-test
   (testing "Can we clear the description of a Card? (#4738)"
     (t2.with-temp/with-temp [:model/Card card {:description "What a nice Card"}]
-      (with-cards-in-writeable-collection card
+      (with-cards-in-writeable-collection! card
         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
         (is (nil? (t2/select-one-fn :description :model/Card :id (u/the-id card))))))))
 
 (deftest description-should-be-blankable-as-well
   (t2.with-temp/with-temp [:model/Card card {:description "What a nice Card"}]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
              (t2/select-one-fn :description :model/Card :id (u/the-id card)))))))
@@ -1436,7 +1436,7 @@
 
 (deftest can-we-change-the-collection-position-of-a-card-
   (t2.with-temp/with-temp [:model/Card card]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position 1})
       (is (= 1
@@ -1444,7 +1444,7 @@
 
 (deftest can-we-change-the-collection-preview-flag-of-a-card-
   (t2.with-temp/with-temp [:model/Card card]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_preview false})
       (is (= false
@@ -1452,7 +1452,7 @@
 
 (deftest ---and-unset--unpin--it-as-well-
   (t2.with-temp/with-temp [:model/Card card {:collection_position 1}]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position nil})
       (is (= nil
@@ -1849,7 +1849,7 @@
            PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
                                         :pulse_channel_id (u/the-id pc)}]
           (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-            (with-cards-in-writeable-collection card
+            (with-cards-in-writeable-collection! card
               (mt/with-fake-inbox
                 (when deleted?
                   (u/with-timeout 5000
@@ -1882,7 +1882,7 @@
                         PulseChannel          pc    {:pulse_id (u/the-id pulse)}
                         PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
                                                      :pulse_channel_id (u/the-id pc)}]
-           (with-cards-in-writeable-collection card
+           (with-cards-in-writeable-collection! card
              (mt/with-fake-inbox
                (array-map
                 :emails-1 (do
@@ -1901,7 +1901,7 @@
 
 (deftest check-that-we-can-delete-a-card
   (is (nil? (t2.with-temp/with-temp [:model/Card card]
-              (with-cards-in-writeable-collection card
+              (with-cards-in-writeable-collection! card
                 (mt/user-http-request :rasta :delete 204 (str "card/" (u/the-id card)))
                 (t2/select-one :model/Card :id (u/the-id card)))))))
 
@@ -2043,7 +2043,7 @@
 (deftest csv-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= ["COUNT(*)"
                 "75"]
                (str/split-lines
@@ -2051,7 +2051,7 @@
                                                                (u/the-id card)))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= ["COUNT(*)"
                 "8"]
                (str/split-lines
@@ -2062,12 +2062,12 @@
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
                                      :parameters encoded-params)))))))
@@ -2167,13 +2167,13 @@
 (deftest xlsx-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
@@ -2421,7 +2421,7 @@
                                                              :query      {:source-table (mt/id :venues)}
                                                              :middleware {:add-default-userland-constraints? true
                                                                           :userland-query?                   true}}}]
-    (with-cards-in-readable-collection card
+    (with-cards-in-readable-collection! card
       (let [orig qp.card/process-query-for-card]
         (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
                                                        (apply orig card-id export-format
@@ -3028,7 +3028,7 @@
                                     :data :cols last :visibility_type))
               "in cols (important for the saved metadata)"))))))
 
-(defn- do-with-persistence-setup [f]
+(defn- do-with-persistence-setup! [f]
   ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
   ;; the resources/quartz.properties file and we reuse that scheduler
   (let [sched (.getScheduler
@@ -3051,11 +3051,11 @@
         (finally
           (qs/shutdown sched))))))
 
-(defmacro ^:private with-persistence-setup
+(defmacro ^:private with-persistence-setup!
   "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
   won't run. Just check for trigger presence."
   [db-binding & body]
-  `(do-with-persistence-setup (fn [~db-binding] ~@body)))
+  `(do-with-persistence-setup! (fn [~db-binding] ~@body)))
 
 (defn- job-info-for-individual-refresh
   "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
@@ -3070,7 +3070,7 @@
 
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
-    (with-persistence-setup db
+    (with-persistence-setup! db
       (t2.with-temp/with-temp
         [:model/Card          model      {:type :model :database_id (u/the-id db)}
          :model/Card          notmodel   {:type :question :database_id (u/the-id db)}
@@ -3095,7 +3095,7 @@
               "Scheduled refresh of archived model"))))))
 
 (deftest unpersist-persist-model-test
-  (with-persistence-setup db
+  (with-persistence-setup! db
     (t2.with-temp/with-temp
       [:model/Card          model     {:database_id (u/the-id db), :type :model}
        :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
@@ -3442,7 +3442,7 @@
                                                                                                        :columns [],
                                                                                                        :values [[:aggregation 0]]},
                                                                             :table.cell_column "sum"}}]
-          (with-cards-in-readable-collection [model card]
+          (with-cards-in-readable-collection! [model card]
             (is (=?
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
@@ -3460,7 +3460,7 @@
                                                                                                        :columns [],
                                                                                                        :values [[:aggregation 0]]},
                                                                             :table.cell_column "sum"}}]
-          (with-cards-in-readable-collection [model card]
+          (with-cards-in-readable-collection! [model card]
             (is (=?
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))

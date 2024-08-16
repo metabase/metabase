@@ -123,7 +123,7 @@
       creator       (update :creator #(into {} %))
       dashcards (update :dashcards #(mapv dashcard-response %)))))
 
-(defn- do-with-dashboards-in-a-collection [grant-collection-perms-fn! dashboards-or-ids f]
+(defn- do-with-dashboards-in-a-collection! [grant-collection-perms-fn! dashboards-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection collection]
       (grant-collection-perms-fn! (perms-group/all-users) collection)
@@ -131,11 +131,11 @@
         (t2/update! Dashboard (u/the-id dashboard-or-id) {:collection_id (u/the-id collection)}))
       (f))))
 
-(defmacro ^:private with-dashboards-in-readable-collection [dashboards-or-ids & body]
-  `(do-with-dashboards-in-a-collection perms/grant-collection-read-permissions! ~dashboards-or-ids (fn [] ~@body)))
+(defmacro ^:private with-dashboards-in-readable-collection! [dashboards-or-ids & body]
+  `(do-with-dashboards-in-a-collection! perms/grant-collection-read-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
-(defmacro ^:private with-dashboards-in-writeable-collection [dashboards-or-ids & body]
-  `(do-with-dashboards-in-a-collection perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
+(defmacro ^:private with-dashboards-in-writeable-collection! [dashboards-or-ids & body]
+  `(do-with-dashboards-in-a-collection! perms/grant-collection-readwrite-permissions! ~dashboards-or-ids (fn [] ~@body)))
 
 (defn do-with-simple-dashboard-with-tabs
   [f]
@@ -463,8 +463,8 @@
                                                              :object   (revision/serialize-instance dashboard
                                                                                                     dashboard-id
                                                                                                     dashboard)}]
-        (with-dashboards-in-readable-collection [dashboard-id]
-          (api.card-test/with-cards-in-readable-collection [card-id]
+        (with-dashboards-in-readable-collection! [dashboard-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id]
             (is (=? {:name                       "Test Dashboard"
                      :creator_id                 (mt/user->id :rasta)
                      :collection                 true
@@ -552,8 +552,8 @@
                                                        :parameter_mappings [{:card_id      1
                                                                              :parameter_id "foo"
                                                                              :target       [:dimension [:field field-id nil]]}]}]
-        (with-dashboards-in-readable-collection [dashboard-id]
-          (api.card-test/with-cards-in-readable-collection [card-id]
+        (with-dashboards-in-readable-collection! [dashboard-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id]
             (is (=? {:name                       "Test Dashboard"
                      :creator_id                 (mt/user->id :rasta)
                      :collection_id              true
@@ -601,8 +601,8 @@
       (mt/with-temp [Dashboard     {dashboard-id :id} {:name "Test Dashboard"}
                      Card          {card-id :id}      {:name "Dashboard Test Card"}
                      DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
-        (with-dashboards-in-readable-collection [dashboard-id]
-          (api.card-test/with-cards-in-readable-collection [card-id]
+        (with-dashboards-in-readable-collection! [dashboard-id]
+          (api.card-test/with-cards-in-readable-collection! [card-id]
             (is (nil?
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
@@ -723,7 +723,7 @@
     (mt/test-helpers-set-global-values!
       (mt/with-temporary-setting-values [synchronous-batch-updates true]
         (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
-          (with-dashboards-in-writeable-collection [dashboard-id]
+          (with-dashboards-in-writeable-collection! [dashboard-id]
             (testing "GET before update"
               (is (=? {:name          "Test Dashboard"
                        :creator_id    (mt/user->id :rasta)
@@ -796,7 +796,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "allow `:caveats` and `:points_of_interest` to be empty strings, and `:show_in_getting_started` should be a boolean"
       (t2.with-temp/with-temp [Dashboard {dashboard-id :id} {:name "Test Dashboard"}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           (is (=? {:name                    "Test Dashboard"
                    :creator_id              (mt/user->id :rasta)
                    :collection              true
@@ -820,7 +820,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "Can we clear the description of a Dashboard? (#4738)"
       (t2.with-temp/with-temp [Dashboard dashboard {:description "What a nice Dashboard"}]
-        (with-dashboards-in-writeable-collection [dashboard]
+        (with-dashboards-in-writeable-collection! [dashboard]
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard)) {:description nil})
           (is (= nil
                  (t2/select-one-fn :description Dashboard :id (u/the-id dashboard))))
@@ -870,7 +870,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "We can change the dashboard's width between 'fixed' and 'full' settings."
       (t2.with-temp/with-temp [Dashboard dashboard {}]
-        (with-dashboards-in-writeable-collection [dashboard]
+        (with-dashboards-in-writeable-collection! [dashboard]
           (testing "the default dashboard width value is 'fixed'."
             (is (= "fixed"
                    (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
@@ -892,7 +892,7 @@
   (testing "PUT /api/dashboard/:id"
     (testing "We can add a time granularity parameter to a dashboard"
       (t2.with-temp/with-temp [Dashboard dashboard {}]
-        (with-dashboards-in-writeable-collection [dashboard]
+        (with-dashboards-in-writeable-collection! [dashboard]
           (testing "the dashboard starts with no parameters."
             (is (= []
                    (t2/select-one-fn :parameters Dashboard :id (u/the-id dashboard)))))
@@ -1122,7 +1122,7 @@
 
 (deftest delete-test
   (t2.with-temp/with-temp [Dashboard {dashboard-id :id}]
-    (with-dashboards-in-writeable-collection [dashboard-id]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
       (is (= nil
              (mt/user-http-request :rasta :delete 204 (format "dashboard/%d" dashboard-id))))
       (is (= nil
@@ -1870,7 +1870,7 @@
 (deftest e2e-update-tabs-only-test
   (testing "PUT /api/dashboard/:id/cards with create/update/delete tabs in a single req"
     (with-simple-dashboard-with-tabs [{:keys [dashboard-id dashtab-id-1 dashtab-id-2]}]
-      (with-dashboards-in-writeable-collection [dashboard-id]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
         ;; send a request that update and create and delete some cards at the same time
         (is (some? (t2/select-one :model/DashboardTab :id dashtab-id-2)))
         (let [tabs (:tabs (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
@@ -2009,8 +2009,8 @@
 (deftest simple-creation-with-no-additional-series-test
   (mt/with-temp [Dashboard {dashboard-id :id} {}
                  Card {card-id :id}] {}
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (api.card-test/with-cards-in-readable-collection [card-id]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection! [card-id]
         (let [resp (:dashcards (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
                                                      {:dashcards [{:id                     -1
                                                                    :card_id                card-id
@@ -2088,8 +2088,8 @@
   (mt/with-temp [Dashboard {dashboard-id :id} {}
                  Card      {card-id :id} {}
                  Card      {series-id-1 :id} {:name "Series Card"}]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
+    (with-dashboards-in-writeable-collection! [dashboard-id]
+      (api.card-test/with-cards-in-readable-collection! [card-id series-id-1]
         (let [dashboard-cards (:dashcards (mt/user-http-request :crowberto :put 200 (format "dashboard/%d" dashboard-id)
                                                                 {:dashcards [{:id      -1
                                                                               :card_id card-id
@@ -2219,7 +2219,7 @@
                    DashboardCard {dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}
                    DashboardCard {dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}
                    Card          {series-id-1 :id}   {:name "Series Card"}]
-      (with-dashboards-in-writeable-collection [dashboard-id]
+      (with-dashboards-in-writeable-collection! [dashboard-id]
         (is (= {:size_x                 4
                 :size_y                 4
                 :col                    0
@@ -2314,7 +2314,7 @@
                                                 :action_id action-id
                                                 :card_id model-id}
                      DashboardCard question-card {:dashboard_id dashboard-id, :card_id model-id}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           ;; TODO adds test for return
           ;; Update **both** cards to use the new card id
           (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dashboard-id)
@@ -2356,7 +2356,7 @@
                      DashboardCardSeries _                    {:dashboardcard_id dashcard-id-1, :card_id series-id-1, :position 0}
                      DashboardCardSeries _                    {:dashboardcard_id dashcard-id-1, :card_id series-id-2, :position 1}
                      DashboardCardSeries _                    {:dashboardcard_id dashcard-id-3, :card_id series-id-1, :position 0}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           (is (= 3
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
           (is (=? {:dashcards [{:id     dashcard-id-3
@@ -2373,7 +2373,7 @@
                      Card          {card-id :id}      {}
                      DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}
                      DashboardCard _                  {:dashboard_id dashboard-id, :card_id card-id}]
-        (with-dashboards-in-writeable-collection [dashboard-id]
+        (with-dashboards-in-writeable-collection! [dashboard-id]
           (is (= 2
                  (count (t2/select-pks-set DashboardCard, :dashboard_id dashboard-id))))
           (is (=? {:tabs      []
