@@ -26,6 +26,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
 } from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/lib/browser";
 
 const {
@@ -492,7 +493,7 @@ describe("scenarios > notebook > link to data source", () => {
         cy.updatePermissionsGraph({
           [ALL_USERS_GROUP_ID]: {
             [SAMPLE_DB_ID]: {
-              "view-data": "blocked",
+              "view-data": DataPermissionValue.BLOCKED,
             },
           },
         });
