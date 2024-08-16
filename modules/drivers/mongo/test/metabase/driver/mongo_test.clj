@@ -196,6 +196,14 @@
              {:schema nil, :name "reviews"}}
             (:tables (driver/describe-database :mongo (mt/db)))))))
 
+(mt/with-driver :mongo
+  (def db (mt/db))
+
+  )
+
+(t2/delete! :model/Database :id (:id db))
+
+
 (deftest describe-table-query-test
   (is (= [{"$sort" {"_id" 1}}
           {"$limit" 500}

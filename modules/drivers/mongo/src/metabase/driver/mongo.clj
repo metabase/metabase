@@ -218,6 +218,7 @@
                                                                                "then" "$$item.v"
                                                                                "else" nil}}
                                                             "type"   {"$type" "$$item.v"}}}}}}
+                       {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"   "$kvs.k"
                                     "result" {"$literal" false}
                                     "type"   "$kvs.type"
@@ -226,7 +227,7 @@
     (concat sample
             initial-items
             (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
-            [{"$project" {"_id" 0, "path" 1, "type" 1, "index" 1}}])))
+            [{"$project" {"_id" 0, "path" "$path", "type" "$type", "index" "$index"}}])))
 
 (comment
   ;; `describe-table-clojure` is a reference implementation for [[describe-table-query]] in Clojure.
