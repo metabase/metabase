@@ -24,7 +24,6 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
-  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -157,7 +156,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           .click();
         popover().findByText("by month").click();
         popover().last().findByText("Month").click();
-        visualize();
+        cy.button("Visualize").click();
         cy.wait("@dataset");
         assertQueryBuilderRowCount(49);
       });
@@ -170,7 +169,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         getNotebookStep("sort").button("Change direction").click();
         getNotebookStep("sort").icon("add").click();
         popover().findByText("Created At: Month").click();
-        visualize();
+        cy.button("Visualize").click();
         cy.wait("@dataset");
         assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
@@ -412,7 +411,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
 
         cy.log("assert query results");
-        visualize();
+        cy.button("Visualize").click();
         cy.wait("@dataset");
         assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
@@ -423,6 +422,34 @@ describe("scenarios > question > multiple column breakouts", () => {
           ],
         });
         assertQueryBuilderRowCount(3);
+      });
+
+      it("should be able to add post-aggregation aggregations for each breakout column", () => {
+        createQuestion(questionWith2BreakoutsDetails, { visitQuestion: true });
+        openNotebook();
+
+        cy.log("add an aggregation for the year column");
+        getNotebookStep("summarize").button("Summarize").click();
+        popover().within(() => {
+          cy.findByText("Maximum of ...").click();
+          cy.findByText("Created At: Year").click();
+        });
+
+        cy.log("add an aggregation for the month column");
+        getNotebookStep("summarize", { stage: 1 }).icon("add").click();
+        popover().within(() => {
+          cy.findByText("Minimum of ...").click();
+          cy.findByText("Created At: Month").click();
+        });
+
+        cy.log("assert query results");
+        cy.button("Visualize").click();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: ["Max of Created At: Year", "Min of Created At: Month"],
+          firstRows: [["January 1, 2026, 12:00 AM", "April 1, 2022, 12:00 AM"]],
+        });
+        assertQueryBuilderRowCount(1);
       });
     });
   });
