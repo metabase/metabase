@@ -261,7 +261,7 @@ jobs:
         shell: bash
         run: | # sh
           DATE=$(date '+%Y-%m-%d')
-          URL=$(aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER --recursive --acl public-read)
+          URL=$(aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER --acl public-read)
           # export URL
           echo "::set-output name=url::$URL"
 
