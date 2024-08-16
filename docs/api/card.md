@@ -136,7 +136,7 @@ Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if
 
 ## `POST /api/card/`
 
-Create a new `Card`.
+Create a new `Card`. A card can be of type `question`, `model`, or `metric`.
 
 ### PARAMS:
 
