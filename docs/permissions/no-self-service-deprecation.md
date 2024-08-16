@@ -85,28 +85,28 @@ We can't really make a call on what Group B's View data should be. If we switch 
 
 ### For some permission setups with groups that have "No self-service" and "Sandboxed" data access, you may need to create a new group to replicate the setup in 50 or higher
 
-Because the (more permissive) "No self-service" data access couldn't override the (less permissive) "Sandboxed" access, you could set up Metabase 49 in ways that were difficult to reason about. In this case, even though the "No self-service" setting was _more_ permissive than "Sandboxed" setting, the "Sandboxed" setting took precedence over the "No self-service" setting.
+In Metabase 49, the (more permissive) "No self-service" data access couldn't override the (less permissive) "Sandboxed" access, you could set up Metabase 49 in ways that were difficult to reason about.
 
 In the new permission system starting in Metabase 50, more permissive settings _always_ override less permissive settings. This consistent behavior makes permissions a _lot_ easier to reason about. One consequence of this improvement, however, is that in order to recreate certain permissions setups when upgrading to Metabase 50, you may need to create an _additional_ group.
 
-For example, let's say you have two groups in Metabase 49 under the old data access permission.
+For example, let's say you have two groups in Metabase 49 under the old data access permission, the All users group and the Foo group.
 
 **Permission setup in 49:**
 
 - All users group has "No self-service" data access to all of the tables in the Sample Database.
 - Foo group has "Sandboxed" access to the tables in the Sample Database.
 
-This data access setup in 49 would allow people to view questions and dashboards in collections they have access to. People in the Foo group, however, would get a sandboxed view of items. In this case, the less permissive "Sandboxed" data access in the Foo group overrode the more permissive "No self-service" in the All users group.
+This data access setup in 49 would allow people to view questions and dashboards in collections they have access to. People in the Foo group, however, would get a sandboxed view of the items. In this case, the less permissive "Sandboxed" data access in the Foo group overrode the more permissive "No self-service" in the All users group.
 
 Starting with Metabase 50, however, more permissive settings _always_ override less permissive settings. So in order to keep Foo's sandboxes in tact, we'd need to make the All users group have a View data permission setting that is _less_ permissive than the "Sandboxed" setting. So we'll need to set the View data permission for All users to "Blocked."
 
-But if you still want everyone else who isn't in the Foo group to view items in collections they have access to, you'll need to create an additional group, Bar, that contains everyone _except for_ people in the Foo group, and grant that Bar group "Can view" access to the Sample database. The Bar group's "Can view" access will override the All Users group's "Blocked" setting, and they'll be able to view the questions and dashboards. Meanwhile, Foo group still has its sandboxes. Here's a summary of the settings for 50 that you'd need:
+But if you still want everyone else who _isn't_ in the Foo group to view items in collections they have access to, you'll need to create an additional group, Bar, that contains everyone _except for_ people in the Foo group, and grant that Bar group "Can view" access to the Sample database. The Bar group's "Can view" access will override the All Users group's "Blocked" setting, and they'll be able to view the questions and dashboards. Meanwhile, Foo group still has its sandboxes. Here's a summary of the settings for 50 that you'd need:
 
 **Permission setup in 50:**
 
 - All users group is "Blocked" for all tables in the Sample database.
 - Foo group has View data permission of "Sandboxed" for all tables in the Sample database.
-- **Create New group**, Bar, that includes everyone in the All users group _except for_ people in the Foo group. Set this Bar group's View data permission set to "Can view" for the Sample database.
+- **Create a new group**, Bar, that includes everyone in the All users group _except for_ people in the Foo group. Set this Bar group's View data permission to "Can view" for the Sample database.
 
 ## Further reading
 
