@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
@@ -194,6 +195,89 @@
              {:schema nil, :name "products"}
              {:schema nil, :name "reviews"}}
             (:tables (driver/describe-database :mongo (mt/db)))))))
+
+(deftest describe-table-query-test
+  (is (= [{"$sort" {"_id" 1}}
+          {"$limit" 500}
+          {"$unionWith" {"coll"     "collection-name"
+                         "pipeline" [{"$sort" {"_id" -1}} {"$limit" 500}]}}
+          {"$project" {"path" "$ROOT"
+                       "kvs"  {"$map" {"input" {"$objectToArray" "$$ROOT"}
+                                       "as"    "item"
+                                       "in"    {"k"      "$$item.k"
+                                                "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
+                                                                   "then" "$$item.v"
+                                                                   "else" nil}}
+                                                "type"   {"$type" "$$item.v"}}}}}}
+          {"$unwind" {"path"              "$kvs"
+                      "includeArrayIndex" "index"}}
+          {"$project" {"path"   "$kvs.k"
+                       "object" "$kvs.v"
+                       "result" {"$literal" false}
+                       "type"   "$kvs.type"
+                       "index"  1}}
+          {"$facet" {"results"    [{"$match" {"result" true}}]
+                     "newResults" [{"$match" {"result" false}}
+                                   {"$group" {"_id"   {"type" "$type"
+                                                       "path" "$path"}
+                                              "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type" "null"]}
+                                                                        "then" 0
+                                                                        "else" 1}}}
+                                              "index" {"$min" "$index"}}}
+                                   {"$sort" {"count" -1}}
+                                   {"$group" {"_id"   "$_id.path"
+                                              "type"  {"$first" "$_id.type"}
+                                              "index" {"$min" "$index"}}}
+                                   {"$project" {"path"   "$_id"
+                                                "type"   1
+                                                "result" {"$literal" true}
+                                                "object" nil
+                                                "index"  1}}]
+                     "nextItems"  [{"$match" {"result" false
+                                              "type"   "object"}}
+                                   {"$project" {"path" 1
+                                                "kvs"  {"$map" {"input" {"$objectToArray" "$v"}
+                                                                "as"    "item"
+                                                                "in"    {"k"      "$$item.k"
+                                                                         "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"} "object"]}
+                                                                                            "then" "$$item.v"
+                                                                                            "else" nil}}
+                                                                         "type"   {"$type" "$$item.v"}}}}}}
+                                   {"$unwind" {"path"              "$kvs"
+                                               "includeArrayIndex" "index"}}
+                                   {"$project" {"path"   {"$concat" ["$path" "." "$kvs.k"]}
+                                                "type"   {"$type" "$kvs.type"}
+                                                "result" {"$literal" false}
+                                                "object" "$kvs.v"
+                                                "index"  1}}]}}
+          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults" "$nextItems"]}}}
+          {"$unwind" "$acc"}
+          {"$replaceRoot" {"newRoot" "$acc"}}
+          {"$facet" {"results"    [{"$match" {"result" true}}]
+                     "newResults" [{"$match" {"result" false}}
+                                   {"$group" {"_id"   {"type" "$type"
+                                                       "path" "$path"}
+                                              "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type" "null"]}
+                                                                        "then" 0
+                                                                        "else" 1}}}
+                                              "index" {"$min" "$index"}}}
+                                   {"$sort" {"count" -1}}
+                                   {"$group" {"_id"   "$_id.path"
+                                              "type"  {"$first" "$_id.type"}
+                                              "index" {"$min" "$index"}}}
+                                   {"$project" {"path"   "$_id"
+                                                "type"   1
+                                                "result" {"$literal" true}
+                                                "object" nil
+                                                "index"  1}}]}}
+          {"$project" {"acc" {"$concatArrays" ["$results" "$newResults"]}}}
+          {"$unwind" "$acc"}
+          {"$replaceRoot" {"newRoot" "$acc"}}
+          {"$project" {"_id"   0
+                       "path"  "$path"
+                       "type"  "$type"
+                       "index" "$index"}}]
+         (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
 
 (deftest describe-table-test
   (mt/test-driver :mongo

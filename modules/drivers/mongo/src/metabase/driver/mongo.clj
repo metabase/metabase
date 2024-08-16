@@ -145,91 +145,149 @@
                     :value %}))
            set))))
 
-(defn- sample-stages
-  "Query stages which get a sample of the data in the collection, of size `n`. Half of the sample is from the first
-  inserted documents and the other half from the last inserted documents."
-  [collection-name n]
-  (let [start-n (quot n 2)
-        end-n   (- n start-n)]
-    [{"$sort" {"_id" 1}}
-     {"$limit" start-n}
-     {"$unionWith"
-      {"coll" collection-name
-       "pipeline" [{"$sort" {"_id" -1}}
-                   {"$limit" end-n}]}}]))
-
-(defn- facet-stage [depth]
+(defn- describe-table-query-step
+  "A single reduction step in the `describe-table-query` pipeline.
+   At the end of each step the output is a combination of 'result' and 'item' objects. There is one 'result' for each
+   path which has the most common type for that path. 'item' objects have yet to be aggregated into 'result' objects.
+   Each object has the following keys:
+   - result: true means the object represents a 'result', false means it represents a 'item' to be further processed.
+   - path:   The path to the field in the document.
+   - type:   If 'item', the type of the field's value. If 'result', the most common type for the field.
+   - index:  If 'item', the index of the field in the parent object. If 'result', it is the minimum of such indices.
+   - object: If 'item', the value of the field if it's an object. If 'result', it is null."
+  [max-depth depth]
   [{"$facet"
-    {"prev" [{"$match" {"d" {"$lte" (dec depth)}}}]
-     "curr" [{"$match" {"d" depth}}
-             {"$group" {"_id"   {"t" "$t"
-                                 "p" "$p"}
-                        "count" {"$sum" 1}
-                        "i"     {"$min" "$i"}}}
-             {"$sort" {"count" -1}}
-             {"$group" {"_id" "$_id.p"
-                        "ts"  {"$push" "$_id.t"}
-                        "i"   {"$min" "$i"}}}
-             {"$project" {"p" "$_id"
-                          "d" {"$literal" depth}
-                          "t" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$ts", 0]}, "null"]},
-                                        "then" {"$ifNull" [{"$arrayElemAt" ["$ts", 1]}, "null"]},
-                                        "else" {"$arrayElemAt" ["$ts", 0]}}}
-                          "v" nil
-                          "i" 1}}]
-     "next" [{"$match" {"t" "object"
-                        "d" depth}}
-             {"$project" {"p"      1
-                          "i"      1
-                          "nested" {"$map" {"input" {"$objectToArray" "$v"},
-                                            "as"    "item",
-                                            "in"    {"k" "$$item.k",
-                                                     "v" "$$item.v"
-                                                     "t" {"$type" "$$item.v"}}}}}}
-             {"$unwind" {"path"              "$nested"
-                         "includeArrayIndex" "i"}}
-             {"$project" {"p" {"$concat" ["$p" "." "$nested.k"]}
-                          "t" "$nested.t"
-                          "d" {"$literal" (inc depth)}
-                          "v" {"$cond" {"if"   {"$eq" ["$nested.t", "object"]}
-                                        "then" "$nested.v"
-                                        "else" nil}}
-                          "i" 1}}]}}
-   {"$project" {"combined" {"$concatArrays" ["$prev" "$curr" "$next"]}}}
-   {"$unwind" "$combined"}
-   {"$replaceRoot" {"newRoot" "$combined"}}])
+    (cond-> {"results"    [{"$match" {"result" true}}]
+             "newResults" [{"$match" {"result" false}}
+                           {"$group" {"_id"   {"type" "$type"
+                                               "path" "$path"}
+                                      ;; count is zero if type is "null" so we only select "null" as the type if there
+                                      ;; is no other type
+                                      "count" {"$sum" {"$cond" {"if"   {"$eq" ["$type", "null"]}
+                                                                "then" 0
+                                                                "else" 1}}}
+                                      "index" {"$min" "$index"}}}
+                           {"$sort" {"count" -1}}
+                           {"$group" {"_id"      "$_id.path"
+                                      "type"     {"$first" "$_id.type"}
+                                      "index"    {"$min" "$index"}}}
+                           {"$project" {"path"   "$_id"
+                                        "type"   1
+                                        "result" {"$literal" true}
+                                        "object" nil
+                                        "index"  1}}]}
+      (not= depth max-depth)
+      (assoc "nextItems" [{"$match" {"result" false, "type" "object"}}
+                           {"$project" {"path" 1
+                                        "kvs"  {"$map" {"input" {"$objectToArray" "$v"},
+                                                        "as"    "item",
+                                                        "in"    {"k"      "$$item.k",
+                                                                 ;; we only need v if it's an object
+                                                                 "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"}, "object"]}
+                                                                                    "then" "$$item.v"
+                                                                                    "else" nil}}
+                                                                 "type"   {"$type" "$$item.v"}}}}}}
+                           {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+                           {"$project" {"path"   {"$concat" ["$path" "." "$kvs.k"]}
+                                        "type"   {"$type" "$kvs.type"}
+                                        "result" {"$literal" false}
+                                        "object" "$kvs.v"
+                                        "index"  1}}]))}
+   {"$project" {"acc" {"$concatArrays" (cond-> ["$results" "$newResults"]
+                                         (not= depth max-depth)
+                                         (conj "$nextItems"))}}}
+   {"$unwind" "$acc"}
+   {"$replaceRoot" {"newRoot" "$acc"}}])
 
-(defn- describe-table-query [& {:keys [collection-name sample-size max-depth]}]
-  (concat (sample-stages collection-name sample-size)
-          [{"$project" {"path" "$ROOT", "kvs" {"$objectToArray" "$$ROOT"}}}
-           {"$unwind" {"path" "$kvs", "includeArrayIndex" "i"}}
-           {"$project" {"p" "$kvs.k"
-                        "d" {"$literal" 0}
-                        "v" {"$cond" {"if"   {"$eq" [{"$type" "$kvs.v"}, "object"]}
-                                      "then" "$kvs.v"
-                                      "else" nil}}
-                        "t" {"$type" "$kvs.v"}
-                        "i" 1}}]
-          (mapcat facet-stage (range max-depth))
-          [{"$project" {"_id"   0
-                        "path"  "$p"
-                        "type"  "$t"
-                        "index" "$i"}}]))
+(defn- describe-table-query
+  "See the comment block below for a translation of this query into clojure."
+  [& {:keys [collection-name sample-size max-depth]}]
+  (let [start-n       (quot sample-size 2)
+        end-n         (- sample-size start-n)
+        sample        [{"$sort" {"_id" 1}}
+                       {"$limit" start-n}
+                       {"$unionWith"
+                        {"coll" collection-name
+                         "pipeline" [{"$sort" {"_id" -1}}
+                                     {"$limit" end-n}]}}]
+        initial-items [{"$project" {"path" "$ROOT", "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"},
+                                                                   "as"    "item",
+                                                                   "in"    {"k"      "$$item.k",
+                                                                            "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"}, "object"]}
+                                                                                               "then" "$$item.v"
+                                                                                               "else" nil}}
+                                                                            "type"   {"$type" "$$item.v"}}}}}}
+                       {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
+                       {"$project" {"path"   "$kvs.k"
+                                    "object" "$kvs.v"
+                                    "result" {"$literal" false}
+                                    "type"   "$kvs.type"
+                                    "index"  1}}]]
+    (concat sample
+            initial-items
+            (mapcat #(describe-table-query-step max-depth %) (range (inc max-depth)))
+            [{"$project" {"_id"   0
+                          "path"  "$path"
+                          "type"  "$type"
+                          "index" "$index"}}])))
+
+(comment
+  ;; describe-table-clojure is logically equivalent to [[describe-table-query]], (excluding details like taking the
+  ;; sample and dealing with null values).
+  (defn describe-table-clojure [data max-depth]
+    (let [initial-items (mapcat (fn [x]
+                                  (for [[i [k v]] (map vector (range) x)]
+                                    {:path   k
+                                     :object (if (map? v) v nil)
+                                     :index  i
+                                     :type   (type v)}))
+                                data)]
+      (:results (reduce
+                 (fn [{:keys [results items]} depth]
+                   {:results (concat results
+                                     (for [[path group] (group-by :path items)]
+                                       {:path   path
+                                        :type   (key (apply max-key val (frequencies (map :type group))))
+                                        :index  (apply min (map :index group))}))
+                    :items   (when (not= depth max-depth)
+                               (->> (keep :object items)
+                                    (mapcat (fn [x]
+                                              (for [[i [k v]] (map vector (range) x)]
+                                                {:path   (str (:path x) "." k)
+                                                 :object (if (map? v) v nil)
+                                                 :index  i
+                                                 :type   (type v)})))))})
+                 {:results [] :items initial-items}
+                 (range (inc max-depth))))))
+  ;; Example:
+  (def sample-data
+    [{:a 1 :b {:c "hello" :d [1 2 3]}}
+     {:a 2 :b {:c "world"}}])
+  (describe-table-clojure sample-data 0)
+  ;; => ({:path :a, :type java.lang.Long, :index 0} {:path :b, :type clojure.lang.PersistentArrayMap, :index 1})
+  (describe-table-clojure sample-data 1)
+  ;; => ({:path :a, :type java.lang.Long, :index 0}
+  ;;     {:path :b, :type clojure.lang.PersistentArrayMap, :index 1}
+  ;;     {:path ".:c", :type java.lang.String, :index 0}
+  ;;     {:path ".:d", :type clojure.lang.PersistentVector, :index 1})
+  )
 
 (def describe-table-query-depth
   "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
-  fields under `root-path`, and nested fields will be queried with further executions. If set to K, the query will
-  return fields at K levels of nesting. Setting its value involves a trade-off: the lower it is, the faster
-  describe-table-query executes, but the more queries we might have to execute."
-  200)
+  fields at the root level of the document. If set to K, the query will return fields at K levels of nesting beyond that.
+  Setting its value involves a trade-off: the lower it is, the faster describe-table-query executes, but the more queries we might
+  have to execute."
+  ;; Cal 2024-09-15 I picked 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
+  ;; seen on cloud are all <20 levels deep)
+  100)
 
 (mu/defn- describe-table :- [:sequential
                              [:map {:closed true}
                               [:path  ::lib.schema.common/non-blank-string]
                               [:type  ::lib.schema.common/non-blank-string]
                               [:index :int]]]
-  "Queries the database for a sample of the data in `table` and returns a list of field information. Because Mongo
-   documents can have many levels of nesting (up to 200), we query up to that level of nesting."
+  "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
+   Helper for `driver/describe-table` but the data is in a format that needs further-processing in Clojure."
   [db table]
   (let [query (describe-table-query {:collection-name (:name table)
                                      :sample-size     (* metadata-queries/nested-field-sample-limit 2)
@@ -238,7 +296,7 @@
                                         :type     "native"
                                         :native   {:collection (:name table)
                                                    :query      (json/generate-string query)}}))
-        cols   (map (comp keyword :name) (:cols data))]
+        cols  (map (comp keyword :name) (:cols data))]
     (map #(zipmap cols %) (:rows data))))
 
 (defn- type-alias->base-type [type-alias]
