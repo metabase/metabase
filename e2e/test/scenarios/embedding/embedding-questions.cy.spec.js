@@ -8,7 +8,7 @@ import {
   openStaticEmbeddingModal,
   echartsContainer,
   cartesianChartCircle,
-  testPairedTooltipValues,
+  assertEChartsTooltip,
   describeEE,
   filterWidget,
   visitEmbeddedPage,
@@ -107,12 +107,11 @@ describe("scenarios > embedding > questions", () => {
     echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    cartesianChartCircle().last().realHover();
+    cartesianChartCircle().last().trigger("mousemove");
 
-    popover().within(() => {
-      testPairedTooltipValues("Created At", "Aug 2022");
-      testPairedTooltipValues("Math", "2");
-      testPairedTooltipValues("Count", "79");
+    assertEChartsTooltip({
+      header: "Aug 2022",
+      rows: [{ name: "2", value: "79" }],
     });
   });
 
