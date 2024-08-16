@@ -254,10 +254,11 @@ jobs:
         env:
           BUCKET: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           FOLDER: "./cypress/reports/mochareports"
+          TARGET_FOLDER: mocha-${{ matrix.name }}
         shell: bash
         run: | # sh
           DATE=$(date '+%Y-%m-%d')
-          aws s3 cp ${FOLDER} s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/mocha --recursive
+          aws s3 cp ${FOLDER} s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER --recursive
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
