@@ -9,11 +9,16 @@
         "kamilmielnik",
         "nemanjaglumac",
         "romeovs",
-        "bshepherdson", 
-        "metamben", 
-        "lbrdnk", 
+        "bshepherdson",
+        "metamben",
+        "lbrdnk",
         "appleby"
       ]
+    },
+    {
+      "name": "Drivers",
+      "label": ".Team/Drivers",
+      "members": ["snoe"]
     },
     {
       "name": "Embedding",
@@ -60,6 +65,7 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
+        "camsaul",
         "uladzimirdev"
       ]
     }
