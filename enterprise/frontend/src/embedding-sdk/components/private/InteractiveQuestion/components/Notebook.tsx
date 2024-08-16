@@ -55,7 +55,8 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           question={question}
           isDirty={isDirty}
           isRunnable={isRunnable}
-          isResultDirty={isDirty}
+          // the visualization button relies on this boolean
+          isResultDirty={true}
           reportTimezone={reportTimezone}
           readOnly={false}
           updateQuestion={handleUpdateQuestion}

@@ -90,7 +90,7 @@ export const getRoutes = store => {
         component={() => (
           <Center>
             <Center w="50vw" h="50vh">
-              <NewQuestion />
+              <NewQuestion cardId={123} />
             </Center>
           </Center>
         )}

@@ -16,7 +16,12 @@ import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import { useSaveQuestionContext } from "./context";
 import type { SaveQuestionFormProps } from "./types";
 
-export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
+export const SaveQuestionForm = ({
+  onCancel,
+  onSubmit,
+}: SaveQuestionFormProps & {
+  onSubmit?: () => void;
+}) => {
   const { question, originalQuestion, showSaveType, values } =
     useSaveQuestionContext();
 
@@ -65,6 +70,7 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
           title={t`Save`}
           data-testid="save-question-button"
           primary
+          onClick={onSubmit}
         />
       </FormFooter>
     </Form>

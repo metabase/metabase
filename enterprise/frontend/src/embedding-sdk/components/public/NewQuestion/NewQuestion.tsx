@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
@@ -8,6 +8,7 @@ import {
 import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
+import { isQuestionDirty } from "metabase/query_builder/utils/question";
 import {
   Button,
   Group,
@@ -53,22 +54,47 @@ const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
         <Title>
           <SaveQuestionTitle />
         </Title>
-        <SaveQuestionForm onCancel={onClose} />
+        <SaveQuestionForm onSubmit={onClose} onCancel={onClose} />
       </Stack>
     </SaveQuestionProvider>
   );
 };
 
 const ResetQuestionButton = ({ onClick }: { onClick?: () => void } = {}) => {
-  const { onReset } = useInteractiveQuestionContext();
+  const { onReset, originalQuestion, question } =
+    useInteractiveQuestionContext();
 
   const handleReset = () => {
     onReset?.();
     onClick?.();
   };
 
-  return <Button onClick={handleReset}>Reset</Button>;
+  const isDirty = useMemo(
+    () => isQuestionDirty(question, originalQuestion),
+    [originalQuestion, question],
+  );
+
+  return (
+    <Button disabled={!isDirty} onClick={handleReset}>
+      Reset
+    </Button>
+  );
 };
+
+function SaveButton(props: { onClick: () => void }) {
+  const { originalQuestion, question } = useInteractiveQuestionContext();
+
+  const isDirty = useMemo(
+    () => isQuestionDirty(question, originalQuestion),
+    [originalQuestion, question],
+  );
+
+  return (
+    <Button disabled={!isDirty} onClick={props.onClick}>
+      Save
+    </Button>
+  );
+}
 
 const NewQuestionInner = () => {
   const [activeTab, setActiveTab] = useState<
@@ -104,7 +130,7 @@ const NewQuestionInner = () => {
             <Group>
               <ResetQuestionButton onClick={() => setActiveTab("notebook")} />
               {/* using a button instead of a tab for styling reasons */}
-              <Button onClick={() => setIsSaving(true)}>Save</Button>
+              <SaveButton onClick={() => setIsSaving(true)} />
             </Group>
           )}
         </Group>
