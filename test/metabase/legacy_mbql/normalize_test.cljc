@@ -229,36 +229,35 @@
 
 (t/deftest ^:parallel normalize-parmaeters-test
   (normalize-tests
-    "make sure we're not running around trying to normalize the type in native query params"
-    {{:type       :native
-      :parameters [{:type   "date/range"
-                    :target [:dimension [:template-tag "checkin_date"]]
-                    :value  "2015-04-01~2015-05-01"}]}
-     {:type       :native
-      :parameters [{:type   :date/range
-                    :target [:dimension [:template-tag "checkin_date"]]
-                    :value  "2015-04-01~2015-05-01"}]}}
+   "make sure we're not running around trying to normalize the type in native query params"
+   {{:type       :native
+     :parameters [{:type   "date/range"
+                   :target [:dimension [:template-tag "checkin_date"] {:stage-number -2}]
+                   :value  "2015-04-01~2015-05-01"}]}
+    {:type       :native
+     :parameters [{:type   :date/range
+                   :target [:dimension [:template-tag "checkin_date"] {:stage-number -2}]
+                   :value  "2015-04-01~2015-05-01"}]}}
 
-    "`:parameters` `:type` should get normalized, but `:value` should not."
-    {{:type       "native"
-      :parameters [{:type   "text"
-                    :target ["dimension" ["template-tag" "names_list"]]
-                    :value  ["BBQ" "Bakery" "Bar"]}]}
-     {:type       :native
-      :parameters [{:type   :text
-                    :target [:dimension [:template-tag "names_list"]]
-                    :value  ["BBQ" "Bakery" "Bar"]}]}}
+   "`:parameters` `:type` should get normalized, but `:value` should not."
+   {{:type       "native"
+     :parameters [{:type   "text"
+                   :target ["dimension" ["template-tag" "names_list"]]
+                   :value  ["BBQ" "Bakery" "Bar"]}]}
+    {:type       :native
+     :parameters [{:type   :text
+                   :target [:dimension [:template-tag "names_list"]]
+                   :value  ["BBQ" "Bakery" "Bar"]}]}}
 
-
-    "make sure normalization doesn't try to parse value as an MBQL clause"
-    {{:type       "native"
-      :parameters [{:type   "text"
-                    :target ["dimension" ["template-tag" "names_list"]]
-                    :value  ["=" 10 20]}]}
-     {:type       :native
-      :parameters [{:type   :text
-                    :target [:dimension [:template-tag "names_list"]]
-                    :value  ["=" 10 20]}]}}))
+   "make sure normalization doesn't try to parse value as an MBQL clause"
+   {{:type       "native"
+     :parameters [{:type   "text"
+                   :target ["dimension" ["template-tag" "names_list"]]
+                   :value  ["=" 10 20]}]}
+    {:type       :native
+     :parameters [{:type   :text
+                   :target [:dimension [:template-tag "names_list"]]
+                   :value  ["=" 10 20]}]}}))
 
 (t/deftest ^:parallel normalize-template-tags-test
   (letfn [(query-with-template-tags [template-tags]

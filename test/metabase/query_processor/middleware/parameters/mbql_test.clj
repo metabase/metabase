@@ -56,7 +56,7 @@
                  {:hash   "abc123"
                   :name   "foo"
                   :type   :id
-                  :target [:dimension [:field (mt/id :venues :name) nil] {:stage-number nil}]
+                  :target [:dimension [:field (mt/id :venues :name) nil] nil]
                   :value  "Cam's Toucannery"}
                  {:hash   "def456"
                   :name   "bar"
