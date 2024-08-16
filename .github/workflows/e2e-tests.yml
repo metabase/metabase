@@ -250,6 +250,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Upload test results to S3
+        if: failure()
         env:
           BUCKET: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
           FOLDER: "./cypress/reports/mochareports"
