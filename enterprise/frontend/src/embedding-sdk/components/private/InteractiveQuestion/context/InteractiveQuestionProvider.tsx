@@ -3,8 +3,8 @@ import {
   useContext,
   type PropsWithChildren,
   useMemo,
+  useEffect,
 } from "react";
-import { useMount } from "react-use";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import {
@@ -45,9 +45,11 @@ type InteractiveQuestionProviderProps = PropsWithChildren<
   } & LoadSdkQuestionParams
 >;
 
+const DEFAULT_OPTIONS = {};
+
 export const InteractiveQuestionProvider = ({
   cardId,
-  options = {},
+  options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
   onReset,
@@ -101,9 +103,9 @@ export const InteractiveQuestionProvider = ({
     mode,
   };
 
-  useMount(() => {
+  useEffect(() => {
     loadQuestion();
-  });
+  }, [loadQuestion]);
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>
