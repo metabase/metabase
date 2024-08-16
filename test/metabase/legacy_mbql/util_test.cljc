@@ -194,22 +194,23 @@
         "Should be able to add a filter clause to a query"))
 
 (t/deftest ^:parallel add-filter-clause-test-2-earlier-stage
-  (t/is (= {:database 1
-            :type     :query
-            :query    {:source-query {:source-table 1
-                                      :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
-                                      :aggregation  [[:count]]}
-                       :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-           (mbql.u/add-filter-clause
-             {:database 1
+  (doseq [stage-number [0 -2]]
+    (t/is (= {:database 1
               :type     :query
               :query    {:source-query {:source-table 1
-                                        :filter       [:= [:field 1 nil] 100]
+                                        :filter       [:and [:= [:field 1 nil] 100] [:= [:field 2 nil] 200]]
                                         :aggregation  [[:count]]}
                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-             0
-             [:= [:field 2 nil] 200]))
-        "Should be able to add a filter clause to an earlier stage of a query"))
+             (mbql.u/add-filter-clause
+              {:database 1
+               :type     :query
+               :query    {:source-query {:source-table 1
+                                         :filter       [:= [:field 1 nil] 100]
+                                         :aggregation  [[:count]]}
+                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+              stage-number
+              [:= [:field 2 nil] 200]))
+          "Should be able to add a filter clause to an earlier stage of a query")))
 
 (t/deftest ^:parallel add-filter-clause-test-3-later-stage
   (doseq [stage-number [-1 1]]

@@ -126,32 +126,47 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
-(defn- legacy-stage-number
-  ([inner-query] (legacy-stage-number inner-query 0))
-  ([{:keys [source-query]} n]
-   (if-not source-query
-     n
-     (recur source-query (inc n)))))
+(defn- legacy-last-stage-number
+  "Returns the canonical stage number of the last stage of the legacy `inner-query`."
+  [inner-query]
+  (loop [{:keys [source-query]} inner-query, n 0]
+    (if-not source-query
+      n
+      (recur source-query (inc n)))))
+
+(defn- stage-path
+  "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
+  specified by `stage-number`.
+
+  Stage numbers are used as described in [[add-filter-clause]]."
+  [inner-query stage-number]
+  (let [elements (if (neg? stage-number)
+                   (dec (- stage-number))
+                   (- (legacy-last-stage-number inner-query) stage-number))]
+    (into [] (repeat elements :source-query))))
 
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
-  needed."
+  needed.
+
+  Stage numbers work as in [[add-filter-clause]]."
   [inner-query  :- mbql.s/MBQLQuery
-   stage-number :- number?
+   stage-number :- [:maybe number?]
    new-clause   :- [:maybe mbql.s/Filter]]
-  (cond
-    (not new-clause) inner-query
-
-    (and (>= stage-number 0)
-         (< stage-number (legacy-stage-number inner-query)))
-    (update inner-query :source-query add-filter-clause-to-inner-query stage-number new-clause)
-
-    :else (update inner-query :filter combine-filter-clauses new-clause)))
+  (if (not new-clause)
+    inner-query
+    (let [path (if-not stage-number
+                 []
+                 (stage-path inner-query stage-number))]
+      (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
 (mu/defn add-filter-clause :- mbql.s/Query
-  "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
+  "Add an additional filter clause to an `outer-query` at stage `stage-number`
+  or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
+
+  Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
   [outer-query  :- mbql.s/Query
-   stage-number :- number?
+   stage-number :- [:maybe number?]
    new-clause   :- [:maybe mbql.s/Filter]]
   (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
