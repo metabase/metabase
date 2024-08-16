@@ -107,6 +107,12 @@
                                           (lib/query (qp.store/metadata-provider) outer-query))]
             (check-query-permissions* query)))))))
 
+(defn preprocess-check-query-permissions
+  "Preprocessing middleware that checks that the current user has permissions to run the current query."
+  [query]
+  (check-query-permissions* query)
+  query)
+
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
   `*current-user-id*` is bound. In other cases, like when running public Cards or sending pulses, permissions need to
