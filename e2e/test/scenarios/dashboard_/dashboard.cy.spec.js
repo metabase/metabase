@@ -74,6 +74,8 @@ describe("scenarios > dashboard", () => {
       const existingQuestionName = "Orders, Count";
 
       cy.visit("/");
+      // TODO: it fails by intention
+      cy.findByTestId("123").click();
       appBar().findByText("New").click();
       popover().findByText("Dashboard").should("be.visible").click();
 
