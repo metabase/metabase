@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
+
 import * as dbTasks from "./db_tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
@@ -47,10 +49,13 @@ const defaultConfig = {
   setupNodeEvents(on, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
+
+    // cypress-terminal-report
+    installLogsPrinter(on);
+
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
-
     on(
       "file:preprocessor",
       createBundler({
@@ -107,7 +112,9 @@ const defaultConfig = {
         );
         if (!failures) {
           // delete the video if the spec passed and no tests retried
-          fs.unlinkSync(results.video);
+          if (fs.existsSync(results.video)) {
+            fs.unlinkSync(results.video);
+          }
         }
       }
     });

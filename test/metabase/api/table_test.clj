@@ -1003,7 +1003,7 @@
     (upload-test/create-upload-table!)))
 
 (defn- update-csv! [options]
-  (@#'api.table/update-csv! options))
+  (@#'api.table/update-csv! (merge {:filename "test.csv"} options)))
 
 (defn- update-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"

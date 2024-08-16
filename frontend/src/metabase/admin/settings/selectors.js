@@ -377,6 +377,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "uploads-settings",
       },
     ],
+    getHidden: settings => settings["token-features"]?.attached_dwh === true,
   },
 
   "public-sharing": {

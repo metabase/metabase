@@ -265,6 +265,14 @@
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
+(def MaybeBooleanValue
+  "Same as above, but allows distinguishing between `nil` (the user did not specify a value)
+  and `false` (the user specified `false`)."
+  (-> [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))}
+       "true" "false" true false nil]
+      (mu/with-api-error-message
+       (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
+
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
@@ -375,3 +383,11 @@
   "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."
   [schema]
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])
+
+(def File
+  "Schema for a file coming in HTTP request from multipart/form-data"
+  [:map {:closed true}
+   [:content-type string?]
+   [:filename string?]
+   [:size int?]
+   [:tempfile (InstanceOfClass java.io.File)]])

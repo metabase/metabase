@@ -155,6 +155,7 @@
   (ensure-audit-db-installed!)
   (init-status/set-progress! 0.95)
 
+  (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
   (task/start-scheduler!)
   (init-status/set-complete!)

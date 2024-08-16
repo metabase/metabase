@@ -45,7 +45,7 @@
    ::action        "1-0-0"
    ::embed_share   "1-0-0"
    ::llm_usage     "1-0-0"
-   ::serialization "1-0-0"})
+   ::serialization "1-0-1"})
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
@@ -85,6 +85,7 @@
   (deferred-tru
     (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
          "This is a public setting since some analytics events are sent prior to initial setup."))
+  :encryption :never
   :visibility :public
   :base       setting/uuid-nonce-base
   :doc        false)

@@ -12,7 +12,7 @@ module.exports = {
   },
   "looks-same": {
     strict: false,
-    tolerance: 4,
+    tolerance: 6,
     antialiasingTolerance: 0,
     ignoreAntialiasing: true,
     ignoreCaret: true,

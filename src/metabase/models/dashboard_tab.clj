@@ -5,7 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -59,17 +58,15 @@
    :position
    :created_at])
 
-;; DashboardTabs are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 (defmethod serdes/generate-path "DashboardTab" [_ dashcard]
   [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
-(defmethod serdes/load-xform "DashboardTab"
-  [dashtab]
-  (-> dashtab
-      (dissoc :serdes/meta)
-      (update :dashboard_id serdes/*import-fk* :model/Dashboard)
-      (update :created_at   #(if (string? %) (u.date/parse %) %))))
+(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
+  {:copy      [:entity_id :name :position]
+   :skip      []
+   :transform {:created_at   (serdes/date)
+               :dashboard_id (serdes/parent-ref)}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 

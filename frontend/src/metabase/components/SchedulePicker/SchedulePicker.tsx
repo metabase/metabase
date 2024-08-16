@@ -38,8 +38,8 @@ const optionNameTranslations = {
   monthly: t`Monthly`,
 };
 
-type ScheduleProperty = keyof ScheduleSettings;
-type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
+export type ScheduleProperty = keyof ScheduleSettings;
+export type ScheduleChangeProp = { name: ScheduleProperty; value: unknown };
 
 export interface SchedulePickerProps {
   schedule: ScheduleSettings;

@@ -22,6 +22,7 @@
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2]
@@ -53,6 +54,9 @@
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name))
           entities))
+
+(defn- by-eid [entities entity-id]
+  (u/seek #(= (:entity_id %) entity-id) entities))
 
 (defn- collections [dir]
   (for [coll-dir (subdirs dir)
@@ -197,30 +201,7 @@
                                                                 :collection_id [:coll 10 100]})
                :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
                                                                 :collection_id [:coll 100]})
-               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})
-               :pulse                   (vec (concat
-                                               ;; 10 classic pulses, from collections
-                                              (many-random-fks 10 {} {:collection_id [:coll 100]})
-                                               ;; 10 classic pulses, no collection
-                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
-                                               ;; 10 dashboard subs
-                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
-                                                               {:dashboard_id  [:d 100]})))
-               :pulse-card              (vec (concat
-                                               ;; 60 pulse cards for the classic pulses
-                                              (many-random-fks 60 {} {:card_id       [:c 100]
-                                                                      :pulse_id      [:pulse 10]})
-                                               ;; 60 pulse cards connected to dashcards for the dashboard subs
-                                              (many-random-fks 60 {} {:card_id           [:c 100]
-                                                                      :pulse_id          [:pulse 10 20]
-                                                                      :dashboard_card_id [:dc 300]})))
-               :pulse-channel           (vec (concat
-                                               ;; 15 channels for the classic pulses
-                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
-                                               ;; 15 channels for the dashboard subs
-                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
-               :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
-                                                                :user_id          [:u 100]})}))
+               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})}))
 
           (is (= 101 (count (t2/select-fn-set :email 'User)))) ; +1 for the internal user
 
@@ -486,7 +467,7 @@
                                                                 ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                 nil]},
                            :values_source_type   "card"}]
-                         (:parameters (first (by-model extraction "Card")))))
+                         (:parameters (by-eid extraction (:entity_id card2s)))))
 
                   (storage/store! (seq extraction) dump-dir)))
 
@@ -875,7 +856,7 @@
             (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
                          (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
                                           (map (comp second second))
-                                          (map #(.getName %))
+                                          (map #(.getName ^File %))
                                           set)]
                            (testing "Hidden YAML wasn't read even though it's not throwing errors"
                              (is (not (contains? files ".hidden.yaml"))))))]
