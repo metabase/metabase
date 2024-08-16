@@ -59,17 +59,19 @@
                                                  (if-let [model (table-name->model table-name)]
                                                   [table-name model]
                                                   (throw (ex-info (trs "Model not found for table {0}" table-name)
-                                                                  {:table-name table-name})))))
+                                                                  {:table-name table-name
+                                                                   :error      ::model-not-found})))))
                                           entity-id-table-names)
         entity-id-models            (set (vals entity-id-table-name->model))]
-    ;; make sure we've resolved all of the tables that have entity_id to their corresponding models.
+    ;; make sure we've resolved all the tables that have entity_id to their corresponding models.
     (when-not (= (count entity-id-table-names)
                  (count entity-id-models))
       (throw (ex-info (trs "{0} tables have entity_id; expected to resolve the same number of models, but only got {1}"
                            (count entity-id-table-names)
                            (count entity-id-models))
                       {:tables   entity-id-table-names
-                       :resolved entity-id-table-name->model})))
+                       :resolved entity-id-table-name->model
+                       :error    ::mismatched-model-count})))
     (set entity-id-models)))
 
 (defn- seed-entity-id-for-instance! [model instance]
@@ -79,8 +81,10 @@
       (when-not (some? pk-value)
         (throw (ex-info (format "Missing value for primary key column %s" (pr-str primary-key))
                         {:model       (name model)
+                         :table       (t2/table-name model)
                          :instance    instance
-                         :primary-key primary-key})))
+                         :primary-key primary-key
+                         :error       ::missing-pk})))
       (let [new-hash (serdes/identity-hash instance)]
         (log/infof "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
         (t2/update! model pk-value {:entity_id new-hash}))
