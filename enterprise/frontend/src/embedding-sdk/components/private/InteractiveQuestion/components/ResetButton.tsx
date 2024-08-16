@@ -1,20 +1,26 @@
-import { useMemo } from "react";
-
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
+import * as Lib from "metabase-lib";
 
-export const QuestionResetButton = () => {
+export const QuestionResetButton = ({
+  onClick,
+}: {
+  onClick?: () => void;
+} = {}) => {
   const { question, onReset } = useInteractiveQuestionContext();
 
-  const hasQuestionChanged = useMemo(() => {
-    const card = question?.card();
+  const handleReset = () => {
+    onReset?.();
+    onClick?.();
+  };
 
-    return card && (!card.id || card.id !== card.original_card_id);
-  }, [question]);
-
-  if (!hasQuestionChanged || !onReset) {
+  if (
+    !question ||
+    !Lib.canSave(question.query(), question.type()) ||
+    !onReset
+  ) {
     return null;
   }
 
-  return <ResetButton onClick={onReset} />;
+  return <ResetButton onClick={handleReset} />;
 };

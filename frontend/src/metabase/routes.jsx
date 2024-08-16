@@ -1,7 +1,7 @@
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
-import { NewQuestion } from "embedding-sdk";
+import { QuestionEditor } from "embedding-sdk";
 import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
@@ -90,7 +90,7 @@ export const getRoutes = store => {
         component={() => (
           <Center>
             <Center w="50vw" h="50vh">
-              <NewQuestion cardId={123} />
+              <QuestionEditor cardId={123} />
             </Center>
           </Center>
         )}

@@ -26,12 +26,12 @@ import {
 } from "./InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
-interface InteractiveQuestionResultProps {
+export type InteractiveQuestionResultProps = {
   height?: string | number;
   withResetButton?: boolean;
-  withTitle: boolean;
+  withTitle?: boolean;
   customTitle?: ReactNode;
-}
+};
 
 type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
 
@@ -63,7 +63,7 @@ const ResultView = ({
 
 export const InteractiveQuestionResult = ({
   height,
-  withTitle,
+  withTitle = false,
   customTitle,
   withResetButton,
 }: InteractiveQuestionResultProps): ReactElement => {
