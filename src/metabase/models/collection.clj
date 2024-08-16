@@ -322,16 +322,19 @@
                            [(random-uuid)]))}
    (fn collection-id->collection*
      []
-     (into {} (t2/select-fn-vec (juxt :id identity) :model/Collection)))
+     (t2/select-pk->fn identity :model/Collection))
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
 
 (defn- permissions-set->collection-id->collection
-  [permissions-set & [read-or-write]]
-  (let [collection-id->collection (collection-id->collection)
+  [permissions-set {:keys [permission-level effective-child-of]}]
+  (let [collection-id->collection (if-let [parent effective-child-of]
+                                    (t2/select-pk->fn identity :model/Collection {:where [:like :location (str (or (:location parent) "/")
+                                                                                                               "%")]})
+                                    (collection-id->collection))
         ids-with-perm (set
                        (for [path  permissions-set
-                             :let  [[_ id-str] (case read-or-write
+                             :let  [[_ id-str] (case permission-level
                                                  :read
                                                  (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)
 
@@ -349,7 +352,7 @@
         ;; Otherwise, normal read/write permissions apply
         block-for-audit? #(and (audit/is-collection-id-audit? %)
                                (or (not (premium-features/enable-audit-app?))
-                                   (= read-or-write :write)))
+                                   (= permission-level :write)))
         has-permission? (fn [[id _]]
                           (and
                            (not (block-for-audit? id))
@@ -364,7 +367,8 @@
    [:include-trash-collection? {:optional true} :boolean]
    [:include-archived-items {:optional true} [:enum :only :exclude :all]]
    [:archive-operation-id {:optional true} [:maybe :string]]
-   [:permission-level {:optional true} [:enum :read :write]]])
+   [:permission-level {:optional true} [:enum :read :write]]
+   [:effective-child-of {:optional true} [:maybe CollectionWithLocationAndIDOrRoot]]])
 
 (defn- should-remove-for-archived? [include-archived-items collection]
   (case include-archived-items
@@ -382,6 +386,25 @@
   (and (some? archive-operation-id)
        (not= archive-operation-id (:archive_operation_id collection))))
 
+(defn- remove-non-effective-children [coll-or-root collection-id->collection]
+  (cond
+    (not coll-or-root)
+    collection-id->collection
+
+    (is-trash? coll-or-root)
+    (into {} (for [[collection-id collection] collection-id->collection
+                   :when (:archived_directly collection)]
+               [collection-id collection]))
+
+    :else (let [visible-id? (set (keys collection-id->collection))]
+            (into {} (for [[collection-id collection] collection-id->collection
+                           :when (not (collection.root/is-root-collection? collection))
+                           :let [location (:location collection)
+                                 ids (location-path->ids location)
+                                 effective-ids (filter visible-id? ids)]
+                           :when (= (last effective-ids) (:id coll-or-root))]
+                       [collection-id collection])))))
+
 (mu/defn permissions-set->visible-collection-ids :- VisibleCollections
   "There are four knobs we need to take into account when turning the permissions set into visible collection IDs.
   - permission-level: generally collections with `read` permission are visible. Sometimes we want to change this and only
@@ -397,10 +420,12 @@
     visibility-config :- CollectionVisibilityConfig]
    (let [visibility-config (merge {:include-archived-items :exclude
                                    :include-trash-collection? false
+                                   :effective-child-of nil
                                    :archive-operation-id nil
                                    :permission-level :read}
                                   visibility-config)]
-     (->> (permissions-set->collection-id->collection permissions-set (:permission-level visibility-config))
+     (->> (permissions-set->collection-id->collection permissions-set visibility-config)
+          (remove-non-effective-children (:effective-child-of visibility-config))
           (remove #(should-remove-for-archived? (:include-archived-items visibility-config) (val %)))
           (remove #(should-remove-for-archive-operation-id (:archive-operation-id visibility-config) (val %)))
           (remove #(should-remove-for-trash? (:include-trash-collection? visibility-config) (val %)))
@@ -421,22 +446,33 @@
   ([collection-ids :- VisibleCollections]
    (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
 
-  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword] ;; `[:vector :keyword]` allows `[:coalesce :option-1 :option-2]`
-    collection-ids      :- VisibleCollections]
-   (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
-         non-root-clause                    (when (seq non-root-ids)
-                                              [:in collection-id-field non-root-ids])
-         root-clause                        (when (seq root-id)
-                                              [:= collection-id-field nil])]
+  ([collection-id-field    :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword] ;; `[:vector :keyword]` allows `[:coalesce :option-1 :option-2]`
+    visible-collection-ids :- VisibleCollections]
+   (let [invisible-ids (set/difference (set (keys (collection-id->collection)))
+                                       visible-collection-ids)
+
+         root-visible? (contains? visible-collection-ids "root")
+         non-root-visible? (seq (disj visible-collection-ids "root"))
+
+         visible-ids (disj visible-collection-ids "root")
+         invisible-ids (disj invisible-ids "root")
+         non-root-clause [:and
+                          [:not= collection-id-field nil]
+                          (if (< (count invisible-ids) (count visible-ids))
+                            (when (seq invisible-ids)
+                              [:not [:in collection-id-field invisible-ids]])
+                            (when (seq visible-ids)
+                              [:in collection-id-field visible-ids]))]
+         root-clause (when root-visible?
+                       [:= collection-id-field nil])]
      (cond
-       (and root-clause non-root-clause)
+       (and root-visible? non-root-visible?)
        [:or root-clause non-root-clause]
 
-       (or root-clause non-root-clause)
-       (or root-clause non-root-clause)
+       (or root-visible? non-root-visible?)
+       (or (when root-visible? root-clause) (when non-root-visible? non-root-clause))
 
-       :else
-       false))))
+       :else false))))
 
 (mu/defn honeysql-filter-clause
   "Given a permissions-set and a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
@@ -446,7 +482,7 @@
     collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
    (honeysql-filter-clause permissions-set collection-id-field {}))
   ([permissions-set :- [:set :string]
-    collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword]]
+    collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig]
    (visible-collection-ids->honeysql-filter-clause collection-id-field
                                                    (permissions-set->visible-collection-ids permissions-set visibility-config))))
@@ -687,6 +723,7 @@
                                                               :only
                                                               :exclude)
                                  :include-trash-collection? true
+                                 :effective-child-of        collection
                                  :archive-operation-id      (:archive_operation_id collection)
                                  :permission-level          (if (or (:archived collection)
                                                                     (is-trash? collection))
@@ -705,8 +742,6 @@
         [:= :archive_operation_id (:archive_operation_id collection)])
        ;; it is visible.
       (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
-       ;; it is NOT a descendant of a visible Collection other than A - e.g. a visible subcollection.
-      (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
        ;; don't want personal collections in collection items. Only on the sidebar
       [:= :personal_owner_id nil]]
       ;; (any additional conditions)
