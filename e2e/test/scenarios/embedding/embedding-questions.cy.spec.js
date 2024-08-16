@@ -107,14 +107,11 @@ describe("scenarios > embedding > questions", () => {
     echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    cartesianChartCircle().last().realHover();
+    cartesianChartCircle().last().trigger("mousemove");
 
     assertEChartsTooltip({
       header: "Aug 2022",
-      rows: [
-        { name: "Math", value: "2" },
-        { name: "Count", value: "78" },
-      ],
+      rows: [{ name: "2", value: "79" }],
     });
   });
 

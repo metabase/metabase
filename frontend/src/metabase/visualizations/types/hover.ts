@@ -37,7 +37,6 @@ export interface StackedTooltipModel {
 
 export interface HoveredObject {
   index?: number;
-  axisIndex?: number;
   seriesIndex?: number;
   seriesId?: number;
   datumIndex?: number;

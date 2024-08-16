@@ -143,7 +143,13 @@ export const useChartEvents = (
           }
 
           const hoveredObject = getSeriesHovered(chartModel, event);
-          onHoverChange?.(hoveredObject);
+          const isSameDatumHovered =
+            hoveredObject?.index === hovered?.index &&
+            hoveredObject?.datumIndex === hovered?.datumIndex;
+
+          if (!isSameDatumHovered) {
+            onHoverChange?.(hoveredObject);
+          }
         },
       },
       {
@@ -207,20 +213,21 @@ export const useChartEvents = (
       },
     ],
     [
+      onHoverChange,
+      timelineEventsModel,
       chartModel,
+      hovered,
+      settings,
+      visualizationIsClickable,
+      onVisualizationClick,
+      onOpenTimelines,
+      selectedTimelineEventIds,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
       onOpenQuestion,
       rawSeries,
       metadata,
-      selectedTimelineEventIds,
-      settings,
-      timelineEventsModel,
-      visualizationIsClickable,
       onChangeCardAndRun,
-      onVisualizationClick,
-      onHoverChange,
-      onOpenTimelines,
-      onSelectTimelineEvents,
-      onDeselectTimelineEvents,
     ],
   );
 
