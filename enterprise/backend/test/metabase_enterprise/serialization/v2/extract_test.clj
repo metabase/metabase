@@ -1725,7 +1725,9 @@
         (is (=? (assoc d
                        :dashcards [(assoc dc1 :series [s])]
                        :tabs nil)
-                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]})))))))
+                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+
+(deftest extract-nested-efficient-test
   (testing "extract-nested is efficient"
     (mt/with-temp [:model/Dashboard           d1  {:name "Top Dash 1"}
                    :model/Dashboard           d2  {:name "Top Dash 2"}
@@ -1744,6 +1746,25 @@
                         :dashcards [(assoc dc2 :series nil)
                                     (assoc dc3 :series nil)]
                         :tabs nil)]
-                  (into [] (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
-          ;; 1 per dashboard/dashcard/series/tabs
+                (into [] (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+        ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
+
+(deftest extract-nested-partitioned-test
+  (testing "extract-nested will partition stuff by 100s"
+    (mt/with-empty-h2-app-db
+      (let [d   (ts/create! :model/Dashboard {:name "Dash"})
+            c1  (ts/create! :model/Card {:name "Card"})
+            dcs (vec (for [_ (range 7)]
+                       (ts/create! :model/DashboardCard {:dashboard_id (:id d)
+                                                         :card_id      (:id c1)})))]
+        (t2/with-call-count [qc]
+          (is (=? [(assoc d :dashcards dcs)]
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
+                                                              :where [:= :id (:id d)]}))))
+          ;; query count breakdown:
+          ;; - 1 for dashboard
+          ;; - 1 for tabs, there are none
+          ;; - 1 for dashcards, there are 7
+          ;; - 2 for series (7 dashcards / 5 -> 2 batches)
+          (is (= 5 (qc))))))))

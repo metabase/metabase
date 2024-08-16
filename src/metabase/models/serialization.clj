@@ -32,6 +32,9 @@
 
 (set! *warn-on-reflection* true)
 
+;; there was no science behind picking 100 as a number
+(def ^:private extract-nested-batch-limit "max amount of entities to fetch nested entities for" 100)
+
 ;;; # Serialization Overview
 ;;;
 ;;; Serialization (or "serdes") is a system for exporting entities (Dashboards, Cards, Collections, etc.) from one
@@ -330,7 +333,7 @@
             (m/assoc-some :serdes/meta (generate-path model-name instance))
             (into (for [[k transform] (:transform spec)
                         :let [res ((:export transform) (get instance k))]
-                        ;; include only non-nil transform results
+                        ;; include only non-nil `transform` results
                         :when res]
                     [k res])))))
     (catch Exception e
@@ -412,9 +415,10 @@
 
 (declare extract-query)
 
-(defn- transform->nested [transform batch]
+(defn- transform->nested [transform opts batch]
   (let [backward-fk (:backward-fk transform)
-        entities    (-> (extract-query (name (:model transform)) {:where [:in backward-fk (map :id batch)]})
+        entities    (-> (extract-query (name (:model transform))
+                                       (assoc opts :where [:in backward-fk (map :id batch)]))
                         t2.realize/realize)]
     (group-by backward-fk entities)))
 
@@ -423,13 +427,14 @@
     (reduce-kv (fn [batch k transform]
                  (if-not (::nested transform)
                    batch
-                   (mi/instances-with-hydrated-data batch k #(transform->nested transform batch) :id)))
+                   (mi/instances-with-hydrated-data batch k #(transform->nested transform opts batch) :id)))
                batch
                (:transform spec))))
 
 (defn- extract-reducible-nested [model-name opts reducible]
   (eduction (comp (map t2.realize/realize)
-                  (partition-all 100)
+                  (partition-all (or (:batch-limit opts)
+                                     extract-nested-batch-limit))
                   (map (partial extract-batch-nested model-name opts))
                   cat)
             reducible))
@@ -451,9 +456,10 @@
                                             where)]}))))
 
 (defmethod extract-query :default [model-name opts]
-  (->> #_(t2/reducible-select (keyword "model" model-name) {:where (or where true)})
-       (extract-query-collections (keyword "model" model-name) opts)
-       (extract-reducible-nested model-name (dissoc opts :where))))
+  (let [spec    (make-spec model-name opts)
+        nested? (some ::nested (vals (:transform spec)))]
+    (cond->> (extract-query-collections (keyword "model" model-name) opts)
+      nested? (extract-reducible-nested model-name (dissoc opts :where)))))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
