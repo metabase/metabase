@@ -104,16 +104,15 @@
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
-                       (collection/visible-collection-ids->honeysql-filter-clause
+                       (collection/honeysql-filter-clause
+                        permissions-set
                         :id
-                        (collection/permissions-set->visible-collection-ids
-                         permissions-set
-                         {:include-archived-items (if archived
-                                                    :only
-                                                    :exclude)
-                          :include-trash-collection? true
-                          :permission-level :read
-                          :archive-operation-id nil}))]
+                        {:include-archived-items (if archived
+                                                   :only
+                                                   :exclude)
+                         :include-trash-collection? true
+                         :permission-level :read
+                         :archive-operation-id nil})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -436,14 +435,13 @@
                                    [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived-items :all
+                   (collection/honeysql-filter-clause @api/*current-user-permissions-set*
+                                                      :collection_id
+                                                      {:include-archived-items :all
                                                                          :permission-level (if archived?
                                                                                              :write
                                                                                              :read)
-                                                                         :archive-operation-id nil}))
+                                                                         :archive-operation-id nil})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -565,14 +563,13 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived-items :all
-                                                                         :archive-operation-id nil
-                                                                         :permission-level (if archived?
-                                                                                             :write
-                                                                                             :read)}))
+                   (collection/honeysql-filter-clause @api/*current-user-permissions-set*
+                                                      :collection_id
+                                                      {:include-archived-items :all
+                                                       :archive-operation-id nil
+                                                       :permission-level (if archived?
+                                                                           :write
+                                                                           :read)})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -642,13 +639,11 @@
 (defn- annotate-collections
   [parent-coll colls]
   (let [visible-collection-ids (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                                   {:include-archived-items :all
-                                                                                    :archive-operation-id nil
-                                                                                    :permission-level :read})
-
-        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
+                                                                                   {:include-archived-items :all})
+        descendant-collections (collection/descendants-flat parent-coll (collection/honeysql-filter-clause
+                                                                         @api/*current-user-permissions-set*
                                                                          :id
-                                                                         visible-collection-ids))
+                                                                         {:include-archived-items :all}))
 
         descendant-collection-ids (map u/the-id descendant-collections)
 

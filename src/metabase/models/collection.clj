@@ -407,7 +407,7 @@
           (map key)
           (into #{})))))
 
-(mu/defn visible-collection-ids->honeysql-filter-clause
+(mu/defn ^:private visible-collection-ids->honeysql-filter-clause
   "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
   returned by `permissions-set->visible-collection-ids`. Correctly handles all possible values returned by that
   function, including `root` Collection IDs (for the Root Collection).
@@ -437,6 +437,19 @@
 
        :else
        false))))
+
+(mu/defn honeysql-filter-clause
+  "Given a permissions-set and a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
+  ([permissions-set :- [:set :string]]
+   (honeysql-filter-clause permissions-set :collection_id))
+  ([permissions-set :- [:set :string]
+    collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
+   (honeysql-filter-clause permissions-set collection-id-field {}))
+  ([permissions-set :- [:set :string]
+    collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword]]
+    visibility-config :- CollectionVisibilityConfig]
+   (visible-collection-ids->honeysql-filter-clause collection-id-field
+                                                   (permissions-set->visible-collection-ids permissions-set visibility-config))))
 
 (mu/defn visible-collection-ids->direct-visible-descendant-clause
   "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.

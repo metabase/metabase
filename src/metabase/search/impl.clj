@@ -113,19 +113,17 @@
    {:keys [current-user-perms
            filter-items-in-personal-collection
            archived]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids
+  (let [collection-id-col        (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-filter-clause (collection/honeysql-filter-clause
                                   current-user-perms
+                                  collection-id-col
                                   {:include-archived-items :all
                                    :include-trash-collection? true
                                    :permission-level (if archived
                                                        :write
-                                                       :read)})
-        collection-id-col        (if (= model "collection")
-                                   :collection.id
-                                   :collection_id)
-        collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-col
-                                  visible-collections)]
+                                                       :read)})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
