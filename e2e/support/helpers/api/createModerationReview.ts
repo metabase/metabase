@@ -13,7 +13,7 @@ export const createModerationReview = ({
     `Create a moderation review, status: ${status}, item type: ${moderated_item_type}, item id: ${moderated_item_id}`,
   );
 
-  return cy.request("POST", "/api/moderation-review", {
+  return cy.request<ModerationReview>("POST", "/api/moderation-review", {
     status,
     moderated_item_id,
     moderated_item_type,

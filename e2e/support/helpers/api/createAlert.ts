@@ -12,7 +12,7 @@ export const createAlert = ({
 > => {
   cy.log("Create an alert");
 
-  return cy.request("POST", "/api/alert", {
+  return cy.request<Alert>("POST", "/api/alert", {
     card,
     channels,
     alert_condition,

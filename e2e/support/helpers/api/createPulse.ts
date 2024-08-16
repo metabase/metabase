@@ -13,7 +13,7 @@ export const createPulse = ({
 > => {
   cy.log("Create a pulse");
 
-  return cy.request("POST", "/api/pulse", {
+  return cy.request<DashboardSubscription>("POST", "/api/pulse", {
     name,
     cards,
     channels,
