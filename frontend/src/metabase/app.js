@@ -24,6 +24,9 @@ import "metabase/plugins/builtin";
 // If EE isn't enabled, it loads an empty file.
 import "ee-plugins"; // eslint-disable-line import/no-duplicates
 
+// Set nonce for mantine v6 deps
+import "metabase/lib/csp";
+
 import { createHistory } from "history";
 import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";

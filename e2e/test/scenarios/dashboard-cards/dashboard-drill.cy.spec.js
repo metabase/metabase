@@ -22,9 +22,11 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   entityPickerModal,
-  testPairedTooltipValues,
   editDashboard,
   saveDashboard,
+  echartsTooltip,
+  tooltipHeader,
+  assertTooltipRow,
 } from "e2e/support/helpers";
 
 const {
@@ -884,19 +886,18 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
           visitDashboard(DASHBOARD_ID);
 
-          chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+          const assertTooltipValues = () =>
+            echartsTooltip().within(() => {
+              tooltipHeader().should("have.text", 1);
+              assertTooltipRow("15612_1", { color: "#88BF4D", value: "5" });
+              assertTooltipRow("15612_2", { color: "#98D9D9", value: "10" });
+            });
 
-          popover().within(() => {
-            testPairedTooltipValues("AXIS", "1");
-            testPairedTooltipValues("VALUE", "5");
-          });
+          chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
+          assertTooltipValues();
 
           chartPathWithFillColor("#98D9D9").first().trigger("mousemove");
-
-          popover().within(() => {
-            testPairedTooltipValues("AXIS", "1");
-            testPairedTooltipValues("VALUE", "10");
-          });
+          assertTooltipValues();
         });
       });
     });

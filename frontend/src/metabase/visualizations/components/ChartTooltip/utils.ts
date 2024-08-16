@@ -1,3 +1,4 @@
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import type {
@@ -29,5 +30,5 @@ export const formatValueForTooltip = ({
     options.scale = 1;
   }
 
-  return formatValue(value, options);
+  return formatValue(value, options) ?? NULL_DISPLAY_VALUE;
 };

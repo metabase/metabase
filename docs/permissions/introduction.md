@@ -71,7 +71,7 @@ Whenever you change permissions for a group, make sure you:
 [dashboard-subscriptions]: ../dashboards/subscriptions.md
 [data-permissions]: ./data.md
 [data-sandboxing]: ./data-sandboxes.md
-[permissions]: https://www.metabase.com/learn/permissions
+[permissions]: https://www.metabase.com/learn/metabase-basics/administration/permissions
 [sandbox-columns]: https://www.metabase.com/learn/permissions/data-sandboxing-column-permissions
 [sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
