@@ -13,4 +13,7 @@ export {
   CreateDashboardModal,
   useCreateDashboardApi,
 } from "./CreateDashboardModal";
-export type { CreateDashboardModalProps } from "./CreateDashboardModal";
+export type {
+  CreateDashboardModalProps,
+  CreateDashboardValues,
+} from "./CreateDashboardModal";

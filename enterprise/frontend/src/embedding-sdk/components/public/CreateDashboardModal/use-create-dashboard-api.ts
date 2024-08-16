@@ -6,7 +6,7 @@ import type { CreateDashboardProperties } from "metabase/dashboard/containers/Cr
 import Collections from "metabase/entities/collections";
 import type { CollectionId } from "metabase-types/api";
 
-export interface DashboardCreateParameters
+export interface CreateDashboardValues
   extends Omit<CreateDashboardProperties, "collection_id"> {
   collectionId: CollectionId | null;
 }
@@ -17,7 +17,7 @@ export const useCreateDashboardApi = () => {
   const [createDashboard] = useCreateDashboardMutation();
 
   const handleCreateDashboard = useCallback(
-    async (values: DashboardCreateParameters) => {
+    async (values: CreateDashboardValues) => {
       const initialCollectionId = Collections.selectors.getInitialCollectionId(
         store.getState(),
         values,

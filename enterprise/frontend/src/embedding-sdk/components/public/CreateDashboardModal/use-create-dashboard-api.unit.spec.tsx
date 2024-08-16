@@ -6,7 +6,7 @@ import { screen, renderWithProviders } from "__support__/ui";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import type { Dashboard } from "metabase-types/api";
 
-import type { DashboardCreateParameters } from "./use-create-dashboard-api";
+import type { CreateDashboardValues } from "./use-create-dashboard-api";
 import { useCreateDashboardApi } from "./use-create-dashboard-api";
 
 const TEST_COLLECTION_ID = 11;
@@ -40,7 +40,7 @@ describe("useCreateDashboardApi", () => {
 });
 
 const TestComponent = (
-  props: DashboardCreateParameters & {
+  props: CreateDashboardValues & {
     onDashboardCreate: (dashboard: Dashboard) => void;
   },
 ) => {

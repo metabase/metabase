@@ -9,7 +9,7 @@ import type { Dashboard } from "metabase-types/api";
 
 import { CreateDashboardModal } from "./CreateDashboardModal";
 import {
-  type DashboardCreateParameters,
+  type CreateDashboardValues,
   useCreateDashboardApi,
 } from "./use-create-dashboard-api";
 
@@ -35,7 +35,7 @@ const HookTemplate: ComponentStory<
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const { createDashboard } = useCreateDashboardApi();
 
-  const props: DashboardCreateParameters = {
+  const props: CreateDashboardValues = {
     name: "Test",
     description: null,
     collectionId: null,
