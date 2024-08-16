@@ -47,7 +47,7 @@ export const validatePassword = async (password: string) => {
   }
 };
 
-export const subscribeToNewsletter = async (email: string) => {
+export const subscribeToNewsletter = (email: string) => {
   const body = new FormData();
   body.append("EMAIL", email);
   body.append(SUBSCRIBE_TOKEN, "");
