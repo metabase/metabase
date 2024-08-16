@@ -270,12 +270,11 @@
                                                      :unrestricted
                                                      (get table-id->db-id table-id)
                                                      table-id))
-                                      table-ids)
-          create-queries-perms (zipmap unblocked-table-ids (repeat :query-builder))]
-      {:perms/view-data (zipmap table-ids (repeat :unrestricted))
+                                      table-ids)]
+      {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
        ;; grant create-queries to only unblocked table ids. Otherwise sandboxed users with a joined table that's
        ;; _blocked_ can be queried against from the query builder, but we never want that.
-       :perms/create-queries create-queries-perms})))
+       :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
 
 
