@@ -9,6 +9,7 @@ import {
   setupSMTP,
   visitModel,
   openSharingMenu,
+  sharingMenuButton,
   sharingMenu,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -101,7 +102,6 @@ describe("scenarios > alert", () => {
       cy.icon("download").should("exist");
     });
 
-    openSharingMenu();
-    sharingMenu().findByText("Create alert").should("not.exist");
+    sharingMenuButton().should("not.exist");
   });
 });
