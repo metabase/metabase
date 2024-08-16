@@ -77,3 +77,8 @@
        ->SnakeHatingMap))
   ([k v & more]
    (snake-hating-map (into {k v} (partition-all 2) more))))
+
+(defn snake-hating-map?
+  "Return true if `m` is a SnakeHatingMap."
+  [m]
+  (instance? SnakeHatingMap m))

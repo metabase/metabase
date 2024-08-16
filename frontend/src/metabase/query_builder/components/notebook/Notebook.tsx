@@ -16,7 +16,7 @@ export type NotebookProps = {
   reportTimezone: string;
   hasVisualizeButton?: boolean;
   updateQuestion: (question: Question) => Promise<void>;
-  runQuestionQuery: () => void;
+  runQuestionQuery: () => Promise<void>;
   setQueryBuilderMode: (mode: string) => void;
   readOnly?: boolean;
 };
