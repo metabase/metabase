@@ -146,7 +146,7 @@
            set))))
 
 (defn- describe-table-query-step
-  "A single reduction step in the `describe-table-query` pipeline.
+  "A single reduction step in the [[describe-table-query]] pipeline.
   At the end of each step the output is a combination of 'result' and 'item' objects. There is one 'result' for each
   path which has the most common type for that path. 'item' objects have yet to be aggregated into 'result' objects.
   Each object has the following keys:
@@ -280,7 +280,7 @@
   fields at the root level of the document. If set to K, the query will return fields at K levels of nesting beyond that.
   Setting its value involves a trade-off: the lower it is, the faster describe-table-query executes, but the more queries we might
   have to execute."
-  ;; Cal 2024-09-15 I picked 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
+  ;; Cal 2024-09-15: I chose 100 as the limit because it's a pretty safe bet it won't be exceeded (the documents we've
   ;; seen on cloud are all <20 levels deep)
   100)
 
@@ -290,7 +290,7 @@
                               [:type  ::lib.schema.common/non-blank-string]
                               [:index :int]]]
   "Queries the database, returning a list of maps with metadata for each field in the table (aka collection).
-   Helper for `driver/describe-table` but the data is in a format that needs further-processing in Clojure."
+  Like `driver/describe-table` but the data is directly from the [[describe-table-query]] and needs further processing."
   [db table]
   (let [query (describe-table-query {:collection-name (:name table)
                                      :sample-size     (* metadata-queries/nested-field-sample-limit 2)
