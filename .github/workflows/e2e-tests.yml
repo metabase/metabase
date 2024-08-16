@@ -109,6 +109,8 @@ jobs:
 
   e2e-tests:
     needs: [build, e2e-matrix-builder]
+    permissions:
+      pull-requests: write
     if: |
       !cancelled() && needs.build.result == 'success'
     runs-on: ${{ matrix.runner }}
@@ -250,6 +252,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Upload test results to S3
+        id: s3-mocha-upload
         if: failure()
         env:
           BUCKET: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
@@ -258,8 +261,16 @@ jobs:
         shell: bash
         run: | # sh
           DATE=$(date '+%Y-%m-%d')
-          aws s3 cp ${FOLDER} s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER --recursive
-          aws s3 presign s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER/cypress-test-report.html --expires-in 3600
+          URL=$(aws s3 cp ${FOLDER}/cypress-test-report.html s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER --recursive --acl public-read)
+          # export URL
+          echo "::set-output name=url::$URL"
+
+      - name: Add or update a comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          recreate: true
+          message: |
+            Some tests failed. See the [link](${{ URL }}) for details.
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
