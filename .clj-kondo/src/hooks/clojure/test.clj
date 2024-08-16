@@ -29,7 +29,6 @@
      metabase.test.data.users/with-group-for-user
      metabase.test.persistence/with-persistence-enabled
      metabase.test.util.log/with-log-level
-     metabase.test.util.log/with-log-messages-for-level
      metabase.test.util.misc/with-single-admin-user
      metabase.test.util/with-all-users-permission
      metabase.test.util/with-discarded-collections-perms-changes
@@ -57,7 +56,6 @@
      metabase.test/with-group-for-user
      metabase.test/with-locale
      metabase.test/with-log-level
-     metabase.test/with-log-messages-for-level
      metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
      metabase.test/with-non-admin-groups-no-root-collection-perms
      metabase.test/with-persistence-enabled

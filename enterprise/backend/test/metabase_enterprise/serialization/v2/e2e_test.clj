@@ -835,13 +835,13 @@
           (spit (io/file dump-dir "collections" "unreadable.yaml") "\0")
 
           (testing "No exceptions when loading despite unreadable files"
-            (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
-                         (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
-                                          (map (comp second second))
-                                          (map #(.getName ^File %))
-                                          set)]
-                           (testing "Hidden YAML wasn't read even though it's not throwing errors"
-                             (is (not (contains? files ".hidden.yaml"))))))]
+            (mt/with-log-messages-for-level [logs [metabase-enterprise :error]]
+              (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
+                               (map (comp second second))
+                               (map #(.getName ^File %))
+                               set)]
+                (testing "Hidden YAML wasn't read even though it's not throwing errors"
+                  (is (not (contains? files ".hidden.yaml")))))
               (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
-                (is (=? [[:error Throwable "Error reading file unreadable.yaml"]]
-                        logs))))))))))
+                (is (=? [{:level :error, :e Throwable, :message "Error reading file unreadable.yaml"}]
+                        (logs)))))))))))
