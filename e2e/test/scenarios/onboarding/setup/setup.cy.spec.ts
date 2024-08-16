@@ -191,7 +191,7 @@ describe("scenarios > setup", () => {
       );
       cy.button("Finish").click();
 
-      cy.intercept(SUBSCRIBE_URL).as("subscribe");
+      cy.intercept(SUBSCRIBE_URL, { mocked: true }).as("subscribe");
 
       // Finish & Subscribe
       cy.findByText(
