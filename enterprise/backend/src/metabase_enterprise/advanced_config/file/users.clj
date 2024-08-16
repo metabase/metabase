@@ -21,11 +21,15 @@
 (s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/email
   string?)
 
+(s/def :metabase-enterprise.advanced-config.file.users.config-file-spec/login_attributes
+  (s/map-of keyword? string?))
+
 (s/def ::config-file-spec
   (s/keys :req-un [:metabase-enterprise.advanced-config.file.users.config-file-spec/first_name
                    :metabase-enterprise.advanced-config.file.users.config-file-spec/last_name
                    :metabase-enterprise.advanced-config.file.users.config-file-spec/password
-                   :metabase-enterprise.advanced-config.file.users.config-file-spec/email]))
+                   :metabase-enterprise.advanced-config.file.users.config-file-spec/email]
+          :opt-un [:metabase-enterprise.advanced-config.file.users.config-file-spec/login_attributes]))
 
 (defmethod advanced-config.file.i/section-spec :users
   [_section]
