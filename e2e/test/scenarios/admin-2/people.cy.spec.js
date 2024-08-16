@@ -15,6 +15,7 @@ import {
   getFullName,
   setTokenFeatures,
   createApiKey,
+  createAlert,
   getCurrentUser,
 } from "e2e/support/helpers";
 
@@ -536,7 +537,7 @@ describeEE("scenarios > admin > people", () => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
-        cy.createAlert(getAlertDetails({ user_id, card_id }));
+        createAlert(getAlertDetails({ user_id, card_id }));
         cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });

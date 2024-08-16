@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { getCurrentUser, modal, restore } from "e2e/support/helpers";
+import {
+  createAlert,
+  getCurrentUser,
+  modal,
+  restore,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -65,9 +70,7 @@ describe("scenarios > account > notifications", () => {
             getCurrentUser().then(({ body: { id: user_id } }) => {
               cy.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
-                  cy.createAlert(
-                    getAlertDetails({ card_id, user_id, admin_id }),
-                  );
+                  createAlert(getAlertDetails({ card_id, user_id, admin_id }));
                 },
               );
             });
