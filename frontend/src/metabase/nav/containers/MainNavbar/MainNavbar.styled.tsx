@@ -143,6 +143,7 @@ export const LoadingAndErrorTitle = styled.h2`
 
 export const PaddedSidebarLink = styled(SidebarLink)`
   padding-inline-start: 12px;
+  color: ${props => props.url?.startsWith("/browse/chat") ? '#5B26D3' : '#4F525C'};
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`

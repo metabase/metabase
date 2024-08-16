@@ -93,6 +93,15 @@ const itemLinkStyle = css`
   }
 `;
 
+const itemLinkStyleDataMap = css`
+    height: 50px;
+    marginLeft: 30px;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+`;
+
 export const ItemButton = styled(Text)<
   TextProps & HTMLAttributes<HTMLDivElement>
 >(itemLinkStyle);
@@ -100,6 +109,8 @@ export const ItemButton = styled(Text)<
 export const ItemLink = styled(Link)(itemLinkStyle);
 
 export const MaybeItemLink = styled(RawMaybeLink)(itemLinkStyle);
+
+export const MaybeItemLinkDataMap = styled(RawMaybeLink)(itemLinkStyleDataMap);
 
 export const ItemNameCell = styled.td`
   padding: 0 !important;

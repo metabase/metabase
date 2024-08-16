@@ -6,6 +6,7 @@ import {
   } from "react";
   import { t } from "ttag";
   
+  import * as Urls from "metabase/lib/urls";
   import EntityItem from "metabase/components/EntityItem";
   import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
   import {
@@ -37,7 +38,7 @@ import {
     ModelNameColumn,
     ModelTableRow,
   } from "./ModelsTable.styled";
-  import { getModelDescription, sortModels } from "./utils";
+  import { sortCubeData } from "./utils";
 import { CubeDataItem } from "metabase-types/api";
   
   export interface SemanticTableProps {
@@ -50,6 +51,13 @@ import { CubeDataItem } from "metabase-types/api";
   interface CubeResult {
     fileName: string;
     content: any;
+  }
+
+  export interface SortedCube {
+    fileName: string;
+    content: string;
+    title: string;
+    description: string;
   }
   
   
@@ -66,7 +74,7 @@ import { CubeDataItem } from "metabase-types/api";
   };
   
   const DEFAULT_SORTING_OPTIONS: SortingOptions = {
-    sort_column: "creation date",
+    sort_column: "fileName",
     sort_direction: SortDirection.Asc,
   };
   
@@ -90,8 +98,30 @@ import { CubeDataItem } from "metabase-types/api";
       DEFAULT_SORTING_OPTIONS,
     );
   
-    const sortedModels = cubeDataArray
-    // const sortedModels = sortModels(cubeDataArray, sortingOptions, localeCode);
+    // const sortedModels = cubeDataArray
+    const sortingCubes = (cubeArr: CubeDataItem[]) => {
+      let result:any = [];
+    
+      cubeArr.forEach((item: CubeDataItem) => {
+        const captionMatch = item.content.match(/caption:\s*`([^`]+)`/);
+        const subTitleMatch = item.content.match(/subTitle:\s*`([^`]+)`/);
+    
+        result.push({
+          title: captionMatch ? captionMatch[1] : '',
+          description: subTitleMatch ? subTitleMatch[1] : '',
+          fileName: item.fileName,
+          content: item.content,
+        });
+      });
+    
+      return result;
+    };
+    
+
+    const sortedCubes = sortingCubes(cubeDataArray)
+    // console.log('sortedCubes',sortedCubes)
+
+    const sortedModels = sortCubeData(sortedCubes, sortingOptions, localeCode);
   
     /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
     const collectionWidth = 38.5;
@@ -131,7 +161,7 @@ import { CubeDataItem } from "metabase-types/api";
         <thead>
           <tr>
             <SortableColumnHeader
-              name="folder"
+              name="fileName"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={handleUpdateSortOptions}
               style={{ paddingInlineStart: ".625rem" }}
@@ -143,8 +173,6 @@ import { CubeDataItem } from "metabase-types/api";
             </SortableColumnHeader>
             <SortableColumnHeader
               name="creation date"
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={handleUpdateSortOptions}
               {...collectionProps}
               columnHeaderProps={{
                 style: {
@@ -177,7 +205,7 @@ import { CubeDataItem } from "metabase-types/api";
             </Repeat>
           ) : 
           (
-            sortedModels.map((cube: CubeResult) => (
+            sortedModels.map((cube: SortedCube) => (
               <TBodyRow cube={cube} key={cube.fileName} onRowClick={onRowClick} />
             ))
           )}
@@ -186,7 +214,7 @@ import { CubeDataItem } from "metabase-types/api";
     );
   };
 
-  const TBodyRow = ({ cube,skeleton, onRowClick }: { cube: CubeResult, skeleton?:boolean, onRowClick:(cube: CubeDataItem) => void }) => {
+  const TBodyRow = ({ cube,skeleton, onRowClick }: { cube: SortedCube, skeleton?:boolean, onRowClick:(cube: CubeDataItem) => void }) => {
     return (
       <ModelTableRow
       onClick={(e: React.MouseEvent) => {
@@ -224,6 +252,7 @@ import { CubeDataItem } from "metabase-types/api";
         aria-labelledby={headingId}
       >
         <MaybeItemLink
+            to={cube ? Urls.browseCube({ fileName: cube.fileName, content: cube.content}) : undefined}
           style={{
             // To align the icons with "Name" in the <th>
             paddingInlineStart: "1.4rem",

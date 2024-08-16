@@ -15,6 +15,9 @@ import {
   getIsProfileLinkVisible,
   getIsQuestionLineageVisible,
   getIsSearchVisible,
+  getIsSemanticLayerBreadcrumbsVisible,
+  getIsDataMapBreadcrumbsVisible,
+  getCubeName
 } from "metabase/selectors/app";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
@@ -25,6 +28,7 @@ import AppBar from "../../components/AppBar";
 const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
   collectionId: Collections.selectors.getInitialCollectionId(state, props),
+  cubeName: getCubeName(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
   isLogoVisible: getIsLogoVisible(state),
@@ -34,6 +38,8 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   isProfileLinkVisible: getIsProfileLinkVisible(state),
   isCollectionPathVisible: getIsCollectionPathVisible(state, props),
   isQuestionLineageVisible: getIsQuestionLineageVisible(state, props),
+  isSemanticLayerVisible: getIsSemanticLayerBreadcrumbsVisible(state, props),
+  isDataMapVisible: getIsDataMapBreadcrumbsVisible(state, props)
 });
 
 const mapDispatchToProps = {

@@ -10,26 +10,56 @@ import ReactFlow, {
   ReactFlowInstance,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { Flex, Group, Title } from "metabase/ui";
+import { t } from "ttag";
+import NoResults from "assets/img/no_results.svg";
 import { createGraphData, CubeData, CubeFlowProps, extractCubeName, extractSQLInfo, extractTableName, FieldData, newExtractAllJoins } from "./utils";
 import CustomNode from "./CubeNode";
 import { getLayoutedElements } from "./LayoutedElements";
+import { useGetCubeDataQuery } from "metabase/api";
+import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
+import { BrowseContainer, BrowseHeader, BrowseSection, CenteredEmptyState } from "metabase/browse/components/BrowseContainer.styled";
+import { Box } from "@mantine/core";
 
 const nodeTypes = {
   custom: CustomNode,
 };
 
-const CubeFlow: React.FC<CubeFlowProps>  = ({ cubes }) => {
+const CubeFlow = () => {
+  const { data, isLoading, error } = useGetCubeDataQuery();
   const [showDefinition, setShowDefinition] = useState<boolean>(false)
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
+  const cubes = data as { content: string }[]
+
   const tableGroups: { [key: string]: FieldData[] } = {};
+  if (error) {
+    return <LoadingAndErrorWrapper error />;
+  }
+
+  if (!cubes && isLoading) {
+    return <LoadingAndErrorWrapper loading />;
+  }
+
+  if (!cubes?.length) {
+    return (
+      <CenteredEmptyState
+        title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
+        illustrationElement={
+          <Box mb=".5rem">
+            <img src={NoResults} />
+          </Box>
+        }
+      />
+    );
+  }
 
   const cubesArr: any = cubes.map(cube => cube.content);
   let tableNameArr: string[] = [];
   let cubeNameArr: string[] = [];
   cubes.forEach((cube) => {
     const cubeName = extractCubeName(cube.content);
-    const tableName = extractTableName(cube.content);
+    const tableName = extractCubeName(cube.content);
     tableNameArr.push(tableName);
     cubeNameArr.push(cubeName);
     const cubeInfo = extractSQLInfo(cube.content);
@@ -258,6 +288,26 @@ cubes.forEach((cube) => {
   }, []);
 
   return (
+  <>
+  <BrowseContainer>
+  <BrowseHeader>
+      <BrowseSection>
+      <Flex
+      w="100%"
+      h="auto" // Adjust height if needed
+      direction="column" // Changed to column
+      justify="flex-start" // Align items at the start
+      align="flex-start"
+      gap="md"
+    >
+      <Title order={1} color="text-dark">
+        <Group spacing="sm">
+        {t`Data Map`}
+        </Group>
+      </Title>
+    </Flex>
+      </BrowseSection>
+    </BrowseHeader>
     <div style={{ width: "80vw", height: "70vh", background: "#F9FBFC" }}>
       <ReactFlow
         nodes={highlightedNodes}
@@ -301,6 +351,8 @@ cubes.forEach((cube) => {
           }} onClick={handleDefinition}>{showDefinition ? "Hide" : "Show"} Definition</button>
       </div>
     </div>
+    </BrowseContainer>
+    </>
   );
 };
 export default CubeFlow;

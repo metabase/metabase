@@ -1,5 +1,7 @@
 import type { CollectionId } from "metabase-types/api";
 
+import { t } from "ttag";
+
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
 import NewItemButton from "../NewItemButton";
@@ -16,9 +18,11 @@ import {
 } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
+import { SemanticCrumbs } from "metabase/components/SemanticCrumbs";
 
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
+  cubeName?: string;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
@@ -27,6 +31,8 @@ export interface AppBarLargeProps {
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
+  isSemanticLayerVisible?: boolean;
+  isDataMapVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onLogout: () => void;
@@ -34,6 +40,7 @@ export interface AppBarLargeProps {
 
 const AppBarLarge = ({
   collectionId,
+  cubeName,
   isNavBarOpen,
   isNavBarEnabled,
   isLogoVisible,
@@ -42,6 +49,8 @@ const AppBarLarge = ({
   isNewButtonVisible,
   isProfileLinkVisible,
   isCollectionPathVisible,
+  isSemanticLayerVisible,
+  isDataMapVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
   onLogout,
@@ -61,12 +70,26 @@ const AppBarLarge = ({
           isNavBarEnabled={isNavBarEnabled}
         />
         <AppBarInfoContainer
-          isVisible={!isNavBarVisible || isQuestionLineageVisible}
+          isVisible={!isNavBarVisible || isQuestionLineageVisible || isSemanticLayerVisible || isDataMapVisible}
         >
           {isQuestionLineageVisible ? (
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
+          ) : isSemanticLayerVisible ? (
+            <SemanticCrumbs 
+                  crumbs={[
+                    { title: t`Semantic Layer`, to: "/browse/semantic-layer" },
+                    { title: `${cubeName}` },
+                  ]}
+                />
+          ) : isDataMapVisible ? (
+            <SemanticCrumbs 
+                  crumbs={[
+                    { title: t`Semantic Layer`, to: "/browse/semantic-layer" },
+                    { title: `Data Map` },
+                  ]}
+                />
           ) : null}
         </AppBarInfoContainer>
       </AppBarLeftContainer>
