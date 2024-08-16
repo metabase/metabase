@@ -1014,8 +1014,7 @@
        (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/csv-attachment]})
-              (-> (mt/summarize-multipart-single-email email
-                                                       #"Aviary KPIs")))))}}
+              (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
 
    "xlsx"
    {:pulse-card {:include_xls true}
@@ -1025,8 +1024,7 @@
        (is (= (rasta-dashsub-message {:message [{"Aviary KPIs" true}
                                                 pulse.test-util/png-attachment
                                                 pulse.test-util/xls-attachment]})
-              (-> (mt/summarize-multipart-single-email email
-                                                       #"Aviary KPIs")))))}}
+              (mt/summarize-multipart-single-email email #"Aviary KPIs"))))}}
 
    "no result should not include csv"
    {:card {:dataset_query (mt/mbql-query venues {:filter [:= $id -1]})}
@@ -1039,20 +1037,22 @@
                                                 pulse.test-util/png-attachment
                                                 ;; icon
                                                 pulse.test-util/png-attachment]})
-              (-> (mt/summarize-multipart-single-email email
-                                                       #"Aviary KPIs")))))}}))
+              (mt/summarize-multipart-single-email email
+                                                   #"Aviary KPIs"))))}}))
 
 (deftest multi-series-test
   (mt/with-temp
     [:model/Card                {card-1 :id}      {:name          "Source card"
+                                                   :display       "line"
                                                    :dataset_query (mt/mbql-query orders
                                                                                  {:aggregation [[:sum $orders.total]]
                                                                                   :breakout [$orders.created_at]})}
      :model/Card                {card-2 :id}      {:name          "Serie card"
+                                                   :display       "line"
                                                    :dataset_query (mt/mbql-query orders
                                                                                  {:aggregation [[:sum $orders.subtotal]]
                                                                                   :breakout [$orders.created_at]})}
-     :model/Dashboard           {dash-id :id}     {}
+     :model/Dashboard           {dash-id :id}     {:name "Aviary KPIs"}
      :model/DashboardCard       {dash-card-1 :id} {:dashboard_id dash-id
                                                    :card_id      card-1}
      :model/DashboardCardSeries _                 {:dashboardcard_id dash-card-1
@@ -1062,11 +1062,19 @@
      :model/PulseCard            _                {:pulse_id pulse-id
                                                    :card_id   card-1
                                                    :position 0}
-
-     :model/PulseChannel        _                 {:pulse_id pulse-id}]
-    (testing "Able to sendn pulse with multi series card #46892"
-      ;; not sure what to assert here as the multi serie result is in the image
-      (is (some? (-> (pulse.test-util/with-captured-channel-send-messages!
-                       (metabase.pulse/send-pulse! (t2/select-one :model/Pulse)))
-                     :channel/email
-                     first))))))
+     :model/PulseChannel        {pc-id :id}       {:pulse_id pulse-id
+                                                   :channel_type "email"}
+     :model/PulseChannelRecipient _               {:user_id          (pulse.test-util/rasta-id)
+                                                   :pulse_channel_id pc-id}]
+    (testing "Able to send pulse with multi series card without rendering error #46892"
+      (let [error-msg (str @#'body/error-rendered-message)]
+        (is (= (rasta-dashsub-message {:message [{error-msg false}
+                                                 ;; no result
+                                                 pulse.test-util/png-attachment
+                                                 ;; icon
+                                                 pulse.test-util/png-attachment]})
+               (-> (pulse.test-util/with-captured-channel-send-messages!
+                     (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
+                   :channel/email
+                   first
+                   (mt/summarize-multipart-single-email (re-pattern error-msg)))))))))
