@@ -15,5 +15,6 @@ export type {
   StructuredQuestionDetails,
 } from "./createQuestion";
 export { createQuestionAndDashboard } from "./createQuestionAndDashboard";
+export { getCurrentUser } from "./getCurrentUser";
 export { remapDisplayValueToFK } from "./remapDisplayValueToFK";
 export { updateDashboardCards } from "./updateDashboardCards";

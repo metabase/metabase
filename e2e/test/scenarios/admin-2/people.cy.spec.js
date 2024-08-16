@@ -15,6 +15,7 @@ import {
   getFullName,
   setTokenFeatures,
   createApiKey,
+  getCurrentUser,
 } from "e2e/support/helpers";
 
 const { sandboxed, normal, admin, nodata, nocollection } = USERS;
@@ -531,7 +532,7 @@ describeEE("scenarios > admin > people", () => {
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
-    cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+    getCurrentUser().then(({ body: { id: user_id } }) => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
