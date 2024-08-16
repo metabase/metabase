@@ -218,7 +218,7 @@ const computeDiffWithPreviousPeriod = (
   const previousValue =
     chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
 
-  if (previousValue == null) {
+  if (previousValue == null || currentValue == null) {
     return null;
   }
   const previousDate = parseTimestamp(

@@ -2,8 +2,9 @@ import type { TooltipOption } from "echarts/types/dist/shared";
 import { renderToString } from "react-dom/server";
 
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart/use-chart-events";
+
+import { TOOLTIP_BASE_OPTION } from "../tooltip";
 
 import type { PieChartFormatters } from "./format";
 import type { PieChartModel } from "./model/types";
@@ -28,10 +29,8 @@ export const getTooltipOption = (
   formatters: PieChartFormatters,
 ): TooltipOption => {
   return {
+    ...TOOLTIP_BASE_OPTION,
     trigger: "item",
-    appendToBody: true,
-    confine: true,
-    className: TooltipStyles.ChartTooltipRoot,
     formatter: params => {
       if (Array.isArray(params) || typeof params.dataIndex !== "number") {
         return "";

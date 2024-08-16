@@ -1,9 +1,32 @@
 import { useMemo } from "react";
 
 import { isNotNull } from "metabase/lib/types";
+import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
 import type { PieChartModel } from "../pie/model/types";
+
+export const TOOLTIP_BASE_OPTION = {
+  confine: true,
+  appendTo: () => {
+    let container = document.querySelector(
+      ".echarts-tooltip-container",
+    ) as HTMLDivElement;
+    if (!container) {
+      container = document.createElement("div");
+      container.classList.add("echarts-tooltip-container");
+      container.style.setProperty("overflow", "hidden");
+      container.style.setProperty("height", "100%");
+      container.style.setProperty("position", "relative");
+      container.style.setProperty("pointer-events", "none");
+
+      document.body.append(container);
+    }
+
+    return container;
+  },
+  className: TooltipStyles.ChartTooltipRoot,
+};
 
 export const getMarkerColorClass = (hexColor: string) => {
   return `marker-${hexColor.slice(1, 7)}`;

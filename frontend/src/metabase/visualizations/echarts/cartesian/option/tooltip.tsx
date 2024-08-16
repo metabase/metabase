@@ -2,10 +2,10 @@ import type { TooltipOption } from "echarts/types/dist/shared";
 import { renderToString } from "react-dom/server";
 
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
-import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
 
+import { TOOLTIP_BASE_OPTION } from "../../tooltip";
 import {
   GOAL_LINE_SERIES_ID,
   TIMELINE_EVENT_SERIES_ID,
@@ -49,14 +49,13 @@ export const getTooltipOption = (
 ): TooltipOption => {
   return {
     trigger: "item",
-    appendToBody: true,
-    confine: true,
-    className: TooltipStyles.ChartTooltipRoot,
+    ...TOOLTIP_BASE_OPTION,
     formatter: params => {
-      const isAxisTooltip = Array.isArray(params);
+      if (Array.isArray(params)) {
+        return "";
+      }
 
-      const dataIndex = isAxisTooltip ? params[0]?.dataIndex : params.dataIndex;
-      const seriesId = isAxisTooltip ? null : params.seriesId;
+      const { dataIndex, seriesId } = params;
 
       if (
         seriesId === TIMELINE_EVENT_SERIES_ID ||
