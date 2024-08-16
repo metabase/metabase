@@ -144,9 +144,9 @@ The values for the locked parameter in your server code should match your filter
 
 ## Locked parameters limit the values available to other editable parameters
 
-Because locked parameters filter data _before_ the results are displayed in the embed, locked parameters also limit the values available to other, editable filter widgets.
+Because locked parameters filter data _before_ the results are displayed in the embed, locked parameters limit the values available to other, editable filter widgets.
 
-For example, say you have a dashboard with two filters, State and City. If the State parameter is locked to the value "Vermont", the dropdown menu in the City filter will be limited to cities in Vermont. This behavior is similar to [linked filters](../dashboards/filters.md#linking-filters).
+For example, say you have a dashboard with two filters, State and City. If the State parameter is locked to the value "Vermont", the dropdown menu in the City filter will be limited to cities in Vermont. While you don't explicitly link the two filters, the two filters behave implicitly like [linked filters](../dashboards/filters.md#linking-filters).
 
 ## Locked parameters on dashboards with SQL questions
 
