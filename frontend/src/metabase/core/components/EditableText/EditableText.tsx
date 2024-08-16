@@ -10,6 +10,7 @@ import type {
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
+import { L } from "metabase/common/components/LocalizeInput";
 import Markdown from "metabase/core/components/Markdown";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
@@ -120,11 +121,12 @@ const EditableText = forwardRef(function EditableText(
   };
 
   const shouldShowMarkdown = isMarkdown && !isInFocus && inputValue;
+  const shouldShowLocalizedValue = !isInFocus && !!inputValue;
 
   return (
     <EditableTextRoot
-      onClick={isMarkdown ? handleRootElementClick : undefined}
       {...props}
+      onClick={handleRootElementClick}
       ref={ref}
       isEditing={isEditing}
       isDisabled={isDisabled}
@@ -134,6 +136,8 @@ const EditableText = forwardRef(function EditableText(
     >
       {shouldShowMarkdown ? (
         <Markdown>{inputValue}</Markdown>
+      ) : shouldShowLocalizedValue ? (
+        <L>{inputValue}</L>
       ) : (
         <EditableTextArea
           ref={inputRef}

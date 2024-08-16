@@ -295,6 +295,7 @@ interface PublicSettings {
   "help-link": HelpLinkSetting;
   "help-link-custom-destination": string;
   "hide-embed-branding?": boolean;
+  "input-translations": string;
   "is-hosted?": boolean;
   "is-metabot-enabled": boolean;
   "ldap-configured?": boolean;

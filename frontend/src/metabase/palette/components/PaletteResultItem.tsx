@@ -2,6 +2,8 @@ import { useCallback } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
+import { localizeInput } from "metabase/common/utils/i18n";
 import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
@@ -21,6 +23,8 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
   const handleLinkClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
   }, []);
+
+  const locale = useLocale();
 
   const content = (
     <Flex
@@ -69,7 +73,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           }}
         >
           <Text component="span" c="inherit" lh="1rem">
-            {item.name}
+            {localizeInput(item.name, locale)}
           </Text>
           {item.extra?.isVerified && (
             <Icon

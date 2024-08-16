@@ -1,3 +1,4 @@
+import { L } from "metabase/common/components/LocalizeInput";
 import type { IconName } from "metabase/ui";
 
 import { HomeCard } from "../HomeCard";
@@ -22,7 +23,9 @@ export const HomeModelCard = ({
   return (
     <HomeCard url={url}>
       <CardIcon {...icon} />
-      <CardTitle>{title}</CardTitle>
+      <CardTitle>
+        <L>{title}</L>
+      </CardTitle>
     </HomeCard>
   );
 };

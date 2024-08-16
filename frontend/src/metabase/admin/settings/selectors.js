@@ -336,6 +336,11 @@ export const ADMIN_SETTINGS_SECTIONS = {
         },
       },
       {
+        display_name: t`Translation dictionary for user input`,
+        key: "input-translations",
+        type: "text",
+      },
+      {
         key: "report-timezone",
         display_name: t`Report Timezone`,
         type: "select",

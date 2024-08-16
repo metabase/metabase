@@ -12,6 +12,8 @@ import { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
+import { localizeInput } from "metabase/common/utils/i18n";
 import CollapseSection from "metabase/components/CollapseSection";
 import { Sortable } from "metabase/core/components/Sortable";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -85,6 +87,7 @@ const BookmarkItem = ({
 
   const iconName = isSelected ? "bookmark_filled" : "bookmark";
 
+  const locale = useLocale();
   return (
     <Sortable id={bookmark.id} key={bookmark.id}>
       <SidebarBookmarkItem
@@ -103,7 +106,7 @@ const BookmarkItem = ({
           </button>
         }
       >
-        {bookmark.name}
+        {localizeInput(bookmark.name, locale)}
       </SidebarBookmarkItem>
     </Sortable>
   );

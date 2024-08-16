@@ -690,6 +690,12 @@ See [fonts](../configuring-metabase/fonts.md).")
   :getter     available-locales-with-names
   :doc        false)
 
+(defsetting input-translations
+  (deferred-tru "Translation dictionary for user input, formatted in YAML")
+  :visibility :public ; FIXME: Not sure this is the right visibility
+  :export?    true
+  :doc        false)
+
 (defsetting available-timezones
   "Available report timezone options"
   :visibility :public

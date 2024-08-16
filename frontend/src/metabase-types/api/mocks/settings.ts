@@ -185,14 +185,15 @@ export const createMockSettings = (
   "google-auth-client-id": null,
   "google-auth-configured": false,
   "google-auth-enabled": false,
+  "input-translations": "",
   "is-hosted?": false,
   "is-metabot-enabled": false,
-  "jwt-enabled": false,
   "jwt-configured": false,
+  "jwt-enabled": false,
   "ldap-configured?": false,
   "ldap-enabled": false,
-  "ldap-port": 389, // default value from API
   "ldap-group-membership-filter": "(member={dn})",
+  "ldap-port": 389, // default value from API
   "loading-message": "doing-science",
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   "openai-api-key": null,

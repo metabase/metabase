@@ -7,6 +7,7 @@ import {
   isInstanceAnalyticsCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
+import { localizeInput } from "metabase/common/utils/i18n";
 import Collections, {
   ROOT_COLLECTION,
   getCollectionIcon,
@@ -99,7 +100,7 @@ export function buildCollectionTree(
   return collections.map((collection: Collection) => {
     return {
       id: collection.id,
-      name: collection.name,
+      name: localizeInput(collection.name),
       icon: getCollectionIcon(collection),
       children: collection?.children
         ? buildCollectionTree(collection.children)
