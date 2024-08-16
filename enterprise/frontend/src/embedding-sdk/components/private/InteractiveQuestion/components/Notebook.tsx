@@ -1,52 +1,37 @@
 import { useMemo } from "react";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { default as QBNotebook } from "metabase/query_builder/components/notebook/Notebook";
 import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/query_builder/utils/question";
-import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
-import { sourceTableOrCardId } from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
+  // Loads databases and metadata so we can show notebook steps for the selected data source
+  useDatabaseListQuery();
+
   const { question, originalQuestion, updateQuestion, runQuestion } =
     useInteractiveQuestionContext();
-  const metadata = useSelector(getMetadata);
 
-  const isDirty = useMemo(
-    () => isQuestionDirty(question, originalQuestion),
-    [question, originalQuestion],
-  );
+  const isDirty = useMemo(() => {
+    return isQuestionDirty(question, originalQuestion);
+  }, [question, originalQuestion]);
 
-  const isRunnable = useMemo(
-    () => isQuestionRunnable(question, isDirty),
-    [question, isDirty],
-  );
+  const isRunnable = useMemo(() => {
+    return isQuestionRunnable(question, isDirty);
+  }, [question, isDirty]);
 
   const reportTimezone = useSelector(state =>
     getSetting(state, "report-timezone-long"),
   );
-
-  const handleUpdateQuestion = async (nextQuestion: Question) => {
-    const query = nextQuestion.query();
-    const sourceTableId = sourceTableOrCardId(query);
-    const table = metadata.table(sourceTableId);
-    const databaseId = table?.db_id;
-
-    const nextQuestionWithDatabaseId = nextQuestion.setDatasetQuery({
-      ...nextQuestion.datasetQuery(),
-      database: databaseId ?? null,
-    });
-
-    await updateQuestion(nextQuestionWithDatabaseId, { run: false });
-  };
 
   return (
     question && (
@@ -59,7 +44,9 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           isResultDirty={true}
           reportTimezone={reportTimezone}
           readOnly={false}
-          updateQuestion={handleUpdateQuestion}
+          updateQuestion={async (nextQuestion: Question) =>
+            await updateQuestion(nextQuestion, { run: false })
+          }
           runQuestionQuery={async () => {
             await runQuestion();
             onApply();

@@ -7,6 +7,8 @@ import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 
+const isCI = Cypress.env("CI");
+
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
 Cypress.on("test:before:run", () => {
@@ -33,9 +35,12 @@ Cypress.on("test:after:run", (test, runnable) => {
     }
     filename += `${titleToFileName(test.title)} (failed).png`;
 
-    Cypress.Mochawesome.context.forEach(ctx => {
-      addContext({ test }, ctx);
-    });
+    if (isCI) {
+      // cypress-terminal-report
+      Cypress.Mochawesome.context.forEach(ctx => {
+        addContext({ test }, ctx);
+      });
+    }
 
     addContext(
       { test },
@@ -93,24 +98,30 @@ Cypress.on("window:load", window => {
 });
 
 // cypress-terminal-report
-afterEach(() => {
-  cy.wait(50, { log: false }).then(() =>
-    cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
-  );
-});
+if (isCI) {
+  afterEach(() => {
+    cy.wait(50, { log: false }).then(() =>
+      cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
+    );
+  });
 
-const options = {
-  collectTypes: [
-    "cons:log",
-    "cons:info",
-    // 'cons:warn', - intentionally disabled because of noise from mbql
-    "cons:error",
-    "cy:log",
-    "cy:xhr",
-    "cy:request",
-    "cy:intercept",
-    "cy:command",
-  ],
-};
-// Ensure that after plugin installation is after the afterEach handling the integration.
-require("cypress-terminal-report/src/installLogsCollector")(options);
+  const options = {
+    collectTypes: [
+      "cons:log",
+      "cons:info",
+      // 'cons:warn', - intentionally disabled because of noise from mbql
+      "cons:error",
+      "cy:log",
+      "cy:xhr",
+      "cy:request",
+      "cy:intercept",
+      "cy:command",
+    ],
+    xhr: {
+      printBody: false,
+    },
+  };
+
+  // Ensure that after plugin installation is after the afterEach handling the integration.
+  require("cypress-terminal-report/src/installLogsCollector")(options);
+}
