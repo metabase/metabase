@@ -259,6 +259,7 @@ jobs:
         run: | # sh
           DATE=$(date '+%Y-%m-%d')
           aws s3 cp ${FOLDER} s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER --recursive
+          aws s3 presign s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/$TARGET_FOLDER/cypress-test-report.html --expires-in 3600
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
