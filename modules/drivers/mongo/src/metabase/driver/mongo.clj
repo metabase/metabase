@@ -210,13 +210,14 @@
                         {"coll" collection-name
                          "pipeline" [{"$sort" {"_id" -1}}
                                      {"$limit" end-n}]}}]
-        initial-items [{"$project" {"path" "$ROOT", "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"},
-                                                                   "as"    "item",
-                                                                   "in"    {"k"      "$$item.k",
-                                                                            "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"}, "object"]}
-                                                                                               "then" "$$item.v"
-                                                                                               "else" nil}}
-                                                                            "type"   {"$type" "$$item.v"}}}}}}
+        initial-items [{"$project" {"path" "$ROOT"
+                                    "kvs" {"$map" {"input" {"$objectToArray" "$$ROOT"},
+                                                   "as"    "item",
+                                                   "in"    {"k"      "$$item.k",
+                                                            "object" {"$cond" {"if"   {"$eq" [{"$type" "$$item.v"}, "object"]}
+                                                                               "then" "$$item.v"
+                                                                               "else" nil}}
+                                                            "type"   {"$type" "$$item.v"}}}}}}
                        {"$unwind" {"path" "$kvs", "includeArrayIndex" "index"}}
                        {"$project" {"path"   "$kvs.k"
                                     "object" "$kvs.v"
@@ -232,8 +233,8 @@
                           "index" "$index"}}])))
 
 (comment
-  ;; describe-table-clojure is logically equivalent to [[describe-table-query]], (excluding details like taking the
-  ;; sample and dealing with null values).
+  ;; describe-table-clojure is logically equivalent to [[describe-table-query]], excluding minor details like taking the
+  ;; sample and dealing with null values.
   (defn describe-table-clojure [data max-depth]
     (let [initial-items (mapcat (fn [x]
                                   (for [[i [k v]] (map vector (range) x)]
