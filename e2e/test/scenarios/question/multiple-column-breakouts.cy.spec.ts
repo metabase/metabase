@@ -174,7 +174,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.wait("@dataset");
         assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
-          rows: [
+          firstRows: [
             ["2026", "January 2026", "580"],
             ["2026", "February 2026", "543"],
           ],
@@ -204,7 +204,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.wait("@dataset");
         assertTableData({
           columns: ["Created At: Quarter", "Created At: Week", "Count"],
-          rows: [["Q2 2022", "April 24, 2022 – April 30, 2022", "1"]],
+          firstRows: [["Q2 2022", "April 24, 2022 – April 30, 2022", "1"]],
         });
       });
     });
@@ -222,7 +222,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         assertQueryBuilderRowCount(49);
         assertTableData({
           columns: ["Created At: Quarter", "Created At: Month", "Count"],
-          rows: [["Q2 2022", "April 2022", "1"]],
+          firstRows: [["Q2 2022", "April 2022", "1"]],
         });
 
         cy.log("add a filter");
@@ -239,7 +239,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         assertQueryBuilderRowCount(1);
         assertTableData({
           columns: ["Created At: Quarter", "Created At: Month", "Count"],
-          rows: [["Q3 2023", "August 2023", "9"]],
+          firstRows: [["Q3 2023", "August 2023", "9"]],
         });
 
         cy.log("change the filter");
@@ -254,7 +254,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         assertQueryBuilderRowCount(1);
         assertTableData({
           columns: ["Created At: Quarter", "Created At: Month", "Count"],
-          rows: [["Q3 2022", "August 2022", "1"]],
+          firstRows: [["Q3 2022", "August 2022", "1"]],
         });
       });
     });
@@ -314,7 +314,7 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("dashboards", () => {
-      function setParametersAndVerify(queryAlias: string) {
+      function setParametersAndAssertResults(queryAlias: string) {
         filterWidget().eq(0).click();
         popover().findByText("Quarter").click();
         cy.wait(queryAlias);
@@ -353,10 +353,10 @@ describe("scenarios > question > multiple column breakouts", () => {
         saveDashboard();
         cy.wait("@dashcardQuery");
 
-        cy.log("set parameters and check query results");
-        setParametersAndVerify("@dashcardQuery");
+        cy.log("set parameters and assert query results");
+        setParametersAndAssertResults("@dashcardQuery");
 
-        cy.log("drill-thru to the QB and check query results");
+        cy.log("drill-thru to the QB and assert query results");
         getDashboardCard().findByText("Test question").click();
         cy.wait("@dataset");
         tableInteractive().within(() => {
@@ -368,7 +368,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.signInAsAdmin();
         cy.get("@dashboardId").then(visitPublicDashboard);
         cy.wait("@publicDashcardQuery");
-        setParametersAndVerify("@publicDashcardQuery");
+        setParametersAndAssertResults("@publicDashcardQuery");
 
         cy.log("set parameters in an embedded dashboard");
         cy.get<number>("@dashboardId").then(dashboardId =>
@@ -378,18 +378,62 @@ describe("scenarios > question > multiple column breakouts", () => {
           }),
         );
         cy.wait("@embedDashcardQuery");
-        setParametersAndVerify("@embedDashcardQuery");
+        setParametersAndAssertResults("@embedDashcardQuery");
+      });
+    });
+  });
+
+  describe("previous stage", () => {
+    describe("notebook", () => {
+      it("should be able to add post-aggregation filters for each breakout column", () => {
+        createQuestion(questionWith2BreakoutsDetails, { visitQuestion: true });
+        openNotebook();
+
+        cy.log("add a filter for the year column");
+        getNotebookStep("summarize").button("Filter").click();
+        popover().within(() => {
+          cy.findByText("Created At: Year").click();
+          cy.findByText("Specific dates…").click();
+          cy.findByText("Between").click();
+          cy.findByLabelText("Start date").clear().type("January 1, 2023");
+          cy.findByLabelText("End date").clear().type("December 31, 2023");
+          cy.button("Add filter").click();
+        });
+
+        cy.log("add a filter for the month column");
+        getNotebookStep("filter", { stage: 1 }).icon("add").click();
+        popover().within(() => {
+          cy.findByText("Created At: Month").click();
+          cy.findByText("Specific dates…").click();
+          cy.findByText("Between").click();
+          cy.findByLabelText("Start date").clear().type("March 1, 2023");
+          cy.findByLabelText("End date").clear().type("May 31, 2023");
+          cy.button("Add filter").click();
+        });
+
+        cy.log("assert query results");
+        visualize();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: ["Created At: Year", "Created At: Month", "Count"],
+          firstRows: [
+            ["2023", "March 2023", "256"],
+            ["2023", "April 2023", "238"],
+            ["2023", "May 2023", "271"],
+          ],
+        });
+        assertQueryBuilderRowCount(3);
       });
     });
   });
 });
 
 interface TableOpts {
-  columns?: string[];
-  rows?: string[][];
+  columns: string[];
+  firstRows?: string[][];
 }
 
-function assertTableData({ columns = [], rows = [] }: TableOpts) {
+function assertTableData({ columns = [], firstRows = [] }: TableOpts) {
   tableInteractive()
     .findAllByTestId("header-cell")
     .should("have.length", columns.length);
@@ -401,7 +445,7 @@ function assertTableData({ columns = [], rows = [] }: TableOpts) {
       .should("have.text", column);
   });
 
-  rows.forEach((row, rowIndex) => {
+  firstRows.forEach((row, rowIndex) => {
     row.forEach((cell, cellIndex) => {
       tableInteractiveBody()
         .findAllByTestId("cell-data")
