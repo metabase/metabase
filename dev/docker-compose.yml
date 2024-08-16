@@ -1,99 +1,24 @@
 version: '3.1'
 
 # A useful compose file for local development.
-# This compose file contains preconfigured services for many common development
-# tasks. The local-dev and *-app-db services will stand up an instance of
-# metabase and a corresponding app-db. The *-data services are sample QA images
-# that can be used as warehouses.
+# This compose file contains preconfigured services for many common development needs
+# and can be used to quickly start up a development environment for Metabase.
 #
-# Examples: Which services you run are configured by profiles and can be run as
-#  shown in the following examples:
+# usage: docker-compose -f dev/docker-compose.yml --profile e2e up -d
 #
-# ;; Run a postgres app db and a sample postgres 14 and mongo warehouses
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mongodata docker-compose --file dev/docker-compose.yml up
-# ;; Run a postgres app db and a sample postgres 14 and mysql 5.7 warehouses
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data docker-compose --file dev/docker-compose.yml up
-# ;; Run a postgres app db, a sample postgres 14 and mysql 5.7 warehouses, and metabase itself in a container
-# ;; If you use this option, once the application starts you can jack in on 50505 and REPL away.
-# ;; Be aware that if you use this option your app will be running a docker
-# ;; network with ports 3001 and 50505 exposed to the outside. This means that
-# ;; when you connect to data warehouses, you'll use docker networking to
-# ;; connect (e.g. metabasedb_postgres_14_data:5432 vs. localhost:15432).
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,dev-app docker-compose --file dev/docker-compose.yml up
-# ;; All of the above, and builds the frontend, too. No need for `yarn build-hot` locally.
-# ;; NOTE: See comment below on fe-builder service. This isn't quite ready yet.
-# COMPOSE_PROFILES=postgresappdb,postgres14data,mysql57data,fe-builder,dev-app docker-compose --file dev/docker-compose.yml up
+# Available profiles:
+# - e2e: data dbs, notifications, sso and snowplow required to run e2e tests locally
+# - app-dbs: Postgres and MySQL databases for Metabase to connect to
+# - data-dbs: Sample databases for testing Metabase
+# - notifications: Maildev and webhook-tester for testing email and webhook notifications
+# - sso: SAML and LDAP for testing SSO
+# - snowplow: Snowplow micro for testing Snowplow
 #
-# TODOs:
-# - Get the fe-builder service working correctly. If anyone wants to see what it
-#   does, uncomment it and try
-#   COMPOSE_PROFILES=fe-builder docker-compose --file dev/docker-compose.yml up
-#   It will hang on step 4/5.
-# - Consider using swarm to declaratively scale up/down.
+
+
 services:
-
-  # The local-dev profile enables development against a metabase instance.
-  # This does the following:
-  # - Launch metabase in a clojure container with the most common dev profiles enabled
-  # - Expose 3001 for local access to metabase
-  # - Expose 50505 for socket repl jack-in
-  # Note that the default config is for a postgres backend. You can set the
-  # environment differently (see https://docs.docker.com/compose/environment-variables/set-environment-variables/)
-  # for other backends (e.g. MySQL).
-  local-dev:
-    image: clojure
-    container_name: metabase-app
-    ports:
-      - "3001:3000"
-      - "50505:50505"
-    working_dir: /dev/metabase
-    volumes:
-      - ../:/dev/metabase
-      - ~/.m2:/root/.m2
-    environment:
-      MB_API_KEY: METABASE
-      MB_DB_CONNECTION_URI: "${MB_DB_CONNECTION_URI:-jdbc:postgresql://metabase-postgres-app-db:5432/metabase?user=mbuser&password=password}"
-      MB_DB_HOST: "${MB_DB_HOST:-metabase-postgres-app-db}"
-      MB_DB_PORT: "${MB_DB_PORT:-5432}"
-      MB_MYSQL_TEST_USER: root
-      MB_MYSQL_TEST_PASSWORD: metasample123
-      MB_MYSQL_TEST_HOST: metabasedb_mysql_5_7_data
-      MB_MYSQL_TEST_PORT: 3306
-      MB_POSTGRESQL_TEST_DB: clean
-      MB_POSTGRESQL_TEST_PASSWORD: password
-      MB_POSTGRESQL_TEST_PORT: 5432
-      MB_POSTGRESQL_TEST_USER: user
-    command: ["clojure", "-M:run:dev:drivers:drivers-dev:ee:ee-dev:socket"]
-    profiles:
-      - dev-app
-    networks:
-      - metabasenet
-
-# NOTE: This service isn't ready for prime time. It takes a LONG time to start
-#       up. I think there's some mounts to caches that are needed or something.
-#       Hopefully one of our node geniuses can figure it out.
-  # Just build the frontend. Mounts local dev so nothing else needed
-  fe-builder:
-    image: node:18.14
-    container_name: fe-builder
-    working_dir: /dev/metabase
-    volumes:
-      - ../:/dev/metabase
-      - ~/.npm:/root/.npm
-      - ~/Library/Caches/Yarn/v6:/usr/local/share/.cache/yarn/v6
-    command:
-      - /bin/sh
-      - -c
-      - |
-        yarn install
-        yarn build-hot
-    profiles:
-      - fe-builder
-
-  # App dbs. You only need one. If running metabase containerized, use the
-  # corresponding service.
-  metabase-postgres-app-db:
-    image: postgres
+  app-db-postgres:
+    image: postgres:latest
     container_name: metabase-postgres-app-db
     restart: always
     ports:
@@ -103,14 +28,12 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: metabase
     profiles:
-      - postgresappdb
+      - app-dbs
     networks:
       - metabasenet
 
-  # If using the mysql app db, be sure to set the environment correctly for the
-  # metabase app, whether running the app containerized or locally
-  metabase-mysql-5.7-app-db:
-    image: mysql:5.7
+  app-db-mysql:
+    image: mysql:latest
     container_name: metabase-mysql57-app-db
     restart: always
     ports:
@@ -121,74 +44,70 @@ services:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: metabase
     profiles:
-      - mysql57appdb
+      - app-dbs
     networks:
       - metabasenet
 
-  # The following *-data instances are sample warehouse dbs that can be found at
-  # https://hub.docker.com/r/metabase/qa-databases/tags.
-  # For reference, these are the env vars used for these that might be useful
-  # when configuring your app db.
-  # ENV MYSQL_DATABASE=sample
-  # ENV MYSQL_USER=metabase
-  # ENV MYSQL_PASSWORD=metasample123
-  postgres-sample-14-data:
+  data-postgres-14:
     image: metabase/qa-databases:postgres-sample-14
     container_name: metabasedb_postgres_14_data
     ports:
       - "15432:5432"
     restart: always
     profiles:
-      - postgres14data
+      - data-dbs
+      - e2e
     networks:
       - metabasenet
 
-  mysql-sample-5.7-data:
+  data-mysql-5.7:
     image: metabase/qa-databases:mysql-sample-5.7
     container_name: metabasedb_mysql_5_7_data
+    environment:
+      - TZ=US/Pacific
     ports:
-      - "23306:3306"
+      - 23306:3306
     restart: always
     profiles:
-      - mysql57data
+      - data-dbs
     networks:
       - metabasenet
 
-  mysql-sample-8-data:
+  data-mysql-8:
     image: metabase/qa-databases:mysql-sample-8
     container_name: metabasedb_mysql_8_data
     ports:
-      - "13306:3306"
+      - 5404:5432
     restart: always
     profiles:
-      - mysql8data
+      - data-dbs
+      - e2e
     networks:
       - metabasenet
 
-  mongo-data:
+  data-mongo-6:
     image: metabase/qa-databases:mongo-sample-6
     container_name: metabasedb_mongo_6_data
     restart: always
     ports:
-      - "27017:27017"
+      - 27004:27017
     profiles:
-      - mongodata
+      - data-dbs
+      - e2e
     networks:
       - metabasenet
 
-  vertica-data:
+  data-vertica-12:
     image: vertica/vertica-ce:12.0.2-0
-    container_name: vertica_data
+    container_name: metabasedb_vertica_data
     restart: always
     ports:
       - "5433:5433"
     profiles:
-      - verticadata
+      - data-dbs
     networks:
       - metabasenet
 
-
-  # Used this if you need to test metabase's email capabilities
   maildev:
     image: maildev/maildev:latest
     container_name: maildev
@@ -196,11 +115,26 @@ services:
       - "1080:1080"
       - "1025:1025"
     profiles:
-      - pulse
+      - notifications
+      - e2e
     networks:
       - metabasenet
 
-  # Used for testing with SAML
+  webhook-tester:
+    image: tarampampam/webhook-tester:latest
+    container_name: webhook-tester
+    command: |
+      serve --create-session 00000000-0000-0000-0000-000000000000 && \
+        while ! nc -z localhost 9080; do sleep 1; done && \
+        echo -e "Webhook tester is up and running!"
+    ports:
+      - "9080:8080"
+    profiles:
+      - notifications
+      - e2e
+    networks:
+      - metabasenet
+
   saml:
     build: https://github.com/mcguinness/saml-idp.git
     volumes:
@@ -221,6 +155,36 @@ services:
       - https://www.okta.com/saml2/service-provider/spf5aFRRXFGIMAYXQPNV"
     profiles:
       - sso
+    networks:
+      - metabasenet
+
+  ldap:
+    image: bitnami/openldap:2.6.4
+    container_name: ldap
+    ports:
+      - "389:389"
+    environment:
+      LDAP_ADMIN_PASSWORD: adminpass
+      LDAP_USERS: user01@example.org,user02@example.org
+      LDAP_PASSWORDS: 123456,123465
+      LDAP_ROOT: dc=example,dc=org
+      LDAP_PORT_NUMBER: 389
+    profiles:
+      - sso
+      - e2e
+    networks:
+      - metabasenet
+
+  snowplow-micro:
+    image: snowplow/snowplow-micro:1.2.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - .:/config
+    command: "--collector-config /config/micro.conf --iglu /config/iglu.json"
+    profiles:
+      - snowplow
+      - e2e
     networks:
       - metabasenet
 
