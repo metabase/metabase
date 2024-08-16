@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 
+import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
-
-import { useInteractiveQuestionContext } from "../context";
 
 export const QuestionResetButton = () => {
   const { question, onReset } = useInteractiveQuestionContext();
