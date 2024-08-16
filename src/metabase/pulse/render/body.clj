@@ -38,6 +38,8 @@
                           :padding     :16px})}
            (trs "There was a problem with this question.")]}))
 
+(def ^:private error-rendered-message (trs "An error occurred while displaying this card."))
+
 (def ^:private error-rendered-info
   "Default rendered-info map when there is an error displaying a card on the static viz side.
   Is a delay due to the call to `trs`."
@@ -50,7 +52,7 @@
                          {:color       style/color-error
                           :font-weight 700
                           :padding     :16px})}
-           (trs "An error occurred while displaying this card.")]}))
+           error-rendered-message]}))
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
