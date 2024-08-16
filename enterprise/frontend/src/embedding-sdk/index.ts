@@ -24,3 +24,5 @@ export type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "./types/theme";
+
+export type { Dashboard } from "metabase-types/api";
