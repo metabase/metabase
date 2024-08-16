@@ -499,6 +499,30 @@ Dashboards that support editing if a user has permissions for this, could be emb
   but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
   loaded.
 
+### Creating a Question
+
+With the `NewQuestion` component, you can create a new question from scratch using the Metabase Notebook Editor. 
+
+#### Parameters
+
+No parameters are required for this component.
+
+```tsx
+import React from "react";
+import { MetabaseProvider, NewQuestion } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  return (
+    <MetabaseProvider config={config}>
+        <NewQuestion />
+    </MetabaseProvider>
+  );
+}
+
+```
+
 ### Embedding the collection browser
 
 With the Collection Browser, you can browse the items in your Metabase instance from your application.

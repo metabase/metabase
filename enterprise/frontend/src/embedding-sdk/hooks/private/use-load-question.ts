@@ -30,6 +30,7 @@ export interface LoadQuestionHookResult {
   isQueryRunning: boolean;
 
   runQuestion(): Promise<void>;
+
   loadQuestion(): LoadQuestionResult;
 
   updateQuestion(
