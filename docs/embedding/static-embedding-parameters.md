@@ -150,7 +150,7 @@ For example, say you have a dashboard with two filters, State and City. If the S
 
 ## Locked parameters on dashboards with SQL questions
 
-If your [locked parameter](#restricting-data-in-a-static-embed) is linked to a dashboard filter that's in turn linked to a SQL question, you'll only be able to choose a _single_ value for your locked parameter.
+If your [locked parameter](#restricting-data-in-a-static-embed-with-locked-parameters) is linked to a dashboard filter that's in turn linked to a SQL question, you'll only be able to choose a _single_ value for your locked parameter.
 
 For example, let's say you have a dashboard filter called "Breakfast" with the values "Hash browns", "Muffin", and "Waffles". If the "Breakfast" filter is linked to _any_ SQL questions on the dashboard, you'll only be able to choose _one_ of the options for a locked parameter linked to the "Breakfast" filter.
 
