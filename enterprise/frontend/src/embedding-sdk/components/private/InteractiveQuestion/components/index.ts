@@ -10,4 +10,4 @@ export * from "./SummarizeButton";
 export * from "./NotebookButton";
 export * from "./Notebook";
 export * from "./SaveQuestion";
-export { SaveButton } from "embedding-sdk/components/private/InteractiveQuestion/components/SaveButton";
+export * from "./SaveButton";

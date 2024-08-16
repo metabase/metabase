@@ -26,12 +26,12 @@ import {
 } from "./InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
-export type InteractiveQuestionResultProps = {
+interface InteractiveQuestionResultProps {
   height?: string | number;
   withResetButton?: boolean;
   withTitle?: boolean;
   customTitle?: ReactNode;
-};
+}
 
 type QuestionView = "notebook" | "filter" | "summarize" | "visualization";
 

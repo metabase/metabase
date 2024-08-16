@@ -2,10 +2,10 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
-export const isQuestionDirty = (
+export function isQuestionDirty(
   question: Question | undefined,
   originalQuestion: Question | undefined,
-) => {
+) {
   // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
   // (it's necessary for datasets to behave like tables opened in simple mode)
   // We need to escape the isDirty check as it will always be true in this case,
@@ -16,12 +16,12 @@ export const isQuestionDirty = (
   }
 
   return question.isDirtyComparedToWithoutParameters(originalQuestion!);
-};
+}
 
-export const isQuestionRunnable = (
+export function isQuestionRunnable(
   question: Question | undefined,
   isDirty: boolean,
-) => {
+) {
   if (!question) {
     return false;
   }
@@ -32,20 +32,4 @@ export const isQuestionRunnable = (
   }
 
   return question.canRun();
-};
-
-export const isSavedQuestionChanged = (
-  question: Question | null,
-  originalQuestion: Question | null,
-) => {
-  const isSavedQuestion = originalQuestion != null;
-  const hasChanges = question != null;
-  const wereChangesSaved = question?.isSaved();
-  const hasUnsavedChanges = hasChanges && !wereChangesSaved;
-
-  return (
-    isSavedQuestion &&
-    hasUnsavedChanges &&
-    originalQuestion.type() === "question"
-  );
-};
+}

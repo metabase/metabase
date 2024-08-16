@@ -9,7 +9,8 @@ import {
 
 import { useListCollectionsQuery } from "metabase/api";
 import { FormProvider } from "metabase/forms";
-import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
+import { useSelector } from "metabase/lib/redux";
+import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import type Question from "metabase-lib/v1/Question";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
@@ -59,11 +60,10 @@ export const SaveQuestionProvider = ({
     [originalQuestion, question, onSave, onCreate],
   );
 
+  const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   // we care only about the very first result as question can be changed before
   // the modal is closed
-  const [isSavedQuestionInitiallyChanged] = useState(
-    isSavedQuestionChanged(question, originalQuestion),
-  );
+  const [isSavedQuestionInitiallyChanged] = useState(isSavedQuestionChanged);
 
   const showSaveType =
     isSavedQuestionInitiallyChanged &&

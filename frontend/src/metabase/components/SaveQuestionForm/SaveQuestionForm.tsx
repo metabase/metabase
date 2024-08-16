@@ -1,3 +1,4 @@
+import { TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
@@ -16,17 +17,11 @@ import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 import { useSaveQuestionContext } from "./context";
 import type { SaveQuestionFormProps } from "./types";
 
-export const SaveQuestionForm = ({
-  onCancel,
-  onSubmit,
-}: SaveQuestionFormProps & {
-  onSubmit?: () => void;
-}) => {
+export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
   const { question, originalQuestion, showSaveType, values } =
     useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
-  const showForm = values.saveType === "create";
 
   return (
     <Form>
@@ -44,25 +39,27 @@ export const SaveQuestionForm = ({
           vertical
         />
       )}
-      {showForm ? (
-        <div className={CS.overflowHidden}>
-          <FormInput
-            name="name"
-            title={t`Name`}
-            placeholder={nameInputPlaceholder}
-          />
-          <FormTextArea
-            name="description"
-            title={t`Description`}
-            placeholder={t`It's optional but oh, so helpful`}
-          />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
-            zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-          />
-        </div>
-      ) : null}
+      <TransitionGroup>
+        {values.saveType === "create" && (
+          <div className={CS.overflowHidden}>
+            <FormInput
+              name="name"
+              title={t`Name`}
+              placeholder={nameInputPlaceholder}
+            />
+            <FormTextArea
+              name="description"
+              title={t`Description`}
+              placeholder={t`It's optional but oh, so helpful`}
+            />
+            <FormCollectionPicker
+              name="collection_id"
+              title={t`Which collection should this go in?`}
+              zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+            />
+          </div>
+        )}
+      </TransitionGroup>
       <FormFooter>
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
@@ -70,7 +67,6 @@ export const SaveQuestionForm = ({
           title={t`Save`}
           data-testid="save-question-button"
           primary
-          onClick={onSubmit}
         />
       </FormFooter>
     </Form>
