@@ -40,7 +40,9 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
 
   if (!question.isSaved()) {
     const openSaveQuestionModal = () => {
-      dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }));
+      dispatch(
+        setUIControls({ modal: MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT }),
+      );
     };
 
     return (

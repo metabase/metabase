@@ -50,6 +50,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
     restore();
     cy.signInAsAdmin();
+    cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
 
     setupSMTP();
   });

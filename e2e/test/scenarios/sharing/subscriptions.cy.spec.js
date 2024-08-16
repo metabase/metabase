@@ -505,21 +505,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.be.disabled");
     });
 
-    it("should forward non-admin users to add slack form when clicking add", () => {
+    it("should disable subscriptions for non-admin users", () => {
       cy.signInAsNormalUser();
-      openDashboardSubscriptions();
-
-      sidebar().within(() => {
-        cy.findByPlaceholderText("Pick a user or channel...").click();
-      });
-
-      popover().findByText("#work").click();
-      sidebar().findAllByRole("button", { name: "Done" }).click();
-
-      sidebar().within(() => {
-        cy.findByLabelText("add icon").click();
-        cy.findByText("Send this dashboard to Slack").should("exist");
-      });
+      visitDashboard(ORDERS_DASHBOARD_ID);
+      openSharingMenu();
+      sharingMenu().findByText("Can't send subscriptions").should("be.visible");
     });
   });
 

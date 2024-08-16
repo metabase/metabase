@@ -7,6 +7,8 @@ import {
   visitQuestion,
   openTable,
   openSharingMenu,
+  modal,
+  popover,
 } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
@@ -18,6 +20,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
     restore();
     cy.signInAsAdmin();
+    cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
 
     setupSMTP();
   });
@@ -110,9 +113,9 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .findByText("Your alert is all set up.")
       .should("be.visible");
 
-    openSharingMenu("Create alert");
+    openSharingMenu("Edit alerts");
 
-    cy.findByTestId("popover").within(() => {
+    popover().within(() => {
       cy.findByText("You set up an alert").should("be.visible");
       cy.findByText("Edit").click();
     });
@@ -148,17 +151,13 @@ function toggleChannel(channel) {
 }
 
 function saveAlert() {
-  openSharingMenu("Create alert");
+  openSharingMenu();
 
-  cy.findByRole("dialog").within(() => {
+  modal().within(() => {
     cy.findByLabelText("Name").type(" alert");
     cy.button("Save").click();
   });
-
   cy.wait("@saveCard");
 
-  cy.findByTestId("alert-education-screen").within(() => {
-    cy.button("Set up an alert").click();
-  });
   cy.button("Done").click();
 }
