@@ -8,4 +8,6 @@ export { StaticDashboard } from "./StaticDashboard";
 export { CollectionBrowser } from "./CollectionBrowser";
 export { InteractiveDashboard } from "./InteractiveDashboard";
 export { EditableDashboard } from "./InteractiveDashboard";
-export { QuestionEditor } from "./QuestionEditor";
+export { QuestionEditor } from "../private/QuestionEditor";
+export { ModifyQuestion } from "./ModifyQuestion";
+export { CreateQuestion } from "./CreateQuestion";

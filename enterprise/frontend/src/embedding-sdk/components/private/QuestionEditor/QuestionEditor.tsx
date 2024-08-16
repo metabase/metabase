@@ -1,10 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useState } from "react";
 
-import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestion";
+import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
+import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
-
-import { InteractiveQuestion } from "../InteractiveQuestion";
 
 export const QuestionEditor = ({
   questionId,

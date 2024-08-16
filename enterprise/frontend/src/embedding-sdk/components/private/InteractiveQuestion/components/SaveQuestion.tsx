@@ -31,7 +31,7 @@ export const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
         <Title>
           <SaveQuestionTitle />
         </Title>
-        <SaveQuestionForm onSubmit={onClose} onCancel={onClose} />
+        <SaveQuestionForm onCancel={onClose} />
       </Stack>
     </SaveQuestionProvider>
   );

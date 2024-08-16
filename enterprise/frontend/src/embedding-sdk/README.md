@@ -501,22 +501,48 @@ Dashboards that support editing if a user has permissions for this, could be emb
 
 ### Creating a Question
 
-With the `NewQuestion` component, you can create a new question from scratch using the Metabase Notebook Editor. 
+With the `CreateQuestion` component, you can create a new question from scratch using the Metabase Notebook Editor. 
 
 #### Parameters
 
-No parameters are required for this component.
+- **plugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
 
 ```tsx
 import React from "react";
-import { MetabaseProvider, NewQuestion } from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, CreateQuestion } from "@metabase/embedding-sdk-react";
 
 const config = {...}
 
 export default function App() {
   return (
     <MetabaseProvider config={config}>
-        <NewQuestion />
+        <CreateQuestion />
+    </MetabaseProvider>
+  );
+}
+
+```
+
+### Modifying a Question
+
+With the `ModifyQuestion` component, you can edit an existing question using the Metabase Notebook Editor. 
+
+#### Parameters
+- **questionId**: `number` (required) – The ID of the question you want to modify.
+- **plugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
+
+```tsx
+import React from "react";
+import { MetabaseProvider, ModifyQuestion } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  return (
+    <MetabaseProvider config={config}>
+        <ModifyQuestion questionId={1} />
     </MetabaseProvider>
   );
 }
