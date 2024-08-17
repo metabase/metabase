@@ -1,7 +1,7 @@
 import cx from "classnames";
 import debounce from "lodash.debounce";
 import type { CSSProperties, ComponentType } from "react";
-import { Component } from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
@@ -49,7 +49,9 @@ function ExplicitSize<T extends BaseInnerProps>({
   return (ComposedComponent: ComponentType<T & SizeState>) => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
-    class WrappedComponent extends Component<T> {
+    class WrappedComponent extends Component<
+      T & { forwardedRef: React.ForwardedRef<any> }
+    > {
       static contextType = waitTimeContext;
 
       static displayName = `ExplicitSize[${displayName}]`;
@@ -212,25 +214,31 @@ function ExplicitSize<T extends BaseInnerProps>({
       };
 
       render() {
+        const { forwardedRef, ...props } = this.props;
         if (wrapped) {
-          const { className, style = {}, ...props } = this.props;
+          const { className, style = {}, ...rest } = props;
           const { width, height } = this.state;
           return (
             <div className={cx(className, CS.relative)} style={style}>
               <ComposedComponent
+                ref={forwardedRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
-                {...(props as T)}
+                {...(rest as T)}
                 {...this.state}
               />
             </div>
           );
         } else {
-          return <ComposedComponent {...this.props} {...this.state} />;
+          return (
+            <ComposedComponent ref={forwardedRef} {...props} {...this.state} />
+          );
         }
       }
     }
 
-    return WrappedComponent;
+    return React.forwardRef((props, ref) => {
+      return <WrappedComponent {...props} forwardedRef={ref} />;
+    });
   };
 }
 

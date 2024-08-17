@@ -1,7 +1,8 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { init } from "echarts/core";
-import { useEffect, useRef } from "react";
-import { useMount, useUpdateEffect } from "react-use";
+import { useEffect, useRef, forwardRef } from "react";
+import { mergeRefs } from "react-merge-refs";
+import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
 import { registerEChartsModules } from "metabase/visualizations/echarts";
 import type {
@@ -23,15 +24,18 @@ export interface EChartsRendererProps {
   notMerge?: boolean;
 }
 
-export const EChartsRenderer = ({
-  option,
-  eventHandlers,
-  zrEventHandlers,
-  width,
-  height,
-  onInit,
-  notMerge = true,
-}: EChartsRendererProps) => {
+export const EChartsRenderer = forwardRef(function EChartsRenderer(
+  {
+    option,
+    eventHandlers,
+    zrEventHandlers,
+    width,
+    height,
+    onInit,
+    notMerge = true,
+  }: EChartsRendererProps,
+  ref,
+) {
   const chartElemRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
 
@@ -44,6 +48,10 @@ export const EChartsRenderer = ({
 
     chartRef.current?.setOption(option, notMerge);
     onInit?.(chartRef.current);
+  });
+
+  useUnmount(() => {
+    chartRef.current?.dispose();
   });
 
   useUpdateEffect(() => {
@@ -81,6 +89,9 @@ export const EChartsRenderer = ({
   }, [zrEventHandlers]);
 
   return (
-    <EChartsRendererRoot data-testid="chart-container" ref={chartElemRef} />
+    <EChartsRendererRoot
+      data-testid="chart-container"
+      ref={mergeRefs([chartElemRef, ref])}
+    />
   );
-};
+});

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { forwardRef, useEffect } from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { isNumber } from "metabase/lib/types";
@@ -13,35 +13,41 @@ export interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
   style: any;
 }
 
+const _ResponsiveEChartsRenderer = forwardRef(
+  function _ResponsiveEChartsRenderer(
+    {
+      onResize,
+      width,
+      height,
+      ...echartsRenderedProps
+    }: ResponsiveEChartsRendererProps,
+    ref,
+  ) {
+    useEffect(() => {
+      if (isNumber(width) && isNumber(height)) {
+        onResize(width, height);
+      }
+    }, [width, height, onResize]);
+
+    if (!width || !height) {
+      return null;
+    }
+
+    return (
+      <ResponsiveEChartsRendererStyled>
+        <EChartsRenderer
+          ref={ref}
+          {...echartsRenderedProps}
+          width={width}
+          height={height}
+        />
+      </ResponsiveEChartsRendererStyled>
+    );
+  },
+);
+
 export const ResponsiveEChartsRenderer =
   ExplicitSize<ResponsiveEChartsRendererProps>({
     wrapped: true,
     refreshMode: "debounceLeading",
   })(_ResponsiveEChartsRenderer);
-
-function _ResponsiveEChartsRenderer({
-  onResize,
-  width,
-  height,
-  ...echartsRenderedProps
-}: ResponsiveEChartsRendererProps) {
-  useEffect(() => {
-    if (isNumber(width) && isNumber(height)) {
-      onResize(width, height);
-    }
-  }, [width, height, onResize]);
-
-  if (!width || !height) {
-    return null;
-  }
-
-  return (
-    <ResponsiveEChartsRendererStyled>
-      <EChartsRenderer
-        {...echartsRenderedProps}
-        width={width}
-        height={height}
-      />
-    </ResponsiveEChartsRendererStyled>
-  );
-}

@@ -27,6 +27,7 @@ export function PieChart(props: VisualizationProps) {
   } = props;
   const hoveredIndex = props.hovered?.index;
 
+  const containerRef = useRef<HTMLDivElement>();
   const chartRef = useRef<EChartsType>();
   const [sideLength, setSideLength] = useState(0);
 
@@ -58,7 +59,7 @@ export function PieChart(props: VisualizationProps) {
         sideLength,
         hoveredIndex,
       ),
-      tooltip: getTooltipOption(chartModel, formatters),
+      tooltip: getTooltipOption(chartModel, formatters, containerRef),
     }),
     [
       chartModel,
@@ -126,6 +127,7 @@ export function PieChart(props: VisualizationProps) {
       isDashboard={isDashboard}
     >
       <ChartRenderer
+        ref={containerRef}
         option={option}
         width={"auto"}
         height={"auto"}
