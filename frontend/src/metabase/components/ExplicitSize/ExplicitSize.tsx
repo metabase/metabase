@@ -1,6 +1,11 @@
 import cx from "classnames";
 import debounce from "lodash.debounce";
-import type { CSSProperties, ComponentType } from "react";
+import type {
+  CSSProperties,
+  ComponentType,
+  PropsWithoutRef,
+  ForwardedRef,
+} from "react";
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
@@ -15,8 +20,6 @@ const WAIT_TIME = 300;
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
   debounce: (fn: () => void) => debounce(fn, WAIT_TIME),
-  // Using lodash.debounce with leading=true to execute the function immediately and also at the end of the debounce period.
-  // Underscore debounce with immediate=true will not execute the function after the wait period unless it is called again.
   debounceLeading: (fn: () => void) =>
     debounce(fn, WAIT_TIME, { leading: true }),
   none: (fn: () => void) => fn,
@@ -35,13 +38,16 @@ type SizeState = {
   height: number | null;
 };
 
-type BaseInnerProps = {
+type InnerProps = {
+  forwardedRef: ForwardedRef<unknown>;
   className?: string;
   style?: CSSProperties;
   onUpdateSize?: () => void;
 };
 
-function ExplicitSize<T extends BaseInnerProps>({
+type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
+
+function ExplicitSize<T>({
   selector,
   wrapped = false,
   refreshMode = "throttle",
@@ -49,14 +55,15 @@ function ExplicitSize<T extends BaseInnerProps>({
   return (ComposedComponent: ComponentType<T & SizeState>) => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
-    class WrappedComponent extends Component<
-      T & { forwardedRef: React.ForwardedRef<any> }
-    > {
+    class WrappedComponent extends Component<T & InnerProps> {
       static contextType = waitTimeContext;
 
       static displayName = `ExplicitSize[${displayName}]`;
 
-      state: SizeState;
+      state: SizeState = {
+        width: null,
+        height: null,
+      };
 
       timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -68,12 +75,8 @@ function ExplicitSize<T extends BaseInnerProps>({
 
       _updateSize: () => void;
 
-      constructor(props: T, context: unknown) {
+      constructor(props: T & InnerProps, context: unknown) {
         super(props, context);
-        this.state = {
-          width: null,
-          height: null,
-        };
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
         if (this.context === 0) {
@@ -212,7 +215,6 @@ function ExplicitSize<T extends BaseInnerProps>({
           }
         }
       };
-
       render() {
         const { forwardedRef, ...props } = this.props;
         if (wrapped) {
@@ -223,22 +225,29 @@ function ExplicitSize<T extends BaseInnerProps>({
               <ComposedComponent
                 ref={forwardedRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
-                {...(rest as T)}
+                {...(rest as unknown as T)}
                 {...this.state}
               />
             </div>
           );
         } else {
           return (
-            <ComposedComponent ref={forwardedRef} {...props} {...this.state} />
+            <ComposedComponent
+              ref={forwardedRef}
+              {...(props as unknown as T)}
+              {...this.state}
+            />
           );
         }
       }
     }
 
-    return React.forwardRef((props, ref) => {
-      return <WrappedComponent {...props} forwardedRef={ref} />;
-    });
+    return React.forwardRef<
+      unknown,
+      PropsWithoutRef<ExplicitSizeOuterProps<T>>
+    >((props, ref) => (
+      <WrappedComponent {...(props as T & InnerProps)} forwardedRef={ref} />
+    ));
   };
 }
 

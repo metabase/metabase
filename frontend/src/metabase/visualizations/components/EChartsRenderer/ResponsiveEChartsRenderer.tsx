@@ -8,9 +8,6 @@ import { ResponsiveEChartsRendererStyled } from "metabase/visualizations/compone
 
 export interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
   onResize: (width: number, height: number) => void;
-  // We don't use the `style` prop, but it's needed to prevent a type error due
-  // to how types work within `ExplicitSize`
-  style: any;
 }
 
 const _ResponsiveEChartsRenderer = forwardRef(

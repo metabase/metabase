@@ -18,7 +18,7 @@ import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
 
 function _CartesianChart(props: VisualizationProps) {
-  const containerRef = useRef<HTMLDivElement>();
+  const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -127,8 +127,6 @@ function _CartesianChart(props: VisualizationProps) {
       >
         <CartesianChartRenderer
           ref={containerRef}
-          // to it not working with the `WrappedComponent` class defined in
-          // ExplicitSize
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}
