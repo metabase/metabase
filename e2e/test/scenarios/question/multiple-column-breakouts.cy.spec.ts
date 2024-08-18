@@ -343,30 +343,64 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("summarize sidebar", () => {
-      it("should allow to change temporal units for multiple breakouts of the same column", () => {
-        createQuestion(questionWith2TemporalBreakoutsDetails, {
-          visitQuestion: true,
-        });
+      function testChangeBreakoutBuckets({
+        questionDetails,
+        columnName,
+        bucketLabel,
+        bucket1Name,
+        bucket2Name,
+      }: {
+        questionDetails: StructuredQuestionDetails;
+        columnName: string;
+        bucketLabel: string;
+        bucket1Name: string;
+        bucket2Name: string;
+      }) {
+        createQuestion(questionDetails, { visitQuestion: true });
         summarize();
         cy.findByTestId("pinned-dimensions")
-          .findAllByLabelText("Created At")
+          .findAllByLabelText(columnName)
           .should("have.length", 2)
           .eq(0)
-          .findByText("by year")
+          .findByLabelText(bucketLabel)
           .click();
-        popover().findByText("Quarter").click();
+        popover().findByText(bucket1Name).click();
         cy.wait("@dataset");
         cy.findByTestId("pinned-dimensions")
-          .findAllByLabelText("Created At")
+          .findAllByLabelText(columnName)
           .should("have.length", 2)
           .eq(1)
-          .findByText("by month")
+          .findByLabelText(bucketLabel)
           .click();
-        popover().findByText("Week").click();
+        popover().findByText(bucket2Name).click();
         cy.wait("@dataset");
+      }
+
+      it("should allow to change temporal buckets for multiple breakouts of the same column", () => {
+        testChangeBreakoutBuckets({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          columnName: "Created At",
+          bucketLabel: "Temporal bucket",
+          bucket1Name: "Quarter",
+          bucket2Name: "Week",
+        });
         assertTableData({
           columns: ["Created At: Quarter", "Created At: Week", "Count"],
           firstRows: [["Q2 2022", "April 24, 2022 – April 30, 2022", "1"]],
+        });
+      });
+
+      it("should allow to change 'num-bins' binning strategies for multiple breakouts of the same column", () => {
+        testChangeBreakoutBuckets({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          columnName: "Total",
+          bucketLabel: "Binning strategy",
+          bucket1Name: "10 bins",
+          bucket2Name: "50 bins",
+        });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [["X", "X", "X"]],
         });
       });
     });
