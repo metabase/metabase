@@ -69,18 +69,13 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display, card-name :name, :as card} maybe-dashcard {:keys [cols rows], :as data}]
+  [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
-        row-sample-count          (delay (count (take 2 rows)))
-        [col-1-rowfn col-2-rowfn] (formatter/graphing-column-row-fns card data)
-        col-1                     (delay (col-1-rowfn cols))
-        col-2                     (delay (col-2-rowfn cols))]
+        row-sample-count          (delay (count (take 2 rows)))]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
-              tyype)
-            (col-description [{col-name :name, base-type :base_type}]
-              (format "%s (%s)" (pr-str col-name) base-type))]
+              tyype)]
       (cond
         (or (empty? rows)
             ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
@@ -109,6 +104,7 @@
 
         (#{:smartscalar
            :scalar
+           :pie
            :scatter
            :waterfall
            :line
@@ -116,9 +112,6 @@
            :bar
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
-
-        (= display-type :pie)
-        (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
 
         :else
         (chart-type :table "no other chart types match")))))
@@ -184,7 +177,7 @@
                          title
                          description
                          [:div {:class "pulse-body"
-                                :style (style/style {:overflow-x :auto
+                                :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
                                                      :display :block
                                                      :margin  :16px})}
                           (if-let [more-results-message (body/attached-results-text render-type card)]

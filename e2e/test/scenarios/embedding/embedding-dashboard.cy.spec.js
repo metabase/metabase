@@ -27,6 +27,7 @@ import {
   setEmbeddingParameter,
   assertEmbeddingParameter,
   multiAutocompleteInput,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -283,6 +284,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
       assertRequiredEnabledForName({ name: "User", enabled: false });
       assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
     });
+
+    it("should render cursor pointer on hover over a toggle (metabase#46223)", () => {
+      visitDashboard("@dashboardId");
+
+      cy.findAllByTestId("parameter-value-widget-target")
+        .first()
+        .realHover()
+        .should("have.css", "cursor", "pointer");
+    });
   });
 
   context("API", () => {
@@ -526,6 +536,35 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assertSheetRowsCount(54)(sheet);
       },
     );
+    dismissDownloadStatus();
+  });
+
+  it("should send 'X-Metabase-Client' header for api requests", () => {
+    cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
+
+    cy.get("@dashboardId").then(dashboardId => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        embedding_params: {},
+        enable_embedding: true,
+      });
+
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: {},
+      };
+
+      visitEmbeddedPage(payload, {
+        onBeforeLoad: window => {
+          window.Cypress = undefined;
+        },
+      });
+
+      cy.wait("@getEmbeddedDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
+      });
+    });
   });
 });
 

@@ -35,3 +35,5 @@ export type WaterfallSeriesOption =
   | ScatterSeriesOption
   | BarSeriesOption
   | LineSeriesOption;
+
+export type ShowWarning = (warning: string) => void;

@@ -1,5 +1,6 @@
 (ns metabase.api.embed.common
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -118,18 +119,21 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-;; As of 17-07-2024, we don't have boolean filters; they're sorta possible by using a Category filter.
-;; Ideally, instead of normalizing "true" to true directly, we could use the parameter data from the dashboard
-;; to coerce values into the form we'd expect, but in the case of booleans, since we're using a category
-;; filter type, we would NOT coerce "true" to true at all. This leads to bugs, AND is actually different
-;; than what happens in a regular dashboard -> if you look at a regular dashboard with a 'Boolean' filter,
-;; the frontend sends the parameter value as a proper boolean value right away.
+(defn parse-query-params
+  "Parses parameter values from the query string in a backward compatible way.
 
-;; This normalize is probably not the long-term fix we want, but it patches things up in the embedding
-;; endpoints to more closely match how our regular dashboard endpoint works.
-
-;; TODO: once the app has a notion of Boolean Filters, we can apply query param coercion more intelligently by
-;; using the data in the dashboard's :parameters key.
+  Before (v50 and below) we passed parameter values as separate query string parameters \"?param1=A&param2=B\". The
+  problem with this approach is that we cannot reliably distinguish between numbers and numeric strings, as well as
+  booleans and boolean strings. To fix this issue we introduced another query string parameter `:parameters` which
+  contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
+  string parameters."
+  [query-params]
+  (or (try
+        (when-let [parameters (:parameters query-params)]
+          (json/parse-string parameters keyword))
+        (catch Throwable _
+          nil))
+      query-params))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
@@ -138,22 +142,9 @@
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
-  (letfn [(maybe-read [v]
-            (if (string? v)
-              (cond
-                (#{"true" "false"} v) (parse-boolean v)
-                (str/blank? v)        nil
-                :else                 (or (parse-long v)
-                                          (parse-double v)
-                                          v))
-              v))]
-    (-> query-params
-        (update-keys keyword)
-        (update-vals (fn [v]
-                       (if (and (not (string? v))
-                                (seq v))
-                         (mapv maybe-read v)
-                         (maybe-read v)))))))
+  (-> query-params
+      (update-keys keyword)
+      (update-vals (fn [v] (if (= v "") nil v)))))
 
 (mu/defn validate-and-merge-params :- [:map-of :keyword :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and

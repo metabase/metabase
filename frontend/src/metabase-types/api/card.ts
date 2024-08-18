@@ -190,6 +190,15 @@ export type VisualizationSettings = {
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
 
+  // Pie Settings
+  "pie.dimension"?: string;
+  "pie.metric"?: string;
+  "pie.show_legend"?: boolean;
+  "pie.show_total"?: boolean;
+  "pie.percent_visibility"?: "off" | "legend" | "inside";
+  "pie.slice_threshold"?: number;
+  "pie.colors"?: Record<string, string>;
+
   [key: string]: any;
 };
 

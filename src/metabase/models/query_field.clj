@@ -9,46 +9,62 @@
 (doto :model/QueryField
   (derive :metabase/model))
 
-(def ^:private reference-error-joins
-  [[(t2/table-name :model/QueryField) :qf]
-   [:and
-    [:= :qf.card_id :c.id]
-    [:= :qf.explicit_reference true]]
+(defn- coerce-boolean [x]
+  (cond
+    (= 0 x) false
+    (= 0M x) false
+    :else x))
 
-   [(t2/table-name :model/Field) :f]
-   [:and
-    [:= :qf.field_id :f.id]
-    [:= :f.active false]]])
+(defn- coerce-booleans [m]
+  (update-vals m coerce-boolean))
 
 (defn cards-with-reference-errors
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
-  with invalid references.
-  For now this only handles inactive references, but in future it will also handle unknown references too."
+  with invalid references."
   [card-query-map]
-  ;; NOTE: We anticipate a schema change to support missing references that will result in left-joins and
-  ;; where clauses being appended as well.
-  (update card-query-map :join concat reference-error-joins))
+  (-> card-query-map
+      (update :join concat
+              [[(t2/table-name :model/QueryField) :qf]
+               [:and
+                [:= :qf.card_id :c.id]
+                [:= :qf.explicit_reference true]]])
+      (update :left-join concat
+              [[(t2/table-name :model/Field) :f]
+               [:= :qf.field_id :f.id]])
+      (update :where
+              (fn [existing-where]
+                [:and
+                 existing-where
+                 [:or
+                  [:= :f.id nil]
+                  [:= :f.active false]]]))))
 
 (defn reference-errors
   "Given a seq of cards, return a map of card-id => reference errors"
   [cards]
   (when (seq cards)
     (->> (t2/select :model/QueryField
-                    {:select [:qf.card_id
-                              [:f.name :field]
-                              [:t.name :table]
-                              [:t.active :table_active]]
-                     :from   [[(t2/table-name :model/QueryField) :qf]]
-                     :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
-                              [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                     :where  [:and
-                              [:= :qf.explicit_reference true]
-                              [:= :f.active false]
-                              [:in :card_id (map :id cards)]]})
-         (map (fn [{:keys [card_id table field table_active]}]
-                [card_id {:type  (if table_active
-                                   :inactive-field
-                                   :inactive-table)
+                    {:select    [:qf.card_id
+                                 [:qf.column :field]
+                                 [:qf.table :table]
+                                 [[:= :f.id nil] :field_unknown]
+                                 [[:coalesce :t.active false] :table_active]]
+                     :from      [[(t2/table-name :model/QueryField) :qf]]
+                     :left-join [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
+                                 [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                     :where     [:and
+                                 [:= :qf.explicit_reference true]
+                                 [:or
+                                  [:= :f.id nil]
+                                  [:= :f.active false]]
+                                 [:in :card_id (map :id cards)]]
+                     :order-by  [:qf.card_id :field :table]})
+         (map coerce-booleans)
+         (map (fn [{:keys [card_id table field field_unknown table_active]}]
+                [card_id {:type  (cond
+                                   field_unknown :unknown-field
+                                   table_active  :inactive-field
+                                   :else         :inactive-table)
                           :table table
                           :field field}]))
          (reduce (fn [acc [id error]]
@@ -63,7 +79,13 @@
   Returns `nil` (and logs the error) if there was a parse error."
   [card-id query-field-rows]
   (t2/with-transaction [_conn]
-    (let [existing            (t2/select :model/QueryField :card_id card-id)
+    (t2/delete! :model/QueryField :card_id card-id)
+    (t2/insert! :model/QueryField query-field-rows)
+
+    ;; let's wait and see if we get flakes again.
+    ;; the following diff algorithm broke once we could no longer depend on :field_id being non-null
+
+    #_(let [existing            (t2/select :model/QueryField :card_id card-id)
           {:keys [to-update
                   to-create
                   to-delete]} (u/row-diff existing query-field-rows

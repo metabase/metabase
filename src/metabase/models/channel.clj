@@ -1,10 +1,14 @@
 (ns ^{:added "0.51.0"} metabase.models.channel
   (:require
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/Channel [_model] :channel)
 
@@ -42,5 +46,17 @@
 
 (t2/define-before-update :model/Channel
   [instance]
-  (assert-channel-type instance)
-  instance)
+  (let [deactivation? (false? (:active (t2/changes instance)))]
+    (assert-channel-type instance)
+    (when deactivation?
+      (t2/delete! :model/PulseChannel :channel_id (:id instance)))
+    (cond-> instance
+      deactivation?
+      ;; Channel.name has an unique constraint and it's a useful property for serialization
+      ;; We rename deactivated channels so that new channels can reuse the name
+      ;; Limit to 254 characters to avoid hitting character limit
+      (assoc :name (u/truncate (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 254)))))
+
+(defmethod audit-log/model-details :model/Channel
+  [channel _event-type]
+  (select-keys channel [:id :name :description :type :active]))

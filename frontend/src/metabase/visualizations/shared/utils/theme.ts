@@ -3,11 +3,30 @@ import type { MantineThemeOther } from "metabase/ui";
 import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
 
+function getPieBorderColor(
+  options: MantineThemeOther,
+  isDashboard: boolean | undefined,
+  isNightMode: boolean | undefined,
+) {
+  if (isDashboard && isNightMode) {
+    return "var(--mb-color-bg-night)";
+  }
+  if (isDashboard) {
+    return options.dashboard.card.backgroundColor;
+  }
+  if (options.question.backgroundColor === "transparent") {
+    return "var(--mb-color-bg-white)";
+  }
+  return options.question.backgroundColor;
+}
+
 /**
  * Computes the visualization style from the Mantine theme.
  */
 export function getVisualizationTheme(
   options: MantineThemeOther,
+  isDashboard?: boolean,
+  isNightMode?: boolean,
 ): VisualizationTheme {
   const { cartesian } = options;
 
@@ -25,6 +44,9 @@ export function getVisualizationTheme(
       goalLine: {
         label: { fontSize: px(cartesian.goalLine.label.fontSize) },
       },
+    },
+    pie: {
+      borderColor: getPieBorderColor(options, isDashboard, isNightMode),
     },
   };
 }

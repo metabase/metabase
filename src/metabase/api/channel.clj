@@ -7,7 +7,9 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.channel.core :as channel]
+   [metabase.events :as events]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -25,8 +27,8 @@
   [:as {{:keys [include_inactive]} :body}]
   {include_inactive [:maybe {:default false} :boolean]}
   (map remove-details-if-needed (if include_inactive
-                                          (t2/select :model/Channel)
-                                          (t2/select :model/Channel :active true))))
+                                  (t2/select :model/Channel)
+                                  (t2/select :model/Channel :active true))))
 
 (defn- test-channel-connection!
   "Test if a channel can be connected, throw an exception if it fails."
@@ -53,8 +55,12 @@
    details     :map
    active      [:maybe {:default true} :boolean]}
   (validation/check-has-application-permission :setting)
+  (when (t2/exists? :model/Channel :name name)
+    (throw (ex-info "Channel with that name already exists" {:status-code 409
+                                                             :errors      {:name "Channel with that name already exists"}})))
   (test-channel-connection! type details)
-  (t2/insert-returning-instance! :model/Channel body))
+  (u/prog1 (t2/insert-returning-instance! :model/Channel body)
+    (events/publish-event! :event/channel-create {:object <> :user-id api/*current-user-id*})))
 
 (api/defendpoint GET "/:id"
   "Get a channel"
@@ -79,7 +85,11 @@
     (when (or details-changed? type-changed?)
       (test-channel-connection! (or type (:type channel-before-update))
                                 (or details (:details channel-before-update))))
-   (t2/update! :model/Channel id body)))
+    (t2/update! :model/Channel id body)
+    (u/prog1 (t2/select-one :model/Channel id)
+      (events/publish-event! :event/channel-update {:object          <>
+                                                    :user-id         api/*current-user-id*
+                                                    :previous-object channel-before-update}))))
 
 (api/defendpoint POST "/test"
   "Test a channel connection"

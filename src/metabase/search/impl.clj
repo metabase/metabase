@@ -8,6 +8,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -22,7 +23,7 @@
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -471,48 +472,21 @@
 (defn add-dataset-collection-hierarchy
   "Adds `collection_effective_ancestors` to *datasets* in the search results."
   [search-results]
-  (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
-        ;; effective location of the result.
-        result->loc  (fn [{:keys [collection_id collection_location]}]
-                        (:effective_location
-                         (t2/hydrate
-                          (if (nil? collection_id)
-                            collection/root-collection
-                            {:location collection_location})
-                          :effective_location)))
-        ;; a map of collection-ids to collection info
-        col-id->info (into {}
-                           (for [item  search-results
-                                 :when (= (:model item) "dataset")]
-                              [(:collection_id item)
-                               {:id                 (:collection_id item)
-                                :name               (-> {:name (:collection_name item)
-                                                         :id   (:collection_id item)
-                                                         :type (:collection_type item)}
-                                                        collection/maybe-localize-trash-name
-                                                        :name)
-                                :type               (:collection_type item)
-                                :effective_location (result->loc item)}]))
-        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->info`
-        ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
-        to-fetch     (into #{} (comp (keep :effective_location)
-                                     (mapcat collection/location-path->ids)
-                                      ;; already have these names
-                                     (remove col-id->info))
-                            (vals col-id->info))
-        ;; the now COMPLETE map of collection IDs to info
-        col-id->info (merge (if (seq to-fetch)
-                              (t2/select-pk->fn #(select-keys % [:name :type :id]) :model/Collection :id [:in to-fetch])
-                              {})
-                            (update-vals col-id->info #(dissoc % :effective_location)))
-        annotate     (fn [x]
-                        (cond-> x
-                          (= (:model x) "dataset")
+  (let [annotate     (fn [result]
+                        (cond-> result
+                          (= (:model result) "dataset")
                           (assoc :collection_effective_ancestors
-                                 (if-let [loc (result->loc x)]
-                                   (->> (collection/location-path->ids loc)
-                                        (map col-id->info))
-                                   []))))]
+                                 (->> (t2/hydrate
+                                       (if (nil? (:collection_id result))
+                                         collection/root-collection
+                                         {:location (:collection_location result)})
+                                       :effective_ancestors)
+                                      :effective_ancestors
+                                      ;; two pieces for backwards compatibility:
+                                      ;; - remove the root collection
+                                      ;; - remove the `personal_owner_id`
+                                      (remove collection.root/is-root-collection?)
+                                      (map #(dissoc % :personal_owner_id))))))]
     (map annotate search-results)))
 
 (defn- add-collection-effective-location
@@ -664,7 +638,8 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
-   [:verified                            {:optional true} [:maybe true?]]])
+   [:verified                            {:optional true} [:maybe true?]]
+   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
 
 (mu/defn search-context
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -683,7 +658,8 @@
            model-ancestors?
            table-db-id
            search-native-query
-           verified]}      :- ::search-context.input] :- SearchContext
+           verified
+           ids]}      :- ::search-context.input] :- SearchContext
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -692,7 +668,7 @@
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:archived?          (boolean archived)
-                        :current-user-id current-user-id
+                        :current-user-id    current-user-id
                         :current-user-perms current-user-perms
                         :model-ancestors?   (boolean model-ancestors?)
                         :models             models
@@ -700,11 +676,15 @@
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
-                 (some? last-edited-at)                     (assoc :last-edited-at last-edited-at)
-                 (seq last-edited-by)                       (assoc :last-edited-by last-edited-by)
-                 (some? table-db-id)                        (assoc :table-db-id table-db-id)
-                 (some? limit)                              (assoc :limit-int limit)
-                 (some? offset)                             (assoc :offset-int offset)
-                 (some? search-native-query)                (assoc :search-native-query search-native-query)
-                 (some? verified)                           (assoc :verified verified))]
+                 (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
+                 (seq last-edited-by)                        (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)                         (assoc :table-db-id table-db-id)
+                 (some? limit)                               (assoc :limit-int limit)
+                 (some? offset)                              (assoc :offset-int offset)
+                 (some? search-native-query)                 (assoc :search-native-query search-native-query)
+                 (some? verified)                            (assoc :verified verified)
+                 (seq ids)                                   (assoc :ids ids))]
+    (when (and (seq ids)
+               (not= (count models) 1))
+      (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))

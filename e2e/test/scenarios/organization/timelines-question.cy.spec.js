@@ -285,14 +285,14 @@ describe("scenarios > organization > timelines > question", () => {
         dataset_query: {
           type: "native",
           native: {
-            query: "SELECT ID, CREATED_AT FROM ORDERS",
+            query: "SELECT TOTAL, CREATED_AT FROM ORDERS",
           },
           database: SAMPLE_DB_ID,
         },
         display: "line",
         visualization_settings: {
           "graph.dimensions": ["CREATED_AT"],
-          "graph.metrics": ["ID"],
+          "graph.metrics": ["TOTAL"],
         },
       });
 

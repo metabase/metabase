@@ -10,6 +10,7 @@ import {
   createPublicQuestionLink,
   modal,
   openNativeEditor,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -91,6 +92,7 @@ describe("scenarios > public > question", () => {
           { fileType: "xlsx", questionId: id, publicUuid },
           assertSheetRowsCount(5),
         );
+        dismissDownloadStatus();
       });
     });
   });

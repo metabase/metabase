@@ -1,6 +1,8 @@
 const webpack = require("webpack");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../webpack.config");
+const fs = require("fs");
+const path = require("path");
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
 
@@ -12,6 +14,15 @@ const mainAppStories = [
 const embeddingSdkStories = [
   "../enterprise/frontend/src/embedding-sdk/**/*.stories.tsx",
 ];
+
+const sdkPackageTemplateJson = fs.readFileSync(
+  path.resolve("./enterprise/frontend/src/embedding-sdk/package.template.json"),
+  "utf-8",
+);
+const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
+const EMBEDDING_SDK_VERSION = JSON.stringify(
+  sdkPackageTemplateJsonContent.version,
+);
 
 module.exports = {
   core: {
@@ -35,6 +46,9 @@ module.exports = {
       new MiniCssExtractPlugin(),
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
+      }),
+      new webpack.EnvironmentPlugin({
+        EMBEDDING_SDK_VERSION,
       }),
     ],
     module: {

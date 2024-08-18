@@ -4,13 +4,16 @@
    [clojure.test :refer :all]
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^:private query-field-keys [:card_id :field_id :explicit_reference])
+(def ^:private query-field-keys [:card_id :table :column :field_id :explicit_reference])
 
 (defn- qf->map [query-field]
-  (select-keys query-field query-field-keys))
+  (-> (select-keys query-field query-field-keys)
+      (update :table u/lower-case-en)
+      (update :column u/lower-case-en)))
 
 (defn- query-fields-for-card
   [card-id]
@@ -52,15 +55,29 @@
 
 (deftest query-fields-created-by-queries-test
   (with-test-setup
-    (let [total-qf {:card_id            card-id
-                    :field_id           total-id
-                    :explicit_reference true}
-          tax-qf   {:card_id            card-id
-                    :field_id           tax-id
-                    :explicit_reference true}]
+    (let [total-qf     {:card_id            card-id
+                        :table              "orders"
+                        :column             "total"
+                        :field_id           total-id
+                        :explicit_reference true}
+          tax-qf       {:card_id            card-id
+                        :table              "orders"
+                        :column             "tax"
+                        :field_id           tax-id
+                        :explicit_reference true}
+          not-total-qf {:card_id            card-id
+                        :table              "orders"
+                        :column             "not_total"
+                        :field_id           nil
+                        :explicit_reference true}
+          not-tax      {:card_id            card-id
+                        :table              "orders"
+                        :column             "not_tax"
+                        :field_id           nil
+                        :explicit_reference true}]
 
       (testing "A freshly created card has relevant corresponding QueryFields"
-        (is (= #{total-qf}
+        (is (= #{total-qf not-tax}
                (query-fields-for-card card-id))))
 
       (testing "Adding new columns to the query also adds the QueryFields"
@@ -70,7 +87,7 @@
 
       (testing "Removing columns from the query removes the QueryFields"
         (trigger-parse! card-id "SELECT tax, not_total FROM orders")
-        (is (= #{tax-qf}
+        (is (= #{tax-qf not-total-qf}
                (query-fields-for-card card-id))))
 
       (testing "Columns referenced via field filters are still found"
@@ -86,18 +103,28 @@
         (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id)))))))
 
-(deftest bogus-queries-test
+(deftest unknown-test
   (with-test-setup
-    (testing "Updating a query with bogus columns does not create QueryFields"
-      (trigger-parse! card-id "SELECT DOES, NOT_EXIST FROM orders")
-      (is (empty? (t2/select :model/QueryField :card_id card-id))))))
+    (let [qux-qf {:card_id            card-id
+                  :table              "orders"
+                  :column             "qux"
+                  :field_id           nil
+                  :explicit_reference true}]
+      (testing "selecting an unknown column"
+        (trigger-parse! card-id "select qux from orders")
+        (is (= #{qux-qf}
+               (query-fields-for-card card-id)))))))
 
 (deftest wildcard-test
   (with-test-setup
     (let [total-qf {:card_id          card-id
+                    :table            "orders"
+                    :column           "total"
                     :field_id         total-id
                     :explicit_reference false}
           tax-qf   {:card_id          card-id
+                    :table            "orders"
+                    :column           "tax"
                     :field_id         tax-id
                     :explicit_reference false}]
       (testing "simple select *"
@@ -110,9 +137,13 @@
 (deftest table-wildcard-test
   (with-test-setup
     (let [total-qf {:card_id          card-id
+                    :table            "orders"
+                    :column           "total"
                     :field_id         total-id
                     :explicit_reference true}
           tax-qf   {:card_id          card-id
+                    :table            "orders"
+                    :column           "tax"
                     :field_id         tax-id
                     :explicit_reference true}]
       (testing "mix of select table.* and named columns"

@@ -233,12 +233,19 @@
                                             :auth-info   {:token "WRONG_TOKEN"}})))))))
 
 (deftest ^:parallel can-connect?-errors-test
-  (testing "throws an appriopriate errors if details are mismatched"
-    (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
-           (exception-data (can-connect? {:url         "not-an-url"
-                                          :auth-method "none"}))))
-    (is (= {:errors {:auth-method ["missing required key"]}}
-           (exception-data (can-connect? {:url "https://www.secret_service.xyz"}))))
+  (testing "throws an appriopriate errors if details are invalid"
+    (testing "invalid url"
+     (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
+            (exception-data (can-connect? {:url         "not-an-url"
+                                           :auth-method "none"})))))
+
+    (testing "testing missing auth-method"
+      (is (= {:errors {:auth-method ["missing required key"]}}
+             (exception-data (can-connect? {:url "https://www.secret_service.xyz"})))))
+
+    (testing "include undefined key"
+      (is (=? {:errors {:xyz ["disallowed key"]}}
+             (exception-data (can-connect? {:xyz "hello world"})))))
 
     (with-server [url [get-400]]
       (is (= {:request-body   "\"Bad request\""
@@ -246,6 +253,7 @@
              (exception-data (can-connect? {:url         (str url (:path get-400))
                                             :method      "get"
                                             :auth-method "none"})))))))
+
 (deftest ^:parallel send!-test
   (testing "basic send"
     (with-captured-http-requests [requests]

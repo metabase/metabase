@@ -154,6 +154,7 @@ export const tokenFeatures = [
   "llm_autodescription",
   "official_collections",
   "sandboxes",
+  "scim",
   "sso_google",
   "sso_jwt",
   "sso_ldap",

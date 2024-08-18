@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.http-test :as channel.http-test]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -70,6 +72,12 @@
                               {:active false})
         (is (= false (t2/select-one-fn :active :model/Channel (:id channel))))))))
 
+(deftest create-channel-with-existing-name-error-test
+  (let [channel-details default-test-channel]
+    (mt/with-temp [:model/Channel _chn channel-details]
+      (is (= {:errors {:name "Channel with that name already exists"}}
+             (mt/user-http-request :crowberto :post 409 "channel" default-test-channel))))))
+
 (def ns-keyword->str #(str (.-sym %)))
 
 (deftest list-channels-test
@@ -101,7 +109,18 @@
     (is (= {:errors {:email "Invalid email"}}
            (mt/user-http-request :crowberto :post 400 "channel"
                                  (assoc default-test-channel :details {:return-type  "throw"
-                                                                       :return-value {:errors {:email "Invalid email"}}}))))))
+                                                                       :return-value {:errors {:email "Invalid email"}}})))))
+
+  (testing "error if channel details include undefined key"
+    (channel.http-test/with-server [url [channel.http-test/get-200]]
+      (is (= {:errors {:xyz ["disallowed key"]}}
+             (mt/user-http-request :crowberto :post 400 "channel"
+                                   (assoc default-test-channel
+                                          :type        "channel/http"
+                                          :details     {:url         (str url (:path channel.http-test/get-200))
+                                                        :method      "get"
+                                                        :auth-method "none"
+                                                        :xyz         "alo"})))))))
 
 (deftest ensure-channel-is-namespaced-test
   (testing "POST /api/channel return 400 if channel type is not namespaced"
@@ -145,3 +164,30 @@
            (mt/user-http-request :crowberto :post 400 "channel/test"
                                  (assoc default-test-channel :details {:return-type  "throw"
                                                                        :return-value {:errors {:email "Invalid email"}}}))))))
+
+(deftest channel-audit-log-test
+  (testing "audit log for channel apis"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-model-cleanup [:model/Channel]
+        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+          (let [id (:id (mt/user-http-request :crowberto :post 200 "channel" default-test-channel))]
+            (testing "POST /api/channel"
+              (is (= {:details  {:description "Test channel description"
+                                 :id          id
+                                 :name        "Test channel"
+                                 :type        "channel/metabase-test"
+                                 :active      true}
+                      :model    "Channel"
+                      :model_id id
+                      :topic    :channel-create
+                      :user_id  (mt/user->id :crowberto)}
+                     (mt/latest-audit-log-entry :channel-create))))
+
+            (testing "PUT /api/channel/:id"
+              (mt/user-http-request :crowberto :put 200 (str "channel/" id) (assoc default-test-channel :name "Updated Name"))
+              (is (= {:details  {:new {:name "Updated Name"} :previous {:name "Test channel"}}
+                      :model    "Channel"
+                      :model_id id
+                      :topic    :channel-update
+                      :user_id  (mt/user->id :crowberto)}
+                     (mt/latest-audit-log-entry :channel-update))))))))))

@@ -218,6 +218,7 @@
   {:get    http/get
    :post   http/post
    :put    http/put
+   :patch  http/patch
    :delete http/delete})
 
 (def ^:private ClientParamsMap
@@ -349,7 +350,7 @@
 (def ^:private http-client-args
   [:catn
    [:credentials      [:? [:or string? map?]]]
-   [:method           [:enum :get :put :post :delete]]
+   [:method           [:enum :get :put :post :patch :delete]]
    [:expected-status  [:? integer?]]
    [:url              string?]
    [:request-options  [:? [:fn (every-pred map? :request-options)]]]
@@ -426,7 +427,7 @@
 
    *  `credentials`          Optional map of `:username` and `:password` or Session token of a User who we
                              should perform the request as
-   *  `method`               `:get`, `:post`, `:delete`, or `:put`
+   *  `method`               `:get`, `:post`, `:delete`, `:put`, or `:patch`
    *  `expected-status-code` When passed, throw an exception if the response has a different status code.
    *  `endpoint`             URL minus the `<host>/api/` part e.g. `card/1/favorite`. Appended to `*url-prefix*`.
    *  `request-options`      Optional map of options to pass as part of request to `clj-http.client`, e.g. `:headers`.
