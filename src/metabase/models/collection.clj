@@ -1004,10 +1004,18 @@
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where]}]
   (if (seq collection-set)
-    (t2/reducible-select Collection :id [:in collection-set])
-    (t2/reducible-select Collection :personal_owner_id nil)))
+    (t2/reducible-select Collection
+                         {:where
+                          [:and
+                           [:in :id collection-set]
+                           (or where true)]})
+    (t2/reducible-select Collection
+                         {:where
+                          [:and
+                           [:= :personal_owner_id nil]
+                           (or where true)]})))
 
 (defmethod serdes/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
