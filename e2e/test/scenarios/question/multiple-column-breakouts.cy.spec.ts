@@ -26,7 +26,7 @@ import {
   visitPublicDashboard,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
@@ -43,6 +43,66 @@ const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
         "field",
         ORDERS.CREATED_AT,
         { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+    ],
+  },
+  display: "table",
+  visualization_settings: {
+    "table.pivot": false,
+  },
+};
+
+const questionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
+  name: "Test question",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "num-bins", "num-bins": 10 },
+        },
+      ],
+      [
+        "field",
+        ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "num-bins", "num-bins": 50 },
+        },
+      ],
+    ],
+  },
+  display: "table",
+  visualization_settings: {
+    "table.pivot": false,
+  },
+};
+
+const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
+  name: "Test question",
+  query: {
+    "source-table": PEOPLE_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        PEOPLE.LATITUDE,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "bin-width", "bin-width": 20 },
+        },
+      ],
+      [
+        "field",
+        PEOPLE.LATITUDE,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "bin-width", "bin-width": 10 },
+        },
       ],
     ],
   },
@@ -134,8 +194,8 @@ describe("scenarios > question > multiple column breakouts", () => {
   });
 
   describe("current stage", () => {
-    it("should allow to create a query with multiple breakouts", () => {
-      function testNewQueryWithMultipleBreakouts({
+    describe("notebook", () => {
+      function testNewQueryWithBreakouts({
         tableName,
         columnName,
         bucketLabel,
@@ -181,250 +241,311 @@ describe("scenarios > question > multiple column breakouts", () => {
         assertQueryBuilderRowCount(expectedRowCount);
       }
 
-      testNewQueryWithMultipleBreakouts({
-        tableName: "Orders",
-        columnName: "Created At",
-        bucketLabel: "Temporal bucket",
-        bucket1Name: "Year",
-        bucket2Name: "Month",
-        expectedRowCount: 49,
+      it("should allow to create a query with multiple breakouts with temporal buckets", () => {
+        testNewQueryWithBreakouts({
+          tableName: "Orders",
+          columnName: "Created At",
+          bucketLabel: "Temporal bucket",
+          bucket1Name: "Year",
+          bucket2Name: "Month",
+          expectedRowCount: 49,
+        });
       });
 
-      testNewQueryWithMultipleBreakouts({
-        tableName: "Orders",
-        columnName: "Total",
-        bucketLabel: "Binning strategy",
-        bucket1Name: "10 bins",
-        bucket2Name: "50 bins",
-        expectedRowCount: 32,
+      it("should allow to create a query with multiple breakouts with the 'num-bins' binning strategy", () => {
+        testNewQueryWithBreakouts({
+          tableName: "Orders",
+          columnName: "Total",
+          bucketLabel: "Binning strategy",
+          bucket1Name: "10 bins",
+          bucket2Name: "50 bins",
+          expectedRowCount: 32,
+        });
+      });
+
+      it("should allow to create a query with multiple breakouts with the 'bin-width' binning strategy", () => {
+        testNewQueryWithBreakouts({
+          tableName: "People",
+          columnName: "Latitude",
+          bucketLabel: "Binning strategy",
+          bucket1Name: "Bin every 10 degrees",
+          bucket2Name: "Bin every 20 degrees",
+          expectedRowCount: 6,
+        });
+      });
+
+      function testSortByBreakout({
+        questionDetails,
+        column1Name,
+        column2Name,
+      }: {
+        questionDetails: StructuredQuestionDetails;
+        column1Name: string;
+        column2Name: string;
+      }) {
+        createQuestion(questionDetails, {
+          visitQuestion: true,
+        });
+        openNotebook();
+        getNotebookStep("summarize").findByText("Sort").click();
+        popover().findByText(column1Name).click();
+        getNotebookStep("sort").button("Change direction").click();
+        getNotebookStep("sort").icon("add").click();
+        popover().findByText(column2Name).click();
+        cy.button("Visualize").click();
+        cy.wait("@dataset");
+      }
+
+      it("should allow to sort by breakout columns with temporal buckets", () => {
+        testSortByBreakout({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Created At: Year",
+          column2Name: "Created At: Month",
+        });
+        assertTableData({
+          columns: ["Created At: Year", "Created At: Month", "Count"],
+          firstRows: [
+            ["2026", "January 2026", "580"],
+            ["2026", "February 2026", "543"],
+          ],
+        });
+      });
+
+      it("should allow to sort by breakout columns with the 'num-bins' binning strategy", () => {
+        testSortByBreakout({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column2Name: "Total: 50 bins",
+        });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["140 – 160", "140 – 145", "306"],
+            ["140 – 160", "145 – 150", "308"],
+          ],
+        });
+      });
+
+      it("should allow to sort by breakout columns with the 'bin-width' binning strategy", () => {
+        testSortByBreakout({
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          column1Name: "Latitude: 20°",
+          column2Name: "Latitude: 10°",
+        });
+        assertTableData({
+          columns: ["Latitude", "Latitude", "Count"],
+          firstRows: [
+            ["60° N – 80° N", "60° N – 70° N", "51"],
+            ["60° N – 80° N", "70° N – 80° N", "1"],
+          ],
+        });
+      });
+    });
+
+    describe("summarize sidebar", () => {
+      it("should allow to change temporal units for multiple breakouts of the same column", () => {
+        createQuestion(questionWith2TemporalBreakoutsDetails, {
+          visitQuestion: true,
+        });
+        summarize();
+        cy.findByTestId("pinned-dimensions")
+          .findAllByLabelText("Created At")
+          .should("have.length", 2)
+          .eq(0)
+          .findByText("by year")
+          .click();
+        popover().findByText("Quarter").click();
+        cy.wait("@dataset");
+        cy.findByTestId("pinned-dimensions")
+          .findAllByLabelText("Created At")
+          .should("have.length", 2)
+          .eq(1)
+          .findByText("by month")
+          .click();
+        popover().findByText("Week").click();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Week", "Count"],
+          firstRows: [["Q2 2022", "April 24, 2022 – April 30, 2022", "1"]],
+        });
       });
     });
 
-    it("should allow to sort by breakout columns", () => {
-      createQuestion(questionWith2TemporalBreakoutsDetails, {
-        visitQuestion: true,
-      });
-      openNotebook();
-      getNotebookStep("summarize").findByText("Sort").click();
-      popover().findByText("Created At: Year").click();
-      getNotebookStep("sort").button("Change direction").click();
-      getNotebookStep("sort").icon("add").click();
-      popover().findByText("Created At: Month").click();
-      cy.button("Visualize").click();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: ["Created At: Year", "Created At: Month", "Count"],
-        firstRows: [
-          ["2026", "January 2026", "580"],
-          ["2026", "February 2026", "543"],
-        ],
-      });
-    });
-  });
+    describe("timeseries chrome", () => {
+      it("should use the first breakout for the chrome in case there are multiple for this column", () => {
+        createQuestion(questionWith2TemporalBreakoutsDetails, {
+          visitQuestion: true,
+        });
 
-  describe("summarize sidebar", () => {
-    it("should allow to change temporal units for multiple breakouts of the same column", () => {
-      createQuestion(questionWith2TemporalBreakoutsDetails, {
-        visitQuestion: true,
-      });
-      summarize();
-      cy.findByTestId("pinned-dimensions")
-        .findAllByLabelText("Created At")
-        .should("have.length", 2)
-        .eq(0)
-        .findByText("by year")
-        .click();
-      popover().findByText("Quarter").click();
-      cy.wait("@dataset");
-      cy.findByTestId("pinned-dimensions")
-        .findAllByLabelText("Created At")
-        .should("have.length", 2)
-        .eq(1)
-        .findByText("by month")
-        .click();
-      popover().findByText("Week").click();
-      cy.wait("@dataset");
-      assertTableData({
-        columns: ["Created At: Quarter", "Created At: Week", "Count"],
-        firstRows: [["Q2 2022", "April 24, 2022 – April 30, 2022", "1"]],
-      });
-    });
-  });
+        cy.log("change the breakout");
+        cy.findByTestId("timeseries-bucket-button")
+          .should("contain.text", "Year")
+          .click();
+        popover().findByText("Quarter").click();
+        cy.wait("@dataset");
+        assertQueryBuilderRowCount(49);
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Month", "Count"],
+          firstRows: [["Q2 2022", "April 2022", "1"]],
+        });
 
-  describe("timeseries chrome", () => {
-    it("should use the first breakout for the chrome in case there are multiple for this column", () => {
-      createQuestion(questionWith2TemporalBreakoutsDetails, {
-        visitQuestion: true,
-      });
+        cy.log("add a filter");
+        cy.findByTestId("timeseries-filter-button")
+          .should("contain.text", "All time")
+          .click();
+        popover().findByDisplayValue("All time").click();
+        popover().last().findByText("On").click();
+        popover().within(() => {
+          cy.findByLabelText("Date").clear().type("August 14, 2023");
+          cy.button("Apply").click();
+        });
+        cy.wait("@dataset");
+        assertQueryBuilderRowCount(1);
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Month", "Count"],
+          firstRows: [["Q3 2023", "August 2023", "9"]],
+        });
 
-      cy.log("change the breakout");
-      cy.findByTestId("timeseries-bucket-button")
-        .should("contain.text", "Year")
-        .click();
-      popover().findByText("Quarter").click();
-      cy.wait("@dataset");
-      assertQueryBuilderRowCount(49);
-      assertTableData({
-        columns: ["Created At: Quarter", "Created At: Month", "Count"],
-        firstRows: [["Q2 2022", "April 2022", "1"]],
-      });
-
-      cy.log("add a filter");
-      cy.findByTestId("timeseries-filter-button")
-        .should("contain.text", "All time")
-        .click();
-      popover().findByDisplayValue("All time").click();
-      popover().last().findByText("On").click();
-      popover().within(() => {
-        cy.findByLabelText("Date").clear().type("August 14, 2023");
-        cy.button("Apply").click();
-      });
-      cy.wait("@dataset");
-      assertQueryBuilderRowCount(1);
-      assertTableData({
-        columns: ["Created At: Quarter", "Created At: Month", "Count"],
-        firstRows: [["Q3 2023", "August 2023", "9"]],
-      });
-
-      cy.log("change the filter");
-      cy.findByTestId("timeseries-filter-button")
-        .should("contain.text", "Aug 14")
-        .click();
-      popover().within(() => {
-        cy.findByLabelText("Date").clear().type("August 14, 2022");
-        cy.button("Apply").click();
-      });
-      cy.wait("@dataset");
-      assertQueryBuilderRowCount(1);
-      assertTableData({
-        columns: ["Created At: Quarter", "Created At: Month", "Count"],
-        firstRows: [["Q3 2022", "August 2022", "1"]],
+        cy.log("change the filter");
+        cy.findByTestId("timeseries-filter-button")
+          .should("contain.text", "Aug 14")
+          .click();
+        popover().within(() => {
+          cy.findByLabelText("Date").clear().type("August 14, 2022");
+          cy.button("Apply").click();
+        });
+        cy.wait("@dataset");
+        assertQueryBuilderRowCount(1);
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Month", "Count"],
+          firstRows: [["Q3 2022", "August 2022", "1"]],
+        });
       });
     });
-  });
 
-  describe("viz settings", () => {
-    it("should be able to change formatting settings for breakouts of the same column", () => {
-      createQuestion(questionWith2TemporalBreakoutsDetails, {
-        visitQuestion: true,
+    describe("viz settings", () => {
+      it("should be able to change formatting settings for breakouts of the same column", () => {
+        createQuestion(questionWith2TemporalBreakoutsDetails, {
+          visitQuestion: true,
+        });
+
+        cy.log("first breakout");
+        tableHeaderClick("Created At: Year");
+        popover().icon("gear").click();
+        popover().findByDisplayValue("Created At: Year").clear().type("Year");
+        cy.get("body").click();
+
+        cy.log("second breakout");
+        tableHeaderClick("Created At: Month");
+        popover().icon("gear").click();
+        popover().findByDisplayValue("Created At: Month").clear().type("Month");
+        cy.get("body").click();
+
+        assertTableData({ columns: ["Year", "Month", "Count"] });
       });
 
-      cy.log("first breakout");
-      tableHeaderClick("Created At: Year");
-      popover().icon("gear").click();
-      popover().findByDisplayValue("Created At: Year").clear().type("Year");
-      cy.get("body").click();
+      it("should be able to change pivot split settings when there are more than 2 breakouts", () => {
+        createQuestion(questionWith5BreakoutsAndLimitDetails, {
+          visitQuestion: true,
+        });
 
-      cy.log("second breakout");
-      tableHeaderClick("Created At: Month");
-      popover().icon("gear").click();
-      popover().findByDisplayValue("Created At: Month").clear().type("Month");
-      cy.get("body").click();
+        cy.log("change display and assert the default settings");
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("chart-type-sidebar")
+          .findByTestId("Pivot Table-button")
+          .click();
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .should("contain.text", "Created At: Month")
+          .and("contain.text", "Created At: Week")
+          .and("contain.text", "Created At: Day");
 
-      assertTableData({ columns: ["Year", "Month", "Count"] });
+        cy.log("move a column from rows to columns");
+        cy.findByTestId("viz-settings-button").click();
+        dragField(2, 3);
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .should("contain.text", "Created At: Month")
+          .and("contain.text", "Created At: Week")
+          .and("not.contain.text", "Created At: Day");
+
+        cy.log("move a column from columns to rows");
+        dragField(4, 1);
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .should("contain.text", "Created At: Month")
+          .and("contain.text", "Created At: Quarter")
+          .and("contain.text", "Created At: Week");
+      });
     });
 
-    it("should be able to change pivot split settings when there are more than 2 breakouts", () => {
-      createQuestion(questionWith5BreakoutsAndLimitDetails, {
-        visitQuestion: true,
+    describe("dashboards", () => {
+      function setParametersAndAssertResults(queryAlias: string) {
+        filterWidget().eq(0).click();
+        popover().findByText("Quarter").click();
+        cy.wait(queryAlias);
+        filterWidget().eq(1).click();
+        popover().findByText("Week").click();
+        cy.wait(queryAlias);
+        getDashboardCard().within(() => {
+          cy.findByText("Created At: Quarter").should("be.visible");
+          cy.findByText("Created At: Week").should("be.visible");
+        });
+      }
+
+      it("should be able to use temporal-unit parameters with multiple breakouts of a column", () => {
+        cy.log("create dashboard");
+        cy.signInAsAdmin();
+        createQuestionAndDashboard({
+          dashboardDetails,
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+        }).then(({ body: { dashboard_id } }) => {
+          cy.wrap(dashboard_id).as("dashboardId");
+        });
+
+        cy.log("visit dashboard");
+        cy.signInAsNormalUser();
+        visitDashboard("@dashboardId");
+        cy.wait("@dashcardQuery");
+
+        cy.log("add parameters");
+        editDashboard();
+        cy.findByTestId("fixed-width-filters").findByText("Unit1").click();
+        getDashboardCard().findByText("Select…").click();
+        popover().findAllByText("Created At").eq(0).click();
+        cy.findByTestId("fixed-width-filters").findByText("Unit2").click();
+        getDashboardCard().findByText("Select…").click();
+        popover().findAllByText("Created At").eq(1).click();
+        saveDashboard();
+        cy.wait("@dashcardQuery");
+
+        cy.log("set parameters and assert query results");
+        setParametersAndAssertResults("@dashcardQuery");
+
+        cy.log("drill-thru to the QB and assert query results");
+        getDashboardCard().findByText("Test question").click();
+        cy.wait("@dataset");
+        tableInteractive().within(() => {
+          cy.findByText("Created At: Quarter").should("be.visible");
+          cy.findByText("Created At: Week").should("be.visible");
+        });
+
+        cy.log("set parameters in a public dashboard");
+        cy.signInAsAdmin();
+        cy.get("@dashboardId").then(visitPublicDashboard);
+        cy.wait("@publicDashcardQuery");
+        setParametersAndAssertResults("@publicDashcardQuery");
+
+        cy.log("set parameters in an embedded dashboard");
+        cy.get<number>("@dashboardId").then(dashboardId =>
+          visitEmbeddedPage({
+            resource: { dashboard: dashboardId },
+            params: {},
+          }),
+        );
+        cy.wait("@embedDashcardQuery");
+        setParametersAndAssertResults("@embedDashcardQuery");
       });
-
-      cy.log("change display and assert the default settings");
-      cy.findByTestId("viz-type-button").click();
-      cy.findByTestId("chart-type-sidebar")
-        .findByTestId("Pivot Table-button")
-        .click();
-      cy.wait("@pivotDataset");
-      cy.findByTestId("pivot-table")
-        .should("contain.text", "Created At: Month")
-        .and("contain.text", "Created At: Week")
-        .and("contain.text", "Created At: Day");
-
-      cy.log("move a column from rows to columns");
-      cy.findByTestId("viz-settings-button").click();
-      dragField(2, 3);
-      cy.wait("@pivotDataset");
-      cy.findByTestId("pivot-table")
-        .should("contain.text", "Created At: Month")
-        .and("contain.text", "Created At: Week")
-        .and("not.contain.text", "Created At: Day");
-
-      cy.log("move a column from columns to rows");
-      dragField(4, 1);
-      cy.wait("@pivotDataset");
-      cy.findByTestId("pivot-table")
-        .should("contain.text", "Created At: Month")
-        .and("contain.text", "Created At: Quarter")
-        .and("contain.text", "Created At: Week");
-    });
-  });
-
-  describe("dashboards", () => {
-    function setParametersAndAssertResults(queryAlias: string) {
-      filterWidget().eq(0).click();
-      popover().findByText("Quarter").click();
-      cy.wait(queryAlias);
-      filterWidget().eq(1).click();
-      popover().findByText("Week").click();
-      cy.wait(queryAlias);
-      getDashboardCard().within(() => {
-        cy.findByText("Created At: Quarter").should("be.visible");
-        cy.findByText("Created At: Week").should("be.visible");
-      });
-    }
-
-    it("should be able to use temporal-unit parameters with multiple breakouts of a column", () => {
-      cy.log("create dashboard");
-      cy.signInAsAdmin();
-      createQuestionAndDashboard({
-        dashboardDetails,
-        questionDetails: questionWith2TemporalBreakoutsDetails,
-      }).then(({ body: { dashboard_id } }) => {
-        cy.wrap(dashboard_id).as("dashboardId");
-      });
-
-      cy.log("visit dashboard");
-      cy.signInAsNormalUser();
-      visitDashboard("@dashboardId");
-      cy.wait("@dashcardQuery");
-
-      cy.log("add parameters");
-      editDashboard();
-      cy.findByTestId("fixed-width-filters").findByText("Unit1").click();
-      getDashboardCard().findByText("Select…").click();
-      popover().findAllByText("Created At").eq(0).click();
-      cy.findByTestId("fixed-width-filters").findByText("Unit2").click();
-      getDashboardCard().findByText("Select…").click();
-      popover().findAllByText("Created At").eq(1).click();
-      saveDashboard();
-      cy.wait("@dashcardQuery");
-
-      cy.log("set parameters and assert query results");
-      setParametersAndAssertResults("@dashcardQuery");
-
-      cy.log("drill-thru to the QB and assert query results");
-      getDashboardCard().findByText("Test question").click();
-      cy.wait("@dataset");
-      tableInteractive().within(() => {
-        cy.findByText("Created At: Quarter").should("be.visible");
-        cy.findByText("Created At: Week").should("be.visible");
-      });
-
-      cy.log("set parameters in a public dashboard");
-      cy.signInAsAdmin();
-      cy.get("@dashboardId").then(visitPublicDashboard);
-      cy.wait("@publicDashcardQuery");
-      setParametersAndAssertResults("@publicDashcardQuery");
-
-      cy.log("set parameters in an embedded dashboard");
-      cy.get<number>("@dashboardId").then(dashboardId =>
-        visitEmbeddedPage({
-          resource: { dashboard: dashboardId },
-          params: {},
-        }),
-      );
-      cy.wait("@embedDashcardQuery");
-      setParametersAndAssertResults("@embedDashcardQuery");
     });
   });
 
