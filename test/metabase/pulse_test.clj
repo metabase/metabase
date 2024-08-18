@@ -6,7 +6,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.channel.http-test :as channel.http-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -853,88 +852,67 @@
                 (get-positive-retry-metrics test-retry)))))))
 
 (defn- latest-task-history-entry
-  [task-name n]
-  (t2/select :model/TaskHistory
-             {:order-by [[:started_at :desc]]
-              :where [:= :task (name task-name)]
-              :limit n}))
+  [task-name]
+  (t2/select-one-fn #(dissoc % :id :started_at :ended_at :duration)
+                    :model/TaskHistory
+                    {:order-by [[:started_at :desc]]
+                     :where [:= :task (name task-name)]}))
 
 (deftest send-channel-record-task-history-test
-  (let [test-retry (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration))
-        pulse-id   (rand-int 10000)]
-    (testing "channel send task history task details include retry-attempts and retry config"
-      (mt/with-model-cleanup [:model/TaskHistory]
-        (with-redefs
-          [retry/random-exponential-backoff-retry (constantly test-retry)
-           channel/send!                          (constantly true)]
-          (#'metabase.pulse/send-retrying! pulse-id {:type :channel/slack} fake-slack-notification)
-          (is (=? [{:task "channel-send"
-                    :status :success
-                    :task_details {:pulse-id       pulse-id
-                                   :retry-attempts 0
-                                   :retry-config   {:max-attempts (:max-attempts (test-retry-configuration))}}}]
-                  (latest-task-history-entry :channel-send 1))))))
-
-    (testing "each retry attempt will be included in the task history"
-      (mt/with-model-cleanup [:model/TaskHistory]
-        (let [retry-config (assoc (test-retry-configuration) :max-attempts 3)
-              test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+  (mt/with-temporary-setting-values [retry-max-attempts     4
+                                     retry-initial-interval 1]
+    (mt/with-model-cleanup [:model/TaskHistory]
+      (let [pulse-id             (rand-int 10000)
+            default-task-details {:pulse-id     pulse-id
+                                  :channel-type "channel/slack"
+                                  :channel-id   nil
+                                  :retry-config {:max-attempts            4
+                                                 :initial-interval-millis 1
+                                                 :multiplier              2.0
+                                                 :randomization-factor    0.1
+                                                 :max-interval-millis     30000}}
+            send!                #(#'metabase.pulse/send-retrying! pulse-id {:type :channel/slack} fake-slack-notification)]
+        (testing "channel send task history task details include retry config"
           (with-redefs
-            [retry/random-exponential-backoff-retry (constantly test-retry)
-             channel/send!                          (tu/works-after 2 (constantly nil))]
-            (#'metabase.pulse/send-retrying! pulse-id {:type :channel/http :id 1} fake-slack-notification)
-            (is (=? [{:task         "channel-send"
-                      :status       :success
-                      :task_details {:pulse-id       pulse-id
-                                     :channel-type  "channel/http"
-                                     :channel-id    1
-                                     :retry-attempts 2
-                                     :retry-config   {:max-attempts 3}}}
-                     {:task         "channel-send"
-                      :status       :failed
-                      :task_details {:exception (mt/malli=? :string)
-                                     :original-info {:retry-config   {:max-attempts 3}
-                                                     :pulse-id       pulse-id
-                                                     :channel-type  "channel/http"
-                                                     :channel-id    1
-                                                     :retry-attempts 1}}}
-                     {:task         "channel-send"
-                      :status       :failed
-                      :task_details {:exception (mt/malli=? :string)
-                                     :original-info {:retry-config  {:max-attempts 3}
-                                                     :pulse-id       pulse-id
-                                                     :channel-type  "channel/http"
-                                                     :channel-id    1
-                                                     :retry-attempts 0}}}]
-                    (latest-task-history-entry :channel-send 3)))))))))
+            [channel/send! (constantly true)]
+            (send!)
+            (is (= {:task         "channel-send"
+                    :db_id        nil
+                    :status       :success
+                    :task_details default-task-details}
+                   (latest-task-history-entry :channel-send)))))
 
-(deftest send-pulse-http-task-history-capture-test
-  (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"
-    (channel.http-test/with-server [url [channel.http-test/post-400]]
-      (mt/with-dynamic-redefs
-        [retry/random-exponential-backoff-retry (constantly (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration)))]
-        (mt/with-temp
-          [:model/Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
-                                                                                    :limit    1})
-           :model/Pulse        {pulse-id :id} {:name "Test Pulse"
-                                               :alert_condition "rows"}
-           :model/PulseCard    _              {:pulse_id pulse-id
-                                               :card_id  card-id}
-           :model/Channel      {channel-id :id} {:type         "channel/http"
-                                                 :details      {:url          (str url (:path channel.http-test/post-400))
-                                                                :auth-method "none"}}
-           :model/PulseChannel _              {:pulse_id     pulse-id
-                                               :channel_type "http"
-                                               :channel_id   channel-id}]
-          (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id))
-          (is (=? [{:task         "channel-send"
-                    :status       :failed
-                    :task_details {:ex-data       {:body   "\"Bad request\""
-                                                   :status 400}
-                                   :original-info {:pulse-id       pulse-id
-                                                   :retry-attempts 1
-                                                   :retry-config   {:max-attempts 2}}}}]
-                  (latest-task-history-entry :channel-send 1))))))))
+        (testing "retry errors are recorded when the task eventually succeeds"
+          (with-redefs [channel/send! (tu/works-after 2 (constantly nil))]
+            (send!)
+            (is (=? {:task         "channel-send"
+                     :db_id        nil
+                     :status       :success
+                     :task_details (merge default-task-details
+                                          {:attempted-retries 2
+                                           :retry-errors      (mt/malli=?
+                                                               [:sequential {:min 2 :max 2}
+                                                                [:map
+                                                                 [:trace :any]
+                                                                 [:cause :any]
+                                                                 [:via :any]]])})}
+                    (latest-task-history-entry :channel-send)))))
+
+        (testing "retry errors are recorded when the task eventually fails"
+          (with-redefs [channel/send! (tu/works-after 5 (constantly nil))]
+            (send!)
+            (is (=? {:task         "channel-send"
+                     :db_id        nil
+                     :status       :failed
+                     :task_details {:original-info     default-task-details
+                                    :attempted-retries 4
+                                    :retry-errors      (mt/malli=?
+                                                        [:sequential {:min 4 :max 4}
+                                                         [:map
+                                                          [:trace :any]
+                                                          [:cause :any]
+                                                          [:via :any]]])}}
+                    (latest-task-history-entry :channel-send)))))))))
 
 (deftest alerts-do-not-remove-user-metadata
   (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
