@@ -403,6 +403,20 @@ describe("scenarios > question > multiple column breakouts", () => {
           firstRows: [["X", "X", "X"]],
         });
       });
+
+      it("should allow to change 'bin-width' binning strategies for multiple breakouts of the same column", () => {
+        testChangeBreakoutBuckets({
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          columnName: "Latitude",
+          bucketLabel: "Binning strategy",
+          bucket1Name: "Bin every 1 degree",
+          bucket2Name: "Bin every 0.1 degrees",
+        });
+        assertTableData({
+          columns: ["Latitude", "Latitude", "Count"],
+          firstRows: [["X", "X", "X"]],
+        });
+      });
     });
 
     describe("timeseries chrome", () => {
