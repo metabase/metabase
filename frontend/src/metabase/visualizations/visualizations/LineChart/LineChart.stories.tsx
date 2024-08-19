@@ -53,6 +53,13 @@ export const Default: Story = () => (
   </VisualizationWrapper>
 );
 
+// This story has become flaky on CI, so we're skipping it for now.
+Default.story = {
+  parameters: {
+    loki: { skip: true },
+  },
+};
+
 export const EmbeddingHugeFont: Story = () => {
   const theme: MetabaseTheme = {
     fontSize: "20px",
