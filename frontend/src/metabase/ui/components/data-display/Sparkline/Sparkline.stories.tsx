@@ -1,6 +1,8 @@
 import type { ComponentStory } from "@storybook/react";
 
-import { Sparkline } from ".";
+import type { Datapoint } from "./Sparkline";
+
+import { Sparkline, BinnedSparkline } from ".";
 
 export default {
   title: "Data Display/Sparkline",
@@ -36,3 +38,10 @@ UpDown.args = { data: upDown };
 
 export const NoData = Template.bind({});
 NoData.args = { data: [] };
+
+const BinnedTemplate: ComponentStory<typeof Sparkline> = args => {
+  return <BinnedSparkline data={args.data} width={120} height={40} />;
+};
+
+export const LotsOfData = BinnedTemplate.bind({});
+LotsOfData.args = { data: lotsOfData };
