@@ -18,6 +18,7 @@ import {
   addDatabaseConnectionStep,
   pickDatabaseTables,
   createModelsAndXrays,
+  setupPermissions,
   generateReactComponentFiles,
 } from "./steps";
 import type { CliState } from "./types/cli";
@@ -40,6 +41,7 @@ export const CLI_STEPS = [
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
+  { id: "setupPermissions", executeStep: setupPermissions },
   {
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
