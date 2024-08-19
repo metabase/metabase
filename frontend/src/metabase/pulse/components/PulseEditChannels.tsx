@@ -7,7 +7,6 @@ import _ from "underscore";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createChannel } from "metabase/lib/pulse";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
 import { Icon, type IconName } from "metabase/ui";
@@ -43,7 +42,6 @@ interface PulseEditChannelsProps {
 
 export const PulseEditChannels = ({
   pulse,
-  pulseId,
   formInput,
   user,
   users,
@@ -60,12 +58,6 @@ export const PulseEditChannels = ({
     const channel = createChannel(channelSpec);
 
     setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
-
-    MetabaseAnalytics.trackStructEvent(
-      pulseId ? "PulseEdit" : "PulseCreate",
-      "AddChannel",
-      type,
-    );
   };
 
   const onChannelPropertyChange = (index: number, name: string, value: any) => {
@@ -114,12 +106,6 @@ export const PulseEditChannels = ({
           );
 
       setPulse(updatedPulse);
-
-      MetabaseAnalytics.trackStructEvent(
-        pulseId ? "PulseEdit" : "PulseCreate",
-        "RemoveChannel",
-        type,
-      );
     }
   };
 

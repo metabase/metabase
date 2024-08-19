@@ -17,7 +17,6 @@ import Select, { Option } from "metabase/core/components/Select";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getAccentColors,
   getStatusColorRanges,
@@ -156,19 +155,9 @@ export const ChartSettingsTableFormatting = props => {
         }}
         onRemove={index => {
           onChange([...value.slice(0, index), ...value.slice(index + 1)]);
-          MetabaseAnalytics.trackStructEvent(
-            "Chart Settings",
-            "Table Formatting",
-            "Remove Rule",
-          );
         }}
         onMove={(from, to) => {
           onChange(arrayMove(value, from, to));
-          MetabaseAnalytics.trackStructEvent(
-            "Chart Settings",
-            "Table Formatting",
-            "Move Rule",
-          );
         }}
       />
     );
@@ -493,12 +482,6 @@ const RuleEditor = ({
           <ColorRangeSelector
             value={rule.colors}
             onChange={colors => {
-              MetabaseAnalytics.trackStructEvent(
-                "Chart Settings",
-                "Table Formatting",
-                "Select Range  Colors",
-                colors,
-              );
               onChange({ ...rule, colors });
             }}
             colors={COLORS}

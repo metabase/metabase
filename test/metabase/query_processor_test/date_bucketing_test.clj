@@ -33,6 +33,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -1658,6 +1659,20 @@
 
       (testing "annual"
         (is (= [488444.41] (unit-totals "year")))))))
+
+(deftest ^:parallel incompatible-temporal-unit-parameter-test
+  (testing "Incompatible time unit parameter yields expected error"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"This chart can not be broken out by the selected unit of time: minute\."
+         (qp.preprocess/preprocess
+          (mt/mbql-query
+           checkins
+           {:type       :query
+            :query      {:aggregation  [[:count]]
+                         :breakout     [!day.date]}
+            :parameters [{:type   :temporal-unit
+                          :target [:dimension !day.date]
+                          :value  "minute"}]}))))))
 
 (deftest day-of-week-custom-start-of-week-test
   (mt/test-drivers (mt/normal-drivers)

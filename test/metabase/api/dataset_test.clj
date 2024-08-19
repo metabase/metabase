@@ -212,7 +212,6 @@
                                                             :type     :query
                                                             :query    {:source-table (str "card__" (u/the-id card))}}))]
                   (is (some? result))
-                  (def result result)
                   (when (some? result)
                     (is (= 16
                            (count (csv/read-csv result)))))))]
