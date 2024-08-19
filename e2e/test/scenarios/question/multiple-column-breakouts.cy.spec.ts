@@ -111,7 +111,7 @@ const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
   },
 };
 
-const questionWith5BreakoutsAndLimitDetails: StructuredQuestionDetails = {
+const questionWith5TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
     "source-table": ORDERS_ID,
@@ -141,6 +141,60 @@ const questionWith5BreakoutsAndLimitDetails: StructuredQuestionDetails = {
         "field",
         ORDERS.CREATED_AT,
         { "base-type": "type/DateTime", "temporal-unit": "day" },
+      ],
+    ],
+    limit: 10,
+  },
+  display: "table",
+  visualization_settings: {
+    "table.pivot": false,
+  },
+};
+
+const questionWith5NumBinsBreakoutsDetails: StructuredQuestionDetails = {
+  name: "Test question",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+        },
+      ],
+      [
+        "field",
+        ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "default" },
+        },
+      ],
+      [
+        "field",
+        ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "num-bins", "num-bins": 10 },
+        },
+      ],
+      [
+        "field",
+        ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "num-bins", "num-bins": 50 },
+        },
+      ],
+      [
+        "field",
+        ORDERS.TOTAL,
+        {
+          "base-type": "type/Float",
+          binning: { strategy: "num-bins", "num-bins": 100 },
+        },
       ],
     ],
     limit: 10,
@@ -319,8 +373,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         assertTableData({
           columns: ["Total", "Total", "Count"],
           firstRows: [
-            ["140 – 160", "140 – 145", "306"],
-            ["140 – 160", "145 – 150", "308"],
+            ["140  –  160", "140  –  145", "306"],
+            ["140  –  160", "145  –  150", "308"],
           ],
         });
       });
@@ -334,8 +388,8 @@ describe("scenarios > question > multiple column breakouts", () => {
         assertTableData({
           columns: ["Latitude", "Latitude", "Count"],
           firstRows: [
-            ["60° N – 80° N", "60° N – 70° N", "51"],
-            ["60° N – 80° N", "70° N – 80° N", "1"],
+            ["60° N  –  80° N", "60° N  –  70° N", "51"],
+            ["60° N  –  80° N", "70° N  –  80° N", "1"],
           ],
         });
       });
@@ -483,15 +537,13 @@ describe("scenarios > question > multiple column breakouts", () => {
         createQuestion(questionDetails, { visitQuestion: true });
 
         cy.log("first breakout");
-        tableHeaderClick(column1Name);
+        tableHeaderClick(column1Name, { columnIndex: 0 });
         popover().icon("gear").click();
         popover().findByDisplayValue(column1Name).clear().type("Breakout1");
         cy.get("body").click();
 
         cy.log("second breakout");
-        tableHeaderClick(column2Name, {
-          columnIndex: column2Name === column1Name ? 1 : 0,
-        });
+        tableHeaderClick(column2Name);
         popover().icon("gear").click();
         popover().findByDisplayValue(column2Name).clear().type("Breakout2");
         cy.get("body").click();
@@ -523,10 +575,14 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
       });
 
-      it("should be able to change pivot split settings when there are more than 2 breakouts", () => {
-        createQuestion(questionWith5BreakoutsAndLimitDetails, {
-          visitQuestion: true,
-        });
+      function testPivotSplit({
+        questionDetails,
+        columnNamePattern,
+      }: {
+        questionDetails: StructuredQuestionDetails;
+        columnNamePattern: RegExp;
+      }) {
+        createQuestion(questionDetails, { visitQuestion: true });
 
         cy.log("change display and assert the default settings");
         cy.findByTestId("viz-type-button").click();
@@ -535,26 +591,37 @@ describe("scenarios > question > multiple column breakouts", () => {
           .click();
         cy.wait("@pivotDataset");
         cy.findByTestId("pivot-table")
-          .should("contain.text", "Created At: Month")
-          .and("contain.text", "Created At: Week")
-          .and("contain.text", "Created At: Day");
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
 
         cy.log("move a column from rows to columns");
         cy.findByTestId("viz-settings-button").click();
         dragField(2, 3);
         cy.wait("@pivotDataset");
         cy.findByTestId("pivot-table")
-          .should("contain.text", "Created At: Month")
-          .and("contain.text", "Created At: Week")
-          .and("not.contain.text", "Created At: Day");
+          .findAllByText(columnNamePattern)
+          .should("have.length", 2);
 
         cy.log("move a column from columns to rows");
         dragField(4, 1);
         cy.wait("@pivotDataset");
         cy.findByTestId("pivot-table")
-          .should("contain.text", "Created At: Month")
-          .and("contain.text", "Created At: Quarter")
-          .and("contain.text", "Created At: Week");
+          .findAllByText(columnNamePattern)
+          .should("have.length", 3);
+      }
+
+      it("should be able to change pivot split settings when there are more than 2 temporal breakouts", () => {
+        testPivotSplit({
+          questionDetails: questionWith5TemporalBreakoutsDetails,
+          columnNamePattern: /^Created At/,
+        });
+      });
+
+      it("should be able to change pivot split settings when there are more than 2 'num-bins' breakouts", () => {
+        testPivotSplit({
+          questionDetails: questionWith5NumBinsBreakoutsDetails,
+          columnNamePattern: /^Total$/,
+        });
       });
     });
 
@@ -572,7 +639,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
       }
 
-      it("should be able to use temporal-unit parameters with multiple breakouts of a column", () => {
+      it("should be able to use temporal-unit parameters with multiple temporal breakouts of a column", () => {
         cy.log("create dashboard");
         cy.signInAsAdmin();
         createQuestionAndDashboard({
