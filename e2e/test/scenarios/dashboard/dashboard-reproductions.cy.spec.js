@@ -1,52 +1,52 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-} from "e2e/support/cypress_sample_instance_data";
-import {
-  addTextBox,
-  editDashboard,
-  getDashboardCard,
-  openQuestionsSidebar,
-  popover,
-  removeDashboardCard,
-  restore,
-  saveDashboard,
-  setFilter,
-  showDashboardCardActions,
-  sidebar,
-  undo,
-  visitDashboard,
-  getDashboardCards,
-  updateDashboardCards,
-  rightSidebar,
-  dashboardHeader,
-  entityPickerModal,
-  toggleDashboardInfoSidebar,
-  cartesianChartCircle,
-  undoToast,
-  setTokenFeatures,
-  describeEE,
-  visitQuestion,
-  getTextCardDetails,
-  modal,
-  queryBuilderHeader,
-  filterWidget,
-  dashboardParametersContainer,
-  goToTab,
-  createDashboardWithTabs,
-  dashboardGrid,
-} from "e2e/support/helpers";
-import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
   createMockDashboardCard,
   createMockParameter,
 } from "metabase-types/api/mocks";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  addTextBox,
+  cartesianChartCircle,
+  createDashboardWithTabs,
+  dashboardGrid,
+  dashboardHeader,
+  dashboardParametersContainer,
+  describeEE,
+  editDashboard,
+  entityPickerModal,
+  filterWidget,
+  getDashboardCard,
+  getDashboardCards,
+  getTextCardDetails,
+  goToTab,
+  modal,
+  openQuestionsSidebar,
+  popover,
+  queryBuilderHeader,
+  removeDashboardCard,
+  restore,
+  rightSidebar,
+  saveDashboard,
+  setFilter,
+  setTokenFeatures,
+  showDashboardCardActions,
+  sidebar,
+  toggleDashboardInfoSidebar,
+  undo,
+  undoToast,
+  updateDashboardCards,
+  visitDashboard,
+  visitQuestion,
+} from "e2e/support/helpers";
+import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 

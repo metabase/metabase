@@ -1,6 +1,11 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
+import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import {
+  createMockVirtualCard,
+  createMockVirtualDashCard,
+} from "metabase-types/api/mocks";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -9,54 +14,49 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
-  selectDashboardFilter,
-  editDashboard,
-  showDashboardCardActions,
-  filterWidget,
-  sidebar,
-  modal,
-  visitDashboard,
-  appBar,
-  rightSidebar,
-  getDashboardCardMenu,
   addOrUpdateDashboardCard,
-  openQuestionsSidebar,
-  describeWithSnowplow,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  closeNavigationSidebar,
-  saveDashboard,
-  queryBuilderHeader,
-  removeDashboardCard,
-  getDashboardCards,
-  getDashboardCard,
-  toggleDashboardInfoSidebar,
-  dashboardHeader,
-  openProductsTable,
-  updateDashboardCards,
-  getTextCardDetails,
-  openDashboardMenu,
-  openEmbedModalFromMenu,
+  appBar,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
-  createDashboardWithTabs,
-  entityPickerModal,
+  closeNavigationSidebar,
   collectionOnTheGoModal,
-  setFilter,
-  commandPaletteButton,
   commandPalette,
+  commandPaletteButton,
+  createDashboardWithTabs,
+  dashboardHeader,
   describeEE,
+  describeWithSnowplow,
+  editDashboard,
+  enableTracking,
+  entityPickerModal,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
+  getDashboardCard,
+  getDashboardCardMenu,
+  getDashboardCards,
+  getTextCardDetails,
+  modal,
+  openDashboardMenu,
+  openEmbedModalFromMenu,
+  openProductsTable,
+  openQuestionsSidebar,
+  popover,
+  queryBuilderHeader,
+  removeDashboardCard,
+  resetSnowplow,
+  restore,
+  rightSidebar,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
   setTokenFeatures,
+  showDashboardCardActions,
+  sidebar,
+  toggleDashboardInfoSidebar,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import {
-  createMockVirtualCard,
-  createMockVirtualDashCard,
-} from "metabase-types/api/mocks";
 
 import { interceptRoutes as interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {

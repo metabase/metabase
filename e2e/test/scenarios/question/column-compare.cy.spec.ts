@@ -1,3 +1,4 @@
+import type { FieldReference, StructuredQuery } from "metabase-types/api";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -15,7 +16,6 @@ import {
   tableHeaderClick,
   visualize,
 } from "e2e/support/helpers";
-import type { FieldReference, StructuredQuery } from "metabase-types/api";
 
 const { PRODUCTS_ID, PRODUCTS, ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 

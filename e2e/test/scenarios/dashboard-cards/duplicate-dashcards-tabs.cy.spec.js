@@ -1,3 +1,7 @@
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   dashboardCards,
@@ -15,10 +19,6 @@ import {
   saveDashboard,
   visitDashboard,
 } from "e2e/support/helpers";
-import {
-  createMockDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

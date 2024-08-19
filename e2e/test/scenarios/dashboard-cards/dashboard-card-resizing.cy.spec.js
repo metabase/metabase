@@ -1,8 +1,11 @@
 import _ from "underscore";
 
+import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createDashboard,
+  createQuestion,
   editDashboard,
   getDashboardCard,
   popover,
@@ -10,10 +13,7 @@ import {
   restore,
   saveDashboard,
   visitDashboard,
-  createQuestion,
-  createDashboard,
 } from "e2e/support/helpers";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 
 const VISUALIZATION_SIZES = {
   line: {

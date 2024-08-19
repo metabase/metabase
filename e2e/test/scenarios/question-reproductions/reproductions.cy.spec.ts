@@ -1,14 +1,14 @@
+import type { Filter, LocalFieldReference } from "metabase-types/api";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
   getNotebookStep,
-  openNotebook,
   modal,
+  openNotebook,
   popover,
   restore,
   tableHeaderClick,
 } from "e2e/support/helpers";
-import type { Filter, LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

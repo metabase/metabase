@@ -1,28 +1,27 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
   clearFilterWidget,
+  dashboardParametersDoneButton,
+  dashboardSaveButton,
+  editDashboard,
+  ensureDashboardCardHasText,
   filterWidget,
   getDashboardCard,
-  editDashboard,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-  selectDashboardFilter,
-  toggleRequiredParameter,
-  dashboardSaveButton,
-  ensureDashboardCardHasText,
-  toggleFilterWidgetValues,
+  popover,
   resetFilterWidgetToDefault,
-  dashboardParametersDoneButton,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  toggleFilterWidgetValues,
+  toggleRequiredParameter,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 import {
   applyFilterByType,
   selectDefaultValueFromPopover,
 } from "../native-filters/helpers/e2e-field-filter-helpers";
-
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

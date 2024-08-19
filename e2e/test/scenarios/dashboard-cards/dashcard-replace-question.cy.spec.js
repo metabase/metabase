@@ -1,3 +1,8 @@
+import {
+  createMockDashboardCard,
+  createMockHeadingDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -5,25 +10,20 @@ import {
   ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  saveDashboard,
-  modal,
-  popover,
-  restore,
-  visitDashboard,
-  findDashCardAction,
-  resetSnowplow,
-  enableTracking,
   describeWithSnowplow,
+  enableTracking,
+  entityPickerModal,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  entityPickerModal,
+  findDashCardAction,
+  modal,
+  popover,
+  resetSnowplow,
+  restore,
+  saveDashboard,
   undoToastList,
+  visitDashboard,
 } from "e2e/support/helpers";
-import {
-  createMockDashboardCard,
-  createMockHeadingDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

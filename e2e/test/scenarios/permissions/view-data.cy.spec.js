@@ -1,19 +1,19 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  assertPermissionTable,
-  modal,
-  restore,
-  popover,
-  describeEE,
-  setTokenFeatures,
-  isPermissionDisabled,
-  modifyPermission,
-  selectSidebarItem,
   assertPermissionForItem,
-  getPermissionRowPermissions,
+  assertPermissionTable,
   createTestRoles,
+  describeEE,
+  getPermissionRowPermissions,
+  isPermissionDisabled,
+  modal,
+  modifyPermission,
+  popover,
+  restore,
   selectPermissionRow,
+  selectSidebarItem,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

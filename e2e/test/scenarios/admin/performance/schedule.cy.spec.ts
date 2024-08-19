@@ -1,13 +1,13 @@
 import _ from "underscore";
 
+import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
+import type { CacheableModel } from "metabase-types/api";
 import {
   describeEE,
   popover,
   restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
-import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
-import type { CacheableModel } from "metabase-types/api";
 
 import { interceptRoutes } from "./helpers/e2e-performance-helpers";
 import {

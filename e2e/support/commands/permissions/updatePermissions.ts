@@ -1,4 +1,3 @@
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import type {
   CollectionPermissions,
   CollectionPermissionsGraph,
@@ -9,6 +8,7 @@ import type {
   PermissionsGraph,
   SchemasPermissions,
 } from "metabase-types/api";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 
 interface UpdatePermissionsSchemasParams {
   /**

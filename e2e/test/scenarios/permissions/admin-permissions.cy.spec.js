@@ -1,22 +1,22 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  describeEE,
-  onlyOnOSS,
-  assertPermissionTable,
   assertPermissionOptions,
-  modifyPermission,
-  selectSidebarItem,
+  assertPermissionTable,
   assertSidebarItems,
-  visitQuestion,
-  visitDashboard,
+  describeEE,
+  modal,
+  modifyPermission,
+  onlyOnOSS,
+  restore,
   selectPermissionRow,
+  selectSidebarItem,
   setTokenFeatures,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =

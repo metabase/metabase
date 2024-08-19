@@ -1,3 +1,8 @@
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
+import {
+  createMockActionParameter,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -6,19 +11,23 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  cartesianChartCircle,
   chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
+  entityPickerModal,
+  filterWidget,
   getActionCardDetails,
   getDashboardCard,
   getHeadingCardDetails,
   getLinkCardDetails,
   getTextCardDetails,
-  cartesianChartCircle,
   modal,
   openStaticEmbeddingModal,
   popover,
+  queryBuilderHeader,
+  removeMultiAutocompleteValue,
   restore,
   saveDashboard,
   setTokenFeatures,
@@ -26,16 +35,7 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
-  entityPickerModal,
-  filterWidget,
-  queryBuilderHeader,
-  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
-import {
-  createMockActionParameter,
-  createMockDashboardCard,
-} from "metabase-types/api/mocks";
 const { PRODUCTS, SAMPLE_DB_ID } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";

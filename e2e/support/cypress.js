@@ -1,10 +1,11 @@
-import registerCypressGrep from "@cypress/grep"; // eslint-disable-line import/order
+import registerCypressGrep from "@cypress/grep";
 registerCypressGrep();
+
+import addContext from "mochawesome/addContext";
 
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
 import "cypress-real-events/support";
-import addContext from "mochawesome/addContext";
 import "./commands";
 
 const isCI = Cypress.env("CI");

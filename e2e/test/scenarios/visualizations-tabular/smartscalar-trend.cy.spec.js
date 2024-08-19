@@ -1,5 +1,6 @@
 import Color from "color";
 
+import { colors } from "metabase/lib/colors";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   cartesianChartCircle,
@@ -11,7 +12,6 @@ import {
   rightSidebar,
   summarize,
 } from "e2e/support/helpers";
-import { colors } from "metabase/lib/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

@@ -1,6 +1,12 @@
+import { uuid } from "metabase/lib/uuid";
+import type {
+  Aggregation,
+  Breakout,
+  FieldReference,
+  StructuredQuery,
+} from "metabase-types/api";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  POPOVER_ELEMENT,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -10,18 +16,12 @@ import {
   modal,
   openNotebook,
   popover,
+  POPOVER_ELEMENT,
   restore,
   startNewQuestion,
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
-import { uuid } from "metabase/lib/uuid";
-import type {
-  Aggregation,
-  Breakout,
-  FieldReference,
-  StructuredQuery,
-} from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 

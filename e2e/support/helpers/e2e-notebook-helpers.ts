@@ -1,11 +1,11 @@
 import type { CyHttpMessages } from "cypress/types/net-stubbing";
 
+import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 import {
   entityPickerModal,
   entityPickerModalTab,
   popover,
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
-import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
 export function notebookButton() {
   return cy

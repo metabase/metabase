@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { USER_GROUPS, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   COLLECTION_GROUP_ID,

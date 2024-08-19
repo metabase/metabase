@@ -1,26 +1,26 @@
+import { createMockParameter } from "metabase-types/api/mocks";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  disconnectDashboardFilter,
+  editDashboard,
+  filterWidget,
+  getDashboardCard,
+  multiAutocompleteInput,
   popover,
   restore,
-  visitDashboard,
-  filterWidget,
-  editDashboard,
-  sidebar,
-  getDashboardCard,
-  selectDashboardFilter,
-  disconnectDashboardFilter,
   saveDashboard,
-  updateDashboardCards,
+  selectDashboardFilter,
   setFilter,
+  sidebar,
   spyRequestFinished,
-  multiAutocompleteInput,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
-import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;

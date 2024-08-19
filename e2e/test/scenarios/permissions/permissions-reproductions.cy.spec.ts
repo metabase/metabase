@@ -1,15 +1,15 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import {
-  createQuestion,
-  restore,
-  visitQuestion,
-  openReviewsTable,
-} from "e2e/support/helpers";
 import type {
   ConcreteFieldReference,
   StructuredQuery,
 } from "metabase-types/api";
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  createQuestion,
+  openReviewsTable,
+  restore,
+  visitQuestion,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 

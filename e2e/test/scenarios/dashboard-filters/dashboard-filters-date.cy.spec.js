@@ -1,27 +1,26 @@
 import {
-  ORDERS_DASHBOARD_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
   clearFilterWidget,
-  filterWidget,
-  editDashboard,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-  toggleRequiredParameter,
-  dashboardSaveButton,
-  selectDashboardFilter,
-  ensureDashboardCardHasText,
-  resetFilterWidgetToDefault,
-  sidebar,
   dashboardParametersDoneButton,
+  dashboardSaveButton,
+  editDashboard,
+  ensureDashboardCardHasText,
+  filterWidget,
+  popover,
+  resetFilterWidgetToDefault,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  sidebar,
+  toggleRequiredParameter,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
-
 import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 
 describe("scenarios > dashboard > filters > date", () => {

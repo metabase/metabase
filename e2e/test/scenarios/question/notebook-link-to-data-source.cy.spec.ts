@@ -1,3 +1,5 @@
+import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { METAKEY } from "metabase/lib/browser";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -9,8 +11,13 @@ import {
 import {
   createNativeQuestion,
   createQuestion,
+  describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
+  type NativeQuestionDetails,
   openNotebook,
+  openProductsTable,
   openReviewsTable,
   popover,
   restore,
@@ -20,14 +27,7 @@ import {
   visitQuestion,
   visitQuestionAdhoc,
   visualize,
-  describeEE,
-  type NativeQuestionDetails,
-  openProductsTable,
-  entityPickerModal,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
-import { METAKEY } from "metabase/lib/browser";
 
 const {
   ORDERS,

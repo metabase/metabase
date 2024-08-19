@@ -1,7 +1,6 @@
+import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 import fs from "node:fs";
 import path from "node:path";
-
-import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
 
 import {
   removeDirectory,

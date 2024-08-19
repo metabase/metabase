@@ -1,6 +1,6 @@
+import type { TemplateTag } from "metabase-types/api";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createNativeQuestion, popover, restore } from "e2e/support/helpers";
-import type { TemplateTag } from "metabase-types/api";
 
 type SectionId =
   | "no_default_non_required"

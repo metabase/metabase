@@ -1,5 +1,9 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -17,6 +21,7 @@ import {
   createNativeQuestion,
   createQuestion,
   dashboardParametersContainer,
+  dashboardParameterSidebar,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -30,21 +35,16 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  setModelMetadata,
   sidebar,
+  tableHeaderClick,
   undoToast,
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
   visitModel,
   visitPublicDashboard,
-  setModelMetadata,
-  tableHeaderClick,
-  dashboardParameterSidebar,
 } from "e2e/support/helpers";
-import {
-  createMockDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 import {
   setAdHocFilter,

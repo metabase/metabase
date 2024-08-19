@@ -1,8 +1,8 @@
 import {
-  type ScheduleComponentType,
   getScheduleComponentLabel,
+  type ScheduleComponentType,
 } from "metabase/components/Schedule/constants";
-import type { CacheStrategyType, CacheableModel } from "metabase-types/api";
+import type { CacheableModel, CacheStrategyType } from "metabase-types/api";
 
 import { databaseCachingSettingsPage } from "./e2e-performance-helpers";
 

@@ -1,17 +1,16 @@
 import {
-  restore,
-  popover,
   clearFilterWidget,
-  filterWidget,
   editDashboard,
+  filterWidget,
+  popover,
+  restore,
   saveDashboard,
   setFilter,
-  visitQuestion,
   visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
-
 import {
   DASHBOARD_SQL_DATE_FILTERS,
   questionDetails,
