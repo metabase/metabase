@@ -53,32 +53,40 @@
                      (dissoc :default)
                      keys)
             :let [spec (serdes/make-spec m nil)]]
-      (let [t      (t2/table-name (keyword "model" m))
-            fields (u.conn/app-db-column-types (mdb/app-db) t)
-            spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
-                              (zipmap (:skip spec) (repeat :skip))
-                              (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
-                              (:transform spec))
-                       ;; `nil`s are mostly fields which differ on `opts`
-                       (dissoc nil))]
-        (testing (format "%s has no duplicates in serialization spec\n" m)
-          (are [x y] (empty? (set/intersection (set x) (set y)))
-            (:copy spec) (:skip spec)
-            (:copy spec) (keys (:transform spec))
-            (:skip spec) (keys (:transform spec))))
-        (testing (format "%s should declare every column in serialization spec\n" m)
-          (is (set/subset?
-               (->> (keys fields)
-                    (map u/lower-case-en)
-                    set)
-               (->> (keys spec')
-                    (map name)
-                    set))))
-        (testing "Foreign keys should be declared as such\n"
-          (doseq [[fk _] (filter #(:fk (second %)) fields)
-                  :let   [fk        (u/lower-case-en fk)
-                          transform (get spec' (keyword fk))]
-                  :when  (not= transform :skip)]
-            (testing (format "%s.%s is foreign key which is handled correctly" m fk)
-              ;; uses `(serdes/fk ...)` function
-              (is (::serdes/fk transform)))))))))
+      (testing (format "-------- %s\n" m)
+        (let [t      (t2/table-name (keyword "model" m))
+              fields (u.conn/app-db-column-types (mdb/app-db) t)
+              spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
+                                (zipmap (:skip spec) (repeat :skip))
+                                (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
+                                (:transform spec))
+                         ;; `nil`s are mostly fields which differ on `opts`
+                         (dissoc nil))]
+          (testing "No duplicates in serialization spec\n"
+            (are [x y] (empty? (set/intersection (set x) (set y)))
+              (:copy spec) (:skip spec)
+              (:copy spec) (keys (:transform spec))
+              (:skip spec) (keys (:transform spec))))
+          (testing "Every column should be declared in serialization spec"
+            (is (set/subset?
+                 (->> (keys fields)
+                      (map u/lower-case-en)
+                      set)
+                 (->> (keys spec')
+                      (map name)
+                      set))))
+          (testing "Foreign keys should be declared as such\n"
+            (doseq [[fk _] (filter #(:fk (second %)) fields)
+                    :let   [fk        (u/lower-case-en fk)
+                            transform (get spec' (keyword fk))]
+                    :when  (not= transform :skip)]
+              (testing (format "%s.%s is foreign key which is handled correctly" m fk)
+                ;; uses `(serdes/fk ...)` function
+                (is (or (::serdes/fk transform)
+                        (::serdes/parent transform))))))
+          (testing "Nested models should declare `parent-ref`\n"
+            (doseq [[_nested transform] (filter #(::serdes/nested (second %)) spec')
+                    :let [{:keys [model backward-fk]} transform
+                          inner-spec (serdes/make-spec (name model) nil)]]
+              (testing (format "%s have %s declared as `parent-ref`" model backward-fk)
+                (is (::serdes/parent (get-in inner-spec [:transform backward-fk])))))))))))

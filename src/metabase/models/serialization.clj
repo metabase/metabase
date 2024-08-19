@@ -1616,7 +1616,7 @@
                             (load-one! (enrich ingested) (get local (entity-id model-name ingested))))))))}))
 
 (defn parent-ref "Transformer for parent id for nested entities" []
-  {::fk true :export (constantly nil) :import identity})
+  {::parent true :export (constantly nil) :import identity})
 
 (defn date "Transformer to parse the dates" []
   {:export identity :import #(if (string? %) (u.date/parse %) %)})
