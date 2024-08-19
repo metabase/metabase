@@ -244,12 +244,13 @@ jobs:
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
       - name: Publish test report to summary
-        uses: mikepenz/action-junit-report@v3
+        uses: mikepenz/action-junit-report@v4
         if: failure()
         with:
           commit: ${{github.event.workflow_run.head_sha}}
           report_paths: "./target/junit/*.xml"
           check_title_template: "{{FILE_NAME}}, {{SUITE_NAME}}, {{TEST_NAME}}, {{CLASS_NAME}}, {{BREAD_CRUMB}}"
+          detailed_summary: true
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
@@ -263,6 +264,7 @@ jobs:
 
       - name: Dorny reporter
         uses: dorny/test-reporter@v1
+        if: failure()
         with:
           artifact: cypress-recording-${{ matrix.name }}-${{ matrix.edition }} # artifact name
           name: cypress check # Name of the check run which will be created
