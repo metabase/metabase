@@ -798,7 +798,6 @@
   metabase.util.malli/defn-                                                             schema.core/defn
   metabase.util.malli/fn                                                                schema.core/fn
   metabase.util.ssh/with-ssh-tunnel                                                     clojure.core/let
-  metabase.util/ignore-exceptions                                                       clojure.core/do
   metabase.xrays.domain-entities.malli/defn                                             schema.core/defn
   monger.operators/defoperator                                                          clojure.core/def
   potemkin.types/defprotocol+                                                           clojure.core/defprotocol
