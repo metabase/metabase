@@ -17,6 +17,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -261,9 +262,7 @@
                                                  :throw-exceptions? true))
 
     (let [table-ids (sandbox->table-ids sandbox)
-          table-id->db-id (if (seq table-ids)
-                            (m/index-by :id (t2/select :model/Table :id [:in table-ids]))
-                            {})
+          table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
           unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
                                                      api/*current-user-id*
                                                      :perms/view-data
