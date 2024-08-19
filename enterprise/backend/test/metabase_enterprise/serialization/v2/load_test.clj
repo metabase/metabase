@@ -8,7 +8,7 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action Card Collection Dashboard DashboardCard Database Field
+    :refer [Card Collection Dashboard DashboardCard Database Field
             FieldValues NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
@@ -962,13 +962,13 @@
                                      :type :model
                                      :database_id (:id db)
                                      :dataset_query {:database (:id db)
-                                                     :native {:type   :native
-                                                              :native {:query "wow"}}})
+                                                     :type   :native
+                                                     :native {:query "select 1"}})
                 _action-id (action/insert! {:entity_id     eid
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query "wow"
+                                            :dataset_query (mt/mbql-query users {:limit 1})
                                             :database_id   (:id db)})]
             (reset! serialized (into [] (serdes.extract/extract {})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
@@ -976,12 +976,13 @@
                                                    @serialized))]
               (is (some? action-serialized))
               (testing ":type should be a string"
-                (is (string? (:type action-serialized))))))))
+                (is (keyword? (:type action-serialized))))))))
       (testing "loading succeeds"
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-          (let [action (t2/select-one Action :entity_id eid)]
+          (let [action (action/select-action :entity_id eid)]
             (is (some? action))
+            (is (some? (:dataset_query action)))
             (testing ":type should be a keyword again"
               (is (keyword? (:type action))))))))))
 

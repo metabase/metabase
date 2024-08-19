@@ -582,7 +582,7 @@
                      :dashcards [{:entity_id dc1-eid
                                   :series (mt/exactly=? [{:card_id c2-eid :position 0}
                                                          {:card_id c3-eid :position 1}])}
-                                 {:entity_id dc2-eid, :series []}]}
+                                 {:entity_id dc2-eid}]}
                     ser))
 
             (testing "and depend on all referenced cards, including cards from dashboard cards' series"
@@ -845,9 +845,9 @@
 
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User     {ann-id       :id} {:first_name "Ann"
-                                                    :last_name  "Wilson"
-                                                    :email      "ann@heart.band"}
+    (ts/with-temp-dpc [User     {ann-id :id} {:first_name "Ann"
+                                              :last_name  "Wilson"
+                                              :email      "ann@heart.band"}
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -860,20 +860,20 @@
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
-                          {:name          "My Action"
-                           :type          :implicit
-                           :kind          "row/update"
-                           :creator_id    ann-id
-                           :model_id      card-id-1}]
+                          {:name       "My Action"
+                           :type       :implicit
+                           :kind       "row/update"
+                           :creator_id ann-id
+                           :model_id   card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "implicit action"
-              (let [ser (serdes/extract-one "Action" {} action)]
+              (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        "implicit"
-                         :kind        "row/update"
+                         :type        :implicit
                          :created_at  OffsetDateTime
-                         :model_id    card-eid-1}
+                         :model_id    card-eid-1
+                         :implicit    [{:kind "row/update"}]}
                         ser))
                 (is (not (contains? ser :id)))
 
@@ -883,9 +883,9 @@
 
 (deftest http-action-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User     {ann-id       :id} {:first_name "Ann"
-                                                    :last_name  "Wilson"
-                                                    :email      "ann@heart.band"}
+    (ts/with-temp-dpc [User     {ann-id :id} {:first_name "Ann"
+                                              :last_name  "Wilson"
+                                              :email      "ann@heart.band"}
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -898,20 +898,20 @@
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
-                          {:name          "My Action"
-                           :type          :http
-                           :template      {}
-                           :creator_id    ann-id
-                           :model_id      card-id-1}]
+                          {:name       "My Action"
+                           :type       :http
+                           :template   {}
+                           :creator_id ann-id
+                           :model_id   card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
-              (let [ser (serdes/extract-one "Action" {} action)]
+              (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        "http"
+                         :type        :http
                          :created_at  OffsetDateTime
-                         :template    {}
-                         :model_id    card-eid-1}
+                         :model_id    card-eid-1
+                         :http        [{:template {}}]}
                         ser))
                 (is (not (contains? ser :id)))
 
@@ -921,9 +921,9 @@
 
 (deftest query-action-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User     {ann-id       :id} {:first_name "Ann"
-                                                    :last_name  "Wilson"
-                                                    :email      "ann@heart.band"}
+    (ts/with-temp-dpc [User     {ann-id :id} {:first_name "Ann"
+                                              :last_name  "Wilson"
+                                              :email      "ann@heart.band"}
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -944,15 +944,17 @@
                            :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
-              (let [ser (serdes/extract-one "Action" {} action)]
-                (is (=? {:serdes/meta   [{:model "Action"
-                                          :id    (:entity_id action)
-                                          :label "my_action"}]
-                         :type          "query"
-                         :creator_id    "ann@heart.band"
-                         :created_at    OffsetDateTime
-                         :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
-                         :model_id      card-eid-1}
+              (let [ser (ts/extract-one "Action" action-id)]
+                (is (=? {:serdes/meta [{:model "Action"
+                                        :id    (:entity_id action)
+                                        :label "my_action"}]
+                         :type        :query
+                         :creator_id  "ann@heart.band"
+                         :created_at  OffsetDateTime
+                         :query       [{:dataset_query {:database "My Database"
+                                                        :type     "native"
+                                                        :native   {:native "select 1"}}}]
+                         :model_id    card-eid-1}
                         ser))
                 (is (not (contains? ser :id)))
 
