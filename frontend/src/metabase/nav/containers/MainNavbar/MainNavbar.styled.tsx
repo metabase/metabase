@@ -143,7 +143,23 @@ export const LoadingAndErrorTitle = styled.h2`
 
 export const PaddedSidebarLink = styled(SidebarLink)`
   padding-inline-start: 12px;
-  color: ${props => props.url?.startsWith("/browse/chat") ? '#5B26D3' : '#4F525C'};
+  color: ${props =>
+    props.url?.startsWith("/browse/chat") ? "#5B26D3" : "#4F525C"};
+
+  &:hover {
+    background: ${props =>
+      props.url?.startsWith("/browse/chat")
+        ? "rgba(91, 38, 211, 0.42)"
+        : lighten("brand", 0.12)};
+    color: var(--mb-color-text-white);
+
+    svg {
+      color: var(--mb-color-brand-light) !important;
+      stroke: var(--mb-color-brand-light) !important;
+    }
+  }
+
+  transition: background 0.3s linear, color 0.3s linear;
 `;
 
 export const AddYourOwnDataLink = styled(SidebarLink)`
