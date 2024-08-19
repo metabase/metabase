@@ -196,7 +196,7 @@
              {:schema nil, :name "reviews"}}
             (:tables (driver/describe-database :mongo (mt/db)))))))
 
-(deftest describe-table-query-test
+(deftest ^:parallel describe-table-query-test
   (is (= [{"$sort" {"_id" 1}}
           {"$limit" 500}
           {"$unionWith" {"coll" "collection-name", "pipeline" [{"$sort" {"_id" -1}} {"$limit" 500}]}}
