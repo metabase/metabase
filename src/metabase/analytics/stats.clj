@@ -400,20 +400,22 @@
                              "51_250"     "51-250"
                              "251_1000"   "251-1000"
                              "1001_10000" "1001-10000"
-                             "10000_plus" "10000+"} x x))]
-    (->> (first (t2/query (execution-metrics-sql)))
-         (map #(update-vals % int))
-         (reduce (fn [acc [k v]]
-                   (let [[prefix bin] (str/split (name k) #"__")]
-                     (if bin
-                       (cond-> acc
-                         (and (some? v) (pos? v))
-                         (update (keyword prefix) #(assoc % (maybe-rename-bin bin) v)))
-                       (assoc acc (keyword prefix) v))))
-                 {:executions     0
-                  :by_status      {}
-                  :num_per_user   {}
-                  :num_by_latency {}}))))
+                             "10000_plus" "10000+"} x x))
+        raw-results (-> (first (t2/query (execution-metrics-sql)))
+                        ;; cast numbers to int because some DBs output bigdecimals
+                        (update-vals #(some-> % int)))]
+    (reduce (fn [acc [k v]]
+              (let [[prefix bin] (str/split (name k) #"__")]
+                (if bin
+                  (cond-> acc
+                    (and (some? v) (pos? v))
+                    (update (keyword prefix) #(assoc % (maybe-rename-bin bin) v)))
+                  (assoc acc (keyword prefix) v))))
+            {:executions     0
+             :by_status      {}
+             :num_per_user   {}
+             :num_by_latency {}}
+            raw-results)))
 
 ;;; Cache Metrics
 
