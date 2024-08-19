@@ -262,9 +262,10 @@ export const LEGEND_SETTINGS = {
 
 export const TOOLTIP_SETTINGS = {
   "graph.tooltip_type": {
-    getDefault: (series, settings) => {
-      const shouldShowComparisonTooltip =
-        settings["stackable.stack_type"] != null;
+    getDefault: ([{ card }]) => {
+      const shouldShowComparisonTooltip = !["waterfall", "scatter"].includes(
+        card.display,
+      );
       return shouldShowComparisonTooltip ? "series_comparison" : "default";
     },
     hidden: true,

@@ -16,7 +16,6 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
@@ -29,6 +28,8 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
+
+import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
 
 import {
   getQuestionParameters,

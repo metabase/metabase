@@ -20,15 +20,143 @@
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
 
-  :metabase/defsetting-must-specify-export                             {:level :warning}
-  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
-  :metabase/mbql-query-first-arg                                       {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
-  :metabase/require-shape-checker                                      {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
-  :metabase/validate-deftest                                           {:level :warning}
-  :metabase/validate-logging                                           {:level :warning}
-  :metabase/warn-about-schema=                                         {:level :warning}
+  :metabase/defsetting-must-specify-export             {:level :warning}
+  :metabase/mbql-query-first-arg                       {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
+  :metabase/require-shape-checker                      {:level :warning}
+  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}
+  :metabase/validate-logging                           {:level :warning}
+
+  :metabase/validate-deftest
+  {:level :warning
+
+   ;; calling these functions will result in an error in tests marked `^:parallel`
+   ;;
+   ;; TODO -- these should all be made thread safe if possible or renamed so they end in `!`. Then we can remove them
+   ;; from this list because by default anything ending in `!` is considered to be thread-unsafe
+   :disallowed
+   #{clojure.core/alter-var-root
+     clojure.core/with-redefs
+     clojure.core/with-redefs-fn
+     metabase-enterprise.sandbox.test-util/with-user-attributes
+     metabase-enterprise.test/with-user-attributes
+     metabase.actions.test-util/with-actions
+     metabase.actions.test-util/with-actions-disabled
+     metabase.actions.test-util/with-actions-enabled
+     metabase.actions.test-util/with-actions-test-data
+     metabase.actions.test-util/with-actions-test-data-and-actions-enabled
+     metabase.actions.test-util/with-actions-test-data-tables
+     metabase.analytics.snowplow-test/with-fake-snowplow-collector
+     metabase.email-test/with-expected-messages
+     metabase.email-test/with-fake-inbox
+     metabase.test.data.users/with-group
+     metabase.test.data.users/with-group-for-user
+     metabase.test.persistence/with-persistence-enabled
+     metabase.test.util.log/with-log-level
+     metabase.test.util.misc/with-single-admin-user
+     metabase.test.util/with-all-users-permission
+     metabase.test.util/with-discarded-collections-perms-changes
+     metabase.test.util/with-env-keys-renamed-by
+     metabase.test.util/with-locale
+     metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
+     metabase.test.util/with-non-admin-groups-no-root-collection-perms
+     metabase.test.util/with-temp-env-var-value
+     metabase.test.util/with-temp-vals-in-db
+     metabase.test.util/with-temporary-raw-setting-values
+     metabase.test.util/with-temporary-setting-values
+     metabase.test.util/with-user-in-groups
+     metabase.test/with-actions
+     metabase.test/with-actions-disabled
+     metabase.test/with-actions-enabled
+     metabase.test/with-actions-test-data
+     metabase.test/with-actions-test-data-and-actions-enabled
+     metabase.test/with-actions-test-data-tables
+     metabase.test/with-all-users-permission
+     metabase.test/with-discarded-collections-perms-changes
+     metabase.test/with-env-keys-renamed-by
+     metabase.test/with-expected-messages
+     metabase.test/with-fake-inbox
+     metabase.test/with-group
+     metabase.test/with-group-for-user
+     metabase.test/with-locale
+     metabase.test/with-log-level
+     metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
+     metabase.test/with-non-admin-groups-no-root-collection-perms
+     metabase.test/with-persistence-enabled
+     metabase.test/with-single-admin-user
+     metabase.test/with-temp-env-var-value
+     metabase.test/with-temp-vals-in-db
+     metabase.test/with-temporary-raw-setting-values
+     metabase.test/with-temporary-setting-values
+     metabase.test/with-user-in-groups}
+
+   ;; these functions are allowed in `^:parallel` tests even tho they end in `!`
+   :allowed
+   #{clojure.core/assoc!
+     clojure.core/compare-and-set!
+     clojure.core/conj!
+     clojure.core/disj!
+     clojure.core/dissoc!
+     clojure.core/persistent!
+     clojure.core/pop!
+     clojure.core/reset!
+     clojure.core/reset-vals!
+     clojure.core/run!
+     clojure.core/swap!
+     clojure.core/swap-vals!
+     clojure.core/volatile!
+     clojure.core/vreset!
+     clojure.core/vswap!
+     clojure.core.async/<!
+     clojure.core.async/<!!
+     clojure.core.async/>!
+     clojure.core.async/>!!
+     clojure.core.async/alt!
+     clojure.core.async/alt!!
+     clojure.core.async/alts!
+     clojure.core.async/alts!!
+     clojure.core.async/close!
+     clojure.core.async/ioc-alts!
+     clojure.core.async/offer!
+     clojure.core.async/onto-chan!
+     clojure.core.async/onto-chan!!
+     clojure.core.async/poll!
+     clojure.core.async/put!
+     clojure.core.async/take!
+     clojure.core.async/to-chan!
+     clojure.core.async/to-chan!!
+     metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.pulse/send-pulse!
+     metabase.query-processor.store/store-database!
+     next.jdbc/execute!}}
+
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
+  {:level      :warning
+   :max-length 180}
+
+  ;; this is not enabled here, it is enabled below only for specific namespaces.
+  :metabase/disallow-hardcoded-driver-names-in-tests
+  ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
+  ;; middleware or compilation behavior with just H2 since it's the default.
+  {:drivers #{ ;; core drivers
+              #_:h2
+              :postgres
+              :mysql
+              ;; module drivers
+              :athena
+              :bigquery-cloud-sdk
+              :druid
+              :druid-jdbc
+              :googleanalytics
+              :mongo
+              :oracle
+              :presto-jdbc
+              :redshift
+              :snowflake
+              :sparksql
+              :sqlite
+              :sqlserver
+              :vertica}}
 
   ;;
   ;; disabled linters
@@ -152,7 +280,7 @@
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
-                                     metabase.analytics.sdk}                                      ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
@@ -320,11 +448,11 @@
    ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
    ;; together, e.g. `metabase.lib.metadata.jvm`.
    :ignored-namespace-patterns
-   #{"-test$"                           ; anything ending in `-test`
-     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                      ; anything that contains `test.impl`
-     "^metabase\\.test"                 ; anything starting with `metabase.test`
-     "^metabase\\.http-client$"}}       ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                     ; anything ending in `-test`
+     "test[-.]util"               ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                ; anything that contains `test.impl`
+     "^metabase\\.test"           ; anything starting with `metabase.test`
+     "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases
@@ -354,11 +482,7 @@
     hiccup.util                                                   hiccup.util
     honey.sql                                                     sql
     honey.sql.helpers                                             sql.helpers
-    honeysql.core                                                 hsql
-    honeysql.format                                               hformat
-    honeysql.helpers                                              hh
-    honeysql.types                                                htypes
-    java-time                                                     t
+    java-time.api                                                 t
     macaw.core                                                    macaw
     malli.core                                                    mc
     malli.error                                                   me
@@ -616,13 +740,11 @@
   clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
-  honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
-  honeysql.util/defalias                                                               clojure.core/def
-  metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
   metabase-enterprise.serialization.test-util/with-dbs                                 clojure.core/fn
+  metabase-enterprise.serialization.test-util/with-random-dump-dir                     clojure.core/let
   metabase.actions.test-util/with-actions                                              clojure.core/let
-  metabase.api.common/let-404                                                          clojure.core/let
   metabase.api.common/defroutes                                                        clojure.core/def
+  metabase.api.common/let-404                                                          clojure.core/let
   metabase.api.search-test/do-test-users                                               clojure.core/let
   metabase.async.api-response-test/with-response                                       clojure.core/let
   metabase.dashboard-subscription-test/with-dashboard-sub-for-card                     clojure.core/let
@@ -631,9 +753,9 @@
   metabase.db.data-migrations/defmigration                                             clojure.core/def
   metabase.db.liquibase/with-liquibase                                                 clojure.core/let
   metabase.db.schema-migrations-test.impl/with-temp-empty-app-db                       clojure.core/let
-  metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                   clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                 clojure.core/let
+  metabase.driver.mongo.query-processor/mongo-let                                      clojure.core/let
   metabase.driver.sql-jdbc.actions/with-jdbc-transaction                               clojure.core/let
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection      clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                clojure.core/fn
@@ -645,12 +767,12 @@
   metabase.public-settings.premium-features/defenterprise-schema                       clj-kondo.lint-as/def-catch-all
   metabase.public-settings.premium-features/define-premium-feature                     clojure.core/def
   metabase.pulse-test/with-pulse-for-card                                              clojure.core/let
-  metabase.query-processor.error-type/deferror                                         clojure.core/def
-  metabase.query-processor.setup/with-qp-setup                                         clojure.core/let
-  metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
-  metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
   metabase.query-processor-test.pipeline-queries-test/pmbql-query                      clojure.core/->
   metabase.query-processor-test.pipeline-queries-test/run-pmbql-query                  clojure.core/->
+  metabase.query-processor.error-type/deferror                                         clojure.core/def
+  metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results   clojure.core/let
+  metabase.query-processor.middleware.process-userland-query-test/with-query-execution clojure.core/let
+  metabase.query-processor.setup/with-qp-setup                                         clojure.core/let
   metabase.shared.util.namespaces/import-fns                                           potemkin/import-vars
   metabase.sync.util/sum-for                                                           clojure.core/for
   metabase.sync.util/with-emoji-progress-bar                                           clojure.core/let
@@ -659,13 +781,13 @@
   metabase.test/defdataset                                                             clojure.core/def
   metabase.test/let-url                                                                clojure.core/let
   metabase.test/with-actions                                                           clojure.core/let
+  metabase.test/with-grouper-batches!                                                  clojure.core/fn
   metabase.test/with-open-channels                                                     clojure.core/let
   metabase.test/with-single-admin-user                                                 clojure.core/fn
   metabase.test/with-temp-dir                                                          clojure.core/let
   metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
-  metabase.test/with-grouper-batches!                                                  clojure.core/fn
   metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn
@@ -689,20 +811,21 @@
 
  :hooks
  {:analyze-call
-  {clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
-   cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
+   clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
-   metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
+   metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
-   metabase.api.automagic-dashboards-test/with-indexed-model                                                                 hooks.metabase.api.automagic-dashboards-test/with-indexed-model
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
+   metabase.api.automagic-dashboards-test/with-indexed-model                                                                 hooks.metabase.api.automagic-dashboards-test/with-indexed-model
+   metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
@@ -712,7 +835,6 @@
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
-   metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
@@ -726,23 +848,23 @@
    metabase.api.search-test/with-search-items-in-root-collection                                                             hooks.common/do*
    metabase.api.user-test/with-temp-user-email                                                                               hooks.common/with-one-binding
    metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
-   metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
+   metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
-   metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-catn-mbql-clause                                                                   hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
+   metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
-   metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
-   metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
+   metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
+   metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.models.pulse-test/with-dashboard-subscription-in-collection                                                      hooks.common/with-four-bindings
    metabase.models.pulse-test/with-pulse-in-collection                                                                       hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
@@ -753,6 +875,7 @@
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache                                                            hooks.common/with-two-bindings
    metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
+   metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test.data.users/with-group                                                                                       hooks.common/let-one-with-optional-value
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
@@ -760,7 +883,6 @@
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
-   metabase.test.util.log/with-log-messages-for-level                                                                        hooks.common/with-ignored-first-arg
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
@@ -771,31 +893,31 @@
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
    metabase.test/mbql-query                                                                                                  hooks.metabase.test.data/mbql-query
    metabase.test/query                                                                                                       hooks.metabase.test.data/mbql-query
-   metabase.test/test-drivers                                                                                                hooks.common/do*
    metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
+   metabase.test/test-drivers                                                                                                hooks.common/do*
    metabase.test/with-column-remappings                                                                                      hooks.common/with-ignored-first-arg
    metabase.test/with-group                                                                                                  hooks.common/let-one-with-optional-value
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
-   metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
+   metabase.test/with-log-messages-for-level                                                                                 hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
-   metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   metabase.util/format-color                                                                                                hooks.metabase.util/format-color
-   metabase.util.log/trace                                                                                                   hooks.metabase.util.log/info
-   metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
+   metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/debugf                                                                                                  hooks.metabase.util.log/infof
-   metabase.util.log/info                                                                                                    hooks.metabase.util.log/info
-   metabase.util.log/infof                                                                                                   hooks.metabase.util.log/infof
-   metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
-   metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.log/error                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/errorf                                                                                                  hooks.metabase.util.log/infof
    metabase.util.log/fatal                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/fatalf                                                                                                  hooks.metabase.util.log/infof
-   metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def}
+   metabase.util.log/info                                                                                                    hooks.metabase.util.log/info
+   metabase.util.log/infof                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.log/trace                                                                                                   hooks.metabase.util.log/info
+   metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
+   metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
+   metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util/format-color                                                                                                hooks.metabase.util/format-color}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job
@@ -865,10 +987,18 @@
   ;;
   {:pattern "metabase(?:(?:(?:-enterprise\\.sandbox)?\\.query-processor\\.)|(?:\\.driver\\.)).*(?<!-test)$"
    :name    qp-and-driver-source-namespaces}
-
+  ;;
   ;; driver namespaces
+  ;;
   {:pattern "metabase\\.driver.*$"
-   :name    driver-namespaces}]
+   :name    driver-namespaces}
+  ;;
+  ;; general QP tests are ones that run across multiple drivers. Anything `metabase.query-processor*-test`,
+  ;; `metabase.driver.sql*-test` (excluding SQLServer and SQLite), or
+  ;; `metabase-enterprise.sandbox.query-processor*-test`
+  ;;
+  {:pattern "^metabase(?:((?:-enterprise\\.sandbox)?\\.query-processor)|(?:\\.driver\\.sql(?!server)(?!ite))).*-test$"
+   :name    general-qp-and-driver-test-namespaces}]
 
  :config-in-ns
  {test-namespaces
@@ -946,4 +1076,8 @@
     {medley.core/map-keys              {:message "Use clojure.core/update-keys"}
      medley.core/map-vals              {:message "Use clojure.core/update-vals"}
      metabase.db.query/query           {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}
-     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}}}
+     metabase.db.query/reducible-query {:message "Don't use application database directly in QP code; use QP Store/metadata provider"}}}}
+
+  general-qp-and-driver-test-namespaces
+  {:linters
+   {:metabase/disallow-hardcoded-driver-names-in-tests {:level :warning}}}}}
