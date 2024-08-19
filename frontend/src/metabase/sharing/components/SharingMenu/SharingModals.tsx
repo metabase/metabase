@@ -12,6 +12,11 @@ import {
   DashboardPublicLinkPopover,
 } from "../PublicLinkPopover";
 
+import type {
+  DashboardSharingModalType,
+  QuestionSharingModalType,
+} from "./types";
+
 const MenuTarget = forwardRef(function _MenuTarget(
   _props,
   ref: Ref<HTMLDivElement>,
@@ -26,27 +31,12 @@ type BaseSharingModalProps = {
 type SharingModalProps = BaseSharingModalProps &
   (
     | {
-        modalType: "question-alert";
+        modalType: QuestionSharingModalType;
         question: Question;
         dashboard?: never;
       }
     | {
-        modalType: "question-public-link";
-        question: Question;
-        dashboard?: never;
-      }
-    | {
-        modalType: "dashboard-public-link";
-        dashboard: Dashboard;
-        question?: never;
-      }
-    | {
-        modalType: "question-embed";
-        question: Question;
-        dashboard?: never;
-      }
-    | {
-        modalType: "dashboard-embed";
+        modalType: DashboardSharingModalType;
         dashboard: Dashboard;
         question?: never;
       }
