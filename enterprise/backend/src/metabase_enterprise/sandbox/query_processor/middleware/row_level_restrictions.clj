@@ -264,18 +264,16 @@
     (let [table-ids (sandbox->table-ids sandbox)
           table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
           unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
-                                                     api/*current-user-id*
-                                                     :perms/view-data
-                                                     :unrestricted
-                                                     (get table-id->db-id table-id)
-                                                     table-id))
+                                                      api/*current-user-id*
+                                                      :perms/view-data
+                                                      :unrestricted
+                                                      (get table-id->db-id table-id)
+                                                      table-id))
                                       table-ids)]
       {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
        ;; grant create-queries to only unblocked table ids. Otherwise sandboxed users with a joined table that's
        ;; _blocked_ can be queried against from the query builder, but we never want that.
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
-
-
 
 (defn- merge-perms
   "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
