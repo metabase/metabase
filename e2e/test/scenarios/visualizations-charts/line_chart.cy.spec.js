@@ -14,7 +14,7 @@ import {
   cartesianChartCircleWithColor,
   cartesianChartCircle,
   trendLine,
-  testPairedTooltipValues,
+  assertEChartsTooltip,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -286,11 +286,25 @@ describe("scenarios > visualizations > line chart", () => {
     });
 
     cartesianChartCircleWithColor("#509EE3").eq(3).realHover();
-    popover().within(() => {
-      testPairedTooltipValues("Product → Rating", "2.7");
-      testPairedTooltipValues("Count", "191");
-      testPairedTooltipValues("Sum of Total", "14,747.05");
-      testPairedTooltipValues("Average of Quantity", "4.3");
+    assertEChartsTooltip({
+      header: "2.7",
+      rows: [
+        {
+          color: "#509EE3",
+          name: "Count",
+          value: "191",
+        },
+        {
+          color: "#88BF4D",
+          name: "Sum of Total",
+          value: "14,747.05",
+        },
+        {
+          color: "#A989C5",
+          name: "Average of Quantity",
+          value: "4.3",
+        },
+      ],
     });
   });
 
@@ -562,15 +576,20 @@ describe("scenarios > visualizations > line chart", () => {
             assertOnYAxisValues();
 
             showTooltipForFirstCircleInSeries("#88BF4D");
-            popover().within(() => {
-              testPairedTooltipValues("Created At", "2022");
-              testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
-            });
-
-            showTooltipForFirstCircleInSeries("#98D9D9");
-            popover().within(() => {
-              testPairedTooltipValues("Created At", "2022");
-              testPairedTooltipValues(RENAMED_SECOND_SERIES, "54.44");
+            assertEChartsTooltip({
+              header: "2022",
+              rows: [
+                {
+                  color: "#88BF4D",
+                  name: RENAMED_FIRST_SERIES,
+                  value: "42,156.87",
+                },
+                {
+                  color: "#98D9D9",
+                  name: RENAMED_SECOND_SERIES,
+                  value: "54.44",
+                },
+              ],
             });
           });
         });
@@ -611,15 +630,20 @@ describe("scenarios > visualizations > line chart", () => {
             assertOnYAxisValues();
 
             showTooltipForFirstCircleInSeries("#88BF4D");
-            popover().within(() => {
-              testPairedTooltipValues("Created At", "2022");
-              testPairedTooltipValues(RENAMED_FIRST_SERIES, "42,156.87");
-            });
-
-            showTooltipForFirstCircleInSeries("#509EE3");
-            popover().within(() => {
-              testPairedTooltipValues("Created At", "2022");
-              testPairedTooltipValues(RENAMED_SECOND_SERIES, "2,829.03");
+            assertEChartsTooltip({
+              header: "2022",
+              rows: [
+                {
+                  color: "#88BF4D",
+                  name: RENAMED_FIRST_SERIES,
+                  value: "42,156.87",
+                },
+                {
+                  color: "#509EE3",
+                  name: RENAMED_SECOND_SERIES,
+                  value: "2,829.03",
+                },
+              ],
             });
           });
         });

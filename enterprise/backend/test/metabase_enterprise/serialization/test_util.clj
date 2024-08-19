@@ -9,9 +9,11 @@
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
                             Field NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
+   [metabase.models.serialization :as serdes]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
+   [metabase.util :as u]
    [metabase.util.files :as u.files]
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
@@ -526,3 +528,11 @@
 
 ;; Don't memoize as IDs change in each `with-world` context
 (alter-var-root #'names/path->context (fn [_] #'names/path->context*))
+
+(defn extract-one [model-name where]
+  (let [where (cond
+                (nil? where)    true
+                (number? where) [:= :id where]
+                (string? where) [:= :entity_id where]
+                :else           where)]
+    (u/rfirst (serdes/extract-all model-name {:where where}))))

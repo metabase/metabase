@@ -1,10 +1,11 @@
 (ns hooks.clojure.core
   (:require
    [clj-kondo.hooks-api :as hooks]
-   [clojure.set :as set]
    [clojure.string :as str]
    [hooks.common]))
 
+;;; TODO -- seems silly to maintain different blacklists and whitelists here than we use for the deftest `^:parallel`
+;;; checker... those lists live in the Clj Kondo config file
 (def ^:private symbols-allowed-in-fns-not-ending-in-an-exclamation-point
   '#{;; these toucan methods might actually set global values if it's used outside of a transaction,
      ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
