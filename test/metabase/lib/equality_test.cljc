@@ -641,7 +641,7 @@
                   (lib/ref col)
                   [latitude-10
                    latitude-20]))))))
-  (testing "'num-bins' binning-strategy"
+  (testing "'num-bins' binning strategy"
     (let [total-10 (lib/with-binning (meta/field-metadata :orders :total) {:strategy :num-bins :num-bins 10})
           total-20 (lib/with-binning (meta/field-metadata :orders :total) {:strategy :num-bins :num-bins 20})]
         (doseq [col [total-10
