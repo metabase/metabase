@@ -43,10 +43,10 @@
      (:result m#)))
 
 (comment
-  ;; almost correct, at least  constant error
+  ;; almost correct, at least a constant error
   (measuring-thread-allocations
    (byte-array (* 1024 1024)))
-  ;; => 1077640
-  ;; => 1077640
-  ;; => 1077640
+  ;; => 1.028MB
+  ;; => 1.028MB
+  ;; => 1.028MB
   )
