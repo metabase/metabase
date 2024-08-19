@@ -629,3 +629,25 @@
               (lib/ref col)
               [created-at-month
                created-at-year]))))))
+
+(deftest ^:parallel disambiguate-matches-using-binning-if-needed-test
+  (testing "'bin-width' binning strategy"
+    (let [latitude-10 (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width :bin-width 10})
+          latitude-20 (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width :bin-width 20})]
+        (doseq [col [latitude-10
+                     latitude-20]]
+          (is (= col
+                 (lib.equality/find-matching-column
+                  (lib/ref col)
+                  [latitude-10
+                   latitude-20]))))))
+  (testing "'num-bins' binning-strategy"
+    (let [total-10 (lib/with-binning (meta/field-metadata :orders :total) {:strategy :num-bins :num-bins 10})
+          total-20 (lib/with-binning (meta/field-metadata :orders :total) {:strategy :num-bins :num-bins 20})]
+        (doseq [col [total-10
+                     total-20]]
+          (is (= col
+                 (lib.equality/find-matching-column
+                  (lib/ref col)
+                  [total-10
+                   total-20])))))))
