@@ -269,10 +269,20 @@
                 [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z" 3 "2014-09-15T00:00:00Z" 8 56]]
                rows))))))
 
+(defmethod driver/database-supports? [::driver/driver ::foreign-keys-as-required-by-tests]
+  [_driver _feature _database]
+  true)
+
+;;; mongodb doesn't support foreign keys required by some tests below.
+;;;
+;;; TODO -- not sure what exactly this means. Maybe it was talking about marking FKs automatically during sync? Since we
+;;; now do that manually for DBs like MongoDB maybe we can enable these tests for Mongo.
+(defmethod driver/database-supports? [:mongo ::foreign-keys-as-required-by-tests]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel select-*-source-query-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join)
-                         ;; mongodb doesn't support foreign keys required by this test
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join ::foreign-keys-as-required-by-tests)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names
@@ -777,7 +787,7 @@
                     ["2016-05-01T00:00:00Z" 77 nil nil]
                     ["2016-06-01T00:00:00Z" 82 nil nil]]
                    (mt/formatted-rows [u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
 
 (deftest ^:parallel join-against-multiple-saved-questions-with-same-column-test
   (testing "Should be able to join multiple against saved questions on the same column (#15863, #20362)"
@@ -805,6 +815,10 @@
                            :order-by     [[:asc $category]]})]
               (mt/with-native-query-testing-context query
                 (let [results (qp/process-query query)]
+                  ;; the display names can differ a little between drivers, we don't actually care about any
+                  ;; differences, this is just a sanity check for a few known drivers. So it's okay to hardcode driver
+                  ;; names here.
+                  #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
                   (when (#{:postgres :h2} driver/*driver*)
                     (is (= ["Category" "Count" "Q2 → Category" "Q2 → Sum" "Q3 → Category" "Q3 → Avg"]
                            (map :display_name (get-in results [:data :results_metadata :columns])))))
@@ -833,6 +847,10 @@
                        :limit       2})]
           (mt/with-native-query-testing-context query
             (let [results (qp/process-query query)]
+              ;; the display names can differ a little between drivers, we don't actually care about
+              ;; any differences, this is just a sanity check for a few known drivers. So it's okay to hardcode
+              ;; driver names here.
+              #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
               (when (#{:h2 :postgres} driver/*driver*)
                 (is (= ["ID"
                         "User ID"
@@ -859,7 +877,7 @@
                        6 "2293343551454" "Small Marble Hat" "Doohickey" "Nolan-Wolff" 64.96 3.8 "2017-03-29T05:43:40Z"]]
                      (mt/formatted-rows [int int int 2.0 2.0 2.0 2.0 u.date/temporal-str->iso8601-str int int
                                          int str str str str 2.0 2.0 u.date/temporal-str->iso8601-str]
-                       results))))))))))
+                                        results))))))))))
 
 (deftest ^:parallel double-quotes-in-join-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -938,12 +956,8 @@
 
 (deftest ^:parallel join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
-                           ;; mongodb doesn't support foreign keys required by this test
-                           :mongo)
-      (mt/dataset
-       test-data
-       (let [query (mt/mbql-query
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations ::foreign-keys-as-required-by-tests)
+      (let [query (mt/mbql-query
                     orders
                     {:source-query {:source-table $$orders
                                     :breakout     [$product_id->products.category]
@@ -956,21 +970,27 @@
                      :expressions  {"CC" [:+ 1 1]}
                      :order-by     [[:asc &Products.products.id]]
                      :limit        2})]
-         (mt/with-native-query-testing-context query
-           (is (= [["Gizmo"     4784 2 1 "Rustic Paper Wallet"]
-                   ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
-                  (mt/formatted-rows [str int int int str]
-                                     (qp/process-query query))))))))))
+        (mt/with-native-query-testing-context query
+          (is (= [["Gizmo"     4784 2 1 "Rustic Paper Wallet"]
+                  ["Doohickey" 3976 2 2 "Small Marble Shoes"]]
+                 (mt/formatted-rows [str int int int str]
+                                    (qp/process-query query)))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::join-order-test]
+  [_driver _feature _database]
+  true)
+
+(defmethod driver/database-supports? [:mongo ::join-order-test]
+  [_driver _feature database]
+  (-> (:dbms_version database)
+      :semantic-version
+      (driver.u/semantic-version-gte [5])))
 
 (deftest ^:parallel join-order-test
   (testing "Joins should be emitted in the same order as they were specified in MBQL (#15342)"
-    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :inner-join ::join-order-test)
       ;; this is fixed for all SQL drivers.
-      (when (or (isa? driver/hierarchy driver/*driver* :sql)
-                (and (isa? driver/hierarchy driver/*driver* :mongo)
-                     (-> (:dbms_version (mt/db))
-                         :semantic-version
-                         (driver.u/semantic-version-gte [5]))))
+      (when (isa? driver/hierarchy driver/*driver* :sql)
         (doseq [[first-join-strategy second-join-strategy] [[:inner-join :left-join]
                                                             [:left-join :inner-join]]
                 :let [query (mt/mbql-query people

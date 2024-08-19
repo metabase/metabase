@@ -4,13 +4,13 @@ import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/t
 import type Question from "metabase-lib/v1/Question";
 import type { Card, CardId } from "metabase-types/api";
 
-export interface SdkQuestionResult {
+export interface SdkQuestionState {
   question?: Question;
   queryResults?: any[];
 }
 
 export interface LoadSdkQuestionParams {
-  options: QueryParams;
+  options?: QueryParams;
   deserializedCard?: Card;
   cardId?: CardId;
   cancelDeferred?: Deferred;

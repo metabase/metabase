@@ -58,6 +58,7 @@ export const getAggregations = (
   aggregation: Lib.AggregationClause | Lib.ExpressionClause,
   columns: ColumnType[],
   offset: number,
+  includeCurrentPeriod: boolean,
 ): Lib.ExpressionClause[] => {
   const aggregations: Lib.ExpressionClause[] = [];
 
@@ -76,6 +77,42 @@ export const getAggregations = (
   if (columns.includes("percent-diff-offset")) {
     aggregations.push(
       Lib.percentDiffOffsetClause(query, stageIndex, aggregation, -offset),
+    );
+  }
+
+  if (columns.includes("moving-average")) {
+    aggregations.push(
+      Lib.movingAverageClause({
+        query,
+        stageIndex,
+        clause: aggregation,
+        offset: -offset,
+        includeCurrentPeriod,
+      }),
+    );
+  }
+
+  if (columns.includes("diff-moving-average")) {
+    aggregations.push(
+      Lib.diffMovingAverageClause({
+        query,
+        stageIndex,
+        clause: aggregation,
+        offset: -offset,
+        includeCurrentPeriod,
+      }),
+    );
+  }
+
+  if (columns.includes("percent-diff-moving-average")) {
+    aggregations.push(
+      Lib.percentDiffMovingAverageClause({
+        query,
+        stageIndex,
+        clause: aggregation,
+        offset: -offset,
+        includeCurrentPeriod,
+      }),
     );
   }
 
@@ -149,6 +186,7 @@ export function updateQueryWithCompareOffsetAggregations(
   offset: "" | number,
   columns: ColumnType[],
   columnAndBucket: BreakoutColumnAndBucket,
+  includeCurrentPeriod: boolean,
 ): UpdatedQuery | null {
   if (!aggregation || offset === "") {
     return null;
@@ -189,6 +227,7 @@ export function updateQueryWithCompareOffsetAggregations(
     aggregation,
     columns,
     offset,
+    includeCurrentPeriod,
   );
 
   nextQuery = aggregations.reduce(

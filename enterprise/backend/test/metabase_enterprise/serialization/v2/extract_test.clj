@@ -455,7 +455,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards include their Dashcards"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id other-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" other-dash-id)]
           (is (=? {:serdes/meta            [{:model "Dashboard" :id other-dash :label "dave_s_dash"}]
                    :entity_id              other-dash
                    :dashcards
@@ -496,7 +496,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards with parameters where the source is a card"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id param-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -515,7 +515,7 @@
                  (set (serdes/dependencies ser))))))
 
       (testing "Cards with parameters where the source is a card"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id param-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -579,7 +579,7 @@
          :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
         (testing "Inlined dashcards include their series' card entity IDs"
           (let [ser (t2/with-call-count [q]
-                      (u/prog1 (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id dash-id]}))
+                      (u/prog1 (ts/extract-one "Dashboard" dash-id)
                         (is (< (q) 13))))]
             (is (=? {:entity_id dash-eid
                      :dashcards [{:entity_id dc1-eid
@@ -626,7 +626,7 @@
                                                              :field_id fk-id
                                                              :human_readable_field_id cust-name}]
       (testing "dimensions without foreign keys are inlined into their Fields\n"
-        (let [ser (u/rfirst (serdes/extract-all "Field" {:where [:= :id email-id]}))]
+        (let [ser (ts/extract-one "Field" email-id)]
           (is (malli= [:map
                        [:serdes/meta [:= [{:model "Database", :id "My Database"}
                                           {:model "Table", :id "Schemaless Table"}
@@ -648,7 +648,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "foreign key dimensions are inlined into their Fields"
-        (let [ser (u/rfirst (serdes/extract-all "Field" {:where [:= :id fk-id]}))]
+        (let [ser (ts/extract-one "Field" fk-id)]
           (is (malli= [:map
                        [:serdes/meta        [:= [{:model "Database" :id "My Database"}
                                                  {:model "Schema" :id "PUBLIC"}
@@ -1645,22 +1645,23 @@
                                                      :dataset_query {:query {:source-table (str "card__" card1-id)
                                                                              :aggregation  [[:count]]}}}]
       (testing "Complain about card not available for exporting"
-        (is (some #(str/starts-with? % "Failed to export Dashboard")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll1-id]]
-                                            :no-settings   true
-                                            :no-data-model true}))))))
-
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll1-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Dashboard")
+                    (into #{}
+                          (map :message)
+                          (messages))))))
       (testing "Complain about card depending on an outside card"
-        (is (some #(str/starts-with? % "Failed to export Cards")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll2-id]]
-                                            :no-settings   true
-                                            :no-data-model true})))))))))
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll2-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Cards")
+                    (into #{}
+                          (map :message)
+                          (messages)))))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db
@@ -1706,3 +1707,65 @@
                                   :no-data-model true})]
         (is (= #{(:entity_id c)}
                (by-model "Collection" ser)))))))
+
+(deftest extract-nested-test
+  (testing "extract-nested working"
+    (mt/with-temp [:model/Dashboard           d   {:name "Top Dash"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d) :card_id (:id c1)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (let [spec (serdes/make-spec "DashboardCard" nil)]
+        (is (= {(:id dc1) [s]}
+               (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
+        (is (=? (assoc dc1 :series [s])
+                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+      (let [spec (serdes/make-spec "Dashboard" nil)]
+        (is (= {(:id d) [(assoc dc1 :series [s])]}
+               (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
+        (is (=? (assoc d
+                       :dashcards [(assoc dc1 :series [s])]
+                       :tabs nil)
+                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+
+(deftest extract-nested-efficient-test
+  (testing "extract-nested is efficient"
+    (mt/with-temp [:model/Dashboard           d1  {:name "Top Dash 1"}
+                   :model/Dashboard           d2  {:name "Top Dash 2"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/Card                c3  {:name "Card for Dash 2"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d1) :card_id (:id c1)}
+                   :model/DashboardCard       dc2 {:dashboard_id (:id d2) :card_id (:id c2)}
+                   :model/DashboardCard       dc3 {:dashboard_id (:id d2) :card_id (:id c3)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (t2/with-call-count [qc]
+        (is (=? [(assoc d1
+                        :dashcards [(assoc dc1 :series [s])]
+                        :tabs nil)
+                 (assoc d2
+                        :dashcards [(assoc dc2 :series nil)
+                                    (assoc dc3 :series nil)]
+                        :tabs nil)]
+                (into [] (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+        ;; 1 per dashboard/dashcard/series/tabs
+        (is (= 4 (qc)))))))
+
+(deftest extract-nested-partitioned-test
+  (testing "extract-nested will partition stuff by 100s"
+    (mt/with-empty-h2-app-db
+      (let [d   (ts/create! :model/Dashboard {:name "Dash"})
+            c1  (ts/create! :model/Card {:name "Card"})
+            dcs (vec (for [_ (range 7)]
+                       (ts/create! :model/DashboardCard {:dashboard_id (:id d)
+                                                         :card_id      (:id c1)})))]
+        (t2/with-call-count [qc]
+          (is (=? [(assoc d :dashcards dcs)]
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
+                                                              :where [:= :id (:id d)]}))))
+          ;; query count breakdown:
+          ;; - 1 for dashboard
+          ;; - 1 for tabs, there are none
+          ;; - 1 for dashcards, there are 7
+          ;; - 2 for series (7 dashcards / 5 -> 2 batches)
+          (is (= 5 (qc))))))))

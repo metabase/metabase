@@ -1,4 +1,4 @@
-import type { SdkQuestionResult } from "embedding-sdk/types/question";
+import type { SdkQuestionState } from "embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import { runQuestionQuery } from "metabase/services";
 import * as Lib from "metabase-lib";
@@ -12,7 +12,7 @@ interface RunQuestionQueryParams {
 
 export async function runQuestionQuerySdk(
   params: RunQuestionQueryParams,
-): Promise<SdkQuestionResult> {
+): Promise<SdkQuestionState> {
   let { question, originalQuestion, cancelDeferred } = params;
 
   const query = question.query();

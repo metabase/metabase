@@ -1,6 +1,6 @@
 import type {
   LoadSdkQuestionParams,
-  SdkQuestionResult,
+  SdkQuestionState,
 } from "embedding-sdk/types/question";
 import { resolveCards } from "metabase/query_builder/actions";
 import { loadMetadataForCard } from "metabase/questions/actions";
@@ -12,7 +12,7 @@ import { runQuestionQuerySdk } from "./run-question-query";
 
 export const runQuestionOnLoadSdk =
   ({
-    options,
+    options = {},
     deserializedCard,
     cardId,
     cancelDeferred,
@@ -20,7 +20,7 @@ export const runQuestionOnLoadSdk =
   async (
     dispatch: Dispatch,
     getState: GetState,
-  ): Promise<SdkQuestionResult & { originalQuestion?: Question }> => {
+  ): Promise<SdkQuestionState & { originalQuestion?: Question }> => {
     const { card, originalCard } = await resolveCards({
       cardId,
       options,
