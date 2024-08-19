@@ -474,19 +474,6 @@
 
        :else false))))
 
-(mu/defn honeysql-filter-clause
-  "Given a permissions-set and a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
-  ([permissions-set :- [:set :string]]
-   (honeysql-filter-clause permissions-set :collection_id))
-  ([permissions-set :- [:set :string]
-    collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
-   (honeysql-filter-clause permissions-set collection-id-field {}))
-  ([permissions-set :- [:set :string]
-    collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
-    visibility-config :- CollectionVisibilityConfig]
-   (visible-collection-ids->honeysql-filter-clause collection-id-field
-                                                   (permissions-set->visible-collection-ids permissions-set visibility-config))))
-
 (mu/defn visible-collection-ids->direct-visible-descendant-clause
   "Generates an appropriate HoneySQL `:where` clause to filter out descendants of a collection A with a specific property.
   This property is being a descendant of a visible collection other than A. Used for effective children calculations"
@@ -1481,6 +1468,57 @@
           ;; `descendant-ids` wants a CollectionWithLocationAndID, and luckily we know Personal Collections always go
           ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
           (descendant-ids {:location "/", :id personal-collection-id}))))
+
+(mu/defn honeysql-filter-clause
+  "Given a permissions-set and a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
+  ([]
+   (honeysql-filter-clause :collection_id))
+  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
+   (honeysql-filter-clause collection-id-field {}))
+  ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
+    visibility-config :- CollectionVisibilityConfig]
+   [:in collection-id-field
+    {:select :id
+     :from [[{:union-all (if api/*is-superuser?*
+                           [{:select :c.*
+                             :from [[:collection :c]]}]
+                           [{:select :c.*
+                             :from [[:collection :c]]
+                             :join [[:permissions :p] [:or
+                                                       (when (= :read (:permission-level visibility-config))
+                                                         [:= :p.object [:concat "/collection/" :id "/read/"]])
+                                                       [:= :p.object [:concat "/collection/" :id "/"]]
+                                                       [:and
+                                                        [:= nil :collection_id]
+                                                        [:or
+                                                         (when (= :read (:permission-level visibility-config))
+                                                           [:= :p.object "/collection/root/read/"])
+                                                         [:= :p.object "/collection/root/"]]]]
+                                    [:permissions_group :pg] [:= :pg.id :p.group_id]
+                                    [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.group_id]]
+                             :where [:= :pgm.user_id api/*current-user-id*]}
+                            {:select :c.*
+                             :from [[:collection :c]]
+                             :where [:in :id (user->personal-collection-and-descendant-ids api/*current-user-id*)]}])}
+             :dummy_alias]]
+     :where [:and
+             (when-not (:include-trash-collection? visibility-config)
+               [:not= (trash-collection-id) :id])
+
+             (when (= :exclude (:include-archived-items visibility-config))
+               [:= :archived false])
+
+             (when (= :only (:include-archived-items visibility-config))
+               [:= :archived true])
+
+             (when-let [op-id (:archive-operation-id visibility-config)]
+               [:= :archive_operation_id op-id])
+
+             (when-let [parent-coll (:effective-child-of visibility-config)]
+               (if (is-trash? parent-coll)
+                 [:= :archived_directly true]
+                 [:like :location (str (children-location parent-coll) "%")]))]}]))
+
 
 (mi/define-batched-hydration-method include-personal-collection-ids
   :personal_collection_id

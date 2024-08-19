@@ -110,14 +110,12 @@
   so we can return its `:name`."
   [honeysql-query                                :- ms/Map
    model                                         :- :string
-   {:keys [current-user-perms
-           filter-items-in-personal-collection
+   {:keys [filter-items-in-personal-collection
            archived]} :- SearchContext]
   (let [collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
         collection-filter-clause (collection/honeysql-filter-clause
-                                  current-user-perms
                                   collection-id-col
                                   {:include-archived-items :all
                                    :include-trash-collection? true
