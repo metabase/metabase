@@ -3,7 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
-
 import { useSelector } from "metabase/lib/redux";
 import {
   trackPublicEmbedCodeCopied,
