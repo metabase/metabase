@@ -149,15 +149,6 @@
                               :bcc?    true}
                              email)))
 
-(defn- rasta-dashsub-message
-  [& [data]]
-  (merge {:subject    "Aviary KPIs"
-          :recipients #{"rasta@metabase.com"}
-          :message-type :attachments,
-          :message    [{"Aviary KPIs" true}
-                       pulse.test-util/png-attachment]}
-         data))
-
 (defn do-with-dashboard-fixture-for-dashboard
   "Impl for [[with-link-card-fixture-for-dashboard]]."
   [dashboard thunk]
@@ -1019,7 +1010,8 @@
      :model/DashboardCardSeries _                 {:dashboardcard_id dash-card-1
                                                    :card_id          card-2
                                                    :position         0}
-     :model/Pulse               {pulse-id :id}    {:dashboard_id dash-id}
+     :model/Pulse               {pulse-id :id}    {:name         "Aviary KPIs"
+                                                   :dashboard_id dash-id}
      :model/PulseCard            _                {:pulse_id pulse-id
                                                    :card_id   card-1
                                                    :position 0}
@@ -1028,14 +1020,12 @@
      :model/PulseChannelRecipient _               {:user_id          (pulse.test-util/rasta-id)
                                                    :pulse_channel_id pc-id}]
     (testing "Able to send pulse with multi series card without rendering error #46892"
-      (let [error-msg (str @#'body/error-rendered-message)]
-        (is (= (rasta-dashsub-message {:message [{error-msg false}
-                                                 ;; no result
-                                                 pulse.test-util/png-attachment
-                                                 ;; icon
-                                                 pulse.test-util/png-attachment]})
-               (-> (pulse.test-util/with-captured-channel-send-messages!
-                     (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
-                   :channel/email
-                   first
-                   (mt/summarize-multipart-single-email (re-pattern error-msg)))))))))
+      (pulse.test-util/email-test-setup
+       (let [error-msg (str @#'body/error-rendered-message)]
+         (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id))
+         (is (= (rasta-pulse-email {:body [{error-msg false}
+                                           ;; no result
+                                           pulse.test-util/png-attachment
+                                           ;; icon
+                                           pulse.test-util/png-attachment]})
+                (mt/summarize-multipart-email (re-pattern error-msg)))))))))
