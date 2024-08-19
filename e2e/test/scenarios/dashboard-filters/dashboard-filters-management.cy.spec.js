@@ -374,7 +374,7 @@ function selectFilter(name) {
 }
 
 function changeFilterType(type) {
-  sidebar().findByText("Filter type").next().click();
+  sidebar().findByText("Filter or parameter type").next().click();
   popover().findByText(type).click();
 }
 

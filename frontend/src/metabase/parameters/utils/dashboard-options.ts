@@ -26,7 +26,7 @@ export function getDashboardParameterSections(): ParameterSection[] {
       description: t`Day, week, month, year…`,
       options: [
         {
-          name: t`Unit of Time`,
+          name: t`Time grouping`,
           type: "temporal-unit",
           sectionId: "temporal-unit",
         },

@@ -82,7 +82,7 @@ function editFilter(name: string) {
 }
 
 function editFilterType(type: string, subType: string) {
-  sidebar().findByText("Filter type").next().click();
+  sidebar().findByText("Filter or parameter type").next().click();
   popover().findByText(type).click();
 
   sidebar().findByText("Filter operator").next().click();

@@ -8,6 +8,7 @@ import { slugify } from "metabase/lib/formatting";
 import { useSelector } from "metabase/lib/redux";
 import type { IconName } from "metabase/ui";
 import { Tabs, Text } from "metabase/ui";
+import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
@@ -265,7 +266,9 @@ const getTabs = (parameter: Parameter): Tab[] => {
   const tabs: Tab[] = [];
 
   tabs.push({
-    name: t`Settings`,
+    name: isFilterParameter(parameter)
+      ? t`Filter settings`
+      : t`Parameter settings`,
     value: "settings",
     icon: "gear",
   });

@@ -189,7 +189,7 @@ const nativeUnitQuestionDetails = {
 
 const parameterDetails = {
   id: "1",
-  name: "Unit of Time",
+  name: "Time grouping",
   slug: "unit_of_time",
   type: "temporal-unit",
   sectionId: "temporal-unit",

@@ -170,7 +170,7 @@ export const ParameterSettings = ({
       {sectionId && (
         <>
           <Box mb="xl">
-            <SettingLabel>{t`Type`}</SettingLabel>
+            <SettingLabel>{t`Filter or parameter type`}</SettingLabel>
             <Select
               data={dataTypeSectionsData}
               value={sectionId}
@@ -191,7 +191,7 @@ export const ParameterSettings = ({
       )}
       {isTemporalUnitParameter(parameter) && (
         <Box mb="xl">
-          <SettingLabel>{t`Unit of Time options`}</SettingLabel>
+          <SettingLabel>{t`Time grouping options`}</SettingLabel>
           <TemporalUnitSettings
             parameter={parameter}
             onChangeTemporalUnits={onChangeTemporalUnits}
