@@ -223,23 +223,26 @@
            (#'stats/execution-metrics))
         "the new version of the executions metrics works the same way the old one did")))
 
-(deftest ^:parallel execution-metrics-started-at-test
-  (let [get-executions #(:executions (#'stats/execution-metrics))
-        before         (get-executions)]
-    (mt/with-temp [QueryExecution _ (merge query-execution-defaults
-                                           {:started_at (-> (t/offset-date-time (t/zone-id "America/Los_Angeles"))
-                                                            (t/minus (t/days 30))
-                                                            (t/plus (t/minutes 10)))})]
-      (is (= (inc before)
-             (get-executions))
-          "execution metrics include query executions since 30 days ago"))
-    (mt/with-temp [QueryExecution _ (merge query-execution-defaults
-                                           {:started_at (-> (t/offset-date-time (t/zone-id "America/Los_Angeles"))
-                                                            (t/minus (t/days 30))
-                                                            (t/minus (t/minutes 10)))})]
-      (is (= before
-             (get-executions))
-          "the executions metrics exclude query executions before 30 days ago"))))
+(deftest execution-metrics-started-at-test
+  (testing "execution metrics should not be sensitive to the app db time zone"
+    (doseq [tz ["Pacific/Auckland" "Europe/Helsinki"]]
+      (mt/with-app-db-timezone-id! tz
+        (let [get-executions #(:executions (#'stats/execution-metrics))
+              before         (get-executions)]
+          (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                                 {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                  (t/minus (t/days 30))
+                                                                  (t/plus (t/minutes 10)))})]
+            (is (= (inc before)
+                   (get-executions))
+                "execution metrics include query executions since 30 days ago"))
+          (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                                 {:started_at (-> (t/offset-date-time (t/zone-id "UTC"))
+                                                                  (t/minus (t/days 30))
+                                                                  (t/minus (t/minutes 10)))})]
+            (is (= before
+                   (get-executions))
+                "the executions metrics exclude query executions before 30 days ago")))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Pulses & Alerts                                                 |
