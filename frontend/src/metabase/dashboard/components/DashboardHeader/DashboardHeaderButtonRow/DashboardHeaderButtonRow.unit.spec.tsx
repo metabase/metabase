@@ -50,7 +50,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.ADD_FILTER_PARAMETER]: {
     icon: "filter",
-    tooltip: "Add a filter",
+    tooltip: "Add a filter or parameter",
   },
   [DASHBOARD_ACTION.ADD_ACTION_ELEMENT]: {
     icon: "click",

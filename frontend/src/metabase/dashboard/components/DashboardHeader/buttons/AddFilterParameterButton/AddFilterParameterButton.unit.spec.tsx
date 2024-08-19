@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, within } from "__support__/ui";
 import {
   createMockDashboardState,
   createMockState,
@@ -90,6 +90,10 @@ describe("AddFilterParameterButton", () => {
 
     const button = screen.getByLabelText("Add a filter or parameter");
     await userEvent.click(button);
-    expect(screen.getByText("Add a filter or parameter")).toBeInTheDocument();
+
+    const popover = screen.getByRole("dialog");
+    expect(
+      within(popover).getByText("Add a filter or parameter"),
+    ).toBeInTheDocument();
   });
 });
