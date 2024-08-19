@@ -1238,10 +1238,9 @@
         clj->js)))
 
 (defn- legacy-ref->pMBQL [a-legacy-ref]
-  (-> a-legacy-ref
-      (js->clj :keywordize-keys true)
-      (update 0 keyword)
-      lib.convert/->pMBQL))
+  (->> (-> a-legacy-ref (js->clj :keywordize-keys true) (update 0 keyword))
+       (mbql.normalize/normalize-fragment nil)
+       (lib.convert/->pMBQL)))
 
 (defn- ->column-or-ref [column]
   (if-let [^js legacy-column (when (object? column) column)]
