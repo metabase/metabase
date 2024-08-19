@@ -10,14 +10,11 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -525,12 +522,3 @@
                                             :creator_id    (mt/user->id :crowberto)}]
             (is (not (mi/can-read? subscription)))
             (is (not (mi/can-write? subscription)))))))))
-
-(deftest identity-hash-test
-  (testing "Pulse hashes are composed of the name and the collection hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp [Collection  coll  {:name "field-db" :location "/" :created_at now}
-                     Pulse       pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]
-        (is (= "82553101"
-               (serdes/raw-hash ["my pulse" (serdes/identity-hash coll) now])
-               (serdes/identity-hash pulse)))))))

@@ -60,6 +60,7 @@
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
     :model/PersistedInfo
+    :model/Pulse
     :model/PulseCard
     :model/PulseChannel
     :model/PulseChannelRecipient
