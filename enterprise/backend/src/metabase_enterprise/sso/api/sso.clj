@@ -39,13 +39,13 @@
       (throw e))))
 
 (mu/defn ^:private sso-error-page
-  [^Throwable e log-direction :- [:enum "in" "out"]]
+  [^Throwable e log-direction :- [:enum :in :out]]
   {:status  (get (ex-data e) :status-code 500)
    :headers {"Content-Type" "text/html"}
    :body    (stencil/render-file "metabase_enterprise/sandbox/api/error_page"
                                  (let [message    (.getMessage e)
                                        data       (u/pprint-to-str (ex-data e))]
-                                   {:logDirection   log-direction
+                                   {:logDirection   (name log-direction)
                                     :errorMessage   message
                                     :exceptionClass (.getName Exception)
                                     :additionalData data}))})
@@ -57,8 +57,8 @@
   (try
     (sso.i/sso-post req)
     (catch Throwable e
-      (log/error e (trs "Error logging in"))
-      (sso-error-page e "in"))))
+      (log/error e "Error logging in")
+      (sso-error-page e :in))))
 
 
 ;; ------------------------------ Single Logout aka SLO ------------------------------
@@ -83,7 +83,7 @@
       ;; they will never hit "/handle_slo" so we must delete the session here:
       (t2/delete! :model/Session :id metabase-session-id)
       {:saml-logout-url
-       (when (and (sso-settings/saml-enabled)
+       (when (and (sso-settings/saml-slo-enabled)
                   (= sso_source "saml"))
          (saml/logout-redirect-location
           :idp-url (sso-settings/saml-identity-provider-uri)
@@ -97,9 +97,12 @@
   "Handles client confirmation of saml logout via slo"
   [:as req]
   (try
-    (sso.i/sso-handle-slo req)
+    (if (sso-settings/saml-slo-enabled)
+      (sso.i/sso-handle-slo req)
+      (throw (ex-info "SAML Single Logout is not enabled, request forbidden."
+                      {:status-code 403})))
     (catch Throwable e
-      (log/error e (trs "Error handling SLO"))
-      (sso-error-page e "out"))))
+      (log/error e "Error handling SLO")
+      (sso-error-page e :out))))
 
 (api/define-routes)

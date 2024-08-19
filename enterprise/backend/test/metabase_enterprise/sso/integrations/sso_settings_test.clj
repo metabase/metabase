@@ -116,7 +116,11 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting saml-enabled is not enabled because feature :sso-saml is not available"
-           (sso-settings/saml-enabled! true))))))
+           (sso-settings/saml-enabled! true)))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting saml-slo-enabled is not enabled because feature :sso-saml is not available"
+           (sso-settings/saml-slo-enabled! true))))))
 
 (deftest jwt-settings-token-features-test
   (testing "Getting JWT settings should return their default values without :sso-jwt feature flag enabled"
