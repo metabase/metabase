@@ -1546,6 +1546,14 @@
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
 
+(deftest ^:parallel blank-schema-identifier-test
+  (testing "We should handle Databases with blank schema correctly (#12450)"
+    (t2.with-temp/with-temp [Database {db-id :id} {:name "my/database"}]
+      (doseq [schema-name [nil ""]]
+        (testing (str "schema name = " (pr-str schema-name))
+          (t2.with-temp/with-temp [Table _ {:db_id db-id, :schema schema-name, :name "just a table"}]
+            (is (= [""] (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))))))
+
 (deftest get-syncable-schemas-test
   (testing "GET /api/database/:id/syncable_schemas"
     (testing "Multiple schemas are ordered by name"
