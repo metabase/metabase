@@ -1,4 +1,5 @@
 import { input } from "@inquirer/prompts";
+import chalk from "chalk";
 import toggle from "inquirer-toggle";
 
 import type { CliStepMethod } from "../types/cli";
@@ -6,6 +7,8 @@ import { propagateErrorResponse } from "../utils/propagate-error-response";
 
 // Name of the permission groups and collections to create.
 const GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
+
+const printWithPadding = (message: string) => console.log(`  ${message}`);
 
 export const setupPermissions: CliStepMethod = async state => {
   const { cookie = "", instanceUrl, tables } = state;
@@ -32,8 +35,14 @@ export const setupPermissions: CliStepMethod = async state => {
   let defaultColumnName: string | undefined = undefined;
 
   for (const table of tables) {
+    printWithPadding(
+      chalk.gray(
+        `Leave empty if this table does not have a multi-tenancy column.`,
+      ),
+    );
+
     const columnName = await input({
-      message: `What is the multi-tenancy column for ${table.name}? Leave empty if this table does not have a multi-tenancy column:`,
+      message: `What is the multi-tenancy column for ${table.name} (e.g. customer_id):`,
       default: defaultColumnName,
     });
 
