@@ -143,12 +143,12 @@ For a more in-depth guide, check out [Field Filters: create smart filter widgets
 
 ### Field filters in BigQuery and Oracle
 
-Make sure your SQL dialect matches the database you've selected. Common issues:
+Make sure your SQL dialect matches the database you've selected. Common issues involving how tables are quoted in the query:
 
-| Database | Do this                    | Avoid                |
+| Database | Dialect quirk              | Example               |
 | -------- | -------------------------- | -------------------- |
-| BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
-| Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
+| BigQuery | Schemas and tables must be quoted with backticks. | `` FROM `dataset.table` `` |
+| Oracle   | Schemas and tables must be quoted in double quotes.   | `FROM schema.table`  |
 
 For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
