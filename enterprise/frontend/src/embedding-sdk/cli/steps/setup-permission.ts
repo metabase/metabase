@@ -45,6 +45,13 @@ export const setupPermissions: CliStepMethod = async state => {
     const columnName = await input({
       message: `What is the multi-tenancy column for ${table.name} (e.g. customer_id):`,
       default: defaultColumnName,
+      validate: name => {
+        if (!table.fields?.find(f => f.name === name)) {
+          return `Column ${name} does not exist in table "${table.name}"`;
+        }
+
+        return true;
+      },
     });
 
     if (columnName) {
@@ -132,20 +139,11 @@ export const setupPermissions: CliStepMethod = async state => {
 
   const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
-  const schemaKey = tables.find(table => table.schema)?.schema;
-
-  if (!schemaKey) {
-    const message = "Could not find the database schema in your tables.";
-
-    return [{ type: "error", message }, state];
-  }
-
   const permissionGraph = {
     ...getPermissionGraph({
+      tables,
       groupIds,
-      sandboxedTableIds: tables.map(table => Number(table.id)),
       tenancyColumnNames,
-      schemaKey,
     }),
     revision,
     impersonations: [],
