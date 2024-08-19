@@ -23,12 +23,6 @@ QuestionDataSource.propTypes = {
   isObjectDetail: PropTypes.bool,
 };
 
-function isMaybeBasedOnDataset(question) {
-  const query = question.query();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  return isVirtualCardId(sourceTableId);
-}
-
 export function QuestionDataSource({
   question,
   originalQuestion,
@@ -39,19 +33,19 @@ export function QuestionDataSource({
     return null;
   }
 
+  const query = question.query();
+  const sourceTableId = Lib.sourceTableOrCardId(query);
+
+  const { isNative } = Lib.queryDisplayInfo(query);
+  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
+
   const variant = subHead ? "subhead" : "head";
 
-  const { isNative } = Lib.queryDisplayInfo(question.query());
-
-  if (isNative || !isMaybeBasedOnDataset(question)) {
+  if (isNative || !isVirtualCardId(sourceTableId)) {
     return (
       <DataSourceCrumbs question={question} variant={variant} {...props} />
     );
   }
-
-  const query = question.query();
-  const sourceTableId = Lib.sourceTableOrCardId(query);
-  const sourceQuestionId = getQuestionIdFromVirtualTableId(sourceTableId);
 
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
