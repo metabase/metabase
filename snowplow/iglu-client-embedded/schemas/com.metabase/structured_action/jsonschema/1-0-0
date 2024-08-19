@@ -16,7 +16,10 @@
       },
       "target_id": {
         "description": "(Optional) ID of the entity that the action was performed on. E.g. the ID of the question that was created in a question_created event.",
-        "type": "string",
+        "type": [
+            "string",
+            "null"
+        ],
         "maxLength": 1024
       },
       "triggered_from": {
@@ -26,16 +29,27 @@
       },
       "duration_ms": {
         "description": "(Optional) Duration in milliseconds",
-        "type": "integer"
+        "type": [
+            "integer",
+            "null"
+        ],
+        "minimum": 0,
+        "maximum": 1800000
       },
       "result": {
         "description": "(Optional) The outcome of the action (e.g. success, failure, …)",
-        "type": "string",
+        "type": [
+            "string",
+            "null"
+        ],
         "maxLength": 1024
       },
       "event_detail": {
         "description": "(Optional) Can be used for additional details that describe the event, e.g. the type of question that was created in a question_created event.",
-        "type": "string",
+        "type": [
+            "string",
+            "null"
+        ],
         "maxLength": 1024
       }
     },
