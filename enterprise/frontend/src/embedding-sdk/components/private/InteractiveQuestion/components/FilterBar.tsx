@@ -1,4 +1,4 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
 
 export const FilterBar = () => {

@@ -813,9 +813,6 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-query "Card" [_ opts]
-  (serdes/extract-query-collections Card opts))
-
 (defn- export-result-metadata [metadata]
   (when metadata
     (for [m metadata]

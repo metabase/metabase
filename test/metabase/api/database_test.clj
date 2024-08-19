@@ -2094,16 +2094,17 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest log-an-error-if-contains-undefined-setting-test
+(deftest ^:parallel log-an-error-if-contains-undefined-setting-test
   (testing "should log an error message if database contains undefined settings"
     (t2.with-temp/with-temp [Database {db-id :id} {:settings {:undefined-setting true}}]
-      (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
-             (-> (mt/with-log-messages-for-level :error
-                   (testing "does not includes undefined keys by default"
-                     (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
-                                         :undefined-setting)))))
-                 first
-                 last))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (testing "does not includes undefined keys by default"
+          (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                              :undefined-setting))))
+        (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+               (-> (messages)
+                   first
+                   :message)))))))
 
 (deftest persist-database-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)

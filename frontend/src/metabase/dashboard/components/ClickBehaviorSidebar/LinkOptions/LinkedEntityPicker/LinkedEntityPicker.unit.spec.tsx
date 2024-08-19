@@ -91,8 +91,8 @@ function setup({
   mockGetBoundingClientRect();
   setupCollectionsEndpoints({ collections: COLLECTIONS });
 
-  setupCollectionByIdEndpoint({ collections: COLLECTIONS }),
-    setupSearchEndpoints(searchResults);
+  setupCollectionByIdEndpoint({ collections: COLLECTIONS });
+  setupSearchEndpoints(searchResults);
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
     collectionItems,

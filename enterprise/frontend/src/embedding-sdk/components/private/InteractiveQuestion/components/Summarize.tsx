@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import {
   SummarizeAggregationItemList,
