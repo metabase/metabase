@@ -398,13 +398,13 @@ describe("scenarios > question > multiple column breakouts", () => {
     describe("summarize sidebar", () => {
       function testChangeBreakoutBuckets({
         questionDetails,
-        columnName,
+        columnPattern,
         bucketLabel,
         bucket1Name,
         bucket2Name,
       }: {
         questionDetails: StructuredQuestionDetails;
-        columnName: string;
+        columnPattern: RegExp;
         bucketLabel: string;
         bucket1Name: string;
         bucket2Name: string;
@@ -412,7 +412,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         createQuestion(questionDetails, { visitQuestion: true });
         summarize();
         cy.findByTestId("pinned-dimensions")
-          .findAllByLabelText(columnName)
+          .findAllByLabelText(columnPattern)
           .should("have.length", 2)
           .eq(0)
           .findByLabelText(bucketLabel)
@@ -420,7 +420,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         popover().findByText(bucket1Name).click();
         cy.wait("@dataset");
         cy.findByTestId("pinned-dimensions")
-          .findAllByLabelText(columnName)
+          .findAllByLabelText(columnPattern)
           .should("have.length", 2)
           .eq(1)
           .findByLabelText(bucketLabel)
@@ -432,7 +432,7 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should allow to change temporal buckets for multiple breakouts of the same column", () => {
         testChangeBreakoutBuckets({
           questionDetails: questionWith2TemporalBreakoutsDetails,
-          columnName: "Created At",
+          columnPattern: /Created At/,
           bucketLabel: "Temporal bucket",
           bucket1Name: "Quarter",
           bucket2Name: "Week",
@@ -446,28 +446,28 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should allow to change 'num-bins' binning strategies for multiple breakouts of the same column", () => {
         testChangeBreakoutBuckets({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
-          columnName: "Total",
+          columnPattern: /Total/,
           bucketLabel: "Binning strategy",
           bucket1Name: "10 bins",
           bucket2Name: "50 bins",
         });
         assertTableData({
           columns: ["Total", "Total", "Count"],
-          firstRows: [["X", "X", "X"]],
+          firstRows: [["-60  –  -40", "-50  –  -45", "1"]],
         });
       });
 
       it("should allow to change 'bin-width' binning strategies for multiple breakouts of the same column", () => {
         testChangeBreakoutBuckets({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
-          columnName: "Latitude",
+          columnPattern: /Latitude/,
           bucketLabel: "Binning strategy",
           bucket1Name: "Bin every 1 degree",
           bucket2Name: "Bin every 0.1 degrees",
         });
         assertTableData({
           columns: ["Latitude", "Latitude", "Count"],
-          firstRows: [["X", "X", "X"]],
+          firstRows: [["25° N  –  26° N", "25.7° N  –  25.8° N", "1"]],
         });
       });
     });
