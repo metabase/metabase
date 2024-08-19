@@ -12,7 +12,9 @@
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted    [:perms/view-data   #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+      :blocked         [:perms/view-data #{:legacy-no-self-service :blocked}]
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
