@@ -249,6 +249,7 @@ jobs:
         with:
           commit: ${{github.event.workflow_run.head_sha}}
           report_paths: "./target/junit/*.xml"
+          check_title_template: "{{FILE_NAME}}, {{SUITE_NAME}}, {{TEST_NAME}}, {{CLASS_NAME}}, {{BREAD_CRUMB}}"
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
@@ -259,6 +260,17 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
+
+      - name: Dorny reporter
+        uses: dorny/test-reporter@v1
+        with:
+          artifact: cypress-recording-${{ matrix.name }}-${{ matrix.edition } # artifact name
+          name: cypress check # Name of the check run which will be created
+          path: "cypress/reports/cypress-test-report.json" # Path to test results (inside artifact .zip)
+          reporter: mocha-json # Format of test results
+          list-suites: "failed"
+          only-summary: false
+          list-tests: "failed"
 
   e2e-tests-skipped-stub:
     needs: [e2e-tests, e2e-matrix-builder]
