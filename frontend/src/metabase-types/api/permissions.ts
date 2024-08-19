@@ -72,6 +72,7 @@ export type NativePermissions =
   | DataPermissionValue.QUERY_BUILDER_AND_NATIVE
   | DataPermissionValue.QUERY_BUILDER
   | DataPermissionValue.NO
+  | Record<SchemaName, Record<DatabaseId, DataPermissionValue>>
   | undefined;
 
 export type SchemasPermissions =

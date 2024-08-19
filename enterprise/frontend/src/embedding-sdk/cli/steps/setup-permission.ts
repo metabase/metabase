@@ -80,7 +80,12 @@ export const setupPermissions: CliStepMethod = async state => {
         await propagateErrorResponse(res);
       }),
     );
-  } catch (error) {}
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Failed to create sandboxed collections. Reason: ${reason}`;
+
+    return [{ type: "error", message }, state];
+  }
 
   // Example: { "Customer A": [3], "Customer B": [4], "Customer C": [5] }
   const jwtGroupMappings: Record<string, number[]> = {};
@@ -100,7 +105,12 @@ export const setupPermissions: CliStepMethod = async state => {
 
       jwtGroupMappings[groupName] = [groupId];
     }
-  } catch (error) {}
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Failed to define SSO group mappings. Reason: ${reason}`;
+
+    return [{ type: "error", message }, state];
+  }
 
   // Update the JWT group mappings.
   res = await fetch(`${instanceUrl}/api/setting/jwt-group-mappings`, {
@@ -120,8 +130,23 @@ export const setupPermissions: CliStepMethod = async state => {
   // Get the current permission revision number. Should be 1 by default.
   const { revision } = (await res.json()) as { revision: number };
 
+  const groupIds: number[] = Object.values(jwtGroupMappings).flat();
+
+  const schemaKey = tables.find(table => table.schema)?.schema;
+
+  if (!schemaKey) {
+    const message = "Could not find the database schema in your tables.";
+
+    return [{ type: "error", message }, state];
+  }
+
   const permissionGraph = {
-    ...getPermissionGraph({}),
+    ...getPermissionGraph({
+      groupIds,
+      sandboxedTableIds: tables.map(table => Number(table.id)),
+      tenancyColumnNames,
+      schemaKey,
+    }),
     revision,
     impersonations: [],
   };
