@@ -270,9 +270,9 @@
                                                       (get table-id->db-id table-id)
                                                       table-id))
                                       table-ids)]
+      ;; Here, we grant view-data to only unblocked table ids. Otherwise sandboxed users with a joined table that's
+      ;; _blocked_ can be queried against from the query builder
       {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
-       ;; grant create-queries to only unblocked table ids. Otherwise sandboxed users with a joined table that's
-       ;; _blocked_ can be queried against from the query builder, but we never want that.
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
 (defn- merge-perms
