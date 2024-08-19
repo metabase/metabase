@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.interface :as mi]
    [metabase.models.recent-views :as recent-views]
    [metabase.test :as mt]
    [metabase.util.log :as log]
@@ -174,15 +176,12 @@
     (testing "`update-users-recent-views!` prunes duplicates of all models.`"
       (mt/with-temp
         [:model/Collection {parent-coll-id :id} {:name "parent"}
-         :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id}
-         :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id}
-
+         :model/Database   {db-id :id} {:name "My DB"}
+         :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id :database_id db-id}
+         :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id :database_id db-id}
          :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash" :collection_id parent-coll-id}
-
          :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (str "/" parent-coll-id "/")}
-
-           :model/Database   {db-id :id} {:name "My DB"} ;; just needed for these temp tables
-           :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
+         :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
           (doseq [[model model-id] [[:model/Card card-id]
                                     [:model/Card model-id]
                                     [:model/Dashboard dashboard-id]
@@ -216,7 +215,8 @@
                    :model :dataset,
                    :can_write true,
                    :moderated_status nil,
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil}}
+                   :parent_collection {:id "ID", :name "parent", :authority_level nil}
+                   :database_id db-id}
                   {:description "this is my card",
                    :can_write true,
                    :name "my card",
@@ -224,7 +224,8 @@
                    :moderated_status nil,
                    :id "ID",
                    :display "table",
-                   :model :card}]
+                   :model :card
+                   :database_id db-id}]
                  (mt/with-test-user :rasta
                    (with-redefs [mi/can-read? (constantly true)
                                  mi/can-write? (fn ([id] (not= id table-id))
@@ -236,7 +237,7 @@
                                            (-> rv :database :id)                      (assoc-in [:database :id] db-id)
                                            (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
                                            (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID")))))))))
-          "After inserting 2 views of each model, we should have 2 views PER each model.")))))
+          "After inserting 2 views of each model, we should have 2 views PER each model."))))
 
 (deftest most-recent-dashboard-view-test
   (testing "The most recent dashboard view is never pruned"
@@ -305,7 +306,7 @@
 
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3 :view)
-      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta)))))
+      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
       (testing "archived dashboards are not returned (#45223)"
         (t2/update! :model/Dashboard dash-id-3 {:archived true})
