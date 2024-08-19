@@ -5,6 +5,7 @@ import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters
 import { defer } from "metabase/lib/promise";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
+import { uuid } from "metabase/lib/uuid";
 import {
   DashboardApi,
   CardApi,
@@ -33,6 +34,13 @@ import {
   getCurrentTabDashboardCards,
 } from "../utils";
 
+import {
+  SET_DOCUMENT_TITLE,
+  markCardAsSlow,
+  setDocumentTitle,
+  setShowLoadingCompleteFavicon,
+} from "./data-fetching-typed";
+
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
 export const CANCEL_FETCH_DASHBOARD_CARD_DATA =
@@ -45,21 +53,10 @@ export const FETCH_CARD_DATA_PENDING =
 export const CANCEL_FETCH_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
-export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
-
-export const SET_SHOW_LOADING_COMPLETE_FAVICON =
-  "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
 
 export const SET_LOADING_DASHCARDS_COMPLETE =
   "metabase/dashboard/SET_LOADING_DASHCARDS_COMPLETE";
-
-export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
-const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
-
-export const setShowLoadingCompleteFavicon = createAction(
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
-);
 
 // real dashcard ids are integers >= 1
 function isNewDashcard(dashcard) {
@@ -113,7 +110,11 @@ const loadingComplete = createThunkAction(
 
 export const fetchCardData = createThunkAction(
   FETCH_CARD_DATA,
-  function (card, dashcard, { reload, clearCache, ignoreCache } = {}) {
+  function (
+    card,
+    dashcard,
+    { reload, clearCache, ignoreCache, dashboardLoadId } = {},
+  ) {
     return async function (dispatch, getState) {
       dispatch({
         type: FETCH_CARD_DATA_PENDING,
@@ -235,9 +236,8 @@ export const fetchCardData = createThunkAction(
               token: dashcard.dashboard_id,
               dashcardId: dashcard.id,
               cardId: card.id,
-              ...getParameterValuesBySlug(
-                dashboard.parameters,
-                parameterValues,
+              parameters: JSON.stringify(
+                getParameterValuesBySlug(dashboard.parameters, parameterValues),
               ),
               ignore_cache: ignoreCache,
             },
@@ -280,6 +280,7 @@ export const fetchCardData = createThunkAction(
               parameters: datasetQuery.parameters,
               ignore_cache: ignoreCache,
               dashboard_id: dashcard.dashboard_id,
+              dashboard_load_id: dashboardLoadId,
             };
 
         result = await fetchDataOrError(
@@ -305,6 +306,7 @@ export const fetchDashboardCardData =
   (dispatch, getState) => {
     const dashboard = getDashboardComplete(getState());
     const selectedTabId = getSelectedTabId(getState());
+    const dashboardLoadId = uuid();
 
     const loadingIds = getLoadingDashCards(getState()).loadingIds;
     const nonVirtualDashcards = getCurrentTabDashboardCards(
@@ -352,7 +354,7 @@ export const fetchDashboardCardData =
 
     const promises = nonVirtualDashcardsToFetch.map(({ card, dashcard }) => {
       return dispatch(
-        fetchCardData(card, dashcard, { reload, clearCache }),
+        fetchCardData(card, dashcard, { reload, clearCache, dashboardLoadId }),
       ).then(() => {
         return dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
       });
@@ -365,7 +367,7 @@ export const fetchDashboardCardData =
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
-      Promise.all(promises).then(() => {
+      return Promise.all(promises).then(() => {
         dispatch(loadingComplete());
       });
     }
@@ -418,11 +420,6 @@ export const clearCardData = createAction(
   CLEAR_CARD_DATA,
   (cardId, dashcardId) => ({ cardId, dashcardId }),
 );
-
-export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
-  id: card.id,
-  result: true,
-}));
 
 function getDatasetQueryParams(datasetQuery = {}) {
   const { type, query, native, parameters = [] } = datasetQuery;

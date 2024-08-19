@@ -59,6 +59,7 @@
   (eval . (put-clojure-indent 'mt/query 1))
   (eval . (put-clojure-indent 'mt/test-driver 1))
   (eval . (put-clojure-indent 'mt/test-drivers 1))
+  (eval . (put-clojure-indent 'mt/with-anaphora 1))
   (eval . (put-clojure-indent 'prop/for-all 1))
   (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
   (eval . (put-clojure-indent 'tc/quick-check 1))

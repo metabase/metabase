@@ -40,7 +40,7 @@
 
 (declare unschedule-tasks-for-db!)
 
-(mu/defn ^:private job-context->database-id :- [:maybe ::lib.schema.id/database]
+(mu/defn- job-context->database-id :- [:maybe ::lib.schema.id/database]
   "Get the Database ID referred to in `job-context`."
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
@@ -166,35 +166,35 @@
 ;; These getter functions are not strictly necessary but are provided primarily so we can get some extra validation by
 ;; using them
 
-(mu/defn ^:private job-key :- (ms/InstanceOfClass JobKey)
+(mu/defn- job-key :- (ms/InstanceOfClass JobKey)
   "Return an appropriate string key for the job described by `task-info` for `database-or-id`."
   ^JobKey [task-info :- TaskInfo]
   (jobs/key (format "metabase.task.%s.job" (name (:key task-info)))))
 
-(mu/defn ^:private trigger-key :- (ms/InstanceOfClass TriggerKey)
+(mu/defn- trigger-key :- (ms/InstanceOfClass TriggerKey)
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
   ^TriggerKey [database  :- (ms/InstanceOf Database)
                task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
-(mu/defn ^:private cron-schedule :- [:maybe u.cron/CronScheduleString]
+(mu/defn- cron-schedule :- [:maybe u.cron/CronScheduleString]
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
   [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
-(mu/defn ^:private job-class :- ::class
+(mu/defn- job-class :- ::class
   "Get the Job class for `task-info`."
   [task-info :- TaskInfo]
   (:job-class task-info))
 
-(mu/defn ^:private trigger-description :- :string
+(mu/defn- trigger-description :- :string
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
   [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
-(mu/defn ^:private job-description :- :string
+(mu/defn- job-description :- :string
   "Return an appropriate description string for a job"
   [task-info :- TaskInfo]
   (format "%s for all databases" (name (:key task-info))))
@@ -204,7 +204,7 @@
 ;;; |                                            DELETING TASKS FOR A DB                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private delete-trigger!
+(mu/defn- delete-trigger!
   "Cancel a single sync trigger for `database-or-id` and `task-info`."
   [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
@@ -223,7 +223,7 @@
 ;;; |                                         (RE)SCHEDULING TASKS FOR A DB                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private job :- (ms/InstanceOfClass JobDetail)
+(mu/defn- job :- (ms/InstanceOfClass JobDetail)
   "Build a durable Quartz Job for `task-info`. Durable in Quartz allows the job to exist even if there are no triggers
   for it."
   ^JobDetail [task-info :- TaskInfo]
@@ -236,7 +236,7 @@
 (def ^:private sync-analyze-job (job sync-analyze-task-info))
 (def ^:private field-values-job (job field-values-task-info))
 
-(mu/defn ^:private trigger :- [:maybe (ms/InstanceOfClass CronTrigger)]
+(mu/defn- trigger :- [:maybe (ms/InstanceOfClass CronTrigger)]
   "Build a Quartz Trigger for `database` and `task-info` if a schedule exists."
   ^CronTrigger [database  :- (ms/InstanceOf Database)
                 task-info :- TaskInfo]

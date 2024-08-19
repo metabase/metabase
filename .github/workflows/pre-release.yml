@@ -11,6 +11,10 @@ on:
       commit:
         description: "A full-length commit SHA-1 hash"
         required: true
+      auto:
+        description: 'auto-patch release DO NOT SET MANUALLY'
+        type: boolean
+        default: false
 
 jobs:
   release-artifact:
@@ -119,7 +123,6 @@ jobs:
       DISPLAY: ""
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
-      CYPRESS_REPLAYIO_ENABLED: 1
       # disabled because of out of memory issues
       # probably related to https://github.com/cypress-io/cypress/issues/27415
       CYPRESS_NO_COMMAND_LOG: 1
@@ -145,6 +148,7 @@ jobs:
           java-version: 11
           distribution: "temurin"
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
@@ -162,7 +166,7 @@ jobs:
           yarn test-cypress-run \
             --env grepTags="@smoke",grepOmitFiltered=true \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-            --browser 'replay-chromium'
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
@@ -284,6 +288,30 @@ jobs:
       - name: Wait for Metabase to start
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
+
+  trigger-auto-publish:
+    if: ${{ inputs.auto }}
+    needs: [run-sanity-check, check-uberjar-health, verify-docker-pull]
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: trigger auto publish
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: '${{ github.ref }}',
+              inputs: {
+                commit: '${{ inputs.commit }}',
+                version: '${{ inputs.version }}',
+                auto: true,
+              }
+            });
 
   tests-complete-message:
     if: always()

@@ -1,11 +1,11 @@
 import type { ScheduleSettings } from "./settings";
 import type { Table } from "./table";
 
-import type { ISO8601Time } from ".";
+import type { ISO8601Time, LongTaskStatus } from ".";
 
 export type DatabaseId = number;
 
-export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
+export type InitialSyncStatus = LongTaskStatus;
 
 export type DatabaseSettings = {
   [key: string]: any;
@@ -20,7 +20,6 @@ export type DatabaseFeature =
   | "dynamic-schema"
   | "expression-aggregations"
   | "expressions"
-  | "foreign-keys"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
@@ -41,7 +40,7 @@ export type DatabaseFeature =
 export interface Database extends DatabaseData {
   id: DatabaseId;
   is_saved_questions: boolean;
-  features: DatabaseFeature[];
+  features?: DatabaseFeature[];
   creator_id?: number;
   timezone?: string;
   native_permissions: "write" | "none";
@@ -54,6 +53,7 @@ export interface Database extends DatabaseData {
   uploads_enabled: boolean;
   uploads_schema_name: string | null;
   uploads_table_prefix: string | null;
+  is_audit?: boolean;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

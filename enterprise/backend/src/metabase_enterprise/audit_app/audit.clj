@@ -214,7 +214,8 @@
         (let [report (log/with-no-logs
                        (serialization.cmd/v2-load-internal! (str (instance-analytics-plugin-dir (plugins/plugins-dir)))
                                                             {:backfill? false}
-                                                            :token-check? false))]
+                                                            :token-check? false
+                                                            :require-initialized-db? false))]
           (if (not-empty (:errors report))
             (log/info (str "Error Loading Analytics Content: " (pr-str report)))
             (do

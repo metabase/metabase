@@ -177,10 +177,10 @@ const Dashboards = createEntity({
         dashboards: [DashboardSchema],
       }),
     )(
-      ({ id }) =>
+      ({ id, ...params }) =>
         dispatch =>
           entityCompatibleQuery(
-            id,
+            { id, ...params },
             dispatch,
             dashboardApi.endpoints.getDashboardQueryMetadata,
             { forceRefetch: false },
@@ -197,10 +197,10 @@ const Dashboards = createEntity({
         dashboards: [DashboardSchema],
       }),
     )(
-      ({ entity, entityId }) =>
+      ({ entity, entityId, dashboard_load_id }) =>
         dispatch =>
           entityCompatibleQuery(
-            { entity, entityId },
+            { entity, entityId, dashboard_load_id },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),

@@ -1,21 +1,11 @@
 (ns hooks.clojure.core
   (:require
    [clj-kondo.hooks-api :as hooks]
-   [clojure.set :as set]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [hooks.common]))
 
-(defn- node->qualified-symbol [node]
-  (try
-   (when (hooks/token-node? node)
-     (let [sexpr (hooks/sexpr node)]
-       (when (symbol? sexpr)
-         (let [resolved (hooks/resolve {:name sexpr})]
-           (when-not (= :clj-kondo/unknown-namespace (:ns resolved))
-             (symbol (name (:ns resolved)) (name (:name resolved))))))))
-   ;; some symbols like `*count/Integer` aren't resolvable.
-   (catch Exception _
-     nil)))
-
+;;; TODO -- seems silly to maintain different blacklists and whitelists here than we use for the deftest `^:parallel`
+;;; checker... those lists live in the Clj Kondo config file
 (def ^:private symbols-allowed-in-fns-not-ending-in-an-exclamation-point
   '#{;; these toucan methods might actually set global values if it's used outside of a transaction,
      ;; but since mt/with-temp runs in a transaction, so we'll ignore them in this case.
@@ -159,7 +149,7 @@
               (doseq [child (:children form)]
                 (walk f child)))]
       (walk (fn [form]
-              (when-let [qualified-symbol (node->qualified-symbol form)]
+              (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
                 (when (and (not (contains? symbols-allowed-in-fns-not-ending-in-an-exclamation-point qualified-symbol))
                            (end-with-exclamation? qualified-symbol))
                   (hooks/reg-finding! (assoc (meta form-name)

@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
    [metabase.email.messages :as messages]
@@ -73,12 +74,12 @@
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
     (t2.with-temp/with-temp [User user]
-      (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
-              (->> (mt/with-log-messages-for-level :error
-                     (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
-                   ;; geojson can throw errors and we want the authentication error
-                   (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
-                   first))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (mt/client :post 400 "session" {:email (:email user), :password "wooo"})
+        (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+                (->> (messages)
+                     ;; geojson can throw errors and we want the authentication error
+                     (m/find-first #(= (:message %) "Authentication endpoint error")))))))))
 
 (deftest login-validation-test
   (reset-throttlers!)
@@ -115,9 +116,10 @@
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (login))))
       (testing "Error should be logged (#14317)"
-        (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
-                (first (mt/with-log-messages-for-level :error
-                         (login))))))
+        (mt/with-log-messages-for-level [messages :error]
+          (login)
+          (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+                  (first (messages))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
           "Trying to login immediately again should still return throttling error"))))
@@ -468,6 +470,18 @@
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
+
+(deftest properties-skip-sensitive-test
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the token for admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:premium-embedding-token}))))
+    (testing "don't return the token for non-admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
+                 keys #{:premium-embedding-token}))))))
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 

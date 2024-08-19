@@ -67,7 +67,7 @@
    {:f #'lib.drill-thru.zoom-in-geographic/zoom-in-geographic-drill,             :return-drills-for-dimensions? true}
    {:f #'lib.drill-thru.zoom-in-bins/zoom-in-binning-drill,                      :return-drills-for-dimensions? true}])
 
-(mu/defn ^:private dimension-contexts :- [:maybe [:sequential {:min 1} ::lib.schema.drill-thru/context]]
+(mu/defn- dimension-contexts :- [:maybe [:sequential {:min 1} ::lib.schema.drill-thru/context]]
   "Create new context maps (with updated `:column` and `:value` keys) for each of the `:dimensions` passed in. Some
   drill thru functions are expected to return drills for each of these columns, while others are expected to ignore
   them. Why? Who knows."

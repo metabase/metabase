@@ -76,7 +76,7 @@
                                                                    :global {:distinct-count 3}}
                                              :last_analyzed       nil}]
       (is (nil? (:semantic_type (t2/select-one Field :id (u/the-id field)))))
-      (classify/classify-fields-for-db! db [table] (constantly nil))
+      (classify/classify-fields-for-db! db (constantly nil))
       (is (= :type/Income (:semantic_type (t2/select-one Field :id (u/the-id field))))))))
 
 (deftest classify-decimal-fields-test
@@ -94,5 +94,5 @@
                                                                     :global {:distinct-count 3}}
                                               :last_analyzed       nil}]
       (is (nil? (:semantic_type (t2/select-one Field :id (u/the-id field)))))
-      (classify/classify-fields-for-db! db [table] (constantly nil))
+      (classify/classify-fields-for-db! db (constantly nil))
       (is (= :type/Income (:semantic_type (t2/select-one Field :id (u/the-id field))))))))

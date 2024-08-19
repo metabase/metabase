@@ -231,3 +231,7 @@ export function tableOrCardDependentMetadata(
 ): DependentItem[] {
   return ML.table_or_card_dependent_metadata(metadataProvider, tableId);
 }
+
+export function columnKey(column: ColumnMetadata): string {
+  return ML.column_key(column);
+}

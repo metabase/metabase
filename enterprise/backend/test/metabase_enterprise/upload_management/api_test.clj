@@ -48,7 +48,7 @@
   (testing "DELETE ee/upload-management/:id"
     (mt/test-driver :h2
       (mt/with-empty-db
-       (upload-test/with-uploads-enabled
+       (upload-test/with-uploads-enabled!
          (testing "Behind a feature flag"
            (mt/with-premium-features #{} ;; not :upload-management
              (is (str/starts-with? (mt/user-http-request :crowberto :delete 402 (delete-url 1))
@@ -65,7 +65,7 @@
                  (is (not (contains? (listed-table-ids) table-id))))))
 
            (testing "Uploads may be deleted even when *uploading* has been disabled"
-             (upload-test/with-uploads-disabled
+             (upload-test/with-uploads-disabled!
                (let [table-id (:id (oss-test/create-csv!))]
                  (is (true? (mt/user-http-request :crowberto :delete 200 (delete-url table-id)))))))
 

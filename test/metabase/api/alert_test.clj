@@ -210,7 +210,7 @@
 
 (deftest post-alert-test
   (is (= {:errors          {:alert_condition "enum of rows, goal"}
-          :specific-errors {:alert_condition ["should be either rows or goal, received: \"not rows\""]}}
+          :specific-errors {:alert_condition ["should be either \"rows\" or \"goal\", received: \"not rows\""]}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition "not rows"
                                     :card            "foobar"})))
@@ -419,7 +419,7 @@
 
 (deftest put-alert-test-2
   (is (= {:errors {:alert_condition "nullable enum of rows, goal"},
-          :specific-errors {:alert_condition ["should be either rows or goal, received: \"not rows\""]}}
+          :specific-errors {:alert_condition ["should be either \"rows\" or \"goal\", received: \"not rows\""]}}
          (mt/user-http-request
           :rasta :put 400 "alert/1" {:alert_condition "not rows"})))
 

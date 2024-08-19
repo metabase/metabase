@@ -48,6 +48,7 @@ import {
   openStaticEmbeddingModal,
   publishChanges,
   visitIframe,
+  duplicateTab,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -91,10 +92,22 @@ const TAB_2 = {
   name: "Tab 2",
 };
 
+const changeSynchronousBatchUpdateSetting = value => {
+  cy.request("PUT", "/api/setting/synchronous-batch-updates", {
+    value: value,
+  });
+};
+
 describe("scenarios > dashboard > tabs", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(true);
+  });
+
+  afterEach(() => {
+    cy.signInAsAdmin();
+    changeSynchronousBatchUpdateSetting(false);
   });
 
   it("should only display cards on the selected tab", () => {
@@ -455,12 +468,10 @@ describe("scenarios > dashboard > tabs", () => {
     };
 
     firstQuestion().then(r => {
-      // Disable view_count updates to handle perf issues (for now) (#44359)
-      expect(r.view_count).to.equal(0);
+      expect(r.view_count).to.equal(1);
     });
     secondQuestion().then(r => {
-      // Disable view_count updates to handle perf issues (for now) (#44359)
-      expect(r.view_count).to.equal(0);
+      expect(r.view_count).to.equal(1);
     });
 
     // Visit first tab and confirm only first card was queried
@@ -470,12 +481,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuerySpy").should("not.have.been.called");
     cy.wait("@firstTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 3 = 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
+        expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (firstTabQuery)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 2 = 1 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
       });
     });
 
@@ -485,12 +494,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@secondTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 4 = 3 (previously) + 1 (firstQuestion)
+        expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 4 = 2 (previously) + 1 (secondQuestion) + 1 (secondTabQuery)
+        expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (secondTabQuery)
       });
     });
 
@@ -501,12 +508,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
 
     firstQuestion().then(r => {
-      // Disable view_count updates to handle perf issues (for now) (#44359)
-      expect(r.view_count).to.equal(0); // 5 = 4 (previously) + 1 (firstQuestion)
+      expect(r.view_count).to.equal(5); // 4 (previously) + 1 (firstQuestion)
     });
     secondQuestion().then(r => {
-      // Disable view_count updates to handle perf issues (for now) (#44359)
-      expect(r.view_count).to.equal(0); // 5 = 4 (previously) + 1 (secondQuestion)
+      expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
     });
 
     // Go to public dashboard
@@ -536,12 +541,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicSecondTabQuerySpy").should("not.have.been.called");
     cy.wait("@publicFirstTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 7 = 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
+        expect(r.view_count).to.equal(7); // 5 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 6 = 5 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(6); // 5 (previously) + 1 (secondQuestion)
       });
     });
 
@@ -551,12 +554,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicFirstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@publicSecondTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 8 = 7 (previously) + 1 (firstQuestion)
+        expect(r.view_count).to.equal(8); // 7 (previously) + 1 (firstQuestion)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 8 = 6 (previously) + 1 (secondQuestion) + 1 (publicSecondTabQuery)
+        expect(r.view_count).to.equal(8); // 6 (previously) + 1 (secondQuestion) + 1 (publicSecondTabQuery)
       });
     });
 
@@ -566,12 +567,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@publicSecondTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@publicFirstTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 10 = 8 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
+        expect(r.view_count).to.equal(10); // 8 (previously) + 1 (firstQuestion) + 1 (publicFirstTabQuery)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 9 = 8 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(9); // 8 (previously) + 1 (secondQuestion)
       });
     });
   });
@@ -607,22 +606,20 @@ describe("scenarios > dashboard > tabs", () => {
     };
 
     firstQuestion().then(r => {
-      // Disable view_count updates to handle perf issues (for now) (#44359)
-      expect(r.view_count).to.equal(0); // 1 (firstQuestion)
+      expect(r.view_count).to.equal(1); // 1 (firstQuestion)
     });
     secondQuestion().then(r => {
-      // Disable view_count updates to handle perf issues (for now) (#44359)
-      expect(r.view_count).to.equal(0); // 1 (secondQuestion)
+      expect(r.view_count).to.equal(1); // 1 (secondQuestion)
     });
 
     cy.intercept(
       "GET",
-      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}`,
+      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
       cy.spy().as("firstTabQuerySpy"),
     ).as("firstTabQuery");
     cy.intercept(
       "GET",
-      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}`,
+      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}*`,
       cy.spy().as("secondTabQuerySpy"),
     ).as("secondTabQuery");
 
@@ -640,12 +637,10 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.wait("@firstTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 3 = 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
+        expect(r.view_count).to.equal(3); // 1 (previously) + 1 (firstQuestion) + 1 (first tab query)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 2 = 1 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(2); // 1 (previously) + 1 (secondQuestion)
       });
     });
 
@@ -654,12 +649,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@firstTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@secondTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 4 = 3 (previously) + 1 (firstQuestion)
+        expect(r.view_count).to.equal(4); // 3 (previously) + 1 (firstQuestion)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 4 = 2 (previously) + 1 (secondQuestion) + 1 (second tab query)
+        expect(r.view_count).to.equal(4); // 2 (previously) + 1 (secondQuestion) + 1 (second tab query)
       });
     });
 
@@ -669,12 +662,10 @@ describe("scenarios > dashboard > tabs", () => {
     cy.get("@secondTabQuerySpy").should("have.been.calledOnce");
     cy.wait("@firstTabQuery").then(r => {
       firstQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 6 = 4 (previously) + 1 (firstQuestion) + 1 (first tab query)
+        expect(r.view_count).to.equal(6); // 4 (previously) + 1 (firstQuestion) + 1 (first tab query)
       });
       secondQuestion().then(r => {
-        // Disable view_count updates to handle perf issues (for now) (#44359)
-        expect(r.view_count).to.equal(0); // 5 = 4 (previously) + 1 (secondQuestion)
+        expect(r.view_count).to.equal(5); // 4 (previously) + 1 (secondQuestion)
       });
     });
   });
@@ -734,54 +725,72 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 3");
 
     // Prior to this bugfix, tab containing this text would be too long to drag to the left of either of the other tabs.
-    const longName =
-      "This is a really, really, really, really, really long tab name";
+    const longName = "This is a really really long tab name";
 
-    // Set the long tab name
     cy.findByRole("tab", { name: "Tab 3" })
       .dblclick()
-      .type(`${longName}{enter}`);
+      .type(`${longName}{enter}`)
+      .trigger("mousedown", { button: 0, force: true })
+      .trigger("mousemove", {
+        button: 0,
+        // You have to move the mouse at least 10 pixels to satisfy the
+        // activationConstraint: { distance: 10 } in the mouseSensor. If you
+        // remove that activationConstraint while still having the mouseSensor
+        // (required to make this pass), then the tests in
+        // DashboardTabs.unit.spec.tsx will fail.
+        clientX: 11,
+        clientY: 0,
+        force: true,
+      })
+      .trigger("mousemove", {
+        button: 0,
+        clientX: 11,
+        clientY: 0,
+        force: true,
+      })
+      .trigger("mouseup");
 
-    // Drag the long tab to the beginning of the tab row
-    cy.findByRole("button", { name: "Tab 1" }).as("Tab 1");
-    cy.findByRole("button", { name: longName }).as("LongTab");
-
-    cy.get("@LongTab").then(target => {
-      cy.get("@Tab 1").then(tab1Element => {
-        const coordsDrag = tab1Element[0].getBoundingClientRect();
-        cy.wrap(target)
-          .should("exist")
-          .trigger("mousedown", { button: 0, force: true })
-          // You have to move the mouse at least 10 pixels to satisfy the
-          // activationConstraint: { distance: 10 } in the mouseSensor.
-          // If you remove that activationConstraint while still having the
-          // mouseSensor (required to make this pass), then the tests in
-          // DashboardTabs.unit.spec.tsx will fail.
-          .trigger("mousemove", {
-            button: 0,
-            clientX: 11,
-            clientY: 0,
-            force: true,
-          })
-          .trigger("mousemove", {
-            button: 0,
-            clientX: coordsDrag.x,
-            clientY: 0,
-            force: true,
-          })
-          .trigger("mouseup");
-      });
-    });
-
-    // Ensure the tab name has reverted to the long name after the drag has completed
-    cy.findByRole("button", { name: longName }).should("be.visible");
-
-    saveDashboard();
-
-    // After the long tab is dragged, it is now in the first position
+    // After the long tab is dragged, it is now in the first position. We need
+    // to assert this before saving, to make sure the dragging animation
+    // finishes before trying to click "Save"
     cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
     cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
+
+    saveDashboard();
+
+    // Confirm positions are the same after saving
+    cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
+    cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
+  });
+
+  it("should allow users to duplicate and delete tabs more than once (#45364)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+
+    duplicateTab("Tab 1");
+
+    cy.findAllByRole("tab").eq(0).should("have.text", "Tab 1");
+    cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
+
+    duplicateTab("Tab 1");
+
+    cy.findAllByRole("tab").eq(0).should("have.text", "Tab 1");
+    cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
+    cy.findAllByRole("tab").eq(2).should("have.text", "Copy of Tab 1");
+
+    deleteTab("Tab 1");
+
+    cy.findAllByRole("tab").eq(0).should("have.text", "Copy of Tab 1");
+    cy.findAllByRole("tab").eq(1).should("have.text", "Copy of Tab 1");
+
+    cy.findAllByRole("tab").eq(0).findByRole("button").click();
+    popover().within(() => {
+      cy.findByText("Delete").click();
+    });
+
+    cy.findByRole("tab").should("have.text", "Copy of Tab 1");
   });
 });
 

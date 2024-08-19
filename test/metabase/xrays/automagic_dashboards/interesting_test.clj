@@ -1,10 +1,9 @@
-(ns metabase.xrays.automagic-dashboards.interesting-test
+(ns ^:mb/once metabase.xrays.automagic-dashboards.interesting-test
   (:require
-   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.models :refer [Card Field]]
    [metabase.models.interface :as mi]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.test :as mt]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
@@ -386,18 +385,16 @@
                  "Profit" {:matches [{:name "DISCOUNT"}
                                      {:name "QUANTITY"}]}}
                 (#'interesting/find-dimensions context
-                  (->> dimension-defs cycle (drop 2) (take 4)))))
+                                               (->> dimension-defs cycle (drop 2) (take 4)))))
         (is (=? {"Date"    {:matches [{:name "Date"}]}
                  "Revenue" {:matches [{:name "DISCOUNT"}
                                       {:name "QUANTITY"}]}}
                 (#'interesting/find-dimensions context
-                                         (->> dimension-defs cycle (drop 3) (take 4)))))))))
+                                               (->> dimension-defs cycle (drop 3) (take 4)))))))))
 
 (defn- result-metadata-for-query [query]
-  (first
-   (a/alts!!
-    [(qp.async/result-metadata-for-query-async query)
-     (a/timeout 1000)])))
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.metadata/legacy-result-metadata query nil))
 
 (deftest ^:parallel candidate-binding-inner-shape-test
   (testing "Ensure we have examples to understand the shape returned from candidate-bindings"
@@ -596,3 +593,53 @@
              (interesting/normalize-seq-of-maps :froobs froobs)))
       (is (= [{:nurnies-name "Baz" :size 100}]
              (interesting/normalize-seq-of-maps :nurnies nurnies))))))
+
+
+;;; ------------------- Datetime resolution inference -------------------
+
+(deftest ^:parallel optimal-temporal-resolution-test
+  (doseq [[m base-type expected] [[{:earliest "2015"
+                                    :latest   "2017"}
+                                   :type/DateTime
+                                   :month]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-03-04"}
+                                   :type/DateTime
+                                   :day]
+                                  [{:earliest "2005"
+                                    :latest   "2017"}
+                                   :type/DateTime
+                                   :year]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-01-02"}
+                                   :type/DateTime
+                                   :hour]
+                                  [{:earliest "2017-01-01T00:00:00"
+                                    :latest   "2017-01-01T00:02:00"}
+                                   :type/DateTime
+                                   :minute]
+                                  [{:earliest "2017-01-01T00:02:00"
+                                    :latest   "2017-01-01T00:02:00"}
+                                   :type/DateTime
+                                   :minute]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-01-01"}
+                                   :type/Date
+                                   :day]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2018-01-01"}
+                                   :type/Date
+                                   :month]
+                                  [{:earliest "00:02:00"
+                                    :latest   "00:02:00"}
+                                   :type/Time
+                                   :minute]
+                                  [{:earliest "00:02:00"
+                                    :latest   "10:02:00"}
+                                   :type/Time
+                                   :hour]]
+          :let         [fingerprint {:type {:type/DateTime m}}]]
+    (testing (format "base_type=%s, fingerprint = %s" base-type (pr-str fingerprint))
+      (is (= expected
+             (#'interesting/optimal-temporal-resolution {:fingerprint fingerprint
+                                                         :base_type   base-type}))))))

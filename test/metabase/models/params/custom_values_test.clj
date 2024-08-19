@@ -248,3 +248,23 @@
                                             :value_field [:field 0 nil]}}
                     nil
                     (constantly mock-default-result))))))))))
+
+(deftest ^:parallel order-by-aggregation-fields-test
+  (testing "Values could be retrieved for queries containing ordering by aggregation (#46369)"
+    (doseq [model? [true false]]
+      (testing (format "source card is a %s" (if model? "model" "question"))
+        (mt/with-temp
+          [Card {card-id :id} (merge (-> (mt/mbql-query
+                                          products
+                                          {:aggregation [[:count]]
+                                           :breakout    [$category !month.created_at]
+                                           :order-by    [[:asc [:aggregation 0]]]})
+                                         mt/card-with-source-metadata-for-query)
+                                     {:database_id     (mt/id)
+                                      :type            (if model? :model :question)
+                                      :table_id        (mt/id :products)})]
+          (is (= {:has_more_values false
+                  :values          [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]}
+                 (custom-values/values-from-card
+                  (t2/select-one Card :id card-id)
+                  (mt/$ids $products.category)))))))))

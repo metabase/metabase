@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -115,7 +116,7 @@
                    target)))
    dashboard-param-id->param))
 
-(mu/defn ^:private resolve-params-for-query :- [:maybe [:sequential :map]]
+(mu/defn- resolve-params-for-query :- [:maybe [:sequential :map]]
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
@@ -125,9 +126,6 @@
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
   (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
-        ;; ignore default values in request params as well. (#20516)
-        request-params            (for [param request-params]
-                                    (dissoc param :default))
         dashboard                 (-> (t2/select-one Dashboard :id dashboard-id)
                                       (t2/hydrate :resolved-params)
                                       (api/check-404))
@@ -141,12 +139,15 @@
                                         (map (fn [[param-id param]]
                                                [param-id (dissoc param :default)]))
                                         (:resolved-params dashboard))
-        request-param-id->param   (into {} (map (juxt :id identity)) request-params)
+        ;; ignore default values in request params as well. (#20516)
+        request-param-id->param   (into {} (map (juxt :id #(dissoc % :default))) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
-      (doseq [{:keys [id value]} request-params]
-        (user-parameter-value/upsert! user-id id value)))
+      (when (seq request-params)
+        (user-parameter-value/batched-upsert!
+         user-id dashboard-id
+         request-params)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
                 (u/pprint-to-str (update-vals dashboard-param-id->param
                                               (fn [param]
@@ -175,6 +176,7 @@
                     :attributes {:dashboard/id dashboard-id
                                  :dashcard/id  dashcard-id
                                  :card/id      card-id}}
+    (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     ;; make sure we can read this Dashboard. Card will get read-checked later on inside
     ;; [[qp.card/process-query-for-card]]
     (api/read-check Dashboard dashboard-id)

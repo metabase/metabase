@@ -154,6 +154,7 @@ export const tokenFeatures = [
   "llm_autodescription",
   "official_collections",
   "sandboxes",
+  "scim",
   "sso_google",
   "sso_jwt",
   "sso_ldap",
@@ -164,6 +165,8 @@ export const tokenFeatures = [
   "snippet_collections",
   "email_allow_list",
   "email_restrict_recipients",
+  "upload_management",
+  "collection_cleanup",
 ] as const;
 
 export type TokenFeature = typeof tokenFeatures[number];
@@ -201,7 +204,7 @@ interface InstanceSettings {
   "admin-email": string;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
-  "email-smtp-security": "None" | "SSL" | "TLS" | "STARTTLS";
+  "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
@@ -329,6 +332,8 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "show-updated-permission-modal": boolean;
+  "show-updated-permission-banner": boolean;
 };
 
 export type Settings = InstanceSettings &

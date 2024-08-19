@@ -290,6 +290,10 @@
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
+(defmethod ->pMBQL :relative-time-interval
+  [[_tag & [_column _value _bucket _offset-value _offset-bucket :as args]]]
+  (lib.options/ensure-uuid (into [:relative-time-interval {}] (map ->pMBQL) args)))
+
 ;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
 (defmethod ->pMBQL :offset
   [[tag opts expr n, :as clause]]
@@ -413,7 +417,7 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract
-             :concat :substring :replace :regexextract :regex-match-first
+             :concat :substring :replace :regex-match-first
              :length :trim :ltrim :rtrim :upper :lower]]
   (lib.hierarchy/derive tag ::expression))
 
@@ -427,7 +431,7 @@
               (map ->legacy-MBQL))
         (:columns stage-metadata)))
 
-(mu/defn ^:private chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
+(mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
   ;; :source-query.

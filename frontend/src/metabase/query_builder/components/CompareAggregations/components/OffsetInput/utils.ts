@@ -2,26 +2,18 @@ import { t } from "ttag";
 
 import * as Lib from "metabase-lib";
 
-export const getLabel = (query: Lib.Query, stageIndex: number): string => {
+import type { ComparisonType } from "../../types";
+
+export const getHelp = (
+  query: Lib.Query,
+  stageIndex: number,
+  comparisonType: ComparisonType,
+): string => {
   const firstBreakout = Lib.breakouts(query, stageIndex)[0];
 
-  if (firstBreakout) {
-    const firstBreakoutColumn = Lib.breakoutColumn(
-      query,
-      stageIndex,
-      firstBreakout,
-    );
-
-    if (!Lib.isDate(firstBreakoutColumn)) {
-      return t`Row for comparison`;
-    }
+  if (comparisonType === "moving-average") {
+    return t`period moving average`;
   }
-
-  return t`Previous period`;
-};
-
-export const getHelp = (query: Lib.Query, stageIndex: number): string => {
-  const firstBreakout = Lib.breakouts(query, stageIndex)[0];
 
   if (!firstBreakout) {
     return t`periods ago based on grouping`;
@@ -38,7 +30,7 @@ export const getHelp = (query: Lib.Query, stageIndex: number): string => {
     firstBreakoutColumn,
   );
 
-  if (!Lib.isDate(firstBreakoutColumn)) {
+  if (!Lib.isTemporal(firstBreakoutColumn)) {
     return t`rows above based on “${firstBreakoutColumnInfo.displayName}”`;
   }
 

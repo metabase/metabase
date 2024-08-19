@@ -41,7 +41,7 @@
   metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   [_query])
 
-(mu/defn ^:private check-card-read-perms
+(mu/defn- check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
@@ -54,7 +54,7 @@
                                     :card-id card-id})))]
       (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
       (when-not (mi/can-read? card)
-        (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
+        (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
                                 (mi/perms-objects-set card :read)
                                 {:card-id *card-id*}))))))
 
@@ -85,7 +85,7 @@
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (let [card-id (or *card-id* (:qp/source-card-id outer-query))
-          required-perms (query-perms/required-perms outer-query :already-preprocessed? true)]
+          required-perms (query-perms/required-perms-for-query outer-query :already-preprocessed? true)]
       (cond
         card-id
         (do
@@ -131,7 +131,7 @@
     (check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
              outer-query
-             (query-perms/required-perms outer-query :already-preprocessed? true)
+             (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
              :throw-exceptions? false)
     (check-block-permissions outer-query)))
 

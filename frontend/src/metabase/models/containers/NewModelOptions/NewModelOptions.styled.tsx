@@ -16,9 +16,7 @@ export const OptionsRoot = styled.div`
   flex-direction: column;
   justify-content: center;
   align-items: center;
-
   height: 100%;
-
   margin: auto 0.5rem;
 
   ${breakpointMinSmall} {

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.models.collection :as collection]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.recent-views :as recent-views]
@@ -26,13 +27,15 @@
       (update :parent_collection #(into {} %))
       (update :timestamp type)))
 
-(defn recent-views [user-id]
-  (:recents (recent-views/get-recents user-id [:views])))
+(defn recent-views
+  ([user-id] (recent-views user-id [:views]))
+  ([user-id context] (:recents (recent-views/get-recents user-id context))))
 
 (deftest simple-get-list-card-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Card       {card-id         :id} {:type "question" :name "name" :display "display" :collection_id coll-id}]
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
@@ -42,7 +45,8 @@
              :id card-id,
              :display "display",
              :timestamp String
-             :model :card}]
+             :model :card
+             :database_id db-id}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -50,7 +54,8 @@
 (deftest simple-get-list-dataset-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id}]
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
@@ -59,7 +64,8 @@
              :moderated_status nil,
              :id card-id,
              :timestamp String
-             :model :dataset}]
+             :model :dataset
+             :database_id db-id}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -172,14 +178,12 @@
       (mt/with-full-data-perms-for-all-users!
         (mt/with-temp
           [:model/Collection {parent-coll-id :id} {:name "parent"}
-           :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id}
-           :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id}
+           :model/Database   {db-id :id} {:name "My DB"} ;; just needed for temp tables and card's db:
 
+           :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id :database_id db-id}
+           :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id :database_id db-id}
            :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash" :collection_id parent-coll-id}
-
            :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (->location parent-coll-id)}
-
-           :model/Database   {db-id :id} {:name "My DB"} ;; just needed for these temp tables
            :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
           (doseq [[model model-id] [[:model/Card card-id]
                                     [:model/Card model-id]
@@ -214,7 +218,8 @@
                    :model :dataset,
                    :can_write true,
                    :moderated_status nil,
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil}}
+                   :parent_collection {:id "ID", :name "parent", :authority_level nil}
+                   :database_id db-id}
                   {:description "this is my card",
                    :can_write true,
                    :name "my card",
@@ -222,7 +227,8 @@
                    :moderated_status nil,
                    :id "ID",
                    :display "table",
-                   :model :card}]
+                   :model :card
+                   :database_id db-id}]
                  (mt/with-test-user :rasta
                    (with-redefs [mi/can-read? (constantly true)
                                  mi/can-write? (fn ([id] (not= id table-id))
@@ -291,7 +297,6 @@
     (t2.with-temp/with-temp [:model/Dashboard {dash-id :id} {}
                              :model/Dashboard {dash-id-2 :id} {}
                              :model/Dashboard {dash-id-3 :id} {}]
-
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
@@ -304,7 +309,11 @@
 
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id-3 :view)
-      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta)))))))
+      (is (= dash-id-3 (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
+
+      (testing "archived dashboards are not returned (#45223)"
+        (t2/update! :model/Dashboard dash-id-3 {:archived true})
+        (is (= dash-id (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))))))
 
 (deftest id-pruning-test
   (mt/with-temp [:model/Database a-db     {}
@@ -476,9 +485,7 @@
 
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (def t (t2/select :model/RecentViews))
-        (def rv0 (recent-views (mt/user->id :rasta)))
-        (with-redefs [mi/can-read? (constantly true)
+        (with-redefs [mi/can-read?                              (constantly true)
                       data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
                                         (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
@@ -512,3 +519,30 @@
     (is (= 2 (count
               (mt/with-test-user :rasta
                 (:recents (recent-views/get-recents (mt/user->id :rasta) [:selections :views]))))))))
+
+(deftest special-collections-are-treated-specially
+  (mt/with-temp
+    [:model/Collection {instance-analytics-id :id} {:type collection/instance-analytics-collection-type}
+     :model/Collection {with-ns-id :id} {:namespace "fluffy"}
+     :model/Collection {normal-id :id} {}]
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection normal-id :view)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection with-ns-id :view)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection (collection/trash-collection-id) :view)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection instance-analytics-id :view)
+    (testing "sanity check: all models are in the recent views table"
+      (is (= #{instance-analytics-id
+               (collection/trash-collection-id)
+               with-ns-id
+               normal-id}
+             (t2/select-fn-set :model_id :model/RecentViews :model "collection" :user_id (mt/user->id :rasta) :context "view"))))
+    (testing "only the instance analytics gets included"
+      (is (= [{:id instance-analytics-id}
+              {:id normal-id}]
+             (map #(select-keys % [:id])
+                  (mt/with-test-user :rasta
+                    (recent-views (mt/user->id :rasta)))))))
+    (testing "for selections, instance analytics is excluded"
+      (is (= [{:id normal-id}]
+             (map #(select-keys % [:id])
+                  (mt/with-test-user :rasta
+                    (recent-views (mt/user->id :rasta) [:selections :views]))))))))

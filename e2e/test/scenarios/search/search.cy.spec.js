@@ -224,9 +224,7 @@ describe("scenarios > search", () => {
 
   describe("accessing full page search with `Enter`", () => {
     it("should not render full page search if user has not entered a text query", () => {
-      cy.intercept("GET", "/api/activity/recents?context=views").as(
-        "getRecentViews",
-      );
+      cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
 
       visitEmbeddingWithSearch("/");
 

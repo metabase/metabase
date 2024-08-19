@@ -8,6 +8,8 @@
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
+   [metabase.config :as config]
+   [metabase.util.log.capture]
    [net.cgrand.macrovich :as macros]))
 
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
@@ -78,17 +80,25 @@
   You shouldn't have to use this directly; prefer the level-specific macros like [[info]]."
   {:arglists '([level message & more] [level throwable message & more])}
   [level x & more]
-  (macros/case
-    :cljs (glogi-logp (str *ns*) level x more)
-    :clj  (tools-logp *ns*       level x more)))
+  `(do
+     ~(config/build-type-case
+        :dev
+       `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
+     ~(macros/case
+        :cljs (glogi-logp (str *ns*) level x more)
+        :clj  (tools-logp *ns*       level x more))))
 
 (defmacro logf
   "Implementation for printf-style `logf`.
   You shouldn't have to use this directly; prefer the level-specific macros like [[infof]]."
   [level x & args]
-  (macros/case
-    :cljs (glogi-logf (str *ns*) level x args)
-    :clj  (tools-logf *ns*       level x args)))
+  `(do
+     ~(config/build-type-case
+        :dev
+        `(metabase.util.log.capture/capture-logf ~(str *ns*) ~level ~x ~@args))
+     ~(macros/case
+        :cljs (glogi-logf (str *ns*) level x args)
+        :clj  (tools-logf *ns*       level x args))))
 
 ;;; --------------------------------------------------- Public API ---------------------------------------------------
 (defmacro trace

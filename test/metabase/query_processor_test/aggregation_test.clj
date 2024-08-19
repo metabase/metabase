@@ -2,6 +2,7 @@
   "Tests for MBQL aggregations."
   (:require
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.store :as qp.store]
@@ -63,11 +64,11 @@
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
-                  :rows [[3.4]]}
-                 (qp.test-util/rows-and-cols
-                  (mt/format-rows-by [1.0]
-                    (mt/process-query query))))))))))
+          (is (=? {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
+                   :rows [[3.4]]}
+                  (qp.test-util/rows-and-cols
+                   (mt/format-rows-by [1.0]
+                     (mt/process-query query))))))))))
 
 (deftest ^:parallel standard-deviation-unsupported-test
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
@@ -150,10 +151,10 @@
                                                  :settings {:is_priceless false}}]})
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
-                      :settings {:is_priceless false})
-               (or (-> results mt/cols first)
-                   results)))))))
+        (is (=? (assoc (qp.test-util/aggregate-col :sum :venues :price)
+                       :settings {:is_priceless false})
+                (or (-> results mt/cols first)
+                    results)))))))
 
 (deftest ^:parallel semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
@@ -202,11 +203,18 @@
                  {:aggregation [[:distinct $name]
                                 [:distinct $price]]})))))))
 
+;;; TODO: This test was added in PR #44442 fixing issue #35425. Enable this test for other drivers _while_ fixing the
+;;;       issue #14523.
+(defmethod driver/database-supports? [::driver/driver ::complex-distinct-aggregation-test]
+  [_driver _feature _database]
+  false)
+
+(defmethod driver/database-supports? [:mongo ::complex-distinct-aggregation-test]
+  [_driver _feature _database]
+  true)
+
 (deftest ^:synchronized complex-distinct-aggregation-test
-  (mt/test-drivers
-   ;; TODO: This test was added in PR #44442 fixing issue  #35425. Enable this test for other drivers _while_ fixing
-   ;;       the issue #14523.
-   #_(mt/normal-drivers) #{:mongo}
+  (mt/test-drivers (mt/normal-drivers-with-feature ::complex-distinct-aggregation-test)
    (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
      (every?
       (fn [[_id c d c-div-d more-complex]]

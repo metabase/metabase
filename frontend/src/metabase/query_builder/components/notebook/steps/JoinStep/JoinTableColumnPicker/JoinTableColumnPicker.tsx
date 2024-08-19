@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 
-import { FieldPicker } from "metabase/common/components/FieldPicker";
+import {
+  FieldPicker,
+  type FieldPickerItem,
+} from "metabase/common/components/FieldPicker";
 import * as Lib from "metabase-lib";
 
 interface JoinTableColumnPickerProps {
@@ -54,9 +57,6 @@ export function JoinTableColumnPicker({
   );
 }
 
-function isColumnSelected(
-  column: Lib.ColumnMetadata,
-  columnInfo: Lib.ColumnDisplayInfo,
-) {
+function isColumnSelected({ columnInfo }: FieldPickerItem) {
   return Boolean(columnInfo.selected);
 }

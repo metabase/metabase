@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -6,7 +5,7 @@ import _ from "underscore";
 
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import Table from "metabase-lib/v1/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 
 import {
   Description,
@@ -43,14 +42,6 @@ const mapDispatchToProps: {
 } = {
   fetchForeignKeys: Tables.actions.fetchForeignKeys,
   fetchMetadata: Tables.actions.fetchMetadata,
-};
-
-TableInfo.propTypes = {
-  className: PropTypes.string,
-  tableId: PropTypes.number.isRequired,
-  table: PropTypes.instanceOf(Table),
-  fetchForeignKeys: PropTypes.func.isRequired,
-  fetchMetadata: PropTypes.func.isRequired,
 };
 
 type AllProps = TableInfoProps &

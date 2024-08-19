@@ -266,7 +266,7 @@
     (let [settings       (common/viz-settings-for-col col viz-settings)
           format-strings (format-settings->format-strings settings col)]
       (when (seq format-strings)
-        (map
+        (mapv
           (partial cell-string-format-style workbook data-format)
           format-strings)))))
 
@@ -395,6 +395,35 @@
          (catch Exception _ value
                 value))))
 
+;; ColumnHelper hack.
+;;
+;; Starting with Apache POI 5.2.3, when a cell is added, its default style is computed from the styles of the whole
+;; column. When exporting big datasets, this creates a lot of unnecessary work. Unfortunately, there is no easy way to
+;; undo this other than hacking into private fields to replace the ColumnHelper object with our custom proxy.
+;;
+;; See https://github.com/apache/poi/blob/0dac5680/poi-ooxml/src/main/java/org/apache/poi/xssf/usermodel/helpers/ColumnHelper.java#L306.
+
+(defn- private-field ^java.lang.reflect.Field [object field-name]
+  (doto (.getDeclaredField (class object) field-name)
+    (.setAccessible true)))
+
+(defn- sxssfsheet->xssfsheet [sxssfsheet]
+  (.get (private-field sxssfsheet "_sh") sxssfsheet))
+
+(defn- xssfsheet->worksheet [xssfsheet]
+  (.get (private-field xssfsheet "worksheet") xssfsheet))
+
+(defn- no-style-column-helper
+  "Returns a proxy ColumnHelper that always returns `-1` (meaning empty style) as a default column style."
+  [worksheet]
+  (proxy [org.apache.poi.xssf.usermodel.helpers.ColumnHelper] [worksheet]
+    (getColDefaultStyle [idx] -1)))
+
+(defn- set-no-style-custom-helper [sxssfsheet]
+  (let [xssfsheet (sxssfsheet->xssfsheet sxssfsheet)
+        new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
+    (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
+
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -408,21 +437,31 @@
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
-        row     (.createRow sheet row-num)]
-    (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
-      (let [id-or-name   (or (:id col) (:name col))
-            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                             (get col-settings {::mb.viz/column-name id-or-name}))
-            scaled-val   (if (and value (::mb.viz/scale settings))
-                           (* value (::mb.viz/scale settings))
-                           value)
-            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
-            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-            parsed-value (or
-                          (maybe-parse-temporal-value value col)
-                          (maybe-parse-coordinate-value value col)
-                          scaled-val)]
-        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
+        row     (.createRow sheet row-num)
+        ;; Using iterators here to efficiently go over multiple collections at once.
+        val-it (.iterator ^Iterable values)
+        col-it (.iterator ^Iterable cols)
+        sty-it (.iterator ^Iterable cell-styles)]
+    (loop [index 0]
+      (when (.hasNext val-it)
+        (let [value (.next val-it)
+              col (.next col-it)
+              styles (.next sty-it)
+              id-or-name   (or (:id col) (:name col))
+              settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                               (get col-settings {::mb.viz/column-name id-or-name})
+                               (get col-settings {::mb.viz/column-name (:name col)}))
+              scaled-val   (if (and value (::mb.viz/scale settings))
+                             (* value (::mb.viz/scale settings))
+                             value)
+              ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+              ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+              parsed-value (or
+                            (maybe-parse-temporal-value value col)
+                            (maybe-parse-coordinate-value value col)
+                            scaled-val)]
+          (set-cell! (.createCell ^SXSSFRow row index) parsed-value styles typed-cell-styles))
+        (recur (inc index))))
     row))
 
 (defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
@@ -430,21 +469,31 @@
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
-        row     (.createRow sheet row-num)]
-    (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
-      (let [id-or-name   (or (:id col) (:name col))
-            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                             (get col-settings {::mb.viz/column-name id-or-name}))
-            scaled-val   (if (and value (::mb.viz/scale settings))
-                           (* value (::mb.viz/scale settings))
-                           value)
-            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
-            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-            parsed-value (or
-                           (maybe-parse-temporal-value value col)
-                           (maybe-parse-coordinate-value value col)
-                           scaled-val)]
-        (set-cell! (.createCell ^XSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
+        row     (.createRow sheet row-num)
+        ;; Using iterators here to efficiently go over multiple collections at once.
+        val-it (.iterator ^Iterable values)
+        col-it (.iterator ^Iterable cols)
+        sty-it (.iterator ^Iterable cell-styles)]
+    (loop [index 0]
+      (when (.hasNext val-it)
+        (let [value (.next val-it)
+              col (.next col-it)
+              styles (.next sty-it)
+              id-or-name   (or (:id col) (:name col))
+              settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                               (get col-settings {::mb.viz/column-name id-or-name})
+                               (get col-settings {::mb.viz/column-name (:name col)}))
+              scaled-val   (if (and value (::mb.viz/scale settings))
+                             (* value (::mb.viz/scale settings))
+                             value)
+              ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+              ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+              parsed-value (or
+                            (maybe-parse-temporal-value value col)
+                            (maybe-parse-coordinate-value value col)
+                            scaled-val)]
+          (set-cell! (.createCell ^XSSFRow row index) parsed-value styles typed-cell-styles))
+        (recur (inc index))))
     row))
 
 (def ^:dynamic *auto-sizing-threshold*
@@ -569,6 +618,7 @@
   [_ ^OutputStream os]
   (let [workbook          (SXSSFWorkbook.)
         sheet             (spreadsheet/add-sheet! workbook (tru "Query result"))
+        _                 (set-no-style-custom-helper sheet)
         data-format       (. workbook createDataFormat)
         cell-styles       (volatile! nil)
         typed-cell-styles (volatile! nil)

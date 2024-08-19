@@ -28,6 +28,10 @@ export function modal() {
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
+export function tooltip() {
+  return cy.get(".emotion-Tooltip-tooltip");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
@@ -129,7 +133,7 @@ export function clearFilterWidget(index = 0) {
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  return filterWidget().eq(index).icon("time_history").click();
+  return filterWidget().eq(index).icon("revert").click();
 }
 
 export function setFilterWidgetValue(
@@ -138,13 +142,15 @@ export function setFilterWidgetValue(
   { buttonLabel = "Update filter" } = {},
 ) {
   filterWidget().eq(0).click();
-  popover().within(() => {
-    removeMultiAutocompleteValue(0);
-    if (value) {
-      cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
-    }
-    cy.button(buttonLabel).click();
-  });
+  popover()
+    .first()
+    .within(() => {
+      removeMultiAutocompleteValue(0);
+      if (value) {
+        cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
+      }
+      cy.button(buttonLabel).click({ force: true });
+    });
 }
 
 export function toggleFilterWidgetValues(
@@ -252,12 +258,16 @@ export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
 
+export function tableInteractive() {
+  return cy.findByTestId("TableInteractive-root");
+}
+
 export function tableHeaderClick(headerString) {
-  cy.findByTestId("TableInteractive-root").within(() => {
+  tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
   });
 
-  cy.findByTestId("TableInteractive-root").within(() => {
+  tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mouseup");
   });
 }

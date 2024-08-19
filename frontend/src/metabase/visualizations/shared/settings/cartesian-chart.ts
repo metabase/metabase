@@ -20,7 +20,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
-  CardDisplayType,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -35,21 +34,18 @@ export function getDefaultMetricFilter(display: string) {
   return display === "scatter" ? isNumeric : isMetric;
 }
 
-export function getAreDimensionsAndMetricsValid(
-  rawSeries: RawSeries,
-  settings: ComputedVisualizationSettings,
-) {
+export function getAreDimensionsAndMetricsValid(rawSeries: RawSeries) {
   return rawSeries.some(
     ({ card, data }) =>
       columnsAreValid(
         card.visualization_settings["graph.dimensions"],
         data,
-        settings["graph._dimension_filter"],
+        getDefaultDimensionFilter(card.display),
       ) &&
       columnsAreValid(
         card.visualization_settings["graph.metrics"],
         data,
-        settings["graph._metric_filter"],
+        getDefaultMetricFilter(card.display),
       ),
   );
 }
@@ -58,32 +54,48 @@ export function getDefaultDimensions(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  return preserveExistingColumnsOrder(
-    settings["graph.dimensions"] ?? [],
-    getDefaultColumns(rawSeries).dimensions,
-  );
+  const prevDimensions = settings["graph.dimensions"] ?? [];
+  const defaultDimensions = getDefaultColumns(rawSeries).dimensions;
+  if (
+    prevDimensions.length > 0 &&
+    defaultDimensions.length > 0 &&
+    defaultDimensions[0] == null
+  ) {
+    return prevDimensions;
+  }
+
+  return preserveExistingColumnsOrder(prevDimensions, defaultDimensions);
 }
 
-export function getDefaultMetrics(rawSeries: RawSeries) {
-  return getDefaultColumns(rawSeries).metrics;
+export function getDefaultMetrics(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const prevMetrics = settings["graph.metrics"] ?? [];
+  const defaultMetrics = getDefaultColumns(rawSeries).metrics;
+  if (
+    prevMetrics.length > 0 &&
+    defaultMetrics.length > 0 &&
+    defaultMetrics[0] == null
+  ) {
+    return prevMetrics;
+  }
+
+  return defaultMetrics;
 }
 
-export const STACKABLE_DISPLAY_TYPES = new Set(["area", "bar", "combo"]);
+export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);
 
 export const isStackingValueValid = (
-  cardDisplay: CardDisplayType,
   settings: ComputedVisualizationSettings,
   seriesDisplays: string[],
 ) => {
   if (settings["stackable.stack_type"] == null) {
     return true;
   }
-  if (!STACKABLE_DISPLAY_TYPES.has(cardDisplay)) {
-    return false;
-  }
 
   const stackableDisplays = seriesDisplays.filter(display =>
-    STACKABLE_DISPLAY_TYPES.has(display),
+    STACKABLE_SERIES_DISPLAY_TYPES.has(display),
   );
   return stackableDisplays.length > 1;
 };
@@ -117,6 +129,10 @@ export const getDefaultStackingValue = (
 
   return shouldStack ? "stacked" : null;
 };
+
+export const getSeriesOrderDimensionSetting = (
+  settings: ComputedVisualizationSettings,
+) => settings["graph.dimensions"]?.[1];
 
 export const getSeriesOrderVisibilitySettings = (
   settings: ComputedVisualizationSettings,

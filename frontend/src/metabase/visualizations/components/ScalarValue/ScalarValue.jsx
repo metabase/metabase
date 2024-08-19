@@ -38,12 +38,12 @@ const ScalarValue = ({
   fontFamily,
 }) => {
   const {
-    other: { scalar: scalarTheme },
+    other: { number: numberTheme },
   } = useMantineTheme();
 
   const fontSize = useMemo(() => {
-    if (scalarTheme?.value?.fontSize) {
-      return scalarTheme.value?.fontSize;
+    if (numberTheme?.value?.fontSize) {
+      return numberTheme.value?.fontSize;
     }
 
     return findSize({
@@ -64,14 +64,14 @@ const ScalarValue = ({
     totalNumGridCols,
     value,
     width,
-    scalarTheme?.value?.fontSize,
+    numberTheme?.value?.fontSize,
   ]);
 
   return (
     <ScalarValueWrapper
       className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
       fontSize={fontSize}
-      lineHeight={scalarTheme?.value?.lineHeight}
+      lineHeight={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
     >
       {value ?? t`null`}

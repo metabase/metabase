@@ -34,3 +34,6 @@ import "./application_permissions";
 import "./group_managers";
 import "./llm_autodescription";
 import "./upload_management";
+import "./resource_downloads";
+import "./user_provisioning";
+import "./clean_up";

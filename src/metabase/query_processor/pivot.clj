@@ -45,7 +45,7 @@
 (mr/def ::pivot-rows [:sequential ::index])
 (mr/def ::pivot-cols [:sequential ::index])
 
-(mu/defn ^:private group-bitmask :- ::bitmask
+(mu/defn- group-bitmask :- ::bitmask
   "Come up with a display name given a combination of breakout `indexes` e.g.
 
   This is basically a bitmask of which breakout indexes we're excluding, but reversed. Why? This is how Postgres and
@@ -73,7 +73,7 @@
     #(or (empty? %)
          (apply distinct? %))]])
 
-(mu/defn ^:private breakout-combinations :- ::breakout-combinations
+(mu/defn- breakout-combinations :- ::breakout-combinations
   "Return a sequence of all breakout combinations (by index) we should generate queries for.
 
     (breakout-combinations 3 [1 2] nil) ;; -> [[0 1 2] [] [1 2] [2] [1]]"
@@ -126,7 +126,7 @@
         ;; bottom right corner [_ _ _ _] => 1111 => Group #15
         [[]]))))))
 
-(mu/defn ^:private keep-breakouts-at-indexes :- ::lib.schema/query
+(mu/defn- keep-breakouts-at-indexes :- ::lib.schema/query
   "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
   [query                    :- ::lib.schema/query
    breakout-indexes-to-keep :- [:maybe ::breakout-combination]]
@@ -138,7 +138,7 @@
          (assoc :qp.pivot/breakout-combination breakout-indexes-to-keep))
      breakout-indexes-to-keep)))
 
-(mu/defn ^:private add-pivot-group-breakout :- ::lib.schema/query
+(mu/defn- add-pivot-group-breakout :- ::lib.schema/query
   "Add the grouping field and expression to the query"
   [query   :- ::lib.schema/query
    bitmask :- ::bitmask]
@@ -152,7 +152,7 @@
       (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
       query)))
 
-(mu/defn ^:private remove-non-aggregation-order-bys :- ::lib.schema/query
+(mu/defn- remove-non-aggregation-order-bys :- ::lib.schema/query
   "Only keep existing aggregations in `:order-by` clauses from the query. Since we're adding our own breakouts (i.e.
   `GROUP BY` and `ORDER BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work --
   `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
@@ -166,7 +166,7 @@
    query
    (lib/order-bys query)))
 
-(mu/defn ^:private generate-queries :- [:sequential ::lib.schema/query]
+(mu/defn- generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
   [query                                               :- ::lib.schema/query
    {:keys [pivot-rows pivot-cols], :as _pivot-options} :- [:map
@@ -201,7 +201,7 @@
 (mr/def ::row
   [:sequential :any])
 
-(mu/defn ^:private row-mapping-fn :- [:=> [:cat ::row] ::row]
+(mu/defn- row-mapping-fn :- [:=> [:cat ::row] ::row]
   "This function needs to be called for each row so that it can actually shape the row according to the
   `column-mapping-fn` we build at the beginning.
 
@@ -222,7 +222,7 @@
                     (constantly nil))))
     identity))
 
-(mu/defn ^:private process-query-append-results
+(mu/defn- process-query-append-results
   "Reduce the results of a single `query` using `rf` and initial value `init`."
   [query                :- ::lib.schema/query
    rf                   :- ::qp.schema/rf
@@ -246,7 +246,7 @@
           (log/error e "Error processing additional pivot table query")
           (throw e))))))
 
-(mu/defn ^:private process-queries-append-results
+(mu/defn- process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
   [init
    queries           :- [:sequential ::lib.schema/query]
@@ -263,7 +263,7 @@
 ;;; `vrf` in the next few functions is a volatile used to capture the original reducing function before composed with
 ;;; limit and other middleware
 
-(mu/defn ^:private append-queries-rff :- ::qp.schema/rff
+(mu/defn- append-queries-rff :- ::qp.schema/rff
   [rff :- ::qp.schema/rff
    vrf :- [:fn {:error/message "volatile"} volatile?]]
   (fn rff* [metadata]
@@ -272,14 +272,14 @@
       ;; this captures
       (vreset! vrf <>))))
 
-(mu/defn ^:private append-queries-execute-fn :- fn?
+(mu/defn- append-queries-execute-fn :- fn?
   "Build the version of [[qp.pipeline/*execute*]] used at the top level for running pivot queries."
   [more-queries :- [:sequential ::lib.schema/query]]
   (when (seq more-queries)
     (fn multiple-execute [driver query respond]
       (respond {::driver driver} query))))
 
-(mu/defn ^:private append-queries-reduce-fn :- fn?
+(mu/defn- append-queries-reduce-fn :- fn?
   "Build the version of [[qp.pipeline/*reduce*]] used at the top level for running pivot queries."
   [info              :- [:maybe ::lib.schema.info/info]
    more-queries      :- [:sequential ::lib.schema/query]
@@ -315,7 +315,7 @@
           ;; completion arity can't be threaded because the value is derefed too early
           (qp.pipeline/*result* (@vrf acc)))))))
 
-(mu/defn ^:private append-queries-rff-and-fns
+(mu/defn- append-queries-rff-and-fns
   "RFF and QP pipeline functions to use when executing pivot queries."
   [info              :- [:maybe ::lib.schema.info/info]
    rff               :- ::qp.schema/rff
@@ -326,7 +326,7 @@
      :execute  (append-queries-execute-fn more-queries)
      :reduce   (append-queries-reduce-fn info more-queries vrf column-mapping-fn)}))
 
-(mu/defn ^:private process-multiple-queries
+(mu/defn- process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"
   [[{:keys [info], :as first-query} & more-queries] :- [:sequential ::lib.schema/query]
    rff                                              :- ::qp.schema/rff
@@ -338,7 +338,7 @@
               qp.pipeline/*reduce*  (or reduce qp.pipeline/*reduce*)]
       (qp/process-query first-query rff))))
 
-(mu/defn ^:private pivot-options :- [:map
+(mu/defn- pivot-options :- [:map
                                      [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
                                      [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
@@ -376,7 +376,7 @@
     {:pivot-rows pivot-rows
      :pivot-cols pivot-cols}))
 
-(mu/defn ^:private column-mapping-for-subquery :- ::pivot-column-mapping
+(mu/defn- column-mapping-for-subquery :- ::pivot-column-mapping
   [num-canonical-cols            :- ::lib.schema.common/int-greater-than-or-equal-to-zero
    num-canonical-breakouts       :- ::num-breakouts
    subquery-breakout-combination :- ::breakout-combination]
@@ -423,7 +423,7 @@
             (get canonical-index->subquery-index i))
           (range num-canonical-cols))))
 
-(mu/defn ^:private make-column-mapping-fn :- ::column-mapping-fn
+(mu/defn- make-column-mapping-fn :- ::column-mapping-fn
   "This returns a function with the signature
 
     (f query) => column-remapping

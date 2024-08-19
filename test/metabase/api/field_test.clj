@@ -14,7 +14,6 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
-   [ring.util.codec :as codec]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -28,12 +27,13 @@
   (merge
    (dissoc (mt/object-defaults Database) :details :initial_sync_status :dbms_version)
    {:engine        "h2"
-    :name          "test-data"
+    :name          "test-data (h2)"
     :features      (mapv u/qualified-name (driver.u/features :h2 (mt/db)))
-    :timezone      "UTC"}
+    :timezone      "UTC"
+    :settings      {}}
    (select-keys (mt/db) [:id :timezone :initial_sync_status :cache_field_values_schedule :metadata_sync_schedule])))
 
-(deftest get-field-test
+(deftest ^:parallel get-field-test
   (testing "GET /api/field/:id"
     (is (= (-> (merge
                 (mt/object-defaults Field)
@@ -75,12 +75,15 @@
                  :name_field       nil})
                (m/dissoc-in [:table :db :updated_at] [:table :db :created_at] [:table :db :timezone]))
            (-> (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :users :name)))
-               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))
+               (update-in [:table :db] dissoc :updated_at :created_at :timezone :dbms_version))))))
+
+(deftest ^:parallel get-field-test-2
+  (testing "GET /api/field/:id"
     (testing "target should be hydrated"
       (is (= (mt/id :categories :id)
              (:id (:target (mt/user-http-request :rasta :get 200 (format "field/%d" (mt/id :venues :category_id))))))))))
 
-(deftest get-field-summary-test
+(deftest ^:parallel get-field-summary-test
   (testing "GET /api/field/:id/summary"
     ;; TODO -- why doesn't this come back as a dictionary ?
     (is (= [["count" 75]
@@ -203,7 +206,7 @@
       (t2.with-temp/with-temp [Field {field-id :id} {:name "Field Test"}]
         (mt/user-http-request :rasta :put 403 (format "field/%d" field-id) {:name "Field Test 2"})))))
 
-(deftest update-field-hydrated-target-test
+(deftest ^:parallel update-field-hydrated-target-test
   (testing "PUT /api/field/:id"
     (testing "target should be hydrated"
       (mt/with-temp [Field fk-field-1 {}
@@ -436,11 +439,6 @@
               (is (= (u/the-id new-dim)
                      (u/the-id updated-dim))))))))))
 
-(deftest virtual-field-values-test
-  (testing "Check that trying to get values for a 'virtual' field just returns a blank values map"
-    (is (= {:values []}
-           (mt/user-http-request :rasta :get 200 (format "field/%s/values" (codec/url-encode "field,created_at,{base-type,type/Datetime}")))))))
-
 (deftest create-dimension-with-human-readable-field-id-test
   (testing "POST /api/field/:id/dimension"
     (mt/with-temp [Field {field-id-1 :id} {:name "Field Test 1"}
@@ -496,7 +494,7 @@
           (is (= nil
                  (dimension-for-field field-id))))))))
 
-(deftest delete-dimension-permissions-test
+(deftest ^:parallel delete-dimension-permissions-test
   (testing "DELETE /api/field/:id/dimension"
     (testing "Non-admin users can't delete a dimension"
       (t2.with-temp/with-temp [Field {field-id :id} {:name "Field Test 1"}]
@@ -720,7 +718,7 @@
              (-> (mt/user-http-request :crowberto :get 200 (format "field/%d" (u/the-id field)))
                  :settings))))))
 
-(deftest search-values-test
+(deftest ^:parallel search-values-test
   (testing "make sure `search-values` works on with our various drivers"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]
@@ -729,7 +727,10 @@
                (api.field/search-values (t2/select-one Field :id (mt/id :venues :id))
                                         (t2/select-one Field :id (mt/id :venues :name))
                                         "Red"
-                                        nil)))))
+                                        nil)))))))
+
+(deftest ^:parallel search-values-test-2
+  (testing "make sure `search-values` works on with our various drivers"
     (tqpt/test-timeseries-drivers
       (is (= (sort-by first [["139" "Red Medicine"]
                              ["148" "Fred 62"]
@@ -747,7 +748,9 @@
                   ;; Druid JDBC returns id as int and non-JDBC as str. Also ordering is different. Following lines
                   ;; mitigate that.
                   (mapv #(update % 0 str))
-                  (sort-by first))))))
+                  (sort-by first)))))))
+
+(deftest ^:parallel search-values-test-3
   (testing "make sure limit works"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]
@@ -757,14 +760,17 @@
                                                          "Red"
                                                          1)))))))
 
-(deftest search-values-with-field-same-as-search-field-test
+(deftest ^:parallel search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :venues :name))
                                       (t2/select-one Field :id (mt/id :venues :name))
                                       "Red"
-                                      nil))))
+                                      nil))))))
+
+(deftest ^:parallel search-values-with-field-same-as-search-field-test-2
+  (testing "make sure it also works if you use the same Field twice"
     (tqpt/test-timeseries-drivers
       (is (= [["Fred 62"] ["Red Medicine"]]
              (api.field/search-values (t2/select-one Field :id (mt/id :checkins :venue_name))
@@ -776,7 +782,7 @@
   (testing "searching on a PK field should work (#32985)"
     ;; normally PKs are ids so it's not possible to do search, because search are for text fields only
     ;; but with a special setup you can have a PK that is text. In this case we should be able to search for it
-    (mt/with-discard-model-updates [:model/Field]
+    (mt/with-discard-model-updates! [:model/Field]
       ;; Ngoc: users.name is a FK to categories.name ?
       ;; I know this is weird but this test doesn't need to make sense
       ;; A real use case is : you have a user.email as text => set email as PK

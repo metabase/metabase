@@ -72,17 +72,19 @@ export function setParameterType(
   sectionId: string,
 ): Parameter {
   // reset default value
-  const { default: _, ...rest } = parameter;
+  const {
+    default: _,
+    values_source_type,
+    values_source_config,
+    values_query_type,
+    ...rest
+  } = parameter;
 
   return {
     ...rest,
     type,
     sectionId,
   };
-}
-
-export function getIsMultiSelect(parameter: Parameter): boolean {
-  return parameter.isMultiSelect ?? true;
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {

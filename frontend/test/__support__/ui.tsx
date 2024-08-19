@@ -15,18 +15,18 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
-import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
-import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import {
+  MetabaseProviderInternal,
+  type MetabaseProviderProps,
+} from "embedding-sdk/components/public/MetabaseProvider";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig } from "embedding-sdk/types";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
 import { mainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
-import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
 import { ThemeProvider } from "metabase/ui";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -51,7 +51,7 @@ export interface RenderWithProvidersOptions {
   withDND?: boolean;
   withUndos?: boolean;
   customReducers?: ReducerObject;
-  sdkConfig?: SDKConfig | null;
+  sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
 }
 
@@ -71,7 +71,7 @@ export function renderWithProviders(
     withDND = false,
     withUndos = false,
     customReducers,
-    sdkConfig = null,
+    sdkProviderProps = null,
     theme,
     ...options
   }: RenderWithProvidersOptions = {},
@@ -91,7 +91,7 @@ export function renderWithProviders(
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
-  // since some components and hooks like `use-sync-url-slug` rely on it to read/write query params.
+  // since some components and hooks rely on it to read/write query params.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const browserHistory = useRouterHistory(createMemoryHistory)({
     entries: [initialRoute],
@@ -130,7 +130,11 @@ export function renderWithProviders(
   const wrapper = (props: any) => {
     if (mode === "sdk") {
       return (
-        <SdkWrapper {...props} config={sdkConfig} store={store} theme={theme} />
+        <MetabaseProviderInternal
+          {...props}
+          {...sdkProviderProps}
+          store={store}
+        />
       );
     }
 
@@ -199,31 +203,6 @@ export function TestWrapper({
           {withUndos && <UndoListing />}
         </ThemeProvider>
       </MaybeDNDProvider>
-    </Provider>
-  );
-}
-
-function SdkWrapper({
-  config,
-  children,
-  store,
-}: {
-  config: SDKConfig;
-  children: React.ReactElement;
-  store: any;
-  history?: History;
-  withRouter: boolean;
-  withDND: boolean;
-}) {
-  return (
-    <Provider store={store}>
-      <EmotionCacheProvider>
-        <SdkThemeProvider>
-          <AppInitializeController config={config}>
-            {children}
-          </AppInitializeController>
-        </SdkThemeProvider>
-      </EmotionCacheProvider>
     </Provider>
   );
 }
@@ -314,9 +293,14 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
  * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
  */
 export const waitForLoaderToBeRemoved = async () => {
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-  });
+  await waitFor(
+    () => {
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      // default timeout is 1s, but sometimes it's not enough and leads to flakiness,
+      // 3s should be enough
+    },
+    { timeout: 3000 },
+  );
 };
 
 /**

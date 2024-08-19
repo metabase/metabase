@@ -26,23 +26,32 @@
   {:pre [(fn? match-fn) (vector? clause-parents)]}
   (cond
     (map? form)
-    (mapcat (fn [[k v]]
-              (match-fn (conj clause-parents k) v))
-            form)
+    (reduce-kv (fn [acc k v]
+                 (if-let [match (match-fn (conj clause-parents k) v)]
+                   ;; Deliberately not using into to avoid converting to transient and back.
+                   (reduce conj acc match)
+                   acc))
+               [] form)
 
     (sequential? form)
-    (mapcat (partial match-fn (if (keyword? (first form))
-                                (conj clause-parents (first form))
-                                clause-parents))
-            form)))
+    (let [fst (first form)
+          k (if (keyword? fst)
+              (conj clause-parents fst)
+              clause-parents)]
+      (reduce (fn [acc v]
+                (if-let [match (match-fn k v)]
+                  (reduce conj acc match)
+                  acc))
+              [] form))))
 
 (defn replace-in-collection
   "Inernal impl for `replace`. Recursively replace values in a collection using a `replace-fn`."
   [replace-fn clause-parents form]
   (cond
     (map? form)
-    (into form (for [[k v] form]
-                 [k (replace-fn (conj clause-parents k) v)]))
+    (reduce-kv (fn [form k v]
+                 (assoc form k (replace-fn (conj clause-parents k) v)))
+               form form)
 
     (sequential? form)
     (mapv (partial replace-fn (if (keyword? (first form))

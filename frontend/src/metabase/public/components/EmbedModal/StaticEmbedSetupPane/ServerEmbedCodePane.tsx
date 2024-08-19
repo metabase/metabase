@@ -59,7 +59,7 @@ export const ServerEmbedCodePane = ({
   );
 
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const shouldShowDownloadData = canWhitelabel && resourceType === "question";
+  const shouldShowDownloadData = canWhitelabel;
 
   if (!selectedServerCodeOption) {
     return null;
@@ -177,7 +177,7 @@ function getTitle({
       : undefined;
   }
 
-  if (variant === "appearance") {
+  if (variant === "lookAndFeel") {
     return hasAppearanceCodeDiff
       ? t`Here’s the code you’ll need to alter:`
       : undefined;

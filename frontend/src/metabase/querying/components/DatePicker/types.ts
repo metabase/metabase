@@ -28,6 +28,7 @@ export interface SpecificDatePickerValue {
   type: "specific";
   operator: SpecificDatePickerOperator;
   values: Date[];
+  hasTime: boolean;
 }
 
 export interface RelativeDatePickerValue {

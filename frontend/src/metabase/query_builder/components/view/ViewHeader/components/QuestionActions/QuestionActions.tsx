@@ -52,17 +52,17 @@ const ARCHIVE_TESTID = "archive-button";
 interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
-  handleBookmark: () => void;
+  onToggleBookmark: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
   question: Question;
-  setQueryBuilderMode: (
+  onSetQueryBuilderMode: (
     mode: QueryBuilderMode,
     opts?: {
       shouldUpdateUrl?: boolean;
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  onTurnModelIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
 }
@@ -70,11 +70,11 @@ interface Props {
 export const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
-  handleBookmark,
+  onToggleBookmark,
   onOpenModal,
   question,
-  setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  onSetQueryBuilderMode,
+  onTurnModelIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
 }: Props) => {
@@ -95,29 +95,33 @@ export const QuestionActions = ({
   const isModel = question.type() === "model";
   const isMetric = question.type() === "metric";
   const isModelOrMetric = isModel || isMetric;
-  const canWrite = question.canWrite();
+  const hasCollectionPermissions = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
-  const canAppend = canWrite && !!question._card.based_on_upload;
+  const canAppend =
+    hasCollectionPermissions && !!question._card.based_on_upload;
+  const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
+    question.query(),
+  );
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-    canWrite &&
+    hasCollectionPermissions &&
     isSaved &&
     isModel &&
     checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
-    setQueryBuilderMode("dataset", {
+    onSetQueryBuilderMode("dataset", {
       datasetEditorTab: "query",
     });
-  }, [setQueryBuilderMode]);
+  }, [onSetQueryBuilderMode]);
 
   const handleEditMetadata = useCallback(() => {
-    setQueryBuilderMode("dataset", {
+    onSetQueryBuilderMode("dataset", {
       datasetEditorTab: "metadata",
     });
-  }, [setQueryBuilderMode]);
+  }, [onSetQueryBuilderMode]);
 
   const handleTurnToModel = useCallback(() => {
     const modal = checkCanBeModel(question)
@@ -150,8 +154,8 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite) {
-    if (isModelOrMetric) {
+  if (hasCollectionPermissions) {
+    if (isModelOrMetric && hasDataPermissions) {
       extraButtons.push({
         title: isMetric ? t`Edit metric definition` : t`Edit query definition`,
         icon: "notebook",
@@ -182,7 +186,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (isQuestion) {
+  if (isQuestion || isMetric) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "add_to_dash",
@@ -191,7 +195,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (canWrite) {
+  if (hasCollectionPermissions) {
     extraButtons.push({
       title: t`Move`,
       icon: "move",
@@ -200,8 +204,7 @@ export const QuestionActions = ({
     });
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (isEditable) {
+  if (hasDataPermissions) {
     extraButtons.push({
       title: t`Duplicate`,
       icon: "clone",
@@ -210,7 +213,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (canWrite) {
+  if (hasCollectionPermissions) {
     if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,
@@ -223,14 +226,14 @@ export const QuestionActions = ({
       extraButtons.push({
         title: t`Turn back to saved question`,
         icon: "insight",
-        action: turnDatasetIntoQuestion,
+        action: onTurnModelIntoQuestion,
       });
     }
   }
 
   extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
-  if (canWrite) {
+  if (hasCollectionPermissions) {
     extraButtons.push({
       title: t`Move to trash`,
       icon: "trash",
@@ -275,8 +278,8 @@ export const QuestionActions = ({
       {!question.isArchived() && (
         <ViewHeaderIconButtonContainer>
           <BookmarkToggle
-            onCreateBookmark={handleBookmark}
-            onDeleteBookmark={handleBookmark}
+            onCreateBookmark={onToggleBookmark}
+            onDeleteBookmark={onToggleBookmark}
             isBookmarked={isBookmarked}
           />
         </ViewHeaderIconButtonContainer>

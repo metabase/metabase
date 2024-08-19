@@ -258,10 +258,7 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
-    const descColor =
-      isNightMode || inTooltip
-        ? lighten(theme.fn.themeColor("text-medium"), 0.45)
-        : "text-light";
+    const descColor = "var(--mb-color-text-secondary)";
 
     if (isEmpty(comparisonDescStr)) {
       return (
@@ -316,10 +313,7 @@ function PreviousValueComparison({
       return null;
     }
 
-    const detailColor =
-      isNightMode || inTooltip
-        ? lighten(theme.fn.themeColor("text-light"), 0.25)
-        : "text-medium";
+    const detailColor = "var(--mb-color-text-secondary)";
 
     return (
       <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>
@@ -450,7 +444,7 @@ Object.assign(SmartScalar, {
   ) {
     if (!insights || insights.length === 0) {
       throw new NoBreakoutError(
-        t`Group by a time field to see how this has changed over time`,
+        t`Group only by a time field to see how this has changed over time`,
       );
     }
   },

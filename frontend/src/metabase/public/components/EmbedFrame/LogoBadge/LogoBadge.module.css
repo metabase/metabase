@@ -1,0 +1,31 @@
+.metabaseLink {
+  --mb-color-background: var(--mb-color-bg-light);
+  /* SVG logo */
+  --mb-color-logo-text: #5a6072;
+  --mb-color-logo-primary: var(--mb-base-color-blue-40);
+  --mb-color-logo-secondary: #c2daf0;
+
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  text-decoration: none;
+  gap: 0.75rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 0.75rem;
+  padding: 0.4688rem 0.75rem;
+  background: var(--mb-color-background);
+  color: var(--mb-color-text-primary);
+}
+
+.light {
+  --mb-color-text-primary: var(--mb-color-text-medium);
+}
+
+.dark {
+  --mb-color-border: var(--mb-color-text-medium);
+  --mb-color-background: #2f353a;
+  /* SVG logo */
+  --mb-color-logo-text: var(--mb-color-text-primary);
+  --mb-color-logo-primary: var(--mb-color-text-primary);
+  --mb-color-logo-secondary: #5a6072;
+}

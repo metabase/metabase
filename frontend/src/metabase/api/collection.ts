@@ -1,6 +1,7 @@
 import type {
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
+  ListStaleCollectionItemsRequest,
   UpdateCollectionRequest,
   Collection,
   CreateCollectionRequest,
@@ -8,6 +9,7 @@ import type {
   ListCollectionsTreeRequest,
   DeleteCollectionRequest,
   getCollectionRequest,
+  ListStaleCollectionItemsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -22,6 +24,10 @@ import {
 
 export const collectionApi = Api.injectEndpoints({
   endpoints: builder => ({
+    /**
+     * @deprecated This endpoint is extremely slow on large instances, it should not be used
+     * you probably only need a few collections, just fetch those
+     */
     listCollections: builder.query<Collection[], ListCollectionsRequest>({
       query: params => ({
         method: "GET",
@@ -54,6 +60,21 @@ export const collectionApi = Api.injectEndpoints({
       }),
       providesTags: (response, error, { models }) =>
         provideCollectionItemListTags(response?.data ?? [], models),
+    }),
+    listStaleCollectionItems: builder.query<
+      ListStaleCollectionItemsResponse,
+      ListStaleCollectionItemsRequest
+    >({
+      query: ({ id, ...params }) => ({
+        method: "GET",
+        url: `/api/collection/${id}/stale`,
+        params,
+      }),
+      providesTags: response =>
+        provideCollectionItemListTags(response?.data ?? [], [
+          "card",
+          "dashboard",
+        ]),
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ...body }) => {
@@ -107,6 +128,7 @@ export const {
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
   useListCollectionItemsQuery,
+  useListStaleCollectionItemsQuery,
   useGetCollectionQuery,
   useCreateCollectionMutation,
   useUpdateCollectionMutation,

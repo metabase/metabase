@@ -44,10 +44,11 @@
 (defn- viz-settings
   "Pull viz settings from either the query map or the DB"
   [query]
-  (or (let [viz (-> query :viz-settings)]
-        (when (seq viz) viz))
-      (when-let [card-id (-> query :info :card-id)]
-        (mb.viz/db->norm (:visualization-settings (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))))))
+  (mb.viz/db->norm
+   (or (let [viz (-> query :viz-settings)]
+         (when (seq viz) viz))
+       (when-let [card-id (-> query :info :card-id)]
+         (:visualization-settings (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))))))
 
 (defn update-viz-settings
   "Middleware for fetching and processing a table's visualization settings so that they can be incorporated

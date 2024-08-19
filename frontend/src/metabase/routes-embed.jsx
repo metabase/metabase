@@ -2,8 +2,9 @@ import { Route } from "react-router";
 
 import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import PublicApp from "metabase/public/containers/PublicApp";
-import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicOrEmbeddedDashboard";
 import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
+
+import { PublicOrEmbeddedDashboardPage } from "./public/containers/PublicOrEmbeddedDashboard";
 
 export const getRoutes = store => (
   <Route>
@@ -11,7 +12,7 @@ export const getRoutes = store => (
       <Route path="question/:token" component={PublicOrEmbeddedQuestion} />
       <Route
         path="dashboard/:token"
-        component={PublicOrEmbeddedDashboardControlled}
+        component={PublicOrEmbeddedDashboardPage}
       />
       <Route path="*" component={PublicNotFound} />
     </Route>

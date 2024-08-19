@@ -48,11 +48,11 @@ describe("binning related reproductions", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/CREATED_AT/i).realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("by minute").click({ force: true });
+    cy.findByText("by day").click({ force: true });
 
     // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Month");
+    cy.findByText("Day");
   });
 
   it("should be able to update the bucket size / granularity on a field that has sorting applied to it (metabase#16770)", () => {

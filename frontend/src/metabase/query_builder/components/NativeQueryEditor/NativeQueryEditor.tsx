@@ -186,6 +186,7 @@ export class NativeQueryEditor extends Component<
 
   _editor: Ace.Editor | null = null;
   _localUpdate = false;
+  _focusFrame: number;
 
   constructor(props: Props) {
     super(props);
@@ -201,6 +202,7 @@ export class NativeQueryEditor extends Component<
     // Ace sometimes fires multiple "change" events in rapid succession
     // e.x. https://github.com/metabase/metabase/issues/2801
     this.onChange = _.debounce(this.onChange.bind(this), 1);
+    this._focusFrame = -1;
   }
 
   static defaultProps = {
@@ -232,6 +234,9 @@ export class NativeQueryEditor extends Component<
     this.loadAceEditor();
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("contextmenu", this.handleRightClick);
+
+    // hmmm, this could be dangerous
+    this.focus();
   }
 
   handleRightClick = (event: MouseEvent) => {
@@ -316,6 +321,7 @@ export class NativeQueryEditor extends Component<
     if (this.props.cancelQueryOnLeave) {
       this.props.cancelQuery?.();
     }
+    window.cancelAnimationFrame(this._focusFrame);
     this._editor?.destroy?.();
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
@@ -390,6 +396,20 @@ export class NativeQueryEditor extends Component<
     }
   };
 
+  focus() {
+    if (this.props.readOnly) {
+      return;
+    }
+
+    clearTimeout(this._focusFrame);
+
+    // HACK: the cursor doesn't blink without this intended small delay
+    // HACK: the editor injects newlines into the query without this small delay
+    this._focusFrame = window.requestAnimationFrame(() =>
+      this._editor?.focus(),
+    );
+  }
+
   loadAceEditor() {
     const { query } = this.props;
 
@@ -423,11 +443,6 @@ export class NativeQueryEditor extends Component<
 
     // reset undo manager to prevent undoing to empty editor
     editor.getSession().getUndoManager().reset();
-
-    // hmmm, this could be dangerous
-    if (!this.props.readOnly) {
-      editor.focus();
-    }
 
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     editor.setOptions({
@@ -692,10 +707,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
 
       onSetDatabaseId?.(databaseId);
-      if (!this.props.readOnly) {
-        // HACK: the cursor doesn't blink without this intended small delay
-        setTimeout(() => this._editor?.focus(), 50);
-      }
+      this.focus();
     }
   };
 
@@ -731,7 +743,7 @@ export class NativeQueryEditor extends Component<
 
   handleQueryGenerated = (queryText: string) => {
     this.handleQueryUpdate(queryText);
-    this._editor?.focus();
+    this.focus();
   };
 
   isPromptInputVisible = () => {
@@ -755,7 +767,7 @@ export class NativeQueryEditor extends Component<
     const queryText = Lib.rawNativeQuery(query);
 
     this.handleQueryUpdate(await formatQuery(queryText, engine));
-    this._editor?.focus();
+    this.focus();
   };
 
   render() {

@@ -489,12 +489,17 @@
           (testing "# of app DB calls should not be some insane number"
             (is (< (call-count-fn) 20))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::expression-names-containing-slashes]
+  [_driver _feature _database]
+  true)
+
+;;; Slashes documented as not allowed in BQ https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
+(defmethod driver/database-supports? [:bigquery-cloud-sdk ::expression-names-containing-slashes]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel expression-with-slashes
-  (mt/test-drivers (disj
-                    (mt/normal-drivers-with-feature :expressions)
-                     ;; Slashes documented as not allowed in BQ
-                     ;; https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical
-                    :bigquery-cloud-sdk)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions ::expression-names-containing-slashes)
     (testing "Make sure an expression with a / in its name works (#12305)"
       (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
               [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
@@ -534,11 +539,21 @@
                        :limit       1})]
           (mt/with-native-query-testing-context query
             (is (= [["Doohickey2" 42]]
-                   (mt/formatted-rows [str int]
-                     (qp/process-query query))))))))))
+                   (mt/formatted-rows
+                    [str int]
+                    (qp/process-query query))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::fk-field-and-duplicate-names-test]
+  [_driver _feature _database]
+  true)
+
+;;; TODO: Following _should probably_ work with Mongo, take a closer look working on #43901! -- lbrdnk
+(defmethod driver/database-supports? [:mongo ::fk-field-and-duplicate-names-test]
+  [_driver _feature _database]
+  false)
 
 (deftest ^:parallel fk-field-and-duplicate-names-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :left-join ::fk-field-and-duplicate-names-test)
     (testing "Expressions with `fk->` fields and duplicate names should work correctly (#14854)"
       (mt/dataset test-data
         (let [results (mt/run-mbql-query orders
@@ -549,9 +564,10 @@
                          :limit       2})]
           (is (= ["ID" "User ID" "Product ID" "Subtotal" "Tax" "Total" "Discount" "Created At" "Quantity" "CE"]
                  (map :display_name (mt/cols results))))
-          (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27.892Z" 2 "2017-12-31T14:41:56.87Z"]
-                  [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04.58Z"  3 "2017-11-16T13:53:14.232Z"]]
-                 (mt/formatted-rows [int int int 1.0 1.0 1.0 identity str int str]
+          (is (= [[1 1  14  37.7  2.1  39.7 nil "2019-02-11T21:40:27Z" 2 "2017-12-31T14:41:56Z"]
+                  [2 1 123 110.9  6.1 117.0 nil "2018-05-15T08:04:04Z"  3 "2017-11-16T13:53:14Z"]]
+                 (mt/formatted-rows [int int int 1.0 1.0
+                                     1.0 identity u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str]
                    results))))))))
 
 (deftest ^:parallel string-operations-from-subquery
@@ -629,3 +645,15 @@
                 (is (= [[1 29.46 31.46] [2 70.08 72.08]]
                        (mt/formatted-rows [int 2.0 2.0]
                          (qp/process-query query))))))))))))
+
+(deftest ^:parallel question-mark-in-expression-name-test
+  (testing "Custom column names containing a question mark should work correctly (#32543, #44915)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+      (let [query (mt/mbql-query venues
+                    {:expressions {"Double Price?" [:+ $price 2]}
+                     :fields      [[:expression "Double Price?"]]
+                     :limit       3
+                     :order-by    [[:asc $id]]})]
+        (mt/with-native-query-testing-context query
+          (is (= [[5] [4] [4]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))

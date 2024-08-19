@@ -54,7 +54,6 @@
    [saml20-clj.core :as saml]
    [toucan2.core :as t2])
   (:import
-   (java.net URI URISyntaxException)
    (java.util Base64)))
 
 (set! *warn-on-reflection* true)
@@ -84,7 +83,7 @@
                                                    (group-names->ids group-names)
                                                    (all-mapped-group-ids)))))
 
-(mu/defn ^:private fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
+(mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)
@@ -129,11 +128,6 @@
   (api/check (sso-settings/saml-enabled)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
-(defn- has-host? [uri]
-  (try
-    (-> uri URI. .getHost some?)
-    (catch URISyntaxException _ false)))
-
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
@@ -145,9 +139,9 @@
                        (do
                          (log/warn "Warning: expected `redirect` param, but none is present")
                          (public-settings/site-url))
-                       (if (has-host? redirect)
-                         redirect
-                         (str (public-settings/site-url) redirect)))]
+                       (if (sso-utils/relative-uri? redirect)
+                         (str (public-settings/site-url) redirect)
+                         redirect))]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
@@ -251,9 +245,11 @@
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies params]}]
-  (let [xml-str (base64-decode (:SAMLResponse params))
-        success? (slo-success? xml-str)]
-    (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
-      (do (t2/delete! :model/Session :id metabase-session-id)
-          (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
-      {:status 500 :body "SAML logout failed."})))
+  (if (sso-settings/saml-slo-enabled)
+    (let [xml-str (base64-decode (:SAMLResponse params))
+          success? (slo-success? xml-str)]
+      (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
+        (do (t2/delete! :model/Session :id metabase-session-id)
+            (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
+        {:status 500 :body "SAML logout failed."}))
+    (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

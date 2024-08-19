@@ -23,6 +23,7 @@ import {
 } from "metabase/query_builder/components/view/ViewHeader/components";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -59,7 +60,7 @@ interface ViewTitleHeaderRightSideProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
@@ -91,7 +92,7 @@ export function ViewTitleHeaderRightSide({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
   areFiltersExpanded,
   onExpandFilters,
   onCollapseFilters,
@@ -137,6 +138,7 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
+  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
@@ -181,6 +183,7 @@ export function ViewTitleHeaderRightSide({
       {QuestionNotebookButton.shouldRender({
         question,
         isActionListVisible,
+        isBrandNew,
       }) && (
         <QuestionNotebookButton
           isShowingNotebook={isShowingNotebook}
@@ -210,13 +213,13 @@ export function ViewTitleHeaderRightSide({
       )}
       {isSaved && (
         <QuestionActions
-          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
-          isBookmarked={isBookmarked}
-          handleBookmark={toggleBookmark}
-          onOpenModal={onOpenModal}
           question={question}
-          setQueryBuilderMode={setQueryBuilderMode}
-          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          isBookmarked={isBookmarked}
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
+          onOpenModal={onOpenModal}
+          onToggleBookmark={toggleBookmark}
+          onSetQueryBuilderMode={setQueryBuilderMode}
+          onTurnModelIntoQuestion={turnModelIntoQuestion}
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />
@@ -233,7 +236,7 @@ export function ViewTitleHeaderRightSide({
             onClick={event => {
               event.preventDefault();
               if (!isSaveDisabled) {
-                onOpenModal("save");
+                onOpenModal(MODAL_TYPES.SAVE);
               }
             }}
           >

@@ -236,7 +236,7 @@
       (fn [s]
         (= s (u/lower-case-en s)))]]]])
 
-(mu/defn ^:private normalize-type-info :- NormalizedTypeInfo
+(mu/defn- normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
   `:database-type` to a lower-case string)."
   [type-info]

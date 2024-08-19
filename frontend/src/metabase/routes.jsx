@@ -31,9 +31,7 @@ import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
-import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
-import { PublicOrEmbeddedDashboardControlled } from "metabase/public/containers/PublicOrEmbeddedDashboard";
-import { PublicOrEmbeddedQuestion } from "metabase/public/containers/PublicOrEmbeddedQuestion";
+import { PLUGIN_LANDING_PAGE, PLUGIN_COLLECTIONS } from "metabase/plugins";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 import { loadCurrentUser } from "metabase/redux/user";
 import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
@@ -84,15 +82,6 @@ export const getRoutes = store => {
           trackPageView(nextState.location.pathname);
         }}
       />
-
-      {/* PUBLICLY SHARED LINKS */}
-      <Route path="public">
-        <Route path="question/:uuid" component={PublicOrEmbeddedQuestion} />
-        <Route
-          path="dashboard/:uuid(/:tabSlug)"
-          component={PublicOrEmbeddedDashboardControlled}
-        />
-      </Route>
 
       {/* APP */}
       <Route
@@ -153,6 +142,7 @@ export const getRoutes = store => {
             <ModalRoute path="move" modal={MoveCollectionModal} noWrap />
             <ModalRoute path="archive" modal={ArchiveCollectionModal} />
             <ModalRoute path="permissions" modal={CollectionPermissionsModal} />
+            {PLUGIN_COLLECTIONS.cleanUpRoute}
             {getCollectionTimelineRoutes()}
           </Route>
 

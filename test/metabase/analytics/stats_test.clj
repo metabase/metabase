@@ -22,6 +22,39 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(deftest merge-count-maps-test
+  (testing "Merging maps with various scenarios"
+    (are [expected input-maps _description]
+        (= expected (#'stats/merge-count-maps input-maps))
+
+      {:a 1, :b 2}
+      [{:a 1} {:b 2}]
+      "Merging two maps with non-overlapping keys"
+
+      {:a 3, :b 2}
+      [{:a 1, :b 2} {:a 2}]
+      "Merging two maps with overlapping keys"
+
+      {:a 1, :b 22, :c 30}
+      [{:a 1, :b 2} {:b 20, :c 30} {}]
+      "Merging more than two maps"
+
+      {:a 1, :b 1}
+      [{:a 1} {:b "other values, like strings, are considered to be 1"}]
+      "Handling string values"
+
+      {:a 1, :b 22, :c 30, :d 1}
+      [{:a 1, :b 2} {:b 20, :c 30} {:d "strings count as one"}]
+      "Comprehensive test with all scenarios"
+
+      {}
+      [{} {} {}]
+      "Merging empty maps"
+
+      {:a 1, :b 2}
+      [{:a 1, :b 2}]
+      "Merging a single map")))
+
 (deftest ^:parallel bin-small-number-test
   (are [expected n] (= expected
                        (#'stats/bin-small-number n))
@@ -188,6 +221,8 @@
 
 (deftest new-impl-test
   (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                         {:error "some error"})
+                 QueryExecution _ (merge query-execution-defaults
                                          {:error "some error"})
                  QueryExecution _ query-execution-defaults]
     (is (= (old-execution-metrics)

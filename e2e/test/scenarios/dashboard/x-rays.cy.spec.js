@@ -12,6 +12,7 @@ import {
   saveDashboard,
   cartesianChartCircle,
   chartPathWithFillColor,
+  assertEChartsTooltip,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -252,7 +253,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.findByText("State", timeout).click();
 
     cy.findByPlaceholderText("Search the list").type("GA{enter}");
-    cy.findByTestId("GA-filter-value").should("be.visible").click();
+    cy.findByLabelText("GA").should("be.visible").click();
     cy.button("Add filter").click();
 
     // confirm results of "Total transactions" card were updated
@@ -302,9 +303,15 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     chartPathWithFillColor("#509EE3").should("have.length", 5);
     chartPathWithFillColor("#509EE3").eq(0).realHover();
 
-    popover().within(() => {
-      cy.findByText("Affiliate").should("be.visible");
-      cy.findByText("3,520").should("be.visible");
+    assertEChartsTooltip({
+      header: "Affiliate",
+      rows: [
+        {
+          color: "#509EE3",
+          name: "Count",
+          value: "3,520",
+        },
+      ],
     });
   });
 

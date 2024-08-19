@@ -74,7 +74,8 @@
         dst      (io/file (str (.getPath path) ".tar.gz"))
         log-file (io/file path "export.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file
+        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
+                                                              'metabase.models.serialization]
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (let [report (serdes/with-cache
@@ -85,7 +86,10 @@
                        report)
                      (catch Exception e
                        (reset! err e)
-                       (log/error e "Error during serialization"))))]
+                       (log/errorf "Error during serialization: %s %s"
+                                   (ex-message e)
+                                   (-> (ex-data e)
+                                       (dissoc :toucan2/context-trace))))))]
     {:archive       (when (.exists dst)
                       dst)
      :log-file      (when (.exists log-file)
@@ -98,21 +102,39 @@
                       (when (.exists dst)
                         (io/delete-file dst)))}))
 
-(defn- unpack&import [^File file & [size]]
+(defn- find-serialization-dir
+  "Find an actual top-level dir with serialization data inside, instead of picking up various .DS_Store and similar
+  things."
+  ^File [^File parent]
+  (->> (.listFiles parent)
+       (u/seek (fn [^File f]
+                 (and (.isDirectory f)
+                      (some v2.ingest/legal-top-level-paths (.list f)))))))
+
+(defn- unpack&import [^File file & [{:keys [size continue-on-error]}]]
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
         err      (atom nil)
-        report   (with-open [_logger (logger/for-ns 'metabase-enterprise.serialization log-file
+        report   (with-open [_logger (logger/for-ns log-file ['metabase-enterprise.serialization
+                                                              'metabase.models.serialization]
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
-                     (let [path (u.compress/untgz file dst)]
+                     (let [cnt  (u.compress/untgz file dst)
+                           path (find-serialization-dir dst)]
+                       (when-not path
+                         (throw (ex-info "No source dir detected" {:dst   (.getPath dst)
+                                                                   :count cnt})))
+                       (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
                        (serdes/with-cache
-                         (-> (v2.ingest/ingest-yaml (.getPath (io/file dst path)))
-                             (v2.load/load-metabase!))))
+                         (-> (v2.ingest/ingest-yaml (.getPath path))
+                             (v2.load/load-metabase! {:continue-on-error continue-on-error}))))
                      (catch Exception e
                        (reset! err e)
-                       (log/error e "Error during serialization"))))]
+                       (log/errorf "Error during deserialization: %s %s"
+                                   (ex-message e)
+                                   (-> (ex-data e)
+                                       (dissoc :toucan2/context-trace))))))]
     {:log-file      log-file
      :error-message (some-> @err str)
      :report        report
@@ -126,30 +148,36 @@
 
   Outputs `.tar.gz` file with serialization results and an `export.log` file.
   On error outputs serialization logs directly."
-  [:as {{:strs [all_collections collection settings data_model field_values database_secrets dirname]
+  [:as {{:strs [all_collections collection settings data_model field_values database_secrets dirname continue_on_error]
          :or   {all_collections true
                 settings        true
                 data_model      true}}
         :query-params}]
   {dirname          (mu/with [:maybe string?]
                              {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"})
-   collection       (mu/with [:maybe (ms/QueryVectorOf ms/PositiveInt)]
-                             {:description "collections' db ids to serialize"})
+   collection       (mu/with [:maybe (ms/QueryVectorOf
+                                      [:or
+                                       ms/PositiveInt
+                                       [:re {:error/message "value must be string with `eid:<...>` prefix"} "^eid:.{21}$"]])]
+                             {:description "collections' db ids/entity-ids to serialize"})
    all_collections  (mu/with [:maybe ms/BooleanValue]
                              {:default     true
                               :description "Serialize all collections (`true` unless you specify `collection`)"})
    settings         (mu/with [:maybe ms/BooleanValue]
-                             {:default true
+                             {:default     true
                               :description "Serialize Metabase settings"})
    data_model       (mu/with [:maybe ms/BooleanValue]
-                             {:default true
+                             {:default     true
                               :description "Serialize Metabase data model"})
    field_values     (mu/with [:maybe ms/BooleanValue]
-                             {:default false
+                             {:default     false
                               :description "Serialize cached field values"})
    database_secrets (mu/with [:maybe ms/BooleanValue]
-                             {:default false
-                              :description "Serialize details how to connect to each db"})}
+                             {:default     false
+                              :description "Serialize details how to connect to each db"})
+   continue_on_error      (mu/with [:maybe ms/BooleanValue]
+                             {:default     false
+                              :description "Do not break execution on errors"})}
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)
@@ -160,7 +188,8 @@
                             :no-settings              (not settings)
                             :include-field-values     field_values
                             :include-database-secrets database_secrets
-                            :dirname                  dirname}
+                            :dirname                  dirname
+                            :continue-on-error        continue_on_error}
         {:keys [archive
                 log-file
                 report
@@ -171,6 +200,7 @@
                             :source          "api"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
+                            :error_count     (count (:errors report))
                             :collection      (str/join "," (map str collection))
                             :all_collections (and (empty? collection)
                                                   (not (:no-collections opts)))
@@ -196,15 +226,22 @@
   - `file`: archive encoded as `multipart/form-data` (required).
 
   Returns logs of deserialization."
-  [:as {raw-params :params}]
+  [:as {{:strs [continue_on_error]} :query-params
+        {:strs [file]}              :multipart-params}]
+  {continue_on_error (mu/with [:maybe ms/BooleanValue]
+                              {:default     false
+                               :description "Do not break execution on errors"})
+   file              (mu/with ms/File
+                              {:description ".tgz with serialization data"})}
   (api/check-superuser)
   (try
     (let [start              (System/nanoTime)
           {:keys [log-file
                   error-message
                   report
-                  callback]} (unpack&import (get-in raw-params ["file" :tempfile])
-                                            (get-in raw-params ["file" :size]))
+                  callback]} (unpack&import (:tempfile file)
+                                            {:size              (:size file)
+                                             :continue-on-error continue_on_error})
           imported           (into (sorted-set) (map (comp :model last)) (:seen report))]
       (snowplow/track-event! ::snowplow/serialization api/*current-user-id*
                              {:direction     "import"
@@ -214,12 +251,13 @@
                               :count         (if (contains? imported "Setting")
                                                (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
                                                (count (:seen report)))
+                              :error_count   (count (:errors report))
                               :success       (not error-message)
                               :error_message error-message})
       {:status  200
        :headers {"Content-Type" "text/plain"}
        :body    (on-response! log-file callback)})
     (finally
-      (io/delete-file (get-in raw-params ["file" :tempfile])))))
+      (io/delete-file (:tempfile file)))))
 
 (api/define-routes +auth)

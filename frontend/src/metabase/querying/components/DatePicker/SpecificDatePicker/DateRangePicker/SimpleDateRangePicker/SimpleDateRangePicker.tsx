@@ -1,36 +1,38 @@
-import { useState } from "react";
-
 import { Box, Stack } from "metabase/ui";
 
 import { TimeToggle } from "../../TimeToggle";
-import { clearTimePart, hasTimeParts } from "../../utils";
+import { clearTimePart } from "../../utils";
 import { DateRangePickerBody } from "../DateRangePickerBody";
+import type { DateRangePickerValue } from "../types";
 
 interface SimpleDateRangePickerProps {
-  value: [Date, Date];
-  onChange: (value: [Date, Date]) => void;
+  value: DateRangePickerValue;
+  onChange: (value: DateRangePickerValue) => void;
 }
 
 export function SimpleDateRangePicker({
-  value,
+  value: { dateRange, hasTime },
   onChange,
 }: SimpleDateRangePickerProps) {
-  const [startDate, endDate] = value;
-  const [hasTime, setHasTime] = useState(
-    hasTimeParts(startDate) || hasTimeParts(endDate),
-  );
+  const [startDate, endDate] = dateRange;
+
+  const handleDateRangeChange = (newDateRange: [Date, Date]) => {
+    onChange({ dateRange: newDateRange, hasTime });
+  };
 
   const handleTimeToggle = () => {
-    setHasTime(!hasTime);
-    onChange([clearTimePart(startDate), clearTimePart(endDate)]);
+    onChange({
+      dateRange: [clearTimePart(startDate), clearTimePart(endDate)],
+      hasTime: !hasTime,
+    });
   };
 
   return (
     <Stack>
       <DateRangePickerBody
-        value={value}
+        value={dateRange}
         hasTime={hasTime}
-        onChange={onChange}
+        onChange={handleDateRangeChange}
       />
       <Box>
         <TimeToggle pl={0} hasTime={hasTime} onClick={handleTimeToggle} />

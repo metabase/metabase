@@ -102,7 +102,7 @@
                rows))))))
 
 (deftest ^:parallel order-by-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
                                       (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                       (mt/id :venues :category_id)

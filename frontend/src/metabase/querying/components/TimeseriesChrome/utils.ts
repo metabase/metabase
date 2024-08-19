@@ -1,20 +1,5 @@
 import * as Lib from "metabase-lib";
 
-export function findBreakoutColumn(
-  query: Lib.Query,
-  stageIndex: number,
-): Lib.ColumnMetadata | undefined {
-  const columns = Lib.breakoutableColumns(query, stageIndex);
-  return columns.find(column => {
-    if (!Lib.isDate(column)) {
-      return false;
-    }
-
-    const { breakoutPosition } = Lib.displayInfo(query, stageIndex, column);
-    return breakoutPosition != null;
-  });
-}
-
 export function findFilterColumn(
   query: Lib.Query,
   stageIndex: number,
@@ -46,13 +31,10 @@ export function findFilterClause(
 export function findBreakoutClause(
   query: Lib.Query,
   stageIndex: number,
-  breakoutColumn: Lib.ColumnMetadata,
 ): Lib.BreakoutClause | undefined {
   const breakouts = Lib.breakouts(query, stageIndex);
-  const { breakoutPosition } = Lib.displayInfo(
-    query,
-    stageIndex,
-    breakoutColumn,
-  );
-  return breakoutPosition != null ? breakouts[breakoutPosition] : undefined;
+  return breakouts.find(breakout => {
+    const column = Lib.breakoutColumn(query, stageIndex, breakout);
+    return Lib.isTemporal(column);
+  });
 }

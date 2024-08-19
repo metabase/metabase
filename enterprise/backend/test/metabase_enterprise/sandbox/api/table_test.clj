@@ -21,9 +21,9 @@
 (deftest query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
     (met/with-gtaps! {:gtaps      {:venues
-                                  {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                   :query      (mt.tu/restricted-column-query (mt/id))}}
-                     :attributes {:cat 50}}
+                                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                    :query      (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
       (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (field-names :rasta))))
@@ -37,8 +37,8 @@
     (testing (str "If a GTAP has a question, but that question doesn't include a clause to restrict the columns that "
                   "are returned, all fields should be returned")
       (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                             :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
-                       :attributes {:cat 50}}
+                                              :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                        :attributes {:cat 50}}
         (is (= all-columns
                (field-names :rasta)))))))
 

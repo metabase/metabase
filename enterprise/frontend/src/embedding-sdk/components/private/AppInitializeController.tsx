@@ -7,29 +7,30 @@ import { useSdkSelector } from "embedding-sdk/store";
 import { getIsInitialized } from "embedding-sdk/store/selectors";
 import type { SDKConfig } from "embedding-sdk/types";
 
-import { SdkContentWrapper } from "./SdkContentWrapper";
+import { SdkGlobalStylesWrapper } from "./SdkGlobalStylesWrapper";
 
 interface AppInitializeControllerProps {
   children: ReactNode;
   config: SDKConfig;
+  className?: string;
 }
 
 export const AppInitializeController = ({
   config,
   children,
+  className,
 }: AppInitializeControllerProps) => {
-  useInitData({
-    config,
-  });
+  useInitData({ config });
 
   const isInitialized = useSdkSelector(getIsInitialized);
 
   return (
-    <SdkContentWrapper
+    <SdkGlobalStylesWrapper
       baseUrl={config.metabaseInstanceUrl}
       id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
+      className={className}
     >
       {!isInitialized ? <div>{t`Loading…`}</div> : children}
-    </SdkContentWrapper>
+    </SdkGlobalStylesWrapper>
   );
 };

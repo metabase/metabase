@@ -7,7 +7,9 @@ import { Icon, type IconName } from "metabase/ui";
 import S from "./SelectItem.module.css";
 import { getItemFontSize, getItemLineHeight } from "./utils";
 
-interface SelectItemProps extends HTMLAttributes<HTMLDivElement>, BoxProps {
+export interface SelectItemProps
+  extends HTMLAttributes<HTMLDivElement>,
+    BoxProps {
   value: string;
   label?: string;
   size?: MantineSize;
@@ -40,7 +42,6 @@ export const SelectItem = forwardRef(function SelectItem(
         },
         className,
       )}
-      color="text-dark"
       fz={getItemFontSize(size)}
       lh={getItemLineHeight(size)}
       p="sm"

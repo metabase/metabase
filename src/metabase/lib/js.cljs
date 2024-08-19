@@ -1200,6 +1200,19 @@
     (fn [_]
       (visible-columns* a-query stage-number))))
 
+;; ## Column keys
+(defn ^:export column-key
+  "Given a column, as returned by [[visible-columns]], [[returned-columns]] etc., return a string suitable for uniquely
+  identifying the column on its query.
+
+  This key will generally not be changed by unrelated edits to the query.
+
+  (Currently this is powered by `:lib/desired-column-alias`, but it's deliberately opaque.)"
+  [a-column]
+  (or (:lib/desired-column-alias a-column)
+      (:name a-column)))
+
+;; ## Legacy refs
 (defn- normalize-legacy-ref
   [a-ref]
   (if (#{:aggregation :metric :segment} (first a-ref))
@@ -1736,14 +1749,6 @@
   [a-query stage-number]
   (to-array (lib.core/available-metrics a-query stage-number)))
 
-(defn ^:export metric-based?
-  "Given `a-query`, returns true if it is based on metrics. That means the main data source is a metric and so are all
-  joins (if any).
-
-  > **Code health:** Healthy."
-  [a-query stage-number]
-  (lib.core/metric-based? a-query stage-number))
-
 ;; TODO: Move all the join logic into one block - it's scattered all through the lower half of this namespace.
 
 (defn ^:export joinable-columns
@@ -2126,7 +2131,8 @@
       (clj->js (cond-> legacy-expr
                  (and (vector? legacy-expr)
                       (#{:aggregation-options :value} (first legacy-expr)))
-                 (get 1))))))
+                 (get 1))
+               :keyword-fn u/qualified-name))))
 
 (defn ^:export diagnose-expression
   "Checks `legacy-expression` for type errors and possibly for cyclic references to other expressions.

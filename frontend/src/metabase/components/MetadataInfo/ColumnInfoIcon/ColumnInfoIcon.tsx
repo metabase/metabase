@@ -90,6 +90,7 @@ export function TableColumnInfoIcon({
           className={className}
           name="info_filled"
           hasDescription={Boolean(field.description)}
+          size={size}
         />
       </span>
     </TableColumnInfoPopover>

@@ -35,11 +35,13 @@ export function useStringFilter({
   );
 
   const [operator, setOperator] = useState(() =>
-    filterParts ? filterParts.operator : getDefaultOperator(column),
+    filterParts
+      ? filterParts.operator
+      : getDefaultOperator(column, availableOptions),
   );
 
   const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values ?? []),
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
 
   const [options, setOptions] = useState(

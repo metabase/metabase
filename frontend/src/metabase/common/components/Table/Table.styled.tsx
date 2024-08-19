@@ -31,6 +31,7 @@ export const StyledTable = styled(Table)`
     border-bottom: 1px solid var(--mb-color-border);
     padding-inline: 0.5rem;
   }
+
   &:first-of-type td,
   th {
     padding-inline-start: 1rem;

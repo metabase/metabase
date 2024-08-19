@@ -8,14 +8,21 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as Urls from "metabase/lib/urls";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
+import { getIsWebApp } from "metabase/selectors/web-app";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  getValuePopulatedParameters as _getValuePopulatedParameters,
+  getParameterValuesBySlug,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
@@ -35,6 +42,8 @@ import type {
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
+  canResetFilter,
+  getMappedParametersIds,
   hasDatabaseActionsEnabled,
   isQuestionCard,
   isQuestionDashCard,
@@ -87,9 +96,9 @@ export const getFavicon = (state: State) =>
     ? LOAD_COMPLETE_FAVICON
     : null;
 
-export const getIsRunning = (state: State) =>
+export const getIsDashCardsRunning = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "running";
-export const getIsLoadingComplete = (state: State) =>
+export const getIsDashCardsLoadingComplete = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "complete";
 
 export const getLoadingStartTime = (state: State) =>
@@ -107,6 +116,12 @@ export const getIsSlowDashboard = createSelector(
     }
   },
 );
+
+export const getIsLoadingWithoutCards = (state: State) =>
+  state.dashboard.loadingControls.isLoading;
+
+export const getIsLoading = (state: State) =>
+  getIsLoadingWithoutCards(state) || !getIsDashCardsLoadingComplete(state);
 
 export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
@@ -414,6 +429,21 @@ export const getParameters = createSelector(
   },
 );
 
+export const getValuePopulatedParameters = createSelector(
+  [
+    getParameters,
+    getParameterValues,
+    getDraftParameterValues,
+    getIsAutoApplyFilters,
+  ],
+  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+    return _getValuePopulatedParameters({
+      parameters,
+      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+    });
+  },
+);
+
 export const getMissingRequiredParameters = createSelector(
   [getParameters],
   parameters =>
@@ -479,17 +509,54 @@ export const getTabs = createSelector([getDashboard], dashboard => {
 });
 
 export const getSelectedTabId = createSelector(
-  [getDashboard, state => state.dashboard.selectedTabId],
-  (dashboard, selectedTabId) => {
+  [
+    getIsWebApp,
+    state => getSetting(state, "site-url"),
+    getDashboard,
+    state => state.dashboard.selectedTabId,
+  ],
+  (isWebApp, siteUrl, dashboard, selectedTabId) => {
     if (dashboard && selectedTabId === null) {
-      return getInitialSelectedTabId(dashboard);
+      return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
     }
 
     return selectedTabId;
   },
 );
 
-export function getInitialSelectedTabId(dashboard: Dashboard | StoreDashboard) {
+export const getSelectedTab = createSelector(
+  [getDashboard, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || selectedTabId === null) {
+      return null;
+    }
+    return dashboard.tabs?.find(tab => tab.id === selectedTabId) || null;
+  },
+);
+
+export function getInitialSelectedTabId(
+  dashboard: Dashboard | StoreDashboard,
+  siteUrl: string,
+  isWebApp: boolean,
+) {
+  const pathname = window.location.pathname.replace(siteUrl, "");
+  const isDashboardUrl = pathname.includes("/dashboard/");
+
+  if (isDashboardUrl) {
+    const dashboardSlug = pathname.replace("/dashboard/", "");
+    const dashboardUrlId = Urls.extractEntityId(dashboardSlug);
+    const isNavigationInProgress = dashboardUrlId !== dashboard.id;
+    if (!isNavigationInProgress || !isWebApp) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab");
+      const tabId = tabParam ? parseInt(tabParam, 10) : null;
+      const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+      if (hasTab) {
+        return tabId;
+      }
+    }
+  }
+
   return dashboard.tabs?.[0]?.id || null;
 }
 
@@ -509,6 +576,23 @@ export const getCurrentTabDashcards = createSelector(
 );
 
 export const getHiddenParameterSlugs = createSelector(
+  [getDashboardComplete, getParameters, getIsEditing],
+  (dashboard, parameters, isEditing) => {
+    if (isEditing || !dashboard) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const parameterIds = getMappedParametersIds(dashboard.dashcards);
+    const hiddenParameters = parameters.filter(
+      parameter => !parameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(parameter => parameter.slug).join(",");
+  },
+);
+
+export const getTabHiddenParameterSlugs = createSelector(
   [getParameters, getCurrentTabDashcards, getIsEditing],
   (parameters, currentTabDashcards, isEditing) => {
     if (isEditing) {
@@ -516,10 +600,7 @@ export const getHiddenParameterSlugs = createSelector(
       return undefined;
     }
 
-    const currentTabParameterIds = currentTabDashcards.flatMap(
-      (dc: DashboardCard) =>
-        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
-    );
+    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
@@ -585,4 +666,19 @@ export const getHasModelActionsEnabled = createSelector(
 
     return hasModelActionsEnabled;
   },
+);
+
+export const getVisibleValuePopulatedParameters = createSelector(
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  getVisibleParameters,
+);
+
+export const getFiltersToReset = createSelector(
+  [getVisibleValuePopulatedParameters],
+  parameters => parameters.filter(canResetFilter),
+);
+
+export const getCanResetFilters = createSelector(
+  [getFiltersToReset],
+  filtersToReset => filtersToReset.length > 0,
 );

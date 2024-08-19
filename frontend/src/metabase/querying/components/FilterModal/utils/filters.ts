@@ -34,7 +34,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
       const availableSegments = groupIndex === 0 ? segments : [];
 
       return {
-        key: groupInfo.name ?? String(stageIndex),
+        key: `${stageIndex}-${groupIndex}`,
         displayName: getColumnGroupName(groupInfo) || t`Summaries`,
         icon: getColumnGroupIcon(groupInfo) || "sum",
         columnItems: availableColumns.map(column => {

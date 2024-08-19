@@ -58,6 +58,7 @@ export const ColumnHeader = styled.th<ResponsiveProps>`
   th& {
     padding: 0.75em 1em 0.75em;
   }
+
   font-weight: bold;
   color: var(--mb-color-text-medium);
   ${hideResponsively}
@@ -159,6 +160,7 @@ SortingControlContainer.defaultProps = { isSortable: true };
 export const RowActionsContainer = styled.div`
   display: flex;
   gap: 0.5rem;
+
   span {
     display: flex;
     align-items: center;
@@ -174,7 +176,6 @@ export const TBody = styled.tbody`
   td {
     border: none;
     background-color: transparent;
-
     border-top: 1px solid var(--mb-color-border);
 
     &:first-of-type {

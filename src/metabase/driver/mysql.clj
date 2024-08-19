@@ -15,6 +15,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -22,7 +23,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -66,6 +66,7 @@
                               :persist-models                         true
                               :schemas                                false
                               :uploads                                true
+                              :identifiers-with-spaces                true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
@@ -257,6 +258,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver.sql/json-field-length :mysql
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :char]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
@@ -657,7 +662,7 @@
       "UTC"
       offset)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetTime]
+(defmethod sql.qp/inline-value [:mysql OffsetTime]
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
   ;; it to the appropriate timezone
@@ -665,13 +670,13 @@
           (t/format "HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetDateTime]
+(defmethod sql.qp/inline-value [:mysql OffsetDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql ZonedDateTime]
+(defmethod sql.qp/inline-value [:mysql ZonedDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)

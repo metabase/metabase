@@ -8,6 +8,7 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -87,6 +88,15 @@
     metric-clause
     metric-metadata))
 
+(deftest ^:parallel metric-expression-display-info-test
+  (are [metric] (=? {:display-name      "CC"
+                     :long-display-name "CC"
+                     :effective-type    :type/Integer
+                     :description       "Number of toucans plus number of pelicans"}
+                    (lib/display-info query-with-metric metric))
+    (update metric-clause 1 assoc :display-name "CC")
+    (assoc metric-metadata :display-name "CC")))
+
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/*
            :display-name      "[Unknown Metric]"
@@ -161,7 +171,7 @@
                :database (meta/id)
                :stages
                [{:lib/type :mbql.stage/mbql
-                 :source-card 1
+                 :source-table (meta/id :orders)
                  :breakout
                  [[:field
                    {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
@@ -201,6 +211,23 @@
                     :aggregation-position 0}]
                   (map #(lib/display-info query-with-metric %)
                        metrics)))))))
+  (testing "Metrics based on cards are available"
+    (let [metric {:name "Metrics"
+                  :id 2
+                  :type :metric
+                  :database-id (meta/id)
+                  :source-card-id 1
+                  :dataset-query {:database (meta/id)
+                                  :type :query
+                                  :query {:source-table "card__1"
+                                          :aggregation [[:count]]}}}
+          mp (lib/composed-metadata-provider
+              lib.tu/metadata-provider-with-model
+              (providers.mock/mock-metadata-provider
+               {:cards [metric]}))]
+      (is (=? [(assoc metric :lib/type :metadata/metric)]
+              (-> (lib/query mp (lib.metadata/card lib.tu/metadata-provider-with-model 1))
+                  lib/available-metrics)))))
   (testing "query with different Table -- don't return Metrics"
     (is (nil? (lib.metric/available-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
   (testing "for subsequent stages -- don't return Metrics (#37173)"

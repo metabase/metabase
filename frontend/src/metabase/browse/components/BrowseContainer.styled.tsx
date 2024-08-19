@@ -12,7 +12,6 @@ export const BrowseContainer = styled.div`
   flex: 1;
   flex-flow: column nowrap;
   margin-top: 1rem;
-
   container-name: ItemsTableContainer;
   container-type: inline-size;
 `;
@@ -23,7 +22,7 @@ export const BrowseSection = styled(Flex)`
   width: 100%;
 `;
 
-export const BrowseHeader = styled.header`
+export const BrowseHeader = styled.div`
   display: flex;
   flex-direction: column;
   padding: 1rem 2.5rem 3rem 2.5rem;
@@ -41,7 +40,7 @@ export const BrowseMain = styled.main`
 export const BrowseGrid = styled(Grid)`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
-  gap: 0rem 1rem;
+  gap: 0 1rem;
   margin: 0;
   width: 100%;
 

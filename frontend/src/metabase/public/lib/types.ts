@@ -28,9 +28,12 @@ export type EmbeddingParametersValues = Record<string, string>;
 export type EmbeddingDisplayOptions = {
   font: null | string;
   theme: DisplayTheme;
+  background: boolean;
   bordered: boolean;
   titled: boolean;
-  hide_download_button: boolean | null;
+  /** this is deprecated in favor of `downloads`, but it's still supported */
+  hide_download_button?: boolean | null;
+  downloads: boolean | null;
 };
 
 export type CodeSampleParameters = {

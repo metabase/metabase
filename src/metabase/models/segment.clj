@@ -71,7 +71,7 @@
                   (t2/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
-(mu/defn ^:private definition-description :- [:maybe ::lib.schema.common/non-blank-string]
+(mu/defn- definition-description :- [:maybe ::lib.schema.common/non-blank-string]
   "Calculate a nice description of a Segment's definition."
   [metadata-provider                                      :- ::lib.schema.metadata/metadata-provider
    {table-id :table_id, :keys [definition], :as _segment} :- (ms/InstanceOf :model/Segment)]
@@ -86,7 +86,7 @@
         (log/errorf e "Error calculating Segment description: %s" (ex-message e))
         nil))))
 
-(mu/defn ^:private warmed-metadata-provider :- ::lib.schema.metadata/metadata-provider
+(mu/defn- warmed-metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id :- ::lib.schema.id/database
    segments    :- [:maybe [:sequential (ms/InstanceOf :model/Segment)]]]
   (let [metadata-provider (doto (lib.metadata.jvm/application-database-metadata-provider database-id)
@@ -103,7 +103,7 @@
     (lib.metadata.protocols/warm-cache metadata-provider :metadata/table table-ids)
     metadata-provider))
 
-(mu/defn ^:private segments->table-id->warmed-metadata-provider :- fn?
+(mu/defn- segments->table-id->warmed-metadata-provider :- fn?
   [segments :- [:maybe [:sequential (ms/InstanceOf :model/Segment)]]]
   (let [table-id->db-id             (when-let [table-ids (not-empty (into #{} (map :table_id segments)))]
                                       (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]))

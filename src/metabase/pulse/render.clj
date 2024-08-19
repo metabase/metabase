@@ -8,7 +8,6 @@
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -30,7 +29,7 @@
   [card]
   (h (urls/card-url (:id card))))
 
-(mu/defn ^:private make-title-if-needed :- [:maybe formatter/RenderedPulseCard]
+(mu/defn- make-title-if-needed :- [:maybe formatter/RenderedPulseCard]
   [render-type card dashcard]
   (when *include-title*
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
@@ -57,7 +56,7 @@
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
-(mu/defn ^:private make-description-if-needed :- [:maybe formatter/RenderedPulseCard]
+(mu/defn- make-description-if-needed :- [:maybe formatter/RenderedPulseCard]
   [dashcard card]
   (when *include-description*
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
@@ -70,18 +69,13 @@
 
 (defn detect-pulse-chart-type
   "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [{display-type :display, card-name :name, :as card} maybe-dashcard {:keys [cols rows], :as data}]
+  [{display-type :display card-name :name} maybe-dashcard {:keys [cols rows] :as data}]
   (let [col-sample-count          (delay (count (take 3 cols)))
-        row-sample-count          (delay (count (take 2 rows)))
-        [col-1-rowfn col-2-rowfn] (formatter/graphing-column-row-fns card data)
-        col-1                     (delay (col-1-rowfn cols))
-        col-2                     (delay (col-2-rowfn cols))]
+        row-sample-count          (delay (count (take 2 rows)))]
     (letfn [(chart-type [tyype reason & args]
               (log/tracef "Detected chart type %s for Card %s because %s"
                           tyype (pr-str card-name) (apply format reason args))
-              tyype)
-            (col-description [{col-name :name, base-type :base_type}]
-              (format "%s (%s)" (pr-str col-name) base-type))]
+              tyype)]
       (cond
         (or (empty? rows)
             ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
@@ -110,6 +104,7 @@
 
         (#{:smartscalar
            :scalar
+           :pie
            :scatter
            :waterfall
            :line
@@ -118,9 +113,6 @@
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
 
-        (= display-type :pie)
-        (chart-type :categorical/donut "result has two cols (%s and %s (number))" (col-description @col-1) (col-description @col-2))
-
         :else
         (chart-type :table "no other chart types match")))))
 
@@ -128,7 +120,7 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
-(mu/defn ^:private render-pulse-card-body :- formatter/RenderedPulseCard
+(mu/defn- render-pulse-card-body :- formatter/RenderedPulseCard
   [render-type
    timezone-id :- [:maybe :string]
    card
@@ -152,7 +144,6 @@
           (log/error e "Pulse card render error")
           (body/render :render-error nil nil nil nil nil))))))
 
-
 (mu/defn render-pulse-card :- formatter/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
@@ -168,11 +159,6 @@
   (let [{title             :content
          title-attachments :attachments} (make-title-if-needed render-type card dashcard)
         {description :content}           (make-description-if-needed dashcard card)
-        results                          (update-in results
-                                                    [:data :viz-settings]
-                                                    (fn [viz-settings]
-                                                      (merge viz-settings (mb.viz/db->norm
-                                                                           (:visualization_settings dashcard)))))
         {pulse-body       :content
          body-attachments :attachments
          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
@@ -180,7 +166,7 @@
              :content [:p
                        ;; Provide a horizontal scrollbar for tables that overflow container width.
                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                       [:div {:style (style/style {:overflow-x :auto})}
+                       [:div
                         [:a {:href        (card-href card)
                              :target      "_blank"
                              :rel         "noopener noreferrer"
@@ -191,7 +177,8 @@
                          title
                          description
                          [:div {:class "pulse-body"
-                                :style (style/style {:display :block
+                                :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
+                                                     :display :block
                                                      :margin  :16px})}
                           (if-let [more-results-message (body/attached-results-text render-type card)]
                             (conj more-results-message (list pulse-body))

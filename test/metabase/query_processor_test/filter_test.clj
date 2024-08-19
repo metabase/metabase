@@ -129,7 +129,8 @@
     (testing ":between with dates"
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this
       ;; test's results
-      (when (= :snowflake driver/*driver*)
+      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+      (when (= driver/*driver* :snowflake)
         (driver/notify-database-updated driver/*driver* (mt/id)))
       (is (=? {:rows [[29]]
                :cols [(qp.test-util/aggregate-col :count)]}
@@ -144,6 +145,15 @@
     (mt/normal-drivers-with-feature :expressions)
     (mt/normal-drivers-with-feature :date-arithmetics)
     (timezones-test/timezone-aware-column-drivers)))
+
+(defmethod driver/database-supports? [::driver/driver ::empty-results-wrong-because-of-issue-5419]
+  [_driver _feature _database]
+  false)
+
+;;; Mongo returns empty row for count = 0. We should fix that (#5419)
+(defmethod driver/database-supports? [:mongo ::empty-results-wrong-because-of-issue-5419]
+  [_driver _feature _database]
+  true)
 
 (deftest ^:parallel temporal-arithmetic-test
   (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
@@ -168,9 +178,10 @@
             ;; we are not interested in the exact result, just want to check
             ;; that the query can be compiled and executed
             (mt/with-native-query-testing-context query
-              (let [[[result]] (mt/formatted-rows [int]
-                                 (qp/process-query query))]
-                (if (= driver/*driver* :mongo)
+              (let [[[result]] (mt/formatted-rows
+                                [int]
+                                (qp/process-query query))]
+                (if (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db))
                   (is (or (nil? result)
                           (pos-int? result)))
                   (is (nat-int? result)))))))))))
@@ -203,9 +214,10 @@
             ;; we are not interested in the exact result, just want to check
             ;; that the query can be compiled and executed
             (mt/with-native-query-testing-context query
-              (let [[[result]] (mt/formatted-rows [int]
-                                 (qp/process-query query))]
-                (if (= driver/*driver* :mongo)
+              (let [[[result]] (mt/formatted-rows
+                                [int]
+                                (qp/process-query query))]
+                (if (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db))
                   (is (or (nil? result)
                           (pos-int? result)))
                   (is (nat-int? result)))))))))))
@@ -644,6 +656,15 @@
       (is (= 7
              (count-with-filter-clause checkins [:= !week.date "2015-06-21T07:00:00.000000000-00:00"]))))))
 
+(defmethod driver/database-supports? [::driver/driver ::empty-results-wrong-because-of-issue-5419]
+  [_driver _feature _database]
+  false)
+
+;;; Mongo returns empty row for count = 0. We should fix that (#5419)
+(defmethod driver/database-supports? [:mongo ::empty-results-wrong-because-of-issue-5419]
+  [_driver _feature _database]
+  true)
+
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
@@ -658,14 +679,14 @@
           (let [query (mt/mbql-query venues
                         {:aggregation [[:count]]
                          :filter      [:= $name v]})]
-            (testing (format "\nquery = %s" (pr-str (:query (qp.compile/compile-and-splice-parameters query))))
-              ;; Mongo returns empty results if count is zero -- see #5419
-              (is (= (if (and (= driver/*driver* :mongo)
-                              (zero? expected-count))
+            (testing (format "\nquery = %s" (pr-str (:query (qp.compile/compile-with-inline-parameters query))))
+              (is (= (if (and (zero? expected-count)
+                              (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db)))
                        []
                        [[expected-count]])
-                     (mt/formatted-rows [int]
-                       (qp/process-query query)))))))))))
+                     (mt/formatted-rows
+                      [int]
+                      (qp/process-query query)))))))))))
 
 (deftest ^:parallel string-escape-test-2
   ;; test `:sql` drivers that support native parameters
@@ -763,51 +784,66 @@
         (testing :not-empty
           (testing "should match non-nil, non-empty strings"
             (is (= [[600]]
-                   (mt/formatted-rows [int]
-                     (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
+                   (mt/formatted-rows
+                    [int]
+                    (mt/run-mbql-query airport {:aggregation [:count], :filter [:not-empty $code]}))))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::is-empty-not-empty-with-not-emptyable-args-test]
+  [_driver _feature _database]
+  true)
+
+;;; TODO: Investigate how to make the test work with Athena!
+(defmethod driver/database-supports? [:athena ::is-empty-not-empty-with-not-emptyable-args-test]
+  [_driver _feature _database]
+  false)
 
 (deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test
-  (mt/test-drivers
-   ;; TODO: Investigate how to make the test work with Athena!
-   (disj (mt/normal-drivers) :athena)
-   (mt/dataset
-    test-data-null-date
-    (testing ":is-empty works with not emptyable type argument (#40883)"
-      (is (= [[1 1]]
-             (mt/formatted-rows
-              [int int]
-              (mt/run-mbql-query
-               checkins
-               {:expressions {"caseExpr" [:case
-                                          [[[:is-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
-                                          {:default 0}]}
-                :fields [$id [:expression "caseExpr"]]
-                :order-by [[$id :asc]]
-                :limit 1})))))
-    (testing ":not-empty works with not emptyable type argument (#40883)"
-      (is (= [[1 0]]
-             (mt/formatted-rows
-              [int int]
-              (mt/run-mbql-query
-               checkins
-               {:expressions {"caseExpr" [:case
-                                          [[[:not-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
-                                          {:default 0}]}
-                :fields [$id [:expression "caseExpr"]]
-                :order-by [[$id :asc]]
-                :limit 1})))))
-    (testing (str "nil base-type arg of :not-empty should behave as not emptyable")
-      (is (= [[1 1]]
-             (mt/formatted-rows
-              [int int]
-              (mt/run-mbql-query
-               checkins
-               {:expressions {"caseExpr" [:case
-                                          [[[:is-empty [:field %null_only_date nil]] 1]]
-                                          {:default 0}]}
-                :fields [$id [:expression "caseExpr"]]
-                :order-by [[$id :asc]]
-                :limit 1}))))))))
+  (mt/test-drivers (mt/normal-drivers-with-feature ::is-empty-not-empty-with-not-emptyable-args-test)
+    (mt/dataset test-data-null-date
+      (testing ":is-empty works with not emptyable type argument (#40883)"
+        (is (= [[1 1]]
+               (mt/formatted-rows
+                [int int]
+                (mt/run-mbql-query
+                  checkins
+                  {:expressions {"caseExpr" [:case
+                                             [[[:is-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                             {:default 0}]}
+                   :fields [$id [:expression "caseExpr"]]
+                   :order-by [[$id :asc]]
+                   :limit 1}))))))))
+
+(deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature ::is-empty-not-empty-with-not-emptyable-args-test)
+    (mt/dataset test-data-null-date
+      (testing ":not-empty works with not emptyable type argument (#40883)"
+        (is (= [[1 0]]
+               (mt/formatted-rows
+                [int int]
+                (mt/run-mbql-query
+                  checkins
+                  {:expressions {"caseExpr" [:case
+                                             [[[:not-empty [:field %null_only_date {:base-type :type/Date}]] 1]]
+                                             {:default 0}]}
+                   :fields [$id [:expression "caseExpr"]]
+                   :order-by [[$id :asc]]
+                   :limit 1}))))))))
+
+(deftest ^:parallel is-empty-not-empty-with-not-emptyable-args-test-3
+  (mt/test-drivers (mt/normal-drivers-with-feature ::is-empty-not-empty-with-not-emptyable-args-test)
+    (mt/dataset test-data-null-date
+      (testing (str "nil base-type arg of :not-empty should behave as not emptyable")
+        (is (= [[1 1]]
+               (mt/formatted-rows
+                [int int]
+                (mt/run-mbql-query
+                  checkins
+                  {:expressions {"caseExpr" [:case
+                                             [[[:is-empty [:field %null_only_date nil]] 1]]
+                                             {:default 0}]}
+                   :fields [$id [:expression "caseExpr"]]
+                   :order-by [[$id :asc]]
+                   :limit 1}))))))))
 
 (deftest ^:parallel order-by-nulls-test
   (testing "Check that we can sort by numeric columns that contain NULLs (#6615)"

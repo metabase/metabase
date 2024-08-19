@@ -1,8 +1,6 @@
 import PropTypes from "prop-types";
 import _ from "underscore";
 
-import ExplicitSize from "metabase/components/ExplicitSize";
-
 import Legend from "./Legend";
 import LegendActions from "./LegendActions";
 import {
@@ -35,7 +33,7 @@ const propTypes = {
   canRemoveSeries: PropTypes.func,
 };
 
-const LegendLayout = ({
+export const LegendLayout = ({
   className,
   items,
   hovered,
@@ -98,5 +96,3 @@ const LegendLayout = ({
 };
 
 LegendLayout.propTypes = propTypes;
-
-export default _.compose(ExplicitSize())(LegendLayout);

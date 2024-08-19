@@ -14,7 +14,6 @@
    [mb.hawk.parallel]
    [metabase.audit :as audit]
    [metabase.config :as config]
-   [metabase.db.query :as mdb.query]
    [metabase.models
     :refer [Card
             Dimension
@@ -51,6 +50,7 @@
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.tools.before-update :as t2.before-update]
+   [toucan2.tools.transformed :as t2.transformed]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (java.io File FileInputStream)
@@ -153,7 +153,8 @@
               :is_sample                   false
               :name                        (u.random/random-name)
               :metadata_sync_schedule      "0 50 * * * ? *"
-              :cache_field_values_schedule "0 50 0 * * ? *"}))
+              :cache_field_values_schedule "0 50 0 * * ? *"
+              :settings                    {:database-source-dataset-name "test-data"}}))
 
    :model/Dimension
    (fn [_] (default-timestamped
@@ -512,18 +513,41 @@
   [settings & body]
   `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
 
+(defn- maybe-merge-original-values
+  "For some map columns like `Database.settings` or `User.settings`, merge the original values with the temp ones to
+  preserve Settings that aren't explicitly overridden."
+  [model column->unparsed-original-value column->temp-value]
+  (letfn [(column-transform-fn [model column]
+            (get-in (t2.transformed/transforms model) [column :out]))
+          (parse-original-value [model column unparsed-original-value]
+            (some-> unparsed-original-value
+                    ((column-transform-fn model column))))
+          (merge-original-value? [model column]
+            (and (#{:model/Database :model/User} model)
+                 (= column :settings)))
+          (maybe-merge-original-value [model column unparsed-original-value temp-value]
+            (if (merge-original-value? model column)
+              (let [original-value (parse-original-value model column unparsed-original-value)]
+                (merge original-value temp-value))
+              temp-value))]
+    (into {}
+          (map (fn [[column temp-value]]
+                 [column (maybe-merge-original-value model column (get column->unparsed-original-value column) temp-value)]))
+          column->temp-value)))
+
 (defn do-with-temp-vals-in-db
   "Implementation function for [[with-temp-vals-in-db]] macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-temp-vals-in-db")
   ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
   ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
-  (let [model                    (t2.model/resolve-model model)
-        [original-column->value] (mdb.query/query {:select (keys column->temp-value)
-                                                   :from   [(t2/table-name model)]
-                                                   :where  [:= :id (u/the-id object-or-id)]})]
-    (assert original-column->value
-            (format "%s %d not found." (name model) (u/the-id object-or-id)))
+  (let [model                  (t2.model/resolve-model model)
+        original-column->value (t2/query-one {:select (keys column->temp-value)
+                                              :from   [(t2/table-name model)]
+                                              :where  [:= :id (u/the-id object-or-id)]})
+        _                      (assert original-column->value
+                                       (format "%s %d not found." (name model) (u/the-id object-or-id)))
+        column->temp-value     (maybe-merge-original-values model original-column->value column->temp-value)]
     (try
       (t2/update! model (u/the-id object-or-id) column->temp-value)
       (f)
@@ -543,7 +567,11 @@
 
     ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
     (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :semantic_type \"type/FK\"}
-      (do-something))"
+      (do-something))
+
+  There is some special case behavior that merges existing values into the temp values for map columns such as
+  `Database` or `User` `:settings` -- the existing Settings map is merged into the user-specified one, so only the
+  Settings you explicitly specify are overridden. See [[maybe-merge-original-values]]."
   {:style/indent 3}
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
@@ -610,14 +638,14 @@
       (try
         (assert (not (qs/started? temp-scheduler))
                 "temp in-memory scheduler already started: did you use it elsewhere without shutting it down?")
-        (with-redefs [task/*quartz-scheduler* (atom temp-scheduler)
-                      qs/initialize (constantly temp-scheduler)
-                      ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
-                      ;; after it's done, but we need the scheduler for testing
-                      qs/shutdown   (constantly nil)]
-          (thunk))
-        (finally
-          (qs/shutdown temp-scheduler))))))
+        (binding [task/*quartz-scheduler* (atom temp-scheduler)]
+          (with-redefs [qs/initialize (constantly temp-scheduler)
+                        ;; prevent shutting down scheduler during thunk because some custom migration shutdown scheduler
+                        ;; after it's done, but we need the scheduler for testing
+                        qs/shutdown   (constantly nil)]
+            (thunk)))
+       (finally
+         (qs/shutdown temp-scheduler))))))
 
 (defn do-with-temp-scheduler [thunk]
   ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
@@ -890,10 +918,10 @@
   [collection-or-id & body]
   `(do-with-discarded-collections-perms-changes ~collection-or-id (fn [] ~@body)))
 
-(declare with-discard-model-updates)
+(declare with-discard-model-updates!)
 
-(defn do-with-discard-model-updates
-  "Impl for `with-discard-model-changes`."
+(defn do-with-discard-model-updates!
+  "Impl for [[with-discard-model-updates!]]."
   [models thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
   (if (= (count models) 1)
@@ -910,18 +938,18 @@
        (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
        (doseq [[id original-val] @pk->original]
          (t2/update! model id original-val)))))
-   (with-discard-model-updates (rest models)
+   (with-discard-model-updates! (rest models)
      (thunk))))
 
-(defmacro with-discard-model-updates
+(defmacro with-discard-model-updates!
   "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
   [models & body]
   (if (> (count models) 1)
     (let [[model & more] models]
-      `(with-discard-model-updates [~model]
-         (with-discard-model-updates [~@more]
+      `(with-discard-model-updates! [~model]
+         (with-discard-model-updates! [~@more]
            ~@body)))
-    `(do-with-discard-model-updates ~models (fn [] ~@body))))
+    `(do-with-discard-model-updates! ~models (fn [] ~@body))))
 
 (deftest with-discard-model-changes-test
   (t2.with-temp/with-temp
@@ -930,7 +958,7 @@
     (let [count-aux-method-before (set (methodical/aux-methods t2.before-update/before-update :model/Card :before))]
 
       (testing "with single model"
-        (with-discard-model-updates [:model/Card]
+        (with-discard-model-updates! [:model/Card]
           (t2/update! :model/Card card-id {:name "New Card name"})
           (testing "the changes takes affect inside the macro"
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))))
@@ -939,7 +967,7 @@
           (is (= card (t2/select-one :model/Card card-id)))))
 
       (testing "with multiple models"
-        (with-discard-model-updates [:model/Card :model/Dashboard]
+        (with-discard-model-updates! [:model/Card :model/Dashboard]
           (testing "the changes takes affect inside the macro"
             (t2/update! :model/Card card-id {:name "New Card name"})
             (is (= "New Card name" (t2/select-one-fn :name :model/Card card-id)))
@@ -1423,3 +1451,32 @@
                                   (.await latch)
                                   (f))))
     (mapv deref @futures)))
+
+(defn ordered-subset?
+  "Test if all the elements in `xs` appear in the same order in `ys` (but `ys` could have additional entries as
+  well). Search results in this test suite can be polluted by local data, so this is a way to ignore extraneous
+  results.
+
+  Uses the equality function if provided (otherwise just `=`)"
+  ([xs ys]
+   (ordered-subset? xs ys =))
+  ([[x & rest-x :as xs] [y & rest-y :as ys] eq?]
+   (or (empty? xs)
+       (and (boolean (seq ys))
+            (if (eq? x y)
+              (recur rest-x rest-y eq?)
+              (recur xs rest-y eq?))))))
+
+(defmacro call-with-map-params
+  "Execute `f` with each `binding` available by name in a params map. This is useful in conjunction with
+  `with-anaphora` (below)."
+  [f bindings]
+  (let [binding-map (into {} (for [b bindings] [(keyword b) b]))]
+    (list f binding-map)))
+
+(defmacro with-anaphora
+  "Execute the body with the given bindings plucked out of a params map (which was probably created by
+  `call-with-map-params` above."
+  [bindings & body]
+  `(fn [{:keys ~(mapv (comp symbol name) bindings)}]
+     ~@body))

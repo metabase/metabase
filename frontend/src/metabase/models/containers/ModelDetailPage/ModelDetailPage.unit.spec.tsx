@@ -124,7 +124,7 @@ const TEST_DATABASE = createMockDatabase({
 
 const TEST_DATABASE_WITHOUT_NESTED_QUERIES = createMockDatabase({
   ...TEST_DATABASE,
-  features: TEST_DATABASE.features.filter(
+  features: TEST_DATABASE.features?.filter(
     feature => feature !== "nested-queries",
   ),
 });

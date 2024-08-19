@@ -20,7 +20,6 @@ import {
   isPreviewEnabled,
 } from "metabase/collections/utils";
 import { ConfirmDeleteModal } from "metabase/components/ConfirmDeleteModal";
-import EventSandbox from "metabase/components/EventSandbox";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
 import { useDispatch } from "metabase/lib/redux";
 import { entityForObject } from "metabase/lib/schema";
@@ -167,36 +166,32 @@ function ActionMenu({
   }, [item, dispatch]);
 
   return (
-    // this component is used within a `<Link>` component,
-    // so we must prevent events from triggering the activation of the link
-    <EventSandbox preventDefault>
-      <>
-        <EntityItemMenu
-          className={className}
-          item={item}
-          isBookmarked={isBookmarked}
-          isXrayEnabled={!item.archived && isXrayEnabled}
-          canUseMetabot={canUseMetabot}
-          onPin={canPin ? handlePin : undefined}
-          onMove={canMove ? handleMove : undefined}
-          onCopy={canCopy ? handleCopy : undefined}
-          onArchive={canArchive ? handleArchive : undefined}
-          onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
-          onTogglePreview={canPreview ? handleTogglePreview : undefined}
-          onRestore={canRestore ? handleRestore : undefined}
-          onDeletePermanently={
-            canDelete ? handleStartDeletePermanently : undefined
-          }
+    <>
+      <EntityItemMenu
+        className={className}
+        item={item}
+        isBookmarked={isBookmarked}
+        isXrayEnabled={!item.archived && isXrayEnabled}
+        canUseMetabot={canUseMetabot}
+        onPin={canPin ? handlePin : undefined}
+        onMove={canMove ? handleMove : undefined}
+        onCopy={canCopy ? handleCopy : undefined}
+        onArchive={canArchive ? handleArchive : undefined}
+        onToggleBookmark={!item.archived ? handleToggleBookmark : undefined}
+        onTogglePreview={canPreview ? handleTogglePreview : undefined}
+        onRestore={canRestore ? handleRestore : undefined}
+        onDeletePermanently={
+          canDelete ? handleStartDeletePermanently : undefined
+        }
+      />
+      {showDeleteModal && (
+        <ConfirmDeleteModal
+          name={item.name}
+          onClose={() => setShowDeleteModal(false)}
+          onDelete={handleDeletePermanently}
         />
-        {showDeleteModal && (
-          <ConfirmDeleteModal
-            name={item.name}
-            onClose={() => setShowDeleteModal(false)}
-            onDelete={handleDeletePermanently}
-          />
-        )}
-      </>
-    </EventSandbox>
+      )}
+    </>
   );
 }
 

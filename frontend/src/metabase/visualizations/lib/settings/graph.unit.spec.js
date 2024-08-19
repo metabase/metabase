@@ -55,6 +55,48 @@ describe("STACKABLE_SETTINGS", () => {
         expect(value).toBe("normalized");
       });
     });
+
+    describe("isValid", () => {
+      const isValid = STACKABLE_SETTINGS["stackable.stack_type"].isValid;
+
+      it("should be valid even on cards with display=line when there are stackable series (metabase#45182)", () => {
+        const result = isValid(
+          [
+            { card: { display: "line" }, id: 1 },
+            { card: { display: "line" }, id: 2 },
+            { card: { display: "line" }, id: 3 },
+          ],
+          {
+            series: series => ({
+              display: series.card.id === 1 ? "line" : "bar",
+            }),
+            "stackable.stack_type": "stacked",
+            "graph.show_values": false,
+          },
+        );
+
+        expect(result).toBe(true);
+      });
+
+      it("should not be valid when there is less than two stackable series", () => {
+        const result = isValid(
+          [
+            { card: { display: "bar" }, id: 1 },
+            { card: { display: "bar" }, id: 2 },
+            { card: { display: "bar" }, id: 3 },
+          ],
+          {
+            series: series => ({
+              display: series.card.id === 1 ? "bar" : "line",
+            }),
+            "stackable.stack_type": "stacked",
+            "graph.show_values": false,
+          },
+        );
+
+        expect(result).toBe(false);
+      });
+    });
   });
 });
 

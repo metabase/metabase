@@ -52,3 +52,14 @@ export const many_data_types_rows = [
     binary: "binary",
   },
 ];
+
+export const ip_addresses_rows = [
+  {
+    inet: "192.168.0.1/24",
+    count: 42,
+  },
+  {
+    inet: "127.0.0.1",
+    count: 365,
+  },
+];

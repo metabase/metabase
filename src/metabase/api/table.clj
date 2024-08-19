@@ -5,7 +5,6 @@
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.db.query :as mdb.query]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -334,7 +333,7 @@
     (api/read-check table))
   (let [db (t2/select-one Database :id (:db_id table))]
     (-> table
-        (t2/hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
+        (t2/hydrate :db [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :metrics)
         (m/dissoc-in [:db :details])
         (assoc-dimension-options db)
         format-fields-for-response
@@ -352,16 +351,12 @@
     (let [tables (->> (t2/select Table :id [:in ids])
                       (filter mi/can-read?))
           tables (t2/hydrate tables
-                             :db
-                             [:fields [:target :has_field_values] :dimensions :has_field_values]
+                             [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
-                             :metrics)
-          dbs    (when (seq tables)
-                   (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)]))]
+                             :metrics)]
       (for [table tables]
         (-> table
             (m/dissoc-in [:db :details])
-            (assoc-dimension-options (-> table :db_id dbs))
             format-fields-for-response
             fix-schema
             (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
@@ -409,12 +404,12 @@
         underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (t2/select Field :id [:in ids])
-                                             (t2/hydrate [:target :has_field_values] :has_field_values)))))
+                                             (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
                      (merge (select-keys (underlying col-id)
-                                         [:semantic_type :fk_target_field_id :has_field_values :target]))
+                                         [:semantic_type :fk_target_field_id :has_field_values :target :dimensions :name_field]))
                      (assoc
                       :table_id     (str "card__" card-id)
                       :id           (or col-id
@@ -438,10 +433,7 @@
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields? databases card-id->metadata-fields]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (cond-> card
-               (not (contains? card :collection))
-               (t2/hydrate :collection))
-        card-type (:type card)
+  (let [card-type (:type card)
         dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
@@ -449,6 +441,7 @@
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
              :description      (:description card)
+             :metrics          (:metrics card)
              :type             card-type}
       (and (= card-type :metric)
            dataset-query)
@@ -476,53 +469,26 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-(defn fetch-card-query-metadata
-  "Return metadata for the 'virtual' table for a Card."
-  [id]
-  (let [{:keys [database_id] :as card} (api/check-404
-                                        (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id :type]
-                                                       :id id))
-        moderated-status              (->> (mdb.query/query {:select   [:status]
-                                                             :from     [:moderation_review]
-                                                             :where    [:and
-                                                                        [:= :moderated_item_type "card"]
-                                                                        [:= :moderated_item_id id]
-                                                                        [:= :most_recent true]]
-                                                             :order-by [[:id :desc]]
-                                                             :limit    1}
-                                                            :id id)
-                                           first :status)
-        db (t2/select-one Database :id database_id)
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        trust-semantic-keys? (and (= (:type card) :model)
-                                  (= (-> card :dataset_query :type) :native))]
-    (-> (assoc card :moderated_status moderated-status)
-        api/read-check
-        (card->virtual-table :include-fields? true)
-        (assoc-dimension-options db)
-        (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
-
 (defn batch-fetch-card-query-metadatas
   "Return metadata for the 'virtual' tables for a Cards.
   Unreadable cards are silently skipped."
   [ids]
   (when (seq ids)
-    (let [cards (-> (t2/select Card
-                               {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                                            :c.description :c.collection_id :c.database_id :c.type
-                                            [:r.status :moderated_status]]
-                                :from      [[:report_card :c]]
-                                :left-join [[{:select   [:moderated_item_id :status]
-                                              :from     [:moderation_review]
-                                              :where    [:and
-                                                         [:= :moderated_item_type "card"]
-                                                         [:= :most_recent true]]
-                                              :order-by [[:id :desc]]
-                                              :limit    1} :r]
-                                            [:= :r.moderated_item_id :c.id]]
-                                :where     [:in :c.id ids]})
-                    (t2/hydrate :collection))
+    (let [cards (t2/select Card
+                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
+                                        :c.description :c.collection_id :c.database_id :c.type
+                                        :c.source_card_id
+                                        [:r.status :moderated_status]]
+                            :from      [[:report_card :c]]
+                            :left-join [[{:select   [:moderated_item_id :status]
+                                          :from     [:moderation_review]
+                                          :where    [:and
+                                                     [:= :moderated_item_type "card"]
+                                                     [:= :most_recent true]]
+                                          :order-by [[:id :desc]]
+                                          :limit    1} :r]
+                                        [:= :r.moderated_item_id :c.id]]
+                            :where      [:in :c.id ids]})
           dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
           metadata-field-ids (into #{}
                                    (comp (mapcat :result_metadata)
@@ -530,7 +496,7 @@
                                    cards)
           metadata-fields (if (seq metadata-field-ids)
                             (-> (t2/select Field :id [:in metadata-field-ids])
-                                (t2/hydrate [:target :has_field_values] :has_field_values)
+                                (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
                                 (->> (m/index-by :id)))
                             {})
           card-id->metadata-fields (into {}
@@ -538,8 +504,9 @@
                                                 [(:id card) (into []
                                                                   (keep (comp metadata-fields :id))
                                                                   (:result_metadata card))]))
-                                         cards)]
-      (for [card cards :when (mi/can-read? card)]
+                                         cards)
+          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
+      (for [card readable-cards]
         ;; a native model can have columns with keys as semantic types only if a user configured them
         (let [trust-semantic-keys? (and (= (:type card) :model)
                                         (= (-> card :dataset_query :type) :native))]
@@ -554,7 +521,7 @@
   "Return metadata for the 'virtual' table for a Card."
   [id]
   {id ms/PositiveInt}
-  (fetch-card-query-metadata id))
+  (first (batch-fetch-card-query-metadatas [id])))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
@@ -617,10 +584,11 @@
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
-(mu/defn ^:private update-csv!
+(mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map
                [:table-id ms/PositiveInt]
+               [:filename :string]
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
@@ -640,6 +608,7 @@
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
   (update-csv! {:table-id id
+                :filename (get-in raw-params ["file" :filename])
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/append}))
 
@@ -648,6 +617,7 @@
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
   (update-csv! {:table-id id
+                :filename (get-in raw-params ["file" :filename])
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/replace}))
 

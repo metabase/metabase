@@ -35,6 +35,46 @@
 ;;   but it may be more instructive to look at examples in our codebase.
 ;;
 ;;  <hr />
+;;
+;; ## How does defendpoint coersion work?
+;;
+;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
+;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
+;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
+;;
+;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
+;;
+;; ### Here's an example repl session showing how it works:
+;;
+;; <pre><code>
+;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]])
+;; </code></pre>
+;;
+;; To see how a schema will be transformed, call `mc/decode` with `defendpoint-transformer`.
+;;
+;; With the `:keyword` schema:
+;;
+;; <pre><code>
+;; (mc/decode :keyword "foo/bar" defendpoint-transformer)
+;; ;; => :foo/bar
+;; </code></pre>
+;;
+;; The schemas can get quite complex, ( see: https://github.com/metosin/malli#advanced-transformations ) so it's best
+;; to test them out in the REPL to see how they'll be transformed.
+;;
+;; Example:
+;; <pre><code>
+;; (def DecodableKwInt
+;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
+;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
+;;
+;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
+;; ;; => 123
+;; </code></pre>
+;; <hr />
 
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
@@ -665,7 +705,17 @@
   [current-obj obj-updates]
   (cond-> obj-updates
     (column-will-change? :archived current-obj obj-updates)
-    (assoc :archived_directly (boolean (:archived obj-updates)))))
+    (assoc :archived_directly (boolean (:archived obj-updates)))
+
+    ;; This is a hack around a frontend issue. Apparently, the undo functionality depends on calculating a diff
+    ;; between the current state and the previous state. Sometimes this results in the frontend telling us to
+    ;; *both* mark an item as archived *and* "move" it to the Trash.
+    ;;
+    ;; Let's just say that if you're marking something as archived, we throw away any `collection_id` you passed in
+    ;; along with it.
+    (and (column-will-change? :archived current-obj obj-updates)
+         (:archived obj-updates))
+    (dissoc :collection_id)))
 
 (defn present-in-trash-if-archived-directly
   "If `:archived_directly` is `true`, set `:collection_id` to the trash collection ID."
@@ -673,3 +723,19 @@
   (cond-> item
     (:archived_directly item)
     (assoc :collection_id trash-collection-id)))
+
+(mu/defn present-items
+  "A convenience function that takes a heterogeneous collection of items. Each item should have, at minimum, a `:model`
+  and an `:id`. The `f` function is called like `(f model all-items-with-that-model)` and should return a collection
+  of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
+  for reordering items the way they were."
+  [f items :- [:sequential [:map
+                            [:id ms/PositiveInt]
+                            [:model :keyword]]]]
+  (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
+    (->> items
+         (group-by :model)
+         (mapcat (fn [[model items]]
+                   (map #(assoc % ::model model) (f model items))))
+         (sort-by (comp id+model->order (juxt :id ::model)))
+         (map #(dissoc % ::model)))))

@@ -16,9 +16,9 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { buildTemporalUnitOption } from "metabase-lib/v1/parameters/utils/operators";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
@@ -56,6 +56,7 @@ import {
   getParameterValues,
   getParameterMappingsBeforeEditing,
   getSelectedTabId,
+  getFiltersToReset,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -211,7 +212,7 @@ export const setParameterMapping = createThunkAction(
 export const RESET_PARAMETER_MAPPINGS =
   "metabase/dashboard/RESET_PARAMETER_MAPPINGS";
 export const resetParameterMapping = createThunkAction(
-  SET_PARAMETER_MAPPING,
+  RESET_PARAMETER_MAPPINGS,
   (parameterId: ParameterId, dashcardId?: DashCardId) => {
     return (dispatch, getState) => {
       const dashboard = getDashboard(getState());
@@ -322,6 +323,8 @@ export const setParameterType = createThunkAction(
         );
       }
 
+      restoreValueConfigIfNeeded(getState, dispatch, parameterId, sectionId);
+
       return { id: parameterId, type };
     },
 );
@@ -375,6 +378,55 @@ function restoreParameterMappingsIfNeeded(
       setParameterMapping(parameterId, Number(dashcardId), card_id, target),
     );
   });
+
+  return true;
+}
+
+function restoreValueConfigIfNeeded(
+  getState: GetState,
+  dispatch: Dispatch,
+  parameterId: ParameterId,
+  sectionId: string,
+): boolean {
+  const dashboardBeforeEditing = getDashboardBeforeEditing(getState());
+  if (!dashboardBeforeEditing) {
+    return false;
+  }
+
+  const parametersBeforeEditing = dashboardBeforeEditing.parameters;
+  const parameterToRestore = parametersBeforeEditing?.find(
+    ({ id }) => id === parameterId,
+  );
+
+  if (!parameterToRestore) {
+    return false;
+  }
+
+  if (sectionId !== parameterToRestore.sectionId) {
+    return false;
+  }
+
+  if (parameterToRestore.values_source_config) {
+    dispatch(
+      setParameterSourceConfig(
+        parameterId,
+        parameterToRestore.values_source_config,
+      ),
+    );
+  }
+  if (parameterToRestore.values_source_type) {
+    dispatch(
+      setParameterSourceType(
+        parameterId,
+        parameterToRestore.values_source_type,
+      ),
+    );
+  }
+  if (parameterToRestore.values_query_type) {
+    dispatch(
+      setParameterQueryType(parameterId, parameterToRestore.values_query_type),
+    );
+  }
 
   return true;
 }
@@ -449,6 +501,24 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
+export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
+export const resetParameters = createThunkAction(
+  RESET_PARAMETERS,
+  () => (_dispatch, getState) => {
+    const parameters = getFiltersToReset(getState());
+
+    return parameters.map(parameter => {
+      const newValue = parameter.default ?? null;
+      const isValueEmpty = isParameterValueEmpty(newValue);
+
+      return {
+        id: parameter.id,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : newValue,
+      };
+    });
+  },
+);
+
 export const SET_PARAMETER_REQUIRED =
   "metabase/dashboard/SET_PARAMETER_REQUIRED";
 export const setParameterRequired = createThunkAction(
@@ -482,6 +552,12 @@ export const setParameterIsMultiSelect = createThunkAction(
     updateParameter(dispatch, getState, parameterId, parameter => ({
       ...parameter,
       isMultiSelect: isMultiSelect,
+      default:
+        !isMultiSelect &&
+        Array.isArray(parameter.default) &&
+        parameter.default.length > 1
+          ? [parameter.default[0]]
+          : parameter.default,
     }));
 
     return { id: parameterId, isMultiSelect };

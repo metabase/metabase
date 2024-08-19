@@ -1,6 +1,5 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import {
@@ -205,6 +204,8 @@ export function seriesSetting({
       objectName: "series",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
+      getObjectSettings: (settings, object) =>
+        settings[keyForSingleSeries(object)],
       getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
       readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],

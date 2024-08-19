@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
@@ -65,8 +66,8 @@
 (defmethod can-run-method :mbql.stage/mbql
   [query card-type]
   (or (not= card-type :metric)
-      (let [last-stage (lib.util/query-stage query -1)]
-        (= (-> last-stage :aggregation count) 1))))
+      (and (= (stage-count query) 1)
+           (= (-> (lib.util/query-stage query 0) :aggregation count) 1))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
@@ -234,16 +235,14 @@
 (defn- metric-query
   [metadata-providerable card-metadata]
   (let [card-id (u/the-id card-metadata)
+        metric-first-stage (-> (query metadata-providerable (:dataset-query card-metadata))
+                               (lib.util/query-stage 0))
         base-query (query-with-stages metadata-providerable
-                                      [{:lib/type :mbql.stage/mbql
-                                        :source-card card-id}])
-        metric-breakouts (-> (query metadata-providerable (:dataset-query card-metadata))
-                             (lib.util/query-stage -1)
-                             :breakout)
+                                      [(select-keys metric-first-stage [:lib/type :source-card :source-table])])
         base-query (reduce
                     #(lib.util/add-summary-clause %1 0 :breakout %2)
                     base-query
-                    metric-breakouts)]
+                    (:breakout metric-first-stage))]
     (-> base-query
         (lib.util/add-summary-clause
          0 :aggregation
@@ -276,7 +275,7 @@
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    x]
-  (query-method metadata-providerable x))
+  (lib.cache/attach-query-cache (query-method metadata-providerable x)))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."

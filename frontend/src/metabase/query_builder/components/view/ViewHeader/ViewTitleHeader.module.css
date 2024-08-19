@@ -1,0 +1,19 @@
+.FilterButton {
+  transition: background 300ms linear, border 300ms linear;
+
+  &:hover:not([data-css-specifity-hack="🤣"]) {
+    color: var(--mb-color-filter);
+    border-color: color-mix(in srgb, var(--mb-color-filter) 30%, white);
+    background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+  }
+}
+
+.SummarizeButton {
+  transition: background 300ms linear, border 300ms linear;
+
+  &:hover:not([data-active="true"]) {
+    color: var(--mb-color-summarize);
+    border-color: color-mix(in srgb, var(--mb-color-summarize) 40%, white);
+    background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
+  }
+}

@@ -29,7 +29,6 @@ describeEE("scenarios > admin > permissions > downgrade ee to oss", () => {
 
   it("should allow users to edit permissions after downgrading EE to OSS", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
     modifyPermission(
       "Sample Database",
       EE_DATA_ACCESS_PERMISSION_INDEX,
@@ -81,7 +80,6 @@ describeEE("scenarios > admin > permissions > downgrade ee to oss", () => {
   it("should preserve unedited EE values in graph when OSS", () => {
     // starting as EE, set a EE only value in the graph
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
-
     modifyPermission(
       "Sample Database",
       EE_DATA_ACCESS_PERMISSION_INDEX,

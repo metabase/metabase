@@ -10,8 +10,7 @@ export const ACCENT_COUNT = 8;
 // NOTE: KEEP SYNCRONIZED WITH:
 // frontend/src/metabase/css/core/colors.module.css
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
-// enterprise/frontend/src/embedding-sdk/components/private/SdkContentWrapper.tsx
-// .storybook/preview-head.html
+// frontend/src/metabase/styled-components/theme/css-variables.ts
 export const colors = {
   brand: "#509EE3",
   summarize: "#88BF4D",
@@ -63,7 +62,7 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
 
-  "brand-light": palette => lighten(color("brand", palette), 0.532), // #F9FBFC
+  "brand-light": palette => lighten(color("brand", palette), 0.532), // #DDECFA
   "brand-lighter": palette => lighten(color("brand", palette), 0.598), // #EEF6FC for brand
   focus: palette => getFocusColor("brand", palette),
 

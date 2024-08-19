@@ -6,6 +6,8 @@
    [clojure.test :refer :all]
    [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
+   [metabase.config :as config]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.util :as mongo.util]
@@ -18,8 +20,14 @@
 
 (tx/add-test-extensions! :mongo)
 
-(defmethod tx/supports-time-type? :mongo [_driver] false)
-(defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:mongo feature]
+    [_driver _feature _database]
+    false))
+
+;; During tests don't treat Mongo as having FK support
+(defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
@@ -61,9 +69,7 @@
   false)
 
 (defmethod tx/create-db! :mongo
-  [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
-  (when-not skip-drop-db?
-    (destroy-db! driver dbdef))
+  [driver {:keys [table-definitions], :as dbdef} & _options]
   (mongo.connection/with-mongo-database [^MongoDatabase db (tx/dbdef->connection-details driver :db dbdef)]
     (doseq [{:keys [field-definitions table-name rows]} table-definitions]
       (doseq [{:keys [field-name indexed?]} field-definitions]

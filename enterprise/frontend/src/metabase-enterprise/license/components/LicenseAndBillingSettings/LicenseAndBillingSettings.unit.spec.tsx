@@ -30,6 +30,7 @@ const setupState = ({
           value: token,
         },
       ],
+      warnings: {},
     },
   });
 

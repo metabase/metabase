@@ -56,7 +56,7 @@
   (zipmap (drop-last valid-current-units)
           (drop 1 valid-current-units)))
 
-(mu/defn ^:private matching-breakout-dimension :- [:maybe ::lib.schema.drill-thru/context.row.value]
+(mu/defn- matching-breakout-dimension :- [:maybe ::lib.schema.drill-thru/context.row.value]
   [query        :- ::lib.schema/query
    stage-number :- :int
    dimensions   :- [:sequential ::lib.schema.drill-thru/context.row.value]]
@@ -69,13 +69,13 @@
                              (lib.temporal-bucket/temporal-bucket column)))]
            (assoc dimension :column-ref breakout))))
 
-(mu/defn ^:private next-breakout-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
+(mu/defn- next-breakout-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   [column :- ::lib.schema.metadata/column]
   (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket column)]
     (when (contains? (set valid-current-units) current-unit)
       (unit->next-unit current-unit))))
 
-(mu/defn ^:private describe-next-unit :- ::lib.schema.common/non-blank-string
+(mu/defn- describe-next-unit :- ::lib.schema.common/non-blank-string
   [unit :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
   (case unit
     :quarter (i18n/tru "See this year by quarter")

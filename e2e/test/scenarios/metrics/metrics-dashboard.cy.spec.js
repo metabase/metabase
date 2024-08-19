@@ -20,6 +20,8 @@ import {
   sidebar,
   undoToastList,
   visitDashboard,
+  openQuestionActions,
+  getDashboardCards,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -93,6 +95,39 @@ describe("scenarios > metrics > dashboard", () => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should be possible to add metric to a dashboard via context menu (metabase#44220)", () => {
+    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: { id: metricId } }) => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.visit(`/metric/${metricId}`);
+      cy.wait("@dataset");
+      cy.findByTestId("scalar-value").should("have.text", "18,760");
+
+      cy.log("Add metric to a dashboard via context menu");
+      openQuestionActions();
+      popover().findByTextEnsureVisible("Add to dashboard").click();
+      modal().within(() => {
+        cy.findByRole("heading", {
+          name: "Add this metric to a dashboard",
+        }).should("be.visible");
+        cy.findByText("Orders in a dashboard").click();
+        cy.button("Select").click();
+      });
+
+      cy.log("Assert it's been added before the save");
+      cy.location("pathname").should(
+        "eq",
+        `/dashboard/${ORDERS_DASHBOARD_ID}-orders-in-a-dashboard`,
+      );
+      cy.location("hash").should("eq", `#add=${metricId}&edit`);
+      cy.findByTestId("scalar-value").should("have.text", "18,760");
+
+      cy.log("Assert we can save the dashboard with the metric");
+      saveDashboard();
+      getDashboardCards().should("have.length", 2);
+      cy.findByTestId("scalar-value").should("have.text", "18,760");
+    });
   });
 
   it("should be possible to add metrics to a dashboard", () => {

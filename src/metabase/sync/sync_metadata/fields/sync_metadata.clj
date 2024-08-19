@@ -14,7 +14,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private update-field-metadata-if-needed! :- [:enum 0 1]
+(mu/defn- update-field-metadata-if-needed! :- [:enum 0 1]
   "Update the metadata for a Metabase Field as needed if any of the info coming back from the DB has changed. Syncs
   base type, database type, semantic type, and comments/remarks; returns `1` if the Field was updated; `0` otherwise."
   [table          :- i/TableInstance
@@ -146,7 +146,7 @@
 
 (declare update-metadata!)
 
-(mu/defn ^:private update-nested-fields-metadata! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn- update-nested-fields-metadata! :- ms/IntGreaterThanOrEqualToZero
   "Recursively call `update-metadata!` for all the nested Fields in a `metabase-field`."
   [table          :- i/TableInstance
    field-metadata :- i/TableMetadataField

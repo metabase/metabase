@@ -62,7 +62,6 @@ describe("DashCardCardParameterMapper", () => {
   it("should render an unauthorized state for a card with no dataset query", () => {
     const card = createMockCard({
       dataset_query: createMockStructuredDatasetQuery({ query: {} }),
-      can_run_adhoc_query: false,
     });
     setup({ card });
 

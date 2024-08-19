@@ -55,10 +55,10 @@ The order of the arguments matters, the script will yell at you if you put the f
 
 ## Utilities
 
-In case you want to preview release notes generation, or re-generate them after a release has been built, you can use this command. (the hash doesn't matter, it's just a placeholder)
+In case you want to preview release notes generation, or re-generate them after a release has been built, you can use this command.
 
 ```sh
-yarn release-offline v0.77.0 1234567890abcdef1234567890abcdef12345678  --changelog > changelog.log
+yarn generate-changelog v0.77.0 > changelog.log
 ```
 
 ## Required checks copy

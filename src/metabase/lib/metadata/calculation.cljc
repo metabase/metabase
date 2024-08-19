@@ -387,7 +387,7 @@
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
-     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
+     (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -443,7 +443,7 @@
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 
-(mu/defn ^:private default-returned-columns-options :- ReturnedColumnsOptions
+(mu/defn- default-returned-columns-options :- ReturnedColumnsOptions
   [metadata-providerable]
   {:unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))})
 
@@ -496,7 +496,7 @@
     [:include-implicitly-joinable?                 {:optional true} :boolean]
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
-(mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
+(mu/defn- default-visible-columns-options :- VisibleColumnsOptions
   [metadata-providerable]
   (merge
    (default-returned-columns-options metadata-providerable)

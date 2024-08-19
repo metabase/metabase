@@ -65,7 +65,7 @@
     :else
     (pr-str x)))
 
-(mu/defn ^:private field->name
+(mu/defn- field->name
   ([field]
    (field->name field true))
 
@@ -109,7 +109,7 @@
     :else
     (format "{%s: %s}" (field->name field) (param-value->str field value))))
 
-(mu/defn ^:private substitute-field-filter
+(mu/defn- substitute-field-filter
   [{field :field, {:keys [value]} :value, :as field-filter} :- [:map
                                                                 [:field ::lib.schema.metadata/column]
                                                                 [:value [:map [:value :any]]]]]

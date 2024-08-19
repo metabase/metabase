@@ -50,7 +50,7 @@
   "Whether we're in a recursive call to [[resolve-column-name]] or not. Prevent infinite recursion (#32063)"
   false)
 
-(mu/defn ^:private resolve-column-name :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- resolve-column-name :- [:maybe ::lib.schema.metadata/column]
   "String column name: get metadata from the previous stage, if it exists, otherwise if this is the first stage and we
   have a native query or a Saved Question source query or whatever get it from our results metadata."
   [query        :- ::lib.schema/query
@@ -82,7 +82,7 @@
                                       (assoc :name (or (:lib/desired-column-alias column) (:name column)))
                                       (assoc :lib/source :source/previous-stage))))))))
 
-(mu/defn ^:private resolve-field-metadata :- ::lib.schema.metadata/column
+(mu/defn- resolve-field-metadata :- ::lib.schema.metadata/column
   "Resolve metadata for a `:field` ref. This is part of the implementation
   for [[lib.metadata.calculation/metadata-method]] a `:field` clause."
   [query                                                                 :- ::lib.schema/query
@@ -109,7 +109,7 @@
     (cond-> metadata
       join-alias (lib.join/with-join-alias join-alias))))
 
-(mu/defn ^:private add-parent-column-metadata
+(mu/defn- add-parent-column-metadata
   "If this is a nested column, add metadata about the parent column."
   [query    :- ::lib.schema/query
    metadata :- ::lib.schema.metadata/column]
@@ -784,18 +784,19 @@
     (lib.types.isa/searchable? field) :search
     :else                             :none))
 
-(mu/defn ^:private remapped-field :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- remapped-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
-    (lib.metadata/field metadata-providerable remap-field-id)))
+  (when (lib.types.isa/foreign-key? column)
+    (when-let [remap-field-id (get-in column [:lib/external-remap :field-id])]
+      (lib.metadata/field metadata-providerable remap-field-id))))
 
-(mu/defn ^:private search-field :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- search-field :- [:maybe ::lib.schema.metadata/column]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column                :- ::lib.schema.metadata/column]
-  ;; ignore remappings for PK columns.
   (let [col (or (when (lib.types.isa/primary-key? column)
-                  column)
+                  (when-let [name-field (:name-field column)]
+                    (lib.metadata/field metadata-providerable (u/the-id name-field))))
                 (remapped-field metadata-providerable column)
                 column)]
     (when (lib.types.isa/searchable? col)

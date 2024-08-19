@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
+import { useCartesianChartSeriesColorsClasses } from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -26,9 +27,10 @@ function _CartesianChart(props: VisualizationProps) {
     rawSeries,
     settings: originalSettings,
     card,
-    href,
+    getHref,
     gridSize,
-    width,
+    width: outerWidth,
+    height: outerHeight,
     showTitle,
     headerIcon,
     actionButtons,
@@ -87,6 +89,7 @@ function _CartesianChart(props: VisualizationProps) {
   }, []);
 
   const canSelectTitle = !!onChangeCardAndRun;
+  const seriesColorsCss = useCartesianChartSeriesColorsClasses(chartModel);
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
@@ -96,9 +99,11 @@ function _CartesianChart(props: VisualizationProps) {
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
-          href={canSelectTitle ? href : undefined}
-          onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
-          width={width}
+          getHref={canSelectTitle ? getHref : undefined}
+          onSelectTitle={
+            canSelectTitle ? () => onOpenQuestion(card.id) : undefined
+          }
+          width={outerWidth}
         />
       )}
       <CartesianChartLegendLayout
@@ -113,6 +118,8 @@ function _CartesianChart(props: VisualizationProps) {
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
+        width={outerWidth}
+        height={outerHeight}
       >
         {/**@ts-expect-error emotion does not properly provide prop types due */}
         <CartesianChartRenderer
@@ -124,6 +131,7 @@ function _CartesianChart(props: VisualizationProps) {
           onInit={handleInit}
         />
       </CartesianChartLegendLayout>
+      {seriesColorsCss}
     </CartesianChartRoot>
   );
 }

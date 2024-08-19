@@ -10,8 +10,6 @@
    [metabase-enterprise.serialization.v2.storage :as storage]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues NativeQuerySnippet
                             Table]]
-   [metabase.models.collection :as collection]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
@@ -26,8 +24,6 @@
                :let               [rel (.relativize base (.toPath file))]]
            (mapv str rel)))))
 
-(def ^:private trash-dir (delay (str (:entity_id (collection/trash-collection)) "_trash")))
-
 (deftest basic-dump-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db
@@ -39,8 +35,7 @@
           (storage/store! export dump-dir)
           (testing "the right files in the right places"
             (is (= #{[parent-filename (str parent-filename ".yaml")]
-                     [parent-filename child-filename (str child-filename ".yaml")]
-                     [@trash-dir (str @trash-dir ".yaml")]}
+                     [parent-filename child-filename (str child-filename ".yaml")]}
                    (file-set (io/file dump-dir "collections")))
                 "collections form a tree, with same-named files")
             (is (contains? (file-set (io/file dump-dir))
@@ -85,8 +80,7 @@
             (let [gp-dir (str (:entity_id grandparent) "_grandparent_collection")
                   p-dir  (str (:entity_id parent)      "_parent_collection")
                   c-dir  (str (:entity_id child)       "_child_collection")]
-              (is (= #{[@trash-dir (str @trash-dir ".yaml")]                                  ; Trash collection, always included
-                       [gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
+              (is (= #{[gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
                        [gp-dir p-dir (str p-dir ".yaml")]                                     ; Parent collection
                        [gp-dir p-dir c-dir (str c-dir ".yaml")]                               ; Child collection
                        ["cards" (str (:entity_id c1) "_root_card.yaml")]                      ; Root card
@@ -121,12 +115,10 @@
             (testing "collections under collections/"
               (is (= #{[gp-dir (str gp-dir ".yaml")]                                          ; Grandparent collection
                        [gp-dir p-dir (str p-dir ".yaml")]                                     ; Parent collection
-                       [gp-dir p-dir c-dir (str c-dir ".yaml")]                               ; Child collection
-                       [@trash-dir (str @trash-dir ".yaml")]}
+                       [gp-dir p-dir c-dir (str c-dir ".yaml")]}                              ; Child collection
                      (file-set (io/file dump-dir "collections")))))
             (testing "snippets under snippets/"
-              (is (= #{
-                       [(str (:entity_id c1) "_root_snippet.yaml")]                      ; Root snippet
+              (is (= #{[(str (:entity_id c1) "_root_snippet.yaml")]                      ; Root snippet
                        [gp-dir (str (:entity_id c2) "_grandparent_snippet.yaml")]        ; Grandparent snippet
                        [gp-dir p-dir (str (:entity_id c3) "_parent_snippet.yaml")]       ; Parent snippet
                        [gp-dir p-dir c-dir (str (:entity_id c4) "_child_snippet.yaml")]} ; Child snippet
@@ -152,8 +144,8 @@
                 "Slashes in directory names get escaped"))
 
           (testing "the Field was properly exported"
-            (is (= (-> (into {} (serdes/extract-one "Field" {} (t2/select-one 'Field :id (:id website))))
-                       (update :created_at      u.date/format))
+            (is (= (-> (ts/extract-one "Field" (:id website))
+                       (update :created_at u.date/format))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases" "My Company Data"
                                                 "tables"    "Customers"

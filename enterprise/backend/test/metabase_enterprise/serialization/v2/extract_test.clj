@@ -28,9 +28,9 @@
             TimelineEvent
             User]]
    [metabase.models.action :as action]
-   [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
@@ -43,8 +43,6 @@
        (filter #(= model-name (:model %)))
        (map :id)
        set))
-
-(def ^:private trash-eid (delay (:entity_id (collection/trash-collection))))
 
 (deftest fundamentals-test
   (mt/with-empty-h2-app-db
@@ -103,30 +101,16 @@
 
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
-          (is (= #{coll-eid child-eid @trash-eid}
+          (is (= #{coll-eid child-eid}
                  (by-model "Collection" (extract/extract nil)))))
 
         (testing "valid user specified"
-          (is (= #{coll-eid child-eid pc-eid @trash-eid}
+          (is (= #{coll-eid child-eid pc-eid}
                  (by-model "Collection" (extract/extract {:user-id mark-id})))))
 
         (testing "invalid user specified"
-          (is (= #{coll-eid child-eid @trash-eid}
+          (is (= #{coll-eid child-eid}
                  (by-model "Collection" (extract/extract {:user-id 218921})))))))))
-
-(deftest database-test
-  (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   _ {:name "My Database"}]
-      (testing "without :include-database-secrets"
-        (let [extracted (extract/extract {})
-              dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
-          (is (= 1 (count dbs)))
-          (is (not-any? :details dbs))))
-      (testing "with :include-database-secrets"
-        (let [extracted (extract/extract {:include-database-secrets true})
-              dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
-          (is (= 1 (count dbs)))
-          (is (every? :details dbs)))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
@@ -471,7 +455,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards include their Dashcards"
-        (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id other-dash-id))]
+        (let [ser (ts/extract-one "Dashboard" other-dash-id)]
           (is (=? {:serdes/meta            [{:model "Dashboard" :id other-dash :label "dave_s_dash"}]
                    :entity_id              other-dash
                    :dashcards
@@ -512,7 +496,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards with parameters where the source is a card"
-        (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id param-dash-id))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -531,7 +515,7 @@
                  (set (serdes/dependencies ser))))))
 
       (testing "Cards with parameters where the source is a card"
-        (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id param-dash-id))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -556,12 +540,11 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          ;; the trash is always included
-          (is (= #{coll-eid mark-coll-eid @trash-eid}
+          (is (= #{coll-eid mark-coll-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
                       (by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid @trash-eid}
+          (is (= #{coll-eid dave-coll-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (by-model "Collection"))))))
@@ -585,28 +568,32 @@
 (deftest dashboard-card-series-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc
-      [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
-       :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
-       :model/Card {c2-id :id, c2-eid :entity_id} {:name "Series Question A", :collection_id coll-id}
-       :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
-       :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
-       :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
-       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
-       :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
-       :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
-      (testing "Inlined dashcards include their series' card entity IDs"
-        (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id dash-id))]
-          (is (=? {:entity_id dash-eid
-                   :dashcards [{:entity_id dc1-eid, :series (mt/exactly=? [{:card_id c2-eid} {:card_id c3-eid}])}
-                               {:entity_id dc2-eid, :series []}]}
-                  ser))
+        [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
+         :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
+         :model/Card {c2-id :id, c2-eid :entity_id} {:name "Series Question A", :collection_id coll-id}
+         :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
+         :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
+         :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
+         :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
+         :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
+         :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
+        (testing "Inlined dashcards include their series' card entity IDs"
+          (let [ser (t2/with-call-count [q]
+                      (u/prog1 (ts/extract-one "Dashboard" dash-id)
+                        (is (< (q) 13))))]
+            (is (=? {:entity_id dash-eid
+                     :dashcards [{:entity_id dc1-eid
+                                  :series (mt/exactly=? [{:card_id c2-eid :position 0}
+                                                         {:card_id c3-eid :position 1}])}
+                                 {:entity_id dc2-eid, :series []}]}
+                    ser))
 
-          (testing "and depend on all referenced cards, including cards from dashboard cards' series"
-            (is (= #{[{:model "Card"       :id c1-eid}]
-                     [{:model "Card"       :id c2-eid}]
-                     [{:model "Card"       :id c3-eid}]
-                     [{:model "Collection" :id coll-eid}]}
-                   (set (serdes/dependencies ser))))))))))
+            (testing "and depend on all referenced cards, including cards from dashboard cards' series"
+              (is (= #{[{:model "Card"       :id c1-eid}]
+                       [{:model "Card"       :id c2-eid}]
+                       [{:model "Card"       :id c3-eid}]
+                       [{:model "Collection" :id coll-eid}]}
+                     (set (serdes/dependencies ser))))))))))
 
 (deftest dimensions-test
   (mt/with-empty-h2-app-db
@@ -638,8 +625,8 @@
                                                              :type     "external"
                                                              :field_id fk-id
                                                              :human_readable_field_id cust-name}]
-      (testing "dimensions without foreign keys are inlined into their Fields"
-        (let [ser (serdes/extract-one "Field" {} (t2/select-one Field :id email-id))]
+      (testing "dimensions without foreign keys are inlined into their Fields\n"
+        (let [ser (ts/extract-one "Field" email-id)]
           (is (malli= [:map
                        [:serdes/meta [:= [{:model "Database", :id "My Database"}
                                           {:model "Table", :id "Schemaless Table"}
@@ -661,7 +648,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "foreign key dimensions are inlined into their Fields"
-        (let [ser (serdes/extract-one "Field" {} (t2/select-one Field :id fk-id))]
+        (let [ser (ts/extract-one "Field" fk-id)]
           (is (malli= [:map
                        [:serdes/meta        [:= [{:model "Database" :id "My Database"}
                                                  {:model "Schema" :id "PUBLIC"}
@@ -1658,22 +1645,23 @@
                                                      :dataset_query {:query {:source-table (str "card__" card1-id)
                                                                              :aggregation  [[:count]]}}}]
       (testing "Complain about card not available for exporting"
-        (is (some #(str/starts-with? % "Failed to export Dashboard")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll1-id]]
-                                            :no-settings   true
-                                            :no-data-model true}))))))
-
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll1-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Dashboard")
+                    (into #{}
+                          (map :message)
+                          (messages))))))
       (testing "Complain about card depending on an outside card"
-        (is (some #(str/starts-with? % "Failed to export Cards")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll2-id]]
-                                            :no-settings   true
-                                            :no-data-model true})))))))))
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll2-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Cards")
+                    (into #{}
+                          (map :message)
+                          (messages)))))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db
@@ -1706,4 +1694,78 @@
         (is (some? (audit/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
-        (is (= #{@trash-eid} (by-model "Collection" ser)))))))
+        (is (= #{} (by-model "Collection" ser)))))))
+
+(deftest entity-id-in-targets-test
+  (mt/with-temp [Collection c {:name "Top-Level Collection"}]
+    (testing "Conversion from eid to id works"
+      (is (= (:id c)
+             (serdes/eid->id "Collection" (:entity_id c)))))
+    (testing "Extracting by entity id works"
+      (let [ser (extract/extract {:targets       [["Collection" (:entity_id c)]]
+                                  :no-settings   true
+                                  :no-data-model true})]
+        (is (= #{(:entity_id c)}
+               (by-model "Collection" ser)))))))
+
+(deftest extract-nested-test
+  (testing "extract-nested working"
+    (mt/with-temp [:model/Dashboard           d   {:name "Top Dash"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d) :card_id (:id c1)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (let [spec (serdes/make-spec "DashboardCard" nil)]
+        (is (= {(:id dc1) [s]}
+               (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
+        (is (=? (assoc dc1 :series [s])
+                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+      (let [spec (serdes/make-spec "Dashboard" nil)]
+        (is (= {(:id d) [(assoc dc1 :series [s])]}
+               (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
+        (is (=? (assoc d
+                       :dashcards [(assoc dc1 :series [s])]
+                       :tabs nil)
+                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+
+(deftest extract-nested-efficient-test
+  (testing "extract-nested is efficient"
+    (mt/with-temp [:model/Dashboard           d1  {:name "Top Dash 1"}
+                   :model/Dashboard           d2  {:name "Top Dash 2"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/Card                c3  {:name "Card for Dash 2"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d1) :card_id (:id c1)}
+                   :model/DashboardCard       dc2 {:dashboard_id (:id d2) :card_id (:id c2)}
+                   :model/DashboardCard       dc3 {:dashboard_id (:id d2) :card_id (:id c3)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (t2/with-call-count [qc]
+        (is (=? [(assoc d1
+                        :dashcards [(assoc dc1 :series [s])]
+                        :tabs nil)
+                 (assoc d2
+                        :dashcards [(assoc dc2 :series nil)
+                                    (assoc dc3 :series nil)]
+                        :tabs nil)]
+                (into [] (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+        ;; 1 per dashboard/dashcard/series/tabs
+        (is (= 4 (qc)))))))
+
+(deftest extract-nested-partitioned-test
+  (testing "extract-nested will partition stuff by 100s"
+    (mt/with-empty-h2-app-db
+      (let [d   (ts/create! :model/Dashboard {:name "Dash"})
+            c1  (ts/create! :model/Card {:name "Card"})
+            dcs (vec (for [_ (range 7)]
+                       (ts/create! :model/DashboardCard {:dashboard_id (:id d)
+                                                         :card_id      (:id c1)})))]
+        (t2/with-call-count [qc]
+          (is (=? [(assoc d :dashcards dcs)]
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
+                                                              :where [:= :id (:id d)]}))))
+          ;; query count breakdown:
+          ;; - 1 for dashboard
+          ;; - 1 for tabs, there are none
+          ;; - 1 for dashcards, there are 7
+          ;; - 2 for series (7 dashcards / 5 -> 2 batches)
+          (is (= 5 (qc))))))))

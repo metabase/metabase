@@ -592,3 +592,24 @@
 (defmethod print-method Duration
   [d writer]
   (print-method (list 't/duration (str d)) writer))
+
+(defn temporal-str->iso8601-str
+  "Convert temporal string to iso8601 datetime without millis.
+
+  We store datetime values without millis in sqlite. That's not the case for other dbs. Also, some columns are stored
+  as date in sqlite, while other dbs use datetime types. This function makes it easy to share expected results between
+  sqlite and other dbs.
+
+  Use of this function for anything else is highly discouraged."
+  [tstr]
+  (when tstr
+    (let [t (parse tstr)
+          inst (cond (instance? LocalDate t)
+                     (.toInstant ^LocalDateTime (.atStartOfDay ^LocalDate t) java.time.ZoneOffset/UTC)
+
+                     (instance? LocalDateTime t)
+                     (.toInstant ^LocalDateTime t java.time.ZoneOffset/UTC)
+
+                     :else
+                     t)]
+      (format "yyyy-MM-dd'T'HH:mm:ss'Z'" inst))))

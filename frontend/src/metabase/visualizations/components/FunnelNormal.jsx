@@ -11,6 +11,7 @@ import {
   formatNumber,
   formatValue,
 } from "metabase/lib/formatting";
+import { formatNullable } from "metabase/lib/formatting/nullable";
 import {
   FunnelNormalRoot,
   FunnelStart,
@@ -53,7 +54,9 @@ export default class FunnelNormal extends Component {
     const sortedRows = settings["funnel.rows"]
       ? settings["funnel.rows"]
           .filter(fr => fr.enabled)
-          .map(fr => rows.find(row => row[dimensionIndex] === fr.key))
+          .map(fr =>
+            rows.find(row => formatNullable(row[dimensionIndex]) === fr.key),
+          )
       : rows;
 
     const isNarrow = gridSize && gridSize.width < 7;
@@ -64,6 +67,7 @@ export default class FunnelNormal extends Component {
       formatValue(dimension, {
         ...settings.column(cols[dimensionIndex]),
         jsx,
+        stringifyNull: true,
         majorWidth: 0,
       });
     const formatMetric = (metric, jsx = true) =>

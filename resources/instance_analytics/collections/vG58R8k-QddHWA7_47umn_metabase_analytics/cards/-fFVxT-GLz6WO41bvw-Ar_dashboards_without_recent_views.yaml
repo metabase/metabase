@@ -105,14 +105,14 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    '["ref",["expression","Days since last view"]]':
+    '["name","Days since last view"]':
       show_mini_bar: true
-    '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer"}]]':
+    '["name","entity_id"]':
       column_title: Dashboard ID
       link_text: ''
       link_url: /dashboard/{{entity_id}}
       view_as: link
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text"}]]':
+    '["name","name"]':
       link_text: ''
       link_url: /dashboard/{{entity_id}}
       view_as: link
@@ -122,6 +122,5 @@ serdes/meta:
   label: dashboards_without_recent_views
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: vUNKNOWN (901f705)
 type: question

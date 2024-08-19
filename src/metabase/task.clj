@@ -193,7 +193,7 @@
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private reschedule-task!
+(mu/defn- reschedule-task!
   [job         :- (ms/InstanceOfClass JobDetail)
    new-trigger :- (ms/InstanceOfClass Trigger)]
   (try

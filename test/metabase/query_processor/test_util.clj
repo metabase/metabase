@@ -73,11 +73,6 @@
 
 (alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
-(defn normal-drivers-except
-  "Return the set of all drivers except Druid and those in `excluded-drivers`."
-  [excluded-drivers]
-  (set/difference (normal-drivers) (set excluded-drivers)))
-
 ;; Predefinied Column Fns: These are meant for inclusion in the expected output of the QP tests, to save us from
 ;; writing the same results several times
 
@@ -284,7 +279,7 @@
 
   By default, does't call fns on `nil` values; pass a truthy value as optional param `format-nil-values`? to override
   this behavior."
-  {:style/indent 1}
+  {:style/indent [:form]}
   ([format-fns response]
    (format-rows-by format-fns false response))
 
@@ -317,8 +312,8 @@
                                                   (.getName (class v))
                                                   (pr-str v)
                                                   (.getMessage e))
-                                   {:f f, :v v, :format-nil-values? format-nil-values?}
-                                   e)))))))))
+                                          {:f f, :v v, :format-nil-values? format-nil-values?}
+                                          e)))))))))
 
               :else
               (throw (ex-info "Unexpected response: rows are not sequential!" {:response response})))))))))
@@ -432,15 +427,9 @@
    [:reviews :product_id] [:products :id]
    [:venues :category_id] [:categories :id]})
 
-(def ^:dynamic *enable-fk-support-for-disabled-drivers-in-tests*
-  "Whether to enable `:foreign-keys` in drivers like `:bigquery-cloud-sdk` that don't have formal FKs
-  when [[metabase.config/is-test?]] is true."
-  false)
-
 (defn mock-fks-application-database-metadata-provider
-  "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]. A mock metadata provider composed with the application
-  database metadata provider that adds FK relationships for Tables that would normally have them in drivers that have
-  formal FK constraints."
+  "A mock metadata provider composed with the application database metadata provider that adds FK relationships
+  for Tables that would normally have them in drivers that have formal FK constraints."
   ([]
    (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
 
@@ -453,25 +442,6 @@
                            :fk-target-field-id (data/id target-table-name target-field-name)
                            :semantic-type      :type/FK}))
                    (fk-mappings))})))
-
-(defn do-with-mock-fks-for-drivers-without-fk-constraints
-  "Impl for [[with-mock-fks-for-drivers-without-fk-constraints]]."
-  [thunk]
-  (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true
-            *enable-fk-support-for-disabled-drivers-in-tests*       true]
-    (qp.store/with-metadata-provider (if (qp.store/initialized?)
-                                       (mock-fks-application-database-metadata-provider (qp.store/metadata-provider))
-                                       (mock-fks-application-database-metadata-provider))
-      (thunk))))
-
-(defmacro with-mock-fks-for-drivers-without-fk-constraints
-  "Execute `body` with test-data `checkins.user_id`, `checkins.venue_id`, and `venues.category_id` (for `test-data`) or
-  other relevant columns (for `test-data`) marked as foreign keys and with `:foreign-keys` a supported feature
-  when testing against BigQuery or similar drivers that do not support Foreign Key constraints. (We still let people
-  mark FKs manually.) The macro helps replicate the situation where somebody has manually marked FK relationships."
-  {:style/indent 0}
-  [& body]
-  `(do-with-mock-fks-for-drivers-without-fk-constraints (^:once fn* [] ~@body)))
 
 (defn- actual-query-results [query]
   (let [results (qp/process-query query)]

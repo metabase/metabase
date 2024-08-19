@@ -873,9 +873,9 @@
                        :result_metadata [{:name "ID"
                                           :id   (mt/id :airport :id)}
                                          {:semantic_type :type/Longitude
-                                          :field_ref     [:field (mt/id :airport :longitude) {:base-type :type/Float}]}
+                                          :name          "LONGITUDE"}
                                          {:semantic_type :type/Latitude
-                                          :field_ref     [:field (mt/id :airport :latitude) {:base-type :type/Float}]}]}]
+                                          :name          "LATITUDE"}]}]
         (mt/with-temp [Card {card-id :id} base-card
                        Card {model-id :id} model
                        Dashboard {dash-id :id} {}
@@ -898,7 +898,7 @@
                                                 :user_id          (mt/user->id :rasta)}]
           (testing "The html output renders the table cells as geographic coordinates"
             (is (= [[["1" "9.85" "57.09"]
-                     ["2" "39.22" "-6.2"]
+                     ["2" "39.22" "-6.22"]
                      ["3" "-2.2" "57.2"]
                      ["4" "-89.68" "39.84"]
                      ["5" "54.65" "24.43"]]

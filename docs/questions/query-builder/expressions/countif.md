@@ -31,7 +31,7 @@ We'll use the following sample data to show you `CountIf` with [required](#requi
 | ID  | Plan        | Active Subscription |
 |-----|-------------| --------------------|
 | 1   | Basic       | true                |
-| 2   | Basic       | true                | 
+| 2   | Basic       | true                |
 | 3   | Basic       | false               |
 | 4   | Business    | false               |
 | 5   | Premium     | true                |
@@ -80,7 +80,7 @@ Using the sample data:
 | ID  | Plan        | Active Subscription |
 |-----|-------------| --------------------|
 | 1   | Basic       | true                |
-| 2   | Basic       | true                | 
+| 2   | Basic       | true                |
 | 3   | Basic       | false               |
 | 4   | Business    | false               |
 | 5   | Premium     | true                |
@@ -103,7 +103,7 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 
 | Plan      | Total Inactive Subscriptions |
 |-----------|------------------------------|
-| Basic     | 1                            | 
+| Basic     | 1                            |
 | Business  | 1                            |
 | Premium   | 0                            |
 
@@ -111,7 +111,7 @@ To view your conditional counts by plan, set the **Group by** column to "Plan".
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `CountIf`      |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `CountIf`      |
 | ------------------------------------------------------------------------------------------------ | ------------------------- |
 | String                                                                                           | ❌                        |
 | Number                                                                                           | ❌                        |
@@ -150,7 +150,7 @@ CountIf([Plan] = "Basic")
 
 The `case` version lets you count a different column when the condition isn't met. For example, if you've got data from different sources:
 
-| ID: Source A  | Plan: Source A | ID: Source B  | Plan: Source B       | 
+| ID: Source A  | Plan: Source A | ID: Source B  | Plan: Source B       |
 |---------------|----------------|---------------| ---------------------|
 | 1             | Basic          |               |                      |
 |               |                | B             | basic                |
@@ -164,7 +164,7 @@ To count the total number of Basic plans across both sources, you could create a
 - Count the rows in "ID: Source B" where "Plan: Source B = "basic"
 
 ```
-Count(case([Plan: Source A] = "Basic", [ID: Source A], 
+Count(case([Plan: Source A] = "Basic", [ID: Source A],
             case([Plan: Source B] = "basic", [ID: Source B])))
 ```
 
@@ -177,7 +177,7 @@ If our sample data is a time series:
 | ID  | Plan        | Active Subscription | Created Date     |
 |-----|-------------| --------------------|------------------|
 | 1   | Basic       | true                | October 1, 2020  |
-| 2   | Basic       | true                | October 1, 2020  | 
+| 2   | Basic       | true                | October 1, 2020  |
 | 3   | Basic       | false               | October 1, 2020  |
 | 4   | Business    | false               | November 1, 2020 |
 | 5   | Premium     | true                | November 1, 2020 |
@@ -217,11 +217,11 @@ CountIf([Plan] = "Basic")
 If you want to get [conditional counts broken out by group](#conditional-counts-by-group), the SQL query:
 
 ```sql
-SELECT 
+SELECT
     plan,
     COUNT(CASE WHEN active_subscription = false THEN id END) AS total_inactive_subscriptions
 FROM accounts
-GROUP BY 
+GROUP BY
     plan
 ```
 

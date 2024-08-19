@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -7,32 +7,33 @@ import { AggregationPicker } from "../SummarizeSidebar.styled";
 
 import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
 
-const STAGE_INDEX = -1;
-
 interface AggregationItemProps {
   query: Lib.Query;
+  stageIndex: number;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onAdd: (aggregations: Lib.Aggregable[]) => void;
-  onUpdate: (nextAggregation: Lib.Aggregable) => void;
-  onRemove: () => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AggregationItem({
   query,
+  stageIndex,
   aggregation,
   aggregationIndex,
-  onAdd,
-  onUpdate,
-  onRemove,
+  onQueryChange,
 }: AggregationItemProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const { displayName } = Lib.displayInfo(query, STAGE_INDEX, aggregation);
+  const { displayName } = Lib.displayInfo(query, stageIndex, aggregation);
 
   const operators = Lib.selectedAggregationOperators(
-    Lib.availableAggregationOperators(query, STAGE_INDEX),
+    Lib.availableAggregationOperators(query, stageIndex),
     aggregation,
   );
+
+  const handleRemove = useCallback(() => {
+    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
+    onQueryChange(nextQuery);
+  }, [query, stageIndex, aggregation, onQueryChange]);
 
   return (
     <Popover opened={isOpened} onChange={setIsOpened}>
@@ -43,22 +44,18 @@ export function AggregationItem({
           onClick={() => setIsOpened(!isOpened)}
         >
           <AggregationName>{displayName}</AggregationName>
-          <RemoveIcon name="close" onClick={onRemove} />
+          <RemoveIcon name="close" onClick={handleRemove} />
         </Root>
       </Popover.Target>
       <Popover.Dropdown>
         <AggregationPicker
           query={query}
-          stageIndex={STAGE_INDEX}
+          stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={aggregationIndex}
           operators={operators}
           hasExpressionInput={false}
-          onAdd={onAdd}
-          onSelect={nextAggregation => {
-            onUpdate(nextAggregation);
-            setIsOpened(false);
-          }}
+          onQueryChange={onQueryChange}
         />
       </Popover.Dropdown>
     </Popover>

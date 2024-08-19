@@ -23,14 +23,17 @@ import {
   getBrushData,
   getGoalLineHoverData,
   getSeriesClickData,
-  getSeriesHoverData,
+  getSeriesHovered,
   getTimelineEventsForEvent,
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
 } from "metabase/visualizations/visualizations/CartesianChart/events";
 import type { CardId } from "metabase-types/api";
 
-import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
+import {
+  getHoveredEChartsSeriesDataKeyAndIndex,
+  getHoveredSeriesDataKey,
+} from "./utils";
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
@@ -51,6 +54,7 @@ export const useChartEvents = (
     onDeselectTimelineEvents,
     hovered,
     metadata,
+    isDashboard,
   }: VisualizationProps,
 ) => {
   const isBrushing = useRef<boolean>();
@@ -66,6 +70,42 @@ export const useChartEvents = (
       }
     },
     [card, onChangeCardAndRun, rawSeries],
+  );
+
+  const hoveredSeriesDataKey = useMemo(
+    () => getHoveredSeriesDataKey(chartModel.seriesModels, hovered),
+    [chartModel.seriesModels, hovered],
+  );
+
+  useEffect(
+    function updateYAxisVisibility() {
+      const hasSingleYAxis = !(
+        chartModel.leftAxisModel != null && chartModel.rightAxisModel != null
+      );
+
+      if (hasSingleYAxis) {
+        return;
+      }
+
+      const yAxisShowOption = [{ show: true }, { show: true }];
+      if (hoveredSeriesDataKey != null) {
+        const hiddenYAxisIndex = chartModel.leftAxisModel?.seriesKeys.includes(
+          hoveredSeriesDataKey,
+        )
+          ? 0
+          : 1;
+
+        yAxisShowOption[hiddenYAxisIndex].show = false;
+      }
+
+      chartRef.current?.setOption({ yAxis: yAxisShowOption }, false, true);
+    },
+    [
+      chartModel.leftAxisModel,
+      chartModel.rightAxisModel,
+      chartRef,
+      hoveredSeriesDataKey,
+    ],
   );
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
@@ -102,22 +142,14 @@ export const useChartEvents = (
             return;
           }
 
-          const hoveredData = getSeriesHoverData(
-            chartModel,
-            settings,
-            rawSeries[0].card.display,
-            event,
-          );
-
+          const hoveredObject = getSeriesHovered(chartModel, event);
           const isSameDatumHovered =
-            hoveredData?.index === hovered?.index &&
-            hoveredData?.datumIndex === hovered?.datumIndex;
+            hoveredObject?.index === hovered?.index &&
+            hoveredObject?.datumIndex === hovered?.datumIndex;
 
-          if (isSameDatumHovered) {
-            return;
+          if (!isSameDatumHovered) {
+            onHoverChange?.(hoveredObject);
           }
-
-          onHoverChange?.(hoveredData);
         },
       },
       {
@@ -181,21 +213,21 @@ export const useChartEvents = (
       },
     ],
     [
+      onHoverChange,
+      timelineEventsModel,
       chartModel,
+      hovered,
+      settings,
+      visualizationIsClickable,
+      onVisualizationClick,
+      onOpenTimelines,
+      selectedTimelineEventIds,
+      onSelectTimelineEvents,
+      onDeselectTimelineEvents,
       onOpenQuestion,
       rawSeries,
       metadata,
-      hovered,
-      selectedTimelineEventIds,
-      settings,
-      timelineEventsModel,
-      visualizationIsClickable,
       onChangeCardAndRun,
-      onVisualizationClick,
-      onHoverChange,
-      onOpenTimelines,
-      onSelectTimelineEvents,
-      onDeselectTimelineEvents,
     ],
   );
 
@@ -322,16 +354,12 @@ export const useChartEvents = (
         settings,
       };
 
-      if (
-        !areMultipleCards &&
-        hasBreakout &&
-        visualizationIsClickable(clickData)
-      ) {
+      if (hasBreakout && visualizationIsClickable(clickData)) {
         onVisualizationClick({
           ...clickData,
           element: event.currentTarget,
         });
-      } else {
+      } else if (isDashboard) {
         onOpenQuestion(seriesModel.cardId);
       }
     },
@@ -342,6 +370,7 @@ export const useChartEvents = (
       visualizationIsClickable,
       onVisualizationClick,
       onOpenQuestion,
+      isDashboard,
     ],
   );
 

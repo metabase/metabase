@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -51,12 +50,6 @@ function renderMessage(undo: Undo) {
   return typeof message === "function" ? message(undo) : message;
 }
 
-UndoToast.propTypes = {
-  undo: PropTypes.object.isRequired,
-  onUndo: PropTypes.func.isRequired,
-  onDismiss: PropTypes.func.isRequired,
-};
-
 const slideIn = {
   in: { opacity: 1, transform: "translateY(0)" },
   out: { opacity: 0, transform: "translateY(100px)" },
@@ -72,7 +65,7 @@ interface UndoToastProps {
   onDismiss: () => void;
 }
 
-function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
+export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
   const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
   const [paused, setPaused] = useState(false);

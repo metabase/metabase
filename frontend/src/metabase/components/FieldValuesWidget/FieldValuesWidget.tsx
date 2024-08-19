@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
 import {
@@ -9,7 +10,7 @@ import {
   forwardRef,
 } from "react";
 import { connect } from "react-redux";
-import { useMount, usePrevious, useUnmount } from "react-use";
+import { useMount, usePrevious, useThrottle, useUnmount } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -34,7 +35,7 @@ import {
 } from "metabase/parameters/actions";
 import { addRemappings } from "metabase/redux/metadata";
 import type { SelectItemProps } from "metabase/ui";
-import { MultiAutocomplete } from "metabase/ui";
+import { Box, MultiAutocomplete } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
@@ -44,8 +45,6 @@ import type {
   RowValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
-
-import ExplicitSize from "../ExplicitSize";
 
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
 import type { ValuesMode, LoadingStateType } from "./types";
@@ -64,6 +63,8 @@ import {
   canUseDashboardEndpoints,
   canUseCardEndpoints,
   getTokenFieldPlaceholder,
+  getLabel,
+  getValue,
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;
@@ -83,10 +84,8 @@ export interface IFieldValuesWidgetProps {
   style?: StyleHTMLAttributes<HTMLDivElement>;
   formatOptions?: Record<string, any>;
 
-  containerWidth?: number | string;
   maxWidth?: number | null;
   minWidth?: number | null;
-  width?: number | null;
 
   disableList?: boolean;
   disableSearch?: boolean;
@@ -121,10 +120,8 @@ export function FieldValuesWidgetInner({
   alwaysShowOptions = true,
   style = {},
   formatOptions = {},
-  containerWidth,
   maxWidth = 500,
   minWidth,
-  width,
   disableList = false,
   disableSearch = false,
   disablePKRemappingForSearch,
@@ -146,6 +143,12 @@ export function FieldValuesWidgetInner({
   optionRenderer,
   layoutRenderer,
 }: IFieldValuesWidgetProps) {
+  const { ref, width: elementWidth } = useElementSize();
+
+  const { width } = useThrottle({
+    width: elementWidth,
+  });
+
   const [options, setOptions] = useState<FieldValue[]>([]);
   const [loadingState, setLoadingState] = useState<LoadingStateType>("INIT");
   const [lastValue, setLastValue] = useState<string>("");
@@ -170,8 +173,8 @@ export function FieldValuesWidgetInner({
 
   useEffect(() => {
     if (
-      typeof width === "number" &&
       typeof previousWidth === "number" &&
+      previousWidth !== 0 &&
       width > previousWidth
     ) {
       setIsExpanded(true);
@@ -370,6 +373,50 @@ export function FieldValuesWidgetInner({
     search.current(value);
   };
 
+  const fieldValues = useMemo(() => {
+    const configValues =
+      parameter?.values_source_config?.values?.filter(
+        (entry): entry is FieldValue =>
+          Boolean(entry) && typeof entry !== "string",
+      ) ?? [];
+
+    // Get the fetched values as well as the values from the parameter settings.
+    const allValues = options.concat(configValues);
+
+    const byValue = new Map<RowValue, string | undefined>();
+    const byLabel = new Map<string, RowValue>();
+
+    allValues.forEach(entry => {
+      const value = getValue(entry);
+      const label = getLabel(entry) ?? value?.toString();
+      if (!label) {
+        return;
+      }
+      byValue.set(value, label);
+      byLabel.set(label, value);
+    });
+
+    return { byLabel, byValue };
+  }, [parameter?.values_source_config?.values, options]);
+
+  // Get the label/value options for the current values
+  // This is needed to show the correct display value for the current value in the MultiSelect
+  const valueOptions = useMemo(() => {
+    return value
+      .map(value => {
+        const label = fieldValues.byValue.get(value);
+        if (!label) {
+          return null;
+        }
+        return [value, label];
+      })
+      .filter((entry): entry is FieldValue => Boolean(entry));
+  }, [value, fieldValues]);
+
+  function customLabel(value: RowValue): string | undefined {
+    return fieldValues.byValue.get(value);
+  }
+
   if (!valueRenderer) {
     valueRenderer = (value: RowValue) =>
       renderValue({
@@ -378,12 +425,19 @@ export function FieldValuesWidgetInner({
         value,
         autoLoad: true,
         compact: false,
+        displayValue: customLabel(value),
       });
   }
 
   if (!optionRenderer) {
     optionRenderer = (option: FieldValue) =>
-      renderValue({ fields, formatOptions, value: option[0], autoLoad: false });
+      renderValue({
+        fields,
+        formatOptions,
+        value: getValue(option),
+        autoLoad: false,
+        displayValue: getLabel(option),
+      });
   }
 
   if (!layoutRenderer) {
@@ -430,7 +484,7 @@ export function FieldValuesWidgetInner({
     !disableList &&
     shouldList({ parameter, fields, disableSearch }) &&
     valuesMode === "list";
-  const isLoading = loadingState === "LOADING";
+  const isLoading = loadingState !== "LOADED";
   const hasListValues = hasList({
     parameter,
     fields,
@@ -438,7 +492,18 @@ export function FieldValuesWidgetInner({
     options,
   });
 
-  const parseFreeformValue = (value: string | number) => {
+  const valueForLabel = (label: string | number) => {
+    const value = fieldValues.byLabel.get(label?.toString());
+
+    if (value) {
+      return value;
+    }
+
+    return label;
+  };
+
+  const parseFreeformValue = (labelOrValue: string | number) => {
+    const value = valueForLabel(labelOrValue);
     return isNumeric(fields[0], parameter)
       ? parseNumberValue(value)
       : parseStringValue(value);
@@ -457,10 +522,12 @@ export function FieldValuesWidgetInner({
     function (option: FieldValue): {
       label: string;
       value: string;
+      customlabel?: string;
     } {
-      const value = option[0];
+      const value = getValue(option);
       const column = fields[0];
       const label =
+        getLabel(option) ??
         formatValue(value, {
           ...formatOptions,
           column,
@@ -468,35 +535,40 @@ export function FieldValuesWidgetInner({
           jsx: false,
           maximumFractionDigits: 20,
           // we know it is string | number because we are passing jsx: false
-        })?.toString() ?? "<null>";
+        })?.toString() ??
+        "<null>";
 
-      return { value: value?.toString() ?? "", label };
+      return {
+        value: value?.toString() ?? "",
+        label,
+        customlabel: getLabel(option),
+      };
     },
     [fields, formatOptions],
   );
 
   const CustomItemComponent = useMemo(
     () =>
-      forwardRef<HTMLDivElement, SelectItemProps>(function CustomItem(
-        props,
-        ref,
-      ) {
-        const customLabel =
-          props.value !== undefined &&
-          renderValue({
-            fields,
-            formatOptions,
-            value: props.value,
-          });
+      forwardRef<HTMLDivElement, SelectItemProps & { customlabel?: string }>(
+        function CustomItem(props, ref) {
+          const customlabel =
+            props.value &&
+            renderValue({
+              fields,
+              formatOptions,
+              value: props.value,
+              displayValue: props.customlabel,
+            });
 
-        return (
-          <ItemWrapper
-            ref={ref}
-            {...props}
-            label={customLabel ?? (props.label || "")}
-          />
-        );
-      }),
+          return (
+            <ItemWrapper
+              ref={ref}
+              {...props}
+              label={customlabel ?? (props.label || "")}
+            />
+          );
+        },
+      ),
     [fields, formatOptions],
   );
 
@@ -505,13 +577,12 @@ export function FieldValuesWidgetInner({
 
   return (
     <ErrorBoundary>
-      <div
+      <Box
+        ref={ref}
         data-testid="field-values-widget"
-        style={{
-          width: (isExpanded ? maxWidth : containerWidth) ?? undefined,
-          minWidth: minWidth ?? undefined,
-          maxWidth: maxWidth ?? undefined,
-        }}
+        w={(isExpanded && maxWidth) || undefined}
+        maw={maxWidth ?? undefined}
+        miw={minWidth ?? undefined}
       >
         {isListMode && isLoading ? (
           <LoadingState />
@@ -523,7 +594,6 @@ export function FieldValuesWidgetInner({
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : isListMode && hasListValues && !multi ? (
           <SingleSelectListField
@@ -537,12 +607,13 @@ export function FieldValuesWidgetInner({
           />
         ) : !isSimpleInput ? (
           <MultiAutocomplete
+            data-testid="field-values-multi-autocomplete"
             onSearchChange={onInputChange}
             onChange={values => onChange(values.map(parseFreeformValue))}
             value={value
               .map(value => value?.toString())
               .filter((v): v is string => v !== null && v !== undefined)}
-            data={options.map(renderStringOption)}
+            data={options.concat(valueOptions).map(renderStringOption)}
             placeholder={tokenFieldPlaceholder}
             shouldCreate={shouldCreate}
             autoFocus={autoFocus}
@@ -584,14 +655,12 @@ export function FieldValuesWidgetInner({
             updateOnInputBlur
           />
         )}
-      </div>
+      </Box>
     </ErrorBoundary>
   );
 }
 
-export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
-  FieldValuesWidgetInner,
-);
+export const FieldValuesWidget = FieldValuesWidgetInner;
 
 const LoadingState = () => (
   <div
@@ -700,19 +769,22 @@ function renderValue({
   fields,
   formatOptions,
   value,
+  displayValue,
 }: {
   fields: Field[];
   formatOptions: Record<string, any>;
   value: RowValue;
   autoLoad?: boolean;
   compact?: boolean;
+  displayValue?: string;
 }) {
   return (
     <ValueComponent
       value={value}
       column={fields[0]}
       maximumFractionDigits={20}
-      remap={showRemapping(fields)}
+      remap={displayValue || showRemapping(fields)}
+      displayValue={displayValue}
       {...formatOptions}
     />
   );

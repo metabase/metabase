@@ -132,7 +132,7 @@
                           ;; that is unique
                           [(vec (:value secret)) ext?])})))
 
-(defn get-sub-props
+(defn ->sub-props
   "Return a map of secret subproperties for the property `connection-property-name`."
   [connection-property-name]
   (let [sub-prop-types [:path :value :options :id]
@@ -166,7 +166,7 @@
   {:added "0.42.0"}
   [details conn-prop-nm]
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id}
-        (get-sub-props conn-prop-nm)
+        (->sub-props conn-prop-nm)
         value  (cond
                  ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
                  (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
@@ -207,7 +207,7 @@
 (defn get-secret-string
   "Get the value of a secret property from the database details as a string."
   [details secret-property]
-  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
+  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (->sub-props secret-property)
         id (id-kw details)
         ;; When a secret is updated, we get both a new value as well as the ID of old secret.
         value (or (when-let [value (value-kw details)]

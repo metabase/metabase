@@ -1,4 +1,8 @@
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   openOrdersTable,
@@ -22,10 +26,25 @@ import {
   enterCustomColumnDetails,
   createQuestion,
   tableHeaderClick,
+  openNotebook,
+  resetTestTable,
+  resyncDatabase,
+  openPeopleTable,
+  createNativeQuestion,
+  POPOVER_ELEMENT,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS, PRODUCTS_ID, ORDERS, REVIEWS, PEOPLE, PEOPLE_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  ORDERS,
+  REVIEWS,
+  REVIEWS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  INVOICES,
+} = SAMPLE_DATABASE;
 
 describe("issue 9339", () => {
   beforeEach(() => {
@@ -181,7 +200,7 @@ describe("issue 16621", () => {
   });
 });
 
-describe.skip("issue 18770", () => {
+describe("issue 18770", () => {
   const questionDetails = {
     name: "18770",
     query: {
@@ -200,12 +219,12 @@ describe.skip("issue 18770", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.createQuestion(questionDetails, { visitQuestion: true });
+    createQuestion(questionDetails, { visitQuestion: true });
   });
 
   it("post-aggregation filter shouldn't affect the drill-through options (metabase#18770)", () => {
-    cy.icon("notebook").click();
-    // It is important to manually triger "visualize" in order to generate `result_metadata`
+    openNotebook();
+    // It is important to manually triger "visualize" in order to generate the `result_metadata`
     // Otherwise, we might get false negative even when this issue gets resolved.
     // In order to do that, we have to change the breakout field first or it will never generate and send POST /api/dataset request.
     cy.findAllByTestId("notebook-cell-item")
@@ -216,13 +235,19 @@ describe.skip("issue 18770", () => {
 
     visualize();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("4,784").click();
-    popover()
-      .should("contain", "See these Orders")
-      .and("contain", "Break out by a…")
-      .and("contain", "Filter by this value")
-      .and("contain", "Automatic explorations");
+    cy.findAllByTestId("cell-data")
+      .filter(":contains(4,784)")
+      .should("have.length", 1)
+      .click();
+    popover().within(() => {
+      cy.findByText("Filter by this value").should("be.visible");
+      cy.findAllByRole("button")
+        .should("have.length", 4)
+        .and("contain", "<")
+        .and("contain", ">")
+        .and("contain", "=")
+        .and("contain", "≠");
+    });
   });
 });
 
@@ -507,6 +532,33 @@ describe("issue 24994", () => {
 function assertFilterValueIsSelected(value) {
   cy.findByRole("checkbox", { name: value }).should("be.checked");
 }
+
+describe("issue 45410", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overflow the last filter value with a chevron icon (metabase#45410)", () => {
+    openPeopleTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Email").click();
+      cy.findByPlaceholderText("Enter some text")
+        .type("abc@example.com,abc2@example.com")
+        .blur();
+      cy.findByText("abc2@example.com")
+        .next("button")
+        .then(([removeButton]) => {
+          cy.get("[data-chevron]").then(([chevronIcon]) => {
+            const removeButtonRect = removeButton.getBoundingClientRect();
+            const chevronIconRect = chevronIcon.getBoundingClientRect();
+            expect(removeButtonRect.right).to.be.lte(chevronIconRect.left);
+          });
+        });
+    });
+  });
+});
 
 describe("issue 25378", () => {
   const questionDetails = {
@@ -1047,5 +1099,303 @@ describe.skip("metabase#44550", () => {
     cy.findByTestId("filter-column-Created At")
       .should("contain", /previous 30 days/i)
       .and("contain", /7 days ago/i);
+  });
+});
+
+describe("issue 35043", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should prevent illogical ranges - from newer to older (metabase#35043)", () => {
+    const questionDetails = {
+      database: SAMPLE_DB_ID,
+      query: {
+        "source-table": ORDERS_ID,
+        filter: [
+          "between",
+          [
+            "field",
+            ORDERS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+          "2024-04-15",
+          "2024-05-22",
+        ],
+        limit: 5,
+      },
+      type: "query",
+    };
+
+    createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByTestId("filters-visibility-control").click();
+    cy.findByTestId("filter-pill")
+      .should("have.text", "Created At is Apr 15 – May 22, 2024")
+      .click();
+
+    cy.findByTestId("datetime-filter-picker").within(() => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByDisplayValue("May 22, 2024").type("{backspace}2").blur();
+      cy.findByDisplayValue("May 22, 2022").should("exist");
+
+      cy.button("Update filter").click();
+      cy.wait("@dataset");
+    });
+
+    cy.findByTestId("filter-pill").should(
+      "have.text",
+      "Created At is May 22, 2022 – Apr 15, 2024",
+    );
+  });
+});
+
+describe("issue 40622", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should display the Filter modal correctly with long column names (metabase#40622)", () => {
+    const LONG_COLUMN_NAME =
+      "Reviews, but with a very very veeeeeery long name!";
+    cy.request("PUT", `/api/table/${REVIEWS_ID}`, {
+      display_name: LONG_COLUMN_NAME,
+    });
+
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          joins: [
+            {
+              fields: "all",
+              strategy: "left-join",
+              alias: "Orders - Product",
+              condition: [
+                "=",
+                ["field", REVIEWS.PRODUCT_ID, { "base-type": "type/Integer" }],
+                [
+                  "field",
+                  ORDERS.PRODUCT_ID,
+                  {
+                    "base-type": "type/Integer",
+                    "join-alias": "Orders - Product",
+                  },
+                ],
+              ],
+              "source-table": ORDERS_ID,
+            },
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    filter();
+    assertTablesAreEquallyLeftRightPositioned();
+
+    cy.log("Resize and make sure the filter sidebar is intact");
+    cy.viewport(800, 300);
+    assertTablesAreEquallyLeftRightPositioned();
+
+    cy.log("Make sure sidebar is scrollable");
+    filterSidebar().within(() => {
+      cy.findByRole("tab", { name: LONG_COLUMN_NAME }).should("be.visible");
+      cy.findByRole("tab", { name: "User" }).should("not.be.visible");
+    });
+
+    filterSidebar().scrollTo("bottom");
+    filterSidebar().within(() => {
+      cy.findByRole("tab", { name: LONG_COLUMN_NAME }).should("not.be.visible");
+      cy.findByRole("tab", { name: "User" }).should("be.visible");
+    });
+  });
+
+  function filterSidebar() {
+    return cy.findByRole("tablist");
+  }
+
+  function assertTablesAreEquallyLeftRightPositioned() {
+    filterSidebar().within(() => {
+      cy.findAllByRole("tab").each((_el, index, $list) => {
+        if (index === $list.length - 1) {
+          return;
+        }
+
+        const currentTab = $list[index].getBoundingClientRect();
+        const nextTab = $list[index + 1].getBoundingClientRect();
+        expect(currentTab.left).to.eq(nextTab.left);
+        expect(currentTab.right).to.eq(nextTab.right);
+      });
+    });
+  }
+});
+
+describe("45252", { tags: "@external" }, () => {
+  beforeEach(() => {
+    resetTestTable({ type: "postgres", table: "many_data_types" });
+    restore("postgres-writable");
+    cy.signInAsAdmin();
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should allow using is-null and not-null operators with unsupported data types (metabase#45252,metabase#38111)", () => {
+    startNewQuestion();
+
+    cy.log("filter picker - new filter");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Many Data Types").click();
+    });
+    getNotebookStep("filter")
+      .findByText("Add filters to narrow your answer")
+      .click();
+    popover().within(() => {
+      cy.findByText("Binary").scrollIntoView().click();
+      cy.findByLabelText("Is empty").click();
+      cy.button("Add filter").click();
+    });
+    visualize();
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(0);
+
+    cy.log("filter picker - existing filter");
+    cy.findByTestId("qb-filters-panel").findByText("Binary is empty").click();
+    popover().within(() => {
+      cy.findByLabelText("Not empty").click();
+      cy.button("Update filter").click();
+      cy.wait("@dataset");
+    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Binary is not empty")
+      .should("be.visible");
+    assertQueryBuilderRowCount(2);
+
+    cy.log("filter modal - existing filter");
+    queryBuilderHeader().button("Filter").click();
+    modal().within(() => {
+      cy.findByTestId("filter-column-Binary")
+        .findByLabelText("Is empty")
+        .click();
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(0);
+
+    cy.log("filter modal - json column");
+    queryBuilderHeader().button("Filter").click();
+    modal().within(() => {
+      cy.findByTestId("filter-column-Binary")
+        .findByLabelText("Not empty")
+        .click();
+      cy.findByTestId("filter-column-Jsonb")
+        .findByLabelText("Not empty")
+        .click();
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(2);
+  });
+});
+
+describe.skip("issue 44435", () => {
+  // It is crucial that the string is without spaces!
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const longString = alphabet.repeat(10);
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("filter pill should not overflow the window width when the filter string is very long (metabase#44435)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          fields: [
+            ["field", REVIEWS.REVIEWER, { "base-type": "type/Text" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+          ],
+          filter: [
+            "=",
+            ["field", REVIEWS.BODY, { "base-type": "type/Text" }],
+            longString,
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    cy.findByTestId("filter-pill").then($pill => {
+      const pillWidth = $pill[0].getBoundingClientRect().width;
+      cy.window().its("innerWidth").should("be.gt", pillWidth);
+    });
+  });
+});
+
+// This reproduction can possibly be replaced with the unit test for the `ListField` component in the future
+describe("issue 45877", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+  });
+
+  it("should not render selected boolean option twice in a filter dropdown (metabase#45877)", () => {
+    const questionDetails = {
+      name: "45877",
+      native: {
+        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
+        "template-tags": {
+          expected_invoice: {
+            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+            dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
+            name: "expected_invoice",
+            "display-name": "Expected Invoice",
+            type: "dimension",
+            "widget-type": "string/=",
+          },
+        },
+      },
+    };
+
+    createNativeQuestion(questionDetails, { visitQuestion: true });
+    cy.get("fieldset").should("contain", "Expected Invoice").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("exist");
+
+      cy.findAllByLabelText("true")
+        .should("have.length", 1)
+        .and("not.be.checked");
+      cy.findAllByLabelText("false")
+        .should("have.length", 1)
+        .and("not.be.checked")
+        .click();
+
+      cy.button("Add filter").click();
+    });
+
+    // We don't even have to run the query to reproduce this issue
+    // so let's not waste time and resources doing so.
+    cy.get(POPOVER_ELEMENT).should("not.exist");
+    cy.get("fieldset").should("contain", "false").click();
+    popover().within(() => {
+      cy.findAllByLabelText("true").should("have.length", 1);
+      cy.findAllByLabelText("false")
+        .should("have.length", 1)
+        .should("be.checked");
+    });
   });
 });

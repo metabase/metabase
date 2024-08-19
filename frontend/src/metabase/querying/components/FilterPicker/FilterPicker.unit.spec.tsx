@@ -33,6 +33,7 @@ import {
   findDateColumn,
   createQueryWithExcludeDateFilter,
   createQueryWithRelativeDateFilter,
+  createQueryWithDefaultFilter,
 } from "./test-utils";
 
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
@@ -58,7 +59,7 @@ function createQueryWithSegmentFilter() {
   return createFilteredQuery(query, segment);
 }
 
-function createQueryWithCustomStringFilter() {
+function createQueryWithNullStringFilter() {
   const query = createQuery();
   const column = findStringColumn(query);
   const clause = Lib.expressionClause("is-null", [column], null);
@@ -139,6 +140,11 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
     "time",
     createQueryWithTimeFilter(),
     { columnName: "Time", pickerId: "time-filter-picker" },
+  ],
+  [
+    "default",
+    createQueryWithDefaultFilter(),
+    { columnName: "Unknown", pickerId: "default-filter-picker" },
   ],
 ];
 
@@ -434,7 +440,7 @@ describe("FilterPicker", () => {
     });
 
     it("should open the expression editor for unsupported expressions", async () => {
-      setup(createQueryWithCustomStringFilter());
+      setup(createQueryWithNullStringFilter());
       expect(screen.getByLabelText("Expression")).toBeInTheDocument();
     });
 

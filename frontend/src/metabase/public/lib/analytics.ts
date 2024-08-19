@@ -9,14 +9,16 @@ import type {
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
-const SCHEMA_VERSION = "1-0-1";
+const SCHEMA_VERSION = "1-0-2";
 
+// We changed the UI to `Look and Feel` now
 type Appearance = {
+  background: boolean;
   titled: boolean;
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
-  hide_download_button: boolean | null;
+  downloads: boolean | null;
 };
 
 export const trackStaticEmbedDiscarded = ({
@@ -108,11 +110,12 @@ function normalizeAppearance(
   displayOptions: EmbeddingDisplayOptions,
 ): Appearance {
   return {
+    background: displayOptions.background,
     titled: displayOptions.titled,
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
-    hide_download_button: displayOptions.hide_download_button,
+    downloads: displayOptions.downloads,
   };
 }
 

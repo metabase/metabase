@@ -25,8 +25,9 @@
      db-id
      (:table_id instance))))
 
-(defenterprise current-user-can-read-schema?
-  "Enterprise version. Returns a boolean whether the current user can read the given schema"
+(defenterprise current-user-can-manage-schema-metadata?
+  "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
+  in the schema"
   :feature :advanced-permissions
   [db-id schema-name]
   (data-perms/user-has-permission-for-schema?

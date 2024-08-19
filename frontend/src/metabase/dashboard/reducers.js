@@ -1,4 +1,3 @@
-import { createReducer } from "@reduxjs/toolkit";
 import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
 import produce from "immer";
 import reduceReducers from "reduce-reducers";
@@ -7,12 +6,11 @@ import _ from "underscore";
 import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+import Revisions from "metabase/entities/revisions";
 import { handleActions, combineReducers } from "metabase/lib/redux";
-import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
 import {
   INITIALIZE,
-  SET_EDITING_DASHBOARD,
   SET_DASHBOARD_ATTRIBUTES,
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
@@ -30,69 +28,23 @@ import {
   REMOVE_PARAMETER,
   FETCH_CARD_DATA,
   CLEAR_CARD_DATA,
-  MARK_CARD_AS_SLOW,
   SET_PARAMETER_VALUE,
   FETCH_DASHBOARD_CARD_DATA,
   CANCEL_FETCH_CARD_DATA,
-  SHOW_ADD_PARAMETER_POPOVER,
-  HIDE_ADD_PARAMETER_POPOVER,
-  SET_SIDEBAR,
-  CLOSE_SIDEBAR,
-  SET_DOCUMENT_TITLE,
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
   SET_PARAMETER_VALUES,
+  RESET_PARAMETERS,
   UNDO_REMOVE_CARD_FROM_DASH,
-  SHOW_AUTO_APPLY_FILTERS_TOAST,
   tabsReducer,
   FETCH_CARD_DATA_PENDING,
-  SET_DISPLAY_THEME,
   fetchDashboard,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
+import * as typedReducers from "./reducers-typed";
 import {
   calculateDashCardRowAfterUndo,
   syncParametersAndEmbeddingParams,
 } from "./utils";
-
-const dashboardId = handleActions(
-  {
-    [INITIALIZE]: { next: state => null },
-    [fetchDashboard.fulfilled]: {
-      next: (state, { payload }) => {
-        return payload.dashboardId;
-      },
-    },
-    [RESET]: { next: state => null },
-  },
-  INITIAL_DASHBOARD_STATE.dashboardId,
-);
-
-const editingDashboard = handleActions(
-  {
-    [INITIALIZE]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
-    [SET_EDITING_DASHBOARD]: {
-      next: (state, { payload }) => payload ?? null,
-    },
-    [RESET]: { next: () => INITIAL_DASHBOARD_STATE.editingDashboard },
-  },
-  INITIAL_DASHBOARD_STATE.editingDashboard,
-);
-
-const loadingControls = handleActions(
-  {
-    [SET_DOCUMENT_TITLE]: (state, { payload }) => ({
-      ...state,
-      documentTitle: payload,
-    }),
-    [SET_SHOW_LOADING_COMPLETE_FAVICON]: (state, { payload }) => ({
-      ...state,
-      showLoadCompleteFavicon: payload,
-    }),
-    [RESET]: { next: state => ({}) },
-  },
-  INITIAL_DASHBOARD_STATE.loadingControls,
-);
 
 function newDashboard(before, after, isDirty) {
   return {
@@ -292,24 +244,6 @@ const dashcards = handleActions(
   INITIAL_DASHBOARD_STATE.dashcards,
 );
 
-const isAddParameterPopoverOpen = handleActions(
-  {
-    [SHOW_ADD_PARAMETER_POPOVER]: () => true,
-    [HIDE_ADD_PARAMETER_POPOVER]: () => false,
-    [INITIALIZE]: () => false,
-    [RESET]: () => false,
-  },
-  INITIAL_DASHBOARD_STATE.isAddParameterPopoverOpen,
-);
-
-const isNavigatingBackToDashboard = handleActions(
-  {
-    [NAVIGATE_BACK_TO_DASHBOARD]: () => true,
-    [RESET]: () => false,
-  },
-  INITIAL_DASHBOARD_STATE.isNavigatingBackToDashboard,
-);
-
 // Many of these slices are also updated by `tabsReducer` in `frontend/src/metabase/dashboard/actions/tabs.ts`
 const dashcardData = handleActions(
   {
@@ -328,49 +262,12 @@ const dashcardData = handleActions(
     },
     [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
       _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
+    [Revisions.actionTypes.REVERT]: (state, { payload: revision }) =>
+      _.mapObject(state, dashboardData =>
+        dissoc(dashboardData, revision.model_id),
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
-);
-
-const slowCards = handleActions(
-  {
-    [MARK_CARD_AS_SLOW]: {
-      next: (state, { payload: { id, result } }) => ({
-        ...state,
-        [id]: result,
-      }),
-    },
-  },
-  INITIAL_DASHBOARD_STATE.slowCards,
-);
-
-const parameterValues = handleActions(
-  {
-    [INITIALIZE]: {
-      next: (state, { payload: { clearCache = true } = {} }) => {
-        return clearCache ? {} : state;
-      },
-    },
-    [fetchDashboard.fulfilled]: {
-      next: (state, { payload: { parameterValues } }) => parameterValues,
-    },
-    [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value, isDraft } }) => {
-        if (!isDraft) {
-          return assoc(state, id, value);
-        }
-
-        return state;
-      },
-    },
-    [SET_PARAMETER_VALUES]: {
-      next: (state, { payload }) => payload,
-    },
-    [REMOVE_PARAMETER]: {
-      next: (state, { payload: { id } }) => dissoc(state, id),
-    },
-  },
-  INITIAL_DASHBOARD_STATE.parameterValues,
 );
 
 const draftParameterValues = handleActions(
@@ -395,6 +292,14 @@ const draftParameterValues = handleActions(
     },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [RESET_PARAMETERS]: {
+      next: (state, { payload: parameters }) => {
+        return parameters.reduce(
+          (result, parameter) => assoc(result, parameter.id, parameter.value),
+          state ?? {},
+        );
+      },
     },
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
@@ -464,85 +369,18 @@ const loadingDashCards = handleActions(
   INITIAL_DASHBOARD_STATE.loadingDashCards,
 );
 
-const DEFAULT_SIDEBAR = { props: {} };
-const sidebar = handleActions(
-  {
-    [INITIALIZE]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [SET_SIDEBAR]: {
-      next: (state, { payload: { name, props } }) => ({
-        name,
-        props: props || {},
-      }),
-    },
-    [CLOSE_SIDEBAR]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [SET_EDITING_DASHBOARD]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [REMOVE_PARAMETER]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-    [RESET]: {
-      next: () => DEFAULT_SIDEBAR,
-    },
-  },
-  INITIAL_DASHBOARD_STATE.sidebar,
-);
-
-const missingActionParameters = handleActions(
-  {
-    [INITIALIZE]: {
-      next: (state, payload) => null,
-    },
-    [RESET]: {
-      next: (state, payload) => null,
-    },
-  },
-  INITIAL_DASHBOARD_STATE.missingActionParameters,
-);
-
-const autoApplyFilters = handleActions(
-  {
-    [SHOW_AUTO_APPLY_FILTERS_TOAST]: {
-      next: (state, { payload: { toastId, dashboardId } }) => ({
-        ...state,
-        toastId,
-        toastDashboardId: dashboardId,
-      }),
-    },
-  },
-  INITIAL_DASHBOARD_STATE.autoApplyFilters,
-);
-
-const theme = createReducer(INITIAL_DASHBOARD_STATE.theme, builder => {
-  builder.addCase(SET_DISPLAY_THEME, (state, { payload }) => payload || null);
-});
-
 export const dashboardReducers = reduceReducers(
   INITIAL_DASHBOARD_STATE,
   combineReducers({
-    dashboardId,
-    editingDashboard,
-    loadingControls,
+    ...typedReducers,
     dashboards,
     dashcards,
     dashcardData,
-    slowCards,
-    parameterValues,
     draftParameterValues,
     loadingDashCards,
-    isAddParameterPopoverOpen,
-    isNavigatingBackToDashboard,
-    sidebar,
-    missingActionParameters,
-    autoApplyFilters,
     // Combined reducer needs to init state for every slice
     selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,
     tabDeletions: (state = INITIAL_DASHBOARD_STATE.tabDeletions) => state,
-    theme,
   }),
   tabsReducer,
 );

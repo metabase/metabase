@@ -76,15 +76,11 @@
   ([_model pk]
    (if (should-read-audit-db? pk)
      false
-     (and (= :unrestricted (data-perms/full-db-permission-for-user
-                            api/*current-user-id*
-                            :perms/view-data
-                            pk))
-          (contains? #{:query-builder :query-builder-and-native}
-                    (data-perms/most-permissive-database-permission-for-user
-                     api/*current-user-id*
-                     :perms/create-queries
-                     pk))))))
+     (contains? #{:query-builder :query-builder-and-native}
+                (data-perms/most-permissive-database-permission-for-user
+                 api/*current-user-id*
+                 :perms/create-queries
+                 pk)))))
 
 (defenterprise current-user-can-write-db?
   "OSS implementation. Returns a boolean whether the current user can write the given field."
@@ -177,14 +173,16 @@
   [{driver :engine, :as database}]
   (letfn [(normalize-details [db]
             (binding [*normalizing-details* true]
-              (driver/normalize-db-details driver db)))]
+              (driver/normalize-db-details
+               driver
+               (m/update-existing-in db [:details :auth-provider] keyword))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (driver.impl/registered? driver)
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
       (and (driver.impl/registered? driver)
-           (:details database)
+           (map? (:details database))
            (not *normalizing-details*))
       normalize-details)))
 
@@ -212,6 +210,10 @@
   [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (delete-orphaned-secrets! database)
+  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
+  (when-some [table-ids (not-empty (t2/select-pks-vec :model/Table :db_id id))]
+    (t2/delete! :model/Field :table_id [:in table-ids]))
   (try
     (driver/notify-database-updated driver database)
     (catch Throwable e
@@ -431,12 +433,17 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
-(defmethod serdes/extract-one "Database"
-  [_model-name {:keys [include-database-secrets]} entity]
-  (-> (serdes/extract-one-basics "Database" entity)
-      (update :creator_id serdes/*export-user*)
-      (dissoc :features) ; This is a synthetic column that isn't in the real schema.
-      (cond-> (not include-database-secrets) (dissoc :details))))
+(defmethod serdes/make-spec "Database"
+  [_model-name {:keys [include-database-secrets]}]
+  {:copy      [:auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :created_at :dbms_version
+               :description :engine :is_audit :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
+               :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
+               :uploads_table_prefix]
+   :skip      []
+   :transform {;; details should be imported if available regardless of options
+               :details             {:export #(when include-database-secrets %) :import identity}
+               :creator_id          (serdes/fk :model/User)
+               :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -449,26 +456,6 @@
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
   (t2/select-one Database :name id))
-
-(defmethod serdes/load-xform "Database"
-  [database]
-  (-> database
-      serdes/load-xform-basics
-      (update :creator_id serdes/*import-user*)
-      (assoc :initial_sync_status "complete")))
-
-(defmethod serdes/load-insert! "Database" [_ ingested]
-  (let [m (get-method serdes/load-insert! :default)]
-    (m "Database"
-       (if (:details ingested)
-         ingested
-         (assoc ingested :details {})))))
-
-(defmethod serdes/load-update! "Database" [_ ingested local]
-  (let [m (get-method serdes/load-update! :default)]
-    (m "Database"
-       (update ingested :details #(or % (:details local) {}))
-       local)))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.

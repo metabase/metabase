@@ -1,27 +1,28 @@
-import { useState } from "react";
+import _ from "underscore";
 
-import type { SdkClickActionPluginsConfig } from "embedding-sdk";
+import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
-import CS from "metabase/css/core/index.css";
-import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
-import { useStore } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
-import { getMetadata } from "metabase/selectors/metadata";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
-import type { QuestionDashboardCard } from "metabase-types/api";
 
-export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
+import { InteractiveDashboardProvider } from "./context";
+
+export type InteractiveDashboardProps = {
   questionHeight?: number;
-  questionPlugins?: SdkClickActionPluginsConfig;
-};
+  plugins?: SdkPluginsConfig;
+  className?: string;
+} & SdkDashboardDisplayProps &
+  PublicOrEmbeddedDashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
   dashboardId,
@@ -31,7 +32,10 @@ const InteractiveDashboardInner = ({
   withDownloads = true,
   hiddenParameters = [],
   questionHeight,
-  questionPlugins,
+  plugins,
+  onLoad,
+  onLoadWithoutCards,
+  className,
 }: InteractiveDashboardProps) => {
   const {
     displayOptions,
@@ -49,72 +53,59 @@ const InteractiveDashboardInner = ({
     initialParameterValues,
   });
 
-  const { theme } = useEmbedTheme();
+  const {
+    adhocQuestionUrl,
+    onNavigateBackToDashboard,
+    onEditQuestion,
+    onNavigateToNewCardFromDashboard,
+  } = useCommonDashboardParams({
+    dashboardId,
+  });
 
+  const { theme } = useEmbedTheme();
   const { font } = useEmbedFont();
 
-  const store = useStore();
-  const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
-
-  const handleNavigateToNewCardFromDashboard = ({
-    nextCard,
-    previousCard,
-    dashcard,
-    objectId,
-  }: NavigateToNewCardFromDashboardOpts) => {
-    const state = store.getState();
-    const metadata = getMetadata(state);
-    const { dashboards, parameterValues } = state.dashboard;
-    const dashboard = dashboards[dashboardId];
-
-    if (dashboard) {
-      const url = getNewCardUrl({
-        metadata,
-        dashboard,
-        parameterValues,
-        nextCard,
-        previousCard,
-        dashcard: dashcard as QuestionDashboardCard,
-        objectId,
-      });
-
-      if (url) {
-        setAdhocQuestionUrl(url);
-      }
-    }
-  };
-
-  if (adhocQuestionUrl) {
-    return (
-      <InteractiveAdHocQuestion
-        questionPath={adhocQuestionUrl}
-        withTitle={withTitle}
-        height={questionHeight}
-        plugins={questionPlugins}
-        onNavigateBack={() => setAdhocQuestionUrl(null)}
-      />
-    );
-  }
-
   return (
-    <Box w="100%" ref={ref} className={CS.overflowAuto}>
-      <PublicOrEmbeddedDashboard
-        dashboardId={dashboardId}
-        parameterQueryParams={initialParameterValues}
-        hideDownloadButton={displayOptions.hideDownloadButton}
-        hideParameters={displayOptions.hideParameters}
-        titled={displayOptions.titled}
-        cardTitled={withCardTitle}
-        theme={theme}
-        isFullscreen={isFullscreen}
-        onFullscreenChange={onFullscreenChange}
-        refreshPeriod={refreshPeriod}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        font={font}
-        bordered={displayOptions.bordered}
-        navigateToNewCardFromDashboard={handleNavigateToNewCardFromDashboard}
-      />
+    <Box w="100%" h="100%" ref={ref} className={className}>
+      {adhocQuestionUrl ? (
+        <InteractiveAdHocQuestion
+          questionPath={adhocQuestionUrl}
+          withTitle={withTitle}
+          height={questionHeight}
+          plugins={plugins}
+          onNavigateBack={onNavigateBackToDashboard}
+        />
+      ) : (
+        <InteractiveDashboardProvider
+          plugins={plugins}
+          onEditQuestion={onEditQuestion}
+          dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+        >
+          <PublicOrEmbeddedDashboard
+            dashboardId={dashboardId}
+            parameterQueryParams={initialParameterValues}
+            hideParameters={displayOptions.hideParameters}
+            background={displayOptions.background}
+            titled={displayOptions.titled}
+            cardTitled={withCardTitle}
+            theme={theme}
+            isFullscreen={isFullscreen}
+            onFullscreenChange={onFullscreenChange}
+            refreshPeriod={refreshPeriod}
+            onRefreshPeriodChange={onRefreshPeriodChange}
+            setRefreshElapsedHook={setRefreshElapsedHook}
+            font={font}
+            bordered={displayOptions.bordered}
+            navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+            onLoad={onLoad}
+            onLoadWithoutCards={onLoadWithoutCards}
+            downloadsEnabled={withDownloads}
+            isNightMode={false}
+            onNightModeChange={_.noop}
+            hasNightModeToggle={false}
+          />
+        </InteractiveDashboardProvider>
+      )}
     </Box>
   );
 };

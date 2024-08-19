@@ -64,7 +64,7 @@
 
 ;;; -------------------------------------------- Loading Driver Namespace --------------------------------------------
 
-(mu/defn ^:private driver->expected-namespace [driver :- :keyword]
+(mu/defn- driver->expected-namespace [driver :- :keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))

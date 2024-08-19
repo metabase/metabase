@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { isNotNull } from "metabase/lib/types";
 import {
   ORIGINAL_INDEX_DATA_KEY,
@@ -17,6 +19,7 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
+import { isCategory, isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
 import { isNumericAxis, isTimeSeriesAxis } from "../model/guards";
 
@@ -26,6 +29,33 @@ import type {
   Padding,
   TicksDimensions,
 } from "./types";
+
+const getEvenlySpacedIndices = (
+  length: number,
+  indicesCount: number,
+): number[] => {
+  if (length === 0) {
+    return [];
+  }
+
+  if (length < indicesCount) {
+    return _.range(length);
+  }
+
+  const result = new Set([0]);
+  const lastIndex = length - 1;
+
+  if (indicesCount > 2) {
+    const step = lastIndex / (indicesCount - 1);
+    for (let i = 1; i < indicesCount - 1; i++) {
+      result.add(Math.round(i * step));
+    }
+  }
+
+  result.add(lastIndex);
+
+  return Array.from(result);
+};
 
 const roundToHundredth = (value: number) => Math.ceil(value * 100) / 100;
 
@@ -257,6 +287,67 @@ const getAutoAxisEnabledSetting = (
   return false;
 };
 
+const X_TICKS_TO_MEASURE_COUNT = 50;
+
+// Formatting and measuring every x-axis value can be expensive on datasets with thousands of values,
+// therefore we want to reduce the number of measured ticks based on the x-axis column type and a single dimension width.
+const getXTicksToMeasure = (
+  chartModel: BaseCartesianChartModel,
+  dimensionWidth: number,
+  renderingContext: RenderingContext,
+) => {
+  const { fontSize } = renderingContext.theme.cartesian.label;
+  const dimensionColumn = chartModel.dimensionModel.column;
+
+  // On continuous axes, we measure a limited number of evenly spaced ticks, including the start and end points.
+  if (isNumeric(dimensionColumn) || isDate(dimensionColumn)) {
+    return getEvenlySpacedIndices(
+      chartModel.dataset.length,
+      X_TICKS_TO_MEASURE_COUNT,
+    ).map(datumIndex => chartModel.dataset[datumIndex][X_AXIS_DATA_KEY]);
+  }
+
+  // On category scales, when the dimension width is smaller than the tick font size,
+  // meaning that even with 90-degree rotation the ticks will not fit,
+  // we select the top N ticks based on character length for formatting and measurement.
+  if (isCategory(dimensionColumn) && dimensionWidth <= fontSize) {
+    return chartModel.dataset
+      .map(datum => datum[X_AXIS_DATA_KEY])
+      .sort((a, b) => String(b).length - String(a).length)
+      .slice(0, X_TICKS_TO_MEASURE_COUNT);
+  }
+
+  return chartModel.dataset.map(datum => datum[X_AXIS_DATA_KEY]);
+};
+
+const getMaxXTickWidth = (
+  chartModel: BaseCartesianChartModel,
+  dimensionWidth: number,
+  renderingContext: RenderingContext,
+) => {
+  const valueToMeasure = getXTicksToMeasure(
+    chartModel,
+    dimensionWidth,
+    renderingContext,
+  );
+
+  const { fontSize } = renderingContext.theme.cartesian.label;
+  const fontStyle = {
+    ...CHART_STYLE.axisTicks,
+    size: fontSize,
+    family: renderingContext.fontFamily,
+  };
+
+  return Math.max(
+    ...valueToMeasure.map(value =>
+      renderingContext.measureText(
+        chartModel.xAxisModel.formatter(value),
+        fontStyle,
+      ),
+    ),
+  );
+};
+
 const getTicksDimensions = (
   chartModel: BaseCartesianChartModel,
   chartWidth: number,
@@ -265,8 +356,6 @@ const getTicksDimensions = (
   hasTimelineEvents: boolean,
   renderingContext: RenderingContext,
 ) => {
-  const { fontSize } = renderingContext.theme.cartesian.label;
-
   const ticksDimensions: TicksDimensions = {
     yTicksWidthLeft: 0,
     yTicksWidthRight: 0,
@@ -306,19 +395,12 @@ const getTicksDimensions = (
   const hasBottomAxis = !!axisEnabledSetting;
 
   if (hasBottomAxis) {
-    const fontStyle = {
-      ...CHART_STYLE.axisTicks,
-      size: fontSize,
-      family: renderingContext.fontFamily,
-    };
+    const dimensionWidth = getDimensionWidth(chartModel, currentBoundaryWidth);
 
-    const maxXTickWidth = Math.max(
-      ...chartModel.dataset.map(datum =>
-        renderingContext.measureText(
-          chartModel.xAxisModel.formatter(datum[X_AXIS_DATA_KEY]),
-          fontStyle,
-        ),
-      ),
+    const maxXTickWidth = getMaxXTickWidth(
+      chartModel,
+      dimensionWidth,
+      renderingContext,
     );
 
     axisEnabledSetting = getAutoAxisEnabledSetting(

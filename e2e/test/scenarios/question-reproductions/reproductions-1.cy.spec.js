@@ -2,6 +2,9 @@ import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPalette,
+  commandPaletteSearch,
+  createQuestion,
   restore,
   visualize,
   openTable,
@@ -32,6 +35,7 @@ import {
   appBar,
   visitQuestion,
   openProductsTable,
+  openNotebook,
   mockSessionProperty,
   visitQuestionAdhoc,
   tableHeaderClick,
@@ -139,7 +143,7 @@ describe("issue 6239", () => {
     cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
-    cy.icon("notebook").click();
+    openNotebook();
 
     // Sort descending this time
     cy.icon("arrow_up").click();
@@ -312,9 +316,9 @@ describe("postgres > user > query", { tags: "@external" }, () => {
   });
 });
 
-const PG_DB_NAME = "QA Postgres12";
+describe("issue 14957", { tags: "@external" }, () => {
+  const PG_DB_NAME = "QA Postgres12";
 
-describe.skip("issue 14957", { tags: "@external" }, () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
@@ -323,12 +327,7 @@ describe.skip("issue 14957", { tags: "@external" }, () => {
   it("should save a question before query has been executed (metabase#14957)", () => {
     openNativeEditor({ databaseName: PG_DB_NAME }).type("select pg_sleep(60)");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Save").click();
-
-    cy.findByLabelText("Name").type("14957");
-    cy.button("Save").click();
-
+    saveQuestion("14957");
     modal().should("not.exist");
   });
 });
@@ -664,7 +663,7 @@ function closeModal() {
 }
 
 function openNotebookMode() {
-  cy.icon("notebook").click();
+  openNotebook();
 }
 
 function removeJoinedTable() {
@@ -862,22 +861,36 @@ describe("issue 18207", () => {
   });
 });
 
-describe("11914, 18978, 18977", () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createQuestion({
+    createQuestion({
+      name: "Repro",
       query: {
         "source-table": `card__${ORDERS_QUESTION_ID}`,
         limit: 2,
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.signIn("nodata");
-      visitQuestion(questionId);
     });
+    cy.signIn("nodata");
   });
 
   it("should not display query editing controls and 'Browse databases' link", () => {
+    cy.log(
+      "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    visitQuestion(ORDERS_QUESTION_ID);
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
+    cy.log(
+      "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    commandPaletteSearch("Repro", false);
+    commandPalette().findByText("Repro").click();
+    cy.findByLabelText("Move, trash, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
     cy.log(
       "Make sure we don't prompt user to browse databases from the sidebar",
     );
@@ -903,7 +916,7 @@ describe("11914, 18978, 18977", () => {
       cy.icon("refresh").should("be.visible");
       cy.icon("bookmark").should("be.visible");
       // querying
-      cy.icon("notebook").should("not.exist");
+      cy.findByTestId("notebook-button").should("not.exist");
       cy.findByText("Filter").should("not.exist");
       cy.findByText("Summarize").should("not.exist");
       cy.button("Save").should("not.exist");

@@ -193,14 +193,14 @@
   (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
-  (t/testing (format "with test user %s\n" user-kwd)
+  (t/testing (format "\nwith test user %s\n" user-kwd)
     (mw.session/with-current-user (some-> user-kwd user->id)
       (thunk))))
 
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the predefined test User
   named by `user-kwd`. If you want to bind a non-predefined-test User, use `mt/with-current-user` instead."
-  {:style/indent 1}
+  {:style/indent :defn}
   [user-kwd & body]
   `(do-with-test-user ~user-kwd (fn [] ~@body)))
 

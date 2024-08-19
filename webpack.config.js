@@ -1,18 +1,16 @@
+// @ts-check
 /* eslint-env node */
 /* eslint-disable import/no-commonjs */
-/* eslint-disable import/order */
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
-
-const webpack = require("webpack");
-
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const TerserPlugin = require("terser-webpack-plugin");
-const WebpackNotifierPlugin = require("webpack-notifier");
-const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
-
 const fs = require("fs");
+
+const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const path = require("path");
+const TerserPlugin = require("terser-webpack-plugin");
+const webpack = require("webpack");
+const WebpackNotifierPlugin = require("webpack-notifier");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
@@ -33,13 +31,42 @@ const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 const useFilesystemCache = process.env.FS_CACHE === "true";
 const edition = process.env.MB_EDITION || "oss";
-const shouldUseEslint =
-  process.env.WEBPACK_BUNDLE !== "production" &&
-  process.env.USE_ESLINT === "true";
+const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
+  plugins: ["@emotion"],
+};
+
+const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
+
+const SWC_LOADER = {
+  loader: "swc-loader",
+  options: {
+    jsc: {
+      loose: true,
+      transform: {
+        react: {
+          runtime: "automatic",
+          refresh: shouldEnableHotRefresh,
+        },
+      },
+      parser: {
+        syntax: "typescript",
+        tsx: true,
+      },
+      experimental: {
+        plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
+      },
+    },
+
+    sourceMaps: true,
+    minify: false, // produces same bundle size, but cuts 1s locally
+    env: {
+      targets: ["defaults"],
+    },
+  },
 };
 
 const CSS_CONFIG = {
@@ -53,7 +80,26 @@ const CSS_CONFIG = {
   importLoaders: 1,
 };
 
-const config = (module.exports = {
+class OnScriptError {
+  apply(compiler) {
+    compiler.hooks.compilation.tap("OnScriptError", compilation => {
+      HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
+        "OnScriptError",
+        (data, cb) => {
+          // Manipulate the content
+          data.assetTags.scripts.forEach(script => {
+            script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
+          });
+          // Tell webpack to move on
+          cb(null, data);
+        },
+      );
+    });
+  }
+}
+
+/** @type {import('webpack').Configuration} */
+const config = {
   mode: devMode ? "development" : "production",
   context: SRC_PATH,
 
@@ -67,6 +113,9 @@ const config = (module.exports = {
     styles: "./css/index.module.css",
   },
 
+  // we override it for dev mode below
+  devtool: "source-map",
+
   externals: {
     canvg: "canvg",
     dompurify: "dompurify",
@@ -79,31 +128,22 @@ const config = (module.exports = {
     filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "sha256",
+    clean: !devMode,
   },
 
   module: {
     rules: [
       {
-        test: /\.(tsx?|jsx?)$/,
+        // swc breaks styles for the whole app if we process this file
+        test: /css\/core\/fonts\.styled\.ts$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [BABEL_LOADER],
       },
-      ...(shouldUseEslint
-        ? [
-            {
-              test: /\.(tsx?|jsx?)$/,
-              exclude: /node_modules|cljs|\.spec\.js/,
-              use: [
-                {
-                  loader: "eslint-loader",
-                  options: {
-                    rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
-                  },
-                },
-              ],
-            },
-          ]
-        : []),
+      {
+        test: /\.(tsx?|jsx?)$/,
+        exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+        use: [SWC_LOADER],
+      },
       {
         test: /\.(svg|png)$/,
         type: "asset/resource",
@@ -207,7 +247,7 @@ const config = (module.exports = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas)[\\/])/,
+          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
           chunks: "all",
           name: "vendor",
         },
@@ -222,7 +262,7 @@ const config = (module.exports = {
           name: "jspdf",
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/]html2canvas[\\/]/,
+          test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
           chunks: "all",
           name: "html2canvas",
         },
@@ -243,6 +283,7 @@ const config = (module.exports = {
       filename: devMode ? "[name].css" : "[name].[contenthash].css",
       chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
     }),
+    new OnScriptError(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
@@ -278,30 +319,21 @@ const config = (module.exports = {
       `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
     ),
   ],
-});
+};
 
-if (WEBPACK_BUNDLE === "hot") {
+if (shouldEnableHotRefresh) {
   config.target = "web";
+
+  if (!config.output || !config.plugins) {
+    throw new Error("webpack config is missing configuration");
+  }
+
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
     "http://localhost:8080/" + config.output.publicPath;
-
-  config.module.rules.unshift({
-    test: /\.(tsx?|jsx?)$/,
-    exclude: /node_modules|cljs/,
-    use: [
-      {
-        loader: "babel-loader",
-        options: {
-          ...BABEL_CONFIG,
-          plugins: ["@emotion", "react-refresh/babel"],
-        },
-      },
-    ],
-  });
 
   config.devServer = {
     hot: true,
@@ -316,29 +348,32 @@ if (WEBPACK_BUNDLE === "hot") {
     devMiddleware: {
       stats: "errors-warnings",
       writeToDisk: true,
+      // if webpack doesn't reload UI after code change in development
+      // watchOptions: {
+      //     aggregateTimeout: 300,
+      //     poll: 1000
+      // }
+      // if you want to reduce stats noise
+      // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     },
-    // if webpack doesn't reload UI after code change in development
-    // watchOptions: {
-    //     aggregateTimeout: 300,
-    //     poll: 1000
-    // }
-    // if you want to reduce stats noise
-    // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
   };
 
   config.watchOptions = {
-    ignored: [CLJS_SRC_PATH_DEV + "/**"],
+    ignored: ["**/node_modules", CLJS_SRC_PATH_DEV + "/**"],
   };
 
   config.plugins.unshift(
-    new webpack.NoEmitOnErrorsPlugin(),
     new ReactRefreshPlugin({
       overlay: false,
     }),
   );
 }
 
-if (WEBPACK_BUNDLE !== "production") {
+if (devMode) {
+  if (!config.output || !config.resolve || !config.plugins) {
+    throw new Error("webpack config is missing configuration");
+  }
+
   // replace minified files with un-minified versions
   for (const name in config.resolve.alias) {
     const minified = config.resolve.alias[name];
@@ -356,7 +391,6 @@ if (WEBPACK_BUNDLE !== "production") {
 
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
-  config.output.pathinfo = true;
 
   config.plugins.push(
     new WebpackNotifierPlugin({
@@ -364,6 +398,6 @@ if (WEBPACK_BUNDLE !== "production") {
       skipFirstNotification: true,
     }),
   );
-} else {
-  config.devtool = "source-map";
 }
+
+module.exports = config;

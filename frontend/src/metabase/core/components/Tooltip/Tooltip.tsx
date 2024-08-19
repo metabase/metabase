@@ -1,5 +1,4 @@
 import * as Tippy from "@tippyjs/react";
-import PropTypes from "prop-types";
 import { useMemo } from "react";
 import * as React from "react";
 import * as ReactIs from "react-is";
@@ -10,18 +9,6 @@ import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
 
 const TippyComponent = Tippy.default;
-
-Tooltip.propTypes = {
-  tooltip: PropTypes.node,
-  children: PropTypes.node,
-  reference: PropTypes.instanceOf(Element),
-  placement: PropTypes.string,
-  isEnabled: PropTypes.bool,
-  isOpen: PropTypes.bool,
-  isPadded: PropTypes.bool,
-  offset: PropTypes.oneOfType([PropTypes.array, PropTypes.func]),
-  maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
-};
 
 export interface TooltipProps
   extends Partial<

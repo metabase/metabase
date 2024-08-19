@@ -40,15 +40,35 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
   });
 
   it("should respect email alerts toggled off (metabase#12349)", () => {
+    cy.request("PUT", "/api/setting/report-timezone", {
+      value: "America/New_York",
+    });
+
     openAlertForQuestion(ORDERS_QUESTION_ID);
 
-    // Turn off email
-    toggleChannel("Email");
+    cy.findByTestId("alert-create").within(() => {
+      cy.findByText(/Emails will be sent at 12:00 AM ET/).should("exist");
 
-    // Turn on Slack
-    toggleChannel("Slack");
+      // Turn off email
+      toggleChannel("Email");
+      cy.findByText(/Emails will be sent/).should("not.exist");
+      cy.findByText(/Slack messages will be sent/).should("not.exist");
 
-    cy.button("Done").click();
+      // Turn on Slack
+      toggleChannel("Slack");
+
+      cy.findByText(/Slack messages will be sent at 12:00 AM ET/).should(
+        "exist",
+      );
+
+      toggleChannel("Email");
+      cy.findByText(
+        /Emails and Slack messages will be sent at 12:00 AM ET/,
+      ).should("exist");
+      toggleChannel("Email");
+
+      cy.button("Done").click();
+    });
 
     cy.wait("@savedAlert").then(({ response: { body } }) => {
       expect(body.channels).to.have.length(2);

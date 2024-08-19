@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -8,6 +9,11 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import {
+  areParameterValuesIdentical,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
@@ -21,6 +27,7 @@ import type {
   Database,
   Dataset,
   EmbedDataset,
+  ParameterId,
   QuestionDashboardCard,
   VirtualCard,
   VirtualCardDisplay,
@@ -345,3 +352,55 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
 export const isDashboardCacheable = (
   dashboard: Dashboard,
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
+
+export function parseTabSlug(location: Location) {
+  const slug = location.query?.tab;
+  if (typeof slug === "string" && slug.length > 0) {
+    const id = parseInt(slug, 10);
+    return Number.isSafeInteger(id) ? id : null;
+  }
+  return null;
+}
+
+export function createTabSlug({
+  id,
+  name,
+}: {
+  id: SelectedTabId;
+  name: string | undefined;
+}) {
+  if (id === null || id < 0 || !name) {
+    return "";
+  }
+  return [id, ...name.toLowerCase().split(" ")].join("-");
+}
+
+export function canResetFilter(parameter: UiParameter): boolean {
+  const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
+  const hasValue = !parameterHasNoDisplayValue(parameter.value);
+
+  if (hasDefaultValue) {
+    return !areParameterValuesIdentical(
+      wrapArray(parameter.value),
+      wrapArray(parameter.default),
+    );
+  }
+
+  return hasValue;
+}
+
+function wrapArray<T>(value: T | T[]): T[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
+}
+
+export function getMappedParametersIds(
+  dashcards: DashboardCard[],
+): ParameterId[] {
+  return dashcards.flatMap((dashcard: DashboardCard) => {
+    const mappings = dashcard.parameter_mappings ?? [];
+    return mappings.map(parameter => parameter.parameter_id);
+  });
+}

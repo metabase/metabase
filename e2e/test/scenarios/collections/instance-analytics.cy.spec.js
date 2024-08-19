@@ -14,6 +14,8 @@ import {
   tableHeaderClick,
   onlyOnOSS,
   onlyOnEE,
+  newButton,
+  sidebar,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -205,6 +207,40 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         cy.findByText("Edit query definition").should("not.exist");
       });
     });
+
+    it("should not leak instance analytics database into SQL query builder (metabase#44856)", () => {
+      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+        visitModel(id);
+      });
+
+      newButton("SQL query").click();
+
+      // sample DB should be the only one
+      cy.findByTestId("gui-builder-data")
+        .icon("cheverondown")
+        .should("not.exist");
+    });
+
+    it("should not leak instance analytics database into permissions editor (metabase#44856)", () => {
+      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+        visitModel(id);
+      });
+
+      // it's important that we do this manually, as this will only reproduce if theres no page load
+      cy.findByTestId("app-bar").icon("gear").click();
+      popover().findByText("Admin settings").click();
+      cy.findByLabelText("Navigation bar").findByText("Permissions").click();
+      sidebar().findByText("Administrators").click();
+      cy.findByTestId("permission-table")
+        .findByText(/internal metabase database/i)
+        .should("not.exist");
+
+      sidebar().findByText("Databases").click();
+
+      sidebar()
+        .findByText(/internal metabase database/i)
+        .should("not.exist");
+    });
   });
 
   describe("API tests", () => {
@@ -302,7 +338,7 @@ describe("question and dashboard links", () => {
     it("should show a analytics link for dashboards", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.intercept("GET", "/api/collection/**").as("collection");
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").click();
 
       cy.wait("@collection");
@@ -337,7 +373,7 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });
@@ -357,7 +393,7 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });

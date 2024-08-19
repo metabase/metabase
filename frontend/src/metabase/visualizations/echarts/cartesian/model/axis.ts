@@ -1,4 +1,4 @@
-import d3 from "d3";
+import * as d3 from "d3";
 import dayjs from "dayjs";
 import _ from "underscore";
 
@@ -32,7 +32,6 @@ import type {
   DateRange,
   TimeSeriesXAxisModel,
   NumericXAxisModel,
-  ShowWarning,
   NumericAxisScaleTransforms,
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -58,6 +57,8 @@ import type {
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
+import type { ShowWarning } from "../../types";
 
 import { getAxisTransforms } from "./transforms";
 import { getFormattingOptionsWithoutScaling } from "./util";
@@ -191,7 +192,10 @@ function generateSplits(
 
 function axisCost(extents: Extent[], favorUnsplit = true) {
   const axisExtent = d3.extent(extents.flatMap(e => e));
-  const axisRange = axisExtent[1] - axisExtent[0];
+
+  // TODO: handle cases where members of axisExtent is undefined
+  const axisRange = axisExtent[1]! - axisExtent[0]!;
+
   if (favorUnsplit && extents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
@@ -337,26 +341,35 @@ const getYAxisSplit = (
 const calculateStackedExtent = (
   seriesKeys: DataKey[],
   dataset: ChartDataset,
-): Extent => {
-  let min = 0;
-  let max = 0;
+): Extent | null => {
+  let min: number | null = null;
+  let max: number | null = null;
 
   dataset.forEach(entry => {
-    let positiveStack = 0;
-    let negativeStack = 0;
+    let positiveStack: number | null = null;
+    let negativeStack: number | null = null;
+
     seriesKeys.forEach(key => {
       const value = entry[key];
       if (typeof value === "number") {
         if (value >= 0) {
-          positiveStack += value;
+          positiveStack = (positiveStack ?? 0) + value;
         } else {
-          negativeStack += value;
+          negativeStack = (negativeStack ?? 0) + value;
         }
       }
+
+      const values = [positiveStack, negativeStack, min, max].filter(isNotNull);
+      if (values.length !== 0) {
+        min = Math.min(...values);
+        max = Math.max(...values);
+      }
     });
-    min = Math.min(min, negativeStack);
-    max = Math.max(max, positiveStack);
   });
+
+  if (min == null || max == null) {
+    return null;
+  }
 
   return [min, max];
 };
@@ -364,7 +377,7 @@ const calculateStackedExtent = (
 function calculateNonStackedExtent(
   seriesKeys: DataKey[],
   dataset: ChartDataset,
-): Extent {
+): Extent | null {
   let min = Infinity;
   let max = -Infinity;
 
@@ -378,8 +391,8 @@ function calculateNonStackedExtent(
     });
   });
 
-  if (min === Infinity || max === -Infinity) {
-    return [0, 0];
+  if (!isFinite(min) || !isFinite(max)) {
+    return null;
   }
 
   return [min, max];
@@ -441,9 +454,9 @@ const getYAxisLabel = (
   return seriesNames[0];
 };
 
-function findWidestRange(extents: Extent[]): Extent {
+function findWidestRange(extents: Extent[]): Extent | null {
   if (extents.length === 0) {
-    throw new Error("The array of extents cannot be empty.");
+    return null;
   }
 
   let min = Infinity;
@@ -488,7 +501,11 @@ function getYAxisExtent(
   );
   const nonStackedExtent = calculateNonStackedExtent(nonStackedKeys, dataset);
 
-  return findWidestRange([...stacksExtents, nonStackedExtent]);
+  const combinedExtent = findWidestRange(
+    [...stacksExtents, nonStackedExtent].filter(isNotNull),
+  );
+
+  return combinedExtent != null ? combinedExtent : [0, 0];
 }
 
 export function getYAxisModel(

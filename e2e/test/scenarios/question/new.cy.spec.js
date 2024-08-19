@@ -28,6 +28,9 @@ import {
   tableHeaderClick,
   onlyOnOSS,
   createQuestion,
+  openNotebook,
+  notebookButton,
+  shouldDisplayTabs,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -96,11 +99,17 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders, Count").click();
       });
 
+      cy.log("toggle notebook button should be hidden for brand new questions");
+      notebookButton().should("not.exist");
+
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
-      cy.icon("notebook").click();
+      openNotebook();
+
+      notebookButton().should("be.visible");
+
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       entityPickerModal().within(() => {
         // It is now possible to choose another saved question
@@ -264,6 +273,20 @@ describe("scenarios > question > new", () => {
       entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
+
+    cy.log(
+      "The selected table should be saved and show in recents (metabase#45003)",
+    );
+
+    cy.findByRole("button", { name: /Orders/ }).click();
+    shouldDisplayTabs(["Recents", "Models", "Tables", "Saved questions"]);
+    entityPickerModalTab("Recents").click();
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Orders/ })
+      .should("exist");
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Close/ })
+      .click();
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
@@ -500,12 +523,30 @@ describe(
         type: "model",
       });
 
-      cy.visit("/question/new");
+      cy.intercept("POST", "/api/activity/recents").as("recents");
+
+      cy.visit("/question/notebook");
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").should("be.visible");
         entityPickerModalTab("Models").should("be.visible");
         entityPickerModalTab("Tables").should("be.visible");
+        entityPickerModalItem(1, "Orders Model").click();
+      });
+
+      cy.wait("@recents");
+
+      cy.button(/Orders Model/).click();
+
+      entityPickerModal().within(() => {
+        tabsShouldBe("Models", [
+          "Recents",
+          "Models",
+          "Tables",
+          "Saved questions",
+        ]);
+        entityPickerModalTab("Recents").click();
+        cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });
     });
   },

@@ -33,11 +33,7 @@ const STEPS: NotebookStepDef[] = [
     clauseType: "joins",
     valid: (query, stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
-      return (
-        hasData(query) &&
-        Boolean(database?.hasFeature("join")) &&
-        !Lib.isMetricBased(query, stageIndex)
-      );
+      return hasData(query) && Boolean(database?.hasFeature("join"));
     },
     subSteps: (query, stageIndex) => {
       return Lib.joins(query, stageIndex).length;
@@ -187,7 +183,9 @@ export function getQuestionSteps(
   query = Lib.dropEmptyStages(query);
 
   const database = metadata.database(Lib.databaseID(query));
-  const allowsNesting = Boolean(database?.hasFeature("nested-queries"));
+  const allowsNesting =
+    Boolean(database?.hasFeature("nested-queries")) &&
+    question.type() !== "metric";
   const hasBreakouts = Lib.breakouts(query, -1).length > 0;
 
   // add a level of nesting, if valid

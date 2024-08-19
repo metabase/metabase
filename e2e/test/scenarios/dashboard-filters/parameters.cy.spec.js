@@ -80,7 +80,7 @@ describe("scenarios > dashboard > parameters", () => {
     // confirm that typing searches both fields
     filterWidget().contains("Text").click();
 
-    // After typing "Ga", you should see this name
+    // After typing "Ga", you should see this name!
     popover().within(() => multiAutocompleteInput().type("Ga"));
     cy.wait("@dashboard");
     popover().last().contains("Gabrielle Considine");
@@ -205,7 +205,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      `?${startsWith.slug}=G&${endsWith.slug}=`,
+      `?${endsWith.slug}=&${startsWith.slug}=G`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
@@ -223,7 +223,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      `?${startsWith.slug}=G&${endsWith.slug}=zmo`,
+      `?${endsWith.slug}=zmo&${startsWith.slug}=G`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
@@ -488,7 +488,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
 
@@ -501,7 +501,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.location("search").should(
       "eq",
-      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
   });
@@ -674,7 +674,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     it("should not fetch dashcard data when nothing changed on save", () => {
       editDashboard();
-      saveDashboard();
+      saveDashboard({ awaitRequest: false });
 
       cy.get("@dashcardRequestSpy").should("have.callCount", 0);
     });
@@ -779,10 +779,8 @@ describe("scenarios > dashboard > parameters", () => {
 });
 
 function isFilterSelected(filter, bool) {
-  cy.findByTestId(`${filter}-filter-value`).within(() =>
-    cy
-      .findByRole("checkbox")
-      .should(`${bool === false ? "not." : ""}be.checked`),
+  cy.findByLabelText(filter).should(
+    `${bool === false ? "not." : ""}be.checked`,
   );
 }
 

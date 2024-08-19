@@ -23,6 +23,7 @@
     :refer [Card CardBookmark Collection Dashboard Database ModerationReview
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -30,7 +31,6 @@
    [metabase.models.revision :as revision]
    [metabase.permissions.util :as perms.u]
    [metabase.query-processor :as qp]
-   [metabase.query-processor.async :as qp.async]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -295,6 +295,56 @@
         (is (= #{"Card 2" "Card 3"}
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
+
+(deftest embedding-sdk-info-saves-view-log
+  (testing "GET /api/card with embedding headers set"
+    (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
+          client-string (mt/random-name)
+          version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
+      (mt/with-temp [:model/Database {database-id :id} {}
+                     :model/Card card-1 {:name "Card 1" :database_id database-id}]
+        (mt/with-premium-features #{:audit-app}
+          (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
+                                {:request-options {:headers {"x-metabase-client" client-string
+                                                             "x-metabase-client-version" version-string}}}))
+        (is (= {:embedding_client client-string, :embedding_version version-string}
+               (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
+
+(defn- do-poll-until [^Long timeout-ms thunk]
+  (let [result-prom (promise)
+        _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
+        _runner (future (loop []
+                          (if-let [thunk-return (try (thunk) (catch Exception e e))]
+                            (deliver result-prom thunk-return)
+                            (recur))))
+        result @result-prom]
+    (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
+                                               {:timeout-ms timeout-ms}))
+          (instance? Throwable result) (throw result)
+          :else result)))
+
+(defmacro ^:private poll-until
+  "A macro that continues to call the given body until it returns a truthy value or the timeout is reached.
+  Returns the truthy body, or re-throws any exception raised in body. Hence, this cannot be used to return nil, false, or a Throwable."
+  [timeout-ms & body]
+  `(do-poll-until ~timeout-ms (fn [] ~@body)))
+
+(deftest embedding-sdk-info-saves-query-execution
+  (testing "GET /api/card with embedding headers set"
+    (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                       ;; This query is just to make sure the card actually runs a query, otherwise
+                                       ;; there won't be a QueryExecution record to check!
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
+      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
+                            {:request-options {:headers {"x-metabase-client" "client-B"
+                                                         "x-metabase-client-version" "2"}}})
+      (is (=? {:embedding_client "client-B", :embedding_version "2"}
+              ;; The query metadata is handled asynchronously, so we need to poll until it's available:
+              (poll-until 100
+                          (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
+                                         :card_id (u/the-id card-1))))))))
 
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
@@ -967,17 +1017,18 @@
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
     (testing "Updating other parts but not query does not update the metadata"
-      (let [orig   qp.async/result-metadata-for-query-async
+      (let [orig   @#'card.metadata/legacy-result-metadata-future
             called (atom 0)]
-        (with-redefs [qp.async/result-metadata-for-query-async (fn [q]
-                                                                 (swap! called inc)
-                                                                 (orig q))]
+        (with-redefs [card.metadata/legacy-result-metadata-future (fn [q]
+                                                                    (swap! called inc)
+                                                                    (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
                                                                        query))]
               (is (= @called 1))
-              (is (= ["ID" "NAME"] (map norm (:result_metadata card))))
+              (is (=? {:result_metadata #(= ["ID" "NAME"] (map norm %))}
+                      card))
               (mt/user-http-request
                :crowberto :put 200 (str "card/" (u/the-id card))
                (assoc card
@@ -1043,32 +1094,25 @@
             ;; Rebind the `execute-statement!` function so that we can capture the generated SQL and inspect it
             (let [orig       sql-jdbc.execute/execute-statement!
                   sql-result (atom nil)]
-              (with-redefs [sql-jdbc.execute/execute-statement!
-                            (fn [driver stmt sql]
-                              (reset! sql-result sql)
-                              (orig driver stmt sql))]
+              (with-redefs [sql-jdbc.execute/execute-statement! (fn [driver stmt sql]
+                                                                  (reset! sql-result sql)
+                                                                  (orig driver stmt sql))
+                            driver/query-result-metadata        (get-method driver/query-result-metadata :default)]
                 (mt/user-http-request
                  :crowberto :post 200 "card"
                  (assoc (card-with-name-and-query card-name)
                         :dataset_query      (mt/native-query {:query "SELECT count(*) AS \"count\" FROM VENUES"})
                         :collection_id      (u/the-id collection))))
               (testing "check the correct metadata was fetched and was saved in the DB"
-                (is (= [{:base_type     (count-base-type)
-                         :effective_type (count-base-type)
-                         :display_name  "count"
-                         :name          "count"
-                         :semantic_type :type/Quantity
-                         :fingerprint   {:global {:distinct-count 1
-                                                  :nil%           0.0},
-                                         :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}
-                         :field_ref     [:field "count" {:base-type (count-base-type)}]}]
-                       (t2/select-one-fn :result_metadata :model/Card :name card-name))))
+                (is (=? [{:base_type      (count-base-type)
+                          :display_name   "count"
+                          :name           "count"}]
+                        (t2/select-one-fn :result_metadata :model/Card :name card-name))))
               (testing "Was the user id found in the generated SQL?"
-                (is (= true
-                       (boolean
-                        (when-let [s @sql-result]
-                          (re-find (re-pattern (str "userID: " (mt/user->id :crowberto)))
-                                   s)))))))))))))
+                (is (string? @sql-result))
+                (when-some [s @sql-result]
+                  (is (re-find (re-pattern (str "userID: " (mt/user->id :crowberto)))
+                               s)))))))))))
 
 (deftest create-card-with-collection-position
   (testing "Make sure we can create a Card with a Collection position"
@@ -3427,7 +3471,7 @@
   including GET /api/collection/:id/items and GET /api/card/:id"
   [request]
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
+    (mt/with-discard-model-updates! [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (mt/with-temp [:model/Database   {db-id :id}         {:engine driver/*driver*}
                      :model/Database   {other-db-id :id}   {:engine driver/*driver* :uploads_enabled true}
                      :model/Table      {table-id :id}      {:db_id db-id, :is_upload true}
@@ -3533,7 +3577,7 @@
                                :name                   "Bad Card"
                                :display                "table"
                                :visualization_settings {}}]
-        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""}
+        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""}
                 (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
 
 (deftest ^:parallel format-export-middleware-test

@@ -41,7 +41,9 @@ describe("dashboard reducers", () => {
       draftParameterValues: {},
       sidebar: { props: {} },
       slowCards: {},
-      loadingControls: {},
+      loadingControls: {
+        isLoading: false,
+      },
       missingActionParameters: null,
       autoApplyFilters: {
         toastId: null,

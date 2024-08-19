@@ -7,6 +7,7 @@ import {
 
 import { PivotTable } from "./PivotTable";
 import { PivotTableTestWrapper } from "./pivot-table-test-mocks";
+import { HORIZONTAL_SCROLL_43215 } from "./stories-data";
 
 export default {
   title: "viz/PivotTable",
@@ -48,5 +49,16 @@ export const EmbeddingTheme: Story = () => {
     <SdkVisualizationWrapper theme={theme}>
       <PivotTableTestWrapper />
     </SdkVisualizationWrapper>
+  );
+};
+
+export const HorizontalScroll43215: Story = () => {
+  return (
+    <VisualizationWrapper>
+      <PivotTableTestWrapper
+        data={HORIZONTAL_SCROLL_43215.data}
+        initialSettings={HORIZONTAL_SCROLL_43215.initialSettings}
+      />
+    </VisualizationWrapper>
   );
 };

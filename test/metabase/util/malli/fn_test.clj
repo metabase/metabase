@@ -200,12 +200,12 @@
              meta
              :tag))))
 
-(mu/defn ^:private foo :- keyword? [_x :- string?] "bad output")
-(mu/defn ^:private bar :- keyword?
+(mu/defn- foo :- keyword? [_x :- string?] "bad output")
+(mu/defn- bar :- keyword?
   ([_x :- string? _y] "bad output")
   ([_x :- string? _y & _xs] "bad output"))
 
-(mu/defn ^:private works? :- keyword? [_x :- string?] :yes)
+(mu/defn- works? :- keyword? [_x :- string?] :yes)
 
 (defn from-here? [^Exception e]
   (let [top-trace (-> e (.getStackTrace) first)

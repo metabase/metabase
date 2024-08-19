@@ -20,7 +20,7 @@ import type Question from "metabase-lib/v1/Question";
 interface AdHocQuestionLeftSideProps {
   question: Question;
   originalQuestion?: Question;
-  isNative?: boolean;
+  isNative: boolean;
   isObjectDetail?: boolean;
   isSummarized?: boolean;
   onOpenModal: (key: QueryModalType) => void;
@@ -55,6 +55,7 @@ export function AdHocQuestionLeftSide(
           ) : (
             <QuestionDescription
               question={question}
+              isNative={isNative}
               originalQuestion={originalQuestion}
               isObjectDetail={isObjectDetail}
               onClick={handleTitleClick}

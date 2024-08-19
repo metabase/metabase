@@ -28,7 +28,6 @@ interface ViewTitleHeaderProps {
   isNavBarOpen: boolean;
 
   originalQuestion?: Question;
-  isNative?: boolean;
   isSummarized?: boolean;
 
   result: Dataset;
@@ -60,7 +59,7 @@ interface ViewTitleHeaderProps {
       datasetEditorTab?: DatasetEditorTab;
     },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  turnModelIntoQuestion: () => void;
   areFiltersExpanded: boolean;
   onExpandFilters: () => void;
   onCollapseFilters: () => void;
@@ -82,6 +81,7 @@ export function ViewTitleHeader({
   onSave,
   onOpenModal,
   isNavBarOpen,
+  originalQuestion,
   result,
   queryBuilderMode,
   updateQuestion,
@@ -99,7 +99,7 @@ export function ViewTitleHeader({
   onEditSummary,
   onCloseSummary,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
   onModelPersistenceChange,
@@ -115,9 +115,9 @@ export function ViewTitleHeader({
 
   const query = question.query();
   const previousQuery = usePrevious(query);
+  const { isNative } = Lib.queryDisplayInfo(query);
 
   useEffect(() => {
-    const { isNative } = Lib.queryDisplayInfo(query);
     const isPreviousQuestionNative =
       previousQuery && Lib.queryDisplayInfo(previousQuery).isNative;
 
@@ -132,9 +132,15 @@ export function ViewTitleHeader({
     if (previousFiltersCount != null && filtersCount > previousFiltersCount) {
       expandFilters();
     }
-  }, [previousQuestion, question, expandFilters, previousQuery, query]);
+  }, [
+    previousQuestion,
+    question,
+    expandFilters,
+    previousQuery,
+    query,
+    isNative,
+  ]);
 
-  const { isNative } = Lib.queryDisplayInfo(query);
   const isSaved = question.isSaved();
   const isModelOrMetric =
     question.type() === "model" || question.type() === "metric";
@@ -162,8 +168,9 @@ export function ViewTitleHeader({
           <AdHocQuestionLeftSide
             question={question}
             isObjectDetail={isObjectDetail}
-            isNative={isNative}
             isSummarized={isSummarized}
+            isNative={isNative}
+            originalQuestion={originalQuestion}
             onOpenModal={onOpenModal}
           />
         )}
@@ -185,7 +192,7 @@ export function ViewTitleHeader({
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
           setQueryBuilderMode={setQueryBuilderMode}
-          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          turnModelIntoQuestion={turnModelIntoQuestion}
           toggleBookmark={toggleBookmark}
           onOpenQuestionInfo={onOpenQuestionInfo}
           onCloseQuestionInfo={onCloseQuestionInfo}

@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
+import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
 
 export const TagContainer = styled.div`
   padding: 1.5rem 1.5rem 0 1.5rem;
@@ -27,7 +27,6 @@ export const ContainerLabel = styled.div<ContainerLabelProps>`
 `;
 
 export const ErrorSpan = styled.span`
-  margin: 0 0.5rem;
   color: var(--mb-color-error);
 `;
 

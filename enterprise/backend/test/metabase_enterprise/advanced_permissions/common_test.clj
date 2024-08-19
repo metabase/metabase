@@ -784,9 +784,11 @@
           [table (upload-test/create-upload-table!)]
           (let [db-id       (mt/id)
                 upload-csv! (fn []
-                              (upload-test/upload-example-csv! {:grant-permission? false
-                                                                :schema-name       (:schema table)
-                                                                :table-prefix      "uploaded_magic_"}))]
+                              (upload-test/do-with-uploaded-example-csv!
+                               {:grant-permission? false
+                                :schema-name       (:schema table)
+                                :table-prefix      "uploaded_magic_"}
+                               identity))]
             (doseq [[schema-perms can-upload? description]
                     [[:query-builder               true  "Data permissions on schema should succeed"]
                      [:no                          false "No data permissions on schema should fail"]

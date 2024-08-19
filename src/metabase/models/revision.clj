@@ -36,7 +36,12 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (t2/update! model id serialized-instance))
+  (let [valid-columns   (keys (t2/select-one (t2/table-name model) :id id))
+        ;; Only include fields that we know are on the model in the current version of Metabase! Otherwise we'll get
+        ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
+        ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
+        revert-instance (select-keys serialized-instance valid-columns)]
+    (t2/update! model id revert-instance)))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."

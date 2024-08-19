@@ -9,20 +9,20 @@ import { AggregationPicker } from "../SummarizeSidebar.styled";
 
 import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 
-const STAGE_INDEX = -1;
-
 interface AddAggregationButtonProps {
   query: Lib.Query;
-  onAddAggregations: (aggregation: Lib.Aggregable[]) => void;
+  stageIndex: number;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AddAggregationButton({
   query,
-  onAddAggregations,
+  stageIndex,
+  onQueryChange,
 }: AddAggregationButtonProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const hasAggregations = Lib.aggregations(query, STAGE_INDEX).length > 0;
-  const operators = Lib.availableAggregationOperators(query, STAGE_INDEX);
+  const hasAggregations = Lib.aggregations(query, stageIndex).length > 0;
+  const operators = Lib.availableAggregationOperators(query, stageIndex);
 
   const renderTooltip = (children: ReactNode) =>
     hasAggregations ? (
@@ -50,15 +50,11 @@ export function AddAggregationButton({
       <Popover.Dropdown>
         <AggregationPicker
           query={query}
-          stageIndex={STAGE_INDEX}
+          stageIndex={stageIndex}
           operators={operators}
           hasExpressionInput={false}
-          onAdd={aggregations => {
-            onAddAggregations(aggregations);
-            setIsOpened(false);
-          }}
-          onSelect={aggregation => {
-            onAddAggregations([aggregation]);
+          onQueryChange={query => {
+            onQueryChange(query);
             setIsOpened(false);
           }}
         />

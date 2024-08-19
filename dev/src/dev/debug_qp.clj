@@ -1,6 +1,14 @@
 (ns dev.debug-qp
-  "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
+  "Debug QP stuff as follows:
+
+    ;; start Portal if you have not done so already. Open http://localhost:1337 in your browser
+    (dev.debug-qp/start-portal!)
+
+    ;; run a query with debugging enabled
+    (binding [metabase.query-processor.debug/*debug* true]
+      (metabase.query-processor/process-query query))"
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
@@ -13,6 +21,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
+   [portal.api]
    [toucan2.core :as t2]))
 
 ;;;; [[->sorted-mbql-query-map]]
@@ -394,3 +403,34 @@
   ([driver sql]
    #_{:clj-kondo/ignore [:discouraged-var]}
    (println (driver/prettify-native-form driver sql))))
+
+(defonce ^:private portal (atom nil))
+
+(defn- portal-setup
+  "Do setup after Portal has started, e.g. loading the custom viewers in [[dev.debug-qp.viewers]]. This is supposed to
+  be done automatically on start, but you can call this function to reload them if needed."
+  []
+  (portal.api/eval-str
+   (slurp (io/resource "dev/debug_qp/viewers.cljs"))))
+
+(def ^:private default-portal-config
+  {:port    1337
+   :on-load #'portal-setup})
+
+(defn stop-portal! []
+  (when @portal
+    (portal.api/stop)
+    (remove-tap #'portal.api/submit)
+    (reset! portal nil)))
+
+(defn start-portal!
+  ([]
+   (start-portal! nil))
+
+  ([config]
+   (let [config (merge default-portal-config config)]
+     (stop-portal!)
+     (reset! portal (portal.api/start config))
+     (add-tap #'portal.api/submit)
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (printf "Started Portal on port %d.\n" (:port config)))))

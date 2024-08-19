@@ -34,15 +34,23 @@ You can set the following types of permissions on a database, schema, or table:
 - [Manage table metadata](#manage-table-metadata-permissions)
 - [Manage database](#manage-database-permissions)
 
+> If you're upgrading from a version below Metabase 50, your permission levels may look different, but the data access hasn't changed. See [what's changed with data permissions and why](./no-self-service-deprecation.md).
+
 ## View data permissions
 
-The **View data** permission determines what data people can see. Permission levels include:
+{% include plans-blockquote.html feature="View data permissions" %}
+
+The **View data** permission determines what data people can see.
+
+Permission levels include:
 
 - [Can view](#can-view-data-permission)
 - [Granular](#granular-view-data-permission)
 - [Sandboxed](#sandboxed-view-data-permission)
 - [Impersonated](#impersonated-view-data-permission)
 - [Blocked](#blocked-view-data-permission)
+
+In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 
 For which questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
 

@@ -21,7 +21,7 @@ const QUESTION_SCHEMA = Yup.object({
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
+  description: Yup.string().nullable().default(null),
   collection_id: Yup.number().nullable().default(null),
 });
 
@@ -88,7 +88,7 @@ export const CopyQuestionForm = ({
           {!!onCancel && (
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton label={t`Duplicate`} />
+          <FormSubmitButton label={t`Duplicate`} variant="filled" />
         </FormFooter>
       </Form>
     </FormProvider>

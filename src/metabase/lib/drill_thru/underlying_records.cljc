@@ -100,7 +100,7 @@
    :row-count  row-count
    :table-name table-name})
 
-(mu/defn ^:private drill-filter :- ::lib.schema/query
+(mu/defn- drill-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column

@@ -8,6 +8,7 @@ import { DashCardActionButton } from "../DashCardActionButton/DashCardActionButt
  */
 export const MoveDashCardActionStyled = styled(DashCardActionButton)`
   position: relative;
+
   &:hover::before {
     content: "";
     position: absolute;
