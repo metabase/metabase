@@ -1,19 +1,20 @@
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitQuestion,
-  visitDashboard,
-  openPeopleTable,
-  describeEE,
-  setTokenFeatures,
-  popover,
-  entityPickerModal,
-  visitFullAppEmbeddingUrl,
-  openCommandPalette,
   commandPalette,
+  createModerationReview,
+  describeEE,
+  entityPickerModal,
+  openCommandPalette,
+  openPeopleTable,
+  popover,
+  restore,
+  setTokenFeatures,
+  visitDashboard,
+  visitFullAppEmbeddingUrl,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("search > recently viewed", () => {
@@ -141,7 +142,7 @@ describeEE("search > recently viewed > enterprise features", () => {
     cy.signInAsAdmin();
     setTokenFeatures("all");
 
-    cy.request("POST", "/api/moderation-review", {
+    createModerationReview({
       status: "verified",
       moderated_item_id: ORDERS_QUESTION_ID,
       moderated_item_type: "card",
