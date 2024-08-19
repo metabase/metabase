@@ -494,8 +494,9 @@
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
 
-;; Cal 2024-08-19: this test can take some seconds, maybe consider dropping it to make CI faster
-(deftest redshift-describe-database-test
+;; Cal 2024-08-19: this test needs to pass if the retries in the [[driver/describe-database]] implementation for
+;; redshift are removed. See #45874
+#_(deftest redshift-describe-database-test
   (mt/test-driver :redshift
     ;; make sure test data is loaded
     (mt/db)
@@ -543,7 +544,8 @@
              (with-open [stmt (.createStatement conn)]
                (.execute stmt (format "DROP SCHEMA \"%s\";" schema))))))))))
 
-;; Cal 2024-08-19: this test currently fails if the retries in driver/describe-database are disabled.
+;; Cal 2024-08-19: this test needs to pass if the retries in the [[driver/describe-database]] implementation for
+;; redshift are removed. See #45874
 #_(deftest redshift-describe-database-schema-test
   (mt/test-driver :redshift
     (mt/db)
