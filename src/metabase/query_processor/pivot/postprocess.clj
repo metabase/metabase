@@ -193,7 +193,9 @@
 (mu/defn add-pivot-measures :- ::pivot-spec
   "Given a pivot-spec map without the `:pivot-measures` key, determine what key(s) the measures will be and assoc that value into `:pivot-measures`."
   [pivot-spec :- ::pivot-spec]
-  (assoc pivot-spec :pivot-measures (pivot-measures pivot-spec)))
+  (-> pivot-spec
+      (assoc :pivot-measures (pivot-measures pivot-spec))
+      (assoc :pivot-grouping (pivot-grouping-key (:column-titles pivot-spec)))))
 
 (mu/defn- row-builder
   "Construct the export-style pivot rows from the raw pivot rows, according to the indices specified in `pivot-spec`.
