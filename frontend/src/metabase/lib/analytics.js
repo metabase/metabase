@@ -26,6 +26,12 @@ export const trackPageView = url => {
  * @deprecated This uses GA which is not setup. We should use `trackSchemaEvent`.
  */
 export const trackStructEvent = (category, action, label, value) => {
+  /*
+  IMPORTANT NOTE: We don't track struct events via Google Analytics anymore.
+  This function only exists to prevent breaking changes.
+  There are still many references and tests that rely on this but their events will NOT be tracked anymore.
+  We plan to slowly remove this function and all references to it.
+  */
   if (!category || !label || !Settings.trackingEnabled()) {
     return;
   }
