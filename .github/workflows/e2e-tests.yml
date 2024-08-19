@@ -252,15 +252,6 @@ jobs:
           check_title_template: "{{FILE_NAME}}, {{SUITE_NAME}}, {{TEST_NAME}}, {{CLASS_NAME}}, {{BREAD_CRUMB}}"
           detailed_summary: true
 
-      - name: Upload junit artifacts
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: junit-${{ matrix.name }}-${{ matrix.edition }}
-          path: |
-            ./target/junit
-          if-no-files-found: ignore
-
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
         if: failure()
@@ -270,18 +261,6 @@ jobs:
             ./cypress
             ./logs/test.log
           if-no-files-found: ignore
-
-      - name: Dorny reporter
-        uses: dorny/test-reporter@v1
-        if: failure()
-        with:
-          artifact: junit-${{ matrix.name }}-${{ matrix.edition }} # artifact name
-          name: cypress check # Name of the check run which will be created
-          path: "*.xml" # Path to test results (inside artifact .zip)
-          reporter: jest-junit # Format of test results
-          list-suites: "failed"
-          only-summary: false
-          list-tests: "failed"
 
   e2e-tests-skipped-stub:
     needs: [e2e-tests, e2e-matrix-builder]
