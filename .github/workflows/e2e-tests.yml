@@ -264,7 +264,7 @@ jobs:
       - name: Dorny reporter
         uses: dorny/test-reporter@v1
         with:
-          artifact: cypress-recording-${{ matrix.name }}-${{ matrix.edition } # artifact name
+          artifact: cypress-recording-${{ matrix.name }}-${{ matrix.edition }} # artifact name
           name: cypress check # Name of the check run which will be created
           path: "cypress/reports/cypress-test-report.json" # Path to test results (inside artifact .zip)
           reporter: mocha-json # Format of test results
