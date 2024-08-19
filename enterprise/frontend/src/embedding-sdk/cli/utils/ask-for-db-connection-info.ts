@@ -38,7 +38,7 @@ export async function askForDatabaseConnectionInfo(options: Options) {
     const shouldShowField =
       !visibleIf ||
       Object.entries(visibleIf).every(
-        ([key, expected]) => !!connection[key] === !!expected,
+        ([key, expected]) => connection[key] === expected,
       );
 
     // Skip fields that should be hidden
@@ -85,6 +85,13 @@ const askForConnectionValue = (
 
       return fs.readFile(path, "utf-8");
     })
+    .with("select", () => {
+      return select({
+        message,
+        choices: field.options ?? [],
+        default: field.default,
+      });
+    })
     .with("section", () => askSectionChoice(field))
     .otherwise(() =>
       input({
@@ -107,7 +114,22 @@ const getIntegerFieldDefault = (field: EngineField, engine: string) => {
 };
 
 const askSectionChoice = async (field: EngineField) => {
-  // Snowflake allows to connect with either hostname or account name.
+  // Postgres allows connecting with either password or an authentication provider.
+  if (field.name === "use-auth-provider") {
+    const choice = await select({
+      message:
+        "Do you want to connect with password or an authentication provider?",
+      choices: [
+        { name: "Password", value: "password" },
+        { name: "Auth Provider", value: "auth-provider" },
+      ],
+      default: "password",
+    });
+
+    return choice === "auth-provider";
+  }
+
+  // Snowflake allows connecting with either hostname or account name.
   if (field.name === "use-hostname") {
     const choice = await select({
       message: "Do you want to connect with hostname or account name?",
@@ -115,12 +137,13 @@ const askSectionChoice = async (field: EngineField) => {
         { name: "Hostname", value: "hostname" },
         { name: "Account name", value: "account" },
       ],
+      default: "hostname",
     });
 
     return choice === "hostname";
   }
 
-  // MongoDB allows to connect with either hostname or connection string.
+  // MongoDB allows connecting with either hostname or connection string.
   if (field.name === "use-conn-uri") {
     const choice = await select({
       message: "Do you want to connect with hostname or connection string?",
@@ -128,6 +151,7 @@ const askSectionChoice = async (field: EngineField) => {
         { name: "Hostname", value: "hostname" },
         { name: "Connection String", value: "conn-uri" },
       ],
+      default: "hostname",
     });
 
     return choice === "conn-uri";
