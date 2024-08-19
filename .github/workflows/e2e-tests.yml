@@ -243,6 +243,12 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
+      - name: Publish test report to summary
+        uses: mikepenz/action-junit-report@v3
+        with:
+          commit: ${{github.event.workflow_run.head_sha}}
+          report_paths: "./target/junit/*.xml"
+
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
         if: failure()
