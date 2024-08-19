@@ -7,7 +7,7 @@ import {
   useState,
 } from "react";
 
-import { useListCollectionsQuery } from "metabase/api";
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
 import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
@@ -36,21 +36,17 @@ export const SaveQuestionProvider = ({
   onCreate,
   onSave,
   multiStep = false,
-  initialCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
-  const { data: collections = [] } = useListCollectionsQuery({});
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
+  const defaultCollectionId = useGetDefaultCollectionId(
+    originalQuestion?.collectionId(),
+  );
+
   const initialValues: FormValues = useMemo(
-    () =>
-      getInitialValues(
-        collections,
-        originalQuestion,
-        question,
-        initialCollectionId,
-      ),
-    [collections, initialCollectionId, originalQuestion, question],
+    () => getInitialValues(originalQuestion, question, defaultCollectionId),
+    [originalQuestion, defaultCollectionId, question],
   );
 
   const handleSubmit = useCallback(
