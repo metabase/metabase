@@ -895,6 +895,11 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         "contain.text",
         "This chart can not be broken out by the selected unit of time: year.",
       );
+
+      cy.log("use an valid temporal unit");
+      filterWidget().click();
+      popover().findByText("Minute").click();
+      getDashboardCard().findByText("TIME: Minute").should("be.visible");
     });
   });
 
