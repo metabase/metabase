@@ -74,11 +74,14 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
+  error?:
+    | string
+    | {
+        status: number; // HTTP status code
+        data?: string;
+      };
   error_type?: string;
-  error?: {
-    status: number; // HTTP status code
-    data?: string;
-  };
+  error_curated?: boolean;
   context?: string;
   status?: string;
 }
