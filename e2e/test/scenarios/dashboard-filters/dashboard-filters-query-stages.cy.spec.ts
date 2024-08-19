@@ -26,7 +26,10 @@ describe("scenarios > dashboard > filters > query stages", () => {
     cy.signInAsAdmin();
     // cy.intercept("POST", "/api/dataset").as("dataset");
 
-    createBaseQuestions();
+    createQ0().then(({ body: q0 }) => {
+      createQ1(q0.id);
+      createM1(q0.id);
+    });
   });
 
   it("base questions", () => {
@@ -45,17 +48,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
   });
 });
 
-function createBaseQuestions() {
-  createQ0().then(({ body: q0 }) => {
-    createQ1(q0.id);
-    createM1(q0.id);
-  });
-}
-
 function createQ0() {
   return createQuestion(
     {
       name: "Q0 Orders",
+      description: "Plain Orders table",
       query: {
         "source-table": ORDERS_ID,
       },
@@ -64,10 +61,11 @@ function createQ0() {
   );
 }
 
-function createQ1(q0Id: number) {
+function createQ1(q0Id: CardId) {
   return createQuestion(
     {
       name: "Q1 Orders question",
+      description: "Question based on a question",
       query: {
         "source-table": `card__${q0Id}`,
       },
@@ -76,10 +74,10 @@ function createQ1(q0Id: number) {
   );
 }
 
-function createM1(q0Id: number) {
+function createM1(q0Id: CardId) {
   return createQuestion(
     {
-      name: "Q1 Orders question",
+      name: "Model based on a question",
       type: "model",
       query: {
         "source-table": `card__${q0Id}`,
@@ -88,6 +86,11 @@ function createM1(q0Id: number) {
     { idAlias: "model1Id" },
   );
 }
+
+// TODO: tests for base questions q0 q1 m1
+// TODO: create questions for 1 stage
+// TODO: create questions for 2 stages
+// TODO: create question for 3 stages
 
 function createDashboard({
   questions,
