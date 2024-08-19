@@ -75,6 +75,7 @@ const buildAccessPermission = (
       "fields",
       defaultGroup,
       groupId,
+      undefined,
     ),
     ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
       confirmation(permissions, groupId, entityId, newValue),
@@ -99,12 +100,8 @@ const buildAccessPermission = (
   );
   const isDisabled =
     isAdmin ||
-    (!isAdmin &&
-      (options.length <= 1 ||
-        PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
-          value,
-          "fields",
-        )));
+    options.length <= 1 ||
+    PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(value, "fields");
 
   return {
     permission: DataPermission.VIEW_DATA,

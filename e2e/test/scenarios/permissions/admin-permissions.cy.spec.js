@@ -54,6 +54,16 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     ]);
   });
 
+  it("should not show view data column on OSS", () => {
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    cy.findByTestId("permission-table").within(() => {
+      cy.findByText("Database name").should("exist");
+      cy.findByText("View data").should("not.exist");
+      cy.findByText("Create queries").should("exist");
+    });
+  });
+
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
