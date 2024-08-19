@@ -1717,12 +1717,12 @@
                    :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
       (let [spec (serdes/make-spec "DashboardCard" nil)]
         (is (= {(:id dc1) [s]}
-               (#'serdes/transform->nested (-> spec :transform :series) [dc1])))
+               (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
         (is (=? (assoc dc1 :series [s])
                 (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
       (let [spec (serdes/make-spec "Dashboard" nil)]
         (is (= {(:id d) [(assoc dc1 :series [s])]}
-               (#'serdes/transform->nested (-> spec :transform :dashcards) [d])))
+               (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
         (is (=? (assoc d
                        :dashcards [(assoc dc1 :series [s])]
                        :tabs nil)
