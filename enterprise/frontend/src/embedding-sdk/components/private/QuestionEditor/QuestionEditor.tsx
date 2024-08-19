@@ -5,61 +5,78 @@ import type { InteractiveQuestionProps } from "embedding-sdk/components/public/I
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
 import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
 
-export const QuestionEditor = ({
-  questionId,
-  plugins,
-}: InteractiveQuestionProps) => {
+import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
+
+const QuestionEditorInner = () => {
+  const { queryResults, runQuestion } = useInteractiveQuestionContext();
+
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
   >("notebook");
   const [isSaveFormOpen, { open: openSaveForm, close: closeSaveForm }] =
     useDisclosure(false);
 
+  const onOpenVisualizationTab = async () => {
+    setActiveTab("visualization");
+    await runQuestion();
+  };
+
   return (
-    <InteractiveQuestion questionId={questionId} plugins={plugins}>
-      <Box w="100%" h="100%">
-        <Tabs
-          value={activeTab}
-          onTabChange={setActiveTab}
-          defaultValue="notebook"
-        >
-          <Group position="apart">
-            <Group>
-              <Tabs.Tab value="notebook">Notebook</Tabs.Tab>
-              <Tabs.Tab value="visualization">Visualization</Tabs.Tab>
-            </Group>
-            {!isSaveFormOpen && (
-              <Group>
-                <InteractiveQuestion.ResetButton
-                  onClick={() => {
-                    setActiveTab("notebook");
-                    closeSaveForm();
-                  }}
-                />
-                <InteractiveQuestion.SaveButton onClick={openSaveForm} />
-              </Group>
-            )}
+    <Box w="100%" h="100%">
+      <Tabs
+        value={activeTab}
+        onTabChange={setActiveTab}
+        defaultValue="notebook"
+      >
+        <Group position="apart">
+          <Group>
+            <Tabs.Tab value="notebook">Notebook</Tabs.Tab>
+            {queryResults ? (
+              <Tabs.Tab value="visualization" onClick={onOpenVisualizationTab}>
+                Visualization
+              </Tabs.Tab>
+            ) : null}
           </Group>
+          {!isSaveFormOpen && (
+            <Group>
+              <InteractiveQuestion.ResetButton
+                onClick={() => {
+                  setActiveTab("notebook");
+                  closeSaveForm();
+                }}
+              />
+              <InteractiveQuestion.SaveButton onClick={openSaveForm} />
+            </Group>
+          )}
+        </Group>
 
-          <Tabs.Panel value="notebook">
-            <InteractiveQuestion.Notebook
-              onApply={() => setActiveTab("visualization")}
-            />
-          </Tabs.Panel>
+        <Tabs.Panel value="notebook">
+          <InteractiveQuestion.Notebook
+            onApply={() => setActiveTab("visualization")}
+          />
+        </Tabs.Panel>
 
-          <Tabs.Panel value="visualization">
-            <InteractiveQuestion.QuestionVisualization />
-          </Tabs.Panel>
-        </Tabs>
+        <Tabs.Panel value="visualization">
+          <InteractiveQuestion.QuestionVisualization />
+        </Tabs.Panel>
+      </Tabs>
 
-        {isSaveFormOpen && (
-          <Overlay center>
-            <Paper>
-              <InteractiveQuestion.SaveQuestionForm onClose={closeSaveForm} />
-            </Paper>
-          </Overlay>
-        )}
-      </Box>
-    </InteractiveQuestion>
+      {isSaveFormOpen && (
+        <Overlay center>
+          <Paper>
+            <InteractiveQuestion.SaveQuestionForm onClose={closeSaveForm} />
+          </Paper>
+        </Overlay>
+      )}
+    </Box>
   );
 };
+
+export const QuestionEditor = ({
+  questionId,
+  plugins,
+}: InteractiveQuestionProps) => (
+  <InteractiveQuestion questionId={questionId} plugins={plugins}>
+    <QuestionEditorInner />
+  </InteractiveQuestion>
+);
