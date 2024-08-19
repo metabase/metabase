@@ -141,6 +141,17 @@ A MongoDB native query example might look like this:
 
 For a more in-depth guide, check out [Field Filters: create smart filter widgets for SQL questions][field-filter].
 
+### Field filters in BigQuery and Oracle
+
+Make sure your SQL dialect matches the database you've selected. Common issues:
+
+| Database | Do this                    | Avoid                |
+| -------- | -------------------------- | -------------------- |
+| BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
+| Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
+
+For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
+
 ## How to create different types of filter widgets
 
 The kind of filter widget that Metabase displays when you create a Field Filter widget depends on a setting for that field in Metabase called **Filtering on this field**. Admins can set this field option to:
