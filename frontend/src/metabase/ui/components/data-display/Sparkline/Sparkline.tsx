@@ -1,15 +1,15 @@
 import { curveLinear } from "@visx/curve";
-import { scaleTime, scaleLinear } from "@visx/scale";
+import { scaleLinear } from "@visx/scale";
 import { LinePath } from "@visx/shape";
 import { extent, ascending } from "@visx/vendor/d3-array";
 import { useMemo } from "react";
 
-type Datapoint = {
-  x: Date | string;
+export type Datapoint = {
+  x: number;
   y: number;
 };
 
-type Props = {
+export type SparklineProps = {
   color?: string;
   className?: string;
   data: Datapoint[];
@@ -26,11 +26,11 @@ export function Sparkline({
   width,
   height,
   color = "var(--mb-color-brand)",
-}: Props) {
+}: SparklineProps) {
   const { xScale, yScale } = useMemo(() => {
     const sorted = data.sort((a, b) => ascending(x(a), x(b)));
-    const xScale = scaleTime<number>({
-      domain: extent(sorted, x) as [Date, Date],
+    const xScale = scaleLinear<number>({
+      domain: extent(sorted, x) as [number, number],
       range: [0 + PADDING, width - PADDING],
     });
     const yScale = scaleLinear<number>({
@@ -59,8 +59,8 @@ export function Sparkline({
   );
 }
 
-function x(point: Datapoint): Date {
-  return new Date(point.x);
+function x(point: Datapoint): number {
+  return point.x;
 }
 
 function y(point: Datapoint): number {
