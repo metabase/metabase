@@ -21,18 +21,19 @@ export function getDataSourceParts({ question, subHead, isObjectDetail }) {
     return [];
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const query = question.query();
+  const { isEditable, isNative } = Lib.queryDisplayInfo(query);
+
   const hasDataPermission = isEditable;
   if (!hasDataPermission) {
     return [];
   }
 
   const parts = [];
-  const query = question.query();
-  const metadata = question.metadata();
-  const { isNative } = Lib.queryDisplayInfo(query);
 
+  const metadata = question.metadata();
   const database = metadata.database(Lib.databaseID(query));
+
   if (database) {
     parts.push({
       icon: !subHead ? "database" : undefined,
