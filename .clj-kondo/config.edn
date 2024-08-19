@@ -147,6 +147,7 @@
               :bigquery-cloud-sdk
               :druid
               :druid-jdbc
+              :googleanalytics
               :mongo
               :oracle
               :presto-jdbc
