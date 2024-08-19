@@ -82,17 +82,6 @@ For questions, [dashboards](../../dashboards/start.md), and [models](../../data-
 
 See [History](../../exploration-and-organization/history.md).
 
-## Your SQL syntax must match the dialect used by the database
-
-Make sure your SQL dialect matches the database you've selected. Common errors:
-
-| Database | Do this                    | Avoid                |
-| -------- | -------------------------- | -------------------- |
-| BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
-| Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
-
-For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
-
 ## Explore SQL question results using the Query Builder
 
 On saved SQL questions without [parameters](./sql-parameters.md), you'll get the **Explore results** button. It will create a new Query Builder question that uses the SQL question results as a data source.
