@@ -81,7 +81,7 @@ export interface Dataset {
         data?: string;
       };
   error_type?: string;
-  error_curated?: boolean;
+  error_is_curated?: boolean;
   context?: string;
   status?: string;
 }

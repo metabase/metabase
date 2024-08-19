@@ -218,7 +218,7 @@ describe("Dashboard utils", () => {
         createMockDataset({}),
         createMockDataset({
           error: "Wrong query",
-          error_curated: true,
+          error_is_curated: true,
         }),
       ]);
 
@@ -233,7 +233,7 @@ describe("Dashboard utils", () => {
         createMockDataset({}),
         createMockDataset({
           error: { status: 500 },
-          error_curated: true,
+          error_is_curated: true,
         }),
       ]);
 
@@ -250,7 +250,7 @@ describe("Dashboard utils", () => {
       const error = getDashcardResultsError([
         createMockDataset({
           error: undefined,
-          error_curated: true,
+          error_is_curated: true,
         }),
       ]);
 

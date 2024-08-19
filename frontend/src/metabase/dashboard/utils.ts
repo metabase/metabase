@@ -219,7 +219,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   const errors = datasets.map(s => s.error).filter(Boolean);
   if (errors.length > 0) {
     const datasetWithCuratedError = datasets.find(
-      dataset => typeof dataset.error === "string" && dataset.error_curated,
+      dataset => typeof dataset.error === "string" && dataset.error_is_curated,
     );
 
     return {
