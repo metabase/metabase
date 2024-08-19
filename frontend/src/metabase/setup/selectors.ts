@@ -107,6 +107,9 @@ export const getSteps = createSelector(
     const shouldShowLicenseStep =
       isEEBuild() && (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
 
+    const isHosted = tokenFeatures && tokenFeatures["hosting"];
+    const shouldShowDataUsageStep = !isHosted;
+
     const steps: { key: SetupStep; isActiveStep: boolean }[] = [
       { key: "welcome" as const },
       { key: "language" as const },
@@ -116,7 +119,7 @@ export const getSteps = createSelector(
         key: "db_connection" as const,
       },
       shouldShowLicenseStep && { key: "license_token" as const },
-      { key: "data_usage" as const },
+      shouldShowDataUsageStep ? { key: "data_usage" as const } : null,
       { key: "completed" as const },
     ]
       .filter(isNotFalsy)

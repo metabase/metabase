@@ -1,7 +1,6 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
 
 import { screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
@@ -34,9 +33,17 @@ describe("setup (EE, hosting and embedding feature)", () => {
     expectSectionToHaveLabel("What should we call you?", "2");
     expectSectionToHaveLabel("What will you use Metabase for?", "3");
     expectSectionToHaveLabel("Add your data", "4");
-    expectSectionToHaveLabel("Usage data preferences", "5");
 
     expectSectionsToHaveLabelsInOrder();
+  });
+
+  it("should not show the analytics opt out (because of token-feature 'hosting')", async () => {
+    await setupPremium();
+    await skipWelcomeScreen();
+
+    expect(
+      screen.queryByText("Usage data preferences"),
+    ).not.toBeInTheDocument();
   });
 
   it("should not render the license activation step", async () => {
@@ -47,7 +54,7 @@ describe("setup (EE, hosting and embedding feature)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should set 'setup-license-active-at-setup' to true", async () => {
+  it("should set 'setup-license-active-at-setup' to true even when skipping the data usage step", async () => {
     await setupPremium();
     await skipWelcomeScreen();
     await skipLanguageStep();
@@ -56,7 +63,7 @@ describe("setup (EE, hosting and embedding feature)", () => {
     await selectUsageReason("embedding");
     await clickNextStep();
 
-    await userEvent.click(screen.getByText("Finish"));
+    expect(await screen.findByText("Take me to Metabase")).toBeInTheDocument();
 
     expect(await getLastSettingsPutPayload()).toEqual({
       "embedding-homepage": "visible",
