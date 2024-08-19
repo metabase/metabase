@@ -18,7 +18,6 @@ import {
   startNewQuestion,
   type StructuredQuestionDetails,
   summarize,
-  tableHeaderClick,
   tableInteractive,
   tableInteractiveBody,
   visitDashboard,
@@ -472,24 +471,56 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("viz settings", () => {
-      it("should be able to change formatting settings for breakouts of the same column", () => {
-        createQuestion(questionWith2TemporalBreakoutsDetails, {
-          visitQuestion: true,
-        });
+      function testColumnSettings({
+        questionDetails,
+        column1Name,
+        column2Name,
+      }: {
+        questionDetails: StructuredQuestionDetails;
+        column1Name: string;
+        column2Name: string;
+      }) {
+        createQuestion(questionDetails, { visitQuestion: true });
 
         cy.log("first breakout");
-        tableHeaderClick("Created At: Year");
+        tableHeaderClick(column1Name);
         popover().icon("gear").click();
-        popover().findByDisplayValue("Created At: Year").clear().type("Year");
+        popover().findByDisplayValue(column1Name).clear().type("Breakout1");
         cy.get("body").click();
 
         cy.log("second breakout");
-        tableHeaderClick("Created At: Month");
+        tableHeaderClick(column2Name, {
+          columnIndex: column2Name === column1Name ? 1 : 0,
+        });
         popover().icon("gear").click();
-        popover().findByDisplayValue("Created At: Month").clear().type("Month");
+        popover().findByDisplayValue(column2Name).clear().type("Breakout2");
         cy.get("body").click();
 
-        assertTableData({ columns: ["Year", "Month", "Count"] });
+        assertTableData({ columns: ["Breakout1", "Breakout2", "Count"] });
+      }
+
+      it("should be able to change formatting settings for temporal breakouts of the same column", () => {
+        testColumnSettings({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Created At: Year",
+          column2Name: "Created At: Month",
+        });
+      });
+
+      it("should be able to change formatting settings for 'num-bins' breakouts of the same column", () => {
+        testColumnSettings({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          column1Name: "Total",
+          column2Name: "Total",
+        });
+      });
+
+      it("should be able to change formatting settings for 'bin-width' breakouts of the same column", () => {
+        testColumnSettings({
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          column1Name: "Latitude",
+          column2Name: "Latitude",
+        });
       });
 
       it("should be able to change pivot split settings when there are more than 2 breakouts", () => {
@@ -673,6 +704,21 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
   });
 });
+
+function tableHeaderClick(
+  columnName: string,
+  { columnIndex = 0 }: { columnIndex?: number } = {},
+) {
+  tableInteractive()
+    .findAllByText(columnName)
+    .eq(columnIndex)
+    .trigger("mousedown");
+
+  tableInteractive()
+    .findAllByText(columnName)
+    .eq(columnIndex)
+    .trigger("mouseup");
+}
 
 function assertTableData({
   columns = [],
