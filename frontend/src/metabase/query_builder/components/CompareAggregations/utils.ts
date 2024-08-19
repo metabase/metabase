@@ -169,7 +169,7 @@ function isTemporal(
   breakout: Lib.BreakoutClause,
 ) {
   const column = Lib.breakoutColumn(query, stageIndex, breakout);
-  return Lib.isTemporal(column);
+  return Lib.isTemporalBucketable(query, stageIndex, column);
 }
 
 export const canSubmit = (
@@ -270,7 +270,7 @@ export function canAddTemporalCompareAggregation(
 
   const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
   const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
-    Lib.isTemporal(column),
+    Lib.isTemporalBucketable(query, stageIndex, column),
   );
 
   if (!hasAtLeastOneTemporalBreakoutColumn) {
