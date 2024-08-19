@@ -249,8 +249,17 @@ jobs:
         with:
           commit: ${{github.event.workflow_run.head_sha}}
           report_paths: "./target/junit/*.xml"
-          check_title_template: "{{FILE_NAME}} -> {{TEST_NAME}}"
+          check_title_template: "{{TEST_NAME}}"
           detailed_summary: true
+
+      - name: Upload junit artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: junit-${{ matrix.name }}-${{ matrix.edition }}
+          path: |
+            ./target/junit
+          if-no-files-found: ignore
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
@@ -266,7 +275,7 @@ jobs:
         uses: dorny/test-reporter@v1
         if: failure()
         with:
-          artifact: e2e-${{ matrix.name }} # artifact name
+          artifact: junit-${{ matrix.name }}-${{ matrix.edition }} # artifact name
           name: cypress check # Name of the check run which will be created
           path: "target/junit/*.xml" # Path to test results (inside artifact .zip)
           reporter: jest-junit # Format of test results
