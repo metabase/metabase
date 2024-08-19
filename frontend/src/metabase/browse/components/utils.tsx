@@ -7,6 +7,8 @@ import type { ModelResult } from "../types";
 import { getCollectionName } from "../utils";
 
 import { pathSeparatorChar } from "./constants";
+import { CubeResult } from "./CubeTable";
+import { SortedCube } from "./SemanticTable";
 
 export const getBreadcrumbMaxWidths = (
   collections: CollectionEssentials["effective_ancestors"],
@@ -120,4 +122,119 @@ export const getMaxRecentModelCount = (
     return 4;
   }
   return 0;
+};
+
+
+const getValueForSortingSemantic = (
+  cube: SortedCube,
+  sort_column: keyof SortedCube,
+): string => {
+  if (sort_column === "fileName") {
+    return cube.fileName;
+  } else {
+    // You might want to add more sorting options based on the content
+    // For now, we'll just return an empty string for 'content'
+    return "";
+  }
+};
+
+export const isValidSortColumnSemantic = (
+  sort_column: string,
+): sort_column is keyof SortedCube => {
+  return ["fileName", "content"].includes(sort_column);
+};
+
+export const getSecondarySortColumnSemantic = (
+  sort_column: string,
+): keyof SortedCube => {
+  return sort_column === "fileName" ? "content" : "fileName";
+};
+
+export const sortCubeData = (
+  cubeDataArray: SortedCube[],
+  sortingOptions: SortingOptions,
+  localeCode: string = "en",
+) => {
+  const { sort_column, sort_direction } = sortingOptions;
+
+  if (!isValidSortColumnSemantic(sort_column)) {
+    console.error("Invalid sort column", sort_column);
+    return cubeDataArray;
+  }
+
+  const compare = (a: string, b: string) =>
+    a.localeCompare(b, localeCode, { sensitivity: "base" });
+
+  return [...cubeDataArray].sort((cubeA, cubeB) => {
+    const a = getValueForSortingSemantic(cubeA, sort_column);
+    const b = getValueForSortingSemantic(cubeB, sort_column);
+
+    let result = compare(a, b);
+    if (result === 0) {
+      const sort_column2 = getSecondarySortColumnSemantic(sort_column);
+      const a2 = getValueForSortingSemantic(cubeA, sort_column2);
+      const b2 = getValueForSortingSemantic(cubeB, sort_column2);
+      result = compare(a2, b2);
+    }
+
+    return sort_direction === SortDirection.Asc ? result : -result;
+  });
+};
+
+// Sorting for Cube
+
+const getValueForSortingCube = (
+  cube: CubeResult,
+  sort_column: keyof CubeResult,
+): string => {
+  if (sort_column === "title") {
+    return cube.title;
+  } else {
+    // You might want to add more sorting options based on the content
+    // For now, we'll just return an empty string for 'content'
+    return "";
+  }
+};
+
+export const isValidSortColumnCube = (
+  sort_column: string,
+): sort_column is keyof CubeResult => {
+  return ["title", "type"].includes(sort_column);
+};
+
+export const getSecondarySortColumnCube = (
+  sort_column: string,
+): keyof CubeResult => {
+  return sort_column === "title" ? "type" : "title";
+};
+
+export const sortDefinitionData = (
+  cubeDataArray: CubeResult[],
+  sortingOptions: SortingOptions,
+  localeCode: string = "en",
+) => {
+  const { sort_column, sort_direction } = sortingOptions;
+
+  if (!isValidSortColumnCube(sort_column)) {
+    console.error("Invalid sort column", sort_column);
+    return cubeDataArray;
+  }
+
+  const compare = (a: string, b: string) =>
+    a.localeCompare(b, localeCode, { sensitivity: "base" });
+
+  return [...cubeDataArray].sort((cubeA, cubeB) => {
+    const a = getValueForSortingCube(cubeA, sort_column);
+    const b = getValueForSortingCube(cubeB, sort_column);
+
+    let result = compare(a, b);
+    if (result === 0) {
+      const sort_column2 = getSecondarySortColumnCube(sort_column);
+      const a2 = getValueForSortingCube(cubeA, sort_column2);
+      const b2 = getValueForSortingCube(cubeB, sort_column2);
+      result = compare(a2, b2);
+    }
+
+    return sort_direction === SortDirection.Asc ? result : -result;
+  });
 };

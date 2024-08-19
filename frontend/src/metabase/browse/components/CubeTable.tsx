@@ -37,17 +37,21 @@ import {
     ModelTableRow,
   } from "./ModelsTable.styled";
 import { CubeDataItem } from "metabase-types/api";
+import { CubeDialog } from "metabase/components/Cube/CubeDialog";
+import { sortDefinitionData } from "./utils";
   
   export interface CubeTableProps {
     cubeData: CubeDataItem;
     skeleton?: boolean;
   }
 
-  interface CubeResult {
+  export interface CubeResult {
     category: string;
     name:string;
     type:string;
     title:string;
+    sql?:string;
+    primaryKey:boolean;
     description:string;
   }
   
@@ -65,7 +69,7 @@ import { CubeDataItem } from "metabase-types/api";
   };
   
   const DEFAULT_SORTING_OPTIONS: SortingOptions = {
-    sort_column: "creation date",
+    sort_column: "title",
     sort_direction: SortDirection.Asc,
   };
   
@@ -77,6 +81,7 @@ import { CubeDataItem } from "metabase-types/api";
   }: CubeTableProps) => {
     const locale = useSelector(getLocale);
     const localeCode: string | undefined = locale?.code;
+    const [selectedDefinition, setSelectedDefinition] = useState<CubeResult | null>()
   
     // for large datasets, we need to simplify the display to avoid performance issues
     const isLargeDataset = 100 > LARGE_DATASET_THRESHOLD;
@@ -88,13 +93,24 @@ import { CubeDataItem } from "metabase-types/api";
       DEFAULT_SORTING_OPTIONS,
     );
   
-    const sortedModels = cubeData
+    // const sortedModels = cubeData
 
     const typesWithParts = extractParts(cubeData.content as string)
+    const typesWithSql = extractPartsWithSql(cubeData.content as string)
+
+    const sortedDefinitions = sortDefinitionData(typesWithSql, sortingOptions, localeCode);
 
     /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
     const collectionWidth = 20;
     const descriptionWidth = 100 - collectionWidth;
+
+    const handleRowClick = (cube: CubeResult) => {
+      setSelectedDefinition(cube);
+    };
+  
+    const handleCloseModal = () => {
+      setSelectedDefinition(null);
+    };
   
     const handleUpdateSortOptions = skeleton
       ? undefined
@@ -111,9 +127,10 @@ import { CubeDataItem } from "metabase-types/api";
       if (isLargeDataset && showLoadingManyRows) {
         setTimeout(() => setShowLoadingManyRows(false), 10);
       }
-    }, [isLargeDataset, showLoadingManyRows, sortedModels]);
+    }, [isLargeDataset, showLoadingManyRows, sortedDefinitions]);
   
     return (
+      <>
       <Table aria-label={skeleton ? undefined : "Table of models"}>
         <colgroup>
           {/* <col> for Name column */}
@@ -132,7 +149,7 @@ import { CubeDataItem } from "metabase-types/api";
         <thead>
           <tr>
             <SortableColumnHeader
-              name="name"
+              name="title"
               sortingOptions={sortingOptions}
               onSortingOptionsChange={handleUpdateSortOptions}
               style={{ paddingInlineStart: ".625rem" }}
@@ -144,8 +161,8 @@ import { CubeDataItem } from "metabase-types/api";
             </SortableColumnHeader>
             <SortableColumnHeader
               name="type"
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={handleUpdateSortOptions}
+              // sortingOptions={sortingOptions}
+              // onSortingOptionsChange={handleUpdateSortOptions}
               {...collectionProps}
               columnHeaderProps={{
                 style: {
@@ -189,22 +206,31 @@ import { CubeDataItem } from "metabase-types/api";
             </Repeat>
           ) : 
           (
-            typesWithParts.map((cube: CubeResult) => (
-              <TBodyRow cube={cube} key={cube.name} />
+            sortedDefinitions.map((cube: CubeResult) => (
+              <TBodyRow cube={cube} key={cube.name} handleRowClick={handleRowClick} />
             ))
           )}
         </TBody>
       </Table>
+      {selectedDefinition && (
+        <CubeDialog
+          isOpen={!!selectedDefinition}
+          onClose={handleCloseModal}
+          cube={selectedDefinition}
+        />
+      )}
+      </>
     );
   };
 
-  const TBodyRow = ({ cube,skeleton }: { cube: CubeResult, skeleton?:boolean }) => {
+  const TBodyRow = ({ cube,skeleton, handleRowClick }: { cube: CubeResult, skeleton?:boolean, handleRowClick:any }) => {
     return (
       <ModelTableRow
       onClick={(e: React.MouseEvent) => {
         if (skeleton) {
           return;
         }
+        handleRowClick(cube)
       }}
       tabIndex={0}
       key={cube.name}
@@ -275,7 +301,7 @@ import { CubeDataItem } from "metabase-types/api";
     return <Skeleton natural h="16.8px" />;
   };
 
-  const extractParts = (inputString: string) => {
+  export const extractParts = (inputString: string) => {
     const regex = /(measures|dimensions):\s*{(?:[^}]*?(\w+):\s*{[^}]*?type:\s*`(\w+)`[^}]*?(?:title:\s*`([^`]+)`)?[^}]*?(?:description:\s*`([^`]+)`)?[^}]*?})+/g;
   const results = [];
   let match;
@@ -296,6 +322,44 @@ import { CubeDataItem } from "metabase-types/api";
 
   return results;
   };
+
+  export const extractPartsWithSql = (inputString: string) => {
+  const regex = /(measures|dimensions):\s*{(?:[^}]*?(\w+):\s*{[^}]*?(?:sql:\s*`([^`]+)`)?[^}]*?type:\s*`(\w+)`[^}]*?(?:title:\s*`([^`]+)`)?[^}]*?(?:description:\s*`([^`]+)`)?[^}]*?})+/g;
+  const results = [];
+  let match;
+
+  while ((match = regex.exec(inputString)) !== null) {
+    const category = match[1];
+    const innerMatches = match[0].matchAll(/(\w+):\s*{[^}]*?(?:sql:\s*`([^`]+)`)?[^}]*?type:\s*`(\w+)`(?:[^}]*?title:\s*`([^`]+)`)?(?:[^}]*?description:\s*`([^`]+)`)?(?:[^}]*?primaryKey:\s*(true|false))?[^}]*?}/g);
+    for (const innerMatch of innerMatches) {
+      let sql = extractSQL(innerMatch[0]);
+      let primaryKey = extractPrimaryKey(innerMatch[0]);
+      results.push({
+        category,
+        name: innerMatch[1],
+        sql: sql,
+        type: innerMatch[3],
+        title: innerMatch[4] || '',
+        description: innerMatch[5] || '',
+        primaryKey: primaryKey
+      });
+    }
+  }
+  
+    return results;
+  };
+
+  function extractSQL(matchString:string) {
+    const sqlRegex = /sql:\s*`([^`]*)`/;
+    const match = matchString.match(sqlRegex);
+    return match ? match[1] : '';
+  }
+
+  function extractPrimaryKey(matchString: string): boolean {
+    const primaryKeyRegex = /primaryKey:\s*(true|false)/;
+    const match = matchString.match(primaryKeyRegex);
+    return match ? match[1] === 'true' : false;
+  }
   
   const TBodyRowSkeleton = ({ style }: { style?: CSSProperties }) => {
     const icon = { name: "model" as IconName };

@@ -87,7 +87,7 @@ export const BrowseNavSection = ({
       )}
       {hasDataAccess && (
         <PaddedSidebarLink
-          icon="database"
+          icon="semantic_layer"
           url={BROWSE_SEMANTIC_LAYER}
           isSelected={nonEntityItem?.url?.startsWith(BROWSE_SEMANTIC_LAYER)}
           onClick={onItemSelect}

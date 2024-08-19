@@ -1,6 +1,6 @@
 export interface CubeDataItem {
     fileName: string;
-    content: unknown;
+    content: string;
   }
   
 export  type CubeDataResponse = CubeDataItem[];
@@ -11,7 +11,6 @@ export interface GetCubeDataRequest {
   }
 
   export type UpdateCubeDataRequest = {
-    company_name: string;
     payload: {
         cubeFiles: {
             model: {

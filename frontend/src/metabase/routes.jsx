@@ -65,6 +65,8 @@ import {
   IsNotAuthenticated,
 } from "./route-guards";
 import { getApplicationName } from "./selectors/whitelabel";
+import { BrowseCubes } from "./browse/components/BrowseCubes";
+import CubeFlow from "./components/Cube/CubeFlow";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
@@ -211,6 +213,8 @@ export const getRoutes = store => {
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
             <Route path="semantic-layer" component={BrowseSemanticLayer} />
+            <Route path="semantic-layer/:cubeName" component={BrowseCubes} />
+            <Route path="data-map" component={CubeFlow} />
             <Route path="chat" component={BrowseChat} />
             <Route path="databases/:slug" component={BrowseSchemas} />
             <Route

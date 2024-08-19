@@ -226,11 +226,9 @@ export interface FieldData {
     const allJoins: Record<string, string[]> = {};
   
     cubesContent.forEach(content => {
-      const cubeName = extractTableName(content);
-      // console.log('cubeName', cubeName)
+      const cubeName = extractCubeName(content)
   
       const joinContent = extractJoinsContent(content);
-      // console.log('join content', joinContent);
   
       if (!joinContent) return;
   
@@ -301,14 +299,15 @@ export interface FieldData {
         }
       });
     }
-  
+    let modifiedTable;
     // Create edges
     for (const [tableName, fields] of Object.entries(extractedData)) {
       fields.forEach(field => {
-        if (field.field.endsWith('_id') && sourceFields[field.field] !== tableName) {
+        modifiedTable = extractBase(field.field)
+        if (field.field.endsWith('_id') && modifiedTable !== tableName) {
           const edge: Edge = {
             source: tableName,
-            target: sourceFields[field.field],
+            target: modifiedTable,
             sourceHandle: field.field,
             targetHandle: field.field
           };
@@ -316,13 +315,13 @@ export interface FieldData {
         }
       });
     }
-  
-    // Update source fields
     nodes.forEach(node => {
-      node.fields = node.fields.map(field => ({
-        ...field,
-        type: sourceFields[field.name] === node.id ? "source" : "target"
-      }));
+      node.fields = node.fields.map(field => {
+        return {
+          ...field,
+          type: extractBase(field.name) === node.id ? "source" : "target"
+        };
+      });
     });
     
     return { nodes, edges };
@@ -337,6 +336,11 @@ export interface FieldData {
     }
     return tableNameArr[idx];
   };
+
+  function extractBase(str:string) {
+    const base = str.split('_')[0];
+  return base.charAt(0).toUpperCase() + base.slice(1);
+  }
   
   export const tableArr = (cubes:any) => {
     let tableNameArr

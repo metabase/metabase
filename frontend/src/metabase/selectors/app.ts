@@ -17,8 +17,13 @@ import type { State } from "metabase-types/store";
 
 import { getSetting } from "./settings";
 
+interface CubeName {
+  cubeName: string
+}
+
 export interface RouterProps {
   location: Location;
+  params?: CubeName;
 }
 
 const PATHS_WITHOUT_NAVBAR = [
@@ -40,6 +45,14 @@ const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/dashboard\//,
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
+
+const PATHS_WITH_SEMANTIC_LAYER_BREADCRUMBS = [
+  /\/semantic-layer\//,
+];
+
+const PATHS_WITH_DATA_MAP_BREADCRUMBS = [
+  /\/?data-map(\/|$)/,
+];
 
 export const getRouterPath = (state: State, props: RouterProps) => {
   return props?.location?.pathname ?? window.location.pathname;
@@ -223,3 +236,29 @@ export const getCustomHomePageDashboardId = createSelector(
 export const getHasDismissedCustomHomePageToast = (state: State) => {
   return getSetting(state, "dismissed-custom-dashboard-toast");
 };
+
+export const getIsSemanticLayerBreadcrumbsVisible = createSelector(
+  [getRouterPath, getIsEmbedded, getEmbedOptions],
+  (path, isEmbedded, embedOptions) => {
+    if (isEmbedded && !embedOptions.breadcrumbs) {
+      return false;
+    }
+
+    return PATHS_WITH_SEMANTIC_LAYER_BREADCRUMBS.some(pattern => pattern.test(path));
+  }
+);
+
+export const getIsDataMapBreadcrumbsVisible = createSelector(
+  [getRouterPath, getIsEmbedded, getEmbedOptions],
+  (path, isEmbedded, embedOptions) => {
+    if (isEmbedded && !embedOptions.breadcrumbs) {
+      return false;
+    }
+
+    return PATHS_WITH_DATA_MAP_BREADCRUMBS.some(pattern => pattern.test(path));
+  }
+);
+
+export const getCubeName = (state: State, props:RouterProps) => {
+  return props.params?.cubeName
+}

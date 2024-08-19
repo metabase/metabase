@@ -4,6 +4,7 @@ export * from "./auth";
 export * from "./bookmarks";
 export * from "./browse";
 export * from "./collections";
+export * from "./cube";
 export * from "./dashboards";
 export * from "./indexed-entities";
 export * from "./metabot";

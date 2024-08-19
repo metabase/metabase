@@ -6,11 +6,12 @@ export type SortColumn =
   | "model"
   | "collection"
   | "description"
-  | "folder"
+  | "fileName"
   | "creation date"
   | "last update"
   | "type"
-  | "category";
+  | "category"
+  | "title";
 
 export enum SortDirection {
   Asc = "asc",

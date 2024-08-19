@@ -11,6 +11,7 @@ import AppBarSmall from "./AppBarSmall";
 export interface AppBarProps {
   currentUser: User;
   collectionId?: CollectionId;
+  cubeName?: string;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
@@ -19,6 +20,8 @@ export interface AppBarProps {
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
+  isSemanticLayerVisible?:boolean;
+  isDataMapVisible?:boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
