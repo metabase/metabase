@@ -266,7 +266,7 @@
           {"$project" {"acc" {"$concatArrays" ["$results" "$newResults"]}}}
           {"$unwind" "$acc"}
           {"$replaceRoot" {"newRoot" "$acc"}}
-          {"$project" {"_id" 0, "path" 1, "type" 1, "index" 1}}]
+          {"$project" {"index" "$index", "path" "$path", "type" "$type"}}]
          (#'mongo/describe-table-query :collection-name "collection-name" :sample-size 1000 :max-depth 1))))
 
 (deftest describe-table-test
