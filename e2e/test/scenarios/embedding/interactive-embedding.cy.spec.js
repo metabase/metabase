@@ -1,7 +1,3 @@
-import {
-  createMockDashboardCard,
-  createMockTextDashboardCard,
-} from "metabase-types/api/mocks";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -27,6 +23,10 @@ import {
   updateDashboardCards,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
+import {
+  createMockDashboardCard,
+  createMockTextDashboardCard,
+} from "metabase-types/api/mocks";
 
 const { ORDERS } = SAMPLE_DATABASE;
 

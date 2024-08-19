@@ -1,4 +1,3 @@
-import type { CollectionId } from "metabase-types/api";
 import {
   entityPickerModal,
   entityPickerModalLevel,
@@ -6,6 +5,7 @@ import {
   getFullName,
   popover,
 } from "e2e/support/helpers";
+import type { CollectionId } from "metabase-types/api";
 
 /**
  * Clicks the "+" icon on the collection page and selects one of the menu options

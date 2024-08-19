@@ -1,6 +1,3 @@
-import { checkNotNull } from "metabase/lib/types";
-import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import type { LocalFieldReference } from "metabase-types/api";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -19,6 +16,9 @@ import {
   updateDashboardCards,
   visitDashboard,
 } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/lib/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS } = SAMPLE_DATABASE;
 

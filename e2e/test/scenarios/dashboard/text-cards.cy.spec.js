@@ -1,4 +1,3 @@
-import { createMockParameter } from "metabase-types/api/mocks";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
@@ -21,6 +20,7 @@ import {
   setFilter,
   visitDashboard,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 

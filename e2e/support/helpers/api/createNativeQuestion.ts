@@ -1,5 +1,5 @@
-import type { Card, DatasetQuery, NativeQuery } from "metabase-types/api";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import type { Card, DatasetQuery, NativeQuery } from "metabase-types/api";
 
 import {
   logAction,

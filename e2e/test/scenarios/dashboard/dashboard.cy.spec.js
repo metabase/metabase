@@ -1,11 +1,6 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
-import {
-  createMockVirtualCard,
-  createMockVirtualDashCard,
-} from "metabase-types/api/mocks";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -57,6 +52,11 @@ import {
   updateDashboardCards,
   visitDashboard,
 } from "e2e/support/helpers";
+import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import {
+  createMockVirtualCard,
+  createMockVirtualDashCard,
+} from "metabase-types/api/mocks";
 
 import { interceptRoutes as interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {

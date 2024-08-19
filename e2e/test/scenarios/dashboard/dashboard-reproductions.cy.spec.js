@@ -1,11 +1,6 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import {
-  createMockDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
@@ -47,6 +42,11 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 

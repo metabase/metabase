@@ -1,6 +1,5 @@
 import registerCypressGrep from "@cypress/grep";
 registerCypressGrep();
-
 import addContext from "mochawesome/addContext";
 
 import "@cypress/skip-test/support";

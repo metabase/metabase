@@ -19,6 +19,7 @@ import {
 } from "e2e/support/helpers";
 
 import { addWidgetNumberFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_NUMBER_FILTERS } from "./shared/dashboard-filters-number";
 
 describe("scenarios > dashboard > filters > number", () => {

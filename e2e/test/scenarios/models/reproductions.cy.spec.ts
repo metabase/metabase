@@ -1,4 +1,3 @@
-import type { CardId, FieldReference } from "metabase-types/api";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ORDERS_DASHBOARD_ID,
@@ -46,6 +45,7 @@ import {
   visitModel,
   visualize,
 } from "e2e/support/helpers";
+import type { CardId, FieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

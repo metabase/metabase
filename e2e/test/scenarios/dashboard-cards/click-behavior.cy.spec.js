@@ -1,8 +1,3 @@
-import { b64hash_to_utf8 } from "metabase/lib/encoding";
-import {
-  createMockActionParameter,
-  createMockDashboardCard,
-} from "metabase-types/api/mocks";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -36,6 +31,11 @@ import {
   visitEmbeddedPage,
   visitIframe,
 } from "e2e/support/helpers";
+import { b64hash_to_utf8 } from "metabase/lib/encoding";
+import {
+  createMockActionParameter,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 const { PRODUCTS, SAMPLE_DB_ID } = SAMPLE_DATABASE;
 
 const COUNT_COLUMN_ID = "count";

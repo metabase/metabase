@@ -1,4 +1,3 @@
-import { createMockDashboardCard } from "metabase-types/api/mocks";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -51,6 +50,7 @@ import {
   visitDashboardAndCreateTab,
   visitIframe,
 } from "e2e/support/helpers";
+import { createMockDashboardCard } from "metabase-types/api/mocks";
 
 const { ORDERS, PEOPLE } = SAMPLE_DATABASE;
 

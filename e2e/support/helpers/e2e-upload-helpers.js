@@ -1,4 +1,5 @@
 import { WRITABLE_DB_ID } from "../cypress_data";
+
 import { modal } from "./e2e-ui-elements-helpers";
 
 export const FIXTURE_PATH = "../../e2e/support/assets";

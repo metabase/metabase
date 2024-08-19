@@ -1,4 +1,3 @@
-import { checkNotNull } from "metabase/lib/types";
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -35,6 +34,7 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
+import { checkNotNull } from "metabase/lib/types";
 
 const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 

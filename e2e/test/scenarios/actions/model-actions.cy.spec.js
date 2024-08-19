@@ -1,6 +1,5 @@
 import { assocIn } from "icepick";
 
-import { createMockActionParameter } from "metabase-types/api/mocks";
 import {
   SAMPLE_DB_ID,
   USER_GROUPS,
@@ -22,6 +21,7 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
+import { createMockActionParameter } from "metabase-types/api/mocks";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";
 

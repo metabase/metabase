@@ -1,3 +1,4 @@
+import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import { color as getColor } from "metabase/lib/colors";
 import { Icons } from "metabase/ui";
 import { GOAL_LINE_DASH } from "metabase/visualizations/echarts/cartesian/option/goal-line.ts";
@@ -6,7 +7,6 @@ import {
   setSvgColor,
   svgToDataUri,
 } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
-import { popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
 export function echartsContainer() {
   return cy.findByTestId("chart-container");

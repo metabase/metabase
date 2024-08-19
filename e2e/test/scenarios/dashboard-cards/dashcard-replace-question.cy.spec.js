@@ -1,8 +1,3 @@
-import {
-  createMockDashboardCard,
-  createMockHeadingDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -24,6 +19,11 @@ import {
   undoToastList,
   visitDashboard,
 } from "e2e/support/helpers";
+import {
+  createMockDashboardCard,
+  createMockHeadingDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

@@ -13,6 +13,7 @@ import {
 } from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
+
 import { questionDetailsWithDefaults } from "./shared/embedding-dashboard";
 import { questionDetails } from "./shared/embedding-native";
 

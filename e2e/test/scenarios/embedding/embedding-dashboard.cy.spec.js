@@ -1,4 +1,3 @@
-import { createMockParameter } from "metabase-types/api/mocks";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addOrUpdateDashboardCard,
@@ -31,8 +30,10 @@ import {
   visitEmbeddedPage,
   visitIframe,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import {
   dashboardDetails,
   mapParameters,

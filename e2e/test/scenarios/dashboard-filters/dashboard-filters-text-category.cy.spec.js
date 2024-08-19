@@ -22,6 +22,7 @@ import {
   applyFilterByType,
   selectDefaultValueFromPopover,
 } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_TEXT_FILTERS } from "./shared/dashboard-filters-text-category";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

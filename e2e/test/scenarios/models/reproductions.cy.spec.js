@@ -1,7 +1,3 @@
-import {
-  createMockActionParameter,
-  createMockDashboardCard,
-} from "metabase-types/api/mocks";
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -58,8 +54,13 @@ import {
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
+import {
+  createMockActionParameter,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import {
   openDetailsSidebar,
   turnIntoModel,

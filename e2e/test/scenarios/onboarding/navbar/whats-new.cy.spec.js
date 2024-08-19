@@ -1,8 +1,8 @@
+import { navigationSidebar, restore } from "e2e/support/helpers";
 import {
   createMockVersionInfo,
   createMockVersionInfoRecord as mockVersion,
 } from "metabase-types/api/mocks";
-import { navigationSidebar, restore } from "e2e/support/helpers";
 
 describe("nav > what's new notification", () => {
   beforeEach(() => {

@@ -14,6 +14,7 @@ import {
 } from "e2e/support/helpers";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location";
 
 describe("scenarios > dashboard > filters > location", () => {
