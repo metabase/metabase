@@ -633,7 +633,7 @@
                                                              [:description                 [:maybe :string]]
                                                              [:creator_id                  :string]
                                                              [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
-                                                             [:timestamp                   :string]
+                                                             [:timestamp                   (ms/InstanceOfClass OffsetDateTime)]
                                                              [:icon {:optional true}       [:maybe :string]]
                                                              [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]]]]
                              [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]

@@ -775,7 +775,7 @@
                         :timeline_id line-id}]
       (testing "timelines"
         (testing "with no events"
-          (let [ser (serdes/extract-one "Timeline" {} (t2/select-one Timeline :id empty-id))]
+          (let [ser (ts/extract-one "Timeline" empty-id)]
             (is (=? {:serdes/meta   [{:model "Timeline" :id empty-eid :label "empty_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
@@ -788,13 +788,12 @@
                      (set (serdes/dependencies ser)))))))
 
         (testing "with events"
-          (let [ser   (serdes/extract-one "Timeline" {} (t2/select-one Timeline :id line-id))
-                stamp "2020-04-11T00:00:00Z"]
+          (let [ser (ts/extract-one "Timeline" line-id)]
             (is (=? {:serdes/meta   [{:model "Timeline" :id line-eid :label "populated_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
                      :created_at    OffsetDateTime
-                     :events        [{:timestamp  stamp
+                     :events        [{:timestamp  (t/offset-date-time #t "2020-04-11T00:00:00Z")
                                       :creator_id "ann@heart.band"
                                       :created_at OffsetDateTime}]}
                     ser))
