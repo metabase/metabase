@@ -89,16 +89,12 @@ if (hasPremiumFeature("advanced_permissions")) {
     value === BLOCK_PERMISSION_OPTION.value;
 
   PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = value => {
-    if (
-      value === BLOCK_PERMISSION_OPTION.value ||
-      value === IMPERSONATED_PERMISSION_OPTION.value
-    ) {
+    if (value === IMPERSONATED_PERMISSION_OPTION.value) {
       return DataPermissionValue.UNRESTRICTED;
     }
 
     return null;
   };
-
   PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (value, subject) => {
     if (subject === "tables" || subject === "fields") {
       return value === DataPermissionValue.IMPERSONATED;
