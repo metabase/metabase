@@ -216,8 +216,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     };
   }
 
-  const errors = datasets.map(s => s.error).filter(Boolean);
-  if (errors.length > 0) {
+  if (datasets.some(dataset => dataset.error)) {
     const curatedErrorDataset = datasets.find(
       dataset => dataset.error && dataset.error_is_curated,
     );
