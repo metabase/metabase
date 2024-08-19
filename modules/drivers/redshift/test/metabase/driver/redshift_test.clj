@@ -23,8 +23,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
@@ -250,7 +249,7 @@
     :redshift
     (testing "Late-binding view with with data types that cause a JDBC error can still be synced successfully (#21215)"
       (let [db-details (tx/dbdef->connection-details :redshift nil nil)]
-        (t2.with-temp/with-temp [Database database {:engine :redshift, :details db-details}]
+        (mt/with-temp [Database database {:engine :redshift, :details db-details}]
           (let [view-nm      (tx/db-qualified-table-name (:name database) "lbv")
                 qual-view-nm (format "\"%s\".\"%s\"" (redshift.test/unique-session-schema) view-nm)]
             (execute!
@@ -494,3 +493,95 @@
                               :target [:variable [:template-tag "date"]]
                               :value  "2024-07-02"}]
                 :middleware {:format-rows? false}})))))))
+
+;; Cal 2024-08-19: this test can take some seconds, maybe consider dropping it to make CI faster
+(deftest redshift-describe-database-test
+  (mt/test-driver :redshift
+    ;; make sure test data is loaded
+    (mt/db)
+    ;; create a DIFFERENT schema than our unique-session-schema to fill with trash asynchronously
+    (let [do-with-connection (fn [f]
+                               (sql-jdbc.execute/do-with-connection-with-options
+                                :redshift
+                                (sql-jdbc.conn/connection-details->spec :redshift @redshift.test/db-connection-details)
+                                {:write? true}
+                                f))
+          schema             (str (redshift.test/unique-session-schema) "_2")]
+      (log/debug "UNIQUE SESSION SCHEMA =" (redshift.test/unique-session-schema))
+      (try
+        (do-with-connection
+         (fn [^java.sql.Connection conn]
+           (with-open [stmt (.createStatement conn)]
+             (.execute stmt (format "CREATE SCHEMA IF NOT EXISTS \"%s\";" schema)))))
+        ;; now asynchronously load a bunch of trash into the schema
+        (let [fut (future
+                    (do-with-connection
+                     (fn [^java.sql.Connection conn]
+                       (with-open [stmt (.createStatement conn)]
+                         (dotimes [_ 10]
+                           (let [table (u/lower-case-en (mt/random-name))]
+                             (log/debug "CREATING AND DROPPING" schema table)
+                             (.execute stmt (format "CREATE TABLE \"%s\".\"%s\" (id INTEGER);" schema table))
+                             (.execute stmt (format "DROP TABLE \"%s\".\"%s\";" schema table))))))))]
+          (try
+            ;; now run sync a bunch of times and make sure it completes ok.
+            (dotimes [i 5]
+              (log/debug "Sync #" i)
+              (let [sync-tables (:tables (driver/describe-database :redshift (mt/db)))]
+                (doseq [{sync-table-name :name, :as synced-table} sync-tables]
+                  (testing (format "\nsynced table: %s" (u/pprint-to-str synced-table))
+                    (is (or (str/starts-with? sync-table-name "test_data_")
+                            (= sync-table-name "extsales")
+                            (#{"ioczvlzuryxmervumwrn" "umcwdqwjjaagvmrgrdhi"} sync-table-name)))))))
+            (finally
+              ;; cancel the async trash-loading future if it's still running.
+              (future-cancel fut))))
+        (finally
+          ;; clean up after ourselves and drop the test schema.
+          (do-with-connection
+           (fn [^java.sql.Connection conn]
+             (with-open [stmt (.createStatement conn)]
+               (.execute stmt (format "DROP SCHEMA \"%s\";" schema))))))))))
+
+;; Cal 2024-08-19: this test currently fails if the retries in driver/describe-database are disabled.
+#_(deftest redshift-describe-database-schema-test
+  (mt/test-driver :redshift
+    (mt/db)
+    (let [do-with-connection (fn [f]
+                               (sql-jdbc.execute/do-with-connection-with-options
+                                :redshift
+                                (sql-jdbc.conn/connection-details->spec :redshift @redshift.test/db-connection-details)
+                                {:write? true}
+                                f))
+          base-schema        (redshift.test/unique-session-schema)]
+      (try
+        ;; Asynchronously create and drop schemas
+        (let [fut (future
+                    (do-with-connection
+                     (fn [^java.sql.Connection conn]
+                       (with-open [stmt (.createStatement conn)]
+                         (dotimes [i 20]
+                           (let [schema (str base-schema "_" i)]
+                             (log/debug "CREATING AND DROPPING SCHEMA" schema)
+                             (.execute stmt (format "CREATE SCHEMA \"%s\";" schema))
+                             (.execute stmt (format "CREATE TABLE \"%s\".\"test_table\" (id INTEGER);" schema))
+                             (.execute stmt (format "DROP TABLE \"%s\".\"test_table\";" schema))
+                             (.execute stmt (format "DROP SCHEMA \"%s\";" schema))))))))]
+          (try
+            ;; Run sync multiple times while schemas are being created and dropped
+            (dotimes [i 10]
+              (log/debug "Sync #" i)
+              (let [sync-schemas (map :schema (:tables (driver/describe-database :redshift (mt/db))))]
+                (testing (format "\nsynced schemas: %s" (u/pprint-to-str sync-schemas))
+                  (is (some #{(redshift.test/unique-session-schema)}
+                            sync-schemas)))))
+            (finally
+              (future-cancel fut))))
+        (finally
+          ;; Clean up any remaining schemas
+          (do-with-connection
+           (fn [^java.sql.Connection conn]
+             (with-open [stmt (.createStatement conn)]
+               (doseq [i (range 10)]
+                 (let [schema (str base-schema "_" i)]
+                   (.execute stmt (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema))))))))))))

@@ -104,7 +104,7 @@
 
 (defmethod driver/describe-database :redshift
   [driver database]
-  ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
+  ;; Redshift sync is can flake when schemas are dropped! This auto-retry is a temporary workaround until we can actually
   ;; fix #45874
   (try
     (u/auto-retry (if config/is-prod? 2 5)
