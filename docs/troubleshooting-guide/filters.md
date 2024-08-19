@@ -76,6 +76,10 @@ Metabase needs to know the data type of a column in order to present you with a 
 
 Timestamps, in particular, are the root of all evil, so please be patient with your Metabase admin (or yourself!) when trying to get the data type right.
 
+## Field filters in BigQuery and Oracle
+
+If you are getting an error when using field filters with BigQuery or Oracle, make sure you use the correct syntax for the `FROM` clause. See [Field filters in BigQuery and Oracle](../questions/native-editor/sql-parameters.md#field-filters-in-bigquery-and-oracle).
+
 ## Missing or incorrect filter values
 
 If your filter dropdown menu displays the wrong values for a column:
