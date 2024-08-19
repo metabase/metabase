@@ -29,7 +29,7 @@ import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 export interface InteractiveQuestionResultProps {
   height?: string | number;
   withResetButton?: boolean;
-  withTitle?: boolean;
+  withTitle: boolean;
   customTitle?: ReactNode;
 }
 
