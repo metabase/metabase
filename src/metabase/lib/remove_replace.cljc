@@ -76,7 +76,6 @@
       stage-number)
     query))
 
-;; TODO: Examine whether also 0th stage does not need updating refs. Eg. those in order by.
 (defn- update-stale-references-in-stage
   "Fix stale references in `stage-number` stage of `query-modfied`. `stage-number` should not be 0."
   [query-modified stage-number query-original]
@@ -91,7 +90,7 @@
        (let [old-matching-column (lib.equality/find-matching-column &match old-previous-stage-columns)
              source-uuid (:lib/source-uuid old-matching-column)
              new-column  (source-uuid->new-column source-uuid)
-             new-name    (:lib/desired-column-alias new-column)]
+             new-name    ((some-fn :lib/desired-column-alias :name) new-column)]
          (assoc &match 2 new-name))))))
 
 (defn- update-stale-references
