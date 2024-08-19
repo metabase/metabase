@@ -5,7 +5,7 @@ import open from "open";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
-import { printEmptyLines, printInfo } from "../utils/print";
+import { printEmptyLines, printInfo, printWithPadding } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
 const trialUrl = `https://store.metabase.com/checkout?plan=pro&deployment=self-hosted`;
@@ -19,8 +19,8 @@ export const setupLicense: CliStepMethod = async state => {
 
   if (!hasLicenseKey) {
     printEmptyLines(1);
-    console.log(
-      `  Please sign up for a free trial of Metabase Pro self-hosted or purchase a license.`,
+    printWithPadding(
+      `Please sign up for a free trial of Metabase Pro self-hosted or purchase a license.`,
     );
 
     const shouldOpenInBrowser = await toggle({
@@ -31,7 +31,7 @@ export const setupLicense: CliStepMethod = async state => {
     if (shouldOpenInBrowser) {
       try {
         await open(trialUrlWithUtm);
-        console.log(`  Opened ${chalk.blue(trialUrl)} in your browser.`);
+        printWithPadding(`Opened ${chalk.blue(trialUrl)} in your browser.`);
       } catch (error) {
         printInfo(`Please visit ${chalk.blue(trialUrl)} to get a license key.`);
       }

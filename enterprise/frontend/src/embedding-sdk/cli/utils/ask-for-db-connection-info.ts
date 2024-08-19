@@ -11,6 +11,8 @@ import type { Engine, EngineField } from "metabase-types/api";
 
 import { CLI_SHOWN_DB_FIELDS } from "../constants/database";
 
+import { printWithPadding } from "./print";
+
 interface Options {
   engine: Engine;
   engineKey: string;
@@ -52,7 +54,7 @@ export async function askForDatabaseConnectionInfo(options: Options) {
     const message = `${name}:`;
 
     if (helperText) {
-      console.log(`  ${chalk.gray(helperText)}`);
+      printWithPadding(`${chalk.gray(helperText)}`);
     }
 
     const value = await askForConnectionValue(field, message, engineKey);
