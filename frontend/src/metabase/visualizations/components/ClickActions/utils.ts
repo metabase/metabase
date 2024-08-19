@@ -62,9 +62,6 @@ export const getGroupedAndSortedActions = (
     .value();
 };
 
-export const getGALabelForAction = (action: RegularClickAction) =>
-  action ? `${action.section || ""}:${action.name || ""}` : null;
-
 export const getSectionTitle = (
   sectionKey: string,
   actions: RegularClickAction[],
