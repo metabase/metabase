@@ -1,25 +1,55 @@
 .FilterButton {
-  transition: background 300ms linear, border 300ms linear;
+  transition: background 300ms linear;
 
-  &:hover:not([data-css-specifity-hack="🤣"]) {
+  &:hover:not([data-css-specificity-hack="🤣"]) {
     color: var(--mb-color-filter);
-    border-color: color-mix(in srgb, var(--mb-color-filter) 30%, white);
     background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+  }
+}
+
+.FilterButtonAttachment {
+  &:not([data-css-specificity-hack="🤣"]) {
+    padding: 0.5rem;
+  }
+
+  transition: background 300ms linear;
+
+  &:hover:not([data-css-specificity-hack="🤣"]) {
+    color: var(--mb-color-filter);
+    background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+
+    .FilterCountChip {
+      background-color: var(--mb-color-filter);
+    }
+  }
+
+  &[data-expanded="true"] {
+    background-color: var(--mb-color-filter);
+
+    .FilterCountChip {
+      background-color: white;
+      color: var(--mb-color-text-dark);
+    }
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--mb-color-filter) 80%, white);
+
+      .FilterCountChip {
+        background-color: white;
+        color: var(--mb-color-text-dark);
+      }
+    }
   }
 }
 
 .FilterCountChip {
   transition: background-color 300ms linear;
-  background-color: color-mix(in srgb, var(--mb-color-filter) 50%, black);
-  font-size: 0.75rem;
-  border-radius: 1rem;
-  padding-block: 0.1rem;
-  padding-inline: 0.25rem;
+  background-color: var(--mb-color-text-dark);
+  font-size: 0.6875rem;
+  border-radius: 10px;
+  line-height: 1rem;
+  padding-inline: 0.5rem;
   color: white;
-
-  &:hover {
-    background-color: var(--mb-color-filter);
-  }
 }
 
 .SummarizeButton {

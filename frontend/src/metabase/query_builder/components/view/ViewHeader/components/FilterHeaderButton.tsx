@@ -5,7 +5,7 @@ import { t } from "ttag";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getFilterItems } from "metabase/querying/components/FilterPanel/utils";
-import { Box, Button } from "metabase/ui";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
@@ -48,20 +48,15 @@ export function FilterHeaderButton({
       </Button>
       {shouldShowFilterPanelExpander && (
         <Button
-          color="filter"
           aria-label={label}
-          className={cx(className, ViewTitleHeaderS.FilterButton)}
+          className={ViewTitleHeaderS.FilterButtonAttachment}
           onClick={isExpanded ? onCollapse : onExpand}
           data-testid="filters-visibility-control"
+          data-expanded={isExpanded}
         >
-          <Box
-            bg="filter"
-            px="sm"
-            color="white"
-            className={ViewTitleHeaderS.FilterCountChip}
-          >
+          <div color="white" className={ViewTitleHeaderS.FilterCountChip}>
             {items?.length}
-          </Box>
+          </div>
         </Button>
       )}
     </Button.Group>
