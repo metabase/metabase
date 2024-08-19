@@ -250,7 +250,6 @@ jobs:
           commit: ${{github.event.workflow_run.head_sha}}
           report_paths: "./target/junit/*.xml"
           check_title_template: "{{FILE_NAME}}, {{SUITE_NAME}}, {{TEST_NAME}}, {{CLASS_NAME}}, {{BREAD_CRUMB}}"
-          bread_crumb_delimiter: ">>"
           detailed_summary: true
 
       - name: Upload junit artifacts
