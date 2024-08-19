@@ -20,13 +20,13 @@ You must be a superuser to do this.
 
 ## `GET /api/api-key/`
 
-Get a list of API keys. Non-paginated.
+Get a list of API keys with the default scope. Non-paginated.
 
 You must be a superuser to do this.
 
 ## `GET /api/api-key/count`
 
-Get the count of API keys in the DB.
+Get the count of API keys in the DB with the default scope.
 
 You must be a superuser to do this.
 

@@ -26,6 +26,8 @@ List of cards that have an invalid reference in their query. Shape of each card 
 
 -  **`sort_direction`** nullable enum of desc, asc.
 
+-  **`collection_id`** nullable value must be an integer greater than zero.
+
 ---
 
 [<< Back to API index](../api-documentation.md)

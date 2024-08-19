@@ -8,9 +8,10 @@ summary: |
 
 /api/ee/scim/ endpoints.
 
-## `DELETE metabase-enterprise.scim.api/api_key`
+## `GET metabase-enterprise.scim.api/api_key`
 
-Deletes the SCIM API key, if one exists. Equivalent to disabling SCIM.
+Fetch the SCIM API key if one exists. Does *not* return an unmasked key, since we don't have access
+  to that after it is created.
 
 You must be a superuser to do this.
 
