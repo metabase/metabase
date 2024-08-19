@@ -1,7 +1,8 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
 import * as Lib from "metabase-lib";
+
+import { useInteractiveQuestionContext } from "../context";
 
 export const QuestionResetButton = ({
   onClick,
@@ -12,7 +13,7 @@ export const QuestionResetButton = ({
     useInteractiveQuestionContext();
 
   const handleReset = () => {
-    onReset?.();
+    onReset();
     onClick?.();
   };
 
@@ -22,7 +23,7 @@ export const QuestionResetButton = ({
 
   const canSave = question && Lib.canSave(question.query(), question.type());
 
-  if (!canSave || !isQuestionChanged || !onReset) {
+  if (!canSave || !isQuestionChanged) {
     return null;
   }
 

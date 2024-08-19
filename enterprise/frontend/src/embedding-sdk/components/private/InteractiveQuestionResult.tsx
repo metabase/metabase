@@ -63,7 +63,7 @@ const ResultView = ({
 
 export const InteractiveQuestionResult = ({
   height,
-  withTitle = false,
+  withTitle,
   customTitle,
   withResetButton,
 }: InteractiveQuestionResultProps): ReactElement => {

@@ -1,4 +1,3 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import {
   SaveQuestionForm,
   SaveQuestionTitle,
@@ -7,6 +6,8 @@ import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/conte
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { Stack, Title } from "metabase/ui";
+
+import { useInteractiveQuestionContext } from "../context";
 
 export const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
   const { question, originalQuestion } = useInteractiveQuestionContext();

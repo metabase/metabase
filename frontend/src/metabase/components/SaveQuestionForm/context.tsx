@@ -4,7 +4,6 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useState,
 } from "react";
 
 import { useListCollectionsQuery } from "metabase/api";
@@ -32,7 +31,7 @@ export const SaveQuestionContext =
 
 export const SaveQuestionProvider = ({
   question,
-  originalQuestion: latestOriginalQuestion,
+  originalQuestion,
   onCreate,
   onSave,
   multiStep = false,
@@ -40,7 +39,6 @@ export const SaveQuestionProvider = ({
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const { data: collections = [] } = useListCollectionsQuery({});
-  const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
   const initialValues: FormValues = useMemo(
     () =>

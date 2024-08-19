@@ -1,7 +1,8 @@
-import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { useInteractiveQuestionContext } from "../context";
 
 export const SaveButton = ({
   onClick,

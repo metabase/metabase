@@ -1,5 +1,6 @@
-import { QuestionEditor } from "embedding-sdk";
-import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
+import { QuestionEditor } from "embedding-sdk/components/private/QuestionEditor";
+
+import type { InteractiveQuestionProps } from "../InteractiveQuestion";
 
 type ModifyQuestionProps = InteractiveQuestionProps;
 

@@ -15,6 +15,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { getQuestionParameters } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -31,10 +32,7 @@ import {
 
 import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
 
-import {
-  getQuestionParameters,
-  InteractiveQuestion,
-} from "./InteractiveQuestion";
+import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
@@ -179,7 +177,7 @@ describe("InteractiveQuestion", () => {
 
   describe("getQuestionParameters", () => {
     it("should generate proper URL params", () => {
-      const questionId = 109;
+      const questionId = "109";
 
       expect(getQuestionParameters(questionId)).toEqual({
         location: {
