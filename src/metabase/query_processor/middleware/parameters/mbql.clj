@@ -103,10 +103,10 @@
     (assert (some? base-type) "`base-type` is not set.")
     (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
-                      {:type      qp.error-type/invalid-query
-                       :curated   true
-                       :base-type base-type
-                       :unit      new-unit})))
+                      {:type       qp.error-type/invalid-query
+                       :is-curated true
+                       :base-type  base-type
+                       :unit       new-unit})))
     (lib.util.match/replace-in
       query [:query :breakout]
       [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]

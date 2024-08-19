@@ -34,15 +34,15 @@
 
 (defmethod format-exception ExceptionInfo
   [e]
-  ;; `:curated` or `:curated_error` is a flag that signals whether the error message in `e` was approved by product
+  ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
   ;; to be shown to the user. It is used by FE.
-  (let [{error-type :type, curated :curated, :as data} (ex-data e)]
+  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)]
     (merge
      ((get-method format-exception Throwable) e)
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
-     (when curated
-       {:error_curated curated})
+     (when is-curated
+       {:error_is_curated is-curated})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
      {:ex-data data})))
 
