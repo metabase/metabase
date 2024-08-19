@@ -62,7 +62,7 @@
   ([first-time?]
    (sweep-query-analysis-loop! first-time?
                                (fn [card-or-id]
-                                 (log/infof "Queueing card %s for query analysis" (u/the-id card-or-id))
+                                 (log/debugf "Queueing card %s for query analysis" (u/the-id card-or-id))
                                  (query-analysis/analyze-sync! card-or-id))))
   ([first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
