@@ -7,7 +7,7 @@ import { useSelector } from "metabase/lib/redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
 import { Switch } from "metabase/ui";
 
-import { getIsStepActive } from "../../selectors";
+import { getIsStepActive, getUserEmail } from "../../selectors";
 
 import {
   StepBody,
@@ -18,7 +18,7 @@ import {
 
 export const CompletedStep = (): JSX.Element | null => {
   const [checkboxValue, setCheckboxValue] = useState(false);
-  const email = useSelector(state => state.setup.user?.email);
+  const email = useSelector(getUserEmail);
 
   const isStepActive = useSelector(state =>
     getIsStepActive(state, "completed"),
