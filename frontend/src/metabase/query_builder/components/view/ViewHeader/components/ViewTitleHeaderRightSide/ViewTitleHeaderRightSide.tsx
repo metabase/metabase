@@ -150,19 +150,6 @@ export function ViewTitleHeaderRightSide({
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {QuestionFiltersHeaderToggle.shouldRender({
-        question,
-        queryBuilderMode,
-        isObjectDetail,
-      }) && (
-        <QuestionFiltersHeaderToggle
-          className={cx(CS.ml2, CS.mr1)}
-          query={question.query()}
-          isExpanded={areFiltersExpanded}
-          onExpand={onExpandFilters}
-          onCollapse={onCollapseFilters}
-        />
-      )}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -172,6 +159,10 @@ export function ViewTitleHeaderRightSide({
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
+          query={question.query()}
+          isExpanded={areFiltersExpanded}
+          onExpand={onExpandFilters}
+          onCollapse={onCollapseFilters}
         />
       )}
       {QuestionSummarizeWidget.shouldRender({

@@ -8,6 +8,20 @@
   }
 }
 
+.FilterCountChip {
+  transition: background-color 300ms linear;
+  background-color: color-mix(in srgb, var(--mb-color-filter) 50%, black);
+  font-size: 0.75rem;
+  border-radius: 1rem;
+  padding-block: 0.1rem;
+  padding-inline: 0.25rem;
+  color: white;
+
+  &:hover {
+    background-color: var(--mb-color-filter);
+  }
+}
+
 .SummarizeButton {
   transition: background 300ms linear, border 300ms linear;
 
