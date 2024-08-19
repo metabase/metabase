@@ -787,6 +787,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByLabelText("Year").click();
         cy.findByLabelText("Minute").click();
       });
+      dashboardParametersDoneButton().click();
       saveDashboard();
 
       filterWidget().click();
