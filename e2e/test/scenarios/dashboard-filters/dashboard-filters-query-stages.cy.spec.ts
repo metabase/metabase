@@ -13,8 +13,47 @@ const TAB_QUESTIONS = { id: 1, name: "Questions" };
 
 const TAB_MODELS = { id: 2, name: "Models" };
 
+/**
+ * "Questions" tab - dashcards are questions
+ * "Models" tab - dashcards are models
+ *
+ * Left column (col = 0): data source is a question
+ * Right column (col = 12): data source is a model
+ */
+describe("scenarios > dashboard > filters > query stages", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    // cy.intercept("POST", "/api/dataset").as("dataset");
+
+    createBaseQuestions();
+  });
+
+  it("base questions", () => {
+    cy.then(function () {
+      createDashboard({
+        questions: {
+          questionBased: [this.question0Id, this.question1Id, this.model1Id],
+          modelBased: [],
+        },
+        models: {
+          questionBased: [],
+          modelBased: [],
+        },
+      });
+    });
+  });
+});
+
 function createBaseQuestions() {
-  createQuestion(
+  createQ0().then(({ body: q0 }) => {
+    createQ1(q0.id);
+    createM1(q0.id);
+  });
+}
+
+function createQ0() {
+  return createQuestion(
     {
       name: "Q0 Orders",
       query: {
@@ -22,28 +61,32 @@ function createBaseQuestions() {
       },
     },
     { idAlias: "question0Id" },
-  ).then(({ body: q0 }) => {
-    createQuestion(
-      {
-        name: "Q1 Orders question",
-        query: {
-          "source-table": `card__${q0.id}`,
-        },
-      },
-      { idAlias: "question1Id" },
-    );
+  );
+}
 
-    createQuestion(
-      {
-        name: "M1 Orders model",
-        type: "model",
-        query: {
-          "source-table": `card__${q0.id}`,
-        },
+function createQ1(q0Id: number) {
+  return createQuestion(
+    {
+      name: "Q1 Orders question",
+      query: {
+        "source-table": `card__${q0Id}`,
       },
-      { idAlias: "model1Id" },
-    );
-  });
+    },
+    { idAlias: "question1Id" },
+  );
+}
+
+function createM1(q0Id: number) {
+  return createQuestion(
+    {
+      name: "Q1 Orders question",
+      type: "model",
+      query: {
+        "source-table": `card__${q0Id}`,
+      },
+    },
+    { idAlias: "model1Id" },
+  );
 }
 
 function createDashboard({
@@ -107,35 +150,3 @@ function createDashboard({
     ],
   }).then(dashboard => visitDashboard(dashboard.id));
 }
-
-/**
- * "Questions" tab - dashcards are questions
- * "Models" tab - dashcards are models
- *
- * Left column (col = 0): data source is a question
- * Right column (col = 12): data source is a model
- */
-describe("scenarios > dashboard > filters > query stages", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-    // cy.intercept("POST", "/api/dataset").as("dataset");
-
-    createBaseQuestions();
-  });
-
-  it("base questions", () => {
-    cy.then(function () {
-      createDashboard({
-        questions: {
-          questionBased: [this.question0Id, this.question1Id, this.model1Id],
-          modelBased: [],
-        },
-        models: {
-          questionBased: [],
-          modelBased: [],
-        },
-      });
-    });
-  });
-});
