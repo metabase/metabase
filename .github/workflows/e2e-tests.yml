@@ -262,10 +262,6 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
-      - name: Publish CTRF Failed Test Summary Results
-        run: npx github-actions-ctrf failed ./cypress/reports/cypress-test-report.json
-        if: failure()
-
   e2e-tests-skipped-stub:
     needs: [e2e-tests, e2e-matrix-builder]
     if: |
