@@ -43,7 +43,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           questionBased: [],
           modelBased: [],
         },
-      });
+      }).then(dashboard => visitDashboard(dashboard.id));
     });
   });
 });
@@ -111,7 +111,7 @@ function createDashboard({
   const MODEL_BASED_COLUMN = 12;
   const CARD_HEIGHT = 4;
 
-  createDashboardWithTabs({
+  return createDashboardWithTabs({
     tabs: [TAB_QUESTIONS, TAB_MODELS],
     dashcards: [
       ...questions.questionBased.map((id, index) => ({
@@ -151,5 +151,5 @@ function createDashboard({
         card_id: id,
       })),
     ],
-  }).then(dashboard => visitDashboard(dashboard.id));
+  });
 }
