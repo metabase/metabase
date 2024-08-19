@@ -14,32 +14,35 @@ const TAB_QUESTIONS = { id: 1, name: "Questions" };
 const TAB_MODELS = { id: 2, name: "Models" };
 
 function createBaseQuestions() {
-  createQuestion({
-    name: "Q0 Orders",
-    query: {
-      "source-table": ORDERS_ID,
+  createQuestion(
+    {
+      name: "Q0 Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
     },
-  }).then(({ body: q0 }) => {
-    cy.wrap(q0).as("q0");
-
-    createQuestion({
-      name: "Q1 Orders question",
-      query: {
-        "source-table": `card__${q0.id}`,
+    { idAlias: "question0Id" },
+  ).then(({ body: q0 }) => {
+    createQuestion(
+      {
+        name: "Q1 Orders question",
+        query: {
+          "source-table": `card__${q0.id}`,
+        },
       },
-    }).then(({ body: q1 }) => {
-      cy.wrap(q1).as("q1");
-    });
+      { idAlias: "question1Id" },
+    );
 
-    createQuestion({
-      name: "M1 Orders model",
-      type: "model",
-      query: {
-        "source-table": `card__${q0.id}`,
+    createQuestion(
+      {
+        name: "M1 Orders model",
+        type: "model",
+        query: {
+          "source-table": `card__${q0.id}`,
+        },
       },
-    }).then(({ body: m1 }) => {
-      cy.wrap(m1).as("m1");
-    });
+      { idAlias: "model1Id" },
+    );
   });
 }
 
@@ -121,16 +124,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
     createBaseQuestions();
   });
 
-  it("1 stage questions", () => {
-    createDashboard({
-      questions: {
-        questionBased: [],
-        modelBased: [],
-      },
-      models: {
-        questionBased: [],
-        modelBased: [],
-      },
+  it("base questions", () => {
+    cy.then(function () {
+      createDashboard({
+        questions: {
+          questionBased: [this.question0Id, this.question1Id, this.model1Id],
+          modelBased: [],
+        },
+        models: {
+          questionBased: [],
+          modelBased: [],
+        },
+      });
     });
   });
 });
