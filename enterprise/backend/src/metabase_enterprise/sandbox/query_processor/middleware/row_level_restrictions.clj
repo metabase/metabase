@@ -276,8 +276,6 @@
        ;; _blocked_ can be queried against from the query builder, but we never want that.
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
-
-
 (defn- merge-perms
   "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
   In particular, if we need query-builder-and-native at the *database* level, but :query-builder at the *table* level,
