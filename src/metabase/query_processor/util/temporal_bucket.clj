@@ -2,17 +2,9 @@
   (:require
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]))
 
-(def valid-date-units
-  "Valid temporal units for date."
-  (into #{:default} lib.schema.temporal-bucketing/date-bucketing-units))
-
-(def valid-time-units
-  "Valid temporal units for time."
-  (into #{:default} lib.schema.temporal-bucketing/time-bucketing-units))
-
-(def valid-datetime-units
-  "Valid temporal units for date time."
-  lib.schema.temporal-bucketing/temporal-bucketing-units)
+(def ^:private valid-date-units (into #{:default} lib.schema.temporal-bucketing/date-bucketing-units))
+(def ^:private valid-time-units (into #{:default} lib.schema.temporal-bucketing/time-bucketing-units))
+(def ^:private valid-datetime-units lib.schema.temporal-bucketing/temporal-bucketing-units)
 
 ;; TODO -- this should be changed to `:effective-type` once we finish the metadata changes.
 (defmulti valid-units-for-base-type
