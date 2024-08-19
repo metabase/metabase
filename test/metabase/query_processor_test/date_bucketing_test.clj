@@ -1367,7 +1367,7 @@
       (testing "annual"
         (is (= [488444.41] (unit-totals "year")))))))
 
-(deftest incompatible-temporal-unit-parameter-test
+(deftest ^:parallel incompatible-temporal-unit-parameter-test
   (testing "Incompatible time unit parameter yields expected error"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo #"This chart can not be broken out by the selected unit of time: minute\."
