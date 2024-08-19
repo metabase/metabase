@@ -28,6 +28,7 @@ import {
   visualize,
   tableInteractive,
   createNativeQuestion,
+  assertEChartsTooltip,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -159,7 +160,16 @@ describe("issue 11435", () => {
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
     hoverLineDot({ index: 1 });
-    popover().findByTextEnsureVisible("March 11, 2025, 8:45:17.010 PM");
+    assertEChartsTooltip({
+      header: "March 11, 2025, 8:45:17.010 PM",
+      rows: [
+        {
+          color: "#F9D45C",
+          name: "TOTAL",
+          value: "25.03",
+        },
+      ],
+    });
   });
 });
 
