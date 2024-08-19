@@ -226,7 +226,7 @@ function getFilterableColumns(query: Lib.Query) {
   });
 }
 
-function appendStageIfAggregated(query: Lib.Query) {
+export function appendStageIfAggregated(query: Lib.Query) {
   const aggregations = Lib.aggregations(query, -1);
   const breakouts = Lib.breakouts(query, -1);
 
@@ -238,6 +238,6 @@ function appendStageIfAggregated(query: Lib.Query) {
 /**
  * Returns indexes of stages from which columns are exposed for filtering
  */
-function getFilterStageIndexes(query: Lib.Query): number[] {
+export function getFilterStageIndexes(query: Lib.Query): number[] {
   return Lib.stageCount(query) > 1 ? [-2, -1] : [-1];
 }

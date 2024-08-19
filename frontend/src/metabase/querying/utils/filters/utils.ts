@@ -33,10 +33,3 @@ export function getDefaultAvailableOperator<T extends Lib.FilterOperatorName>(
     options[0].operator
   );
 }
-
-/**
- * Returns indexes of stages from which columns are exposed for filtering
- */
-export function getFilterStageIndexes(query: Lib.Query): number[] {
-  return Lib.stageCount(query) > 1 ? [-2, -1] : [-1];
-}

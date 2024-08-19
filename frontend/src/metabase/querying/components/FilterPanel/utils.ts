@@ -1,5 +1,5 @@
-import { getFilterStageIndexes } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
+import { getFilterStageIndexes } from "metabase-lib/v1/parameters/utils/targets";
 
 import type { FilterItem } from "./types";
 

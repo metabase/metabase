@@ -4,17 +4,17 @@ import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import { appendStageIfAggregated } from "metabase-lib/v1/parameters/utils/targets";
 
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { SEARCH_KEY } from "./constants";
 import {
-  appendStageIfAggregated,
   getGroupItems,
-  hasFilters,
-  removeFilters,
   getModalTitle,
   getModalWidth,
+  hasFilters,
   isSearchActive,
+  removeFilters,
   searchGroupItems,
 } from "./utils";
 

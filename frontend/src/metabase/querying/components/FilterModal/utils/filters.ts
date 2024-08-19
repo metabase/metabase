@@ -5,17 +5,8 @@ import {
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
 import type { GroupItem } from "metabase/querying/components/FilterContent";
-import { getFilterStageIndexes } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
-
-export function appendStageIfAggregated(query: Lib.Query) {
-  const aggregations = Lib.aggregations(query, -1);
-  const breakouts = Lib.breakouts(query, -1);
-
-  return aggregations.length > 0 && breakouts.length > 0
-    ? Lib.appendStage(query)
-    : query;
-}
+import { getFilterStageIndexes } from "metabase-lib/v1/parameters/utils/targets";
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
   const stageIndexes = getFilterStageIndexes(query);
