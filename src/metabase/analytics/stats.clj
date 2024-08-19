@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.config :as config]
+   [metabase.db :as db]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.email :as email]
@@ -347,7 +348,10 @@
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
-  (let [thirty-days-ago (str "CAST('" (t/minus (t/offset-date-time) (t/days 30)) "' AS TIMESTAMP)")]
+  (let [thirty-days-ago (case (db/db-type)
+                          :postgres "CURRENT_TIMESTAMP - INTERVAL '30 days'"
+                          :h2       "DATEADD('DAY', -30, CURRENT_TIMESTAMP)"
+                          :mysql    "CURRENT_TIMESTAMP - INTERVAL 30 DAY")]
     (str/join
      "\n"
      ["WITH user_executions AS ("
@@ -389,7 +393,7 @@
 (defn- execution-metrics
   "Get metrics based on QueryExecutions."
   []
-  (let [maybe-rename-key (fn [x]
+  (let [maybe-rename-bin (fn [x]
                            ({"lt_1"       "< 1"
                              "1_10"       "1-10"
                              "11_50"      "11-50"
@@ -398,11 +402,16 @@
                              "1001_10000" "1001-10000"
                              "10000_plus" "10000+"} x x))]
     (reduce (fn [acc [k v]]
-              (let [[prefix suffix] (str/split (name k) #"__")]
-                (if suffix
-                  (update acc (keyword prefix) #(assoc % (maybe-rename-key suffix) v))
+              (let [[prefix bin] (str/split (name k) #"__")]
+                (if bin
+                  (cond-> acc
+                    (and (some? v) (pos? v))
+                    (update (keyword prefix) #(assoc % (maybe-rename-bin bin) v)))
                   (assoc acc (keyword prefix) v))))
-            {}
+            {:executions     0
+             :by_status      {}
+             :num_per_user   {}
+             :num_by_latency {}}
             (first (t2/query (execution-metrics-sql))))))
 
 ;;; Cache Metrics

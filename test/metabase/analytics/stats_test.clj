@@ -17,8 +17,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -94,7 +93,7 @@
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
                                        enable-embedding    false]
-      (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
+      (mt/with-temp [:model/Database _ {:is_sample true}]
         (let [stats (anonymous-usage-stats)]
           (is (partial= {:running_on                           :unknown
                          :check_for_updates                    true
@@ -143,7 +142,7 @@
                                          no-object-illustration       "custom"
                                          application-colors           {:brand "#123456"}
                                          show-metabase-links          false]
-        (t2.with-temp/with-temp [:model/Database _ {:is_sample true}]
+        (mt/with-temp [:model/Database _ {:is_sample true}]
           (let [stats (anonymous-usage-stats)]
             (is (partial= {:running_on                           :unknown
                            :check_for_updates                    true
@@ -222,7 +221,25 @@
                  QueryExecution _ query-execution-defaults]
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
-        "the new lazy-seq version of the executions metrics works the same way the old one did")))
+        "the new version of the executions metrics works the same way the old one did")))
+
+(deftest ^:parallel execution-metrics-started-at-test
+  (let [get-executions #(:executions (#'stats/execution-metrics))
+        before         (get-executions)]
+    (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                           {:started_at (-> (t/offset-date-time (t/zone-id "America/Los_Angeles"))
+                                                            (t/minus (t/days 30))
+                                                            (t/plus (t/minutes 10)))})]
+      (is (= (inc before)
+             (get-executions))
+          "execution metrics include query executions since 30 days ago"))
+    (mt/with-temp [QueryExecution _ (merge query-execution-defaults
+                                           {:started_at (-> (t/offset-date-time (t/zone-id "America/Los_Angeles"))
+                                                            (t/minus (t/days 30))
+                                                            (t/minus (t/minutes 10)))})]
+      (is (= before
+             (get-executions))
+          "the executions metrics exclude query executions before 30 days ago"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Pulses & Alerts                                                 |
@@ -234,7 +251,7 @@
 ;;  alert_first_only boolean, -- True if the alert should be disabled after the first notification
 ;;  alert_above_goal boolean, -- For a goal condition, alert when above the goal
 (deftest pulses-and-alerts-test
-  (t2.with-temp/with-temp [Card         c {}
+  (mt/with-temp [Card         c {}
                            ;; ---------- Pulses ----------
                            Pulse        p1 {}
                            Pulse        p2 {}
