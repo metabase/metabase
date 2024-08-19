@@ -37,13 +37,6 @@ export const trackStructEvent = (category, action, label, value) => {
   }
 };
 
-/**
- * @deprecated This should not be used for new events. We introduced a generic `trackActionEvent` instead. There is also `trackSchemaEvent` but it should only be used as a last resort.
- */
-export const trackLegacySchemaEvent = (schema, version, data) => {
-  trackSchemaEvent(schema, version, data);
-};
-
 export const trackSchemaEvent = (schema, version, data, contextEntities) => {
   /*
   IMPORTANT NOTE:
