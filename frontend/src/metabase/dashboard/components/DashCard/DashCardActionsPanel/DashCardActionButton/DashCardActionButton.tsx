@@ -12,14 +12,10 @@ import {
 interface Props extends HTMLAttributes<HTMLAnchorElement> {
   as?: ElementType;
   tooltip?: string;
-  analyticsEvent?: string;
 }
 
 const DashActionButton = forwardRef<HTMLAnchorElement, Props>(
-  function DashActionButton(
-    { as, tooltip, analyticsEvent, children, ...props },
-    ref,
-  ) {
+  function DashActionButton({ as, tooltip, children, ...props }, ref) {
     return (
       <StyledAnchor {...props} as={as} ref={ref}>
         <Tooltip tooltip={tooltip}>{children}</Tooltip>
