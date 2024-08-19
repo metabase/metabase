@@ -3,6 +3,7 @@ import chalk from "chalk";
 import toggle from "inquirer-toggle";
 
 import type { CliStepMethod } from "../types/cli";
+import { getPermissionGraph } from "../utils/get-permission-graph";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
 // Name of the permission groups and collections to create.
@@ -58,30 +59,7 @@ export const setupPermissions: CliStepMethod = async state => {
     return [{ type: "error", message }, state];
   }
 
-  let res = await fetch(`${instanceUrl}/api/permissions/graph/group/1`, {
-    method: "GET",
-    headers: { "content-type": "application/json", cookie },
-  });
-
-  await propagateErrorResponse(res);
-
-  // Get the current permission revision number. Should be 1 by default.
-  const { revision } = (await res.json()) as { revision: number };
-
-  // Decline access for the "All Users" group by default.
-  // The admin group will always have access to everything.
-  res = await fetch(`${instanceUrl}/api/permissions/graph`, {
-    method: "PUT",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({
-      revision,
-      groups: {},
-      sandboxes: [],
-      impersonations: [],
-    }),
-  });
-
-  await propagateErrorResponse(res);
+  let res;
 
   // Create new collections
   try {
@@ -130,6 +108,32 @@ export const setupPermissions: CliStepMethod = async state => {
     headers: { "content-type": "application/json", cookie },
     body: JSON.stringify({ value: jwtGroupMappings }),
   });
+
+  // Query existing permissions graph
+  res = await fetch(`${instanceUrl}/api/permissions/graph/group/1`, {
+    method: "GET",
+    headers: { "content-type": "application/json", cookie },
+  });
+
+  await propagateErrorResponse(res);
+
+  // Get the current permission revision number. Should be 1 by default.
+  const { revision } = (await res.json()) as { revision: number };
+
+  const permissionGraph = {
+    ...getPermissionGraph({}),
+    revision,
+    impersonations: [],
+  };
+
+  // Update the permissions graph
+  res = await fetch(`${instanceUrl}/api/permissions/graph`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", cookie },
+    body: JSON.stringify(permissionGraph),
+  });
+
+  await propagateErrorResponse(res);
 
   return [{ type: "success" }, state];
 };
