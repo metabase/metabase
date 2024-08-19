@@ -1,4 +1,6 @@
 (ns dev.memory
+  (:require
+   [metabase.util.log :as log])
   (:import
    (java.lang.management ManagementFactory)))
 
@@ -19,23 +21,31 @@
 
 (set! *warn-on-reflection* true)
 
+(defn mb-str
+  "Format bytes as megabytes"
+  [bytes]
+  (format "%.3f MB" (/ (double bytes) 1024 1024)))
+
 (defn measure-thread-allocations
   "Measure the number of bytes allocated when calling the given function."
   [f]
   (let [before (get-thread-allocated-bytes)
-        _      (f)
+        result (f)
         after  (get-thread-allocated-bytes)]
-    (- after before)))
+    {:result      result
+     :allocations (- after before)}))
 
 (defmacro measuring-thread-allocations
   "Measure the number of bytes allocated when evaluating the given body."
   [& body]
-  `(measure-thread-allocations #(do ~@body)))
+  `(let [m# (measure-thread-allocations #(do ~@body))]
+     (log/warnf "Allocated: %s" (mb-str (:allocations m#)))
+     (:result m#)))
 
 (comment
   ;; almost correct, at least  constant error
   (measuring-thread-allocations
-    (byte-array (* 1024 1024)))
+   (byte-array (* 1024 1024)))
   ;; => 1077640
   ;; => 1077640
   ;; => 1077640
