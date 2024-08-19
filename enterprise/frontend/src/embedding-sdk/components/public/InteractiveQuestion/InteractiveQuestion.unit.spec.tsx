@@ -15,7 +15,6 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { getQuestionParameters } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
@@ -173,20 +172,5 @@ describe("InteractiveQuestion", () => {
 
     expect(screen.getByText("Error")).toBeInTheDocument();
     expect(screen.getByText("Question not found")).toBeInTheDocument();
-  });
-
-  describe("getQuestionParameters", () => {
-    it("should generate proper URL params", () => {
-      const questionId = "109";
-
-      expect(getQuestionParameters(questionId)).toEqual({
-        location: {
-          query: {},
-          hash: "",
-          pathname: "/question/109",
-        },
-        params: { slug: "109" },
-      });
-    });
   });
 });
