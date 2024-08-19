@@ -22,7 +22,6 @@ import {
   isQuestionDashCard,
   getVisibleCardIds,
 } from "metabase/dashboard/utils";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   GRID_WIDTH,
   GRID_ASPECT_RATIO,
@@ -285,7 +284,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     if (changes.length > 0) {
       setMultipleDashCardAttributes({ dashcards: changes });
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
     }
   };
 
@@ -480,7 +478,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       action: () =>
         this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
     });
-    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   };
 
   onDashCardAddSeries = (dc: BaseDashboardCard) => {
