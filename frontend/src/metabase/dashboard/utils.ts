@@ -218,12 +218,15 @@ export function getDashcardResultsError(datasets: Dataset[]) {
 
   const errors = datasets.map(s => s.error).filter(Boolean);
   if (errors.length > 0) {
-    const datasetWithCuratedError = datasets.find(
-      dataset => typeof dataset.error === "string" && dataset.error_is_curated,
+    const curatedErrorDataset = datasets.find(
+      dataset => dataset.error && dataset.error_is_curated,
     );
 
     return {
-      message: datasetWithCuratedError?.error ?? getGenericErrorMessage(),
+      message:
+        typeof curatedErrorDataset?.error === "string"
+          ? curatedErrorDataset.error
+          : getGenericErrorMessage(),
       icon: "warning" as const,
     };
   }
