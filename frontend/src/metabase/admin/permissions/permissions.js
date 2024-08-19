@@ -21,10 +21,7 @@ import {
   handleActions,
   combineReducers,
 } from "metabase/lib/redux";
-import {
-  PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_ADVANCED_PERMISSIONS,
-} from "metabase/plugins";
+import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
@@ -94,35 +91,6 @@ export const loadCollectionPermissions = createThunkAction(
   namespace => async () => {
     const params = namespace != null ? { namespace } : {};
     return CollectionsApi.graph(params);
-  },
-);
-
-export const LIMIT_DATABASE_PERMISSION =
-  "metabase/admin/permissions/LIMIT_DATABASE_PERMISSION";
-export const limitDatabasePermission = createThunkAction(
-  LIMIT_DATABASE_PERMISSION,
-  (groupId, entityId, accessPermissionValue) => dispatch => {
-    const newValue =
-      PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
-        accessPermissionValue,
-      );
-
-    if (newValue) {
-      dispatch(
-        updateDataPermission({
-          groupId,
-          permission: {
-            type: DataPermissionType.ACCESS,
-            permission: DataPermission.VIEW_DATA,
-          },
-          value: newValue,
-          entityId,
-          skipTracking: true,
-        }),
-      );
-    }
-
-    dispatch(navigateToGranularPermissions(groupId, entityId));
   },
 );
 
