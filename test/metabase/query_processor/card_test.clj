@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.models :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -198,6 +199,8 @@
                                                                                 :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
                                                                 :collection_id (u/the-id allowed-collection)}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
           (mt/with-test-user :rasta
             (letfn [(process-query-for-card [card]
                       (qp.card/process-query-for-card
