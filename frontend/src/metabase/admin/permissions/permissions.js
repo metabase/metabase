@@ -14,7 +14,6 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   createAction,
   createThunkAction,
@@ -28,7 +27,6 @@ import {
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
-import { trackPermissionChange } from "./analytics";
 import { DataPermissionType, DataPermission } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 import {
@@ -117,7 +115,6 @@ export const limitDatabasePermission = createThunkAction(
           },
           value: newValue,
           entityId,
-          skipTracking: true,
         }),
       );
     }
@@ -139,14 +136,7 @@ export const UPDATE_DATA_PERMISSION =
   "metabase/admin/permissions/UPDATE_DATA_PERMISSION";
 export const updateDataPermission = createThunkAction(
   UPDATE_DATA_PERMISSION,
-  ({
-    groupId,
-    permission: permissionInfo,
-    value,
-    entityId,
-    view,
-    skipTracking,
-  }) => {
+  ({ groupId, permission: permissionInfo, value, entityId, view }) => {
     return (dispatch, getState) => {
       if (isDatabaseEntityId(entityId)) {
         dispatch(
@@ -173,15 +163,6 @@ export const updateDataPermission = createThunkAction(
         }
       }
 
-      if (!skipTracking) {
-        trackPermissionChange(
-          entityId,
-          permissionInfo.permission,
-          permissionInfo.type === DataPermissionType.NATIVE,
-          value,
-        );
-      }
-
       return { groupId, permissionInfo, value, metadata, entityId };
     };
   },
@@ -192,7 +173,6 @@ export const SAVE_DATA_PERMISSIONS =
 export const saveDataPermissions = createThunkAction(
   SAVE_DATA_PERMISSIONS,
   () => async (_dispatch, getState) => {
-    MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const state = getState();
     const allGroupIds = Object.keys(state.entities.groups);
     const {
@@ -245,8 +225,6 @@ const SAVE_COLLECTION_PERMISSIONS =
 export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
   namespace => async (_dispatch, getState) => {
-    MetabaseAnalytics.trackStructEvent("Permissions", "save");
-
     const {
       originalCollectionPermissions,
       collectionPermissions,

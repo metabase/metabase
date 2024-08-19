@@ -1,16 +1,17 @@
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  describeEE,
-  restore,
-  visitQuestion,
-  openQuestionActions,
-  questionInfoButton,
-  setTokenFeatures,
-  popover,
-  openCommandPalette,
-  commandPalette,
   closeCommandPalette,
+  commandPalette,
   commandPaletteSearch,
+  createModerationReview,
+  describeEE,
+  openCommandPalette,
+  openQuestionActions,
+  popover,
+  questionInfoButton,
+  restore,
+  setTokenFeatures,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describeEE("scenarios > premium > content verification", () => {
@@ -151,7 +152,7 @@ describeEE("scenarios > premium > content verification", () => {
 
     describe("non-admin user", () => {
       beforeEach(() => {
-        cy.createModerationReview({
+        createModerationReview({
           status: "verified",
           moderated_item_type: "card",
           moderated_item_id: ORDERS_COUNT_QUESTION_ID,
@@ -200,7 +201,7 @@ describeEE("scenarios > premium > content verification", () => {
   context("token expired or removed", () => {
     beforeEach(() => {
       setTokenFeatures("all");
-      cy.createModerationReview({
+      createModerationReview({
         status: "verified",
         moderated_item_type: "card",
         moderated_item_id: ORDERS_COUNT_QUESTION_ID,

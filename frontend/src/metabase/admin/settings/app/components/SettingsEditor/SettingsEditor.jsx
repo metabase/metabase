@@ -9,7 +9,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 import { UpsellSSO } from "metabase/admin/upsells";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
@@ -17,7 +16,6 @@ import SaveStatus from "metabase/components/SaveStatus";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import { Box } from "metabase/ui";
 
@@ -141,16 +139,6 @@ class SettingsEditor extends Component {
       } else {
         this.saveStatusRef.current.setSaved();
       }
-
-      const value = prepareAnalyticsValue(setting);
-
-      MetabaseAnalytics.trackStructEvent(
-        "General Settings",
-        setting.display_name || setting.key,
-        value,
-        // pass the actual value if it's a number
-        typeof value === "number" && value,
-      );
     } catch (error) {
       console.error(error);
       const message =
@@ -159,11 +147,6 @@ class SettingsEditor extends Component {
       if (options?.onError) {
         options.onError(error, message);
       }
-      MetabaseAnalytics.trackStructEvent(
-        "General Settings",
-        setting.display_name,
-        "error",
-      );
     }
   };
 

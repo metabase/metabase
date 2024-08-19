@@ -1,20 +1,21 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
+  createPulse,
   describeEE,
+  modal,
   modifyPermission,
-  visitQuestion,
-  visitDashboard,
+  popover,
+  restore,
   setTokenFeatures,
   setupSMTP,
   sidebar,
-  popover,
   undoToast,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -227,7 +228,7 @@ function createSubscription(user_id) {
       },
     },
   }).then(({ body: { card_id, dashboard_id } }) => {
-    cy.createPulse({
+    createPulse({
       name: "Subscription",
       dashboard_id,
       cards: [
