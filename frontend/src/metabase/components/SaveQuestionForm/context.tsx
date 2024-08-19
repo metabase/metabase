@@ -4,11 +4,13 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useState,
 } from "react";
 
 import { useListCollectionsQuery } from "metabase/api";
 import { FormProvider } from "metabase/forms";
-import { isSavedQuestionChanged } from "metabase/query_builder/utils/question";
+import { useSelector } from "metabase/lib/redux";
+import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import type Question from "metabase-lib/v1/Question";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
@@ -31,7 +33,7 @@ export const SaveQuestionContext =
 
 export const SaveQuestionProvider = ({
   question,
-  originalQuestion,
+  originalQuestion: latestOriginalQuestion,
   onCreate,
   onSave,
   multiStep = false,
@@ -39,6 +41,7 @@ export const SaveQuestionProvider = ({
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
   const { data: collections = [] } = useListCollectionsQuery({});
+  const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
   const initialValues: FormValues = useMemo(
     () =>
@@ -57,10 +60,13 @@ export const SaveQuestionProvider = ({
     [originalQuestion, question, onSave, onCreate],
   );
 
-  const isQuestionChanged = isSavedQuestionChanged(question, originalQuestion);
+  const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
+  // we care only about the very first result as question can be changed before
+  // the modal is closed
+  const [isSavedQuestionInitiallyChanged] = useState(isSavedQuestionChanged);
 
   const showSaveType =
-    isQuestionChanged &&
+    isSavedQuestionInitiallyChanged &&
     originalQuestion != null &&
     originalQuestion.canWrite();
 

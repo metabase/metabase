@@ -466,13 +466,13 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-        <InteractiveDashboard
-          dashboardId={dashboardId}
-          initialParameterValues={initialParameterValues}
-          withTitle={false}
-          withDownloads={false}
-          hiddenParameters={hideParameters}
-        />
+      <InteractiveDashboard
+        dashboardId={dashboardId}
+        initialParameterValues={initialParameterValues}
+        withTitle={false}
+        withDownloads={false}
+        hiddenParameters={hideParameters}
+      />
     </MetabaseProvider>
   );
 }
@@ -484,7 +484,7 @@ With the `CreateQuestion` component, you can create a new question from scratch 
 
 #### Parameters
 
-- **plugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+- **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
   drill-down menu. [See this section](#implementing-custom-actions) for more details
 
 ```tsx
@@ -496,7 +496,7 @@ const config = {...}
 export default function App() {
   return (
     <MetabaseProvider config={config}>
-        <CreateQuestion />
+      <CreateQuestion />
     </MetabaseProvider>
   );
 }
@@ -509,7 +509,7 @@ With the `ModifyQuestion` component, you can edit an existing question using the
 
 #### Parameters
 - **questionId**: `number` (required) – The ID of the question you want to modify.
-- **plugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+- **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
   drill-down menu. [See this section](#implementing-custom-actions) for more details
 
 ```tsx
@@ -521,7 +521,7 @@ const config = {...}
 export default function App() {
   return (
     <MetabaseProvider config={config}>
-        <ModifyQuestion questionId={1} />
+      <ModifyQuestion questionId={1} />
     </MetabaseProvider>
   );
 }
