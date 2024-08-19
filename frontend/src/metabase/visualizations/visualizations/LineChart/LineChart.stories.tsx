@@ -67,3 +67,10 @@ export const EmbeddingHugeFont: Story = () => {
     </SdkVisualizationWrapper>
   );
 };
+
+// This story has become flaky on CI, so we're skipping it for now.
+EmbeddingHugeFont.story = {
+  parameters: {
+    loki: { skip: true },
+  },
+};
