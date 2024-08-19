@@ -11,9 +11,10 @@
 
   Requirements:
 
-  - `dimensions` have a date column with `year`, `quarter`, `month`, `week`, `day`, `hour` temporal unit. For other
-    units, or when there is no temporal bucketing this drill cannot be applied. Changing `hour` to `minute` ends the
-    sequence. Only the first matching column would be used in query transformation.
+  - `dimensions` have a date or datetime column with `year`, `quarter`, `month`, `week`, `day`, `hour` temporal unit.
+    For other units, or when there is no temporal bucketing, this drill cannot be applied. Changing `hour` to `minute`
+    ends the sequence for datetime columns (`week` to `day` for date columns). Only the first matching column would be
+    used in query transformation.
 
   - `displayInfo` returns `displayName` with `See this {0} by {1}` string using the current and the next available
     temporal unit.
@@ -27,7 +28,8 @@
     account
     https://github.com/metabase/metabase/blob/0624d8d0933f577cc70c03948f4b57f73fe13ada/frontend/src/metabase-lib/queries/utils/actions.js#L99
 
-  - Add a breakout based on the date column (from requirements), using the next (more granular) temporal unit.
+  - Add a breakout based on the date or datetime column (from requirements), using the next (more granular) temporal
+    unit.
 
   Question transformation:
 
@@ -48,13 +50,26 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-;;; TODO -- we shouldn't include hour and minute for `:type/Date` columns.
-(def ^:private valid-current-units
-  [:year :quarter :month :week :day :hour :minute])
+(mu/defn- valid-current-units-for-schema-type :- [:vector :keyword]
+  [schema-type :- ::lib.schema.common/base-type]
+  (cond (isa? schema-type :type/Date)
+        [:year :quarter :month :week :day]
+        (isa? schema-type :type/DateTime)
+        [:year :quarter :month :week :day :hour :minute]
+        :else
+        []))
 
-(def ^:private unit->next-unit
-  (zipmap (drop-last valid-current-units)
-          (drop 1 valid-current-units)))
+(mu/defn- valid-current-units :- [:vector :keyword]
+  [column :- ::lib.schema.metadata/column]
+  (valid-current-units-for-schema-type
+   ((some-fn :metabase.lib.field/original-effective-type :base-type) column)))
+
+(mu/defn- column->unit->next-unit
+  :- [:map-of :keyword ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
+  [column :- ::lib.schema.metadata/column]
+  (let [units (valid-current-units column)]
+    (zipmap (drop-last units)
+            (drop 1 units))))
 
 (mu/defn- matching-breakout-dimension :- [:maybe ::lib.schema.drill-thru/context.row.value]
   [query        :- ::lib.schema/query
@@ -72,8 +87,7 @@
 (mu/defn- next-breakout-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   [column :- ::lib.schema.metadata/column]
   (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket column)]
-    (when (contains? (set valid-current-units) current-unit)
-      (unit->next-unit current-unit))))
+    ((column->unit->next-unit column) current-unit)))
 
 (mu/defn- describe-next-unit :- ::lib.schema.common/non-blank-string
   [unit :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
