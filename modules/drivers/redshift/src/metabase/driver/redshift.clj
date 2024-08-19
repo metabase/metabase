@@ -59,7 +59,7 @@
   ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
   ;;
   ;; Why we use `svv_redshift_tables` and `svv_external_tables`:
-  ;; We can't use `svv_tables` or `svv_all_tables` because the query would fails if there are external tables. There
+  ;; We can't use `svv_tables` or `svv_all_tables` because the query would fail if there are external tables. There
   ;; are no table-level privileges for external tables, so the use of `pg_catalog.has_table_privilege` with an external
   ;; table causes an exception.
   ;;
