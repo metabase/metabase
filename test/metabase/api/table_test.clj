@@ -972,7 +972,7 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing "binning options for datetime fields"
       (testing "time columns"
-        (mt/test-drivers (filter mt/supports-time-type? (mt/normal-drivers))
+        (mt/test-drivers (mt/normal-drivers-with-feature :test/time-type)
           (mt/dataset time-test-data
             (let [response (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users)))]
               (is (= @#'api.table/time-dimension-indexes

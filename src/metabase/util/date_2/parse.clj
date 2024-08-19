@@ -47,6 +47,8 @@
    {:error/message "Instance of a java.time.temporal.Temporal"}
    (partial instance? Temporal)])
 
+(def ^:private utc-zone-region (t/zone-id "UTC"))
+
 (mu/defn parse-with-formatter :- [:maybe InstanceOfTemporal]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."
   [formattr
@@ -61,7 +63,7 @@
           zone-offset       (query temporal-accessor :zone-offset)
           zone-id           (or (query temporal-accessor :zone-id)
                                 (when (= zone-offset ZoneOffset/UTC)
-                                  (t/zone-id "UTC")))
+                                  utc-zone-region))
           literal-type      [(cond
                                zone-id     :zone
                                zone-offset :offset

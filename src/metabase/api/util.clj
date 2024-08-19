@@ -13,6 +13,7 @@
    [metabase.api.common.validation :as validation]
    [metabase.config :as config]
    [metabase.logger :as logger]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -79,8 +80,9 @@
   "Returns version and system information relevant to filing a bug report against Metabase."
   []
   (validation/check-has-application-permission :monitoring)
-  {:system-info   (troubleshooting/system-info)
-   :metabase-info (troubleshooting/metabase-info)})
+  (cond-> {:metabase-info (troubleshooting/metabase-info)}
+    (not (premium-features/is-hosted?))
+    (assoc :system-info (troubleshooting/system-info))))
 
 (api/defendpoint GET "/diagnostic_info/connection_pool_info"
   "Returns database connection pool info for the current Metabase instance."

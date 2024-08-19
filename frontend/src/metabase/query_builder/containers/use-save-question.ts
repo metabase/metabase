@@ -10,7 +10,7 @@ import {
 import type Question from "metabase-lib/v1/Question";
 
 interface UseSaveQuestionParams {
-  scheduleCallback: ScheduleCallback;
+  scheduleCallback?: ScheduleCallback;
 }
 
 type UseSaveQuestionResult = (
@@ -20,7 +20,7 @@ type UseSaveQuestionResult = (
 
 export function useSaveQuestion({
   scheduleCallback,
-}: UseSaveQuestionParams): UseSaveQuestionResult {
+}: UseSaveQuestionParams = {}): UseSaveQuestionResult {
   const dispatch = useDispatch();
 
   return useCallback(
@@ -28,7 +28,7 @@ export function useSaveQuestion({
       await dispatch(apiUpdateQuestion(updatedQuestion, { rerunQuery }));
       await dispatch(setUIControls({ isModifiedFromNotebook: false }));
 
-      scheduleCallback(async () => {
+      scheduleCallback?.(async () => {
         if (!rerunQuery) {
           await dispatch(updateUrl(updatedQuestion, { dirty: false }));
         }

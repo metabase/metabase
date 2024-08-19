@@ -30,6 +30,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [toucan2.core :as t2]
@@ -288,10 +289,19 @@
                         {:aggregation [:count]
                          :breakout    [$price]})))))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::grouped-expression-in-card-test]
+  [_driver _feature _database]
+  false)
+
+;;; TODO make this work for other drivers supporting :nested-queries :expressions :basic-aggregations
+(doseq [driver [:h2 :postgres :mongo]]
+  (defmethod driver/database-supports? [driver ::grouped-expression-in-card-test]
+    [_driver _feature _database]
+    true))
+
 (deftest ^:parallel grouped-expression-in-card-test
   (testing "Nested grouped expressions work (#23862)."
-    ;; TODO make this work for other drivers supporting :nested-queries :expressions :basic-aggregations
-    (mt/test-drivers #{:h2 :postgres :mongo}
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :expressions :basic-aggregations ::grouped-expression-in-card-test)
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/mbql-query venues
                                            {:aggregation [[:count]]
@@ -330,10 +340,19 @@
               (run-native-query (str native-sub-query " -- small comment here\n")))
           "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail"))))
 
+(defmethod driver/database-supports? [::driver/driver ::filter-by-field-literal-test]
+  [_driver _feature _database]
+  false)
+
+;;; TODO make this work for other drivers supporting :nested-queries
+(doseq [driver [:h2 :postgres :mongo]]
+  (defmethod driver/database-supports? [driver ::filter-by-field-literal-test]
+    [_driver _feature _database]
+    true))
+
 (deftest ^:parallel filter-by-field-literal-test
   (testing "make sure we can filter by a field literal"
-    ;; TODO make this work for other drivers supporting :nested-queries
-    (mt/test-drivers #{:h2 :postgres :mongo}
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::filter-by-field-literal-test)
       (is (=? {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
                :cols (mapv (partial qp.test-util/col :venues)
                            [:id :name :category_id :latitude :longitude :price])}
@@ -557,9 +576,18 @@
                                             {:aggregation [[:count]]
                                              :breakout    [!day.*date]})))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::breakout-year-test]
+  [_driver _feature _database]
+  false)
+
+;; TODO make this work for other drivers supporting :nested-queries
+(doseq [driver [:h2 :postgres :mongo]]
+  (defmethod driver/database-supports? [driver ::breakout-year-test]
+    [_driver _feature _database]
+    true))
+
 (deftest ^:parallel breakout-year-test
-  ;; TODO make this work for other drivers supporting :nested-queries
-  (mt/test-drivers #{:h2 :postgres :mongo}
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::breakout-year-test)
     (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
                   "break out a *YEAR*")
       (let [source-query (mt/mbql-query checkins
@@ -823,10 +851,21 @@
                   :breakout     [$venue_id->venues.name]
                   :filter       [:starts-with $venue_id->venues.name "F"]})))))))
 
+(defmethod driver/database-supports? [::driver/driver ::two-of-the-same-aggregations-test]
+  [_driver _feature _database]
+  true)
+
+;;; TODO make this work for other drivers supporting :nested-queries
+;;;
+;;; TODO now that this is easily overrideable by third-party driver authors we should remove `:starburst` from the list
+;;; below and ask them to implement it in their own test code.
+(doseq [driver [:vertica :sqlite :presto-jdbc :starburst]]
+  (defmethod driver/database-supports? [driver ::two-of-the-same-aggregations-test]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel two-of-the-same-aggregations-test
-  ;; TODO make this work for other drivers supporting :nested-queries
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries)
-                         :vertica :sqlite :presto-jdbc :starburst)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries ::two-of-the-same-aggregations-test)
     (testing "Do nested queries work with two of the same aggregation? (#9767)"
       (is (= [["2014-02-01T00:00:00Z" 302 1804]
               ["2014-03-01T00:00:00Z" 350 2362]]
@@ -859,6 +898,19 @@
                      (mt/run-mbql-query nil
                        {:source-table "card__1"}))))))))))
 
+(defmulti bucketing-already-bucketed-year-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod bucketing-already-bucketed-year-test-expected-rows :default
+  [_driver]
+  [["2013-01-01T00:00:00Z"]])
+
+(defmethod bucketing-already-bucketed-year-test-expected-rows :sqlite
+  [_driver]
+  [["2013-01-01"]])
+
 (deftest ^:parallel bucketing-already-bucketed-year-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
     (testing "If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)"
@@ -866,7 +918,7 @@
       ;; currently possible to cast a DateTime field to a year in MBQL, and then cast it a second time in an another
       ;; query using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like
       ;; `2016` rather than timestamps
-      (is (= [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
+      (is (= (bucketing-already-bucketed-year-test-expected-rows driver/*driver*)
              (mt/rows
                (mt/run-mbql-query checkins
                  {:source-query {:source-table $$checkins
@@ -1267,9 +1319,17 @@
                                     :condition    [:= $product_id &PRODUCTS__via__PRODUCT_ID.products.id]
                                     :fk-field-id  %product_id}]}))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::multi-level-aggregations-with-post-aggregation-filtering-test]
+  [_driver _feature _database]
+  true)
+
+;;; TODO: Make this test work for mongo as part of solution to issue #43901. -- lbrdnk
+(defmethod driver/database-supports? [:mongo ::multi-level-aggregations-with-post-aggregation-filtering-test]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel multi-level-aggregations-with-post-aggregation-filtering-test
-  ;; TODO: Make this test work for mongo as part of solution to issue #43901. -- lbrdnk
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :nested-queries) :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries ::multi-level-aggregations-with-post-aggregation-filtering-test)
     (testing "Multi-level aggregations with filter is the last section (#14872)"
       (mt/dataset test-data
         (let [query (mt/mbql-query orders
@@ -1349,12 +1409,12 @@
 (deftest ^:parallel nested-query-with-expressions-test
   ;; TODO: Mongo does not support saved questions reference! -- Is there feature flag for that?
   (testing "Nested queries with expressions should work in top-level native queries (#12236)"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature
-                            :nested-queries
-                            :basic-aggregations
-                            :expression-aggregations
-                            :left-join)
-                           :mongo)
+    (mt/test-drivers (mt/normal-drivers-with-feature
+                      :nested-queries
+                      :basic-aggregations
+                      :expression-aggregations
+                      :left-join
+                      :native-parameter-card-reference)
       (mt/dataset test-data
         (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                           [(mt/mbql-query orders
@@ -1374,8 +1434,9 @@
                                           :card-id      1}}})]
             (is (= [["2016-04-01T00:00:00Z" 1]
                     ["2016-05-01T00:00:00Z" 5]]
-                   (mt/formatted-rows [u.date/temporal-str->iso8601-str int]
-                     (qp/process-query query))))))))))
+                   (mt/formatted-rows
+                    [u.date/temporal-str->iso8601-str int]
+                    (qp/process-query query))))))))))
 
 (deftest ^:parallel join-against-query-with-implicit-joins-test
   (testing "Should be able to do subsequent joins against a query with implicit joins (#17767)"
@@ -1407,14 +1468,21 @@
                        5
                        "Ad perspiciatis quis et consectetur. Laboriosam fuga voluptas ut et modi ipsum. Odio et eum numquam eos nisi. Assumenda aut magnam libero maiores nobis vel beatae officia."
                        "2018-05-15T20:25:48Z"]]
-                     (mt/formatted-rows [int int int int str int str u.date/temporal-str->iso8601-str]
-                       (qp/process-query query)))))))))))
+                     (mt/formatted-rows
+                      [int int int int str int str u.date/temporal-str->iso8601-str]
+                      (qp/process-query query)))))))))))
 
-;; TODO: Make this work with Mongo as part of #43901 work. -- lbrdnk
+(defmethod driver/database-supports? [::driver/driver ::breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test]
+  [_driver _feature _database]
+  true)
+
+;;; TODO: Make this work with Mongo as part of #43901 work. -- lbrdnk
+(defmethod driver/database-supports? [:mongo ::breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join)
-                         ;; mongodb doesn't support foreign keys required by this test
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :basic-aggregations :left-join ::breakout-on-temporally-bucketed-implicitly-joined-column-inside-source-query-test)
     (testing (str "Should be able to breakout on a temporally-bucketed, implicitly-joined column from the source query "
                   "incorrectly using `:field` literals to refer to the Field (#16389)")
       ;; See #19757 for more details on why this query is broken
@@ -1458,6 +1526,9 @@
                    (mt/formatted-rows [str int]
                      (qp/process-query query))))))))))
 
+;;; TODO -- not clear why this test is hardcoded to only run against Postgres, and not to run against our other DBs that
+;;; support JSON unfolding e.g. MySQL. FIXME
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel unfolded-json-with-custom-expression-test
   (testing "Should keep roots of unfolded JSON fields in the nested query (#29184)"
     (mt/test-driver :postgres
@@ -1471,8 +1542,8 @@
 
 (deftest ^:parallel space-names-test
   (mt/test-drivers (set/intersection
-                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
-                     (mt/normal-drivers-with-feature :left-join))
+                    (mt/normal-drivers-with-feature :identifiers-with-spaces)
+                    (mt/normal-drivers-with-feature :left-join))
     (mt/dataset
       crazy-names
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -1481,9 +1552,9 @@
                                      (lib/with-join-alias "Space Table Alias")
                                      (lib/with-join-strategy :left-join)
                                      (lib/with-join-conditions [(lib/=
-                                                                  (lib.metadata/field mp (mt/id "space table" "space column"))
-                                                                  (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
-                                                                    "Space Table Alias"))])))
+                                                                 (lib.metadata/field mp (mt/id "space table" "space column"))
+                                                                 (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
+                                                                                      "Space Table Alias"))])))
 
                     (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
                                                    (lib/breakoutable-columns $q)))

@@ -41,7 +41,7 @@ import {
   assertQueryBuilderRowCount,
   visitDashboard,
   getDashboardCard,
-  testTooltipPairs,
+  assertEChartsTooltip,
   join,
   visitQuestion,
   tableHeaderClick,
@@ -1207,11 +1207,12 @@ describe("issue 31960", () => {
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).realHover();
     });
-    testTooltipPairs([
-      ["Created At:", "July 10–16, 2022"],
-      ["Count:", String(rowCount)],
-      ["Compared to previous week", "+10%"],
-    ]);
+    assertEChartsTooltip({
+      header: "July 10–16, 2022",
+      rows: [
+        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
+      ],
+    });
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).click({ force: true });
     });

@@ -4,7 +4,7 @@ import type {
   CollectionPermissionsGraph,
   DatabaseId,
   GroupId,
-  GroupPermissions,
+  GroupsPermissions,
   Impersonation,
   PermissionsGraph,
   SchemasPermissions,
@@ -29,7 +29,7 @@ declare global {
   namespace Cypress {
     interface Chainable {
       updatePermissionsGraph(
-        groupsPermissionsObject: GroupPermissions,
+        groupsPermissionsObject: GroupsPermissions,
         impersonations?: Impersonation[],
       ): void;
       updatePermissionsSchemas(options?: UpdatePermissionsSchemasParams): void;
@@ -57,7 +57,7 @@ const { COLLECTION_GROUP } = USER_GROUPS;
 Cypress.Commands.add(
   "updatePermissionsGraph",
   (
-    groupsPermissionsObject: GroupPermissions,
+    groupsPermissionsObject: GroupsPermissions,
     impersonations?: Impersonation[],
   ) => {
     cy.log("Fetch permissions graph");
