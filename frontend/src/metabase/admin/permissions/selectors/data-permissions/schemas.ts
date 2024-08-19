@@ -13,7 +13,10 @@ import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
-import { navigateToGranularPermissions } from "../../permissions";
+import {
+  limitDatabasePermission,
+  navigateToGranularPermissions,
+} from "../../permissions";
 import type {
   DatabaseEntityId,
   PermissionSectionConfig,
@@ -102,7 +105,8 @@ const buildAccessPermission = (
     confirmations: accessPermissionConfirmations,
     options,
     postActions: {
-      controlled: () => navigateToGranularPermissions(groupId, entityId),
+      controlled: () =>
+        limitDatabasePermission(groupId, entityId, accessPermissionValue),
       ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
     },
     actions: PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,

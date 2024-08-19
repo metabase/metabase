@@ -240,14 +240,14 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
     ]);
   });
 
-  it("should set a new default for children if parent is currently selected to a top-level only permission before going granular", () => {
+  it("should preserve parent value for children when selecting granular for permissions available to child entities", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
     modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Blocked");
 
     modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
 
-    assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
+    assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
   });
 });
 
@@ -426,6 +426,19 @@ describeEE("scenarios > admin > permissions > view data > impersonated", () => {
     cy.get("@leaveConfirmation").findByText("Discard changes").click();
 
     cy.focused().should("have.attr", "placeholder", "username");
+  });
+
+  it("should set unrestricted for children if database is set to impersonated before going granular", () => {
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    modifyPermission("QA Postgres12", DATA_ACCESS_PERM_IDX, "Impersonated");
+
+    selectImpersonatedAttribute("role");
+    saveImpersonationSettings();
+
+    modifyPermission("Sample Database", DATA_ACCESS_PERM_IDX, "Granular");
+
+    assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Can view");
   });
 });
 
