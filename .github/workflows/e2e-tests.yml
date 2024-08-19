@@ -245,6 +245,7 @@ jobs:
 
       - name: Publish test report to summary
         uses: mikepenz/action-junit-report@v3
+        if: failure()
         with:
           commit: ${{github.event.workflow_run.head_sha}}
           report_paths: "./target/junit/*.xml"
