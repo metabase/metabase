@@ -155,17 +155,7 @@ export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
 
-export function getParameterColumns(
-  question: Question,
-  parameter?: Parameter,
-): {
-  query: Lib.Query;
-  columns: {
-    stageIndex: number;
-    column: Lib.ColumnMetadata;
-    group: Lib.ColumnGroup;
-  }[];
-} {
+export function getParameterColumns(question: Question, parameter?: Parameter) {
   // treat the dataset/model question like it is already composed so that we can apply
   // dataset/model-specific metadata to the underlying dimension options
   const query =
