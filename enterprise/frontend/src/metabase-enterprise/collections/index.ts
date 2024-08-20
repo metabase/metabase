@@ -16,6 +16,7 @@ import {
   OFFICIAL_COLLECTION,
   REGULAR_COLLECTION,
 } from "./constants";
+import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 import {
   filterOutItemsFromInstanceAnalytics,
   getCollectionType,
@@ -77,8 +78,7 @@ if (hasPremiumFeature("audit_app")) {
     CollectionInstanceAnalyticsIcon;
 
   PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
-  PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection =
-    getInstanceAnalyticsCustomCollection;
+  PLUGIN_COLLECTIONS.useGetDefaultCollectionId = useGetDefaultCollectionId;
   PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
     CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
 

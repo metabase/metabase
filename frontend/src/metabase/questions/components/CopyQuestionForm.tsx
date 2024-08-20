@@ -62,6 +62,7 @@ export const CopyQuestionForm = ({
       initialValues={computedInitialValues}
       validationSchema={QUESTION_SCHEMA}
       onSubmit={handleDuplicate}
+      enableReinitialize
     >
       <Form>
         <FormTextInput

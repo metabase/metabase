@@ -43,12 +43,6 @@ export function isInstanceAnalyticsCollection(
   );
 }
 
-export function getInstanceAnalyticsCustomCollection(
-  collections: Collection[],
-): Collection | null {
-  return PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection(collections);
-}
-
 export function isInstanceAnalyticsCustomCollection(
   collection: Collection,
 ): boolean {
