@@ -39,6 +39,7 @@ import type { SelectedItem } from "../types";
 
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
+import { useListDashboardsQuery } from "metabase/api";
 
 interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
@@ -66,6 +67,11 @@ type Props = {
 };
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
+const BROWSE_DATA_URL = "/browse/databases";
+const BROWSE_MODELS_URL = "/browse/models";
+const BROWSE_CHAT = "/browse/chat";
+const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
+const BROWSE_LIBRARY = "/collection/2-library"
 
 function MainNavbarView({
   isAdmin,
@@ -84,7 +90,7 @@ function MainNavbarView({
   );
 
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
-
+  const { data: dashboards, status } = useListDashboardsQuery();
   const {
     card: cardItem,
     collection: collectionItem,
@@ -144,8 +150,51 @@ function MainNavbarView({
             {hasAttachedDWHFeature && uploadDbId && rootCollection && (
               <UploadCSV collection={rootCollection} />
             )}
-          </SidebarSection>
+            {hasDataAccess && (
+              <PaddedSidebarLink
+                icon="database"
+                url={BROWSE_DATA_URL}
+                isSelected={nonEntityItem?.url?.startsWith(BROWSE_DATA_URL)}
+                onClick={onItemSelect}
+              >
+                {t`Raw Data`}
+              </PaddedSidebarLink>
+            )}
+            {hasDataAccess && (
+              <PaddedSidebarLink
+                icon="database"
+                url={BROWSE_SEMANTIC_LAYER}
+                isSelected={nonEntityItem?.url?.startsWith(BROWSE_SEMANTIC_LAYER)}
+                onClick={onItemSelect}
+                aria-label={t`Browse semantic layer`}
+              >
+                {t`OmniAI layer`}
+              </PaddedSidebarLink>
+            )}
+            <PaddedSidebarLink
+              icon="collection"
+              url={BROWSE_LIBRARY}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_LIBRARY)}
+              onClick={onItemSelect}
+              aria-label={t`Library`}
+            >
+              {t`Library`}
+            </PaddedSidebarLink>
+            <PaddedSidebarLink
+              icon="chat"
+              url={BROWSE_CHAT}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_CHAT)}
+              onClick={onItemSelect}
+              aria-label={t`Ask Omni`}
+            >
+              {t`Ask Omni`}
+            </PaddedSidebarLink>
+            <>
 
+
+
+            </>
+          </SidebarSection>
           {bookmarks.length > 0 && (
             <SidebarSection>
               <ErrorBoundary>
@@ -167,18 +216,32 @@ function MainNavbarView({
                 currentUser={currentUser}
                 handleCreateNewCollection={handleCreateNewCollection}
               />
-              <Tree
+              <>
+                {dashboards!.map((dashboard) => (
+                  <PaddedSidebarLink
+                    key={dashboard.id}
+                    icon="dashboard"
+                    url={`/dashboard/${dashboard.id}`}
+                    onClick={onItemSelect}
+                    isSelected={dashboardItem?.id === dashboard.id} // Seleccionar si es el dashboard actual
+                  >
+                    {dashboard.name}
+                  </PaddedSidebarLink>
+                ))}
+
+              </>
+              {/*<Tree
                 data={collectionsWithoutTrash}
                 selectedId={collectionItem?.id}
                 onSelect={onItemSelect}
                 TreeNode={SidebarCollectionLink}
                 role="tree"
                 aria-label="collection-tree"
-              />
+              />*/}
             </ErrorBoundary>
           </SidebarSection>
 
-          <SidebarSection>
+          {/*<SidebarSection>
             <ErrorBoundary>
               <BrowseNavSection
                 nonEntityItem={nonEntityItem}
@@ -203,20 +266,7 @@ function MainNavbarView({
               )}
             </ErrorBoundary>
           </SidebarSection>
-
-          {trashCollection && (
-            <TrashSidebarSection>
-              <ErrorBoundary>
-                <Tree
-                  data={[trashCollection]}
-                  selectedId={collectionItem?.id}
-                  onSelect={onItemSelect}
-                  TreeNode={SidebarCollectionLink}
-                  role="tree"
-                />
-              </ErrorBoundary>
-            </TrashSidebarSection>
-          )}
+          */}
         </div>
         <WhatsNewNotification />
       </SidebarContentRoot>
@@ -241,7 +291,7 @@ function CollectionSectionHeading({
             handleCreateNewCollection();
           }}
         >
-          {t`New collection`}
+          {t`New Dashboard`}
         </SidebarLink>
         {currentUser.is_superuser && (
           <SidebarLink
@@ -263,8 +313,7 @@ function CollectionSectionHeading({
 
   return (
     <SidebarHeadingWrapper>
-      <SidebarHeading>{t`Collections`}</SidebarHeading>
-      {/**
+      <SidebarHeading>{t`Dashboard`}</SidebarHeading>
       <CollectionsMoreIconContainer>
         <TippyPopoverWithTrigger
           renderTrigger={({ onClick }) => (
@@ -273,7 +322,6 @@ function CollectionSectionHeading({
           popoverContent={renderMenu}
         />
       </CollectionsMoreIconContainer>
-      */}
     </SidebarHeadingWrapper>
   );
 }

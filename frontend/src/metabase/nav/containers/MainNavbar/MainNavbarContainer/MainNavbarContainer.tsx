@@ -107,7 +107,7 @@ function MainNavbarContainer({
     );
 
     preparedCollections.push(...userPersonalCollections);
-    preparedCollections.push(...displayableCollections);
+    //preparedCollections.push(...displayableCollections);
 
     const tree = buildCollectionTree(preparedCollections);
     if (trashCollection) {
