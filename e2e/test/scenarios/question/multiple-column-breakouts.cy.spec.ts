@@ -1083,86 +1083,186 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("filter modal", () => {
-      function addDateBetweenFilter({
-        columnName,
-        columnMinValue,
-        columnMaxValue,
-      }: {
-        columnName: string;
-        columnMinValue: string;
-        columnMaxValue: string;
-      }) {
-        modal()
-          .findByTestId(`filter-column-${columnName}`)
-          .findByLabelText("More options")
-          .click();
-        popover().within(() => {
-          cy.findByText("Specific dates…").click();
-          cy.findByText("Between").click();
-          cy.findByLabelText("Start date").clear().type(columnMinValue);
-          cy.findByLabelText("End date").clear().type(columnMaxValue);
-          cy.button("Add filter").click();
+      it("should be able to add post-aggregation filters for each breakout in the filter modal", () => {
+        function addDateBetweenFilter({
+          columnName,
+          columnMinValue,
+          columnMaxValue,
+        }: {
+          columnName: string;
+          columnMinValue: string;
+          columnMaxValue: string;
+        }) {
+          modal()
+            .findByTestId(`filter-column-${columnName}`)
+            .findByLabelText("More options")
+            .click();
+          popover().within(() => {
+            cy.findByText("Specific dates…").click();
+            cy.findByText("Between").click();
+            cy.findByLabelText("Start date").clear().type(columnMinValue);
+            cy.findByLabelText("End date").clear().type(columnMaxValue);
+            cy.button("Add filter").click();
+          });
+        }
+
+        function testDatePostAggregationFilter({
+          questionDetails,
+          column1Name,
+          column1MinValue,
+          column1MaxValue,
+          column2Name,
+          column2MinValue,
+          column2MaxValue,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          column1Name: string;
+          column1MinValue: string;
+          column1MaxValue: string;
+          column2Name: string;
+          column2MinValue: string;
+          column2MaxValue: string;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
+          filter();
+
+          cy.log("add a filter for the first column");
+          addDateBetweenFilter({
+            columnName: column1Name,
+            columnMinValue: column1MinValue,
+            columnMaxValue: column1MaxValue,
+          });
+
+          cy.log("add a filter for the second column");
+          addDateBetweenFilter({
+            columnName: column2Name,
+            columnMinValue: column2MinValue,
+            columnMaxValue: column2MaxValue,
+          });
+
+          cy.log("assert query results");
+          visualize();
+          cy.wait("@dataset");
+        }
+
+        function addNumericBetweenFilter({
+          columnName,
+          columnMinValue,
+          columnMaxValue,
+        }: {
+          columnName: string;
+          columnMinValue: number;
+          columnMaxValue: number;
+        }) {
+          modal()
+            .findByTestId(`filter-column-${columnName}`)
+            .findByPlaceholderText("Min")
+            .clear()
+            .type(String(columnMinValue));
+          modal()
+            .findByTestId(`filter-column-${columnName}`)
+            .findByPlaceholderText("Max")
+            .clear()
+            .type(String(columnMaxValue));
+        }
+
+        function testNumericPostAggregationFilter({
+          questionDetails,
+          column1Name,
+          column1MinValue,
+          column1MaxValue,
+          column2Name,
+          column2MinValue,
+          column2MaxValue,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          column1Name: string;
+          column1MinValue: number;
+          column1MaxValue: number;
+          column2Name: string;
+          column2MinValue: number;
+          column2MaxValue: number;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
+          filter();
+
+          cy.log("add a filter for the first column");
+          addNumericBetweenFilter({
+            columnName: column1Name,
+            columnMinValue: column1MinValue,
+            columnMaxValue: column1MaxValue,
+          });
+
+          cy.log("add a filter for the second column");
+          addNumericBetweenFilter({
+            columnName: column2Name,
+            columnMinValue: column2MinValue,
+            columnMaxValue: column2MaxValue,
+          });
+
+          cy.log("assert query results");
+          visualize();
+          cy.wait("@dataset");
+        }
+
+        cy.log("temporal buckets");
+        testDatePostAggregationFilter({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Created At: Year",
+          column1MinValue: "January 1, 2023",
+          column1MaxValue: "December 31, 2023",
+          column2Name: "Created At: Month",
+          column2MinValue: "March 1, 2023",
+          column2MaxValue: "May 31, 2023",
         });
-      }
-
-      function testDatePostAggregationFilter({
-        questionDetails,
-        column1Name,
-        column1MinValue,
-        column1MaxValue,
-        column2Name,
-        column2MinValue,
-        column2MaxValue,
-      }: {
-        questionDetails: StructuredQuestionDetails;
-        column1Name: string;
-        column1MinValue: string;
-        column1MaxValue: string;
-        column2Name: string;
-        column2MinValue: string;
-        column2MaxValue: string;
-      }) {
-        createQuestion(questionDetails, { visitQuestion: true });
-        filter();
-
-        cy.log("add a filter for the first column");
-        addDateBetweenFilter({
-          columnName: column1Name,
-          columnMinValue: column1MinValue,
-          columnMaxValue: column1MaxValue,
+        assertTableData({
+          columns: ["Created At: Year", "Created At: Month", "Count"],
+          firstRows: [
+            ["2023", "March 2023", "256"],
+            ["2023", "April 2023", "238"],
+            ["2023", "May 2023", "271"],
+          ],
         });
+        assertQueryBuilderRowCount(3);
 
-        cy.log("add a filter for the second column");
-        addDateBetweenFilter({
-          columnName: column2Name,
-          columnMinValue: column2MinValue,
-          columnMaxValue: column2MaxValue,
+        cy.log("'num-bins' breakouts");
+        testNumericPostAggregationFilter({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column1MinValue: 10,
+          column1MaxValue: 50,
+          column2Name: "Total: 50 bins",
+          column2MinValue: 10,
+          column2MaxValue: 50,
         });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["40  –  60", "50  –  55", "1,070"],
+            ["40  –  60", "55  –  60", "877"],
+          ],
+        });
+        assertQueryBuilderRowCount(2);
 
-        cy.log("assert query results");
-        visualize();
-        cy.wait("@dataset");
-      }
-
-      cy.log("temporal buckets");
-      testDatePostAggregationFilter({
-        questionDetails: questionWith2TemporalBreakoutsDetails,
-        column1Name: "Created At: Year",
-        column1MinValue: "January 1, 2023",
-        column1MaxValue: "December 31, 2023",
-        column2Name: "Created At: Month",
-        column2MinValue: "March 1, 2023",
-        column2MaxValue: "May 31, 2023",
+        cy.log("'bin-width' breakouts");
+        testNumericPostAggregationFilter({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column1MinValue: 10,
+          column1MaxValue: 50,
+          column2Name: "Total: 50 bins",
+          column2MinValue: 10,
+          column2MaxValue: 50,
+        });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["40  –  60", "50  –  55", "1,070"],
+            ["40  –  60", "55  –  60", "877"],
+          ],
+        });
+        assertQueryBuilderRowCount(2);
       });
-      assertTableData({
-        columns: ["Created At: Year", "Created At: Month", "Count"],
-        firstRows: [
-          ["2023", "March 2023", "256"],
-          ["2023", "April 2023", "238"],
-          ["2023", "May 2023", "271"],
-        ],
-      });
-      assertQueryBuilderRowCount(3);
     });
   });
 });
