@@ -11,9 +11,9 @@ import {
 import {
   ItemLink,
   ItemNameCell,
+  TBody,
   Table,
   TableColumn,
-  TBody,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";

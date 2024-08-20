@@ -62,6 +62,13 @@ module.exports = {
         warnOnUnassignedImports: false,
       },
     ],
+    "sort-imports": [
+      "error",
+      {
+        // allows this rule to work with import/order
+        ignoreDeclarationSort: true,
+      },
+    ],
     "no-console": [2, { allow: ["warn", "error", "errorBuffer"] }],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
@@ -81,6 +88,7 @@ module.exports = {
       { additionalHooks: "(useSyncedQueryString|useSafeAsyncFunction)" },
     ],
     "prefer-const": [1, { destructuring: "all" }],
+    "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",

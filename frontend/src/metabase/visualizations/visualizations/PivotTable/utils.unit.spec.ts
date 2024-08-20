@@ -1,19 +1,19 @@
 import type { Card, DatasetColumn } from "metabase-types/api";
 
 import {
+  CELL_PADDING,
   MAX_HEADER_CELL_WIDTH,
   MIN_HEADER_CELL_WIDTH,
-  CELL_PADDING,
   ROW_TOGGLE_ICON_WIDTH,
 } from "./constants";
-import type { PivotSetting, HeaderItem } from "./types";
+import type { HeaderItem, PivotSetting } from "./types";
 import {
+  addMissingCardBreakouts,
+  getColumnValues,
+  getLeftHeaderWidths,
   isColumnValid,
   isFormattablePivotColumn,
   updateValueWithCurrentColumns,
-  addMissingCardBreakouts,
-  getLeftHeaderWidths,
-  getColumnValues,
 } from "./utils";
 
 describe("Visualizations > Visualizations > PivotTable > utils", () => {

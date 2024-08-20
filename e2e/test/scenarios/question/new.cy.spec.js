@@ -1,31 +1,31 @@
 import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
   SECOND_COLLECTION_ID,
   THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  openOrdersTable,
-  popover,
-  restore,
-  visualize,
-  startNewQuestion,
-  visitQuestionAdhoc,
-  saveQuestion,
-  getPersonalCollectionName,
-  visitCollection,
-  queryBuilderHeader,
+  collectionOnTheGoModal,
+  createQuestion,
   entityPickerModal,
   entityPickerModalItem,
   entityPickerModalTab,
-  collectionOnTheGoModal,
+  getPersonalCollectionName,
   modal,
-  pickEntity,
-  visitQuestion,
   onlyOnOSS,
-  createQuestion,
+  openOrdersTable,
+  pickEntity,
+  popover,
+  queryBuilderHeader,
+  restore,
+  saveQuestion,
+  startNewQuestion,
+  visitCollection,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

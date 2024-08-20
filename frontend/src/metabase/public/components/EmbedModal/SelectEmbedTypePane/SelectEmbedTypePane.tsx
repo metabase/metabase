@@ -17,7 +17,7 @@ import type {
   EmbedResourceType,
 } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
-import { Group, Text, Anchor, Stack } from "metabase/ui";
+import { Anchor, Group, Stack, Text } from "metabase/ui";
 
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";

@@ -9,11 +9,11 @@ import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import { createMockColumn } from "metabase-types/api/mocks";
 import {
-  createOrdersCreatedAtDatasetColumn,
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createOrdersCreatedAtDatasetColumn,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();

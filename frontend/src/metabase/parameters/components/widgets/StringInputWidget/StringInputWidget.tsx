@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
-import { isString, isEmpty } from "underscore";
+import { isEmpty, isString } from "underscore";
 
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  WidgetRoot,
-  WidgetLabel,
   Footer,
   TokenFieldWrapper,
+  WidgetLabel,
+  WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
 

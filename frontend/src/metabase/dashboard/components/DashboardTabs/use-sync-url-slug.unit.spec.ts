@@ -2,7 +2,7 @@ import type { Location } from "history";
 
 import { createMockLocation } from "__support__/location";
 
-import { parseSlug, getSlug } from "./use-sync-url-slug";
+import { getSlug, parseSlug } from "./use-sync-url-slug";
 
 function getMockLocation(slug: Location["query"][string]) {
   return createMockLocation({ query: { tab: slug } });

@@ -1,11 +1,11 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
-  isValidCollectionId,
   canonicalCollectionId,
+  isValidCollectionId,
 } from "metabase/collections/utils";
 import type {
   CollectionPickerItem,

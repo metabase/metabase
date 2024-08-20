@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 const RocketGlobeIllustrationSrc = "app/assets/img/rocket-globe.svg";
 import { useSelector } from "metabase/lib/redux";

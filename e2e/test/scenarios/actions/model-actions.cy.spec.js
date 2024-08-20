@@ -6,19 +6,19 @@ import {
   WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import {
+  createAction,
   createImplicitActions,
-  setActionsEnabledForDB,
+  createModelFromTableName,
+  entityPickerModal,
+  fillActionQuery,
   modal,
   popover,
-  restore,
-  fillActionQuery,
-  createAction,
-  resetTestTable,
-  resyncDatabase,
-  createModelFromTableName,
   queryWritableDB,
+  resetTestTable,
+  restore,
+  resyncDatabase,
+  setActionsEnabledForDB,
   setTokenFeatures,
-  entityPickerModal,
 } from "e2e/support/helpers";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";

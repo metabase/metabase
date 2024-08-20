@@ -6,9 +6,9 @@ import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";

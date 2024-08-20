@@ -1,8 +1,8 @@
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
-  getDashboardById,
   getDashCardById,
+  getDashboardById,
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import {

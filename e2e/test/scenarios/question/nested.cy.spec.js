@@ -1,20 +1,20 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
+  chartPathWithFillColor,
+  createNativeQuestion,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
+  filterField,
+  getDimensionByName,
   popover,
   remapDisplayValueToFK,
+  restore,
+  summarize,
   visitQuestion,
   visitQuestionAdhoc,
   visualize,
-  getDimensionByName,
-  summarize,
-  filter,
-  filterField,
-  chartPathWithFillColor,
-  entityPickerModal,
-  entityPickerModalTab,
-  createNativeQuestion,
 } from "e2e/support/helpers";
 import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 

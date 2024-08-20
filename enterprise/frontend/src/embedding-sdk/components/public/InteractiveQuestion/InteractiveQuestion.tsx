@@ -3,8 +3,8 @@ import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
-  withPublicComponentWrapper,
   SdkError,
+  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { ResetButton } from "embedding-sdk/components/private/ResetButton";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
@@ -27,7 +27,7 @@ import {
   getQuestion,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { Flex, Group, Stack, Box, Loader } from "metabase/ui";
+import { Box, Flex, Group, Loader, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
 
@@ -104,7 +104,7 @@ export const _InteractiveQuestion = ({
   }, [queryResults]);
 
   if (isQuestionLoading || isQueryRunning) {
-    return <Loader data-testid="loading-spinner" />;
+    return <Loader data-testid="loading-indicator" />;
   }
 
   if (!queryResults || !question) {

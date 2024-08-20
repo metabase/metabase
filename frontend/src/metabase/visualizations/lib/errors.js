@@ -1,4 +1,4 @@
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 export class MinColumnsError extends Error {
   constructor(minColumns, actualColumns) {

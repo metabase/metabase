@@ -17,7 +17,7 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId, CardDisplayType } from "./card";
+import type { Card, CardDisplayType, CardId } from "./card";
 import type { Dataset } from "./dataset";
 import type { SearchModel } from "./search";
 

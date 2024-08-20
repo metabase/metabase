@@ -1,8 +1,8 @@
 import type {
-  CustomSeriesOption,
-  ScatterSeriesOption,
   BarSeriesOption,
+  CustomSeriesOption,
   LineSeriesOption,
+  ScatterSeriesOption,
 } from "echarts/charts";
 import type { ElementEvent } from "echarts/core";
 import type { BrushAreaParam } from "echarts/types/src/component/brush/BrushModel";

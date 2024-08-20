@@ -7,11 +7,11 @@ import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
 import {
-  Root,
-  LeftPaneContainer,
-  TreeContainer,
   BackButton,
+  LeftPaneContainer,
   RightPaneContainer,
+  Root,
+  TreeContainer,
 } from "./PanePicker.styled";
 
 interface PanePickerProps {

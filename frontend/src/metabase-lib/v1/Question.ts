@@ -21,16 +21,16 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import { sortObject } from "metabase-lib/v1/utils";
 
 import type {
-  Card as CardObject,
   CardDisplayType,
+  Card as CardObject,
   CardType,
   CollectionId,
   DatabaseId,
   DatasetData,
   DatasetQuery,
   Field,
-  Parameter as ParameterObject,
   ParameterId,
+  Parameter as ParameterObject,
   ParameterValues,
   TableId,
   VisualizationSettings,

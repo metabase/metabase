@@ -7,11 +7,11 @@ import _ from "underscore";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { delay } from "metabase/lib/promise";
 import {
-  setRequestLoading,
-  setRequestLoaded,
   setRequestError,
-  setRequestUnloaded,
+  setRequestLoaded,
+  setRequestLoading,
   setRequestPromise,
+  setRequestUnloaded,
 } from "metabase/redux/requests";
 
 // convenience

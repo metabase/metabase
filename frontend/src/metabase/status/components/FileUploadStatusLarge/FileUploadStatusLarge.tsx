@@ -5,14 +5,14 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import {
-  isUploadInProgress,
-  isUploadCompleted,
   isUploadAborted,
+  isUploadCompleted,
+  isUploadInProgress,
 } from "metabase/lib/uploads";
 import { Box, Stack } from "metabase/ui";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type { Collection } from "metabase-types/api";
-import { UploadMode, type FileUpload } from "metabase-types/store/upload";
+import { type FileUpload, UploadMode } from "metabase-types/store/upload";
 
 import StatusLarge from "../StatusLarge";
 

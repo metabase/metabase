@@ -5,29 +5,28 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  downloadAndAssert,
-  startNewQuestion,
-  visualize,
-  visitDashboard,
-  popover,
-  assertSheetRowsCount,
-  filterWidget,
-  saveDashboard,
-  getDashboardCardMenu,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
   addOrUpdateDashboardCard,
+  assertSheetRowsCount,
   createQuestion,
-  queryBuilderMain,
+  describeWithSnowplow,
+  downloadAndAssert,
   editDashboard,
-  setFilter,
+  enableTracking,
   entityPickerModal,
   entityPickerModalTab,
-  dismissDownloadStatus,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
+  getDashboardCardMenu,
+  popover,
+  queryBuilderMain,
+  resetSnowplow,
+  restore,
+  saveDashboard,
+  setFilter,
+  startNewQuestion,
+  visitDashboard,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -79,8 +78,6 @@ describe("scenarios > question > download", () => {
         expect(sheet["A1"].v).to.eq("Count");
         expect(sheet["A2"].v).to.eq(18760);
       });
-
-      dismissDownloadStatus();
     });
   });
 
@@ -124,8 +121,6 @@ describe("scenarios > question > download", () => {
         },
       );
 
-      dismissDownloadStatus();
-
       downloadAndAssert(
         {
           ...opts,
@@ -150,8 +145,6 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
-      dismissDownloadStatus();
-
       editDashboard();
 
       setFilter("ID");
@@ -175,8 +168,6 @@ describe("scenarios > question > download", () => {
       });
 
       assertOrdersExport(1);
-
-      dismissDownloadStatus();
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -250,8 +241,6 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
-
-            dismissDownloadStatus();
           });
         });
       });

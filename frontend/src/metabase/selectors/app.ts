@@ -3,9 +3,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
 import {
-  getIsEditing as getIsEditingDashboard,
   getDashboard,
   getDashboardId,
+  getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
 import {
   getIsSavedQuestionChanged,

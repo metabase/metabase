@@ -10,13 +10,13 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import {
-  OptionContainer,
-  OptionsList,
   EmptyStateContainer,
-  OptionItem,
   FilterInputContainer,
+  OptionContainer,
+  OptionItem,
+  OptionsList,
 } from "./SingleSelectListField.styled";
-import type { SingleSelectListFieldProps, Option } from "./types";
+import type { Option, SingleSelectListFieldProps } from "./types";
 import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(

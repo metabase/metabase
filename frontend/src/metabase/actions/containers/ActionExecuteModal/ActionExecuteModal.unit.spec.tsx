@@ -64,7 +64,7 @@ describe("Actions > ActionExecuteModal", () => {
       shouldPrefetch: true,
     });
 
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
     await waitForLoaderToBeRemoved();
 

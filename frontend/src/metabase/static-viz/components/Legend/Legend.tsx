@@ -3,10 +3,10 @@ import { Group } from "@visx/group";
 import { Text } from "metabase/static-viz/components/Text";
 
 import {
-  LEGEND_CIRCLE_MARGIN_RIGHT,
-  LEGEND_CIRCLE_SIZE,
   DEFAULT_LEGEND_FONT_SIZE,
   DEFAULT_LEGEND_FONT_WEIGHT,
+  LEGEND_CIRCLE_MARGIN_RIGHT,
+  LEGEND_CIRCLE_SIZE,
 } from "./constants";
 import type { PositionedLegendItem } from "./types";
 

@@ -1,17 +1,17 @@
 import {
-  restore,
   describeEE,
-  typeAndBlurUsingLabel,
   modal,
   popover,
+  restore,
   setTokenFeatures,
+  typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
 
 import {
-  crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
+  crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
+import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
 describeEE("scenarios > admin > settings > SSO > JWT", () => {
   beforeEach(() => {

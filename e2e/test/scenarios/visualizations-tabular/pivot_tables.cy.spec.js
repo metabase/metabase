@@ -1,25 +1,25 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  popover,
-  sidebar,
-  visitQuestion,
-  visitDashboard,
-  visitIframe,
+  createQuestion,
+  dashboardCards,
   dragField,
+  getIframeBody,
+  getNotebookStep,
   leftSidebar,
   main,
-  getIframeBody,
+  modal,
+  openNotebook,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
-  modal,
-  dashboardCards,
+  popover,
   queryBuilderMain,
-  createQuestion,
-  openNotebook,
-  getNotebookStep,
+  restore,
+  sidebar,
+  visitDashboard,
+  visitIframe,
+  visitQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 

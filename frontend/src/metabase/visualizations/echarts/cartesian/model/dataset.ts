@@ -13,17 +13,17 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
-  DataKey,
-  Extent,
   ChartDataset,
+  DataKey,
+  Datum,
+  Extent,
+  NumericAxisScaleTransforms,
   SeriesExtents,
   SeriesModel,
-  Datum,
-  XAxisModel,
-  NumericAxisScaleTransforms,
   ShowWarning,
-  TimeSeriesXAxisModel,
   StackModel,
+  TimeSeriesXAxisModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
@@ -46,7 +46,7 @@ import type {
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";
-import { getColumnScaling, getBarSeriesDataLabelKey } from "./util";
+import { getBarSeriesDataLabelKey, getColumnScaling } from "./util";
 
 /**
  * Creates a unique series key for a dataset based on the provided column, card ID, and optional breakout value.

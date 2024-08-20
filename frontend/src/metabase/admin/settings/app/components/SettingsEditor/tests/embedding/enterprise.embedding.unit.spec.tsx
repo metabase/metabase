@@ -2,12 +2,12 @@ import { act, screen } from "__support__/ui";
 
 import type { SetupOpts } from "./setup";
 import {
-  goToStaticEmbeddingSettings,
-  setupEmbedding,
-  getQuickStartLink,
-  staticEmbeddingSettingsUrl,
   embeddingSettingsUrl,
+  getQuickStartLink,
+  goToStaticEmbeddingSettings,
   interactiveEmbeddingSettingsUrl,
+  setupEmbedding,
+  staticEmbeddingSettingsUrl,
 } from "./setup";
 
 const setupEnterprise = (opts?: SetupOpts) => {

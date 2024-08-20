@@ -16,6 +16,7 @@ import {
   createDashboardWithTabs,
   createNativeQuestion,
   createQuestion,
+  dashboardParameterSidebar,
   dashboardParametersContainer,
   editDashboard,
   filterWidget,
@@ -29,16 +30,15 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  setModelMetadata,
   sidebar,
+  tableHeaderClick,
   undoToast,
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
   visitModel,
   visitPublicDashboard,
-  setModelMetadata,
-  tableHeaderClick,
-  dashboardParameterSidebar,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -1602,7 +1602,7 @@ describe("issue 25322", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameterDetails.name).click();
-    popover().findByTestId("loading-spinner").should("exist");
+    popover().findByTestId("loading-indicator").should("exist");
   });
 });
 

@@ -14,9 +14,9 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

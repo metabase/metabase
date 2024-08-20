@@ -1,16 +1,15 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
-  visitQuestion,
-  saveQuestion,
-  downloadAndAssert,
   assertSheetRowsCount,
-  openNewPublicLinkDropdown,
   createPublicQuestionLink,
+  downloadAndAssert,
+  filterWidget,
   modal,
   openNativeEditor,
-  dismissDownloadStatus,
+  openNewPublicLinkDropdown,
+  restore,
+  saveQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -92,7 +91,6 @@ describe("scenarios > public > question", () => {
           { fileType: "xlsx", questionId: id, publicUid },
           assertSheetRowsCount(5),
         );
-        dismissDownloadStatus();
       });
     });
   });

@@ -2,32 +2,32 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  visitQuestion,
   cartesianChartCircle,
-  visitQuestionAdhoc,
-  sidebar,
-  rightSidebar,
-  leftSidebar,
+  createNativeQuestion,
+  createQuestion,
   getDashboardCard,
-  visitDashboard,
-  openOrdersTable,
   getDraggableElements,
+  getNotebookStep,
+  leftSidebar,
+  main,
+  modal,
   moveDnDKitElement,
   openNativeEditor,
-  runNativeQuery,
-  main,
-  createQuestion,
   openNotebook,
-  getNotebookStep,
+  openOrdersTable,
+  popover,
   queryBuilderHeader,
-  modal,
-  withDatabase,
+  restore,
+  rightSidebar,
+  runNativeQuery,
+  sidebar,
   summarize,
-  visualize,
   tableInteractive,
-  createNativeQuestion,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 import { createMetric as apiCreateMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -400,7 +400,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
     cy.signInAsNormalUser();
     openOrdersTable();
 
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
   });
 
   it("should not duplicate column in settings when removing and adding it back", () => {
@@ -416,7 +416,7 @@ describe("#22206 adding and removing columns doesn't duplicate columns", () => {
     // rerun query
     cy.findAllByTestId("run-button").first().click();
     cy.wait("@dataset");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     // add column back again
     cy.findByTestId("sidebar-content")

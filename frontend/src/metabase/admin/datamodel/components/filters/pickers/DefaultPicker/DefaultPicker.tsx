@@ -22,8 +22,8 @@ import TextPicker from "../TextPicker";
 
 import {
   BetweenLayoutContainer,
-  BetweenLayoutFieldSeparator,
   BetweenLayoutFieldContainer,
+  BetweenLayoutFieldSeparator,
   DefaultPickerContainer,
 } from "./DefaultPicker.styled";
 

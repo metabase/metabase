@@ -4,13 +4,13 @@ import { useMemo } from "react";
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Dashboard,
-  QuestionDashboardCard,
-  DashCardId,
   CardId,
   ClickBehavior,
-  DatasetData,
+  DashCardId,
+  Dashboard,
   DatasetColumn,
+  DatasetData,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import { SidebarContent } from "./ClickBehaviorSidebar.styled";

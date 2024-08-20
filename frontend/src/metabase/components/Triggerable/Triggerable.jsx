@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import styled from "@emotion/styled";
 import cx from "classnames";
-import { createRef, cloneElement, Children, Component } from "react";
+import { Children, Component, cloneElement, createRef } from "react";
 
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";

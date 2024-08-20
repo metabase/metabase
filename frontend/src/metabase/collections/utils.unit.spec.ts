@@ -1,9 +1,9 @@
 import {
-  isRootPersonalCollection,
   canonicalCollectionId,
-  isRootCollection,
   isItemCollection,
   isReadOnlyCollection,
+  isRootCollection,
+  isRootPersonalCollection,
 } from "metabase/collections/utils";
 import {
   createMockCollection,

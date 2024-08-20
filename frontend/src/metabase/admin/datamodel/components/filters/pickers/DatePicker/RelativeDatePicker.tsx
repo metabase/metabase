@@ -6,6 +6,7 @@ import { t } from "ttag";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
 import { isValidTimeInterval } from "metabase/lib/time";
+import { DEFAULT_POPOVER_Z_INDEX } from "metabase/ui";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   formatStartingFrom,
@@ -18,13 +19,13 @@ import {
 } from "metabase-lib/v1/queries/utils/query-time";
 
 import {
+  DateUnitSelector,
   GridContainer,
   GridText,
   MoreButton,
+  NumericInput,
   OptionButton,
   OptionsContainer,
-  DateUnitSelector,
-  NumericInput,
 } from "./RelativeDatePicker.styled";
 
 type RelativeDatePickerProps = {
@@ -225,6 +226,7 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
           placement="bottom-start"
           content={optionsContent}
           onClose={() => setOptionsVisible(false)}
+          zIndex={DEFAULT_POPOVER_Z_INDEX}
         >
           <MoreButton
             icon="ellipsis"

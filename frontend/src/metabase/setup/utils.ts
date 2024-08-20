@@ -6,7 +6,7 @@ import { UtilApi } from "metabase/services";
 import type { LocaleData } from "metabase-types/api";
 import type { Locale } from "metabase-types/store";
 
-import { SUBSCRIBE_URL, SUBSCRIBE_TOKEN } from "./constants";
+import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "./constants";
 
 export const getLocales = (
   localeData: LocaleData[] = [["en", "English"]],

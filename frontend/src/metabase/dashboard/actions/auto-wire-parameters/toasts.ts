@@ -7,7 +7,7 @@ import {
   setMultipleDashCardAttributes,
 } from "metabase/dashboard/actions";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import type { QuestionDashboardCard, DashCardId } from "metabase-types/api";
+import type { DashCardId, QuestionDashboardCard } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
 export const AUTO_WIRE_TOAST_ID = _.uniqueId();

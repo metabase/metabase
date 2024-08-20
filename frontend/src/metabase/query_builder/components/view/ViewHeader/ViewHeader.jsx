@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { useEffect, useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -19,35 +19,35 @@ import { getDashboard } from "metabase/query_builder/selectors";
 import * as Lib from "metabase-lib";
 
 import {
-  AdHocViewHeading,
-  SaveButton,
-  SavedQuestionHeaderButtonContainer,
-  ViewHeaderMainLeftContentContainer,
-  ViewHeaderLeftSubHeading,
-  ViewHeaderContainer,
-  StyledLastEditInfoLabel,
-  StyledQuestionDataSource,
-  SavedQuestionLeftSideRoot,
   AdHocLeftSideRoot,
-  HeaderDivider,
-  ViewHeaderActionPanel,
-  ViewHeaderIconButtonContainer,
+  AdHocViewHeading,
   BackButton,
   BackButtonContainer,
+  HeaderDivider,
+  SaveButton,
+  SavedQuestionHeaderButtonContainer,
+  SavedQuestionLeftSideRoot,
+  StyledLastEditInfoLabel,
+  StyledQuestionDataSource,
+  ViewHeaderActionPanel,
+  ViewHeaderContainer,
+  ViewHeaderIconButtonContainer,
+  ViewHeaderLeftSubHeading,
+  ViewHeaderMainLeftContentContainer,
   ViewRunButtonWithTooltip,
 } from "./ViewHeader.styled";
 import {
-  ToggleNativeQueryPreview,
-  HeadBreadcrumbs,
+  ExploreResultsLink,
+  FilterHeader,
   FilterHeaderButton,
   FilterHeaderToggle,
-  FilterHeader,
-  ExploreResultsLink,
+  HeadBreadcrumbs,
   QuestionActions,
-  QuestionNotebookButton,
   QuestionDataSource,
   QuestionDescription,
+  QuestionNotebookButton,
   QuestionSummarizeWidget,
+  ToggleNativeQueryPreview,
 } from "./components";
 import { canExploreResults } from "./utils";
 
@@ -340,7 +340,6 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className={CS.mb1}
             question={question}
             isObjectDetail={isObjectDetail}
             subHead

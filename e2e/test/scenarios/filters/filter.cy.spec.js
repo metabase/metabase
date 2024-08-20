@@ -1,28 +1,28 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  cartesianChartCircleWithColors,
+  checkExpressionEditorHelperPopoverPosition,
   enterCustomColumnDetails,
-  restore,
-  openOrdersTable,
-  openProductsTable,
-  openReviewsTable,
-  openPeopleTable,
-  popover,
-  visitQuestionAdhoc,
-  visualize,
-  summarize,
+  expressionEditorWidget,
   filter,
   filterField,
   filterFieldPopover,
+  getNotebookStep,
   join,
   joinTable,
-  setupBooleanQuery,
-  checkExpressionEditorHelperPopoverPosition,
-  getNotebookStep,
+  openOrdersTable,
+  openPeopleTable,
+  openProductsTable,
+  openReviewsTable,
+  popover,
   queryBuilderMain,
+  restore,
   selectFilterOperator,
-  expressionEditorWidget,
-  cartesianChartCircleWithColors,
+  setupBooleanQuery,
+  summarize,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS, REVIEWS_ID } =
@@ -132,7 +132,7 @@ describe("scenarios > question > filter", () => {
     cy.findByTestId("apply-filters").click();
 
     cy.log("Reported failing on v0.36.4 and v0.36.5.1");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
     cy.findAllByText("148.23"); // one of the subtotals for this product
     cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
   });

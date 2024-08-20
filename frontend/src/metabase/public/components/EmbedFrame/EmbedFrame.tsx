@@ -13,6 +13,7 @@ import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import { getDashboardType } from "metabase/dashboard/utils";
 import { parseHashOptions } from "metabase/lib/browser";
 import {
   initializeIframeResizer,
@@ -166,6 +167,10 @@ function EmbedFrame({
     hide_download_button,
   } = parseHashOptions(location.hash) as HashOptions;
 
+  const isPublicDashboard = Boolean(
+    dashboard && getDashboardType(dashboard.id) === "public",
+  );
+
   const hideParameters = [hide_parameters, hiddenParameterSlugs]
     .filter(Boolean)
     .join(",");
@@ -196,6 +201,7 @@ function EmbedFrame({
         className,
         EMBED_THEME_CLASSES(theme),
       )}
+      hasVisibleOverflowWhenPriting={isPublicDashboard}
       data-testid="embed-frame"
       data-embed-theme={theme}
     >

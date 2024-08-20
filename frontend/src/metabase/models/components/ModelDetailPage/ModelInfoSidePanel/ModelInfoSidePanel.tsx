@@ -7,12 +7,12 @@ import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Card } from "metabase-types/api";
 
 import {
-  ModelInfoPanel,
-  ModelInfoTitle,
-  ModelInfoText,
-  ModelInfoSection,
   ModelDescription,
   ModelInfoLink,
+  ModelInfoPanel,
+  ModelInfoSection,
+  ModelInfoText,
+  ModelInfoTitle,
 } from "./ModelInfoSidePanel.styled";
 import ModelRelationships from "./ModelRelationships";
 

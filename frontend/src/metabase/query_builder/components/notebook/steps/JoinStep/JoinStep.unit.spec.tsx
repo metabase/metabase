@@ -26,10 +26,10 @@ import {
   createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createStructuredModelCard,
   PRODUCTS_ID,
+  createSampleDatabase,
   createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

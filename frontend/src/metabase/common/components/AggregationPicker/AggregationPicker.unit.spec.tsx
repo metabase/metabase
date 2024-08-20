@@ -7,27 +7,27 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
-  createQuery,
   columnFinder,
+  createQuery,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Metric } from "metabase-types/api";
 import {
-  createMockMetric,
   COMMON_DATABASE_FEATURES,
+  createMockMetric,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS_ID,
-  PRODUCTS,
-  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { State } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";

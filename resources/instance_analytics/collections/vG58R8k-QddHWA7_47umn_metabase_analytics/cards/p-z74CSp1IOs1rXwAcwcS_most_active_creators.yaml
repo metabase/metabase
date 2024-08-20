@@ -185,6 +185,5 @@ serdes/meta:
   label: most_active_creators
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question

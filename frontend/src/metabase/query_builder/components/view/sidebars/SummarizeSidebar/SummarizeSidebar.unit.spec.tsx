@@ -9,9 +9,9 @@ import Question from "metabase-lib/v1/Question";
 import type { Card, UnsavedCard } from "metabase-types/api";
 import {
   ORDERS,
-  PRODUCTS,
   ORDERS_ID,
   PEOPLE_ID,
+  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
   createAdHocCard,

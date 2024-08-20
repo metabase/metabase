@@ -6,7 +6,7 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { color } from "metabase/lib/colors";
-import { Collapse, Icon, type ButtonProps, Box } from "metabase/ui";
+import { Box, type ButtonProps, Collapse, Icon } from "metabase/ui";
 
 import { BrowseGrid } from "./BrowseContainer.styled";
 

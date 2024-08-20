@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
 import {
-  useListRecentItemsQuery,
   useListPopularItemsQuery,
+  useListRecentItemsQuery,
 } from "metabase/api";
 import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";

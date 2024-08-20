@@ -1,5 +1,5 @@
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, fireEvent } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";

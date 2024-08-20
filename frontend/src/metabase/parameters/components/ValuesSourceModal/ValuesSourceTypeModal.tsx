@@ -21,11 +21,11 @@ import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
 import type {
+  Parameter,
+  ParameterValue,
+  ParameterValues,
   ValuesSourceConfig,
   ValuesSourceType,
-  Parameter,
-  ParameterValues,
-  ParameterValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -34,15 +34,15 @@ import { fetchParameterValues } from "../../actions";
 
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import {
+  ModalBodyWithPane,
+  ModalEmptyState,
+  ModalErrorMessage,
   ModalHelpMessage,
   ModalLabel,
-  ModalBodyWithPane,
   ModalMain,
   ModalPane,
   ModalSection,
   ModalTextArea,
-  ModalErrorMessage,
-  ModalEmptyState,
 } from "./ValuesSourceTypeModal.styled";
 
 const NEW_LINE = "\n";

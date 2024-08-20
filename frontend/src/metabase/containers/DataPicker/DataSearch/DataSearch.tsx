@@ -2,15 +2,15 @@ import { useCallback, useMemo } from "react";
 
 import { SearchResults } from "metabase/query_builder/components/DataSelector/data-search";
 import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type { Collection } from "metabase-types/api";
 
 import { useDataPicker } from "../DataPickerContext";
-import type { DataPickerValue, DataPickerDataType } from "../types";
+import type { DataPickerDataType, DataPickerValue } from "../types";
 
 interface DataSearchProps {
   searchQuery: string;

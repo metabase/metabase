@@ -1,6 +1,6 @@
 import { assocIn } from "icepick";
 
-import { userApi, sessionApi } from "metabase/api";
+import { sessionApi, userApi } from "metabase/api";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { generatePassword } from "metabase/lib/security";

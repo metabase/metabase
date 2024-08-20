@@ -7,15 +7,15 @@ import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
+  getLastSettingsPutPayload,
   getSection,
   selectUsageReason,
   setup,
   skipLanguageStep,
   skipWelcomeScreen,
   submitUserInfoStep,
-  getLastSettingsPutPayload,
 } from "./setup";
 
 describe("setup (OSS)", () => {
@@ -139,7 +139,7 @@ describe("setup (OSS)", () => {
       await selectUsageReason("embedding");
       await clickNextStep();
 
-      await screen.getByText("Finish").click();
+      await userEvent.click(screen.getByText("Finish"));
 
       expect(await getLastSettingsPutPayload()).toEqual({
         "embedding-homepage": "visible",
@@ -158,9 +158,9 @@ describe("setup (OSS)", () => {
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
 
-      await screen.getByText("I'll add my data later").click();
+      await userEvent.click(screen.getByText("I'll add my data later"));
 
-      await screen.getByText("Finish").click();
+      await userEvent.click(screen.getByText("Finish"));
 
       const flags = await getLastSettingsPutPayload();
 
@@ -186,7 +186,7 @@ describe("setup (OSS)", () => {
       await selectUsageReason("embedding");
       await clickNextStep();
 
-      await screen.getByText("Finish").click();
+      await userEvent.click(screen.getByText("Finish"));
 
       const flags = await getLastSettingsPutPayload();
 

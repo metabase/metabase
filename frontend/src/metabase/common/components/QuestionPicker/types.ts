@@ -1,7 +1,7 @@
 import type {
+  CardId,
   ListCollectionItemsRequest,
   SearchModel,
-  CardId,
 } from "metabase-types/api";
 
 import type {

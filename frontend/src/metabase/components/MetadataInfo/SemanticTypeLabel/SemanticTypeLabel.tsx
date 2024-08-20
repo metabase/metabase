@@ -6,8 +6,8 @@ import {
 } from "metabase/lib/schema_metadata";
 
 import {
-  LabelContainer,
   Label,
+  LabelContainer,
   RelativeSizeIcon,
 } from "../MetadataInfo.styled";
 

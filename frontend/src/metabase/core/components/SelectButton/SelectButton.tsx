@@ -3,9 +3,9 @@ import { forwardRef, useCallback, useMemo } from "react";
 import * as React from "react";
 
 import {
-  SelectButtonRoot,
-  SelectButtonIcon,
   SelectButtonContent,
+  SelectButtonIcon,
+  SelectButtonRoot,
 } from "./SelectButton.styled";
 
 export interface SelectButtonProps

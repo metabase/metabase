@@ -1017,3 +1017,8 @@
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
        (subs s 0 (.-read result)))))
+
+(defn rfirst
+  "Return first item from Reducible"
+  [reducible]
+  (reduce (fn [_ fst] (reduced fst)) nil reducible))

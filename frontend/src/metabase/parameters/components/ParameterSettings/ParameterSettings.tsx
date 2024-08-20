@@ -9,13 +9,13 @@ import {
 } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
+  Box,
+  Button,
   Radio,
+  Select,
   Stack,
   Text,
   TextInput,
-  Box,
-  Select,
-  Button,
 } from "metabase/ui";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";

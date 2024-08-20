@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { Button, Menu, Icon } from "metabase/ui";
+import { Button, Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { getAvailableItems, getSelectedItem } from "./utils";

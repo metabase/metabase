@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import { useDeleteApiKeyMutation } from "metabase/api";
 import {
-  FormProvider,
   Form,
-  FormSubmitButton,
   FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
 } from "metabase/forms";
-import { Text, Button, Group, Modal, Stack } from "metabase/ui";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { ApiKey } from "metabase-types/api";
 
 export const DeleteApiKeyModal = ({

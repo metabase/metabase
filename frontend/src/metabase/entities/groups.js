@@ -1,9 +1,9 @@
 import { assocIn } from "icepick";
 
 import {
+  CLEAR_MEMBERSHIPS,
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
-  CLEAR_MEMBERSHIPS,
 } from "metabase/admin/people/events";
 import { permissionApi } from "metabase/api";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";

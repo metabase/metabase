@@ -1,24 +1,24 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitQuestion,
-  popover,
-  visitIframe,
-  openStaticEmbeddingModal,
-  echartsContainer,
   cartesianChartCircle,
-  testPairedTooltipValues,
   describeEE,
+  echartsContainer,
   filterWidget,
-  visitEmbeddedPage,
+  openStaticEmbeddingModal,
+  popover,
+  restore,
   setTokenFeatures,
+  testPairedTooltipValues,
+  visitEmbeddedPage,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 import {
-  regularQuestion,
-  questionWithAggregation,
   joinedQuestion,
+  questionWithAggregation,
+  regularQuestion,
 } from "./shared/embedding-questions";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;

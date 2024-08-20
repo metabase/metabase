@@ -1,9 +1,9 @@
 import {
-  Root,
-  EditIcon,
-  Title,
-  Subtitle,
   ButtonsContainer,
+  EditIcon,
+  Root,
+  Subtitle,
+  Title,
 } from "./EditBar.styled";
 
 type Props = {

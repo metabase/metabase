@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
@@ -155,7 +155,6 @@ class ParameterValueWidget extends Component {
           status="clear"
           onClick={() => {
             setValue(null);
-            close();
           }}
         />
       );
@@ -198,7 +197,6 @@ class ParameterValueWidget extends Component {
           status="clear"
           onClick={() => {
             setValue(null);
-            close();
           }}
         />
       );

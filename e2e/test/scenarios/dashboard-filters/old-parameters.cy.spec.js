@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, visitDashboard } from "e2e/support/helpers";
+import { popover, restore, visitDashboard } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 

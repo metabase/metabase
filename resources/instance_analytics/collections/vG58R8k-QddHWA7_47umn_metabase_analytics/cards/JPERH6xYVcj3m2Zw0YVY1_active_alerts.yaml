@@ -76,6 +76,5 @@ serdes/meta:
   label: active_alerts
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question

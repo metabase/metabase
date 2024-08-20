@@ -1,6 +1,6 @@
 import type {
-  SerializedError,
   AnyAction,
+  SerializedError,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
 import type { JSX } from "react";

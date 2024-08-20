@@ -21,11 +21,11 @@ import {
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
-import { Loader, Text, Stack } from "metabase/ui";
+import { Loader, Stack, Text } from "metabase/ui";
 import type {
-  SearchResponse as SearchResultsType,
   CollectionItem,
   SearchModel,
+  SearchResponse as SearchResultsType,
 } from "metabase-types/api";
 
 export type SearchResultsFooter =
@@ -51,7 +51,7 @@ export type SearchResultsProps = {
 
 export const SearchLoadingSpinner = () => (
   <Stack p="xl" align="center">
-    <Loader size="lg" data-testid="loading-spinner" />
+    <Loader size="lg" data-testid="loading-indicator" />
     <Text size="xl" color="text-light">
       {t`Loading…`}
     </Text>

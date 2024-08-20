@@ -4,8 +4,8 @@ import _ from "underscore";
 import type { OnMoveWithOneItem } from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
-  CollectionPickerModal,
   type CollectionPickerItem,
+  CollectionPickerModal,
 } from "metabase/common/components/CollectionPicker";
 import type {
   CollectionId,

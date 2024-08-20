@@ -94,7 +94,7 @@ describeWithSnowplow("scenarios > search > snowplow", () => {
         qs: { top_nav: true, search: true },
       });
       cy.findByPlaceholderText("Search…").type("coun");
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       expectGoodSnowplowEvent({
         event: NEW_SEARCH_QUERY_EVENT_NAME,

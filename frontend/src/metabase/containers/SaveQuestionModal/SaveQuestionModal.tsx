@@ -6,8 +6,8 @@ import * as Yup from "yup";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import {
   canonicalCollectionId,
-  isInstanceAnalyticsCollection,
   getInstanceAnalyticsCustomCollection,
+  isInstanceAnalyticsCollection,
 } from "metabase/collections/utils";
 import { useCollectionListQuery } from "metabase/common/hooks";
 import Button from "metabase/core/components/Button";
@@ -26,7 +26,7 @@ import {
   getIsSavedQuestionChanged,
   getSubmittableQuestion,
 } from "metabase/query_builder/selectors";
-import { Flex, Modal, DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
+import { DEFAULT_MODAL_Z_INDEX, Flex, Modal } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
@@ -70,7 +70,7 @@ interface SaveQuestionModalProps {
   onSave: (question: Question) => Promise<void>;
   onClose: () => void;
   multiStep?: boolean;
-  initialCollectionId?: CollectionId;
+  initialCollectionId?: CollectionId | null;
 }
 
 interface FormValues {

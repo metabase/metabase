@@ -4,11 +4,11 @@ import { t } from "ttag";
 
 import {
   Checkbox,
+  Icon,
   MultiAutocomplete,
   Stack,
   Text,
   TextInput,
-  Icon,
 } from "metabase/ui";
 import type { FieldValue } from "metabase-types/api";
 

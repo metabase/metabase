@@ -2,7 +2,7 @@ import type { AxisScale } from "@visx/axis";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { GridColumns } from "@visx/grid";
 import { Group } from "@visx/group";
-import type { StringLike, NumberLike } from "@visx/scale";
+import type { NumberLike, StringLike } from "@visx/scale";
 import { scaleBand } from "@visx/scale";
 import { Bar } from "@visx/shape";
 import { Text } from "@visx/text";

@@ -11,8 +11,8 @@ import { trackLicenseTokenStepSubmitted } from "../analytics";
 import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
   getSection,
   selectUsageReason,
   setup,
@@ -180,7 +180,7 @@ const errMsg = () => screen.findByText(/This token doesn’t seem to be valid/);
 const submitBtn = () => screen.findByRole("button", { name: "Activate" });
 
 const submit = async () => {
-  (await submitBtn()).click();
+  await userEvent.click(await submitBtn());
 
   const settingEndpoint = "path:/api/setting/premium-embedding-token";
   await waitFor(() => expect(fetchMock.done(settingEndpoint)).toBe(true));

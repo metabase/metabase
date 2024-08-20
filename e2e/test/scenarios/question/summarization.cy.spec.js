@@ -1,21 +1,21 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
   changeBinningForDimension,
+  checkExpressionEditorHelperPopoverPosition,
+  enterCustomColumnDetails,
+  expressionEditorWidget,
   getDimensionByName,
   getRemoveDimensionButton,
+  interceptIfNotPreviouslyDefined,
+  openOrdersTable,
+  openReviewsTable,
+  popover,
+  restore,
+  rightSidebar,
   summarize,
   visitQuestion,
-  popover,
-  openReviewsTable,
-  openOrdersTable,
-  enterCustomColumnDetails,
   visualize,
-  checkExpressionEditorHelperPopoverPosition,
-  rightSidebar,
-  interceptIfNotPreviouslyDefined,
-  expressionEditorWidget,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

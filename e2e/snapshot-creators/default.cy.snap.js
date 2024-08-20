@@ -1,19 +1,19 @@
 import _ from "underscore";
 
 import {
-  USERS,
-  USER_GROUPS,
+  METABASE_SECRET_KEY,
   SAMPLE_DB_ID,
   SAMPLE_DB_TABLES,
-  METABASE_SECRET_KEY,
+  USERS,
+  USER_GROUPS,
 } from "e2e/support/cypress_data";
 import {
-  snapshot,
-  restore,
-  withSampleDatabase,
-  setTokenFeatures,
-  describeEE,
   deleteToken,
+  describeEE,
+  restore,
+  setTokenFeatures,
+  snapshot,
+  withSampleDatabase,
 } from "e2e/support/helpers";
 
 const {

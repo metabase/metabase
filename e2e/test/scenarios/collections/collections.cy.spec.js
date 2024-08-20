@@ -4,33 +4,33 @@ import _ from "underscore";
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
-  FIRST_COLLECTION_ID,
-  SECOND_COLLECTION_ID,
-  THIRD_COLLECTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   ALL_USERS_GROUP_ID,
+  FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  openOrdersTable,
-  navigationSidebar,
-  openNavigationSidebar,
   closeNavigationSidebar,
-  visitCollection,
+  createCollection,
+  createQuestion,
   dragAndDrop,
-  openUnpinnedItemMenu,
+  entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   getPinnedSection,
   moveOpenedCollectionTo,
-  pickEntity,
-  entityPickerModal,
-  openCollectionMenu,
-  createQuestion,
-  entityPickerModalItem,
-  createCollection,
+  navigationSidebar,
   openCollectionItemMenu,
-  entityPickerModalTab,
+  openCollectionMenu,
+  openNavigationSidebar,
+  openOrdersTable,
+  openUnpinnedItemMenu,
+  pickEntity,
+  popover,
+  restore,
+  visitCollection,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -505,7 +505,7 @@ describe("scenarios > collection defaults", () => {
       // we need to do this manually because we need to await the correct number of api requests to keep this from flaking
 
       entityPickerModal().within(() => {
-        cy.findByTestId("loading-spinner").should("not.exist");
+        cy.findByTestId("loading-indicator").should("not.exist");
         cy.findByRole("tab", { name: /Collections/ }).click();
         cy.wait([
           "@getCollectionItems",
