@@ -4,10 +4,10 @@ import type { LegendItem } from "metabase/visualizations/echarts/cartesian/model
 import {
   DEFAULT_LEGEND_FONT_SIZE,
   DEFAULT_LEGEND_FONT_WEIGHT,
+  DEFAULT_LEGEND_LINE_HEIGHT,
   LEGEND_CIRCLE_MARGIN_RIGHT,
   LEGEND_CIRCLE_SIZE,
   LEGEND_ITEM_MARGIN_RIGHT,
-  DEFAULT_LEGEND_LINE_HEIGHT,
 } from "./constants";
 import type { PositionedLegendItem } from "./types";
 

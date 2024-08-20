@@ -9,8 +9,8 @@ import EmptyState from "./EmptyState";
 import RawDataPicker from "./RawDataPicker";
 import { MIN_SEARCH_LENGTH } from "./constants";
 import type {
-  DataPickerProps,
   DataPickerDataType,
+  DataPickerProps,
   DataTypeInfoItem,
 } from "./types";
 

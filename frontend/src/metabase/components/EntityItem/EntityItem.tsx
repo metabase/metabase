@@ -13,10 +13,10 @@ import type {
   OnToggleSelected,
 } from "metabase/collections/types";
 import {
-  isPreviewShown,
   isFullyParameterized,
   isItemModel,
   isItemPinned,
+  isPreviewShown,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
 import CheckBox from "metabase/core/components/CheckBox";
@@ -24,7 +24,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Swapper from "metabase/core/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
-import type { IconProps, IconName } from "metabase/ui";
+import type { IconName, IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type { CollectionItem } from "metabase-types/api";
 

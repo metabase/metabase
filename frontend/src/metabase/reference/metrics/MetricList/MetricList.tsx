@@ -13,7 +13,7 @@ import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getMetrics, getError, getLoading } from "../../selectors";
+import { getError, getLoading, getMetrics } from "../../selectors";
 
 const emptyStateData = {
   title: t`Metrics are the official numbers that your team cares about`,

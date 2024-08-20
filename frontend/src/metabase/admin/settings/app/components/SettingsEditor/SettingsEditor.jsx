@@ -25,8 +25,8 @@ import {
   getDerivedSettingValues,
   getNewVersionAvailable,
   getSections,
-  getSettings,
   getSettingValues,
+  getSettings,
 } from "../../../selectors";
 import {
   initializeSettings,

@@ -4,21 +4,21 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addSummaryGroupingField,
-  restore,
-  popover,
+  appBar,
+  collectionOnTheGoModal,
+  entityPickerModal,
   modal,
+  openNotebook,
   openOrdersTable,
+  openQuestionActions,
+  popover,
+  queryBuilderHeader,
+  questionInfoButton,
+  restore,
+  rightSidebar,
+  selectFilterOperator,
   summarize,
   visitQuestion,
-  openQuestionActions,
-  questionInfoButton,
-  rightSidebar,
-  appBar,
-  queryBuilderHeader,
-  openNotebook,
-  selectFilterOperator,
-  entityPickerModal,
-  collectionOnTheGoModal,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {

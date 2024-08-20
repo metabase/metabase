@@ -3,9 +3,9 @@ import { getDefaultColumn } from "metabase/visualizations/lib/settings/utils";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { VIZ_SETTINGS_DEFAULTS } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import {
+  getComparisons,
   getDefaultComparison,
   isSuitableScalarColumn,
-  getComparisons,
 } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
 

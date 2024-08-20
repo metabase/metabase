@@ -27,8 +27,8 @@ import type {
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import type {
-  EChartsSeriesMouseEvent,
   EChartsSeriesBrushEndEvent,
+  EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {

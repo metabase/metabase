@@ -1,5 +1,5 @@
 import type { MantineThemeOverride } from "@mantine/core";
-import type { Store, Reducer } from "@reduxjs/toolkit";
+import type { Reducer, Store } from "@reduxjs/toolkit";
 import type { MatcherFunction } from "@testing-library/dom";
 import type { ByRoleMatcher } from "@testing-library/react";
 import { render, screen, waitFor } from "@testing-library/react";
@@ -11,7 +11,7 @@ import { DragDropContextProvider } from "react-dnd";
 import HTML5Backend from "react-dnd-html5-backend";
 import { Provider } from "react-redux";
 import { Router, useRouterHistory } from "react-router";
-import { routerReducer, routerMiddleware } from "react-router-redux";
+import { routerMiddleware, routerReducer } from "react-router-redux";
 import _ from "underscore";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";

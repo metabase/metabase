@@ -2,10 +2,10 @@ import { assocIn } from "icepick";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
+  combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-  combineReducers,
 } from "metabase/lib/redux";
 
 import { ApplicationPermissionsApi } from "./api";

@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { IndexRoute, IndexRedirect } from "react-router";
+import { IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { connectedReduxRedirect } from "redux-auth-wrapper/history3/redirect";
 import { t } from "ttag";
@@ -31,16 +31,16 @@ import { Logs } from "metabase/admin/tasks/components/Logs";
 import { JobInfoApp } from "metabase/admin/tasks/containers/JobInfoApp";
 import { JobTriggersModal } from "metabase/admin/tasks/containers/JobTriggersModal";
 import {
-  ModelCacheRefreshJobs,
   ModelCacheRefreshJobModal,
+  ModelCacheRefreshJobs,
 } from "metabase/admin/tasks/containers/ModelCacheRefreshJobs";
 import { TaskModal } from "metabase/admin/tasks/containers/TaskModal";
 import { TasksApp } from "metabase/admin/tasks/containers/TasksApp";
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import Tools from "metabase/admin/tools/containers/Tools";
 import {
-  createAdminRouteGuard,
   createAdminRedirect,
+  createAdminRouteGuard,
 } from "metabase/admin/utils";
 import CS from "metabase/css/core/index.css";
 import { withBackground } from "metabase/hoc/Background";
@@ -48,8 +48,8 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
-  PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_ADMIN_TOOLS,
+  PLUGIN_ADMIN_USER_MENU_ROUTES,
 } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 

@@ -8,12 +8,12 @@ import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import {
-  createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardCard,
-  createMockUser,
   createMockCard,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";

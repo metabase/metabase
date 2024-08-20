@@ -9,10 +9,10 @@ import {
   setDropdownFilterType,
   setFilterListSource,
   setFilterQuestionSource,
+  setTokenFeatures,
   visitEmbeddedPage,
   visitPublicQuestion,
   visitQuestion,
-  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";

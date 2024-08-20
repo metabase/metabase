@@ -2,11 +2,11 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  openOrdersTable,
-  queryBuilderMain,
   createNativeQuestion,
+  openOrdersTable,
+  popover,
+  queryBuilderMain,
+  restore,
 } from "e2e/support/helpers";
 
 const { ORDERS } = SAMPLE_DATABASE;

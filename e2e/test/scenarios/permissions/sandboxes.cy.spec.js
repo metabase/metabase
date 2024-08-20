@@ -1,32 +1,32 @@
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   NORMAL_USER_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  chartPathWithFillColor,
   describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
   modal,
   openOrdersTable,
   openPeopleTable,
   openReviewsTable,
   popover,
-  restore,
   remapDisplayValueToFK,
-  setupSMTP,
-  visualize,
-  summarize,
-  filter,
-  visitQuestion,
-  visitDashboard,
-  sidebar,
-  startNewQuestion,
+  restore,
+  selectFilterOperator,
   sendEmailAndAssert,
   setTokenFeatures,
-  selectFilterOperator,
-  entityPickerModal,
-  chartPathWithFillColor,
-  entityPickerModalTab,
+  setupSMTP,
+  sidebar,
+  startNewQuestion,
+  summarize,
+  visitDashboard,
+  visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 const {

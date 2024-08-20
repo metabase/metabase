@@ -30,17 +30,17 @@ import {
   getCard,
   getIsResultDirty,
   getOriginalQuestion,
-  getQuestion,
-  isBasedOnExistingQuestion,
   getParameters,
+  getQuestion,
   getSubmittableQuestion,
+  isBasedOnExistingQuestion,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars } from "../ui";
 
-import { SOFT_RELOAD_CARD, API_UPDATE_QUESTION } from "./types";
+import { API_UPDATE_QUESTION, SOFT_RELOAD_CARD } from "./types";
 import { updateQuestion } from "./updateQuestion";
 
 export const RESET_QB = "metabase/qb/RESET_QB";

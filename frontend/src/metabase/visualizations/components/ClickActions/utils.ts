@@ -2,8 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type {
-  RegularClickAction,
   ClickActionSection,
+  RegularClickAction,
 } from "metabase/visualizations/types";
 
 type Section = {

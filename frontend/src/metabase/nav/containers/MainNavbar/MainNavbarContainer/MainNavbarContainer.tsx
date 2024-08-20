@@ -1,5 +1,5 @@
 import type { LocationDescriptor } from "history";
-import { useCallback, useMemo, useState, memo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
@@ -13,9 +13,9 @@ import Modal from "metabase/components/Modal";
 import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import type { CollectionTreeItem } from "metabase/entities/collections";
 import Collections, {
+  ROOT_COLLECTION,
   buildCollectionTree,
   getCollectionIcon,
-  ROOT_COLLECTION,
 } from "metabase/entities/collections";
 import Databases from "metabase/entities/databases";
 import * as Urls from "metabase/lib/urls";

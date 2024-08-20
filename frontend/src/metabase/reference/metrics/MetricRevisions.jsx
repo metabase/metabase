@@ -16,13 +16,13 @@ import R from "metabase/reference/Reference.module.css";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
-  getMetricRevisions,
+  getError,
+  getLoading,
   getMetric,
+  getMetricRevisions,
   getSegment,
   getTables,
   getUser,
-  getLoading,
-  getError,
 } from "../selectors";
 
 const emptyStateData = {

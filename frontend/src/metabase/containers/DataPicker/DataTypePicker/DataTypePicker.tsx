@@ -1,13 +1,13 @@
 import type { DataPickerDataType, DataTypeInfoItem } from "../types";
 
 import {
-  List,
   ItemContainer,
-  TitleContainer,
+  ItemDescription,
+  ItemDescriptionContainer,
   ItemIcon,
   ItemTitle,
-  ItemDescriptionContainer,
-  ItemDescription,
+  List,
+  TitleContainer,
 } from "./DataTypePicker.styled";
 
 interface DataTypePickerProps {

@@ -4,7 +4,7 @@ import { useEvent } from "react-use";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
-import { exportFormats, exportFormatPng } from "metabase/lib/urls";
+import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Icon, Tooltip, useHover } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";

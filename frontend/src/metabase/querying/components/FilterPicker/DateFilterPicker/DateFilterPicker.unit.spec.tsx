@@ -6,9 +6,9 @@ import * as Lib from "metabase-lib";
 
 import {
   createQuery,
-  createQueryWithSpecificDateFilter,
-  createQueryWithRelativeDateFilter,
   createQueryWithExcludeDateFilter,
+  createQueryWithRelativeDateFilter,
+  createQueryWithSpecificDateFilter,
   findDateTimeColumn,
 } from "../test-utils";
 

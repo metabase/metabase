@@ -3,20 +3,20 @@ import userEvent from "@testing-library/user-event";
 import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getCollectionVirtualSchemaId,
   getQuestionVirtualTableId,
-  SAVED_QUESTIONS_VIRTUAL_DB_ID,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import {
-  setup,
-  SAMPLE_DATABASE,
   EMPTY_COLLECTION,
   SAMPLE_COLLECTION,
+  SAMPLE_DATABASE,
   SAMPLE_MODEL,
   SAMPLE_MODEL_2,
   SAMPLE_MODEL_3,
   SAMPLE_QUESTION,
+  setup,
 } from "./common";
 
 const ROOT_COLLECTION_MODEL_VIRTUAL_SCHEMA_ID = getCollectionVirtualSchemaId(

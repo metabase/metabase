@@ -9,7 +9,7 @@ import CS from "metabase/css/core/index.css";
 
 import { normalizeCacheTTL } from "../../utils";
 
-import { Text, CacheSectionRoot, CachePopover } from "./CacheSection.styled";
+import { CachePopover, CacheSectionRoot, Text } from "./CacheSection.styled";
 
 interface CacheSectionProps {
   initialCacheTTL: number | null;

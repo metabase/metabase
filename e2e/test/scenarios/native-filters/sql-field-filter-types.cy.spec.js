@@ -1,4 +1,4 @@
-import { restore, openNativeEditor } from "e2e/support/helpers";
+import { openNativeEditor, restore } from "e2e/support/helpers";
 
 import * as DateFilter from "./helpers/e2e-date-filter-helpers";
 import {

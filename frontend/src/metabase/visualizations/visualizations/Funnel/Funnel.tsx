@@ -10,13 +10,13 @@ import { ChartSettingOrderedSimple } from "metabase/visualizations/components/se
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import { groupRawSeriesMetrics } from "metabase/visualizations/lib/dataset";
 import {
-  MinRowsError,
   ChartSettingsError,
+  MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
-  metricSetting,
   dimensionSetting,
+  metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import {
   getDefaultSize,

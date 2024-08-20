@@ -1,8 +1,8 @@
 import type {
-  RecentItem,
   PopularItem,
-  RecentItemsResponse,
   PopularItemsResponse,
+  RecentItem,
+  RecentItemsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";

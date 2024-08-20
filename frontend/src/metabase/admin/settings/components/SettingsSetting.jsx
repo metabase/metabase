@@ -8,7 +8,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { alpha, color } from "metabase/lib/colors";
 import { Box } from "metabase/ui";
 
-import { settingToFormFieldId, getEnvVarDocsUrl } from "../utils";
+import { getEnvVarDocsUrl, settingToFormFieldId } from "../utils";
 
 import SettingHeader from "./SettingHeader";
 import {

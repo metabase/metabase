@@ -8,7 +8,7 @@ import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PLUGIN_CACHING } from "metabase/plugins";
-import { Stack, Flex } from "metabase/ui";
+import { Flex, Stack } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 import { DurationUnit } from "metabase-types/api";
 
@@ -20,8 +20,8 @@ import type { UpdateTargetId } from "../types";
 
 import {
   Panel,
-  TabWrapper,
   RoundedBox,
+  TabWrapper,
 } from "./StrategyEditorForDatabases.styled";
 import { StrategyForm } from "./StrategyForm";
 

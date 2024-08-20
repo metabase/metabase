@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { splice } from "icepick";
 import { Component } from "react";
-import { Droppable, Draggable } from "react-beautiful-dnd";
+import { Draggable, Droppable } from "react-beautiful-dnd";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,8 +13,8 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
   DroppableContainer,
-  FieldPartitionColumn,
   EmptyColumnPlaceholder,
+  FieldPartitionColumn,
 } from "./ChartSettingFieldsPartition.styled";
 
 const columnMove = (columns, from, to) => {

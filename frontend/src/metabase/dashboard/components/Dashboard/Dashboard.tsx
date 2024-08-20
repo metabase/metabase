@@ -21,23 +21,23 @@ import { getMainElement } from "metabase/lib/dom";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Dashboard as IDashboard,
-  DashboardId,
+  CardId,
   DashCardDataMap,
   DashCardId,
+  DashboardCard,
+  DashboardId,
+  DashboardTabId,
   Database,
   DatabaseId,
+  Dashboard as IDashboard,
   ParameterId,
-  ParameterValueOrArray,
-  CardId,
-  DashboardTabId,
   ParameterMappingOptions,
+  ParameterValueOrArray,
   RowValue,
-  VisualizationSettings,
   ValuesQueryType,
-  ValuesSourceType,
   ValuesSourceConfig,
-  DashboardCard,
+  ValuesSourceType,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -53,10 +53,10 @@ import { DashboardSidebars } from "../DashboardSidebars";
 
 import {
   CardsContainer,
-  DashboardStyled,
-  DashboardLoadingAndErrorWrapper,
   DashboardBody,
   DashboardHeaderContainer,
+  DashboardLoadingAndErrorWrapper,
+  DashboardStyled,
   ParametersAndCardsContainer,
 } from "./Dashboard.styled";
 import {

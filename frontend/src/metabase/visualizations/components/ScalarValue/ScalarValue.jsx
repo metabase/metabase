@@ -14,13 +14,13 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import {
-  ScalarRoot,
-  ScalarValueWrapper,
-  ScalarTitleContainer,
   ScalarDescriptionContainer,
   ScalarDescriptionIcon,
   ScalarDescriptionPlaceholder,
+  ScalarRoot,
+  ScalarTitleContainer,
   ScalarTitleContent,
+  ScalarValueWrapper,
 } from "./ScalarValue.styled";
 import { findSize, getMaxFontSize } from "./utils";
 

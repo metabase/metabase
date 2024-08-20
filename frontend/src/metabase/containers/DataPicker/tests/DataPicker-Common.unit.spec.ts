@@ -1,6 +1,6 @@
 import { screen } from "__support__/ui";
 
-import { setup, SAMPLE_DATABASE, SAMPLE_TABLE } from "./common";
+import { SAMPLE_DATABASE, SAMPLE_TABLE, setup } from "./common";
 
 describe("DataPicker", () => {
   beforeAll(() => {

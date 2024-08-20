@@ -26,11 +26,11 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   CardId,
+  DashCardId,
   Dashboard,
   DashboardCard,
-  DashCardId,
-  VisualizationSettings,
   VirtualCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
@@ -39,8 +39,8 @@ import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPane
 import { DashCardVisualization } from "./DashCardVisualization";
 import type {
   CardSlownessStatus,
-  NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
+  NavigateToNewCardFromDashboardOpts,
 } from "./types";
 
 function preventDragging(event: React.SyntheticEvent) {

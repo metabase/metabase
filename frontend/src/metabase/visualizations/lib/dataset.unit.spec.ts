@@ -3,7 +3,7 @@ import {
   createMockDatasetData,
 } from "metabase-types/api/mocks";
 
-import { sumMetric, groupDatasetMetrics } from "./dataset";
+import { groupDatasetMetrics, sumMetric } from "./dataset";
 
 describe("sumMetric", () => {
   it("should return the sum when both arguments are numbers", () => {

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Flex, Text, Icon, Box } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
 import { getCommandPaletteIcon } from "../utils";

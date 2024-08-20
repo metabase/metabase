@@ -3,8 +3,8 @@ import fetchMock from "fetch-mock";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupBookmarksEndpoints,
-  setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";

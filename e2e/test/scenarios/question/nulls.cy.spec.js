@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openOrdersTable,
-  popover,
-  summarize,
-  visitDashboard,
-  rightSidebar,
-  updateDashboardCards,
   addOrUpdateDashboardCard,
   cartesianChartCircle,
+  openOrdersTable,
+  popover,
+  restore,
+  rightSidebar,
+  summarize,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

@@ -24,10 +24,10 @@ import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-op
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type {
-  QuestionDashboardCard,
   DashCardId,
   ParameterId,
   ParameterTarget,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState, StoreDashcard } from "metabase-types/store";
 

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { forwardRef, type ChangeEventHandler } from "react";
+import { type ChangeEventHandler, forwardRef } from "react";
 
 import { DEFAULT_UPLOAD_INPUT_ID } from "./constants";
 

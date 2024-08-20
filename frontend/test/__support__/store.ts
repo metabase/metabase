@@ -11,9 +11,9 @@ import {
   MetricSchema,
   ModelIndexSchema,
   QuestionSchema,
+  SchemaSchema,
   SegmentSchema,
   SnippetSchema,
-  SchemaSchema,
   TableSchema,
   UserSchema,
 } from "metabase/schema";
@@ -24,14 +24,14 @@ import type {
   Dashboard,
   Database,
   Field,
-  NativeQuerySnippet,
   Metric,
-  Table,
-  User,
+  NativeQuerySnippet,
+  SavedQuestionDatabase,
   Schema,
   Segment,
+  Table,
+  User,
   WritebackAction,
-  SavedQuestionDatabase,
 } from "metabase-types/api";
 import type { EntitiesState } from "metabase-types/store";
 import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";

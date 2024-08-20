@@ -1,8 +1,8 @@
 import {
-  handleActions,
   combineReducers,
   createAction,
   createThunkAction,
+  handleActions,
 } from "metabase/lib/redux";
 import { MetabaseApi, RevisionsApi } from "metabase/services";
 

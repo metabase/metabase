@@ -8,9 +8,9 @@ import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();

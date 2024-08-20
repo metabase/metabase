@@ -1,7 +1,7 @@
 import cx from "classnames";
 import type { Location } from "history";
 import type * as React from "react";
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import EditBar from "metabase/components/EditBar";
@@ -18,16 +18,16 @@ import type { Collection, Dashboard } from "metabase-types/api";
 
 import {
   EditWarning,
-  HeaderRow,
   HeaderBadges,
-  HeaderContent,
-  HeaderButtonsContainer,
   HeaderButtonSection,
-  HeaderLastEditInfoLabel,
+  HeaderButtonsContainer,
   HeaderCaption,
   HeaderCaptionContainer,
-  HeaderFixedWidthContainer,
   HeaderContainer,
+  HeaderContent,
+  HeaderFixedWidthContainer,
+  HeaderLastEditInfoLabel,
+  HeaderRow,
 } from "../../components/DashboardHeaderView.styled";
 import { DashboardTabs } from "../../components/DashboardTabs/DashboardTabs";
 

@@ -1,11 +1,11 @@
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  mockSlackConfigured,
   restore,
   setupSMTP,
-  mockSlackConfigured,
   visitQuestion,
 } from "e2e/support/helpers";
 

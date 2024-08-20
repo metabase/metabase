@@ -1,4 +1,4 @@
-import type { MantineThemeOverride, MantineTheme } from "@mantine/core";
+import type { MantineTheme, MantineThemeOverride } from "@mantine/core";
 
 import type { MetabaseComponentTheme } from ".";
 

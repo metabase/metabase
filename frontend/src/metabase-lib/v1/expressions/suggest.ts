@@ -10,11 +10,11 @@ import {
   AGGREGATION_FUNCTIONS,
   EDITOR_FK_SYMBOLS,
   EXPRESSION_FUNCTIONS,
-  getMBQLName,
   MBQL_CLAUSES,
   POPULAR_AGGREGATIONS,
   POPULAR_FILTERS,
   POPULAR_FUNCTIONS,
+  getMBQLName,
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type {

@@ -16,8 +16,8 @@ import {
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import {
-  isParameterValueEmpty,
   PULSE_PARAM_EMPTY,
+  isParameterValueEmpty,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
@@ -41,21 +41,21 @@ import {
 } from "../analytics";
 import {
   getAutoApplyFiltersToastId,
+  getDashCardById,
   getDashboard,
   getDashboardBeforeEditing,
   getDashboardId,
-  getDashCardById,
   getDashcards,
   getDraftParameterValues,
-  getIsAutoApplyFilters,
-  getParameters,
-  getParameterValues,
-  getParameterMappingsBeforeEditing,
   getFiltersToReset,
+  getIsAutoApplyFilters,
+  getParameterMappingsBeforeEditing,
+  getParameterValues,
+  getParameters,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
-import { setDashboardAttributes, setDashCardAttributes } from "./core";
+import { setDashCardAttributes, setDashboardAttributes } from "./core";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;

@@ -6,10 +6,10 @@ import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series"
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 
 import {
-  SettingsIcon,
-  SettingsButton,
   ChartSettingFieldPickerRoot,
   FieldPickerColorPicker,
+  SettingsButton,
+  SettingsIcon,
 } from "./ChartSettingFieldPicker.styled";
 import ChartSettingSelect from "./ChartSettingSelect";
 

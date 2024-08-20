@@ -14,16 +14,16 @@ import {
 } from "__support__/ui";
 import type { WritebackParameter } from "metabase-types/api";
 import {
-  createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardCard,
-  createMockQueryAction,
-  createMockCard,
-  createMockParameter,
   createMockActionParameter,
+  createMockCard,
   createMockCollectionItem,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockFieldSettings,
   createMockImplicitCUDActions,
+  createMockParameter,
+  createMockQueryAction,
 } from "metabase-types/api/mocks";
 
 import { ConnectedActionDashcardSettings } from "./ActionDashcardSettings";

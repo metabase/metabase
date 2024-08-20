@@ -1,8 +1,8 @@
 import {
-  useCallback,
-  useMemo,
   type HTMLAttributes,
   type PropsWithChildren,
+  useCallback,
+  useMemo,
 } from "react";
 
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu/ActionMenu";
@@ -22,8 +22,8 @@ import {
   ColumnHeader,
   SortingControlContainer,
   SortingIcon,
-  Table,
   TBody,
+  Table,
 } from "./BaseItemsTable.styled";
 import { Columns, SortDirection } from "./Columns";
 import type { ResponsiveProps } from "./utils";

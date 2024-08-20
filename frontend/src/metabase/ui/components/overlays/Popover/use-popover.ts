@@ -1,13 +1,13 @@
 import type { Middleware, Placement } from "@floating-ui/react";
 import {
-  useFloating,
-  shift,
-  flip,
   arrow,
-  offset,
-  size,
+  flip,
   inline,
   limitShift,
+  offset,
+  shift,
+  size,
+  useFloating,
 } from "@floating-ui/react";
 import type { PopoverProps } from "@mantine/core";
 import { useDidUpdate, useUncontrolled } from "@mantine/hooks";

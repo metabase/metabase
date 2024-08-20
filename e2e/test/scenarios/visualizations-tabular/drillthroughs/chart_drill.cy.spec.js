@@ -1,24 +1,24 @@
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openOrdersTable,
-  popover,
-  visitQuestionAdhoc,
-  visualize,
-  summarize,
-  visitQuestion,
-  visitDashboard,
-  startNewQuestion,
   addOrUpdateDashboardCard,
   addSummaryField,
-  queryBuilderMain,
   cartesianChartCircle,
+  cartesianChartCircleWithColor,
   chartPathWithFillColor,
   echartsContainer,
-  cartesianChartCircleWithColor,
   entityPickerModal,
   entityPickerModalTab,
+  openOrdersTable,
+  popover,
+  queryBuilderMain,
+  restore,
+  startNewQuestion,
+  summarize,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =

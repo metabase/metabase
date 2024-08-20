@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { useState, useRef, useLayoutEffect } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { TextButton } from "metabase/components/Button.styled";

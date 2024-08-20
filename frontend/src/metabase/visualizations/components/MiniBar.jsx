@@ -2,7 +2,7 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 
 const BAR_HEIGHT = 8;

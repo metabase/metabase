@@ -17,9 +17,9 @@ import {
 } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_FIELD_VALUES,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { FilterModal } from "./FilterModal";

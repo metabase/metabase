@@ -12,11 +12,11 @@ import MetricQuestions from "metabase/reference/metrics/MetricQuestions";
 import * as actions from "metabase/reference/reference";
 
 import {
-  getUser,
-  getMetric,
-  getMetricId,
   getDatabaseId,
   getIsEditing,
+  getMetric,
+  getMetricId,
+  getUser,
 } from "../selectors";
 
 import MetricSidebar from "./MetricSidebar";

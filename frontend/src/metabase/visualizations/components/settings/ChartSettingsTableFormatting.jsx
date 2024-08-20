@@ -2,8 +2,8 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import cx from "classnames";
-import { useState, useMemo } from "react";
-import { t, jt, msgid, ngettext } from "ttag";
+import { useMemo, useState } from "react";
+import { jt, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import NumericInput from "metabase/components/NumericInput";
@@ -24,9 +24,9 @@ import {
 } from "metabase/lib/colors/groups";
 import { Icon } from "metabase/ui";
 import {
+  isBoolean,
   isNumeric,
   isString,
-  isBoolean,
 } from "metabase-lib/v1/types/utils/isa";
 
 const COMMON_OPERATOR_NAMES = {

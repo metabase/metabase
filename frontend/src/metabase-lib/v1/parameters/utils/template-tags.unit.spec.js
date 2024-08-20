@@ -1,6 +1,6 @@
 import {
-  getTemplateTags,
   getTemplateTagParameters,
+  getTemplateTags,
   remapParameterValuesToTemplateTags,
 } from "metabase-lib/v1/parameters/utils/template-tags";
 import { createMockTemplateTag } from "metabase-types/api/mocks";

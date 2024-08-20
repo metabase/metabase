@@ -1,21 +1,21 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  setActionsEnabledForDB,
   createAction,
-  visitDashboardAndCreateTab,
   describeEE,
+  modal,
+  restore,
+  setActionsEnabledForDB,
+  setTokenFeatures,
   setupSMTP,
   sidebar,
-  visitQuestion,
   visitDashboard,
-  setTokenFeatures,
+  visitDashboardAndCreateTab,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

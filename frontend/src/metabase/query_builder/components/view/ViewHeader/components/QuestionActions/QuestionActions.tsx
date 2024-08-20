@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";

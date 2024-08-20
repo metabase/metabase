@@ -4,7 +4,7 @@ import { t } from "ttag";
 import Table from "metabase-lib/v1/metadata/Table";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
-import { Label, LabelContainer, Container } from "../MetadataInfo.styled";
+import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
 
 import {
   InteractiveTableLabel,

@@ -2,19 +2,19 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  showDashboardCardActions,
-  visitDashboard,
   addOrUpdateDashboardCard,
+  editDashboard,
+  filterWidget,
   getDashboardCard,
+  popover,
   resetTestTable,
+  restore,
   resyncDatabase,
   saveDashboard,
-  filterWidget,
-  editDashboard,
   setFilter,
+  showDashboardCardActions,
   sidebar,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;

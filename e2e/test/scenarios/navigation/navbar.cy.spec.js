@@ -3,10 +3,10 @@ import {
   appBar,
   describeEE,
   navigationSidebar,
-  setTokenFeatures,
   popover,
-  visitDashboard,
   restore,
+  setTokenFeatures,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 describe("scenarios > navigation > navbar", () => {

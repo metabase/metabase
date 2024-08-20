@@ -11,12 +11,12 @@ import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import {
-  initialize,
-  setParameterValueToDefault,
-  setParameterValue,
   cancelFetchDashboardCardData,
   fetchDashboard,
   fetchDashboardCardData,
+  initialize,
+  setParameterValue,
+  setParameterValueToDefault,
 } from "metabase/dashboard/actions";
 import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
@@ -29,11 +29,11 @@ import type {
 import {
   getDashboardComplete,
   getDashcardDataMap,
-  getSlowCards,
-  getParameters,
-  getParameterValues,
   getDraftParameterValues,
+  getParameterValues,
+  getParameters,
   getSelectedTabId,
+  getSlowCards,
 } from "metabase/dashboard/selectors";
 import type {
   FetchDashboardResult,
@@ -46,8 +46,8 @@ import ParametersS from "metabase/parameters/components/ParameterValueWidget.mod
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  setPublicDashboardEndpoints,
   setEmbedDashboardEndpoints,
+  setPublicDashboardEndpoints,
 } from "metabase/services";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";

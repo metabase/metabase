@@ -3,12 +3,12 @@ import {
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
+  applyVisualizationSettingsDataTransformations,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   getSortedSeriesModels,
-  applyVisualizationSettingsDataTransformations,
-  sortDataset,
   scaleDataset,
+  sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,

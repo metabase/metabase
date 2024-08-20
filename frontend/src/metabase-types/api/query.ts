@@ -2,8 +2,8 @@ import type {
   DatabaseId,
   FieldId,
   MetricId,
-  TableId,
   SegmentId,
+  TableId,
   TemplateTags,
 } from "metabase-types/api";
 

@@ -19,8 +19,8 @@ import getSelectedItems, {
   isQuestionPath,
 } from "./getSelectedItems";
 import type {
-  MainNavbarOwnProps,
   MainNavbarDispatchProps,
+  MainNavbarOwnProps,
   SelectedItem,
 } from "./types";
 

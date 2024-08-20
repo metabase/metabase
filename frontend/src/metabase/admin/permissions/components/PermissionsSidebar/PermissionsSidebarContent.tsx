@@ -8,9 +8,9 @@ import { EntityViewSwitch } from "../EntityViewSwitch";
 import { FilterableTree } from "../FilterableTree";
 
 import {
-  SidebarHeader,
   BackButton,
   BackIcon,
+  SidebarHeader,
 } from "./PermissionsSidebar.styled";
 import { SidebarContentTitle } from "./PermissionsSidebarContent.styled";
 
