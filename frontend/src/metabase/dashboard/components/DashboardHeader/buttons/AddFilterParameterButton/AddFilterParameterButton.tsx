@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
@@ -15,6 +16,15 @@ export const AddFilterParameterButton = () => {
   const sections = getDashboardParameterSections();
   const dispatch = useDispatch();
   const isAddParameterPopoverOpen = useSelector(getIsAddParameterPopoverOpen);
+  const [maxRightSectionWidth, setMaxRightSectionWidth] = useState(0);
+
+  const handleRightSectionRef = (rightSection: HTMLDivElement | null) => {
+    if (rightSection) {
+      setMaxRightSectionWidth(maxWidth =>
+        Math.max(maxWidth, rightSection.clientWidth),
+      );
+    }
+  };
 
   return (
     <Menu
@@ -40,7 +50,16 @@ export const AddFilterParameterButton = () => {
           <Menu.Item
             key={section.id}
             icon={<Icon name={getParameterIconName(section.id)} />}
-            rightSection={<Text c="inherit">{section.description}</Text>}
+            rightSection={
+              <Text
+                ref={handleRightSectionRef}
+                c="inherit"
+                miw={maxRightSectionWidth}
+              >
+                {section.description}
+              </Text>
+            }
+            aria-label={section.name}
           >
             <Text c="inherit" fw="bold">
               {section.name}
