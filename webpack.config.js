@@ -315,6 +315,7 @@ const config = {
       REACT_APP_SEMANTIC:
         process.env.REACT_APP_SEMANTIC || "http://localhost:3001",
       COMPANY_NAME: process.env.COMPANY_NAME || "omni_test",
+      CUBEJS_TOKEN: process.env.CUBEJS_TOKEN || "21ca2256ab82064e7d05a12096d821e199f196851f2132318f4014a65e8d339224d836ef4e331badfc27c42b614c8b2dbd4c06d2c759dc53530e01f0d5f0ee7e"
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
