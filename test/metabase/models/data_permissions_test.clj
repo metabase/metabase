@@ -12,7 +12,9 @@
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted    [:perms/view-data   #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+      :blocked         [:perms/view-data #{:legacy-no-self-service :blocked}]
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
@@ -109,11 +111,8 @@
                #"Permission type :perms/create-queries cannot be set to :invalid"
                (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :invalid}))))
 
-        (testing "A table-level permission cannot be set to :block"
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Block permissions must be set at the database-level only."
-               (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
+        (testing "A table-level permission can be set to :block"
+          (is (= nil (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
 
         (testing "Table-level permissions can only be set in bulk for tables in the same database"
           (is (thrown-with-msg?
@@ -128,6 +127,24 @@
           (is (nil?  (create-queries-perm-value table-id-1)))
           (is (nil?  (create-queries-perm-value table-id-2)))
           (is (nil?  (create-queries-perm-value table-id-3))))))))
+
+(deftest native-queries-against-db-with-some-blocked-table-is-illegal-test
+  (mt/with-temp [:model/Card {card-id :id {db-id :database} :dataset_query} {:dataset_query (mt/native-query {:query "select 1"})}]
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries (data-perms/most-permissive-value :perms/create-queries))
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data (data-perms/most-permissive-value :perms/view-data))
+      ;; rasta has access to the database:
+      (is (= "Can Run Query"
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+                     "Can Run Query")))
+
+      ;; block a single table on the db:
+      (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
+            table-id (rand-nth tables-in-db)]
+        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
+
+      (is (= "You do not have permissions to run this query."
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
 
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}

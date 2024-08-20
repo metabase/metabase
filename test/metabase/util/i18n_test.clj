@@ -11,7 +11,7 @@
                    ["pt_BR", "Portuguese (Brazil)"]))))
 
 (deftest tru-test
-  (mt/with-mock-i18n-bundles {"es" {:messages {"must be {0} characters or less"
+  (mt/with-mock-i18n-bundles! {"es" {:messages {"must be {0} characters or less"
                                                "deben tener {0} caracteres o menos"}}}
     (doseq [[message f] {"tru"
                          (fn [] (i18n/tru "must be {0} characters or less" 140))
@@ -43,7 +43,7 @@
                        (f)))))))))))
 
 (deftest trs-test
-  (mt/with-mock-i18n-bundles {"es" {:messages {"must be {0} characters or less"
+  (mt/with-mock-i18n-bundles! {"es" {:messages {"must be {0} characters or less"
                                                "deben tener {0} caracteres o menos"}}}
     (doseq [[message f] {"trs"
                          (fn [] (i18n/trs "must be {0} characters or less" 140))
@@ -70,7 +70,7 @@
                        (f)))))))))))
 
 (deftest trun-test
-  (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
+  (mt/with-mock-i18n-bundles! {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
                                     :messages {"{0} table" ["{0} tabla" "{0} tablas"]}}}
     (doseq [[message f]
             {"trun"
@@ -102,7 +102,7 @@
 
 
 (deftest trsn-test
-  (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
+  (mt/with-mock-i18n-bundles! {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
                                     :messages {"{0} table" ["{0} tabla" "{0} tablas"]}}}
     (doseq [[message f]
             {"trsn - singular"
