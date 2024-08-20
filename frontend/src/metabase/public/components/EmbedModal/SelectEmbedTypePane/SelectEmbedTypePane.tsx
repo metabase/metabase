@@ -5,7 +5,6 @@ import { t } from "ttag";
 import Link from "metabase/core/components/Link";
 import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
 import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import {
   trackPublicEmbedCodeCopied,
@@ -53,11 +52,6 @@ export function SelectEmbedTypePane({
     e.stopPropagation();
     if (!isLoadingLink && !hasPublicLink) {
       setIsLoadingLink(true);
-      MetabaseAnalytics.trackStructEvent(
-        "Sharing Modal",
-        "Public Link Enabled",
-        resourceType,
-      );
       await onCreatePublicLink();
       setIsLoadingLink(false);
     }
@@ -67,11 +61,6 @@ export function SelectEmbedTypePane({
     e.stopPropagation();
     if (!isLoadingLink && hasPublicLink) {
       setIsLoadingLink(true);
-      MetabaseAnalytics.trackStructEvent(
-        "Sharing Modal",
-        "Public Link Disabled",
-        resourceType,
-      );
 
       trackPublicLinkRemoved({
         artifact: resourceType,

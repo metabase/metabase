@@ -410,7 +410,7 @@
 
 (defmacro with-send-pulse-setup!
   [& body]
-  `(mt/with-temp-scheduler
+  `(mt/with-temp-scheduler!
      (task/init! ::task.send-pulses/SendPulses)
      ~@body))
 

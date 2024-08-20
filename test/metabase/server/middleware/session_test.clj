@@ -88,17 +88,19 @@
                    :type :normal}
           request-time (t/zoned-date-time "2022-07-06T02:00Z[UTC]")]
       (testing "should log a warning if SameSite is configured to \"None\" and the site is served over an insecure connection."
-        (is (contains? (into #{}
-                             (map (fn [[_log-level _error message]] message))
-                             (mt/with-log-messages-for-level :warn
-                               (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)))
-                       "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))
+        (mt/with-log-messages-for-level [messages :warn]
+          (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "http"}} {} session request-time)
+          (is (contains? (into #{}
+                               (map :message)
+                               (messages))
+                         "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032"))))
       (testing "should not log a warning over a secure connection."
-        (is (not (contains? (into #{}
-                                  (map (fn [[_log-level _error message]] message))
-                                  (mt/with-log-messages-for-level :warn
-                                    (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)))
-                            "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032")))))))
+        (mt/with-log-messages-for-level [messages :warn]
+          (mw.session/set-session-cookies {:headers {"x-forwarded-proto" "https"}} {} session request-time)
+          (is (not (contains? (into #{}
+                                    (map :message)
+                                    (messages))
+                              "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions. https://www.chromestatus.com/feature/5633521622188032"))))))))
 
 ;; if request is an HTTPS request then we should set `:secure true`. There are several different headers we check for
 ;; this. Make sure they all work.
@@ -550,26 +552,30 @@
            (mt/user-http-request :crowberto :put 400 "setting/session-timeout" {:value {:unit "hours", :amount -1}})))))
 
 (deftest session-timeout-env-var-validation-test
-  (let [set-and-get (fn [timeout]
-                      (mt/with-temp-env-var-value! [mb-session-timeout (json/generate-string timeout)]
-                        (mw.session/session-timeout)))]
+  (let [set-and-get! (fn [timeout]
+                       (mt/with-temp-env-var-value! [mb-session-timeout (json/generate-string timeout)]
+                         (mw.session/session-timeout)))]
     (testing "Setting the session timeout with env var should work with valid timeouts"
       (doseq [timeout [{:unit "hours", :amount 1}
                        {:unit "hours", :amount (dec (* 100 365.25 24))}]]
         (is (= timeout
-               (set-and-get timeout)))))
+               (set-and-get! timeout)))))
     (testing "Setting the session timeout via the env var should fail if the timeout isn't positive"
       (doseq [amount [0 -1]
               :let [timeout {:unit "hours", :amount amount}]]
-        (is (nil? (set-and-get timeout)))
-        (is (= [[:warn nil "Session timeout amount must be positive."]]
-               (mt/with-log-messages-for-level :warn (set-and-get timeout))))))
+        (is (nil? (set-and-get! timeout)))
+        (mt/with-log-messages-for-level [messages :warn]
+          (set-and-get! timeout)
+          (is (=? [{:level :warn, :message "Session timeout amount must be positive."}]
+                  (messages))))))
     (testing "Setting the session timeout via env var should fail if the timeout is too large"
       (doseq [timeout [{:unit "hours", :amount (* 100 365.25 24)}
                        {:unit "minutes", :amount (* 100 365.25 24 60)}]]
-        (is (nil? (set-and-get timeout)))
-        (is (= [[:warn nil "Session timeout must be less than 100 years."]]
-               (mt/with-log-messages-for-level :warn (set-and-get timeout))))))))
+        (is (nil? (set-and-get! timeout)))
+        (mt/with-log-messages-for-level [messages :warn]
+          (set-and-get! timeout)
+          (is (=? [{:level :warn, :message "Session timeout must be less than 100 years."}]
+                  (messages))))))))
 
 (deftest ^:parallel session-timeout-test
   (testing "`session-timeout` setting conversion to seconds"

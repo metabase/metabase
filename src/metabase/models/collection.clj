@@ -344,10 +344,18 @@
         has-root-permission? (or (contains? permissions-set "/") (contains? ids-with-perm "root"))
         root-map (when has-root-permission?
                    {"root" collection.root/root-collection})
+        ;; block an audit collection IF:
+        ;; - audit isn't enabled, OR
+        ;; - we're looking for writable collections
+        ;; Otherwise, normal read/write permissions apply
+        block-for-audit? #(and (audit/is-collection-id-audit? %)
+                               (or (not (premium-features/enable-audit-app?))
+                                   (= read-or-write :write)))
         has-permission? (fn [[id _]]
-                          (if (contains? permissions-set "/")
-                            true
-                            (contains? ids-with-perm id)))]
+                          (and
+                           (not (block-for-audit? id))
+                           (or (contains? permissions-set "/")
+                               (contains? ids-with-perm id))))]
     (->> collection-id->collection
          (filter has-permission?)
          (merge root-map))))
@@ -1216,7 +1224,7 @@
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
                           [:not= :type trash-collection-type]]]
@@ -1225,12 +1233,14 @@
                            {:where
                             [:and
                              [:in :id collection-set]
-                             not-trash-clause]})
+                             not-trash-clause
+                             (or where true)]})
       (t2/reducible-select Collection
                            {:where
                             [:and
                              [:= :personal_owner_id nil]
-                             not-trash-clause]}))))
+                             not-trash-clause
+                             (or where true)]}))))
 
 (defmethod serdes/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.

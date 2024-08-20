@@ -6,7 +6,6 @@ import Databases from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { loadCard } from "metabase/lib/card";
 import { shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { createThunkAction } from "metabase/lib/redux";
@@ -18,7 +17,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import Query from "metabase-lib/v1/queries/Query";
 import {
   cardIsEquivalent,
@@ -207,11 +206,6 @@ export const apiCreateQuestion = question => {
       dispatch({ type: Databases.actionTypes.INVALIDATE_LISTS_ACTION });
     }
 
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Create Card",
-      createdQuestion.datasetQuery().type,
-    );
     trackNewQuestionSaved(
       question,
       createdQuestion,
@@ -257,19 +251,16 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       submittableQuestion,
       dispatch,
       {
-        excludeDatasetQuery: isAdHocModelQuestion(question, originalQuestion),
+        excludeDatasetQuery: isAdHocModelOrMetricQuestion(
+          question,
+          originalQuestion,
+        ),
       },
     );
 
     // reload the question alerts for the current question
     // (some of the old alerts might be removed during update)
     await dispatch(fetchAlertsForQuestion(updatedQuestion.id()));
-
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Update Card",
-      updatedQuestion.datasetQuery().type,
-    );
 
     await dispatch({
       type: API_UPDATE_QUESTION,

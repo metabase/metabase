@@ -4,17 +4,17 @@
   word-break: break-all;
 
   &:hover {
-    color: var(--mb-color-brand);
-    background-color: var(--mb-color-brand-lighter);
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
   }
 
   &.selected {
-    color: var(--mb-color-text-white);
-    background-color: var(--mb-color-brand);
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-background-selected);
   }
 
   &.disabled {
     cursor: default;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
   }
 }

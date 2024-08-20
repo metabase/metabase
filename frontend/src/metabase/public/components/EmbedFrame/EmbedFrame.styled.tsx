@@ -7,13 +7,13 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import {
   breakpointMinSmall,
   breakpointMinLarge,
-  breakpointMinMedium,
   space,
   breakpointMaxSmall,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{
   hasScroll: boolean;
+  hasVisibleOverflowWhenPriting?: boolean;
   isBordered?: boolean;
 }>`
   display: flex;
@@ -36,6 +36,16 @@ export const Root = styled.div<{
       border: 1px solid var(--mb-color-border);
       border-radius: 8px;
       box-shadow: 0 2px 2px var(--mb-color-shadow);
+    `}
+
+  ${props =>
+    // Prevents https://github.com/metabase/metabase/issues/40660
+    // when printing an embedded dashboard
+    props.hasVisibleOverflowWhenPriting &&
+    css`
+      @media print {
+        overflow: visible;
+      }
     `}
 `;
 
@@ -109,7 +119,7 @@ function getParameterPanelBackgroundColor(
   isSticky: boolean,
 ) {
   if (theme === "night") {
-    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-embed-bg-color-override, var(--mb-color-bg-black))  ${
+    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-bg-dashboard)  ${
       isSticky ? 15 : 100
     }%)`;
   }
@@ -120,7 +130,7 @@ function getParameterPanelBackgroundColor(
     }%)`;
   }
 
-  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-embed-bg-color-override, var(--mb-color-bg-white))  ${
+  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-bg-dashboard)  ${
     isSticky ? 15 : 100
   }%)`;
 }
@@ -165,16 +175,16 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   align-items: center;
   ${props => footerVariantStyles[props.variant]}
   height: calc(50 / 16 * 1rem);
-  padding: 0 0.5rem;
+  padding: 0 1em;
 
-  ${breakpointMinMedium} {
+  ${breakpointMinSmall} {
     height: calc(65 / 16 * 1rem);
-    padding: 0 1rem;
+    padding: 0 1.5rem;
   }
 
   ${breakpointMinLarge} {
     height: calc(80 / 16 * 1rem);
-    padding: 0 1.5rem;
+    padding: 0 2rem;
   }
 `;
 

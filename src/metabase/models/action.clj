@@ -352,9 +352,9 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/extract-query "Action" [_model _opts]
+(defmethod serdes/extract-query "Action" [_model opts]
   (eduction (map hydrate-subtype)
-            (t2/reducible-select Action)))
+            (t2/reducible-select Action {:where (or (:where opts) true)})))
 
 (defmethod serdes/hash-fields :model/Action [_action]
   [:name (serdes/hydrated-hash :model) :created_at])

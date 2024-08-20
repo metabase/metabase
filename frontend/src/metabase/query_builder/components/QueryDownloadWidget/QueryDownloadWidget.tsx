@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Flex, Popover, Tooltip } from "metabase/ui";
+import { Flex, Popover } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
   DashboardId,
@@ -13,8 +14,6 @@ import type {
 
 import { QueryDownloadPopover } from "../QueryDownloadPopover";
 import { useDownloadData } from "../QueryDownloadPopover/use-download-data";
-
-import { DownloadIcon } from "./QueryDownloadWidget.styled";
 
 interface QueryDownloadWidgetProps {
   className?: string;
@@ -53,14 +52,12 @@ const QueryDownloadWidget = ({
     <Popover opened={isPopoverOpen} onClose={() => setIsPopoverOpen(false)}>
       <Popover.Target>
         <Flex className={className}>
-          <Tooltip label={t`Download full results`}>
-            <DownloadIcon
-              onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-              name="download"
-              size={20}
-              data-testid="download-button"
-            />
-          </Tooltip>
+          <ViewFooterButton
+            icon="download"
+            data-testid="download-button"
+            tooltipLabel={t`Download full results`}
+            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+          />
         </Flex>
       </Popover.Target>
       <Popover.Dropdown p="0.75rem">

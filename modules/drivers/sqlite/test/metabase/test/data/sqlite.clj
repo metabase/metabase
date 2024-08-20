@@ -14,7 +14,9 @@
 
 (sql-jdbc.tx/add-test-extensions! :sqlite)
 
-(defmethod tx/supports-timestamptz-type? :sqlite [_driver] false)
+(defmethod driver/database-supports? [:sqlite :test/timestamptz-type]
+  [_driver _feature _database]
+  false)
 
 ;; TODO: It seems that foreign keys sync does not work on sqlite. The [[metabase.driver-test/describe-table-fks-test]]
 ;;       is failing. Resolve that and re-enable feature!

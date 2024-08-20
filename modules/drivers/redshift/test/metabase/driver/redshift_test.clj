@@ -53,7 +53,7 @@
               (#'sql.qp/add-default-select :redshift)
               (sql.qp/format-honeysql :redshift)))))
 
-(defn- query->native [query]
+(defn- query->native! [query]
   (let [native-query (atom nil)
         check-sql-fn (fn [_ _ sql & _]
                        (reset! native-query sql)
@@ -94,7 +94,7 @@
                            (str/replace #"\Q{{schema}}\E" (redshift.test/unique-session-schema))))]
         (is (= expected
                (sql->lines
-                (query->native
+                (query->native!
                  (assoc
                   (mt/mbql-query users {:limit 2000})
                   :parameters [{:type   "id"
@@ -317,7 +317,7 @@
   (mt/test-driver :redshift
     (testing "metabase_cache tables should be excluded from the describe-database results"
       (mt/dataset avian-singles
-        (mt/with-persistence-enabled [persist-models!]
+        (mt/with-persistence-enabled! [persist-models!]
           (let [details (assoc (:details (mt/db))
                                :schema-filters-type "inclusion"
                                :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas

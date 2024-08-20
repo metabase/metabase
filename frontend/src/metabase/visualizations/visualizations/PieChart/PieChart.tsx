@@ -5,12 +5,14 @@ import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend"
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
+import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
+import { usePieChartValuesColorsClasses } from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { ChartRenderer } from "./PieChart.styled";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
-import { getTooltipModel, useChartEvents } from "./use-chart-events";
+import { useChartEvents } from "./use-chart-events";
 
 Object.assign(PieChart, PIE_CHART_DEFINITION);
 
@@ -47,8 +49,8 @@ export function PieChart(props: VisualizationProps) {
     [chartModel, settings, renderingContext],
   );
   const option = useMemo(
-    () =>
-      getPieChartOption(
+    () => ({
+      ...getPieChartOption(
         chartModel,
         formatters,
         settings,
@@ -56,6 +58,8 @@ export function PieChart(props: VisualizationProps) {
         sideLength,
         hoveredIndex,
       ),
+      tooltip: getTooltipOption(chartModel, formatters),
+    }),
     [
       chartModel,
       formatters,
@@ -66,6 +70,8 @@ export function PieChart(props: VisualizationProps) {
     ],
   );
 
+  const valuesColorsCss = usePieChartValuesColorsClasses(chartModel);
+
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
   }, []);
@@ -75,7 +81,7 @@ export function PieChart(props: VisualizationProps) {
     [],
   );
 
-  const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
+  const eventHandlers = useChartEvents(props, chartRef, chartModel);
 
   const legendTitles = chartModel.slices
     .filter(s => s.data.includeInLegend)
@@ -85,7 +91,8 @@ export function PieChart(props: VisualizationProps) {
         : formatters.formatDimension(s.data.key);
 
       const percent =
-        settings["pie.percent_visibility"] === "legend"
+        settings["pie.percent_visibility"] === "legend" ||
+        settings["pie.percent_visibility"] === "both"
           ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
           : undefined;
 
@@ -102,11 +109,6 @@ export function PieChart(props: VisualizationProps) {
     props.onHoverChange(
       hoverData && {
         ...hoverData,
-        stackedTooltipModel: getTooltipModel(
-          hoverData.index,
-          chartModel,
-          formatters,
-        ),
       },
     );
 
@@ -136,6 +138,7 @@ export function PieChart(props: VisualizationProps) {
         notMerge={false}
         style={null}
       />
+      {valuesColorsCss}
     </ChartWithLegend>
   );
 }

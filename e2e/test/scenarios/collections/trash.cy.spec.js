@@ -5,6 +5,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  undo,
+  main,
   popover,
   createNativeQuestion as _createNativeQuestion,
   selectSidebarItem,
@@ -525,7 +527,7 @@ describe("scenarios > collections > trash", () => {
       cy.findAllByTestId("qb-header-action-panel").within(() => {
         cy.findByText("Filter").should("not.exist");
         cy.findByText("Summarize").should("not.exist");
-        cy.icon("notebook").should("not.exist");
+        cy.findByTestId("notebook-button").should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");
       });
@@ -691,6 +693,76 @@ describe("scenarios > collections > trash", () => {
     });
   });
 
+  describe("sidebar drag and drop", () => {
+    it("should not allow items in the trash to be moved into the trash", () => {
+      createDashboard({ name: "Dashboard A" }, true);
+      cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+      cy.visit("/trash");
+
+      dragAndDrop(
+        main().findByText("Dashboard A"),
+        navigationSidebar().findByText("Trash"),
+      );
+
+      cy.wait(100); // small wait to make sure a network request could have gone out
+      // assert no update request went out
+      cy.get("@updateDashboard.all").should("have.length", 0);
+      cy.findByTestId("toast-undo").should("not.exist");
+      main(() => {
+        cy.findByText(/Deleted items will appear here/).should("not.exist");
+        cy.findByText("Dashboard A").should("exist");
+      });
+    });
+
+    it("should allow items in the trash to be moved out of the trash and allow it to be undone", () => {
+      createDashboard({ name: "Dashboard A" }, true);
+      cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+      cy.visit("/trash");
+
+      dragAndDrop(
+        main().findByText("Dashboard A"),
+        navigationSidebar().findByText("First collection"),
+      );
+
+      cy.get("@updateDashboard.all").should("have.length", 1);
+      main()
+        .findByText(/Deleted items will appear here/)
+        .should("exist");
+      cy.findByTestId("toast-undo").should("exist");
+      undo();
+
+      cy.get("@updateDashboard.all").should("have.length", 2);
+      main().within(() => {
+        cy.findByText(/Deleted items will appear here/).should("not.exist");
+        cy.findByText("Dashboard A").should("exist");
+      });
+    });
+
+    it("should allow items outside the trash to be moved in the trash and allow it to be undone", () => {
+      createDashboard({
+        name: "Dashboard A",
+        collection_id: FIRST_COLLECTION_ID,
+      });
+      cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+      visitCollection(FIRST_COLLECTION_ID);
+
+      dragAndDrop(
+        main().findByText("Dashboard A"),
+        navigationSidebar().findByText("Trash"),
+      );
+
+      cy.get("@updateDashboard.all").should("have.length", 1);
+      main().findByText("Dashboard A").should("not.exist");
+      cy.findByTestId("toast-undo").should("exist");
+      undo();
+
+      cy.get("@updateDashboard.all").should("have.length", 2);
+      main().within(() => {
+        cy.findByText("Dashboard A").should("exist");
+      });
+    });
+  });
+
   it("should open only one context menu at a time (metabase#44910)", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
@@ -805,4 +877,11 @@ function ensureBookmarkVisible(bookmark) {
   cy.findByRole("tab", { name: /bookmarks/i })
     .findByText(bookmark)
     .should("be.visible");
+}
+
+function dragAndDrop(subjectEl, targetEl) {
+  const dataTransfer = new DataTransfer();
+  subjectEl.trigger("dragstart", { dataTransfer });
+  targetEl.trigger("drop", { dataTransfer });
+  subjectEl.trigger("dragend");
 }

@@ -41,7 +41,7 @@ import {
   assertQueryBuilderRowCount,
   visitDashboard,
   getDashboardCard,
-  testTooltipPairs,
+  assertEChartsTooltip,
   join,
   visitQuestion,
   tableHeaderClick,
@@ -1207,11 +1207,12 @@ describe("issue 31960", () => {
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).realHover();
     });
-    testTooltipPairs([
-      ["Created At:", "July 10–16, 2022"],
-      ["Count:", String(rowCount)],
-      ["Compared to previous week", "+10%"],
-    ]);
+    assertEChartsTooltip({
+      header: "July 10–16, 2022",
+      rows: [
+        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
+      ],
+    });
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
@@ -1249,7 +1250,7 @@ describe("issue 43294", () => {
 
     cy.log("compare action");
     cy.button("Add column").click();
-    popover().findByText("Compare “Count” to previous months").click();
+    popover().findByText("Compare to the past").click();
     popover().button("Done").click();
 
     cy.log("extract action");
@@ -2075,6 +2076,52 @@ describe("issue 45452", () => {
       const element = $el[0];
       expect(element.scrollHeight > element.clientHeight).to.be.true;
       expect(element.offsetWidth > element.clientWidth).to.be.true;
+    });
+  });
+});
+
+describe("issue 41612", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card").as("createQuestion");
+  });
+
+  it("should not ignore chart viz settings when viewing raw results as a table (metabase#41612)", () => {
+    visitQuestionAdhoc(
+      {
+        display: "line",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            "source-table": ORDERS_ID,
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    queryBuilderMain().findByLabelText("Switch to data").click();
+    queryBuilderHeader().button("Save").click();
+    modal().button("Save").click();
+
+    cy.wait("@createQuestion").then(xhr => {
+      const card = xhr.request.body;
+      expect(card.visualization_settings["graph.metrics"]).to.deep.equal([
+        "count",
+      ]);
+      expect(card.visualization_settings["graph.dimensions"]).to.deep.equal([
+        "CREATED_AT",
+      ]);
     });
   });
 });

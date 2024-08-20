@@ -8,7 +8,6 @@ import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
@@ -24,7 +23,7 @@ import {
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   SectionContainer,
@@ -115,8 +114,6 @@ class ChartSettings extends Component {
   };
 
   handleResetSettings = () => {
-    MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset Settings");
-
     const originalCardSettings =
       this.props.dashcard.card.visualization_settings;
     const clickBehaviorSettings = getClickBehaviorSettings(this._getSettings());
@@ -417,8 +414,8 @@ class ChartSettings extends Component {
         <ChartSettingsWidgetPopover
           anchor={popoverRef}
           widgets={[
-            this.getFormattingWidget(widgets),
             this.getStyleWidget(widgets),
+            this.getFormattingWidget(widgets),
           ].filter(widget => !!widget)}
           handleEndShowWidget={this.handleEndShowWidget}
         />

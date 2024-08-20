@@ -387,9 +387,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", "Started from")
         .should("contain.text", multiBreakoutQuestionDetails.name);
       queryBuilderMain().within(() => {
-        cy.findByText("Product → Created At: Week").should("be.visible");
-        cy.findByText("2022").should("be.visible");
-        cy.findByText("2023").should("be.visible");
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("May 1, 2022").should("be.visible");
       });
     });
 

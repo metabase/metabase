@@ -5,7 +5,8 @@
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.collection :as collection]
-   [metabase.models.query-field :as query-field]
+   [metabase.models.query-analysis :as query-analysis]
+   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -54,9 +55,9 @@
                                               :u.first_name :u.last_name :u.email]
                                              sort-dir-kw]]
                               [(into sorting-selects [sort-dir-kw])])
-        card-query          (query-field/cards-with-reference-errors
+        card-query          (query-analysis/cards-with-reference-errors
                              (m/assoc-some
-                              ;; TODO this table has a lot of fields... we should whittle down to what we need.
+                              ;; TODO this table has a lot of fields... we should whittle down to only the ones we need.
                               {:select    (into [:c.*] sorting-selects)
                                :from      [[(t2/table-name :model/Card) :c]]
                                :left-join sorting-joins
@@ -71,11 +72,24 @@
                               :limit  limit
                               :offset offset))
         cards               (t2/select :model/Card card-query)
-        id->errors          (query-field/reference-errors cards)
+        id->errors          (query-analysis/reference-errors cards)
         add-errors          (fn [{:keys [id] :as card}]
                               (assoc card :errors (sort-by (juxt :table :field :type) (id->errors id))))]
     {:data (map (comp present add-errors) (t2/hydrate cards [:collection :effective_ancestors] :creator))
      :total (t2/count :model/Card (dissoc card-query :limit :offset))}))
+
+(defn- invalid-cards [sort_column sort_direction collection_id]
+  (let [collection (if (nil? collection_id)
+                     collection/root-collection
+                     (t2/select-one :model/Collection :id collection_id))
+        collection-ids (conj (collection/descendant-ids collection) collection_id)]
+    (merge (cards-with-reference-errors {:sort-column (or sort_column default-sort-column)
+                                         :sort-direction (or sort_direction default-sort-direction)
+                                         :collection-ids (set collection-ids)
+                                         :limit mw.offset-paging/*limit*
+                                         :offset mw.offset-paging/*offset*})
+           {:limit mw.offset-paging/*limit*
+            :offset mw.offset-paging/*offset*})))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
@@ -91,16 +105,16 @@
   {sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]
    collection_id  [:maybe ms/PositiveInt]}
-  (let [collection (if (nil? collection_id)
-                     collection/root-collection
-                     (t2/select-one :model/Collection :id collection_id))
-        collection-ids (conj (collection/descendant-ids collection) collection_id)]
-    (merge (cards-with-reference-errors {:sort-column (or sort_column default-sort-column)
-                                         :sort-direction (or sort_direction default-sort-direction)
-                                         :collection-ids (set collection-ids)
-                                         :limit mw.offset-paging/*limit*
-                                         :offset mw.offset-paging/*offset*})
-           {:limit mw.offset-paging/*limit*
-            :offset mw.offset-paging/*offset*})))
+  (invalid-cards sort_column sort_direction collection_id))
 
-(api/define-routes api/+check-superuser +auth)
+(defn +check-setting
+  "Middleware that gates this API behind the associated feature flag"
+  [handler]
+  (with-meta
+   (fn [request respond raise]
+     (if (public-settings/query-analysis-enabled)
+       (handler request respond raise)
+       (respond {:status 429 :body "Query Analysis must be enabled to use the Query Reference Validator"})))
+   (meta handler)))
+
+(api/define-routes api/+check-superuser +auth +check-setting)

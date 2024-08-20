@@ -133,6 +133,7 @@
     :display_name     (:name card)
     :schema           "Everything else"
     :moderated_status nil
+    :metrics          nil
     :description      nil
     :type             "question"}
    kvs))
@@ -192,7 +193,7 @@
   (testing "GET /api/database/:id"
     (testing "Invalid `?include` should return an error"
       (is (= {:errors          {:include "nullable enum of tables, tables.fields"},
-              :specific-errors {:include ["should be either tables or tables.fields, received: \"schemas\""]}}
+              :specific-errors {:include ["should be either \"tables\" or \"tables.fields\", received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
 (deftest get-database-legacy-no-self-service-test
@@ -306,9 +307,9 @@
                    driver/can-connect? (constantly true)]
        ~@body)))
 
-(defmacro with-db-scheduler-setup
+(defmacro with-db-scheduler-setup!
   [& body]
-  `(mt/with-temp-scheduler
+  `(mt/with-temp-scheduler!
      (#'task.sync-databases/job-init)
      (u/prog1 ~@body
        (qs/delete-job (#'task/scheduler) (.getKey ^JobDetail @#'task.sync-databases/sync-analyze-job))
@@ -317,7 +318,7 @@
 (deftest create-db-default-schedule-test
   (testing "POST /api/database"
     (testing "create a db with default scan options"
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name    (mt/random-name)
@@ -1145,7 +1146,7 @@
 (deftest create-db-with-manual-schedules-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"regularly on a schedule\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [{:keys [details] :as db}
                 (mt/user-http-request :crowberto :post 200 "database"
@@ -1167,7 +1168,7 @@
 (deftest create-db-never-scan-field-values-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"Never, I'll do it myself\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name         (mt/random-name)
@@ -1188,7 +1189,7 @@
 (deftest create-db-on-demand-scan-field-values-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"Only when adding a new filter widget\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name         (mt/random-name)
@@ -1207,7 +1208,7 @@
                    (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest update-db-to-sync-on-custom-schedule-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (mt/with-temp
         [:model/Database db {}]
@@ -1269,7 +1270,7 @@
                      (:cache_field_values_schedule db)))))))))
 
 (deftest update-db-to-never-scan-values-on-demand-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (mt/with-temp
         [:model/Database db {}]
@@ -1291,7 +1292,7 @@
             (is (nil? (:cache_field_values_schedule db)))))))))
 
 (deftest update-db-to-scan-field-values-on-demand-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (testing "update db to scan on demand should remove scan field values trigger"
         (mt/with-temp
@@ -1433,7 +1434,7 @@
    (with-redefs [h2/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
-(defn- test-connection-details [engine details]
+(defn- test-connection-details! [engine details]
   (with-redefs [h2/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
@@ -1446,7 +1447,7 @@
 
     (testing "Underlying `test-connection-details` function should work"
       (is (= (:details (mt/db))
-             (test-connection-details "h2" (:details (mt/db))))))
+             (test-connection-details! "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
       (is (= (merge (:details (mt/db)) {:valid true})
@@ -1457,7 +1458,7 @@
         (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."
                 :valid   false}
-               (test-connection-details "h2" {:db "ABC"}))))
+               (test-connection-details! "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
         (is (= {:errors  {:db "check your connection string"}
@@ -1544,6 +1545,14 @@
                      Table    _ {:db_id db-id :schema " "}]
         (is (= ["" " "]
                (mt/user-http-request :lucky :get 200 (format "database/%d/schemas" db-id))))))))
+
+(deftest ^:parallel blank-schema-identifier-test
+  (testing "We should handle Databases with blank schema correctly (#12450)"
+    (t2.with-temp/with-temp [Database {db-id :id} {:name "my/database"}]
+      (doseq [schema-name [nil ""]]
+        (testing (str "schema name = " (pr-str schema-name))
+          (t2.with-temp/with-temp [Table _ {:db_id db-id, :schema schema-name, :name "just a table"}]
+            (is (= [""] (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id))))))))))
 
 (deftest get-syncable-schemas-test
   (testing "GET /api/database/:id/syncable_schemas"
@@ -1668,6 +1677,7 @@
         (testing "Should be able to get saved questions in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
+                   :metrics          nil
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
@@ -1694,6 +1704,7 @@
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
                             :display_name     "Card 2"
+                            :metrics          nil
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
                             :description      nil
@@ -1708,6 +1719,14 @@
                      Card       card-1 (assoc (card-with-native-query "Card 1")
                                               :collection_id (:id coll)
                                               :type :model)
+                     Card       metric {:type :metric
+                                        :name "Metric"
+                                        :database_id (mt/id)
+                                        :collection_id (:id coll)
+                                        :dataset_query {:type :query
+                                                        :database (mt/id)
+                                                        :query {:source-table (str "card__" (:id card-1))
+                                                                :aggregation [[:count]]}}}
                      Card       card-2 (assoc (card-with-native-query "Card 2")
                                               :type :model)
                      Card       _card-3 (assoc (card-with-native-query "error")
@@ -1718,15 +1737,22 @@
           (is (=? {:status "completed"}
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))))
         (testing "Should be able to get datasets in a specific collection"
-          (is (= [{:id               (format "card__%d" (:id card-1))
-                   :db_id            (mt/id)
-                   :moderated_status nil
-                   :display_name     "Card 1"
-                   :schema           "My Collection"
-                   :description      nil
-                   :type             "model"}]
-                 (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
+          (is (=? [{:id               (format "card__%d" (:id card-1))
+                    :db_id            (mt/id)
+                    :metrics          [{:id             (:id metric)
+                                        :name           "Metric"
+                                        :type           "metric"
+                                        :source_card_id (:id card-1)
+                                        :database_id    (mt/id)}]
+                    :display_name     "Card 1"
+                    :schema           "My Collection"
+                    :type             "model"}
+                   {:id           (format "card__%d" (:id metric))
+                    :db_id        (mt/id)
+                    :display_name "Metric"
+                    :schema       "My Collection"}]
+                  (mt/user-http-request :lucky :get 200
+                                        (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
 
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
@@ -1745,6 +1771,7 @@
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
                             :display_name     "Card 2"
+                            :metrics          nil
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
                             :description      nil
@@ -2075,16 +2102,17 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest log-an-error-if-contains-undefined-setting-test
+(deftest ^:parallel log-an-error-if-contains-undefined-setting-test
   (testing "should log an error message if database contains undefined settings"
     (t2.with-temp/with-temp [Database {db-id :id} {:settings {:undefined-setting true}}]
-      (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
-             (-> (mt/with-log-messages-for-level :error
-                   (testing "does not includes undefined keys by default"
-                     (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
-                                         :undefined-setting)))))
-                 first
-                 last))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (testing "does not includes undefined keys by default"
+          (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                              :undefined-setting))))
+        (is (= "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
+               (-> (messages)
+                   first
+                   :message)))))))
 
 (deftest persist-database-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)

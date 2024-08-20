@@ -81,6 +81,7 @@ module.exports = {
       { additionalHooks: "(useSafeAsyncFunction)" },
     ],
     "prefer-const": [1, { destructuring: "all" }],
+    "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",
@@ -133,6 +134,7 @@ module.exports = {
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
+    "plugin:depend/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
@@ -160,6 +162,17 @@ module.exports = {
       rules: {
         "no-unconditional-metabase-links-render": "error",
         "no-literal-metabase-strings": "error",
+        "depend/ban-dependencies": [
+          "error",
+          {
+            allowed: [
+              "underscore",
+              "moment",
+              "lodash.orderby",
+              "lodash.debounce",
+            ],
+          },
+        ],
       },
     },
     {

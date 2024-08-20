@@ -86,6 +86,7 @@
   to preserve them if you specify them manually. We can fix this in the future."
   [& [fn-name :as fn-tail]]
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
+        cosmetic-name    (gensym (munge (str fn-name)))
         {attr-map :meta} parsed
         attr-map         (merge
                           {:arglists (list 'quote (deparameterized-arglists parsed))
@@ -96,13 +97,13 @@
     (if-not instrument?
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
-         ~(mu.fn/deparameterized-fn-form parsed))
+         ~(mu.fn/deparameterized-fn-form parsed cosmetic-name))
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
          ~(macros/case
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
-                    (mu.fn/instrumented-fn-form error-context parsed))
-            :cljs (mu.fn/deparameterized-fn-form parsed))))))
+                    (mu.fn/instrumented-fn-form error-context parsed cosmetic-name))
+            :cljs (mu.fn/deparameterized-fn-form parsed cosmetic-name))))))
 
 (defmacro defn-
   "Same as defn, but creates a private def."

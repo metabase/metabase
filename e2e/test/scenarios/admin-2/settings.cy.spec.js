@@ -30,6 +30,7 @@ import {
   visitQuestionAdhoc,
   tableHeaderClick,
   WEBHOOK_TEST_URL,
+  mockSessionPropertiesTokenFeatures,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -1179,5 +1180,48 @@ describe("notifications", { tags: "@external" }, () => {
       .click();
 
     cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
+
+describe("admin > upload settings", () => {
+  describe("scenarios > admin > uploads (OSS)", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should show the uploads settings page", () => {
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+    });
+  });
+  describeEE("scenarios > admin > uploads (EE)", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it("without attached-dwh should show the uploads settings page", () => {
+      mockSessionPropertiesTokenFeatures({ attached_dwh: false });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+    });
+
+    it("with attached-dwh should not show the uploads settings page", () => {
+      mockSessionPropertiesTokenFeatures({ attached_dwh: true });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items")
+        .findByText("Uploads")
+        .should("not.exist");
+
+      cy.findAllByLabelText("error page").findByText(
+        "The page you asked for couldn't be found.",
+      );
+    });
   });
 });

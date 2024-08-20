@@ -407,7 +407,7 @@
     (t2/delete! Setting :key setting-k))
   (setting.cache/restore-cache!))
 
-(defn do-with-temporary-setting-value
+(defn do-with-temporary-setting-value!
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as [[binding]].
 
@@ -466,6 +466,8 @@
                                  :original-value original-value}
                                 e))))))))))
 
+;;; TODO FIXME -- either rename this to `with-temporary-setting-values!` or fix it and make it thread-safe
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
   This works much the same way as `binding`.
@@ -479,11 +481,13 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
        (fn []
          (with-temporary-setting-values ~more
            ~@body)))))
 
+;;; TODO FIXME -- either rename this to `with-temporary-raw-setting-values!` or fix it and make it thread-safe
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
   using [[metabase.models.setting/defsetting]]."
@@ -491,22 +495,24 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
        (fn []
          (with-temporary-raw-setting-values ~more
            ~@body))
        :raw-setting? true)))
 
-(defn do-with-discarded-setting-changes [settings thunk]
+(defn do-with-discarded-setting-changes! [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)
   ((reduce
     (fn [thunk setting-k]
       (fn []
         (let [value (setting/read-setting setting-k)]
-          (do-with-temporary-setting-value setting-k value thunk :skip-init? true))))
+          (do-with-temporary-setting-value! setting-k value thunk :skip-init? true))))
     thunk
     settings)))
 
+;;; TODO FIXME -- either rename this to `with-discarded-setting-changes!` or fix it and make it thread-safe
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro discard-setting-changes
   "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
   conclusion.
@@ -515,7 +521,7 @@
       ...)"
   {:style/indent 1}
   [settings & body]
-  `(do-with-discarded-setting-changes ~(mapv keyword settings) (fn [] ~@body)))
+  `(do-with-discarded-setting-changes! ~(mapv keyword settings) (fn [] ~@body)))
 
 (defn- maybe-merge-original-values
   "For some map columns like `Database.settings` or `User.settings`, merge the original values with the temp ones to
@@ -634,7 +640,7 @@
       (.setProperty StdSchedulerFactory/PROP_JOB_STORE_CLASS (.getCanonicalName org.quartz.simpl.RAMJobStore))
       (.setProperty (str StdSchedulerFactory/PROP_THREAD_POOL_PREFIX ".threadCount") (str in-memory-scheduler-thread-count))))))
 
-(defn do-with-unstarted-temp-scheduler [thunk]
+(defn do-with-unstarted-temp-scheduler! [thunk]
   (let [temp-scheduler (in-memory-scheduler)
         already-bound? (identical? @task/*quartz-scheduler* temp-scheduler)]
     (if already-bound?
@@ -651,16 +657,16 @@
        (finally
          (qs/shutdown temp-scheduler))))))
 
-(defn do-with-temp-scheduler [thunk]
+(defn do-with-temp-scheduler! [thunk]
   ;; not 100% sure we need to initialize the DB anymore since the temp scheduler is in-memory-only now.
   (classloader/the-classloader)
   (initialize/initialize-if-needed! :db)
-  (do-with-unstarted-temp-scheduler
+  (do-with-unstarted-temp-scheduler!
    (^:once fn* []
     (qs/start @task/*quartz-scheduler*)
     (thunk))))
 
-(defmacro with-temp-scheduler
+(defmacro with-temp-scheduler!
   "Execute `body` with a temporary scheduler in place.
   This does not initialize the all the jobs for performance reasons, so make sure you init it yourself!
 
@@ -671,7 +677,7 @@
       (scheduler-current-tasks))"
   {:style/indent 0}
   [& body]
-  `(do-with-temp-scheduler (fn [] ~@body)))
+  `(do-with-temp-scheduler! (fn [] ~@body)))
 
 (defn scheduler-current-tasks
   "Return information about the currently scheduled tasks (jobs+triggers) for the current scheduler. Intended so we
@@ -1101,7 +1107,9 @@
   [locale-tag & body]
   `(call-with-locale ~locale-tag (fn [] ~@body)))
 
-(defn do-with-column-remappings [orig->remapped thunk]
+;;; TODO -- this could be made thread-safe if we made [[with-temp-vals-in-db]] thread-safe which I think is pretty
+;;; doable (just do it in a transaction?)
+(defn do-with-column-remappings! [orig->remapped thunk]
   (transduce
    identity
    (fn
@@ -1164,6 +1172,8 @@
     :else
     x))
 
+;;; TODO FIXME -- either rename this to `with-column-remappings!` or fix it and make it thread-safe.
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-column-remappings
   "Execute `body` with column remappings in place. Can create either FK \"external\" or human-readable-values
   \"internal\" remappings:
@@ -1195,7 +1205,7 @@
       ...)"
   {:arglists '([[original-col source-col & more-remappings] & body])}
   [cols & body]
-  `(do-with-column-remappings
+  `(do-with-column-remappings!
     ~(into {} (comp (map col-remappings-arg)
                     (partition-all 2))
            cols)
@@ -1209,7 +1219,8 @@
   (with-open [socket (ServerSocket. 0)]
     (.getLocalPort socket)))
 
-(defn do-with-env-keys-renamed-by
+;;; TODO -- we could make this thread-safe if we introduced a new dynamic variable to replace [[env/env]]
+(defn do-with-env-keys-renamed-by!
   "Evaluates the thunk with the current core.environ/env being redefined, its keys having been renamed by the given
   rename-fn. Prefer to use the with-env-keys-renamed-by macro version instead."
   [rename-fn thunk]
@@ -1226,12 +1237,14 @@
       (with-redefs [env/env new-e]
         (thunk)))))
 
+;;; TODO FIXME -- either rename this to `with-env-keys-renamed-by!` or fix it and make it thread-safe
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-env-keys-renamed-by
   "Evaluates body with the current core.environ/env being redefined, its keys having been renamed by the given
   rename-fn."
   {:arglists '([rename-fn & body])}
   [rename-fn & body]
-  `(do-with-env-keys-renamed-by ~rename-fn (fn [] ~@body)))
+  `(do-with-env-keys-renamed-by! ~rename-fn (fn [] ~@body)))
 
 (defn do-with-temp-file
   "Impl for `with-temp-file` macro."

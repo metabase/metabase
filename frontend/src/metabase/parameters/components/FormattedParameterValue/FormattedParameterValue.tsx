@@ -1,3 +1,4 @@
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import ParameterFieldWidgetValue from "metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue";
 import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -6,7 +7,10 @@ import {
   hasFields,
   isFieldFilterUiParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  isDateParameter,
+  isStringParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterValue, RowValue } from "metabase-types/api";
 
@@ -14,12 +18,14 @@ export type FormattedParameterValueProps = {
   parameter: UiParameter;
   value: string | number | number[];
   placeholder?: string;
+  isPopoverOpen?: boolean;
 };
 
 function FormattedParameterValue({
   parameter,
   value,
   placeholder,
+  isPopoverOpen = false,
 }: FormattedParameterValueProps) {
   if (parameterHasNoDisplayValue(value)) {
     return placeholder;
@@ -33,25 +39,42 @@ function FormattedParameterValue({
 
   const label = getLabel(displayValue);
 
-  if (
-    isFieldFilterUiParameter(parameter) &&
-    hasFields(parameter) &&
-    !isDateParameter(parameter)
-  ) {
+  const renderContent = () => {
+    if (
+      isFieldFilterUiParameter(parameter) &&
+      hasFields(parameter) &&
+      !isDateParameter(parameter)
+    ) {
+      return (
+        <ParameterFieldWidgetValue
+          fields={getFields(parameter)}
+          value={value}
+          displayValue={label}
+        />
+      );
+    }
+
+    if (label) {
+      return <span>{formatParameterValue(label, parameter)}</span>;
+    }
+
+    return <span>{formatParameterValue(value, parameter)}</span>;
+  };
+
+  if (isStringParameter(parameter)) {
+    const hasLongValue = typeof first === "string" && first.length > 80;
     return (
-      <ParameterFieldWidgetValue
-        fields={getFields(parameter)}
-        value={value}
-        displayValue={label}
-      />
+      <Ellipsified
+        showTooltip={!isPopoverOpen}
+        multiline
+        tooltipMaxWidth={hasLongValue ? 450 : undefined}
+      >
+        {renderContent()}
+      </Ellipsified>
     );
   }
 
-  if (label) {
-    return <span>{formatParameterValue(label, parameter)}</span>;
-  }
-
-  return <span>{formatParameterValue(value, parameter)}</span>;
+  return renderContent();
 }
 
 function getValue(

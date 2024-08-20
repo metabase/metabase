@@ -38,7 +38,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (java.io File)
+   (org.apache.tika Tika)))
 
 (set! *warn-on-reflection* true)
 
@@ -171,8 +172,16 @@
   (let [parsers (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
     (for [row rows]
       (for [[value parser] (u/map-all vector row parsers)]
-        (when-not (str/blank? value)
-          (parser value))))))
+        (do
+          (when-not parser
+            (throw (ex-info (format "Column count in data (%s) exceeds the number of in the header (%s)"
+                                    (count rows)
+                                    (count parsers))
+                            {:settings settings
+                             :col-upload-types rows
+                             :row row})))
+          (when-not (str/blank? value)
+            (parser value)))))))
 
 (defn- remove-indices
   "Removes the elements at the given indices from the collection. Indices is a set."
@@ -210,49 +219,64 @@
 
 (def ^:private separators ",;\t")
 
-(defn- assert-inferred-separator [maybe-s]
-  (or maybe-s
-      (throw (ex-info (tru "Unable to recognise file separator")
-                      {:status-code 422}))))
+;; This number was chosen arbitrarily. There is robustness / performance trade-off.
+(def ^:private max-inferred-lines 10)
+
+(defn- separator-priority
+  "Prefer separators according to the follow criteria, in order:
+
+   - Splitting the header at least once.
+   - Giving a consistent column split for all the lines.
+   - Not having more columns in any row than in the header.
+   - The maximum number of column splits.
+   - The number of fields in the header.
+   - The precedence order in how we define them, e.g. a bias towards comma.
+
+  This last preference is implicit in the order of [[separators]]"
+  [[header-column-count & data-row-column-counts]]
+  [(when header-column-count
+     (> header-column-count 1))
+   (apply = header-column-count data-row-column-counts)
+   (not (some #(> % header-column-count) data-row-column-counts))
+   (reduce max 0 data-row-column-counts)
+   header-column-count])
+
+(def ^:private allowed-extensions #{nil "csv" "tsv" "txt"})
+
+(def ^:private allowed-mime-types #{"text/csv" "text/tab-separated-values" "text/plain"})
+
+(def ^:private ^Tika tika (Tika.))
+
+(defn- file-extension [filename]
+  (when filename
+    (-> filename (str/split #"\.") rest last)))
+
+(defn- file-mime-type [^File file]
+  (.detect tika file))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
   Our heuristic is to use the separator that gives us the most number of columns.
   Exclude separators which give incompatible column counts between the header and the first row."
-  [^File file]
+  [readable]
   (let [count-columns (fn [s]
-                        ;; Create a separate reader per separator, as the line-breaking behaviour depends on the parser.
-                        (with-open [reader (bom/bom-reader file)]
+                        ;; Create a separate reader per separator, as the line-breaking behavior depends on the parser.
+                        (with-open [reader (bom/bom-reader readable)]
                           (try (into []
-                                     ;; take first two rows and count the number of columns in each to compare headers
-                                     ;; vs data rows.
-                                     (comp (take 2) (map count))
+                                     (comp (take max-inferred-lines)
+                                           (map count))
                                      (csv/read-csv reader :separator s))
                                (catch Exception _e nil))))]
     (->> (map (juxt identity count-columns) separators)
-         ;; We cannot have more data columns than header columns
-         ;; We currently support files without any data rows, and these get a free pass.
-         (remove (fn [[_s [header-column-count data-column-count]]]
-                   (when data-column-count
-                     (> data-column-count header-column-count))))
-         ;; Prefer separators according to the follow criteria, in order:
-         ;; - Splitting the header at least once
-         ;; - Giving a consistent column split for the first two lines of the file
-         ;; - The number of fields in the header
-         ;; - The precedence order in how we define them, e.g.. bias towards comma
-         (sort-by (fn [[_ [header-column-count data-column-count]]]
-                    [(when header-column-count
-                       (> header-column-count 1))
-                     (= header-column-count data-column-count)
-                     header-column-count])
-                  u/reverse-compare)
-         ffirst
-         assert-inferred-separator)))
+         (sort-by (comp separator-priority second) u/reverse-compare)
+         ffirst)))
 
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
-  [file]
-  (let [s (infer-separator file)]
+  [filename ^File file]
+  (let [s (if (= "tsv" (file-extension filename))
+            \tab
+            (infer-separator file))]
     (fn [stream]
       (csv/read-csv stream :separator s))))
 
@@ -280,8 +304,8 @@
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
-  [driver db table-name ^File csv-file]
-  (let [parse (infer-parser csv-file)]
+  [driver db table-name filename ^File csv-file]
+  (let [parse (infer-parser filename csv-file)]
     (with-open [reader (bom/bom-reader csv-file)]
       (let [auto-pk?          (auto-pk-column? driver db)
             [header & rows]   (cond-> (parse reader)
@@ -399,8 +423,8 @@
 (defn- fail-stats
   "If a given upload / append / replace fails, this function is used to create the failure event payload for snowplow.
   It may involve redundantly reading the file, or even failing again if the file is unreadable."
-  [^File file]
-  (let [parse (infer-parser file)]
+  [filename ^File file]
+  (let [parse (infer-parser filename file)]
     (with-open [reader (bom/bom-reader file)]
       (let [rows (parse reader)]
         {:size-mb           (file-size-mb file)
@@ -410,12 +434,12 @@
 
 (defn- create-from-csv-and-sync!
   "This is separated from `create-csv-upload!` for testing"
-  [{:keys [db file schema table-name display-name]}]
+  [{:keys [db filename file schema table-name display-name]}]
   (let [driver            (driver.u/database->driver db)
         schema            (some->> schema (ddl.i/format-name driver))
         table-name        (some->> table-name (ddl.i/format-name driver))
         schema+table-name (table-identifier {:schema schema :name table-name})
-        stats             (create-from-csv! driver db schema+table-name file)
+        stats             (create-from-csv! driver db schema+table-name filename file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
         table             (sync-tables/create-table! db {:name         table-name
                                                          :schema       (not-empty schema)
@@ -429,6 +453,20 @@
               (t2/update! :model/Field (:id auto-pk-field) {:display_name (:name auto-pk-field)})))]
     {:table table
      :stats stats}))
+
+(defn- check-filetype [filename file]
+  (let [extension (file-extension filename)]
+    (when-not (contains? allowed-extensions extension)
+      (throw (ex-info (tru "Unsupported File Type")
+                      {:status-code    415 ; Unsupported Media Type
+                       :file-extension extension})))
+    ;; This might be expensive to compute, hence having this as a second case.
+    (let [mime-type (file-mime-type file)]
+      (when-not (contains? allowed-mime-types mime-type)
+        (throw (ex-info (tru "Unsupported File Type")
+                        {:status-code    415 ; Unsupported Media Type
+                         :file-extension extension
+                         :mime-type      mime-type}))))))
 
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
@@ -464,6 +502,7 @@
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
+    (check-filetype filename file)
     (collection/check-write-perms-for-collection collection-id)
     (try
       (let [timer             (u/start-timer)
@@ -478,6 +517,7 @@
                                    (u/lower-case-en))
             {:keys [stats
                     table]}   (create-from-csv-and-sync! {:db           database
+                                                          :filename     filename
                                                           :file         file
                                                           :schema       schema-name
                                                           :table-name   table-name
@@ -510,7 +550,7 @@
                                (assoc stats :model-id (:id card)))
         card)
       (catch Throwable e
-        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats file))
+        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats filename file))
         (throw e)))))
 
 ;;; +-----------------------------
@@ -616,9 +656,9 @@
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (persisted-info/invalidate! {:card_id [:in model-ids]})))
 
-(defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
+(defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
-    (let [parse (infer-parser file)]
+    (let [parse (infer-parser filename file)]
       (with-open [reader (bom/bom-reader file)]
         (let [timer              (u/start-timer)
               driver             (driver.u/database->driver database)
@@ -691,7 +731,7 @@
 
           {:row-count row-count})))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats file))
+      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats filename file))
       (throw e))))
 
 (defn- can-update-error
@@ -751,7 +791,7 @@
 
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
-    ;; visible to administrators and the operation is easy to retry again later.
+    ;; visible to administrators, and the operation is easy to retry again later.
     (driver/drop-table! driver (:id database) table-name)
 
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
@@ -785,16 +825,18 @@
   "Main entry point for updating an uploaded table with a CSV file.
   This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
   before auto-pk columns were introduced by metabase#36249, if it does not already exist."
-  [{:keys [^File file table-id action]}
+  [{:keys [filename ^File file table-id action]}
    :- [:map
        [:table-id ms/PositiveInt]
+       [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)
         replace? (= ::replace action)]
     (check-can-update database table)
-    (update-with-csv! database table file :replace-rows? replace?)))
+    (check-filetype filename file)
+    (update-with-csv! database table filename file :replace-rows? replace?)))
 
 ;;; +--------------------------------
 ;;; |  hydrate based_on_upload for FE

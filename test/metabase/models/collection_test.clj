@@ -144,7 +144,7 @@
 ;;; |                                     Nested Collections Helper Fns & Macros                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-collection-hierarchy [options a-fn]
+(defn do-with-collection-hierarchy! [options a-fn]
   (mt/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection a (merge options {:name "A"})
                              Collection b (merge options {:name "B", :location (collection/location-path a)})
@@ -155,7 +155,7 @@
                              Collection g (merge options {:name "G", :location (collection/location-path a c f)})]
       (a-fn {:a a, :b b, :c c, :d d, :e e, :f f, :g g}))))
 
-(defmacro with-collection-hierarchy
+(defmacro with-collection-hierarchy!
   "Run `body` with a hierarchy of Collections that looks like:
 
         +-> B
@@ -170,7 +170,7 @@
        ...)"
   {:style/indent 1}
   [[collections-binding options] & body]
-  `(do-with-collection-hierarchy ~options (fn [~collections-binding] ~@body)))
+  `(do-with-collection-hierarchy! ~options (fn [~collections-binding] ~@body)))
 
 (defmacro with-current-user-perms-for-collections
   "Run `body` with the current User permissions for `collections-or-ids`.
@@ -380,7 +380,8 @@
                                                                                   :include-archived-items :all}))))))))
 
 (deftest effective-location-path-test
-  (with-redefs [collection/collection-id->collection (constantly
+  (with-redefs [audit/is-collection-id-audit? (constantly false)
+                collection/collection-id->collection (constantly
                                                       (zipmap (map * (next (range 10)) (repeat 10))
                                                               (next (map (fn [id]
                                                                            {:id id
@@ -494,7 +495,7 @@
     ;; x -+-> C -+-> D -> E     ===>     x
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [{:keys [a b c d e f g]}]
+    (with-collection-hierarchy! [{:keys [a b c d e f g]}]
       (is (= 1
              (t2/delete! Collection :id (u/the-id a))))
       (is (= 0
@@ -508,7 +509,7 @@
     ;; A -+-> x -+-> D -> E     ===>     A -+
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [{:keys [a b c d e f g]}]
+    (with-collection-hierarchy! [{:keys [a b c d e f g]}]
       (t2/delete! Collection :id (u/the-id c))
       (is (= 2
              (t2/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
@@ -524,7 +525,7 @@
   (map :name (:effective_ancestors (t2/hydrate collection :effective_ancestors))))
 
 (deftest effective-ancestors-test
-  (with-collection-hierarchy [{:keys [a c d]}]
+  (with-collection-hierarchy! [{:keys [a c d]}]
     (testing "For D: if we don't have permissions for C, we should only see A"
       (with-current-user-perms-for-collections [a d]
         (is (= ["A"]
@@ -572,7 +573,7 @@
       format-collections))
 
 (deftest descendants-test
-  (with-collection-hierarchy [{:keys [a b c d]}]
+  (with-collection-hierarchy! [{:keys [a b c d]}]
     (testing "make sure we can fetch the descendants of a Collection in the hierarchy we'd expect"
       (is (= #{{:name "B", :id true, :location "/A/", :children #{}, :description nil}
                {:name        "C"
@@ -614,7 +615,7 @@
 
 (deftest root-collection-descendants-test
   (testing "For the *Root* Collection, can we get top-level Collections?"
-    (with-collection-hierarchy [_]
+    (with-collection-hierarchy! [_]
       (is (contains? (descendants collection/root-collection)
                      {:name        "A"
                       :id          true
@@ -665,7 +666,7 @@
   (set (map :name (collection/effective-children collection))))
 
 (deftest effective-children-test
-  (with-collection-hierarchy [{:keys [a b c d e f g]}]
+  (with-collection-hierarchy! [{:keys [a b c d e f g]}]
     (testing "If we *have* perms for everything we should just see B and C."
       (with-current-user-perms-for-collections [a b c d e f g]
         (is (= #{"B" "C"}
@@ -738,7 +739,7 @@
                (effective-children collection/root-collection)))))
 
     (testing "For the Root Collection: if we remove A and C we should get B, D and F"
-      (with-collection-hierarchy [{:keys [b d e f g]}]
+      (with-collection-hierarchy! [{:keys [b d e f g]}]
         (is (= #{"B" "D" "F"}
                (with-current-user-perms-for-collections [b d e f g]
                  (effective-children collection/root-collection))))))))
@@ -775,7 +776,7 @@
 ;;; ---------------------------------------------- Perms for Archiving -----------------------------------------------
 
 (deftest perms-for-archiving-test
-  (with-collection-hierarchy [{:keys [a b c d], :as collections}]
+  (with-collection-hierarchy! [{:keys [a b c d], :as collections}]
     (testing "To Archive A, you should need *write* perms for A and all of its descendants, and also the Root Collection..."
       (is (= #{"/collection/root/"
                "/collection/A/"
@@ -846,7 +847,7 @@
 ;; `*` marks the things that require permissions in charts below!
 
 (deftest perms-for-moving-test
-  (with-collection-hierarchy [{:keys [b c], :as collections}]
+  (with-collection-hierarchy! [{:keys [b c], :as collections}]
     (testing "If we want to move B into C, we should need perms for A, B, and C."
       ;; B because it is being moved; C we are moving
       ;; something into it, A because we are moving something out of it
@@ -911,7 +912,7 @@
                   (perms-path-ids->names collections)))))))
 
 (deftest perms-for-moving-exceptions-test
-  (with-collection-hierarchy [{:keys [a b], :as _collections}]
+  (with-collection-hierarchy! [{:keys [a b], :as _collections}]
     (testing "If you try to calculate permissions to move or archive the Root Collection, throw an Exception!"
       (is (thrown?
            Exception
@@ -979,7 +980,7 @@
     ;; A -+-> C -+-> D -> E
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [collections]
+    (with-collection-hierarchy! [collections]
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -992,7 +993,7 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+-> C -+-> D
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
-    (with-collection-hierarchy [{:keys [b e], :as collections}]
+    (with-collection-hierarchy! [{:keys [b e], :as collections}]
       (collection/move-collection! e (collection/children-location b))
       (is (= {"A" {"B" {"E" {}}
                    "C" {"D" {}
@@ -1006,7 +1007,7 @@
     ;; A -+-> C -+-> D -> E  ===>  A -+-> C -+
     ;;           |                           |
     ;;           +-> F -> G                  +-> F -> G
-    (with-collection-hierarchy [{:keys [b d], :as collections}]
+    (with-collection-hierarchy! [{:keys [b d], :as collections}]
       (collection/move-collection! d (collection/children-location b))
       (is (= {"A" {"B" {"D" {"E" {}}}
                    "C" {"F" {"G" {}}}}}
@@ -1019,7 +1020,7 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+-> C -> D -> E
     ;;           |
     ;;           +-> F -> G         F -> G
-    (with-collection-hierarchy [{:keys [f], :as collections}]
+    (with-collection-hierarchy! [{:keys [f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}}}
@@ -1033,7 +1034,7 @@
     ;; A -+-> C -+-> D -> E   ===>  F -+-> A -+-> C -+-> D -> E
     ;;           |                     |
     ;;           +-> F -> G            +-> G
-    (with-collection-hierarchy [{:keys [a f], :as collections}]
+    (with-collection-hierarchy! [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
       (collection/move-collection! a (collection/children-location (t2/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
@@ -1048,7 +1049,7 @@
 
 (deftest nested-collections-archiving-test
   (testing "Make sure the 'additional-conditions' for collection-locations is working normally"
-    (with-collection-hierarchy [collections]
+    (with-collection-hierarchy! [collections]
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -1060,7 +1061,7 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+-> C -+-> D
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
-    (with-collection-hierarchy [{:keys [e], :as collections}]
+    (with-collection-hierarchy! [{:keys [e], :as collections}]
       (t2/update! Collection (u/the-id e) {:archived true})
       (is (= {"A" {"B" {}
                    "C" {"D" {}
@@ -1073,7 +1074,7 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy! [{:keys [c], :as collections}]
       (archive-collection! c)
       (is (= {"A" {"B" {}}}
              (collection-locations (vals collections) :archived false))))))
@@ -1085,7 +1086,7 @@
     ;; A -+-> C -+-> D        ===>  A -+-> C -+-> D -> E
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
-    (with-collection-hierarchy [{:keys [e], :as collections}]
+    (with-collection-hierarchy! [{:keys [e], :as collections}]
       (archive-collection! e)
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
       (is (= {"A" {"B" {}
@@ -1099,7 +1100,7 @@
     ;; A -+                   ===>  A -+-> C -+-> D -> E
     ;;                                        |
     ;;                                        +-> F -> G
-    (with-collection-hierarchy [{:keys [c], :as collections}]
+    (with-collection-hierarchy! [{:keys [c], :as collections}]
       (archive-collection! c)
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
       (is (= {"A" {"B" {}
@@ -1111,7 +1112,7 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that archiving applies to %ss" (name model))
       ;; object is in E; archiving E should cause object to be archived
-      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+      (with-collection-hierarchy! [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
                                                                   {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! e)
@@ -1120,7 +1121,7 @@
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
-      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+      (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
                                                                     {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! c)
@@ -1131,7 +1132,7 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that unarchiving applies to %ss" (name model))
       ;; object is in E; unarchiving E should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+      (with-collection-hierarchy! [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
                                                                   {:namespace "snippets"})]
         (archive-collection! e)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
@@ -1141,7 +1142,7 @@
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+      (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
                                                                     {:namespace "snippets"})]
         (archive-collection! c)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]

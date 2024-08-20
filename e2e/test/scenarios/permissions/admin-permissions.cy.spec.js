@@ -54,6 +54,16 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     ]);
   });
 
+  it("should not show view data column on OSS", () => {
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    cy.findByTestId("permission-table").within(() => {
+      cy.findByText("Database name").should("exist");
+      cy.findByText("View data").should("not.exist");
+      cy.findByText("Create queries").should("exist");
+    });
+  });
+
   it("should display error on failed save", () => {
     // revoke some permissions
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
@@ -582,7 +592,7 @@ describe("scenarios > admin > permissions", () => {
     });
   });
 
-  it("should show a dismissable modal and banner showing split permermisson changes (#metabase#45073", () => {
+  it("should show a dismissable modal and banner showing split permisson changes (#metabase#45073", () => {
     // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
     // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
     // we set them to false and ensure a modal is shown explaining the new permissions structure
@@ -633,6 +643,39 @@ describe("scenarios > admin > permissions", () => {
       "not.exist",
     );
     cy.findByRole("alert").should("not.exist");
+  });
+
+  it("split permisson change modal should dismiss even if network request fails", () => {
+    // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
+    // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
+    // we set them to false and ensure a modal is shown explaining the new permissions structure
+    const tempState = {
+      "show-updated-permission-modal": true,
+    };
+
+    // When the app calls for session properties, give them a modified API response
+    cy.intercept("/api/session/properties", req => {
+      req.continue(res => {
+        res.body = { ...res.body, ...tempState };
+      });
+    }).as("sessionProps");
+
+    // These calls are setting the permission to false, so update the local state. When the settings are refreshed
+    // from the browser, they will get the new values from local state
+    cy.intercept("api/setting/show-updated-permission-modal", {
+      statusCode: 500,
+    });
+
+    cy.visit("/admin/permissions/");
+    //Both the command palette and the admin app call refresh settings
+    cy.wait(["@sessionProps", "@sessionProps"]);
+
+    cy.findByRole("dialog", { name: /permissions may look different/ })
+      .findByRole("button", { name: "Got it" })
+      .click();
+    cy.wait("@sessionProps");
+
+    cy.findByRole("menuitem", { name: "All Users" }).click();
   });
 });
 

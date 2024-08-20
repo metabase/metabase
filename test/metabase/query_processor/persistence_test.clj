@@ -14,12 +14,26 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.fix-bad-references :as fix-bad-refs]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [toucan2.core :as t2])
   (:import
    (java.time Instant)
    (java.time.temporal ChronoUnit)))
 
 (set! *warn-on-reflection* true)
+
+(defmulti can-persist-test-honeysql-quote-style
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod can-persist-test-honeysql-quote-style :default
+  [_driver]
+  :ansi)
+
+(defmethod can-persist-test-honeysql-quote-style :mysql
+  [_driver]
+  :mysql)
 
 (deftest can-persist-test
   (testing "Can each database that allows for persistence actually persist"
@@ -35,9 +49,7 @@
                                (first
                                 (sql/format {:select [:key :value]
                                              :from   [(keyword schema-name "cache_info")]}
-                                            {:dialect (if (= (:engine (mt/db)) :mysql)
-                                                        :mysql
-                                                        :ansi)}))}
+                                            {:dialect (can-persist-test-honeysql-quote-style driver/*driver*)}))}
                   values      (into {} (->> query mt/native-query qp/process-query mt/rows))]
               (is (partial= {"settings-version" "1"
                              "instance-uuid"    (public-settings/site-uuid)}
@@ -55,11 +67,10 @@
 (deftest persisted-models-max-rows-test
   (testing "Persisted models should have the full number of rows of the underlying query,
             not limited by `absolute-max-results` (#24793)"
-    #_{:clj-kondo/ignore [:discouraged-var]}
     (with-redefs [qp.i/absolute-max-results 3]
       (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
         (mt/dataset daily-bird-counts
-          (mt/with-persistence-enabled [persist-models!]
+          (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [Card model {:type          :model
                                        :database_id   (mt/id)
                                        :query_type    :query
@@ -100,7 +111,7 @@
                                     [:native (mt/native-query
                                               (qp.compile/compile
                                                (mt/mbql-query products)))]]]
-          (mt/with-persistence-enabled [persist-models!]
+          (mt/with-persistence-enabled! [persist-models!]
             (mt/with-temp [Card model {:type          :model
                                        :database_id   (mt/id)
                                        :query_type    query-type
@@ -136,12 +147,13 @@
                 (testing "Was persisted"
                   (is (str/includes? (-> results :data :native_form :query) persisted-schema)))
                 (testing "Did not find bad field clauses"
-                  (is (= [] @bad-refs))))))))))
+                  (is (= [] @bad-refs)))))))))))
 
+(deftest persisted-models-complex-queries-joins-test
   (testing "Can use joins with persisted models (#28902)"
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (mt/dataset test-data
-        (mt/with-persistence-enabled [persist-models!]
+        (mt/with-persistence-enabled! [persist-models!]
           (mt/with-temp [Card model {:type        :model
                                      :database_id (mt/id)
                                      :query_type  :query

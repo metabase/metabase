@@ -2,8 +2,7 @@ import { useMemo } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 
-import { InteractiveQuestionProvider } from "../public/InteractiveQuestion/context";
-
+import { InteractiveQuestionProviderWithLocation } from "./InteractiveQuestion/context";
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 
 interface InteractiveAdHocQuestionProps {
@@ -28,14 +27,14 @@ export const InteractiveAdHocQuestion = ({
   );
 
   return (
-    <InteractiveQuestionProvider
+    <InteractiveQuestionProviderWithLocation
       location={location}
       params={params}
       componentPlugins={plugins}
       onNavigateBack={onNavigateBack}
     >
       <InteractiveQuestionResult height={height} withTitle={withTitle} />
-    </InteractiveQuestionProvider>
+    </InteractiveQuestionProviderWithLocation>
   );
 };
 

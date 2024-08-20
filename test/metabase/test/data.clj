@@ -247,7 +247,7 @@
   *  An inline dataset definition:
 
      (data/dataset (get-dataset-definition) ...)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [dataset & body]
   `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
                                         (format "using %s dataset" dataset)
@@ -266,6 +266,8 @@
   [& body]
   `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
+;;; TODO FIXME -- rename this to `with-empty-h2-app-db`
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-empty-h2-app-db
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
   created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.

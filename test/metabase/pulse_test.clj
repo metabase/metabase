@@ -13,11 +13,11 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -349,8 +349,7 @@
 
       :fixture
       (fn [_ thunk]
-        (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results           10000
-                                                                            :max-results-bare-rows 30})]
+        (mt/with-temporary-setting-values [public-settings/download-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert
@@ -716,7 +715,7 @@
                                                       :details  {:emails ["nonuser@metabase.com"]}}
                    PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                             :pulse_channel_id pc-id}]
-      (pulse.test-util/email-test-setup
+      (pulse.test-util/email-test-setup!
        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
        (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
        (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe"))))))
