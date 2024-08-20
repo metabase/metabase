@@ -128,6 +128,34 @@ const QUERY_MULTIPLE_TEMPORAL_BREAKOUTS: StructuredQuery = {
   ],
 };
 
+const QUERY_TEMPORAL_EXPRESSION_BREAKOUT: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  expressions: {
+    "Created At plus one month": [
+      "datetime-add",
+      [
+        "field",
+        PRODUCTS.CREATED_AT,
+        {
+          "base-type": "type/DateTime",
+        },
+      ],
+      1,
+      "month",
+    ],
+  },
+  aggregation: [["count"]],
+  breakout: [
+    [
+      "expression",
+      "Created At plus one month",
+      {
+        "base-type": "type/DateTime",
+      },
+    ],
+  ],
+};
+
 const CUSTOM_EXPRESSIONS_USED = [
   "offset",
   "count",
@@ -549,6 +577,67 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         cy.button("Show Visualization").click();
         queryBuilderMain().findByText("42").should("be.visible");
 
+        verifyNotebookText(info);
+
+        toggleColumnPickerItems(["Value difference"]);
+        popover().button("Done").click();
+
+        cy.get("@questionId").then(questionId => {
+          expectGoodSnowplowEvent({
+            event: "column_compare_via_shortcut",
+            custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
+            database_id: SAMPLE_DB_ID,
+            question_id: questionId,
+          });
+        });
+
+        verifyAggregations([
+          {
+            name: "Count (previous month)",
+            expression: "Offset(Count, -1)",
+          },
+          {
+            name: "Count (vs previous month)",
+            expression: "Count - Offset(Count, -1)",
+          },
+          {
+            name: "Count (% vs previous month)",
+            expression: "Count / Offset(Count, -1) - 1",
+          },
+        ]);
+
+        verifyBreakoutExistsAndIsFirst({
+          column: "Created At",
+          bucket: "Month",
+        });
+
+        verifyColumns([
+          "Count (previous month)",
+          "Count (vs previous month)",
+          "Count (% vs previous month)",
+        ]);
+      });
+
+      it("breakout on temporal column which is an expression", () => {
+        createQuestion(
+          { query: QUERY_TEMPORAL_EXPRESSION_BREAKOUT },
+          { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+        );
+
+        const info = {
+          itemName: "Compare to the past",
+          step2Title: "Compare “Count” to the past",
+          presets: ["Previous month", "Previous year"],
+          offsetHelp: "ago",
+        };
+
+        verifySummarizeText(info);
+
+        tableHeaderClick("Created At plus one month");
+        verifyNoColumnCompareShortcut();
+
+        verifyColumnDrillText(info);
+        verifyPlusButtonText(info);
         verifyNotebookText(info);
 
         toggleColumnPickerItems(["Value difference"]);
