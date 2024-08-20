@@ -2,9 +2,9 @@ import PropTypes from "prop-types";
 import { isValidElement } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
-import Collections from "metabase/entities/collections";
 import Questions from "metabase/entities/questions";
 import { color } from "metabase/lib/colors";
 import { isNotNull } from "metabase/lib/types";
@@ -61,7 +61,7 @@ export function QuestionDataSource({
   if (originalQuestion?.id() === sourceQuestionId) {
     return (
       <SourceDatasetBreadcrumbs
-        model={originalQuestion}
+        question={originalQuestion}
         variant={variant}
         {...props}
       />
@@ -70,35 +70,27 @@ export function QuestionDataSource({
 
   return (
     <Questions.Loader id={sourceQuestionId} loadingAndErrorWrapper={false}>
-      {({ question: sourceQuestion }) => (
-        <Collections.Loader
-          id={sourceQuestion?.collectionId()}
-          loadingAndErrorWrapper={false}
-        >
-          {({ collection, loading }) => {
-            if (!sourceQuestion || loading) {
-              return null;
-            }
-            if (sourceQuestion.type() === "model") {
-              return (
-                <SourceDatasetBreadcrumbs
-                  model={sourceQuestion}
-                  collection={collection}
-                  variant={variant}
-                  {...props}
-                />
-              );
-            }
-            return (
-              <DataSourceCrumbs
-                question={question}
-                variant={variant}
-                {...props}
-              />
-            );
-          }}
-        </Collections.Loader>
-      )}
+      {({ question: sourceQuestion }) => {
+        if (!sourceQuestion) {
+          return null;
+        }
+
+        if (
+          sourceQuestion.type() === "model" ||
+          sourceQuestion.type() === "metric"
+        ) {
+          return (
+            <SourceDatasetBreadcrumbs
+              question={sourceQuestion}
+              variant={variant}
+              {...props}
+            />
+          );
+        }
+        return (
+          <DataSourceCrumbs question={question} variant={variant} {...props} />
+        );
+      }}
     </Questions.Loader>
   );
 }
@@ -119,11 +111,20 @@ function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
 }
 
 SourceDatasetBreadcrumbs.propTypes = {
-  model: PropTypes.object.isRequired,
-  collection: PropTypes.object.isRequired,
+  question: PropTypes.object.isRequired,
 };
 
-function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
+function SourceDatasetBreadcrumbs({ question, ...props }) {
+  const collectionId = question?.collectionId();
+
+  const { data: collection, isFetching } = useGetCollectionQuery(
+    collectionId ? { id: collectionId } : skipToken,
+  );
+
+  if (isFetching) {
+    return null;
+  }
+
   return (
     <HeadBreadcrumbs
       {...props}
@@ -136,7 +137,7 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
         >
           {collection?.name || t`Our analytics`}
         </HeadBreadcrumbs.Badge>,
-        model.isArchived() ? (
+        question.isArchived() ? (
           <Tooltip
             key="dataset-name"
             tooltip={t`This model is archived and shouldn't be used.`}
@@ -147,15 +148,15 @@ function SourceDatasetBreadcrumbs({ model, collection, ...props }) {
               inactiveColor="text-light"
               icon={{ name: "warning", color: color("danger") }}
             >
-              {model.displayName()}
+              {question.displayName()}
             </HeadBreadcrumbs.Badge>
           </Tooltip>
         ) : (
           <HeadBreadcrumbs.Badge
-            to={Urls.question(model.card())}
+            to={Urls.question(question.card())}
             inactiveColor="text-light"
           >
-            {model.displayName()}
+            {question.displayName()}
           </HeadBreadcrumbs.Badge>
         ),
       ]}
