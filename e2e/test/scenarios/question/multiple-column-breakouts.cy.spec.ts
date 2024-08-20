@@ -9,9 +9,11 @@ import {
   enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
+  filter,
   filterWidget,
   getDashboardCard,
   getNotebookStep,
+  modal,
   openNotebook,
   popover,
   restore,
@@ -762,6 +764,25 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
 
       it("should be able to add post-aggregation filters for each breakout column", () => {
+        function addDateBetweenFilter({
+          columnName,
+          columnMinValue,
+          columnMaxValue,
+        }: {
+          columnName: string;
+          columnMinValue: string;
+          columnMaxValue: string;
+        }) {
+          popover().within(() => {
+            cy.findByText(columnName).click();
+            cy.findByText("Specific dates…").click();
+            cy.findByText("Between").click();
+            cy.findByLabelText("Start date").clear().type(columnMinValue);
+            cy.findByLabelText("End date").clear().type(columnMaxValue);
+            cy.button("Add filter").click();
+          });
+        }
+
         function testDatePostAggregationFilter({
           questionDetails,
           column1Name,
@@ -784,29 +805,44 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("add a filter for the first column");
           getNotebookStep("summarize").button("Filter").click();
-          popover().within(() => {
-            cy.findByText(column1Name).click();
-            cy.findByText("Specific dates…").click();
-            cy.findByText("Between").click();
-            cy.findByLabelText("Start date").clear().type(column1MinValue);
-            cy.findByLabelText("End date").clear().type(column1MaxValue);
-            cy.button("Add filter").click();
+          addDateBetweenFilter({
+            columnName: column1Name,
+            columnMinValue: column1MinValue,
+            columnMaxValue: column1MaxValue,
           });
 
           cy.log("add a filter for the second column");
           getNotebookStep("filter", { stage: 1 }).icon("add").click();
-          popover().within(() => {
-            cy.findByText(column2Name).click();
-            cy.findByText("Specific dates…").click();
-            cy.findByText("Between").click();
-            cy.findByLabelText("Start date").clear().type(column2MinValue);
-            cy.findByLabelText("End date").clear().type(column2MaxValue);
-            cy.button("Add filter").click();
+          addDateBetweenFilter({
+            columnName: column2Name,
+            columnMinValue: column2MinValue,
+            columnMaxValue: column2MaxValue,
           });
 
           cy.log("assert query results");
           visualize();
           cy.wait("@dataset");
+        }
+
+        function addNumericBetweenFilter({
+          columnName,
+          columnMinValue,
+          columnMaxValue,
+        }: {
+          columnName: string;
+          columnMinValue: number;
+          columnMaxValue: number;
+        }) {
+          popover().within(() => {
+            cy.findByText(columnName).click();
+            cy.findByPlaceholderText("Min")
+              .clear()
+              .type(String(columnMinValue));
+            cy.findByPlaceholderText("Max")
+              .clear()
+              .type(String(columnMaxValue));
+            cy.button("Add filter").click();
+          });
         }
 
         function testNumericPostAggregationFilter({
@@ -831,28 +867,18 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           cy.log("add a filter for the first column");
           getNotebookStep("summarize").button("Filter").click();
-          popover().within(() => {
-            cy.findByText(column1Name).click();
-            cy.findByPlaceholderText("Min")
-              .clear()
-              .type(String(column1MinValue));
-            cy.findByPlaceholderText("Max")
-              .clear()
-              .type(String(column1MaxValue));
-            cy.button("Add filter").click();
+          addNumericBetweenFilter({
+            columnName: column1Name,
+            columnMinValue: column1MinValue,
+            columnMaxValue: column1MaxValue,
           });
 
           cy.log("add a filter for the second column");
           getNotebookStep("filter", { stage: 1 }).icon("add").click();
-          popover().within(() => {
-            cy.findByText(column2Name).click();
-            cy.findByPlaceholderText("Min")
-              .clear()
-              .type(String(column2MinValue));
-            cy.findByPlaceholderText("Max")
-              .clear()
-              .type(String(column2MaxValue));
-            cy.button("Add filter").click();
+          addNumericBetweenFilter({
+            columnName: column2Name,
+            columnMinValue: column2MinValue,
+            columnMaxValue: column2MaxValue,
           });
 
           cy.log("assert query results");
@@ -1054,6 +1080,89 @@ describe("scenarios > question > multiple column breakouts", () => {
           firstRows: [["X", "X"]],
         });
       });
+    });
+
+    describe("filter modal", () => {
+      function addDateBetweenFilter({
+        columnName,
+        columnMinValue,
+        columnMaxValue,
+      }: {
+        columnName: string;
+        columnMinValue: string;
+        columnMaxValue: string;
+      }) {
+        modal()
+          .findByTestId(`filter-column-${columnName}`)
+          .findByLabelText("More options")
+          .click();
+        popover().within(() => {
+          cy.findByText("Specific dates…").click();
+          cy.findByText("Between").click();
+          cy.findByLabelText("Start date").clear().type(columnMinValue);
+          cy.findByLabelText("End date").clear().type(columnMaxValue);
+          cy.button("Add filter").click();
+        });
+      }
+
+      function testDatePostAggregationFilter({
+        questionDetails,
+        column1Name,
+        column1MinValue,
+        column1MaxValue,
+        column2Name,
+        column2MinValue,
+        column2MaxValue,
+      }: {
+        questionDetails: StructuredQuestionDetails;
+        column1Name: string;
+        column1MinValue: string;
+        column1MaxValue: string;
+        column2Name: string;
+        column2MinValue: string;
+        column2MaxValue: string;
+      }) {
+        createQuestion(questionDetails, { visitQuestion: true });
+        filter();
+
+        cy.log("add a filter for the first column");
+        addDateBetweenFilter({
+          columnName: column1Name,
+          columnMinValue: column1MinValue,
+          columnMaxValue: column1MaxValue,
+        });
+
+        cy.log("add a filter for the second column");
+        addDateBetweenFilter({
+          columnName: column2Name,
+          columnMinValue: column2MinValue,
+          columnMaxValue: column2MaxValue,
+        });
+
+        cy.log("assert query results");
+        visualize();
+        cy.wait("@dataset");
+      }
+
+      cy.log("temporal buckets");
+      testDatePostAggregationFilter({
+        questionDetails: questionWith2TemporalBreakoutsDetails,
+        column1Name: "Created At: Year",
+        column1MinValue: "January 1, 2023",
+        column1MaxValue: "December 31, 2023",
+        column2Name: "Created At: Month",
+        column2MinValue: "March 1, 2023",
+        column2MaxValue: "May 31, 2023",
+      });
+      assertTableData({
+        columns: ["Created At: Year", "Created At: Month", "Count"],
+        firstRows: [
+          ["2023", "March 2023", "256"],
+          ["2023", "April 2023", "238"],
+          ["2023", "May 2023", "271"],
+        ],
+      });
+      assertQueryBuilderRowCount(3);
     });
   });
 });
