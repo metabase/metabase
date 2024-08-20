@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming.csv
   (:require
    [clojure.data.csv :as csv]
+   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.formatter :as formatter]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
@@ -86,7 +87,7 @@
     (for [x (first colls)
           more (cartesian-product (rest colls))]
       (cons x more))))
-
+#_
 (defn build-pivot-output [pivot]
   (let [{:keys [config data
                 row-values
@@ -116,9 +117,46 @@
                             measure-key pivot-measures]
                         (get-in data (concat row-path col-combo [measure-key])))))))))
 
-
-
-
+(defn build-pivot-output [pivot]
+  (let [{:keys [config data
+                row-values
+                column-values]} pivot
+        {:keys [pivot-rows
+                pivot-cols
+                pivot-measures
+                column-titles]} config
+        row-combos              (cartesian-product (map row-values pivot-rows))
+        col-combos              (cartesian-product (map column-values pivot-cols))
+        ;; Build the multi-level column headers
+        column-headers (for [col-combo   col-combos
+                             measure-key pivot-measures]
+                         (conj (vec col-combo) (get column-titles measure-key)))
+        ;; Add "Row Total" to column headers
+        column-headers-with-total (concat column-headers [(repeat (count pivot-measures) "Row Total")])
+        ;; Combine row keys with the new column headers
+        headers (map (fn [h]
+                       (concat (map #(get column-titles %) pivot-rows) h))
+                     (apply map vector column-headers-with-total))
+        ;; Function to calculate row total
+        calculate-row-total (fn [row-data]
+                              (let [groups (partition (count pivot-measures) (mapv (fn [v] (or v 0)) row-data))]
+                                (reduce (fn [a b]
+                                          (mapv + (or a 0) (or b 0))) (repeat (count pivot-measures) 0) groups))
+                              #_
+                              (reduce (fn [totals v]
+                                        (merge-with + totals v))
+                                      {}
+                                      (remove nil? row-data)))]
+    (concat headers
+            (for [row-combo row-combos]
+              (let [row-path row-combo
+                    row-data (for [col-combo   col-combos
+                                   measure-key pivot-measures]
+                               (get-in data (concat row-path col-combo [measure-key])))
+                    row-total (calculate-row-total row-data)]
+                (concat row-combo
+                        row-data
+                        row-total))))))
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
@@ -162,7 +200,7 @@
             ;; if we're processing a pivot result, we don't write it out yet, just store it
             ;; so that we can post process the full set of results in finish!
             (when (= 0 (nth ordered-row (get-in @pivot-data [:config :pivot-grouping])))
-              (swap! pivot-data (fn [a] (add-row a formatted-row))))
+              (swap! pivot-data (fn [a] (add-row a ordered-row))))
             (do
               (csv/write-csv writer [formatted-row])
               (.flush writer)))))
