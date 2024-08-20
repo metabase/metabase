@@ -1180,6 +1180,8 @@ describe("notifications", { tags: "@external" }, () => {
       .click();
 
     cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
+  });
+});
 
 describe("admin > upload settings", () => {
   describe("scenarios > admin > uploads (OSS)", { tags: "@OSS" }, () => {
