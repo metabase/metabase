@@ -1,0 +1,24 @@
+.SidesheetContent {
+  &:not([data-css-specificity-hack="🤷‍♀️"]) {
+    position: fixed;
+    height: 100vh;
+    max-height: 100vh;
+    right: 0;
+    border-radius: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+}
+
+/* if you set overflow: auto on a child of this container you can move the scroll into it */
+.FlexScrollContainer {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: column !important;
+  height: 0;
+}
+
+.OverflowAuto {
+  overflow: auto;
+}
