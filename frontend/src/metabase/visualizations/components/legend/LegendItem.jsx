@@ -55,7 +55,6 @@ const LegendItem = ({
     <LegendItemRoot isVertical={isVertical} data-testid="legend-item">
       <LegendItemLabel
         isMuted={isMuted}
-        onClick={onSelectSeries && handleItemClick}
         onMouseEnter={onHoverChange && handleItemMouseEnter}
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
@@ -66,6 +65,7 @@ const LegendItem = ({
             DashboardS.fullscreenNightText,
             EmbedFrameS.fullscreenNightText,
           )}
+          onClick={onSelectSeries && handleItemClick}
         >
           <Ellipsified>{item.name}</Ellipsified>
         </LegendItemTitle>

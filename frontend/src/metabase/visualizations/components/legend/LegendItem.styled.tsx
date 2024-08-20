@@ -18,7 +18,6 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   display: flex;
   align-items: center;
   opacity: ${({ isMuted }) => (isMuted ? "0.4" : "1")};
-  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
   transition: opacity 0.25s linear;
 
@@ -34,6 +33,7 @@ export const LegendItemDot = styled.div`
   border-radius: 50%;
   background-color: ${({ color }) => color};
   color-adjust: exact;
+  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
 `;
 
 export const LegendItemTitle = styled.div`
@@ -42,6 +42,7 @@ export const LegendItemTitle = styled.div`
   font-size: 0.85em;
   margin-left: 4px;
   overflow: hidden;
+  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
 `;
 
 export const LegendItemRemoveIcon = styled(Icon)`
