@@ -1,4 +1,5 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import { Flex, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -8,6 +9,7 @@ type Preset = {
   bucket: Lib.Bucket;
   displayName: string;
   shortName: TemporalUnit;
+  isCurrent: boolean;
 };
 
 type Props = {
@@ -19,7 +21,8 @@ type Props = {
   onShowOffsetInput: () => void;
 };
 
-const PREFERRED_PRESETS = ["month", "year", "quarter", "week"];
+const PREFERRED_PRESET_UNITS = ["month", "year", "quarter", "week"];
+const MAX_NUMBER_OF_PRESETS = 2;
 
 export function OffsetPresets({
   query,
@@ -56,40 +59,47 @@ function getPreferredPresets(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
-  bucket: TemporalUnit | null,
+  currentBucket: TemporalUnit | null,
 ) {
-  const availabeBuckets = Lib.availableTemporalBuckets(
+  const availableBuckets = Lib.availableTemporalBuckets(
     query,
     stageIndex,
     column,
   );
 
-  const byKey: Record<string, Preset> = {};
-  for (const availableBucket of availabeBuckets) {
-    const info = Lib.displayInfo(query, stageIndex, availableBucket);
-    byKey[info.shortName] = {
-      bucket: availableBucket,
-      shortName: info.shortName,
-      displayName: t`Previous ${info.displayName.toLowerCase()}`,
-    };
-  }
+  const availablePresets = availableBuckets
+    .map(availableBucket => {
+      const info = Lib.displayInfo(query, stageIndex, availableBucket);
+      if (info.isTemporalExtraction) {
+        return null;
+      }
 
-  let hasOriginalBucket = false;
-  const res = [];
-  for (const key of PREFERRED_PRESETS) {
-    if (res.length >= 2) {
-      break;
+      return {
+        bucket: availableBucket,
+        shortName: info.shortName,
+        displayName: t`Previous ${info.displayName.toLowerCase()}`,
+        isCurrent: info.shortName === currentBucket,
+      };
+    })
+    .filter((preset): preset is Preset => preset !== null);
+
+  const sortedPresets = _.sortBy(availablePresets, availablePreset => {
+    const index = PREFERRED_PRESET_UNITS.indexOf(availablePreset.shortName);
+
+    if (availablePreset.isCurrent) {
+      if (index < MAX_NUMBER_OF_PRESETS) {
+        return index;
+      } else {
+        return -Infinity;
+      }
     }
-    if (key in byKey) {
-      res.push(byKey[key]);
-      hasOriginalBucket = hasOriginalBucket || key === bucket;
+
+    if (index === -1) {
+      return Infinity;
     }
-  }
 
-  if (!hasOriginalBucket && bucket && bucket in byKey) {
-    res.pop();
-    res.push(byKey[bucket]);
-  }
+    return index;
+  });
 
-  return res;
+  return sortedPresets.slice(0, MAX_NUMBER_OF_PRESETS);
 }
