@@ -29,7 +29,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -340,7 +339,7 @@
                                                          :filter [:>= [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]
                                                          :aggregation [[:count]]}
                                                  :database "My Database"}
-                   :created_at                  OffsetDateTime}
+                   :created_at                  string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -364,7 +363,7 @@
                                          :card_id      c1-eid
                                          :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
                                                               {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}]
-                   :created_at         OffsetDateTime}
+                   :created_at         string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -411,7 +410,7 @@
                       :enabled true}]
                     :column_settings
                     {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                   :created_at    OffsetDateTime}
+                   :created_at    string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -439,7 +438,7 @@
                    :dataset_query  {:query    {:source-table c4-eid
                                                :aggregation [[:count]]}
                                     :database "My Database"}
-                   :created_at     OffsetDateTime}
+                   :created_at     string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -474,9 +473,9 @@
                                                 :enabled true}]
                                               :column_settings
                                               {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                     :created_at             OffsetDateTime}
+                     :created_at             string?}
                     {:action_id action-eid}]
-                   :created_at             OffsetDateTime}
+                   :created_at             string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -631,7 +630,7 @@
                                           {:model "Field", :id "email"}]]]
                        [:dimensions  [:sequential
                                       [:map
-                                       [:created_at (ms/InstanceOfClass OffsetDateTime)]
+                                       [:created_at :string]
                                        [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
                       ser))
           (is (not (contains? ser :id)))
@@ -657,13 +656,13 @@
                        [:dimensions         [:sequential
                                              [:map
                                               [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]
-                                              [:created_at              (ms/InstanceOfClass OffsetDateTime)]]]]]
+                                              [:created_at              :string]]]]]
                       ser))
           (is (not (contains? ser :id)))
 
           (testing "dimensions are properly inlined"
             (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
-                      :created_at              OffsetDateTime}]
+                      :created_at              string?}]
                     (:dimensions ser))))
 
           (testing "which depend on the Table and both real and human-readable foreign Fields"
@@ -716,7 +715,7 @@
                                       :label "snippet_1"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    OffsetDateTime}
+                     :created_at    string?}
                     ser))
             (is (not (contains? ser :id)))
 
@@ -731,7 +730,7 @@
                                              :id    s2-eid
                                              :label "snippet_2"}]]]
                          [:creator_id  [:= "ann@heart.band"]]
-                         [:created_at  (ms/InstanceOfClass OffsetDateTime)]
+                         [:created_at  :string]
                          [:collection_id {:optional true} :nil]]
                         ser))
             (is (not (contains? ser :id)))
@@ -779,7 +778,7 @@
             (is (=? {:serdes/meta   [{:model "Timeline" :id empty-eid :label "empty_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    OffsetDateTime}
+                     :created_at    string?}
                     ser))
             (is (not (contains? ser :id)))
 
@@ -792,10 +791,10 @@
             (is (=? {:serdes/meta   [{:model "Timeline" :id line-eid :label "populated_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    OffsetDateTime
-                     :events        [{:timestamp  (t/offset-date-time #t "2020-04-11T00:00:00Z")
+                     :created_at    string?
+                     :events        [{:timestamp  "2020-04-11T00:00:00Z"
                                       :creator_id "ann@heart.band"
-                                      :created_at OffsetDateTime}]}
+                                      :created_at string?}]}
                     ser))
             (is (not (contains? ser :id)))
             (is (not (contains? (-> ser :events first) :id)))
@@ -832,7 +831,7 @@
                                  :filter       [:< [:field ["My Database" nil
                                                             "Schemaless Table" "Some Field"]
                                                     nil] 18]}
-                   :created_at  OffsetDateTime}
+                   :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -992,7 +991,7 @@
                                  {:model "Table"    :id "Schemaless Table"}
                                  {:model "Field"    :id "Some Field"}
                                  {:model "FieldValues" :id "0"}] ; Always 0.
-                   :created_at  OffsetDateTime
+                   :created_at  string?
                    :values      values}
                   ser))
           (is (not (contains? ser :id)))

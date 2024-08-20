@@ -618,7 +618,7 @@
                              [:collection_id               [:= (:entity_id @coll1s)]]
                              [:name                        [:= "Some events"]]
                              [:creator_id                  [:= "tom@bost.on"]]
-                             :created_at                  :string
+                             [:created_at                  :string]
                              [:entity_id                   [:= (:entity_id timeline1)]]
                              [:description                 [:maybe :string]]
                              [:events                      [:sequential
