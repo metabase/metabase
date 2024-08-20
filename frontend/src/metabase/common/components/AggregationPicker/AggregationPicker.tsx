@@ -396,7 +396,9 @@ function renderItemIcon(item: ListItem) {
         position="right"
         content={
           <Box p="md">
-            <Markdown>{item.description}</Markdown>
+            <Markdown disallowHeading unstyleLinks>
+              {item.description}
+            </Markdown>
           </Box>
         }
       >
