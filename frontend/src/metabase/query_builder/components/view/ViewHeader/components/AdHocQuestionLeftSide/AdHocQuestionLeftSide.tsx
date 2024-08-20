@@ -1,7 +1,6 @@
 import type React from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import {
   AdHocLeftSideRoot,
   AdHocViewHeading,
@@ -66,7 +65,6 @@ export function AdHocQuestionLeftSide(
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className={CS.mb1}
             question={question}
             originalQuestion={undefined} // can be removed, needed for typings
             isObjectDetail={isObjectDetail}

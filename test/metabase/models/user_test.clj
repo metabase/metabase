@@ -195,7 +195,7 @@
  (testing "if sso enabled and password login is disabled, email should send a link to sso login"
    (mt/with-premium-features #{:disable-password-login}
      (mt/with-temporary-setting-values [enable-password-login false]
-       (ldap.test/with-ldap-server
+       (ldap.test/with-ldap-server!
          (invite-user-accept-and-check-inboxes! :invitor default-invitor , :accept-invite? false)
          (is (seq (mt/regex-email-bodies #"/auth/login"))))))))
 

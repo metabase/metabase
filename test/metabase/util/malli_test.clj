@@ -27,7 +27,7 @@
           (is (= "Special Number that has to be less than four description"
                  (umd/describe special-lt-4-schema)))
 
-          (mt/with-mock-i18n-bundles {"es" {:messages {"Special Number that has to be less than four description"
+          (mt/with-mock-i18n-bundles! {"es" {:messages {"Special Number that has to be less than four description"
                                                        "Número especial que tiene que ser menos de cuatro descripción"
 
                                                        "Special Number that has to be less than four error"

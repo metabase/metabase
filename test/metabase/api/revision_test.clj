@@ -431,7 +431,7 @@
                   (mt/user-http-request :crowberto :get 200 "revision" :entity "card" :id card-id)))))))
 
 (deftest revision-descriptions-are-i18ned-test
-  (mt/with-mock-i18n-bundles {"fr" {:messages {"created this" "créé ceci"
+  (mt/with-mock-i18n-bundles! {"fr" {:messages {"created this" "créé ceci"
                                                "added a description" "ajouté une description"
                                                "renamed {0} from \"{1}\" to \"{2}\"" "renommé {0} de {1} à {2}"
                                                "this {0}" "ce {0}"
