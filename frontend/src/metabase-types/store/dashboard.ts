@@ -1,14 +1,14 @@
 import type { DisplayTheme } from "metabase/public/lib/types";
 import type {
-  Dashboard,
-  DashboardId,
-  DashCardId,
   DashCardDataMap,
-  ParameterId,
-  ParameterValueOrArray,
+  DashCardId,
+  Dashboard,
+  DashboardCard,
+  DashboardId,
   DashboardTab,
   DashboardTabId,
-  DashboardCard,
+  ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =

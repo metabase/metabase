@@ -1,8 +1,8 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story, StoryContext } from "@storybook/react";
-import { within, userEvent } from "@storybook/testing-library";
-import { useEffect, type ComponentProps } from "react";
+import { userEvent, within } from "@storybook/testing-library";
+import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
@@ -119,7 +119,7 @@ function FasterExplicitSizeUpdateDecorator(Story: Story) {
  * This value works together with FasterExplicitSizeUpdateDecorator which
  * make sure we finish resizing any ExplicitSize components the fastest.
  */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
+const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
 function WaitForResizeToStopDecorator(Story: Story) {
   const asyncCallback = createAsyncCallback();
   useEffect(() => {

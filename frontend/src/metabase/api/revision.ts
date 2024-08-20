@@ -1,11 +1,11 @@
 import type {
-  Revision,
   ListRevisionRequest,
   RevertRevisionRequest,
+  Revision,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { listTag, invalidateTags, provideRevisionListTags } from "./tags";
+import { invalidateTags, listTag, provideRevisionListTags } from "./tags";
 
 export const revisionApi = Api.injectEndpoints({
   endpoints: builder => ({

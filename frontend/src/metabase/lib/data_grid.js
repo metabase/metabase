@@ -2,7 +2,7 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatColumn, formatValue } from "metabase/lib/formatting";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 
 export function isPivotGroupColumn(col) {

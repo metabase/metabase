@@ -2,10 +2,10 @@ import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkP
 import { trackSchemaEvent } from "metabase/lib/analytics";
 
 import type {
-  EmbeddingDisplayOptions,
   DisplayTheme,
   EmbedResource,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";

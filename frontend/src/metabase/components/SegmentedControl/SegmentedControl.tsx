@@ -5,11 +5,11 @@ import _ from "underscore";
 import type { IconName } from "metabase/ui";
 
 import {
-  SegmentedList,
+  ItemIcon,
+  SegmentedControlRadio,
   SegmentedItem,
   SegmentedItemLabel,
-  SegmentedControlRadio,
-  ItemIcon,
+  SegmentedList,
 } from "./SegmentedControl.styled";
 
 type SegmentedControlValue = string | number;

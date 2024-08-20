@@ -10,8 +10,8 @@ import { ActionsApi } from "metabase/services";
 import type {
   WritebackAction,
   WritebackActionId,
-  WritebackQueryAction,
   WritebackImplicitQueryAction,
+  WritebackQueryAction,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 

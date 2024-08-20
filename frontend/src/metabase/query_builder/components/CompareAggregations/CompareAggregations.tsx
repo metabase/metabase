@@ -9,10 +9,10 @@ import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
 import {
   ColumnPicker,
-  OffsetInput,
-  ReferenceAggregationPicker,
   ComparisonTypePicker,
   CurrentPerionInput,
+  OffsetInput,
+  ReferenceAggregationPicker,
 } from "./components";
 import type { ColumnType, ComparisonType } from "./types";
 import {

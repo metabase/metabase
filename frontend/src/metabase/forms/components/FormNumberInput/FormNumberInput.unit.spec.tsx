@@ -5,9 +5,9 @@ import * as Yup from "yup";
 import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
+  FormNumberInput,
   FormProvider,
   FormSubmitButton,
-  FormNumberInput,
   requiredErrorMessage,
 } from "metabase/forms";
 

@@ -2,16 +2,16 @@ import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
 import {
-  PLUGIN_DATA_PERMISSIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type {
-  GroupsPermissions,
-  GroupPermissions,
-  DatabasePermissions,
   ConcreteTableId,
+  DatabasePermissions,
+  GroupPermissions,
+  GroupsPermissions,
 } from "metabase-types/api";
 
 import type {
@@ -22,6 +22,7 @@ import type {
   TableEntityId,
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
+import { isSchemaEntityId, isTableEntityId } from "../data-entity-id";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
   value === DataPermissionValue.NO ||
@@ -221,7 +222,7 @@ export const getFieldsPermission = (
   }
 };
 
-const getEntityPermission = (
+export const getEntityPermission = (
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,
@@ -246,14 +247,78 @@ const getEntityPermission = (
   }
 };
 
+// subtypes to make testing easier and avoid using deprecated Database / Schema types
+type SchemaPartial = {
+  name: string;
+  getTables: () => { id: number | string }[];
+};
+type DatabasePartial = {
+  schemas?: SchemaPartial[];
+  schema(schemaName: string | undefined): SchemaPartial | null | undefined;
+};
+
+export function hasPermissionValueInSubgraph(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: DatabaseEntityId | SchemaEntityId,
+  database: DatabasePartial,
+  permission: DataPermission,
+  value: DataPermissionValue,
+) {
+  const schemasToSearch = _.compact(
+    isSchemaEntityId(entityId)
+      ? [database.schema(entityId.schemaName)]
+      : database.schemas,
+  );
+
+  if (schemasToSearch) {
+    const hasSchemaWithMatchingPermission = schemasToSearch.some(schema => {
+      const currVal = getTablesPermission(
+        permissions,
+        groupId,
+        { databaseId: entityId.databaseId, schemaName: schema.name },
+        permission,
+      );
+      return value === currVal;
+    });
+
+    if (hasSchemaWithMatchingPermission) {
+      return true;
+    }
+  }
+
+  return schemasToSearch.some(schema => {
+    return schema.getTables().some(table => {
+      return (
+        value ===
+        getFieldsPermission(
+          permissions,
+          groupId,
+          {
+            databaseId: entityId.databaseId,
+            schemaName: schema.name,
+            tableId: table.id as ConcreteTableId,
+          },
+          permission,
+        )
+      );
+    });
+  });
+}
+
 // return boolean if able to find if a value is present in all or a portion of the permissions graph
+// NOTE: default values are omitted from the graph, and given the way this function was written, it won't return
+// the right answer for those permissions. for now, those default values have been omitted from allowed values to avoid bugs
 export function hasPermissionValueInGraph(
   permissions:
     | GroupsPermissions
     | GroupPermissions
     | DatabasePermissions
     | DataPermissionValue,
-  permissionValue: DataPermissionValue,
+  permissionValue: Omit<
+    DataPermissionValue,
+    DataPermissionValue.BLOCKED | DataPermissionValue.NO // omit default values
+  >,
 ): boolean {
   if (permissions === permissionValue) {
     return true;
@@ -313,10 +378,7 @@ export function hasPermissionValueInEntityGraphs(
   });
 }
 
-// Ideally this would live in downgradeNativePermissionsIfNeeded, but originally that function was
-// created to only be called if a view permission was changing. there needs to be some reworking
-// in some of the setter methods to make sure the downgrading will always happen at the appropriate time
-export function restrictNativeQueryPermissionsIfNeeded(
+export function restrictCreateQueriesPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,
@@ -324,7 +386,7 @@ export function restrictNativeQueryPermissionsIfNeeded(
   value: DataPermissionValue,
   database: Database,
 ) {
-  const currDbNativePermission = getSchemasPermission(
+  const currDbCreateQueriesPermission = getSchemasPermission(
     permissions,
     groupId,
     { databaseId: entityId.databaseId },
@@ -335,10 +397,10 @@ export function restrictNativeQueryPermissionsIfNeeded(
     permission === DataPermission.CREATE_QUERIES &&
     value !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
     (entityId.tableId != null || entityId.schemaName != null) &&
-    currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+    currDbCreateQueriesPermission ===
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
 
-  const shouldDowngradeNative =
-    isMakingGranularCreateQueriesChange ||
+  const shouldRestrictForSomeReason =
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions(
       permissions,
       groupId,
@@ -348,7 +410,10 @@ export function restrictNativeQueryPermissionsIfNeeded(
       database,
     );
 
-  if (shouldDowngradeNative) {
+  const shouldRestrictNative =
+    isMakingGranularCreateQueriesChange || shouldRestrictForSomeReason;
+
+  if (shouldRestrictNative) {
     const schemaNames = (database && database.schemaNames()) ?? [null];
 
     schemaNames.forEach(schemaName => {
@@ -366,31 +431,21 @@ export function restrictNativeQueryPermissionsIfNeeded(
     });
   }
 
-  return permissions;
-}
-
-export function downgradeNativePermissionsIfNeeded(
-  permissions: GroupsPermissions,
-  groupId: number,
-  { databaseId }: DatabaseEntityId,
-  value: DataPermissionValue,
-) {
-  // remove query creation permissions if view permission is getting restricted
   if (
     isRestrictivePermission(value) ||
     value === DataPermissionValue.LEGACY_NO_SELF_SERVICE
   ) {
-    return updatePermission(
+    permissions = updateEntityPermission(
       permissions,
       groupId,
-      databaseId,
-      DataPermission.CREATE_QUERIES,
-      [],
+      entityId,
       DataPermissionValue.NO,
+      database,
+      DataPermission.CREATE_QUERIES,
     );
-  } else {
-    return permissions;
   }
+
+  return permissions;
 }
 
 const metadataTableToTableEntityId = (table: Table) => ({
@@ -444,7 +499,6 @@ export function inferAndUpdateEntityPermissions(
   entityId: EntityId,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const { databaseId } = entityId;
   const schemaName = (entityId as SchemaEntityId).schemaName ?? "";
@@ -465,7 +519,6 @@ export function inferAndUpdateEntityPermissions(
       tablesPermissionValue,
       database,
       permission,
-      downgradeNative,
     );
   }
 
@@ -485,17 +538,7 @@ export function inferAndUpdateEntityPermissions(
       schemasPermissionValue,
       database,
       permission,
-      downgradeNative,
     );
-
-    if (downgradeNative) {
-      permissions = downgradeNativePermissionsIfNeeded(
-        permissions,
-        groupId,
-        { databaseId },
-        schemasPermissionValue,
-      );
-    }
   }
 
   return permissions;
@@ -508,7 +551,6 @@ export function updateFieldsPermission(
   value: any,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const { databaseId, tableId } = entityId;
   const schemaName = entityId.schemaName || "";
@@ -520,7 +562,6 @@ export function updateFieldsPermission(
     DataPermissionValue.CONTROLLED,
     database,
     permission,
-    downgradeNative,
   );
   permissions = updatePermission(
     permissions,
@@ -530,7 +571,6 @@ export function updateFieldsPermission(
     [schemaName, tableId],
     value,
   );
-
   return permissions;
 }
 
@@ -541,7 +581,6 @@ export function updateTablesPermission(
   value: any,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const schema = database.schema(schemaName);
   const tableIds = schema?.getTables().map((t: Table) => t.id);
@@ -553,7 +592,6 @@ export function updateTablesPermission(
     DataPermissionValue.CONTROLLED,
     database,
     permission,
-    downgradeNative,
   );
   permissions = updatePermission(
     permissions,
@@ -575,7 +613,6 @@ export function updateSchemasPermission(
   value: DataPermissionValue,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
@@ -584,15 +621,6 @@ export function updateSchemasPermission(
     !(schemaNames.length === 1 && schemaNames[0] === null)
       ? schemaNames
       : [""];
-
-  if (downgradeNative) {
-    permissions = downgradeNativePermissionsIfNeeded(
-      permissions,
-      groupId,
-      { databaseId },
-      value,
-    );
-  }
 
   return updatePermission(
     permissions,
@@ -603,4 +631,42 @@ export function updateSchemasPermission(
     value,
     schemaNamesOrNoSchema,
   );
+}
+
+export function updateEntityPermission(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  value: DataPermissionValue,
+  database: Database,
+  permission: DataPermission,
+) {
+  if (isTableEntityId(entityId)) {
+    return updateFieldsPermission(
+      permissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  } else if (isSchemaEntityId(entityId)) {
+    return updateTablesPermission(
+      permissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  } else {
+    return updateSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  }
 }

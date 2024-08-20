@@ -1,12 +1,12 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
+  commandPalette,
+  commandPaletteSearch,
+  openColumnOptions,
   openQuestionActions,
   popover,
+  restore,
   sidebar,
-  openColumnOptions,
-  commandPaletteSearch,
-  commandPalette,
 } from "e2e/support/helpers";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 

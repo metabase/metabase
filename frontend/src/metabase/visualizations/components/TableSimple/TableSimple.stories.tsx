@@ -1,8 +1,8 @@
 import type { Story } from "@storybook/react";
 
 import {
-  VisualizationWrapper,
   SdkVisualizationWrapper,
+  VisualizationWrapper,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "embedding-sdk";
 import { Box } from "metabase/ui";

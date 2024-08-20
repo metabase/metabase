@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useCallback, useState, memo } from "react";
+import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
@@ -7,9 +7,9 @@ import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
+  DashCardId,
   Dashboard,
   DashboardCard,
-  DashCardId,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -142,7 +142,6 @@ function DashCardActionsPanelInner({
         onClick={onPreviewToggle}
         tooltip={isPreviewing ? t`Edit` : t`Preview`}
         aria-label={isPreviewing ? t`Edit card` : t`Preview card`}
-        analyticsEvent="Dashboard;Text;edit"
       >
         {isPreviewing ? (
           <DashCardActionButton.Icon name="edit_document" />
@@ -174,7 +173,6 @@ function DashCardActionsPanelInner({
           key="click-behavior-tooltip"
           aria-label={t`Click behavior`}
           tooltip={t`Click behavior`}
-          analyticsEvent="Dashboard;Open Click Behavior Sidebar"
           onClick={showClickBehaviorSidebar}
         >
           <Icon name="click" />
@@ -251,11 +249,7 @@ function DashCardActionsPanelInner({
     >
       <DashCardActionButtonsContainer>
         {buttons}
-        <DashCardActionButton
-          onClick={handleRemoveCard}
-          tooltip={t`Remove`}
-          analyticsEvent="Dashboard;Remove Card Modal"
-        >
+        <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
           <DashCardActionButton.Icon name="close" />
         </DashCardActionButton>
       </DashCardActionButtonsContainer>

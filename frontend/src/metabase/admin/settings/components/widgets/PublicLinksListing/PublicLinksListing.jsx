@@ -10,7 +10,6 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import * as Urls from "metabase/lib/urls";
 import { getSetting } from "metabase/selectors/settings";
 import { ActionsApi, CardApi, DashboardApi } from "metabase/services";
@@ -52,10 +51,6 @@ class PublicLinksListing extends Component {
     }
   }
 
-  trackEvent(label) {
-    MetabaseAnalytics.trackStructEvent(`Admin ${this.props.type}`, label);
-  }
-
   render() {
     const { getUrl, getPublicUrl, revoke, noLinksMessage } = this.props;
     let { list, error } = this.state;
@@ -84,11 +79,7 @@ class PublicLinksListing extends Component {
                   <tr key={link.id}>
                     <td>
                       {getUrl ? (
-                        <Link
-                          to={getUrl(link)}
-                          onClick={() => this.trackEvent("Entity Link Clicked")}
-                          className={CS.textWrap}
-                        >
+                        <Link to={getUrl(link)} className={CS.textWrap}>
                           {link.name}
                         </Link>
                       ) : (

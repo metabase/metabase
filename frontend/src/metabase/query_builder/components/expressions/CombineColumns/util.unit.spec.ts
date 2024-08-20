@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import {
   createMockDatabase,
   createMockField,
@@ -8,11 +8,11 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  label,
   formatSeparator,
   getDefaultSeparator,
-  getExpressionName,
   getExample,
+  getExpressionName,
+  label,
 } from "./util";
 
 const EMAIL = createMockField({

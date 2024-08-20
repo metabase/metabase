@@ -12,10 +12,10 @@
           (f [form]
             (when-let [qualified-symbol (hooks.common/node->qualified-symbol form)]
               (cond
-                (contains? (:disallowed config) qualified-symbol)
+                (contains? (:parallel/unsafe config) qualified-symbol)
                 (error! form (format "%s is not allowed inside a ^:parallel test or test fixture [:metabase/validate-deftest]" qualified-symbol))
 
-                (and (not (contains? (:allowed config) qualified-symbol))
+                (and (not (contains? (:parallel/safe config) qualified-symbol))
                      (str/ends-with? (name qualified-symbol) "!"))
                 (error! form (format "destructive functions like %s are not allowed inside a ^:parallel test or test fixture. If this should be allowed, add it to the whitelist in the Kondo config file [:metabase/validate-deftest]"
                                      qualified-symbol)))))

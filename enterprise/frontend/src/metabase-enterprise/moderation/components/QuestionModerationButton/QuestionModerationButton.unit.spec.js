@@ -3,13 +3,13 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createMockUser } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import {
-  createMockState,
   createMockQueryBuilderState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 import QuestionModerationButton from "./QuestionModerationButton";

@@ -1,7 +1,7 @@
 (ns macros.metabase-enterprise.query-reference-validation.api-test
   (:require [macros.common]))
 
-(defmacro with-test-setup [& body]
+(defmacro with-test-setup! [& body]
   `(let [~(macros.common/ignore-unused 'card-1) 1
          ~(macros.common/ignore-unused 'card-2) 2
          ~(macros.common/ignore-unused 'card-3) 3

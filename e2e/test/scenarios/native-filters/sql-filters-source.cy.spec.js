@@ -1,23 +1,23 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  checkFilterListSourceHasValue,
   describeEE,
+  multiAutocompleteInput,
+  multiAutocompleteValue,
   openNativeEditor,
   popover,
   restore,
   saveQuestion,
+  setConnectedFieldSource,
   setDropdownFilterType,
   setFilterListSource,
   setFilterQuestionSource,
+  setSearchBoxFilterType,
+  setTokenFeatures,
   visitEmbeddedPage,
   visitPublicQuestion,
   visitQuestion,
-  setTokenFeatures,
-  setSearchBoxFilterType,
-  multiAutocompleteInput,
-  multiAutocompleteValue,
-  checkFilterListSourceHasValue,
-  setConnectedFieldSource,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";

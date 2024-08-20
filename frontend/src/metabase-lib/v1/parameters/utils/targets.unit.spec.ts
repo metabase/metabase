@@ -25,14 +25,14 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createOrdersCreatedAtField,
   createOrdersQuantityField,
   createOrdersTable,
   createProductsCreatedAtField,
   createSampleDatabase,
-  PRODUCTS,
-  PRODUCTS_ID,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
 

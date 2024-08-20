@@ -3,20 +3,20 @@ import { onlyOn } from "@cypress/skip-test";
 import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  openNavigationSidebar,
-  navigationSidebar,
-  visitDashboard,
-  modal,
-  rightSidebar,
   appBar,
-  getDashboardCard,
-  undoToast,
-  openDashboardMenu,
-  toggleDashboardInfoSidebar,
-  entityPickerModal,
   collectionOnTheGoModal,
+  entityPickerModal,
+  getDashboardCard,
+  modal,
+  navigationSidebar,
+  openDashboardMenu,
+  openNavigationSidebar,
+  popover,
+  restore,
+  rightSidebar,
+  toggleDashboardInfoSidebar,
+  undoToast,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {

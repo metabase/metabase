@@ -1,6 +1,6 @@
 import { Group } from "metabase/ui";
 
-import { Root, EditIcon, Title, ButtonsContainer } from "./EditBar.styled";
+import { ButtonsContainer, EditIcon, Root, Title } from "./EditBar.styled";
 
 type Props = {
   title: string;

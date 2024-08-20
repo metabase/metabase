@@ -480,7 +480,7 @@
                             {:key "January", :name "January", :enabled true}],
                            :funnel.order_dimension "CREATED_AT"}}]
         (mt/with-temp [Card {card-id :id} funnel-card]
-          (let [doc        (render.tu/render-card-as-hickory card-id)
+          (let [doc        (render.tu/render-card-as-hickory! card-id)
                 pulse-body (hik.s/select
                             (hik.s/class "pulse-body")
                             doc)]
@@ -522,7 +522,7 @@
                             {:key "purchase" :name "purchase" :enabled true}]}}]
         (mt/with-temp [:model/Card {card-id :id} funnel-card]
           (let [row-names      (into #{} (map first funnel-rows))
-                doc            (render.tu/render-card-as-hickory card-id)
+                doc            (render.tu/render-card-as-hickory! card-id)
                 section-labels (->> doc
                                     (hik.s/select (hik.s/tag :tspan))
                                     (mapv (comp first :content))
@@ -553,8 +553,8 @@
                                                                              :pie.show_total  false
                                                                              :pie.colors      colours}
                                                     :dataset_query          q}]
-          (let [card-a-doc (render.tu/render-card-as-hickory card-a-id)
-                card-b-doc (render.tu/render-card-as-hickory card-b-id)]
+          (let [card-a-doc (render.tu/render-card-as-hickory! card-a-id)
+                card-b-doc (render.tu/render-card-as-hickory! card-b-id)]
             ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
             ;; we should expect to see each of the 4 (and only those 4) colours.
             ;; This is also true of the colours for the legend circle elements.
@@ -665,7 +665,7 @@
                                                              :dataset_query          q
                                                              :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
-              (is (seq (render.tu/render-card-as-hickory card-id))))))))))
+              (is (seq (render.tu/render-card-as-hickory! card-id))))))))))
 
 (deftest trend-chart-renders-in-alerts-test
   (testing "Trend charts render successfully in Alerts. (#39854)"
@@ -682,7 +682,7 @@
         ;; Here, we simulate an Alert (NOT a subscription) by only providing a card and not mocking a DashCard.
         (mt/with-temp [:model/Card {card-id :id} {:display       :smartscalar
                                                   :dataset_query q}]
-          (let [doc       (render.tu/render-card-as-hickory card-id)
+          (let [doc       (render.tu/render-card-as-hickory! card-id)
                 span-text (->> doc
                                (hik.s/select (hik.s/tag :span))
                                (mapv (comp first :content))
@@ -731,7 +731,7 @@
                                                         :visualization_settings (viz "right")
                                                         :dataset_query          q}]
           (testing "Every series on the left correctly only renders left axis."
-            (let [doc                (render.tu/render-card-as-hickory left-card-id)
+            (let [doc                (render.tu/render-card-as-hickory! left-card-id)
                   axis-label-element (hik.s/select (content-selector ["Count"]) doc)
                   ;; the axis label has a :transform property like this: "matrix(0,1,-1,0,520,162.3245)"
                   ;; which is explained here: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
@@ -747,7 +747,7 @@
               (is (= 1 (count axis-label-element)))
               (is (> 200 axis-y-transform))))
           (testing "Every series on the right correctly only renders right axis."
-            (let [doc                (render.tu/render-card-as-hickory right-card-id)
+            (let [doc                (render.tu/render-card-as-hickory! right-card-id)
                   axis-label-element (hik.s/select (content-selector ["Count"]) doc)
                   axis-y-transform   (-> axis-label-element
                                          (get-in [0 :attrs :transform])
@@ -776,8 +776,8 @@
                        :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                      :card_id          card-b-id}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [card-doc               (render.tu/render-card-as-hickory card-a-id)
-                  dashcard-doc           (render.tu/render-dashcard-as-hickory dashcard-id)
+            (let [card-doc               (render.tu/render-card-as-hickory! card-a-id)
+                  dashcard-doc           (render.tu/render-dashcard-as-hickory! dashcard-id)
                   card-path-elements     (hik.s/select (hik.s/tag :path) card-doc)
                   card-paths-count       (count card-path-elements)
                   dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
@@ -827,7 +827,7 @@
                        :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                      :card_id          card-b-id}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [dashcard-doc           (render.tu/render-dashcard-as-hickory
+            (let [dashcard-doc           (render.tu/render-dashcard-as-hickory!
                                           dashcard-id
                                           [{:value     "2019-05"
                                             :id        "944bba5f"
@@ -885,9 +885,9 @@
                                                                :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                                                                    {:column_title "CASH MONEY"}}}}]
        (mt/with-current-user (mt/user->id :rasta)
-         (let [card-doc        (render.tu/render-card-as-hickory card-id)
+         (let [card-doc        (render.tu/render-card-as-hickory! card-id)
                card-header-els (hik.s/select (hik.s/tag :th) card-doc)
-               dashcard-doc    (render.tu/render-dashcard-as-hickory dashcard-id)
+               dashcard-doc    (render.tu/render-dashcard-as-hickory! dashcard-id)
                dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
                card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
                                 "Total" "Discount ($)" "Created At" "Quantity"]
@@ -920,7 +920,7 @@
                                                              :id            idx})
                                                           ids-to-colour))}}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [card-doc     (render.tu/render-card-as-hickory card-id)
+            (let [card-doc     (render.tu/render-card-as-hickory! card-id)
                   card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
               (is (= (mapv str ids-to-colour)
                      (keep
@@ -962,7 +962,7 @@
                                                              :id            idx})
                                                           ids-to-colour))}}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [card-doc     (render.tu/render-card-as-hickory card-id)
+            (let [card-doc     (render.tu/render-card-as-hickory! card-id)
                   card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
               (is (=  ids-to-colour
                      (keep

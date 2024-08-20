@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { fireEvent, screen, getIcon, within, render } from "__support__/ui";
+import { fireEvent, getIcon, render, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,

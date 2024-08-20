@@ -1,4 +1,4 @@
-import { CacheDurationUnit, type CacheConfig } from "metabase-types/api";
+import { type CacheConfig, CacheDurationUnit } from "metabase-types/api";
 
 export const createMockCacheConfig = (
   opts?: Partial<CacheConfig>,

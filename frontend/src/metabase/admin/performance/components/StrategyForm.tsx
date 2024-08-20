@@ -30,9 +30,9 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type {
-  CacheableModel,
   CacheStrategy,
   CacheStrategyType,
+  CacheableModel,
   ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
@@ -42,10 +42,10 @@ import { strategyValidationSchema } from "../constants/complex";
 import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import {
-  getLabelString,
   cronToScheduleSettings,
-  scheduleSettingsToCron,
+  getLabelString,
   getStrategyValidationSchema,
+  scheduleSettingsToCron,
 } from "../utils";
 
 import {

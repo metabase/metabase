@@ -12,16 +12,16 @@ import { CollectionInstanceAnalyticsIcon } from "./components/CollectionInstance
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import {
   AUTHORITY_LEVELS,
-  REGULAR_COLLECTION,
-  OFFICIAL_COLLECTION,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
+  OFFICIAL_COLLECTION,
+  REGULAR_COLLECTION,
 } from "./constants";
 import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 import {
-  getCollectionType,
-  isRegularCollection,
-  getIcon,
   filterOutItemsFromInstanceAnalytics,
+  getCollectionType,
+  getIcon,
+  isRegularCollection,
 } from "./utils";
 
 if (hasPremiumFeature("official_collections")) {

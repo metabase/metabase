@@ -1,7 +1,7 @@
 import isPropValid from "@emotion/is-prop-valid";
 import styled from "@emotion/styled";
 import cx from "classnames";
-import type { SVGAttributes, MouseEvent, ReactNode } from "react";
+import type { MouseEvent, ReactNode, SVGAttributes } from "react";
 import { forwardRef } from "react";
 
 import { Tooltip } from "../../overlays/Tooltip";

@@ -855,7 +855,7 @@
 ;;; |                                         Collections Permissions Tests                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-dash-in-collection [f]
+(defn do-with-dash-in-collection! [f]
   (tu/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection    collection {}
                              Dashboard     dash       {:collection_id (u/the-id collection)}
@@ -867,16 +867,16 @@
                              DashboardCard _          {:dashboard_id (u/the-id dash), :card_id (u/the-id card)}]
       (f db collection dash))))
 
-(defmacro with-dash-in-collection
+(defmacro with-dash-in-collection!
   "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."
   {:style/indent :defn}
   [[db-binding collection-binding dash-binding] & body]
-  `(do-with-dash-in-collection
+  `(do-with-dash-in-collection!
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or dash-binding '_)]
       ~@body)))
 
 (deftest perms-test
-  (with-dash-in-collection [_db collection dash]
+  (with-dash-in-collection! [_db collection dash]
     (testing (str "Check that if a Dashboard is in a Collection, someone who would not be able to see it under the old "
                   "artifact-permissions regime will be able to see it if they have permissions for that Collection")
       (binding [api/*current-user-permissions-set* (atom #{(perms/collection-read-path collection)})]

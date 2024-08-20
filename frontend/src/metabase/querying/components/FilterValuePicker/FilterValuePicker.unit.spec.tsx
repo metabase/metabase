@@ -13,9 +13,9 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_METADATA,
   columnFinder,
   createQuery,
-  SAMPLE_METADATA,
 } from "metabase-lib/test-helpers";
 import type { FieldId, GetFieldValuesResponse } from "metabase-types/api";
 import {
@@ -23,14 +23,14 @@ import {
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
-  createOrdersProductIdField,
-  createPeopleIdField,
-  createSampleDatabase,
   ORDERS,
   PEOPLE,
   PEOPLE_STATE_VALUES,
-  PRODUCT_CATEGORY_VALUES,
   PRODUCTS,
+  PRODUCT_CATEGORY_VALUES,
+  createOrdersProductIdField,
+  createPeopleIdField,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
