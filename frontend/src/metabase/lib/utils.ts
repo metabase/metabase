@@ -139,3 +139,15 @@ export function compareVersions(
 }
 
 export const isEEBuild = () => PLUGIN_IS_EE_BUILD.isEEBuild();
+
+export const generateRandomId = () => {
+  const characters =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let randomPart = "";
+  for (let i = 0; i < 4; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    randomPart += characters[randomIndex];
+  }
+  const timestamp = Date.now().toString();
+  return `t_id_${randomPart}${timestamp}`;
+};
