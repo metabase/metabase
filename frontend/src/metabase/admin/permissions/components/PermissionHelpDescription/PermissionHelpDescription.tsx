@@ -6,7 +6,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import type { IconName } from "metabase/ui";
-import { Icon, Flex, Text, Title } from "metabase/ui";
+import { Flex, Icon, Text, Title } from "metabase/ui";
 
 import { PermissionIconContainer } from "./PermissionHelpDescription.styled";
 

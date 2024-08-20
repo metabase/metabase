@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import {
   isEditableCollection,
-  isRootTrashCollection,
   isInstanceAnalyticsCollection,
+  isRootTrashCollection,
 } from "metabase/collections/utils";
 import { color } from "metabase/lib/colors";
 import {

@@ -1,6 +1,6 @@
 import type { CardId } from "./card";
 import type { CollectionId } from "./collection";
-import type { DashboardId, DashCardId } from "./dashboard";
+import type { DashCardId, DashboardId } from "./dashboard";
 import type { Channel } from "./notifications";
 import type { Parameter } from "./parameters";
 import type { UserId, UserInfo } from "./user";

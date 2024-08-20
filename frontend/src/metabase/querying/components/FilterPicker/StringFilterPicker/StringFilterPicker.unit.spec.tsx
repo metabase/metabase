@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupFieldsValuesEndpoints,
   setupFieldSearchValuesEndpoint,
+  setupFieldsValuesEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
@@ -13,9 +13,9 @@ import {
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 import {
+  PEOPLE,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
-  PEOPLE,
 } from "metabase-types/api/mocks/presets";
 
 import {

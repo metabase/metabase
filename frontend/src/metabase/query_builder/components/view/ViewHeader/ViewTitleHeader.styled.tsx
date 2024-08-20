@@ -2,13 +2,13 @@ import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
-import { Button as MantineButton, type ButtonProps } from "metabase/ui";
+import { type ButtonProps, Button as MantineButton } from "metabase/ui";
 
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
-import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
+import ViewSection, { ViewHeading, ViewSubHeading } from "../ViewSection";
 
 import { QuestionDataSource } from "./components/QuestionDataSource";
 

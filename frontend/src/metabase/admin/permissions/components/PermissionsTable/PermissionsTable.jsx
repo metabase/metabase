@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
@@ -11,14 +11,14 @@ import CS from "metabase/css/core/index.css";
 import { PermissionsSelect } from "../PermissionsSelect";
 
 import {
+  ColumnName,
+  EntityName,
+  EntityNameLink,
+  HintIcon,
+  PermissionTableHeaderCell,
+  PermissionsTableCell,
   PermissionsTableRoot,
   PermissionsTableRow,
-  PermissionsTableCell,
-  PermissionTableHeaderCell,
-  EntityNameLink,
-  EntityName,
-  HintIcon,
-  ColumnName,
 } from "./PermissionsTable.styled";
 
 const propTypes = {

@@ -5,10 +5,10 @@ import { Icon } from "metabase/ui";
 
 import type { BorderSide } from "./NotebookCell.styled";
 import {
-  NotebookCell as _NotebookCell,
+  CONTAINER_PADDING,
   NotebookCellItemContainer,
   NotebookCellItemContentContainer,
-  CONTAINER_PADDING,
+  NotebookCell as _NotebookCell,
 } from "./NotebookCell.styled";
 
 export const NotebookCell = Object.assign(_NotebookCell, {

@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { BadgeRoot, BadgeIcon, BadgeText } from "./SlackBadge.styled";
+import { BadgeIcon, BadgeRoot, BadgeText } from "./SlackBadge.styled";
 
 export interface SlackBadgeProps {
   isBot?: boolean;

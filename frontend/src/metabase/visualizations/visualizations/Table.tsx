@@ -12,10 +12,10 @@ import {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
-  columnSettings,
-  tableColumnSettings,
-  getTitleForColumn,
   isPivoted as _isPivoted,
+  columnSettings,
+  getTitleForColumn,
+  tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
@@ -29,13 +29,13 @@ import Question from "metabase-lib/v1/Question";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
-  isMetric,
+  isAvatarURL,
   isDimension,
-  isNumber,
-  isURL,
   isEmail,
   isImageURL,
-  isAvatarURL,
+  isMetric,
+  isNumber,
+  isURL,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,

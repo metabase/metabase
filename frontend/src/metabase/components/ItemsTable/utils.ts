@@ -1,4 +1,4 @@
-import { breakpoints, type BreakpointName } from "metabase/ui/theme";
+import { type BreakpointName, breakpoints } from "metabase/ui/theme";
 
 export interface ResponsiveProps {
   /** The element will be hidden when the container's width is below this breakpoint */

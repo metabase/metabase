@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Icon, Tabs } from "metabase/ui";
 import type {
+  SearchRequest,
   SearchResult,
   SearchResultId,
-  SearchRequest,
 } from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "../../types";

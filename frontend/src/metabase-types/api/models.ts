@@ -1,8 +1,8 @@
 import type {
   BaseUser,
   CardId,
-  CollectionId,
   CollectionAuthorityLevel,
+  CollectionId,
   DatabaseId,
   UserId,
 } from "metabase-types/api";

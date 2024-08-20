@@ -8,13 +8,13 @@ import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import {
+  ErrorIcon,
+  IconButton,
+  LastRefreshTimeLabel,
+  RefreshIcon,
   Row,
   StatusContainer,
   StatusLabel,
-  LastRefreshTimeLabel,
-  IconButton,
-  ErrorIcon,
-  RefreshIcon,
 } from "./ModelCacheManagementSection.styled";
 
 type Props = {

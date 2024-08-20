@@ -9,10 +9,10 @@ import registerVisualizations from "metabase/visualizations/register";
 import Question from "metabase-lib/v1/Question";
 import { createMockVisualizationSettings } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();

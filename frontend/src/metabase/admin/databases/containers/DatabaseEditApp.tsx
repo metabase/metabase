@@ -23,20 +23,20 @@ import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import Database from "metabase-lib/v1/metadata/Database";
 import type {
-  Database as DatabaseType,
   DatabaseData,
   DatabaseId,
+  Database as DatabaseType,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
-  reset,
-  initializeDatabase,
-  saveDatabase,
-  updateDatabase,
-  dismissSyncSpinner,
   deleteDatabase,
+  dismissSyncSpinner,
+  initializeDatabase,
+  reset,
+  saveDatabase,
   selectEngine,
+  updateDatabase,
 } from "../database";
 import { getEditingDatabase, getInitializeError } from "../selectors";
 

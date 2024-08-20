@@ -1,11 +1,11 @@
 import type {
+  ActionDashboardCard,
   Dashboard,
+  DashboardQueryMetadata,
   DashboardTab,
   QuestionDashboardCard,
   VirtualCard,
-  ActionDashboardCard,
   VirtualDashboardCard,
-  DashboardQueryMetadata,
 } from "metabase-types/api";
 
 import { createMockCard } from "./card";

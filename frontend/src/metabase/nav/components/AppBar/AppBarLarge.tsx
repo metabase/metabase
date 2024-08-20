@@ -8,11 +8,11 @@ import { SearchBar } from "../search/SearchBar";
 import { SearchButton } from "../search/SearchButton";
 
 import {
+  AppBarInfoContainer,
   AppBarLeftContainer,
+  AppBarProfileLinkContainer,
   AppBarRightContainer,
   AppBarRoot,
-  AppBarInfoContainer,
-  AppBarProfileLinkContainer,
 } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
