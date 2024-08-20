@@ -1481,7 +1481,8 @@
              [:id ::lib.schema.common/non-blank-string]]])
 
 (defclause dimension
-  target [:or Field template-tag])
+  target [:or Field template-tag]
+  options [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]])
 
 (defclause variable
   target template-tag)
