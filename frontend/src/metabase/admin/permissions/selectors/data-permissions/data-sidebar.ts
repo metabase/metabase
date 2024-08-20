@@ -13,9 +13,9 @@ import type { State } from "metabase-types/store";
 
 import type { EntityId, RawDataRouteParams } from "../../types";
 import {
-  getTableEntityId,
-  getSchemaEntityId,
   getDatabaseEntityId,
+  getSchemaEntityId,
+  getTableEntityId,
 } from "../../utils/data-entity-id";
 import { getDatabase } from "../../utils/metadata";
 

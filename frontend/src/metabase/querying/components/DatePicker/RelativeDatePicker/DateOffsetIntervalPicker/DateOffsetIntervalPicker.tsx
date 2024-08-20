@@ -2,10 +2,10 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 
 import {
-  Icon,
   Button,
   Divider,
   Group,
+  Icon,
   NumberInput,
   Select,
   Text,

@@ -11,8 +11,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  createMockAdminState,
   createMockAdminAppState,
+  createMockAdminState,
 } from "metabase-types/store/mocks";
 
 const REGULAR_ITEMS = [

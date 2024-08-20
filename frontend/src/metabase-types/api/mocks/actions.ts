@@ -1,11 +1,11 @@
 import type {
+  ActionFormSettings,
   CardId,
+  FieldSettings,
   PublicWritebackAction,
+  WritebackImplicitQueryAction,
   WritebackParameter,
   WritebackQueryAction,
-  WritebackImplicitQueryAction,
-  ActionFormSettings,
-  FieldSettings,
 } from "metabase-types/api";
 
 import { createMockParameter } from "./parameters";

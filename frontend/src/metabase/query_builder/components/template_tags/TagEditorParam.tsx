@@ -36,13 +36,13 @@ import type { State } from "metabase-types/store";
 
 import {
   ContainerLabel,
+  DefaultRequiredValueControl,
+  FieldMappingSelect,
+  FilterWidgetLabelInput,
+  FilterWidgetTypeSelect,
   InputContainer,
   TagContainer,
   TagName,
-  DefaultRequiredValueControl,
-  FilterWidgetTypeSelect,
-  FieldMappingSelect,
-  FilterWidgetLabelInput,
 } from "./TagEditorParamParts";
 import { VariableTypeSelect } from "./TagEditorParamParts/VariableTypeSelect";
 

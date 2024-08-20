@@ -221,8 +221,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted
-                                                                                              (mt/id :venues) :unrestricted}
+                   ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted}
                                                                        :perms/create-queries {(mt/id :checkins) :query-builder
                                                                                               (mt/id :venues) :query-builder}}}})
                 (apply-row-level-permissions
@@ -471,7 +470,7 @@
                                                         :order-by    [[:asc $venue_id->venues.price]]
                                                         :breakout    [$venue_id->venues.price $user_id->users.name]}))))))))))
 
-(defn- run-query-returning-remark [run-query-fn]
+(defn- run-query-returning-remark! [run-query-fn]
   (let [remark (atom nil)
         orig   qp.util/query->remark]
     (with-redefs [qp.util/query->remark (fn [driver outer-query]
@@ -487,7 +486,7 @@
     (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
       (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash>" (mt/user->id :rasta))
-             (run-query-returning-remark
+             (run-query-returning-remark!
               (fn []
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
 
@@ -736,7 +735,7 @@
                     (mt/rows (run-query)))))))))))
 
 (deftest dont-cache-sandboxes-test
-  (cache-test/with-mock-cache [save-chan]
+  (cache-test/with-mock-cache! [save-chan]
     (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
       (letfn [(run-query []
@@ -763,7 +762,7 @@
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Run the query with different User attributes, should not get the cached result"
-          (met/with-user-attributes :rasta {"cat" 40}
+          (met/with-user-attributes! :rasta {"cat" 40}
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
               (is (= {"cat" 40}
@@ -1084,7 +1083,7 @@
                                               ["dimension"
                                                [:field (mt/id :products :category)
                                                 nil]]}}}}
-        (mt/with-persistence-enabled [persist-models!]
+        (mt/with-persistence-enabled! [persist-models!]
           (mt/with-temp [Card model {:type          :model
                                      :dataset_query (mt/mbql-query
                                                       products
@@ -1107,7 +1106,7 @@
                                    :database (mt/id)}
                     regular-result (mt/with-test-user :crowberto
                                      (qp/process-query query))
-                    sandboxed-result (met/with-user-attributes :rasta {"category" "Gizmo"}
+                    sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
                                        (mt/with-test-user :rasta
                                          (qp/process-query query)))]
                 (testing "Unsandboxed"
@@ -1134,7 +1133,7 @@
                                           :table_id      (mt/id :categories)
                                           :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
-          (process-userland-query-test/with-query-execution [qe query]
+          (process-userland-query-test/with-query-execution! [qe query]
             (qp/process-query (qp/userland-query query))
             (is (=? {:is_sandboxed true}
                     (qe)))))))))
@@ -1171,3 +1170,34 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (qp/process-query query))))))))
+
+(deftest sandbox-join-permissions-unrestricted-test
+  (testing "sandboxing with unrestricted data perms on the sandboxed table works"
+    (met/with-gtaps! (mt/$ids orders
+                              {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                               :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
+      (let [query (mt/mbql-query orders)]
+        (is (= 11 (count (mt/rows (qp/process-query query)))))))))
+
+(deftest sandbox-join-permissions-not-allowed-when-table-blocked-test
+  (testing "sandboxed query fails when sandboxed table is joined to a table that the current user is blocked on"
+    (met/with-gtaps! (mt/$ids orders
+                              {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                               :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
+      (let [query (mt/mbql-query orders)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query query)))))))
+
+(deftest sandbox-join-permissions-test-uses-nested-sandboxes-test
+  (testing "Nested sandbox query works when sandboxed definition is based on a fk to another sandboxed table"
+    (met/with-gtaps! (mt/$ids orders
+                              {:attributes {"user_id" 1}
+                               :gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}
+                                            ;; Since noone's zipcode == 1, this sandboxed table will return nothing
+                                            :people {:remappings {"user_id" [:dimension $people.zip]}}}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
+      (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))

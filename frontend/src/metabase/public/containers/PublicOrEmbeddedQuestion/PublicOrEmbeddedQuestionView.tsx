@@ -14,11 +14,11 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
-  VisualizationSettings,
   Dataset,
+  DatasetQuery,
   ParameterId,
   ParameterValuesMap,
-  DatasetQuery,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 interface PublicOrEmbeddedQuestionViewProps {

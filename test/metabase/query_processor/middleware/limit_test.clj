@@ -9,7 +9,7 @@
 
 (def ^:private test-max-results 10000)
 
-(defn- limit [query]
+(defn- limit! [query]
   (with-redefs [qp.i/absolute-max-results test-max-results]
     (let [rff (limit/limit-result-rows query qp.reducible/default-rff)
           rf  (rff {})]
@@ -18,7 +18,7 @@
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `qp.i/absolute-max-results`"
     (is (= test-max-results
-           (-> (limit {:type :native}) mt/rows count)))))
+           (-> (limit! {:type :native}) mt/rows count)))))
 
 (deftest ^:parallel disable-max-results-test
   (testing "Apply `absolute-max-results` limit in the default case"
@@ -37,7 +37,7 @@
 (deftest max-results-constraint-test
   (testing "Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained"
     (is (= 1234
-           (-> (limit {:constraints {:max-results 1234}
+           (-> (limit! {:constraints {:max-results 1234}
                        :type        :query
                        :query       {:aggregation [[:count]]}})
                mt/rows count)))))
@@ -47,7 +47,7 @@
     (let [query  {:constraints {:max-results 46}
                   :type        :query
                   :query       {}}
-          result (limit query)]
+          result (limit! query)]
       (is (= 46
              (-> result mt/rows count))
           "number of rows in results should match limit added by middleware")

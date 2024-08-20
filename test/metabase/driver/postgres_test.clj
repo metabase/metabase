@@ -1346,7 +1346,7 @@
                (driver/syncable-schemas driver/*driver* (mt/db))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
-        (mt/with-persistence-enabled [persist-models!]
+        (mt/with-persistence-enabled! [persist-models!]
           (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
             (mt/with-temp [:model/Card _ {:name "model"
                                           :type :model

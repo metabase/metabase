@@ -11,8 +11,8 @@ import { trackLicenseTokenStepSubmitted } from "../analytics";
 import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
   getSection,
   selectUsageReason,
   setup,

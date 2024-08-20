@@ -43,7 +43,7 @@
              body
              (json/generate-string body))})
 
-(defn- test-no-auth-token
+(defn- test-no-auth-token!
   "Test that a Slack API endpoint function returns `nil` if a Slack API token isn't configured."
   [endpoint thunk]
   (http-fake/with-fake-routes {endpoint (fn [_]
@@ -54,7 +54,7 @@
         (is (= nil
                (not-empty (thunk))))))))
 
-(defn- test-invalid-auth-token
+(defn- test-invalid-auth-token!
   "Test that a Slack API endpoint function throws an Exception if an invalid Slack API token is set."
   [endpoint thunk]
   (testing "should throw Exception if auth token is invalid"
@@ -72,10 +72,10 @@
             (is (= {:slack-token "Invalid token"}
                    (:errors (ex-data e))))))))))
 
-(defn- test-auth
+(defn- test-auth!
   "Test that a Slack API `endpoint` function works as expected when Slack token is missing or invalid."
   [endpoint thunk]
-  (doseq [f [test-no-auth-token test-invalid-auth-token]]
+  (doseq [f [test-no-auth-token! test-invalid-auth-token!]]
     (f endpoint thunk)))
 
 (deftest slack-app-token-truncation-test
@@ -86,7 +86,7 @@
 
 (deftest conversations-list-test
   (testing "conversations-list"
-    (test-auth conversations-endpoint slack/conversations-list)
+    (test-auth! conversations-endpoint slack/conversations-list)
 
     (testing "should be able to fetch channels and paginate"
       (http-fake/with-fake-routes {conversations-endpoint (comp mock-200-response mock-conversations-response-body)}
@@ -138,7 +138,7 @@
 
 (deftest users-list-test
   (testing "users-list"
-    (test-auth users-endpoint slack/users-list)
+    (test-auth! users-endpoint slack/users-list)
 
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}

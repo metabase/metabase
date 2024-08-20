@@ -28,9 +28,9 @@ import {
 } from "metabase/selectors/metadata";
 import {
   convertSavedQuestionToVirtualTable,
-  getQuestionVirtualTableId,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
+  getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS

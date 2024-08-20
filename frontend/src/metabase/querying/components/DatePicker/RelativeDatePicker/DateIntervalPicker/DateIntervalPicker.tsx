@@ -2,11 +2,11 @@ import type { FormEvent } from "react";
 import { t } from "ttag";
 
 import {
-  Icon,
   Button,
   Divider,
   Flex,
   Group,
+  Icon,
   NumberInput,
   Select,
   Text,
@@ -18,11 +18,11 @@ import type { DateIntervalValue } from "../types";
 import {
   formatDateRange,
   getInterval,
-  setInterval,
   getUnitOptions,
+  setInterval,
 } from "../utils";
 
-import { setUnit, setDefaultOffset } from "./utils";
+import { setDefaultOffset, setUnit } from "./utils";
 
 interface DateIntervalPickerProps {
   value: DateIntervalValue;

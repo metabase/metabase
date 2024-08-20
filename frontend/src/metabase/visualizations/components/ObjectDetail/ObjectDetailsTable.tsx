@@ -7,23 +7,23 @@ import EmptyState from "metabase/components/EmptyState";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { formatValue, formatColumn } from "metabase/lib/formatting";
+import { formatColumn, formatValue } from "metabase/lib/formatting";
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
-  isa,
+  isAvatarURL,
   isID,
   isImageURL,
-  isAvatarURL,
+  isa,
 } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
-  ObjectDetailsTable,
-  GridContainer,
-  GridCell,
   FitImage,
+  GridCell,
+  GridContainer,
+  ObjectDetailsTable,
 } from "./ObjectDetailsTable.styled";
 import type { OnVisualizationClickType } from "./types";
 

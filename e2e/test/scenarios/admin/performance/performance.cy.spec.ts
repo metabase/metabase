@@ -2,15 +2,15 @@ import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
 
 import {
   adaptiveRadioButton,
-  dontCacheResultsRadioButton,
-  formLauncher,
-  durationRadioButton,
-  useDefaultRadioButton,
-  scheduleRadioButton,
   cacheStrategyForm,
+  cacheStrategyRadioButton,
+  dontCacheResultsRadioButton,
+  durationRadioButton,
+  formLauncher,
   openStrategyFormForDatabaseOrDefaultPolicy,
   saveCacheStrategyForm,
-  cacheStrategyRadioButton,
+  scheduleRadioButton,
+  useDefaultRadioButton,
 } from "./helpers/e2e-strategy-form-helpers";
 
 // NOTE: These tests just check that the form can be saved. They do not test

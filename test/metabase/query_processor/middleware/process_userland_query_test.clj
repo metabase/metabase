@@ -22,7 +22,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn do-with-query-execution [query run]
+(defn do-with-query-execution! [query run]
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
@@ -37,7 +37,7 @@
                            ;; bug that is causing query hashes to get
                            ;; calculated in an inconsistent manner; check
                            ;; `:query` vs `:query-execution-query`
-                           (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution)
+                           (ex-info (format "%s: Query hashes are not equal!" `do-with-query-execution!)
                                     {:query                 query
                                      :original-hash         (some-> original-hash codecs/bytes->hex)
                                      :query-execution       query-execution
@@ -51,8 +51,8 @@
                (:hash qe)         (update :hash (fn [^bytes a-hash]
                                                   (some-> a-hash codecs/bytes->hex)))))))))))
 
-(defmacro with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
-  `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
+(defmacro with-query-execution! {:style/indent 1} [[qe-result-binding query] & body]
+  `(do-with-query-execution! ~query (fn [~qe-result-binding] ~@body)))
 
 (defn- process-userland-query
   [query]
@@ -71,7 +71,7 @@
 
 (deftest success-test
   (let [query {:database 2, :type :query, :query {:source-table 26}}]
-    (with-query-execution [qe query]
+    (with-query-execution! [qe query]
       (is (= #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
              (t/zoned-date-time))
           "sanity check")
@@ -108,7 +108,7 @@
 
 (deftest failure-test
   (let [query {:database 2, :type :query, :query {:source-table 26}}]
-    (with-query-execution [qe query]
+    (with-query-execution! [qe query]
       (binding [qp.pipeline/*run* (fn [_query _rff]
                                     (throw (ex-info "Oops!" {:type qp.error-type/qp})))]
         (is (thrown-with-msg?

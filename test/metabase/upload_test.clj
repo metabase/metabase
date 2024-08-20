@@ -1787,7 +1787,7 @@
               (is (= #{question-id model-id complex-model-id}
                      (into #{} (map :id) (t2/select :model/Card :table_id table-id :archived false))))
 
-              (mt/with-persistence-enabled [persist-models!]
+              (mt/with-persistence-enabled! [persist-models!]
                 (persist-models!)
 
                 (let [cached-before (cached-model-ids)

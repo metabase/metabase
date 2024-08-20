@@ -466,7 +466,7 @@
   (reset-throttlers!)
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-      (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
+      (mt/with-mock-i18n-bundles! {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
@@ -516,7 +516,7 @@
 
 (deftest ldap-login-test
   (reset-throttlers!)
-  (ldap.test/with-ldap-server
+  (ldap.test/with-ldap-server!
     (testing "Test that we can login with LDAP"
       (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
                                        :password "securedpassword"}]

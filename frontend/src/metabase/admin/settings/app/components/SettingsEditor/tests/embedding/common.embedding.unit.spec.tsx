@@ -1,12 +1,12 @@
 import { act, screen } from "__support__/ui";
 
 import {
-  goToStaticEmbeddingSettings,
-  setupEmbedding,
-  getQuickStartLink,
-  staticEmbeddingSettingsUrl,
   embeddingSettingsUrl,
+  getQuickStartLink,
+  goToStaticEmbeddingSettings,
   interactiveEmbeddingSettingsUrl,
+  setupEmbedding,
+  staticEmbeddingSettingsUrl,
 } from "./setup";
 
 describe("[OSS] embedding settings", () => {

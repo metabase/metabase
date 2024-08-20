@@ -40,17 +40,17 @@
                                                                                 [4 5 6])))
               @realized-lazy-seq?])))))
 
-(defn- test-start-of-week-offset
+(defn- test-start-of-week-offset!
   [db-start-of-week target-start-of-week]
   (with-redefs [driver/db-start-of-week   (constantly db-start-of-week)
                 setting/get-value-of-type (constantly target-start-of-week)]
     (driver.common/start-of-week-offset :sql)))
 
 (deftest start-of-week-offset-test
-  (is (= 0 (test-start-of-week-offset :sunday :sunday)))
-  (is (= -1 (test-start-of-week-offset :sunday :monday)))
-  (is (= 1 (test-start-of-week-offset :monday :sunday)))
-  (is (= 5 (test-start-of-week-offset :monday :wednesday))))
+  (is (= 0 (test-start-of-week-offset! :sunday :sunday)))
+  (is (= -1 (test-start-of-week-offset! :sunday :monday)))
+  (is (= 1 (test-start-of-week-offset! :monday :sunday)))
+  (is (= 5 (test-start-of-week-offset! :monday :wednesday))))
 
 (deftest cloud-ip-address-info-test
   (testing "The cloud-ip-address-info field is correctly resolved when fetching driver connection properties"

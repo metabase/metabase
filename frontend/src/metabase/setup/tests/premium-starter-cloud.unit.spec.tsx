@@ -7,8 +7,8 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
   getLastSettingsPutPayload,
   selectUsageReason,
   setup,

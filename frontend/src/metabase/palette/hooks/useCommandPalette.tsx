@@ -1,9 +1,9 @@
 import type { Query } from "history";
-import { useRegisterActions, useKBar, Priority } from "kbar";
+import { Priority, useKBar, useRegisterActions } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
@@ -23,7 +23,7 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { type IconName, Icon } from "metabase/ui";
+import { Icon, type IconName } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";

@@ -6,8 +6,8 @@ import {
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
 import {
-  QueryColumnInfoIcon,
   HoverParent,
+  QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
