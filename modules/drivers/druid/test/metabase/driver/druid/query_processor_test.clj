@@ -89,14 +89,14 @@
                [:= [:field 2 nil] "threecan"]]))
           ":or filters with no temporal filters should return nil"))))
 
-(defn- do-query->native [query]
+(defn- do-query->native! [query]
   (driver/with-driver :druid
     (tqpt/with-flattened-dbdef
       (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
         (qp.compile/compile query)))))
 
-(defmacro ^:private query->native [query]
-  `(do-query->native
+(defmacro ^:private query->native! [query]
+  `(do-query->native!
     (mt/mbql-query ~'checkins
       ~query)))
 
@@ -124,7 +124,7 @@
                               :aggregator {:type :count, :name "__count_0"}}]}
               :query-type  ::druid.qp/topN
               :mbql?       true}
-             (query->native
+             (query->native!
               #_:clj-kondo/ignore
               {:aggregation [[:* [:count $id] 10]]
                :breakout    [$venue_price]}))))))
@@ -148,7 +148,7 @@
                                             :round      true}]}
               :query-type  ::druid.qp/topN
               :mbql?       true}
-             (query->native
+             (query->native!
               #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name]
@@ -175,7 +175,7 @@
                                                      {:dimension "user_name", :direction :ascending}]}}
               :query-type  ::druid.qp/groupBy
               :mbql?       true}
-             (query->native
+             (query->native!
               #_:clj-kondo/ignore
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name $user_name]
@@ -203,7 +203,7 @@
                                            :limit   5}}
               :query-type  ::druid.qp/groupBy
               :mbql?       true}
-             (query->native
+             (query->native!
               {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
                :breakout    [$venue_category_name $user_name]
                :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
@@ -232,7 +232,7 @@
                                                    {:type :finalizingFieldAccess, :fieldName "__distinct_0"}]}]}
                 :query-type  ::druid.qp/total
                 :mbql?       true}
-               (query->native
+               (query->native!
                 {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]})))))))
 
 (defn- table-rows-sample []

@@ -7,8 +7,6 @@ import { getUserId } from "metabase/selectors/user";
 export const createTracker = store => {
   if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);
-
-    document.body.addEventListener("click", handleStructEventClick, true);
   }
 };
 
@@ -19,21 +17,6 @@ export const trackPageView = url => {
 
   if (Settings.snowplowEnabled()) {
     trackSnowplowPageView(getSanitizedUrl(url));
-  }
-};
-
-/**
- * @deprecated This uses GA which is not setup. We should use `trackSchemaEvent`.
- */
-export const trackStructEvent = (category, action, label, value) => {
-  /*
-  IMPORTANT NOTE: We don't track struct events via Google Analytics anymore.
-  This function only exists to prevent breaking changes.
-  There are still many references and tests that rely on this but their events will NOT be tracked anymore.
-  We plan to slowly remove this function and all references to it.
-  */
-  if (!category || !label || !Settings.trackingEnabled()) {
-    return;
   }
 };
 
@@ -150,19 +133,6 @@ const trackSnowplowSchemaEvent = (schema, version, data, contextEntities) => {
     },
     context: contextEntities, // Optional - allows to add additional context entities
   });
-};
-
-const handleStructEventClick = event => {
-  if (!Settings.trackingEnabled()) {
-    return;
-  }
-
-  for (let node = event.target; node != null; node = node.parentNode) {
-    if (node.dataset && node.dataset.metabaseEvent) {
-      const parts = node.dataset.metabaseEvent.split(";").map(p => p.trim());
-      trackStructEvent(...parts);
-    }
-  }
 };
 
 const getSanitizedUrl = url => {

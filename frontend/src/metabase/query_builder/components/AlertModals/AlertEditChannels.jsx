@@ -43,7 +43,6 @@ class AlertEditChannelsInner extends Component {
         <div className={CS.mb2}>
           <PulseEditChannels
             pulse={alert}
-            pulseId={alert.id}
             formInput={formInput}
             user={user}
             users={users}

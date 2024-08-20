@@ -119,7 +119,7 @@ function FasterExplicitSizeUpdateDecorator(Story: Story) {
  * This value works together with FasterExplicitSizeUpdateDecorator which
  * make sure we finish resizing any ExplicitSize components the fastest.
  */
-const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1000;
+const TIME_UNTIL_ALL_ELEMENTS_STOP_RESIZING = 1500;
 function WaitForResizeToStopDecorator(Story: Story) {
   const asyncCallback = createAsyncCallback();
   useEffect(() => {

@@ -424,8 +424,8 @@
    created/updated/deleted as a result of this call.
 
   Note that if the full FieldValues are create/updated/deleted, it'll delete all the Advanced FieldValues of the same `field`."
-  [field & [human-readable-values]]
-  (let [field-values              (get-latest-full-field-values (u/the-id field))
+  [field & {:keys [field-values human-readable-values]}]
+  (let [field-values              (or field-values (get-latest-full-field-values (u/the-id field)))
         {unwrapped-values :values
          :keys [has_more_values]} (distinct-values field)
         ;; unwrapped-values are 1-tuples, so we need to unwrap their values for storage
@@ -497,7 +497,7 @@
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
       (if (or (not existing) (inactive? existing))
-        (case (create-or-update-full-field-values! field human-readable-values)
+        (case (create-or-update-full-field-values! field :human-readable-values human-readable-values)
           ::fv-deleted
           nil
 
