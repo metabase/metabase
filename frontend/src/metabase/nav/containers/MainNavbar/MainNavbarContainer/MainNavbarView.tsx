@@ -217,7 +217,7 @@ function MainNavbarView({
                 handleCreateNewCollection={handleCreateNewCollection}
               />
               <>
-                {dashboards!.map((dashboard) => (
+                {dashboards && dashboards.map((dashboard) => (
                   <PaddedSidebarLink
                     key={dashboard.id}
                     icon="dashboard"
