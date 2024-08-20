@@ -282,11 +282,12 @@
     (t2/select-one Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
-  {:copy      [:created_at :name :description :entity_type :active :display_name :visibility_type :schema
+  {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
                :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
                :database_require_filter]
    :skip      [:estimated_row_count :view_count]
-   :transform {:db_id (serdes/fk :model/Database :name)}})
+   :transform {:created_at (serdes/date)
+               :db_id      (serdes/fk :model/Database :name)}})
 
 (defmethod serdes/storage-path "Table" [table _ctx]
   (concat (serdes/storage-table-path-prefix (serdes/path table))

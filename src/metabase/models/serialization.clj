@@ -1615,11 +1615,19 @@
                           (doseq [ingested lst]
                             (load-one! (enrich ingested) (get local (entity-id model-name ingested))))))))}))
 
-(defn parent-ref "Transformer for parent id for nested entities" []
-  {::parent true :export (constantly nil) :import identity})
+(def parent-ref "Transformer for parent id for nested entities."
+  (constantly
+   {::fk true :export (constantly nil) :import identity}))
 
-(defn date "Transformer to parse the dates" []
-  {:export identity :import #(if (string? %) (u.date/parse %) %)})
+(def date "Transformer to parse the dates."
+  (constantly
+   {:export u.date/format :import #(if (string? %) (u.date/parse %) %)}))
+
+(def kw "Transformer for keywordized values.
+
+  Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
+  (constantly
+   {:export name :import keyword}))
 
 ;;; ## Memoizing appdb lookups
 

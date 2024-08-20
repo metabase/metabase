@@ -81,8 +81,9 @@
   (serdes/extract-query-collections NativeQuerySnippet opts))
 
 (defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
-  {:copy      [:archived :content :created_at :description :entity_id :name]
-   :transform {:collection_id (serdes/fk :model/Collection)
+  {:copy      [:archived :content :description :entity_id :name]
+   :transform {:created_at    (serdes/date)
+               :collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)}})
 
 (defmethod serdes/dependencies "NativeQuerySnippet"

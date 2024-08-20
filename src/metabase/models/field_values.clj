@@ -575,14 +575,15 @@
       [db nil schema table])))
 
 (defmethod serdes/make-spec "FieldValues" [_model-name _opts]
-  {:copy      [:values :human_readable_values :has_more_values
-               :type :hash_key :last_used_at]
-   :transform {:created_at (serdes/date)
-               :field_id   {::serdes/fk true
-                            :export     (constantly nil)
-                            :import     (fn [_]
-                                          (let [field-ref (field-path->field-ref (serdes/path serdes/*current*))]
-                                            (serdes/*import-field-fk* field-ref)))}}})
+  {:copy      [:values :human_readable_values :has_more_values :hash_key]
+   :transform {:created_at   (serdes/date)
+               :last_used_at (serdes/date)
+               :type         (serdes/kw)
+               :field_id     {::serdes/fk true
+                              :export     (constantly nil)
+                              :import     (fn [_]
+                                            (let [field-ref (field-path->field-ref (serdes/path serdes/*current*))]
+                                              (serdes/*import-field-fk* field-ref)))}}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.

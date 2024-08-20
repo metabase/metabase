@@ -170,10 +170,10 @@
         (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
-  {:copy      [:name :points_of_interest :archived :caveats :created_at :description :entity_id
-               :show_in_getting_started]
+  {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      []
-   :transform {:table_id   (serdes/fk :model/Table)
+   :transform {:created_at (serdes/date)
+               :table_id   (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
                :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
 
