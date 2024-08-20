@@ -13,6 +13,38 @@ const TAB_QUESTIONS = { id: 1, name: "Questions" };
 
 const TAB_MODELS = { id: 2, name: "Models" };
 
+const CARD_HEIGHT = 4;
+
+const CARD_WIDTH = 12;
+
+const QUESTION_BASED_COLUMN = 0;
+
+const MODEL_BASED_COLUMN = CARD_WIDTH;
+
+const DATE_PARAMETER = {
+  name: "Date",
+  slug: "date",
+  id: "717a5624",
+  type: "date/all-options",
+  sectionId: "date",
+};
+
+const TEXT_PARAMETER = {
+  name: "Text",
+  slug: "text",
+  id: "76817b51",
+  type: "string/=",
+  sectionId: "string",
+};
+
+const NUMBER_PARAMETER = {
+  name: "Equal to",
+  slug: "equal_to",
+  id: "f5944ad9",
+  type: "number/=",
+  sectionId: "number",
+};
+
 /**
  * "Questions" tab - dashcards are questions
  * "Models" tab - dashcards are models
@@ -24,67 +56,86 @@ describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    // cy.intercept("POST", "/api/dataset").as("dataset");
 
-    createQ0().then(({ body: q0 }) => {
-      createQ1(q0.id);
-      createM1(q0.id);
+    createQ0();
+    cy.then(function () {
+      createQ1(this.q0.id);
+      createM1(this.q0.id);
     });
   });
 
   it("base questions", () => {
     cy.then(function () {
-      createDashboard({
-        questions: {
-          questionBased: [this.question0Id, this.question1Id, this.model1Id],
-          modelBased: [],
-        },
-        models: {
-          questionBased: [],
-          modelBased: [],
-        },
+      createDashboardWithTabs({
+        parameters: [DATE_PARAMETER, TEXT_PARAMETER, NUMBER_PARAMETER],
+        dashcards: [
+          {
+            id: -1,
+            size_x: CARD_WIDTH,
+            size_y: CARD_HEIGHT,
+            row: 0,
+            col: QUESTION_BASED_COLUMN,
+            card_id: this.q0.id,
+            card: this.q0,
+          },
+          {
+            id: -2,
+            size_x: CARD_WIDTH,
+            size_y: CARD_HEIGHT,
+            row: CARD_HEIGHT,
+            col: QUESTION_BASED_COLUMN,
+            card_id: this.q1.id,
+            card: this.q1,
+          },
+          {
+            id: -3,
+            size_x: CARD_WIDTH,
+            size_y: CARD_HEIGHT,
+            row: 0,
+            col: MODEL_BASED_COLUMN,
+            card_id: this.m1.id,
+            card: this.m1,
+          },
+        ],
       }).then(dashboard => visitDashboard(dashboard.id));
     });
   });
 });
 
 function createQ0() {
-  return createQuestion(
-    {
-      name: "Q0 Orders",
-      description: "Plain Orders table",
-      query: {
-        "source-table": ORDERS_ID,
-      },
+  return createQuestion({
+    name: "Q0 Orders",
+    description: "Plain Orders table",
+    query: {
+      "source-table": ORDERS_ID,
     },
-    { idAlias: "question0Id" },
-  );
+  }).then(response => {
+    cy.wrap(response.body).as("q0");
+  });
 }
 
 function createQ1(q0Id: CardId) {
-  return createQuestion(
-    {
-      name: "Q1 Orders question",
-      description: "Question based on a question",
-      query: {
-        "source-table": `card__${q0Id}`,
-      },
+  return createQuestion({
+    name: "Q1 Orders question",
+    description: "Question based on a question",
+    query: {
+      "source-table": `card__${q0Id}`,
     },
-    { idAlias: "question1Id" },
-  );
+  }).then(response => {
+    cy.wrap(response.body).as("q1");
+  });
 }
 
 function createM1(q0Id: CardId) {
-  return createQuestion(
-    {
-      name: "Model based on a question",
-      type: "model",
-      query: {
-        "source-table": `card__${q0Id}`,
-      },
+  return createQuestion({
+    name: "Model based on a question",
+    type: "model",
+    query: {
+      "source-table": `card__${q0Id}`,
     },
-    { idAlias: "model1Id" },
-  );
+  }).then(response => {
+    cy.wrap(response.body).as("m1");
+  });
 }
 
 // TODO: tests for base questions q0 q1 m1
@@ -92,7 +143,7 @@ function createM1(q0Id: CardId) {
 // TODO: create questions for 2 stages
 // TODO: create question for 3 stages
 
-function createDashboard({
+function createTestDashboard({
   questions,
   models,
 }: {
@@ -107,9 +158,6 @@ function createDashboard({
 }) {
   let id = 0;
   const getNextId = () => --id;
-  const QUESTION_BASED_COLUMN = 0;
-  const MODEL_BASED_COLUMN = 12;
-  const CARD_HEIGHT = 4;
 
   return createDashboardWithTabs({
     tabs: [TAB_QUESTIONS, TAB_MODELS],
@@ -117,7 +165,7 @@ function createDashboard({
       ...questions.questionBased.map((id, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_QUESTIONS.id,
-        size_x: 12,
+        size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: QUESTION_BASED_COLUMN,
@@ -126,7 +174,7 @@ function createDashboard({
       ...questions.modelBased.map((id, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_QUESTIONS.id,
-        size_x: 12,
+        size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: MODEL_BASED_COLUMN,
@@ -135,7 +183,7 @@ function createDashboard({
       ...models.questionBased.map((id, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_MODELS.id,
-        size_x: 12,
+        size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: QUESTION_BASED_COLUMN,
@@ -144,7 +192,7 @@ function createDashboard({
       ...models.modelBased.map((id, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_MODELS.id,
-        size_x: 12,
+        size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: MODEL_BASED_COLUMN,
