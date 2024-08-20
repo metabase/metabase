@@ -3,9 +3,9 @@ import Metric from "metabase-lib/v1/metadata/Metric";
 import Table from "metabase-lib/v1/metadata/Table";
 import { createMockMetric } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({

@@ -4,7 +4,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import { rem, Menu, Stack, Text } from "metabase/ui";
+import { Menu, Stack, Text, rem } from "metabase/ui";
 import type {
   DatasetColumn,
   SmartScalarComparison,

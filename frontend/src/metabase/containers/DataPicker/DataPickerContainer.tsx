@@ -9,8 +9,8 @@ import { getHasDataAccess } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
 import {
-  getRootCollectionVirtualSchemaId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  getRootCollectionVirtualSchemaId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { DatabaseId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -19,8 +19,8 @@ import { DataPickerContextProvider, useDataPicker } from "./DataPickerContext";
 import DataPickerView from "./DataPickerView";
 import { DEFAULT_DATA_PICKER_FILTERS } from "./constants";
 import type {
-  DataPickerProps as DataPickerOwnProps,
   DataPickerDataType,
+  DataPickerProps as DataPickerOwnProps,
 } from "./types";
 import { getDataTypes } from "./utils";
 

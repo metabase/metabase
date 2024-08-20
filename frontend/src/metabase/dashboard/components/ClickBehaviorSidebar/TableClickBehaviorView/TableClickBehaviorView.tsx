@@ -1,15 +1,15 @@
 import cx from "classnames";
-import { useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
-  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
   DatasetColumn,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import { Column } from "./Column";

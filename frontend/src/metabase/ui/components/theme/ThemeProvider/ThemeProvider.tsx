@@ -3,7 +3,7 @@ import { withEmotionCache } from "@emotion/react";
 import type { MantineThemeOverride } from "@mantine/core";
 import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
 import { getThemeOverrides } from "../../../theme";
 import { DatesProvider } from "../DatesProvider";

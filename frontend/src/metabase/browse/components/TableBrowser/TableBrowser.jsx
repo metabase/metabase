@@ -10,8 +10,8 @@ import { isSyncInProgress } from "metabase/lib/syncing";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
 import {
-  isVirtualCardId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import { trackTableClick } from "../../analytics";

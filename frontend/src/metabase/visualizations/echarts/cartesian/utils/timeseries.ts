@@ -5,8 +5,8 @@ import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
 import type {
-  TimeSeriesInterval,
   ShowWarning,
+  TimeSeriesInterval,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   multipleTimezoneWarning,

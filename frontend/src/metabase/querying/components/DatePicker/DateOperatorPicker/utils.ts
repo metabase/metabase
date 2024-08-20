@@ -4,8 +4,8 @@ import {
   setDirectionAndCoerceUnit,
 } from "../RelativeDatePicker/utils";
 import {
-  setOperator,
   getOperatorDefaultValue,
+  setOperator,
 } from "../SpecificDatePicker/utils";
 import type { DatePickerOperator, DatePickerValue } from "../types";
 

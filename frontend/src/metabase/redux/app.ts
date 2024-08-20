@@ -1,4 +1,4 @@
-import { push, LOCATION_CHANGE } from "react-router-redux";
+import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import {
   isSmallScreen,

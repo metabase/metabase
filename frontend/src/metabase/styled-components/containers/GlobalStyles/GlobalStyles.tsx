@@ -1,4 +1,4 @@
-import { css, Global, useTheme } from "@emotion/react";
+import { Global, css, useTheme } from "@emotion/react";
 
 import { baseStyle, getRootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";

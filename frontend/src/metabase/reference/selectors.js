@@ -5,13 +5,13 @@ import Dashboards from "metabase/entities/dashboards";
 import { resourceListToMap } from "metabase/lib/redux";
 import {
   getShallowDatabases as getDatabases,
-  getShallowTables as getTables,
   getShallowFields as getFields,
   getShallowMetrics as getMetrics,
   getShallowSegments as getSegments,
+  getShallowTables as getTables,
 } from "metabase/selectors/metadata";
 
-import { idsToObjectMap, databaseToForeignKeys } from "./utils";
+import { databaseToForeignKeys, idsToObjectMap } from "./utils";
 
 // import { getDatabases, getTables, getFields, getMetrics, getSegments } from "metabase/selectors/metadata";
 

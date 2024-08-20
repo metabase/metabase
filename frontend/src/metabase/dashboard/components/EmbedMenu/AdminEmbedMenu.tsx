@@ -12,7 +12,7 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import { getSetting } from "metabase/selectors/settings";
-import { Menu, Title, Text, Stack, Center, Icon } from "metabase/ui";
+import { Center, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 
 import { AdminEmbedMenuContainer } from "./AdminEmbedMenu.styled";
 

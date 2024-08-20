@@ -9,8 +9,8 @@ import {
 } from "../../EntityPicker";
 import type {
   QuestionPickerItem,
-  QuestionPickerOptions,
   QuestionPickerModel,
+  QuestionPickerOptions,
   QuestionPickerValueItem,
 } from "../types";
 

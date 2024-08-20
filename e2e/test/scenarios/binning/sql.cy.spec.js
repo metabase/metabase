@@ -1,15 +1,15 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  restore,
-  snapshot,
-  visualize,
-  changeBinningForDimension,
-  summarize,
-  openTable,
-  visitQuestionAdhoc,
   cartesianChartCircle,
+  changeBinningForDimension,
   chartPathWithFillColor,
   echartsContainer,
+  openTable,
+  restore,
+  snapshot,
+  summarize,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const questionDetails = {

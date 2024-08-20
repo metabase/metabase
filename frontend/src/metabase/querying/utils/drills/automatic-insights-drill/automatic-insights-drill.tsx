@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
-  RegularClickAction,
   ClickActionPopoverProps,
   Drill,
+  RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
 import {
   getAutomaticDashboardUrl,

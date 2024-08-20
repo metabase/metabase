@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
 import {
-  QueryColumnInfoIcon,
   HoverParent,
+  QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { color } from "metabase/lib/colors";
 

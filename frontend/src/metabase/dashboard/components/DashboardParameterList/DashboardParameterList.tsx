@@ -11,8 +11,8 @@ import {
   getIsAutoApplyFilters,
   getIsEditing,
   getIsNightMode,
-  getParameters,
   getParameterValues,
+  getParameters,
   getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";

@@ -1,28 +1,28 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_COUNT_QUESTION_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  createNewTab,
+  dashboardHeader,
+  dashboardParametersContainer,
+  editDashboard,
+  entityPickerModal,
+  getDashboardCard,
+  goToTab,
+  modal,
+  openQuestionActions,
   popover,
   restore,
-  visitDashboard,
-  editDashboard,
-  getDashboardCard,
-  selectDashboardFilter,
   saveDashboard,
-  updateDashboardCards,
-  visitDashboardAndCreateTab,
-  goToTab,
-  createNewTab,
-  undoToast,
+  selectDashboardFilter,
   setFilter,
+  undoToast,
+  updateDashboardCards,
+  visitDashboard,
+  visitDashboardAndCreateTab,
   visitQuestion,
-  modal,
-  dashboardParametersContainer,
-  openQuestionActions,
-  entityPickerModal,
-  dashboardHeader,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID, ORDERS, PEOPLE, PRODUCTS } =

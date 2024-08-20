@@ -1,4 +1,4 @@
-import { t, c } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import {
@@ -15,9 +15,9 @@ import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Flex, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  ConcreteTableId,
   Group,
   GroupsPermissions,
-  ConcreteTableId,
 } from "metabase-types/api";
 
 import type { DatabaseEntityId, EntityId, SchemaEntityId } from "../types";

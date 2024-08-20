@@ -14,25 +14,25 @@ import {
   createMockParameter,
 } from "metabase-types/api/mocks";
 import {
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
-  createProductsIdField,
-  createProductsEanField,
-  createProductsTitleField,
-  createProductsCategoryField,
-  createProductsVendorField,
-  createProductsPriceField,
-  createProductsRatingField,
-  createProductsCreatedAtField,
-  createSampleDatabase,
   PRODUCTS,
   PRODUCTS_ID,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsCategoryField,
+  createProductsCreatedAtField,
+  createProductsEanField,
+  createProductsIdField,
+  createProductsPriceField,
+  createProductsRatingField,
+  createProductsTable,
+  createProductsTitleField,
+  createProductsVendorField,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
-  getDataFromClicked,
   formatSourceForTarget,
+  getDataFromClicked,
   getTargetsForDashboard,
   getTargetsForQuestion,
 } from "./click-behavior";

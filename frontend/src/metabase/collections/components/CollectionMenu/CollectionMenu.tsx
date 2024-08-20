@@ -2,8 +2,8 @@ import { t } from "ttag";
 
 import {
   isInstanceAnalyticsCustomCollection,
-  isRootPersonalCollection,
   isRootCollection,
+  isRootPersonalCollection,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
 import * as Urls from "metabase/lib/urls";

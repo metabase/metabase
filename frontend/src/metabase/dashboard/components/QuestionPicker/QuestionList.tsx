@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -18,8 +18,8 @@ import type { WrappedEntity } from "metabase-types/entities";
 
 import {
   EmptyStateContainer,
-  QuestionListItem,
   PaginationControlsContainer,
+  QuestionListItem,
 } from "./QuestionList.styled";
 
 interface QuestionListProps {

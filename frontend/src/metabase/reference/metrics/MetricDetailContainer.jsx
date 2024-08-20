@@ -11,7 +11,7 @@ import * as metadataActions from "metabase/redux/metadata";
 import MetricDetail from "metabase/reference/metrics/MetricDetail";
 import * as actions from "metabase/reference/reference";
 
-import { getUser, getMetric, getMetricId, getDatabaseId } from "../selectors";
+import { getDatabaseId, getMetric, getMetricId, getUser } from "../selectors";
 
 import MetricSidebar from "./MetricSidebar";
 

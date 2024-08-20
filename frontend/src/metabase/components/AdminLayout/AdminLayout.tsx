@@ -1,8 +1,8 @@
 import {
+  AdminContent,
+  AdminMain,
   AdminSidebar,
   AdminWrapper,
-  AdminMain,
-  AdminContent,
 } from "./AdminLayout.styled";
 
 interface AdminLayoutProps {

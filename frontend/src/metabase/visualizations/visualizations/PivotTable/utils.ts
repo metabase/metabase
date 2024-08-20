@@ -15,18 +15,18 @@ import type {
 } from "metabase-types/api";
 
 import {
-  ROW_TOGGLE_ICON_WIDTH,
-  CELL_PADDING,
-  MIN_HEADER_CELL_WIDTH,
-  MAX_HEADER_CELL_WIDTH,
-  PIVOT_TABLE_FONT_SIZE,
-  MAX_ROWS_TO_MEASURE,
-  LEFT_HEADER_LEFT_SPACING,
   CELL_HEIGHT,
+  CELL_PADDING,
   DEFAULT_CELL_WIDTH,
+  LEFT_HEADER_LEFT_SPACING,
+  MAX_HEADER_CELL_WIDTH,
+  MAX_ROWS_TO_MEASURE,
+  MIN_HEADER_CELL_WIDTH,
+  PIVOT_TABLE_FONT_SIZE,
+  ROW_TOGGLE_ICON_WIDTH,
 } from "./constants";
 import { partitions } from "./partitions";
-import type { PivotSetting, HeaderItem, CustomColumnWidth } from "./types";
+import type { CustomColumnWidth, HeaderItem, PivotSetting } from "./types";
 
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(

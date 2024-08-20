@@ -1,5 +1,5 @@
 import { USERS } from "e2e/support/cypress_data";
-import { restore, popover, getFullName } from "e2e/support/helpers";
+import { getFullName, popover, restore } from "e2e/support/helpers";
 
 const { normal } = USERS;
 

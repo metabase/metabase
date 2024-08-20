@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { StyleHTMLAttributes } from "react";
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { useMount, usePrevious, useUnmount } from "react-use";
 import { jt, t } from "ttag";
@@ -29,8 +29,8 @@ import type Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type {
   Dashboard,
-  Parameter,
   FieldValue,
+  Parameter,
   RowValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -38,22 +38,22 @@ import type { State } from "metabase-types/store";
 import ExplicitSize from "../ExplicitSize";
 
 import { OptionsMessage, StyledEllipsified } from "./FieldValuesWidget.styled";
-import type { ValuesMode, LoadingStateType } from "./types";
+import type { LoadingStateType, ValuesMode } from "./types";
 import {
-  canUseParameterEndpoints,
-  isNumeric,
-  hasList,
-  isSearchable,
-  isExtensionOfPreviousSearch,
-  showRemapping,
-  getNonVirtualFields,
-  dedupeValues,
-  searchFieldValues,
-  getValuesMode,
-  shouldList,
-  canUseDashboardEndpoints,
   canUseCardEndpoints,
+  canUseDashboardEndpoints,
+  canUseParameterEndpoints,
+  dedupeValues,
+  getNonVirtualFields,
   getTokenFieldPlaceholder,
+  getValuesMode,
+  hasList,
+  isExtensionOfPreviousSearch,
+  isNumeric,
+  isSearchable,
+  searchFieldValues,
+  shouldList,
+  showRemapping,
 } from "./utils";
 
 const MAX_SEARCH_RESULTS = 100;

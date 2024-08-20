@@ -6,7 +6,7 @@ import { t } from "ttag";
 import BodyComponent from "metabase/components/BodyComponent";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { capitalize, inflect } from "metabase/lib/formatting";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { Transition } from "metabase/ui";
 

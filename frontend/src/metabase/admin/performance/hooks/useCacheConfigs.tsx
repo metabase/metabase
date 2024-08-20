@@ -5,8 +5,8 @@ import _ from "underscore";
 import { CacheConfigApi } from "metabase/services";
 import type {
   CacheConfigAPIResponse,
-  Config,
   CacheableModel,
+  Config,
 } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";

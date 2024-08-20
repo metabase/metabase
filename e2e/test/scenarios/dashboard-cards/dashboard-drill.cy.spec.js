@@ -8,21 +8,21 @@ import {
 import {
   addOrUpdateDashboardCard,
   assertQueryBuilderRowCount,
+  chartPathWithFillColor,
+  echartsContainer,
+  entityPickerModal,
   filterWidget,
   getDashboardCard,
   main,
   modal,
   popover,
+  queryBuilderHeader,
+  queryBuilderMain,
   restore,
   showDashboardCardActions,
   sidebar,
-  visitDashboard,
-  queryBuilderHeader,
-  queryBuilderMain,
-  chartPathWithFillColor,
-  echartsContainer,
-  entityPickerModal,
   testPairedTooltipValues,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const {

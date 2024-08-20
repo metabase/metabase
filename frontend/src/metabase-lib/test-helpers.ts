@@ -5,13 +5,13 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
-  DatasetQuery,
   DatasetColumn,
+  DatasetQuery,
   RowValue,
 } from "metabase-types/api";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const SAMPLE_DATABASE = createSampleDatabase();

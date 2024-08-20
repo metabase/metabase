@@ -3,7 +3,7 @@ import { jt } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 
 import type { Variant } from "./LogoBadge.styled";
-import { MetabaseLink, MetabaseName, Message } from "./LogoBadge.styled";
+import { Message, MetabaseLink, MetabaseName } from "./LogoBadge.styled";
 
 export const LogoBadge = ({
   dark,

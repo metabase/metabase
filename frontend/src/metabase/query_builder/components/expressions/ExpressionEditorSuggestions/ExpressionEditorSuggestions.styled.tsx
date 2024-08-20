@@ -2,8 +2,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import {
-  HoverParent,
   PopoverHoverTarget as BasePopoverHoverTarget,
+  HoverParent,
 } from "metabase/components/MetadataInfo/InfoIcon";
 import { color } from "metabase/lib/colors";
 
@@ -21,8 +21,6 @@ const highlighted = css`
 `;
 
 export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
-  display: flex;
-  align-items: center;
   padding: 0 0.875rem;
   padding-right: 0.5rem;
   cursor: pointer;
@@ -50,7 +48,6 @@ export const SuggestionTitle = styled.span`
 `;
 
 export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`
-  padding: 0;
   margin-left: auto;
   padding: 0.3125rem 0;
   visibility: hidden;

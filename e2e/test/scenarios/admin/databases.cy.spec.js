@@ -1,21 +1,21 @@
 import {
-  WRITABLE_DB_ID,
-  WRITABLE_DB_CONFIG,
   QA_MONGO_PORT,
   QA_MYSQL_PORT,
   QA_POSTGRES_PORT,
   SAMPLE_DB_ID,
+  WRITABLE_DB_CONFIG,
+  WRITABLE_DB_ID,
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  typeAndBlurUsingLabel,
   isEE,
-  setTokenFeatures,
   modal,
+  popover,
+  restore,
+  setTokenFeatures,
   tooltip,
+  typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
 import {
   createMetric,

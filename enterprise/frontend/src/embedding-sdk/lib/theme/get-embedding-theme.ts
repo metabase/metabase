@@ -5,10 +5,10 @@ import { colors } from "metabase/lib/colors";
 import type { ColorName, ColorPalette } from "metabase/lib/colors/types";
 
 import type {
-  MetabaseTheme,
-  MetabaseColors,
   MetabaseColor,
+  MetabaseColors,
   MetabaseComponentTheme,
+  MetabaseTheme,
 } from "../../types/theme";
 import type { EmbeddingThemeOverride } from "../../types/theme/private";
 

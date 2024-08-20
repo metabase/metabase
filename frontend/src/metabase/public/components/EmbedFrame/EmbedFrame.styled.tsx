@@ -4,11 +4,11 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
-  breakpointMinSmall,
+  breakpointMaxSmall,
   breakpointMinLarge,
   breakpointMinMedium,
+  breakpointMinSmall,
   space,
-  breakpointMaxSmall,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{

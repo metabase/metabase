@@ -1,9 +1,9 @@
 import { Icon } from "metabase/ui";
 
 import {
+  ActionOptionDescription,
   ActionOptionListItem,
   ActionOptionTitle,
-  ActionOptionDescription,
 } from "./ActionOptionItem.styled";
 
 interface ActionOptionProps {

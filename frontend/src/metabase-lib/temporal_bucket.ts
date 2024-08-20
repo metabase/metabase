@@ -3,10 +3,10 @@ import * as ML from "cljs/metabase.lib.js";
 import { displayInfo } from "./metadata";
 import type {
   Bucket,
-  ColumnMetadata,
-  Clause,
-  Query,
   BucketName,
+  Clause,
+  ColumnMetadata,
+  Query,
 } from "./types";
 
 export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {

@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupModelIndexEndpoints } from "__support__/server-mocks";
 import Question from "metabase-lib/v1/Question";
-import type { FieldReference, ModelIndex, Field } from "metabase-types/api";
+import type { Field, FieldReference, ModelIndex } from "metabase-types/api";
 import {
   createMockField as createBaseMockField,
   createMockCard,
@@ -11,7 +11,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { FieldWithMaybeIndex } from "./actions";
-import { updateModelIndexes, cleanIndexFlags } from "./actions";
+import { cleanIndexFlags, updateModelIndexes } from "./actions";
 
 const createMockField = (options?: Partial<FieldWithMaybeIndex>): Field => {
   return createBaseMockField(options as Partial<Field>);

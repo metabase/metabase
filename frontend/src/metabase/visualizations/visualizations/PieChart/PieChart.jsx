@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import d3 from "d3";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -17,12 +17,12 @@ import {
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
-  metricSetting,
   dimensionSetting,
+  metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import {
-  getFriendlyName,
   computeMaxDecimalsForValues,
+  getFriendlyName,
 } from "metabase/visualizations/lib/utils";
 import {
   getDefaultSize,

@@ -12,10 +12,10 @@ import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import {
   getCard,
   getDatasetEditorTab,
-  getZoomedObjectId,
   getOriginalQuestion,
   getQueryBuilderMode,
   getQuestion,
+  getZoomedObjectId,
 } from "../selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
@@ -25,7 +25,7 @@ import {
 } from "../utils";
 
 import { initializeQB, setCardAndRun } from "./core";
-import { zoomInRow, resetRowZoom } from "./object-detail";
+import { resetRowZoom, zoomInRow } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { resetUIControls, setQueryBuilderMode } from "./ui";
 

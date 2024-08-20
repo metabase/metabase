@@ -2,49 +2,49 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  getMaxMetricsSupported,
   getMaxDimensionsSupported,
+  getMaxMetricsSupported,
 } from "metabase/visualizations";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
-  seriesSetting,
   keyForSingleSeries,
+  seriesSetting,
 } from "metabase/visualizations/lib/settings/series";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { columnsAreValid, MAX_SERIES } from "metabase/visualizations/lib/utils";
+import { MAX_SERIES, columnsAreValid } from "metabase/visualizations/lib/utils";
 import {
+  STACKABLE_SERIES_DISPLAY_TYPES,
+  getAreDimensionsAndMetricsValid,
   getAvailableXAxisScales,
+  getDefaultColumns,
+  getDefaultDataLabelsFormatting,
+  getDefaultDataLabelsFrequency,
+  getDefaultDimensionFilter,
+  getDefaultDimensions,
+  getDefaultIsAutoSplitEnabled,
   getDefaultIsHistogram,
+  getDefaultLegendIsReversed,
+  getDefaultMetricFilter,
+  getDefaultMetrics,
+  getDefaultShowDataLabels,
+  getDefaultShowStackValues,
   getDefaultStackingValue,
   getDefaultXAxisScale,
   getDefaultXAxisTitle,
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   getYAxisUnpinFromZeroDefault,
-  isYAxisUnpinFromZeroValid,
+  isShowStackValuesValid,
   isStackingValueValid,
   isXAxisScaleValid,
-  getDefaultLegendIsReversed,
-  getDefaultShowDataLabels,
-  getDefaultDataLabelsFrequency,
-  getDefaultDataLabelsFormatting,
-  getDefaultIsAutoSplitEnabled,
-  getDefaultColumns,
-  getDefaultDimensionFilter,
-  getDefaultMetricFilter,
-  getAreDimensionsAndMetricsValid,
-  getDefaultDimensions,
-  getDefaultShowStackValues,
-  STACKABLE_SERIES_DISPLAY_TYPES,
-  getSeriesOrderDimensionSetting,
-  getDefaultMetrics,
-  isShowStackValuesValid,
+  isYAxisUnpinFromZeroValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 

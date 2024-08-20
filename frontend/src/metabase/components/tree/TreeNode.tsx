@@ -5,11 +5,11 @@ import _ from "underscore";
 import { Icon } from "metabase/ui";
 
 import {
-  TreeNodeRoot,
   ExpandToggleButton,
   ExpandToggleIcon,
-  NameContainer,
   IconContainer,
+  NameContainer,
+  TreeNodeRoot,
 } from "./TreeNode.styled";
 import type { TreeNodeProps } from "./types";
 

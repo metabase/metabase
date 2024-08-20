@@ -11,8 +11,8 @@ import {
   getDownloadWidgetMessageOverride,
 } from "./query-downloads";
 import {
-  databaseManagementPermissionAllowedPathGetter,
   dataModelPermissionAllowedPathGetter,
+  databaseManagementPermissionAllowedPathGetter,
   getDataColumns,
 } from "./utils";
 

@@ -11,7 +11,7 @@ import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
 import type Question from "metabase-lib/v1/Question";
 
-import { Timeline, Header } from "./QuestionActivityTimeline.styled";
+import { Header, Timeline } from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 

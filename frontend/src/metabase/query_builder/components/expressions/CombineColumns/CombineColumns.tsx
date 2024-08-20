@@ -1,20 +1,20 @@
 import type { FormEventHandler } from "react";
-import { useState, useMemo } from "react";
-import { t, jt } from "ttag";
+import { useMemo, useState } from "react";
+import { jt, t } from "ttag";
 
 import { isNotNull } from "metabase/lib/types";
-import { Stack, Flex, Button, Box, Icon } from "metabase/ui";
+import { Box, Button, Flex, Icon, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ColumnAndSeparatorRow } from "./ColumnAndSeparatorRow";
 import { Example } from "./Example";
 import type { ColumnAndSeparator } from "./util";
 import {
-  getExample,
-  getDefaultSeparator,
-  formatSeparator,
-  getExpressionName,
   flatten,
+  formatSeparator,
+  getDefaultSeparator,
+  getExample,
+  getExpressionName,
 } from "./util";
 
 interface Props {

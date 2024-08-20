@@ -1,13 +1,13 @@
 import PropTypes from "prop-types";
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import {
+  currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
-  currentUserPersonalCollections,
 } from "metabase/collections/utils";
 import { Tree } from "metabase/components/tree";
 import CS from "metabase/css/core/index.css";
@@ -19,9 +19,9 @@ import { Icon } from "metabase/ui";
 
 import SavedEntityList from "./SavedEntityList";
 import {
-  SavedEntityPickerRoot,
-  CollectionsContainer,
   BackButton,
+  CollectionsContainer,
+  SavedEntityPickerRoot,
   TreeContainer,
 } from "./SavedEntityPicker.styled";
 import { findCollectionByName } from "./utils";

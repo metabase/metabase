@@ -7,15 +7,15 @@ import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
+  getLastSettingsPutPayload,
   getSection,
   selectUsageReason,
   setup,
   skipLanguageStep,
   skipWelcomeScreen,
   submitUserInfoStep,
-  getLastSettingsPutPayload,
 } from "./setup";
 
 describe("setup (OSS)", () => {

@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/core/components/MetabotLogo";
-import { color, hueRotate, alpha } from "metabase/lib/colors";
+import { alpha, color, hueRotate } from "metabase/lib/colors";
 import { breakpointMinSmall } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -30,7 +30,6 @@ export const LayoutIllustration = styled.div<{
   left: 0;
   width: 100%;
   height: 100%;
-  background-size: ;
   filter: ${({ isDefault }) =>
     isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
   background-image: ${({ backgroundImageSrc }) =>

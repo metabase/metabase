@@ -1,10 +1,10 @@
 import type {
+  CSSObject,
   MantineSize,
   MantineTheme,
   MantineThemeOverride,
-  CSSObject,
 } from "@mantine/core";
-import { getStylesRef, px, rem, getSize } from "@mantine/core";
+import { getSize, getStylesRef, px, rem } from "@mantine/core";
 
 import { SelectDropdown } from "./SelectDropdown";
 import { SelectItem } from "./SelectItem";

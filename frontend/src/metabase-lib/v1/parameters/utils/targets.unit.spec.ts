@@ -2,8 +2,8 @@ import { createMockMetadata } from "__support__/metadata";
 import type Database from "metabase-lib/v1/metadata/Database";
 import {
   getParameterTargetField,
-  isParameterVariableTarget,
   getTemplateTagFromTarget,
+  isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
 import type { ParameterDimensionTarget } from "metabase-types/api";
 import {
@@ -11,10 +11,10 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
 

@@ -1,13 +1,13 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  modal,
-  openOrdersTable,
-  visualize,
-  summarize,
   filter,
   filterField,
+  modal,
+  openOrdersTable,
+  popover,
+  restore,
+  summarize,
+  visualize,
 } from "e2e/support/helpers";
 import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 

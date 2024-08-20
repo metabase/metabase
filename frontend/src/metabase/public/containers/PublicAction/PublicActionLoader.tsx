@@ -12,8 +12,8 @@ import EmbedFrame from "../../components/EmbedFrame";
 
 import PublicAction from "./PublicAction";
 import {
-  LoadingAndErrorWrapper,
   ContentContainer,
+  LoadingAndErrorWrapper,
 } from "./PublicAction.styled";
 
 interface OwnProps {

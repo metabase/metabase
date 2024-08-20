@@ -5,7 +5,7 @@ import { useAsyncFn } from "react-use";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { useGetCardQuery, skipToken, useGetTableQuery } from "metabase/api";
+import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
 import { QuestionPickerModal } from "metabase/common/components/QuestionPicker";
 import ActionButton from "metabase/components/ActionButton";
 import QuestionLoader from "metabase/containers/QuestionLoader";
@@ -15,7 +15,7 @@ import { EntityName } from "metabase/entities/containers/EntityName";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { GTAPApi } from "metabase/services";
 import type { IconName } from "metabase/ui";
-import { Icon, Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import type {
   GroupTableAccessPolicyDraft,
   GroupTableAccessPolicyParams,

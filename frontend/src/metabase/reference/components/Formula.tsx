@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { TransitionGroup, CSSTransition } from "react-transition-group";
+import { CSSTransition, TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
 import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";

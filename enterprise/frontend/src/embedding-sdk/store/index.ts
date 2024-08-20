@@ -5,7 +5,7 @@ import type {
   ThunkDispatch,
 } from "@reduxjs/toolkit";
 import type { TypedUseSelectorHook } from "react-redux";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { mainReducers } from "metabase/reducers-main";

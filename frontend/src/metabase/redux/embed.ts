@@ -1,4 +1,4 @@
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { type PayloadAction, createSlice } from "@reduxjs/toolkit";
 
 import { parseHashOptions, parseSearchOptions } from "metabase/lib/browser";
 import type { EmbedOptions } from "metabase-types/store";

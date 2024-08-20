@@ -8,10 +8,10 @@ import { getMetadata } from "metabase/selectors/metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   CardId,
+  DatabaseId,
   NativeQuerySnippet,
   Parameter,
   TemplateTag,
-  DatabaseId,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 

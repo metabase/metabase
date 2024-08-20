@@ -19,13 +19,13 @@ import {
   optionsToHashParams,
 } from "metabase/public/lib/embed";
 import type {
-  EmbeddingDisplayOptions,
-  EmbeddingParameters,
-  EmbeddingParametersValues,
-  EmbeddingParameterVisibility,
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
+  EmbeddingParameterVisibility,
+  EmbeddingParameters,
+  EmbeddingParametersValues,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";

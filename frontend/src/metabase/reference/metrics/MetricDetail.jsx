@@ -20,14 +20,14 @@ import * as actions from "metabase/reference/reference";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
+  getError,
+  getFields,
+  getForeignKeys,
+  getIsFormulaExpanded,
+  getLoading,
   getMetric,
   getTable,
-  getFields,
-  getError,
-  getLoading,
   getUser,
-  getIsFormulaExpanded,
-  getForeignKeys,
 } from "../selectors";
 import { getQuestionUrl } from "../utils";
 

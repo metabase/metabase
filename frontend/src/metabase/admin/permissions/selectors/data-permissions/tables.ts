@@ -18,9 +18,9 @@ import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
 import type { PermissionSectionConfig, SchemaEntityId } from "../../types";
 import {
-  DataPermissionValue,
   DataPermission,
   DataPermissionType,
+  DataPermissionValue,
 } from "../../types";
 import {
   getPermissionWarning,

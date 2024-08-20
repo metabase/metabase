@@ -4,8 +4,8 @@ import { within } from "@testing-library/react";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,

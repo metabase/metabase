@@ -7,11 +7,11 @@ import { isTableDisplay } from "metabase/lib/click-behavior";
 import type { IconName } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  QuestionDashboardCard,
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
   CustomDestinationClickBehavior,
   CustomDestinationClickBehaviorLinkType,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import { SidebarContent } from "../ClickBehaviorSidebar.styled";

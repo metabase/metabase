@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, forwardRef, Component } from "react";
+import { Component, createRef, forwardRef } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
@@ -21,33 +21,33 @@ import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
-  getRowIndexToPKMap,
-  getQueryBuilderMode,
-  getUiControls,
   getIsShowingRawTable,
+  getQueryBuilderMode,
+  getRowIndexToPKMap,
+  getUiControls,
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Box, Button as UIButton, Icon, DelayGroup } from "metabase/ui";
+import { Box, DelayGroup, Icon, Button as UIButton } from "metabase/ui";
 import {
   getTableCellClickedObject,
-  getTableHeaderClickedObject,
   getTableClickedObjectRowData,
+  getTableHeaderClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
-import { isID, isPK, isFK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isID, isPK } from "metabase-lib/v1/types/utils/isa";
 import { memoizeClass } from "metabase-lib/v1/utils";
 
 import MiniBar from "../MiniBar";
 
 import TableS from "./TableInteractive.module.css";
 import {
-  TableDraggable,
   ExpandButton,
   ResizeHandle,
+  TableDraggable,
   TableInteractiveRoot,
 } from "./TableInteractive.styled";
 import { getCellDataTheme } from "./table-theme-utils";

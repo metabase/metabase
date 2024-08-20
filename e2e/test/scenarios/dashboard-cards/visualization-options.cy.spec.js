@@ -1,16 +1,16 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
-  visitDashboard,
-  getDashboardCard,
   editDashboard,
-  showDashboardCardActions,
-  modal,
-  saveDashboard,
+  getDashboardCard,
   getDashboardCardMenu,
   getDraggableElements,
+  modal,
   moveDnDKitElement,
+  popover,
+  restore,
+  saveDashboard,
+  showDashboardCardActions,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 describe("scenarios > dashboard cards > visualization options", () => {

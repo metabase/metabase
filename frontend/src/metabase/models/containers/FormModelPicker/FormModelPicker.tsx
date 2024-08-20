@@ -1,6 +1,6 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";

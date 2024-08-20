@@ -1,5 +1,5 @@
 import { Group, Text } from "@mantine/core";
-import type { Ref, HTMLAttributes } from "react";
+import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { IconName } from "metabase/ui";

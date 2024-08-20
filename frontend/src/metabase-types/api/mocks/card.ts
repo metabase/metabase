@@ -1,14 +1,14 @@
 import type {
-  ModerationReview,
   Card,
-  UnsavedCard,
-  VisualizationSettings,
-  SeriesOrderSetting,
-  StructuredDatasetQuery,
+  CardQueryMetadata,
+  ModerationReview,
   NativeDatasetQuery,
   PublicCard,
+  SeriesOrderSetting,
+  StructuredDatasetQuery,
   TableColumnOrderSetting,
-  CardQueryMetadata,
+  UnsavedCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import {

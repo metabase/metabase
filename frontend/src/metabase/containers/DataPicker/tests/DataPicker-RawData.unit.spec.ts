@@ -4,14 +4,14 @@ import { screen, waitForLoaderToBeRemoved } from "__support__/ui";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 
 import {
-  setup,
-  SAMPLE_DATABASE,
   EMPTY_DATABASE,
   MULTI_SCHEMA_DATABASE,
+  SAMPLE_DATABASE,
   SAMPLE_TABLE,
   SAMPLE_TABLE_2,
   SAMPLE_TABLE_3,
   SAMPLE_TABLE_4,
+  setup,
 } from "./common";
 
 describe("DataPicker — picking raw data", () => {

@@ -17,8 +17,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import visualizations from "metabase/visualizations";
 
 import ReferenceHeader from "../components/ReferenceHeader";
-import { getTable, getMetric } from "../selectors";
-import { getQuestionUrl, getDescription } from "../utils";
+import { getMetric, getTable } from "../selectors";
+import { getDescription, getQuestionUrl } from "../utils";
 
 const emptyStateData = (table, metric, metadata) => {
   return {

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Text, Anchor } from "metabase/ui";
+import { Anchor, Text } from "metabase/ui";
 
 const Container = styled.div`
   background: ${color("bg-light")};

@@ -6,7 +6,7 @@ import type {
   SearchFilterPropTypes,
 } from "metabase/search/types";
 import type { StackProps } from "metabase/ui";
-import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
+import { Button, Center, FocusTrap, Group, Loader } from "metabase/ui";
 
 import {
   DropdownApplyButtonDivider,
