@@ -220,9 +220,8 @@
 
 (defn- explicit-field-refs-for-query
   "Given the results of query analysis, return references to the corresponding fields and model outputs."
-  [{column-maps :columns table-maps :tables} db-id table-refs]
-  (let [columns (map :component column-maps)
-        tables  (map :component table-maps)]
+  [{columns :source-columns table-maps :tables} db-id table-refs]
+  (let [tables (map :component table-maps)]
     (fill-missing-table-ids-hack
      table-refs
      (consolidate-columns
