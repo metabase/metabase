@@ -1,8 +1,10 @@
 import type {
-  Table,
-  GroupTableAccessPolicy,
   FieldReference,
+  GroupTableAccessPolicy,
+  Table,
 } from "metabase-types/api";
+
+import { USER_ATTRIBUTE_CUSTOMER_ID } from "../constants/config";
 
 type Options = {
   groupIds: number[];
@@ -44,7 +46,7 @@ export function getTenancyIsolationSandboxes(options: Options): Sandbox[] {
 
       // Create a field reference for sandboxing.
       // example: ["field", 243, { "base-type": "type/Integer", "source-field": 263 }]
-      const fieldRef: FieldReference = [
+      const tenancyFieldRef: FieldReference = [
         "field",
         Number(tenancyField.id),
         {
@@ -61,7 +63,10 @@ export function getTenancyIsolationSandboxes(options: Options): Sandbox[] {
         card_id: null,
         group_id: groupId,
         table_id: parseInt(tableId, 10),
-        attribute_remappings: { [tenancyField.name]: ["dimension", fieldRef] },
+        attribute_remappings: {
+          // Map the "customer_id" user attribute to the tenancy field.
+          [USER_ATTRIBUTE_CUSTOMER_ID]: ["dimension", tenancyFieldRef],
+        },
       });
     }
   }

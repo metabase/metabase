@@ -11,7 +11,11 @@ import {
   printInfo,
 } from "embedding-sdk/cli/utils/print";
 
-import { CONTAINER_NAME, SITE_NAME } from "../constants/config";
+import {
+  CONTAINER_NAME,
+  HARDCODED_JWT_SHARED_SECRET,
+  SITE_NAME,
+} from "../constants/config";
 import { EMBEDDING_DEMO_SETUP_TOKEN } from "../constants/env";
 import {
   EMBEDDING_FAILED_MESSAGE,
@@ -157,6 +161,12 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
         "enable-embedding": true,
         "setup-license-active-at-setup": false,
         "setup-embedding-autoenabled": true,
+
+        // JWT configuration
+        "jwt-enabled": true,
+        "jwt-group-sync": true,
+        "jwt-user-provisioning-enabled?": true,
+        "jwt-shared-secret": HARDCODED_JWT_SHARED_SECRET,
       }),
       headers: { "content-type": "application/json", cookie },
     });

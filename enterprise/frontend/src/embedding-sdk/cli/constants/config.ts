@@ -8,3 +8,15 @@ export const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
  * Make sure this port is unlikely to be in use.
  */
 export const DEFAULT_PORT = 3366;
+
+/**
+ * Hard-coded JWT shared secret for the hard-coded Express.js demo.
+ */
+export const HARDCODED_JWT_SHARED_SECRET =
+  "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+/**
+ * The "customer_id" user attribute for tenant isolation.
+ * This is used for sandboxing.
+ **/
+export const USER_ATTRIBUTE_CUSTOMER_ID = "customer_id";
