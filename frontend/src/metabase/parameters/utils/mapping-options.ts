@@ -162,20 +162,22 @@ export function getParameterMappingOptions(
       parameter ?? undefined,
     );
 
-    const groups = _.uniq(columns, ({ group }) => group);
+    const columnsByStageIndex = _.groupBy(columns, "stageIndex");
+    const options = Object.entries(columnsByStageIndex).flatMap(
+      ([stageIndexString, columns]) => {
+        const groups = Lib.groupColumns(columns.map(({ column }) => column));
+        const stageIndex = parseInt(stageIndexString, 10);
 
-    const options = groups.flatMap(({ stageIndex, group }) => {
-      const groupColumns = columns
-        .filter(column => column.group === group)
-        .map(({ column }) => column);
-
-      return buildStructuredQuerySectionOptions(
-        query,
-        stageIndex,
-        group,
-        groupColumns,
-      );
-    });
+        return groups.flatMap(group =>
+          buildStructuredQuerySectionOptions(
+            query,
+            stageIndex,
+            group,
+            Lib.getColumnsFromColumnGroup(group),
+          ),
+        );
+      },
+    );
 
     return options;
   }
