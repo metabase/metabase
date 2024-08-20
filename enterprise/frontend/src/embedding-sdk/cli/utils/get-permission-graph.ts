@@ -90,7 +90,6 @@ export function getPermissionGraph(options: Options): Graph {
     const tenancyColumnName = tenancyColumnNames[tableId];
 
     if (!table || !tenancyColumnName) {
-      console.log(`--- ${tableId} :: no table`);
       continue;
     }
 
@@ -100,14 +99,8 @@ export function getPermissionGraph(options: Options): Graph {
       );
 
       if (!tenancyField) {
-        console.log(`--- ${table.name} :: no tenancy field`);
         continue;
       }
-
-      console.log(
-        `--- ${table.name} > ${tenancyField.name}:\n`,
-        JSON.stringify(tenancyField, null, 2),
-      );
 
       // Create a field reference for sandboxing.
       // example: ["field", 243, { "base-type": "type/Integer", "source-field": 263 }]
