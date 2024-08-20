@@ -1362,30 +1362,35 @@
   (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
                (generate-pattern driver "%" arg nil options) options))
 
+(def ^:dynamic *parent-honeysql-col-type-info*
+  "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
+  `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime,
+  the :snowflake implementation at the time of writing, and later in the [[metabase.query-processor.util.relative-datetime/maybe-cacheable-relative-datetime-honeysql]]
+  to determine (1) format of server-side generated sql temporal string and (2) the database type it should be cast to."
+  nil)
+
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
-  [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
+  (let [field-honeysql (->honeysql driver field)]
+    (binding [*parent-honeysql-col-type-info* {:database-type (h2x/database-type field-honeysql)
+                                                   :base-type     (get-in field [2 :base-type])}]
+      [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
-(defmethod ->honeysql [:sql :>]
-  [driver [_ field value]]
-  [:> (->honeysql driver field) (->honeysql driver value)])
-
-(defmethod ->honeysql [:sql :<]
-  [driver [_ field value]]
-  [:< (->honeysql driver field) (->honeysql driver value)])
-
-(defmethod ->honeysql [:sql :>=]
-  [driver [_ field value]]
-  [:>= (->honeysql driver field) (->honeysql driver value)])
-
-(defmethod ->honeysql [:sql :<=]
-  [driver [_ field value]]
-  [:<= (->honeysql driver field) (->honeysql driver value)])
+(doseq [operator [:> :>= :< :<=]]
+  (defmethod ->honeysql [:sql operator] ; [:> :>= :< :<=] -- For grep.
+    [driver [_ field value]]
+    (let [field-honeysql (->honeysql driver field)]
+      (binding [*parent-honeysql-col-type-info* {:database-type (h2x/database-type field-honeysql)
+                                                     :base-type     (get-in field [2 :base-type])}]
+        [operator field-honeysql (->honeysql driver value)]))))
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
   (assert field)
-  [:= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)])
+  (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
+    (binding [*parent-honeysql-col-type-info* {:database-type (h2x/database-type field-honeysql)
+                                                   :base-type     (get-in field [2 :base-type])}]
+      [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]

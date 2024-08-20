@@ -476,7 +476,9 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
   [driver [_ amount unit]]
-  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
+  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
+   driver unit amount
+   sql.qp/*parent-honeysql-col-type-info*))
 
 (defmethod sql.qp/->honeysql [:snowflake LocalDate]
   [_driver t]
