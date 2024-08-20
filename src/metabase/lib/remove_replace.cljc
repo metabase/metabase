@@ -76,6 +76,55 @@
       stage-number)
     query))
 
+(defn- update-stale-references-in-stage
+  "Fix stale references in `stage-number` stage of `query-modfied`. `stage-number` should not be 0."
+  [query-modified stage-number query-original]
+  (let [old-previous-stage-columns (lib.metadata.calculation/returned-columns query-original (dec stage-number))
+        new-previous-stage-columns (lib.metadata.calculation/returned-columns query-modified (dec stage-number))
+        source-uuid->new-column (m/index-by :lib/source-uuid new-previous-stage-columns)]
+    (lib.util/update-query-stage
+     query-modified stage-number
+     #(lib.util.match/replace
+       %
+       #{:field}
+       (let [old-matching-column (lib.equality/find-matching-column &match old-previous-stage-columns)
+             source-uuid (:lib/source-uuid old-matching-column)
+             new-column  (source-uuid->new-column source-uuid)
+             new-name    ((some-fn :lib/desired-column-alias :name) new-column)]
+         (assoc &match 2 new-name))))))
+
+(defn- update-stale-references
+  "Update stale refs in query after clause removal.
+
+  ## Gist
+  For stages that follow `previous-stage-number` match existing on-stage refs to new visible columns, generated for
+  the modified query. Swap these refs with fresh refs created using new visible columns, but use the original column
+  options.
+
+  ## Problem
+
+  Let's have a query with 2 `:sum` aggregations in stage 0, and custom expressions based on these aggregations
+  in stage 1.
+
+  These aggregation columns have same `:name`. Field refs, intended for use in stage 1, generated out of those
+  columns, are then identified by `:lib/desired-column-alias`. Stage 1 will be using ref
+  `[:field <opts> \"sum_2\"]` for the second aggregation.
+
+  Removing the first from the stage 0, will remove clauses refeencing it in further stages. So far so good.
+
+  But removal only is not sufficient -- _with the first aggregation `[:field <opts> \"sum\"]` removed
+  the `[:field <opts> \"sum_2\"]` reference became stale_, because stage 0 has now no _returned column_ with
+  desired alias \"sum_2\"."
+  [query-with-modified-refs previous-stage-number unmodified-query-for-stage]
+  (if-let [this-stage-number (lib.util/next-stage-number query-with-modified-refs
+                                                         previous-stage-number)]
+    (recur (update-stale-references-in-stage query-with-modified-refs
+                                             this-stage-number
+                                             unmodified-query-for-stage)
+           this-stage-number
+           unmodified-query-for-stage)
+    query-with-modified-refs))
+
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
   (let [result (lib.util/update-query-stage query stage-number
@@ -86,29 +135,32 @@
         [:expressions]
         (-> result
             (remove-local-references
-              stage-number
-              unmodified-query-for-stage
-              :expression
-              {}
-              (lib.util/expression-name target-clause))
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
+             stage-number
+             unmodified-query-for-stage
+             :expression
+             {}
+             (lib.util/expression-name target-clause))
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
         [:aggregation]
         (-> result
             (remove-local-references
-              stage-number
-              unmodified-query-for-stage
-              :aggregation
-              {}
-              target-uuid)
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
+             stage-number
+             unmodified-query-for-stage
+             :aggregation
+             {}
+             target-uuid)
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
         #_{:clj-kondo/ignore [:invalid-arity]}
         (:or
           [:breakout]
           [:fields]
           [:joins _ :fields])
-        (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+        (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
         _
         result)

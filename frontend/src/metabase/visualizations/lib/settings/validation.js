@@ -3,8 +3,8 @@ import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import {
-  MinRowsError,
   ChartSettingsError,
+  MinRowsError,
 } from "metabase/visualizations/lib/errors";
 
 export const validateDatasetRows = series => {

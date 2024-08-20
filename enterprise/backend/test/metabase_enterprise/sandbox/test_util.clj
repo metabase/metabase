@@ -17,23 +17,22 @@
    [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
-  (mb.hawk.parallel/assert-test-is-not-parallel "with-user-attributes")
+(defn do-with-user-attributes! [test-user-name-or-user-id attributes-map thunk]
+  (mb.hawk.parallel/assert-test-is-not-parallel "with-user-attributes!")
   (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
     (tu/with-temp-vals-in-db User user-id {:login_attributes attributes-map}
       (thunk))))
 
-(defmacro with-user-attributes
+(defmacro with-user-attributes!
   "Execute `body` with the attributes for a User temporarily set to `attributes-map`. `test-user-name-or-user-id` can be
   either one of the predefined test users e.g. `:rasta` or a User ID.
 
-    (with-user-attributes :rasta {\"cans\" 2} ...)"
+    (with-user-attributes! :rasta {\"cans\" 2} ...)"
   {:style/indent 2}
   [test-user-name-or-user-id attributes-map & body]
-  `(do-with-user-attributes ~test-user-name-or-user-id ~attributes-map (fn [] ~@body)))
+  `(do-with-user-attributes! ~test-user-name-or-user-id ~attributes-map (fn [] ~@body)))
 
 (defn- do-with-gtap-defs!
-  {:style/indent 2}
   [group [[table-kw {:keys [query remappings]} :as gtap-def] & more] f]
   (if-not gtap-def
     (f)
@@ -69,7 +68,7 @@
               (test.users/with-group-for-user [group test-user-name-or-user-id]
                 (let [{:keys [gtaps attributes]} (mc/assert WithGTAPsArgs (args-fn))]
                   ;; set user login_attributes
-                  (with-user-attributes test-user-name-or-user-id attributes
+                  (with-user-attributes! test-user-name-or-user-id attributes
                     (mt/with-additional-premium-features #{:sandboxes}
                       ;; create Cards/GTAPs from defs
                       (do-with-gtap-defs! group gtaps

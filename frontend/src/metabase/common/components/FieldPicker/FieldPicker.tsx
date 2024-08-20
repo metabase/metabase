@@ -5,11 +5,11 @@ import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
-  ToggleItem,
-  ItemList,
-  Label,
-  ItemTitle,
   ItemIcon,
+  ItemList,
+  ItemTitle,
+  Label,
+  ToggleItem,
 } from "./FieldPicker.styled";
 
 export interface FieldPickerItem {

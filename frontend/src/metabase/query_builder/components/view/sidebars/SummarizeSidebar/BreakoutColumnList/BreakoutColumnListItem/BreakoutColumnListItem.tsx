@@ -9,12 +9,12 @@ import * as Lib from "metabase-lib";
 
 import {
   AddButton,
-  Content,
   ColumnTypeIcon,
-  Title,
-  TitleContainer,
+  Content,
   RemoveButton,
   Root,
+  Title,
+  TitleContainer,
 } from "./BreakoutColumnListItem.styled";
 
 interface BreakoutColumnListItemProps {

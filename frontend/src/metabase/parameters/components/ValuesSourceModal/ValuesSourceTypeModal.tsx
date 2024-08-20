@@ -1,7 +1,7 @@
 import type { ChangeEvent } from "react";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";
@@ -30,11 +30,11 @@ import {
   isNumberParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
+  Parameter,
+  ParameterValue,
+  ParameterValues,
   ValuesSourceConfig,
   ValuesSourceType,
-  Parameter,
-  ParameterValues,
-  ParameterValue,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -44,17 +44,17 @@ import { fetchParameterValues } from "../../actions";
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
 import S from "./ValuesSourceTypeModal.module.css";
 import {
+  ModalBodyWithPane,
+  ModalEmptyState,
+  ModalErrorMessage,
   ModalHelpMessage,
   ModalLabel,
-  ModalBodyWithPane,
   ModalMain,
   ModalPane,
   ModalSection,
   ModalTextArea,
-  ModalErrorMessage,
-  ModalEmptyState,
 } from "./ValuesSourceTypeModal.styled";
-import { getValuesText, getStaticValues } from "./utils";
+import { getStaticValues, getValuesText } from "./utils";
 
 interface ModalOwnProps {
   parameter: UiParameter;

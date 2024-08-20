@@ -18,11 +18,11 @@ import {
   DashboardInfoButton,
   DashboardSubscriptionButton,
   EditDashboardButton,
+  ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
-  getExtraButtons,
   NightModeToggleButton,
-  ExportAsPdfButton,
+  getExtraButtons,
   shouldRenderSubscriptionButton,
 } from "../buttons";
 

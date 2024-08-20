@@ -3,7 +3,7 @@
              [clojure.test :refer [deftest testing is]]
              [metabase.analytics.snowplow-test :as snowplow-test]
              [metabase.models.collection :as collection]
-             [metabase.models.collection-test :refer [with-collection-hierarchy]]
+             [metabase.models.collection-test :refer [with-collection-hierarchy!]]
              [metabase.stale-test :as stale.test]
              [metabase.test :as mt]
              [metabase.util :as u]))
@@ -21,7 +21,7 @@
 
 (deftest can-fetch-stale-candidates
   (mt/with-premium-features #{:collection-cleanup}
-    (with-collection-hierarchy [{:keys [a b c d e]}]
+    (with-collection-hierarchy! [{:keys [a b c d e]}]
       (stale.test/with-stale-items [:model/Card card {:collection_id (:id a)}
                                     :model/Dashboard dashboard {:collection_id (:id a)}]
         (let [result (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale"))]
@@ -180,7 +180,7 @@
 (deftest stale-items-limits-and-offsets-work-correctly
   (mt/with-premium-features #{:collection-cleanup}
     (testing "Limits and offsets work correctly"
-      (with-collection-hierarchy [{:keys [a]}]
+      (with-collection-hierarchy! [{:keys [a]}]
         (let [get-names-page (fn [limit offset]
                                (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (:id a) "/stale")
                                                           :limit limit
@@ -204,7 +204,7 @@
 
 (deftest snowplow-events-are-emitted
   (mt/with-premium-features #{:collection-cleanup}
-    (with-collection-hierarchy [{:keys [a]}]
+    (with-collection-hierarchy! [{:keys [a]}]
       (snowplow-test/with-fake-snowplow-collector
         (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
                               :before_date "1988-01-21")

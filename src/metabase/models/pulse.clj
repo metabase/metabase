@@ -520,7 +520,6 @@
   PulseCards, PulseChannels, and PulseChannelRecipients.
 
   Returns the newly created Pulse, or throws an Exception."
-  {:style/indent 2}
   [cards    :- [:sequential [:map-of :keyword :any]]
    channels :- [:sequential [:map-of :keyword :any]]
    kvs      :- [:map

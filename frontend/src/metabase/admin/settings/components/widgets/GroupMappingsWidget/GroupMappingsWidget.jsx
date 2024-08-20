@@ -15,13 +15,13 @@ import SettingToggle from "../SettingToggle";
 
 import AddMappingRow from "./AddMappingRow";
 import {
-  GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
-  GroupMappingsWidgetRoot as Root,
-  GroupMappingsWidgetHeader as Header,
-  GroupMappingsWidgetToggleRoot as ToggleRoot,
   GroupMappingsWidgetAbout as About,
   GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
   AddMappingButton,
+  GroupMappingsWidgetHeader as Header,
+  GroupMappingsWidgetRoot as Root,
+  GroupMappingsWidgetToggleRoot as ToggleRoot,
+  GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./MappingRow";
 

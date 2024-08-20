@@ -1,4 +1,4 @@
-import { createServer, type Server } from "net";
+import { type Server, createServer } from "net";
 
 /**
  * Check if a port is taken.

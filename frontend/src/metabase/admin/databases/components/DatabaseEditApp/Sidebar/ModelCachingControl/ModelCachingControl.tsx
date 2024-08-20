@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import {
   PERSIST_DATABASE,
@@ -17,11 +17,11 @@ import { getModelCacheSchemaName } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   ControlContainer,
+  ErrorMessage,
+  FeatureDescriptionText,
+  FeatureTitle,
   HoverableIcon,
   PopoverContent,
-  FeatureTitle,
-  FeatureDescriptionText,
-  ErrorMessage,
 } from "./ModelCachingControl.styled";
 
 interface Props {

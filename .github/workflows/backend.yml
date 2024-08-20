@@ -268,3 +268,18 @@ jobs:
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
+
+  be-cljfmt:
+    needs: [files-changed]
+    if: |
+      !cancelled() && needs.files-changed.outputs.backend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'cljfmt'
+      - name: Run cljfmt
+        run: clojure -T:cljfmt check

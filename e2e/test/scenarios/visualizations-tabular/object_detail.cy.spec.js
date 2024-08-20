@@ -1,19 +1,19 @@
-import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
+  createQuestion,
+  getTableId,
   openOrdersTable,
   openPeopleTable,
   openProductsTable,
-  visitQuestionAdhoc,
+  popover,
   resetTestTable,
+  restore,
   resyncDatabase,
-  getTableId,
-  visitPublicQuestion,
-  visitPublicDashboard,
-  createQuestion,
   tableHeaderClick,
+  visitPublicDashboard,
+  visitPublicQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const {

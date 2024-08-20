@@ -13,15 +13,15 @@ import {
   editDashboard,
   filterWidget,
   getDashboardCard,
+  getDashboardCards,
   modal,
+  openQuestionActions,
   popover,
   restore,
   saveDashboard,
   sidebar,
   undoToastList,
   visitDashboard,
-  openQuestionActions,
-  getDashboardCards,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;

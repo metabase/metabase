@@ -64,11 +64,11 @@
   #{"trsn" "trun" "deferred-trsn" "deferred-trun"})
 
 (s/def ::translate (s/and
-                     (complement vector?)
-                     (s/cat :translate-symbol (fn [x]
+                    (complement vector?)
+                    (s/cat :translate-symbol (fn [x]
                                                (and (symbol? x)
                                                     (translation-vars (g/resolve-symbol x))))
-                            :args (s/+ any?))))
+                           :args (s/+ any?))))
 
 (defn- form->messages
   "Function that turns a form into a map containing the translation string, and optional plural translation string

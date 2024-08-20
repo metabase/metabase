@@ -19,9 +19,9 @@ import {
 import Question from "metabase-lib/v1/Question";
 import type { CardType } from "metabase-types/api";
 import {
+  SAMPLE_DB_ID,
   createSampleDatabase,
   createSavedStructuredCard,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockEmbedState,

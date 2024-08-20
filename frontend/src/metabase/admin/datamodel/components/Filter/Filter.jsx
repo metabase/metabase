@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import Value from "metabase/components/Value";
 import { color } from "metabase/lib/colors";

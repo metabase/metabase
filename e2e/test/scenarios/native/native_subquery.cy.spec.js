@@ -1,15 +1,15 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createNativeQuestion,
+  createQuestion,
+  entityPickerModal,
+  focusNativeEditor,
   openNativeEditor,
   openQuestionActions,
   restore,
-  visitQuestion,
-  startNewNativeQuestion,
   runNativeQuery,
-  entityPickerModal,
-  focusNativeEditor,
-  createQuestion,
-  createNativeQuestion,
+  startNewNativeQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > native subquery", () => {

@@ -1,12 +1,12 @@
-import { type Ref, forwardRef, type HTMLAttributes } from "react";
+import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import {
   ActionIcon,
+  type ActionIconProps,
   Center,
   Icon,
-  Tooltip,
-  type ActionIconProps,
   type IconName,
+  Tooltip,
 } from "metabase/ui";
 
 export type ViewFooterButtonProps = {

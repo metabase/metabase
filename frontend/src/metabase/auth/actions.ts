@@ -1,4 +1,4 @@
-import { createAction, type UnknownAction } from "@reduxjs/toolkit";
+import { type UnknownAction, createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { push } from "react-router-redux";
 

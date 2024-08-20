@@ -13,12 +13,12 @@ import { hasMapping } from "metabase/parameters/utils/dashboards";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import type {
   CardId,
-  Dashboard as IDashboard,
+  DashCardId,
+  DashCardVisualizationSettings,
   DashboardCard,
   DashboardId,
   DashboardTabId,
-  DashCardId,
-  DashCardVisualizationSettings,
+  Dashboard as IDashboard,
   ParameterId,
   TemporalUnit,
   ValuesQueryType,

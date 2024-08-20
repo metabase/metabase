@@ -1,7 +1,7 @@
 import type {
+  DashCardId,
   DashboardCard,
   DashboardId,
-  DashCardId,
   WritebackActionId,
 } from "metabase-types/api";
 

@@ -13,8 +13,8 @@ import {
   FieldLabelContainer,
   FieldLabelError,
   FieldRoot,
-  OptionalTag,
   FieldTitleActions,
+  OptionalTag,
 } from "./FormField.styled";
 import type { FieldAlignment, FieldOrientation } from "./types";
 

@@ -110,7 +110,7 @@
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
-(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+(defn- card-with-native-query [card-name & {:as kvs}]
   (merge
    {:name          card-name
     :database_id   (mt/id)
@@ -119,7 +119,7 @@
                     :native   {:query (format "SELECT * FROM VENUES")}}}
    kvs))
 
-(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+(defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
   {:name          card-name
    :database_id   (mt/id)
    :dataset_query {:database (mt/id)
@@ -307,9 +307,9 @@
                    driver/can-connect? (constantly true)]
        ~@body)))
 
-(defmacro with-db-scheduler-setup
+(defmacro with-db-scheduler-setup!
   [& body]
-  `(mt/with-temp-scheduler
+  `(mt/with-temp-scheduler!
      (#'task.sync-databases/job-init)
      (u/prog1 ~@body
        (qs/delete-job (#'task/scheduler) (.getKey ^JobDetail @#'task.sync-databases/sync-analyze-job))
@@ -318,7 +318,7 @@
 (deftest create-db-default-schedule-test
   (testing "POST /api/database"
     (testing "create a db with default scan options"
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name    (mt/random-name)
@@ -1146,7 +1146,7 @@
 (deftest create-db-with-manual-schedules-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"regularly on a schedule\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [{:keys [details] :as db}
                 (mt/user-http-request :crowberto :post 200 "database"
@@ -1168,7 +1168,7 @@
 (deftest create-db-never-scan-field-values-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"Never, I'll do it myself\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name         (mt/random-name)
@@ -1189,7 +1189,7 @@
 (deftest create-db-on-demand-scan-field-values-test
   (testing "POST /api/database"
     (testing "create a db with scan field values option is \"Only when adding a new filter widget\""
-      (with-db-scheduler-setup
+      (with-db-scheduler-setup!
         (with-test-driver-available!
           (let [resp (mt/user-http-request :crowberto :post 200 "database"
                                            {:name         (mt/random-name)
@@ -1208,7 +1208,7 @@
                    (task.sync-databases-test/query-all-db-sync-triggers-name db)))))))))
 
 (deftest update-db-to-sync-on-custom-schedule-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (mt/with-temp
         [:model/Database db {}]
@@ -1270,7 +1270,7 @@
                      (:cache_field_values_schedule db)))))))))
 
 (deftest update-db-to-never-scan-values-on-demand-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (mt/with-temp
         [:model/Database db {}]
@@ -1292,7 +1292,7 @@
             (is (nil? (:cache_field_values_schedule db)))))))))
 
 (deftest update-db-to-scan-field-values-on-demand-test
-  (with-db-scheduler-setup
+  (with-db-scheduler-setup!
     (with-test-driver-available!
       (testing "update db to scan on demand should remove scan field values trigger"
         (mt/with-temp
@@ -1434,7 +1434,7 @@
    (with-redefs [h2/*allow-testing-h2-connections* true]
      (mt/user-http-request user :post expected-status-code "database/validate" request-body))))
 
-(defn- test-connection-details [engine details]
+(defn- test-connection-details! [engine details]
   (with-redefs [h2/*allow-testing-h2-connections* true]
     (#'api.database/test-connection-details engine details)))
 
@@ -1447,7 +1447,7 @@
 
     (testing "Underlying `test-connection-details` function should work"
       (is (= (:details (mt/db))
-             (test-connection-details "h2" (:details (mt/db))))))
+             (test-connection-details! "h2" (:details (mt/db))))))
 
     (testing "Valid database connection details"
       (is (= (merge (:details (mt/db)) {:valid true})
@@ -1458,7 +1458,7 @@
         (is (= {:errors  {:db "check your connection string"}
                 :message "Implicitly relative file paths are not allowed."
                 :valid   false}
-               (test-connection-details "h2" {:db "ABC"}))))
+               (test-connection-details! "h2" {:db "ABC"}))))
 
       (testing "via the API endpoint"
         (is (= {:errors  {:db "check your connection string"}

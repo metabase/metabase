@@ -52,7 +52,9 @@ const defaultConfig = {
 
     // cypress-terminal-report
     if (isCI) {
-      installLogsPrinter(on);
+      installLogsPrinter(on, {
+        printLogsToConsole: "never",
+      });
     }
 
     /********************************************************************

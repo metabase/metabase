@@ -6,25 +6,25 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitAlias,
-  popover,
-  withDatabase,
-  resetTestTable,
-  openTable,
-  resyncDatabase,
-  startNewQuestion,
   entityPickerModal,
   entityPickerModalTab,
-  visitQuestionAdhoc,
+  filter,
   getNotebookStep,
+  modal,
   openOrdersTable,
   openReviewsTable,
-  summarize,
-  modal,
-  filter,
+  openTable,
+  popover,
+  resetTestTable,
+  restore,
+  resyncDatabase,
   saveQuestion,
+  startNewQuestion,
+  summarize,
+  visitAlias,
   visitQuestion,
+  visitQuestionAdhoc,
+  withDatabase,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 

@@ -5,11 +5,11 @@ import { isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
 import type {
   ActionDashboardCard,
-  ActionParametersMapping,
   ActionParameterValue,
+  ActionParametersMapping,
   ParameterId,
-  ParametersForActionExecution,
   ParameterValueOrArray,
+  ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";

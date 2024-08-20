@@ -317,8 +317,8 @@
 ;; these tests are to check that settings get returned with the correct information; these functions are what feed
 ;; into the API
 
-(defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
-  (tu/do-with-temporary-setting-value setting db-value
+(defn- user-facing-info-with-db-and-env-var-values! [setting db-value env-var-value]
+  (tu/do-with-temporary-setting-value! setting db-value
     (fn []
       (tu/do-with-temp-env-var-value!
        (setting/setting-env-map-name (keyword setting))
@@ -330,35 +330,35 @@
 (deftest user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
     (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 nil nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 nil nil))))
 
   (testing "user-facing info w/ no db value, no env var value, default value"
     (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 nil nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 nil nil))))
 
   (testing "user-facing info w/ no db value, env var value, no default value -- shouldn't leak env var value"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 nil "TOUCANS"))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 nil "TOUCANS"))))
 
   (testing "user-facing info w/ no db value, env var value, default value"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 nil "TOUCANS"))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 nil "TOUCANS"))))
 
   (testing "user-facing info w/ db value, no env var value, no default value"
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_1", :default nil}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 "WOW" nil))))
 
   (testing "user-facing info w/ db value, no env var value, default value"
     (is (= {:value "WOW", :is_env_setting false, :env_name "MB_TEST_SETTING_2", :default "[Default Value]"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" nil))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 "WOW" nil))))
 
   (testing "user-facing info w/ db value, env var value, no default value -- the env var should take precedence over the db value, but should be obfuscated"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_1", :default "Using value of env var $MB_TEST_SETTING_1"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-1 "WOW" "ENV VAR"))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-1 "WOW" "ENV VAR"))))
 
   (testing "user-facing info w/ db value, env var value, default value -- env var should take precedence over default, but should be obfuscated"
     (is (= {:value nil, :is_env_setting true, :env_name "MB_TEST_SETTING_2", :default "Using value of env var $MB_TEST_SETTING_2"}
-           (user-facing-info-with-db-and-env-var-values :test-setting-2 "WOW" "ENV VAR")))))
+           (user-facing-info-with-db-and-env-var-values! :test-setting-2 "WOW" "ENV VAR")))))
 
 (deftest writable-settings-test
   (testing `setting/writable-settings
@@ -416,7 +416,7 @@
 (deftest validate-description-test
   (testing "Validate setting description with i18n string"
     (mt/with-test-user :crowberto
-      (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
+      (mt/with-mock-i18n-bundles! {"zz" {:messages {"Test setting - with i18n" "TEST SETTING - WITH I18N"}}}
         (letfn [(description []
                   (some (fn [{:keys [key description]}]
                           (when (= :test-i18n-setting key)
@@ -434,7 +434,7 @@
 (deftest dynamic-description-test
   (testing "Descriptions with i18n string should update if it depends on another setting's value."
     (mt/with-test-user :crowberto
-      (mt/with-mock-i18n-bundles {"zz" {:messages {"Test setting - with i18n: {0}" "TEST SETTING - WITH I18N: {0}"}}}
+      (mt/with-mock-i18n-bundles! {"zz" {:messages {"Test setting - with i18n: {0}" "TEST SETTING - WITH I18N: {0}"}}}
         (letfn [(description []
                   (some (fn [{:keys [key description]}]
                           (when (= :test-dynamic-i18n-setting key)
@@ -457,7 +457,7 @@
 
 (deftest boolean-setting-user-facing-info-test
   (is (= {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
-         (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil nil))))
+         (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil nil))))
 
 (deftest boolean-setting-env-vars-test
   (testing "values set by env vars should never be shown to the User"
@@ -466,11 +466,11 @@
                     :env_name       "MB_TEST_BOOLEAN_SETTING"
                     :default        "Using value of env var $MB_TEST_BOOLEAN_SETTING"}]
       (is (= expected
-             (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "true")))
+             (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "true")))
 
       (testing "env var values should be case-insensitive"
         (is (= expected
-               (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "TRUE"))))))
+               (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "TRUE"))))))
 
   (testing "if value isn't true / false"
     (testing "getter should throw exception"
@@ -484,7 +484,7 @@
               :is_env_setting true
               :env_name       "MB_TEST_BOOLEAN_SETTING"
               :default        "Using value of env var $MB_TEST_BOOLEAN_SETTING"}
-             (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "X"))))))
+             (user-facing-info-with-db-and-env-var-values! :test-boolean-setting nil "X"))))))
 
 (deftest set-boolean-setting-test
   (testing "should be able to set value with a string..."
@@ -511,18 +511,18 @@
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
-(defn- fetch-csv-setting-value [v]
+(defn- fetch-csv-setting-value! [v]
   (with-redefs [setting/db-or-cache-value (constantly v)]
     (test-csv-setting)))
 
 (deftest get-csv-setting-test
   (testing "should be able to fetch a simple CSV setting"
     (is (= ["A" "B" "C"]
-           (fetch-csv-setting-value "A,B,C"))))
+           (fetch-csv-setting-value! "A,B,C"))))
 
   (testing "should also work if there are quoted values that include commas in them"
     (is  (= ["A" "B" "C1,C2" "ddd"]
-            (fetch-csv-setting-value "A,B,\"C1,C2\",ddd")))))
+            (fetch-csv-setting-value! "A,B,\"C1,C2\",ddd")))))
 
 (defn- set-and-fetch-csv-setting-value! [v]
   (test-csv-setting! v)

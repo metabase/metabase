@@ -17,19 +17,19 @@ import type Field from "metabase-lib/v1/metadata/Field";
 import { createMockParameter } from "metabase-types/api/mocks";
 import {
   ORDERS,
-  PRODUCTS,
   PEOPLE,
-  PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
+  PRODUCTS,
+  PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 
 import {
-  state,
-  metadata,
+  EXPRESSION_FIELD_ID,
   LISTABLE_PK_FIELD_ID,
   LISTABLE_PK_FIELD_VALUE,
   SEARCHABLE_FK_FIELD_ID,
-  EXPRESSION_FIELD_ID,
+  metadata,
+  state,
 } from "./testMocks";
 
 async function setup({

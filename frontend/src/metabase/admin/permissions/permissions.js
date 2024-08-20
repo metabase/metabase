@@ -5,33 +5,33 @@ import _ from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
+  restrictCreateQueriesPermissionsIfNeeded,
   updateFieldsPermission,
+  updatePermission,
   updateSchemasPermission,
   updateTablesPermission,
-  updatePermission,
-  restrictCreateQueriesPermissionsIfNeeded,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 import {
+  combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-  combineReducers,
 } from "metabase/lib/redux";
 import {
-  PLUGIN_DATA_PERMISSIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
-import { DataPermissionType, DataPermission } from "./types";
+import { DataPermission, DataPermissionType } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 import {
-  getModifiedGroupsPermissionsGraphParts,
   getModifiedCollectionPermissionsGraphParts,
+  getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./utils/graph/partial-updates";
 

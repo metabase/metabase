@@ -1,4 +1,4 @@
-import { useKBar, VisualState } from "kbar";
+import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
 import { t } from "ttag";
 

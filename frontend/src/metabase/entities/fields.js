@@ -10,13 +10,13 @@ import {
 } from "metabase/lib/entities";
 import {
   compose,
+  createAction,
+  createThunkAction,
+  handleActions,
+  updateData,
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
-  handleActions,
-  createAction,
-  createThunkAction,
-  updateData,
 } from "metabase/lib/redux";
 import { FieldSchema } from "metabase/schema";
 import {

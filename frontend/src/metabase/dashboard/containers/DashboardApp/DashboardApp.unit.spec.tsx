@@ -19,8 +19,8 @@ import { setupPulseEndpoint } from "__support__/server-mocks/pulse";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
-  screen,
   renderWithProviders,
+  screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
