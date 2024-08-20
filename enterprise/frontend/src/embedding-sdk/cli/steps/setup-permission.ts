@@ -100,8 +100,8 @@ export const setupPermissions: CliStepMethod = async state => {
   // Example: { "Customer A": [3], "Customer B": [4], "Customer C": [5] }
   const jwtGroupMappings: Record<string, number[]> = {};
 
-  // Create new permission groups and add them to the JWT group mappings.
   try {
+    // Create new permission groups
     for (const groupName of GROUP_NAMES) {
       res = await fetch(`${instanceUrl}/api/permissions/group`, {
         method: "POST",
@@ -115,30 +115,21 @@ export const setupPermissions: CliStepMethod = async state => {
 
       jwtGroupMappings[groupName] = [groupId];
     }
+
+    // Update the JWT group mappings.
+    res = await fetch(`${instanceUrl}/api/setting/jwt-group-mappings`, {
+      method: "PUT",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({ value: jwtGroupMappings }),
+    });
+
+    await propagateErrorResponse(res);
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const message = `Failed to define SSO group mappings. Reason: ${reason}`;
 
     return [{ type: "error", message }, state];
   }
-
-  // Update the JWT group mappings.
-  res = await fetch(`${instanceUrl}/api/setting/jwt-group-mappings`, {
-    method: "PUT",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({ value: jwtGroupMappings }),
-  });
-
-  // Query existing permissions graph
-  res = await fetch(`${instanceUrl}/api/permissions/graph/group/1`, {
-    method: "GET",
-    headers: { "content-type": "application/json", cookie },
-  });
-
-  await propagateErrorResponse(res);
-
-  // Get the current permission revision number. Should be 1 by default.
-  const { revision } = (await res.json()) as { revision: number };
 
   const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
@@ -149,14 +140,14 @@ export const setupPermissions: CliStepMethod = async state => {
     tenancyColumnNames,
   };
 
-  // Update the permissions graph with sandboxed permissions
   const permissionGraph = {
     groups: getPermissionsForGroups(options),
     sandboxes: getTenancyIsolationSandboxes(options),
-    revision,
+    revision: 0,
     impersonations: [],
   };
 
+  // Update the permissions graph with sandboxed permissions
   res = await fetch(`${instanceUrl}/api/permissions/graph`, {
     method: "PUT",
     headers: { "content-type": "application/json", cookie },
