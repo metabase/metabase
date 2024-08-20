@@ -282,4 +282,4 @@ jobs:
         with:
           m2-cache-key: 'cljfmt'
       - name: Run cljfmt
-        run: clj -T:cljfmt check
+        run: clojure -T:cljfmt check
