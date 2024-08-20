@@ -97,30 +97,29 @@
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
   Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account private-key-path]
+  [{:keys [user password account private-key-options]
     :as   details}]
-  (let [base-details (apply dissoc details (vals (secret/->sub-props "private-key")))]
-    (cond
-      password
-      details
+  (if password
+    details
+    (let [base-details (apply dissoc details (vals (secret/->sub-props "private-key")))
+          secret-map   (secret/db-details-prop->secret-map details "private-key")
+          private-key-file (cond
+                             ;; Local file path
+                             (and (= private-key-options :local)
+                                  (some? (:value secret-map)))
+                             (secret/value->file! secret-map :snowflake)
 
-      private-key-path
-      (let [secret-map       (secret/db-details-prop->secret-map details "private-key")
-            private-key-file (when (some? (:value secret-map))
-                               (secret/value->file! secret-map :snowflake))]
-        (cond-> base-details
-          private-key-file (handle-conn-uri user account private-key-file)))
-
-      :else
-      ;; Why setting `:private-key-options` to "uploaded"? To fix the issue #41852. Snowflake's database edit gui
-      ;; is designed in a way, that `:private-key-options` are not sent if `hosting` enterprise feature is enabled.
-      ;; The option must be set to "uploaded" for base64 decoding to happen. Setting that option at this point is fine
-      ;; because the alternative ("local") is ruled out already in this `cond` branch.
-      (let [decoded (secret/get-secret-string (assoc details :private-key-options "uploaded") "private-key")
-            file    (secret/value->file! {:connection-property-name "private-key-file"
-                                          :value                    decoded})]
-        (assoc (handle-conn-uri base-details user account file)
-               :private_key_file file)))))
+                             ;; Uploaded file stored in `secrets` table
+                             :else
+                             ;; Why setting `:private-key-options` to "uploaded"? To fix the issue #41852. Snowflake's database edit gui
+                             ;; is designed in a way, that `:private-key-options` are not sent if `hosting` enterprise feature is enabled.
+                             ;; The option must be set to "uploaded" for base64 decoding to happen. Setting that option at this point is fine
+                             ;; because the alternative ("local") is ruled out already in this `cond` branch.
+                             (let [decoded (secret/get-secret-string (assoc details :private-key-options "uploaded") "private-key")]
+                               (secret/value->file! {:connection-property-name "private-key-file"
+                                                     :value                    decoded})))]
+      (assoc (handle-conn-uri base-details user account private-key-file)
+             :private_key_file private-key-file))))
 
 (defn- quote-name
   [raw-name]
