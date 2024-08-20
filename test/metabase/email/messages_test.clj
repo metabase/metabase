@@ -60,7 +60,7 @@
               (get-in [0 :body 0 :content])
               (str/includes? "deactivated"))))))
 
-(defmacro ^:private with-create-temp-failure [& body]
+(defmacro ^:private with-create-temp-failure! [& body]
   `(with-redefs [messages/create-temp-file (fn [~'_]
                                              (throw (IOException. "Failed to write file")))]
      ~@body))
@@ -70,7 +70,7 @@
   (is (thrown-with-msg?
         IOException
         (re-pattern (format "Unable to create temp file in `%s`" (System/getProperty "java.io.tmpdir")))
-        (with-create-temp-failure
+        (with-create-temp-failure!
           (#'messages/create-temp-file-or-throw "txt")))))
 
 (deftest alert-schedule-text-test

@@ -223,7 +223,7 @@ export const getDatabasesPermissionEditor = createSelector(
             ),
           };
         });
-    } else if (databaseId != null) {
+    } else if (database && databaseId != null) {
       const maybeDbEntities = metadata
         ?.database(databaseId)
         ?.getSchemas()
@@ -242,6 +242,7 @@ export const getDatabasesPermissionEditor = createSelector(
               permissions,
               originalPermissions,
               defaultGroup,
+              database,
             ),
           };
         });
@@ -401,6 +402,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             permissions,
             originalPermissions,
             defaultGroup,
+            database,
           );
         } else if (databaseId != null) {
           groupPermissions = buildSchemasPermissions(

@@ -15,16 +15,17 @@
   [arg]
   (letfn [(update-defendpoint [node]
             (let [[_defendpoint method route & body] (:children node)]
-              (api/list-node
-               (list
-                (api/token-node 'do)
-                (api/token-node (symbol "compojure.core" (str (api/sexpr method))))
-                (-> (api/list-node
-                     (list*
-                      (api/token-node 'clojure.core/defn)
-                      (api/token-node (route-fn-name (api/sexpr method) (api/sexpr route)))
-                      body))
-                    (with-meta (meta node)))))))]
+              (-> (api/list-node
+                   (list
+                    (api/token-node 'do)
+                    (api/token-node (symbol "compojure.core" (str (api/sexpr method))))
+                    (-> (api/list-node
+                         (list*
+                          (api/token-node 'clojure.core/defn)
+                          (api/token-node (route-fn-name (api/sexpr method) (api/sexpr route)))
+                          body))
+                        (with-meta (meta node)))))
+                  (with-meta {:clj-kondo/ignore [:clojure-lsp/unused-public-var]}))))]
     (update arg :node update-defendpoint)))
 
 (comment

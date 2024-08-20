@@ -41,7 +41,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- query->native [query]
+(defn- query->native! [query]
   (let [check-sql-fn (fn [_ _ sql & _]
                        (throw (ex-info "done" {::native-query sql})))]
     (with-redefs [sql-jdbc.execute/prepared-statement check-sql-fn
@@ -702,7 +702,7 @@
                           "userId" 1000
                           "databaseId" (mt/id)}
             result-query (driver/prettify-native-form :snowflake
-                           (query->native
+                           (query->native!
                              (assoc
                                (mt/mbql-query users {:limit 2000})
                                :parameters [{:type   "id"
