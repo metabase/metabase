@@ -27,11 +27,16 @@ type Graph = Omit<PermissionsGraph, "revision"> & {
   sandboxes: Sandbox[];
 };
 
-const PERMISSIONS_BLOCKED: DatabasePermissions = {
+const PERMISSIONS_DENY_ALL: DatabasePermissions = {
   [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
-  [DataPermission.DOWNLOAD]: { schemas: DataPermissionValue.FULL },
+  [DataPermission.DOWNLOAD]: { schemas: DataPermissionValue.NONE },
   [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
 };
+
+// Default group and database IDs for a fresh instance.
+const ALL_USERS_GROUP_ID = 1;
+const SAMPLE_DB_ID = 1;
+const CONNECTED_DB_ID = 2;
 
 export function getPermissionGraph(options: Options): Graph {
   const { chosenTables = [], groupIds, tenancyColumnNames } = options;
@@ -39,15 +44,10 @@ export function getPermissionGraph(options: Options): Graph {
   const groups: Graph["groups"] = {};
   const sandboxes: Sandbox[] = [];
 
-  // TODO: make these IDs dynamic
-  const ALL_USERS_GROUP_ID = 1;
-  const SAMPLE_DB_ID = 1;
-  const CONNECTED_DB_ID = 2;
-
   // Block access to everything from the "All Users" group
   groups[ALL_USERS_GROUP_ID] = {
-    [SAMPLE_DB_ID]: PERMISSIONS_BLOCKED,
-    [CONNECTED_DB_ID]: PERMISSIONS_BLOCKED,
+    [SAMPLE_DB_ID]: PERMISSIONS_DENY_ALL,
+    [CONNECTED_DB_ID]: PERMISSIONS_DENY_ALL,
   };
 
   // Define database permissions for each table.
@@ -58,7 +58,7 @@ export function getPermissionGraph(options: Options): Graph {
     // Tables could be picked from multiple schemas, so we need to group them by schema.
     const schemas: Record<string, Record<string, P>> = {};
 
-    // Deny access to all unselected tables
+    // Deny access to all unselected tables by default
     for (const table of options.tables) {
       if (!schemas[table.schema]) {
         schemas[table.schema] = {};
@@ -69,7 +69,7 @@ export function getPermissionGraph(options: Options): Graph {
       }
     }
 
-    // Allow (sandboxed) access to selected tables
+    // Allow (sandboxed) access to chosen tables
     for (const table of chosenTables) {
       schemas[table.schema][table.id] = allow;
     }
@@ -82,6 +82,7 @@ export function getPermissionGraph(options: Options): Graph {
       groups[groupId] = {};
     }
 
+    // Configure sandboxed access for each groups
     groups[groupId][CONNECTED_DB_ID] = {
       [DataPermission.CREATE_QUERIES]: getDatabasePermission(
         DataPermissionValue.QUERY_BUILDER,
@@ -101,7 +102,7 @@ export function getPermissionGraph(options: Options): Graph {
     };
   }
 
-  // Add permissions sandboxing for each table
+  // Define column-based tenant isolation for each chosen tables
   for (const tableId in tenancyColumnNames) {
     const table = chosenTables.find(t => Number(t.id) === Number(tableId));
 
@@ -136,12 +137,10 @@ export function getPermissionGraph(options: Options): Graph {
       ];
 
       sandboxes.push({
+        card_id: null,
         group_id: groupId,
         table_id: parseInt(tableId, 10),
-        attribute_remappings: {
-          [tenancyField.name]: ["dimension", fieldRef],
-        },
-        card_id: null,
+        attribute_remappings: { [tenancyField.name]: ["dimension", fieldRef] },
       });
     }
   }
