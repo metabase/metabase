@@ -1,8 +1,4 @@
-import styled from "@emotion/styled";
-
-import { Table } from "./Table";
-
-export const StyledTable = styled(Table)`
+.Table {
   width: 100%;
   border-collapse: unset;
   border-spacing: 0;
@@ -15,6 +11,7 @@ export const StyledTable = styled(Table)`
     text-align: left;
     padding: 0.5rem;
     border-bottom: 1px solid var(--mb-color-border);
+    padding-inline-start: 1rem;
   }
 
   tbody {
@@ -30,12 +27,6 @@ export const StyledTable = styled(Table)`
   td {
     border-bottom: 1px solid var(--mb-color-border);
     padding-inline: 0.5rem;
-  }
-
-  &:first-of-type td,
-  th {
     padding-inline-start: 1rem;
   }
-` as typeof Table;
-// we have to cast this because emotion messes up the generic types here
-// see https://github.com/emotion-js/emotion/issues/2342
+}

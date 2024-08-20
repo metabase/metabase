@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
-import { StyledTable } from "metabase/common/components/Table";
+import { Table } from "metabase/common/components/Table";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -17,7 +17,7 @@ import {
   useDeleteUploadTableMutation,
   useListUploadTablesQuery,
 } from "metabase-enterprise/api";
-import type { Table } from "metabase-types/api";
+import type { Table as UploadTable } from "metabase-types/api";
 
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { getDateDisplay } from "./utils";
@@ -31,7 +31,7 @@ const columns = [
 ];
 
 export function UploadManagementTable() {
-  const [selectedItems, setSelectedItems] = useState<Table[]>([]);
+  const [selectedItems, setSelectedItems] = useState<UploadTable[]>([]);
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const dispatch = useDispatch();
@@ -39,7 +39,7 @@ export function UploadManagementTable() {
   // TODO: once we have uploads running through RTK Query, we can remove the force update
   // because we can properly invalidate the tables tag
   const {
-    data: uploadTables,
+    data: uploadTables = [],
     error,
     isLoading,
   } = useListUploadTablesQuery(undefined, {
@@ -47,7 +47,7 @@ export function UploadManagementTable() {
   });
 
   const deleteTable = useCallback(
-    async (table: Table, sendToTrash: boolean) => {
+    async (table: UploadTable, sendToTrash: boolean) => {
       return deleteTableRequest({
         tableId: table.id,
         "archive-cards": sendToTrash,
@@ -62,7 +62,7 @@ export function UploadManagementTable() {
   );
 
   const renderRow = useCallback(
-    (row: Table) => (
+    (row: UploadTable) => (
       <UploadTableRow
         item={row}
         isSelected={selectedItemIds.has(row.id)}
@@ -149,7 +149,7 @@ export function UploadManagementTable() {
       <Text fw="bold" color="text-medium">
         {t`Uploaded Tables`}
       </Text>
-      <StyledTable
+      <Table
         data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}
@@ -166,10 +166,10 @@ const UploadTableRow = ({
   onTrash,
   isSelected,
 }: {
-  item: Table;
-  onSelect: (item: Table) => void;
-  onDeselect: (item: Table) => void;
-  onTrash: (item: Table) => void;
+  item: UploadTable;
+  onSelect: (item: UploadTable) => void;
+  onDeselect: (item: UploadTable) => void;
+  onTrash: (item: UploadTable) => void;
   isSelected: boolean;
 }) => {
   const createdAtString = getDateDisplay(item.created_at);

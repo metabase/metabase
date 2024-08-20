@@ -1,2 +1,3 @@
 export * from "./Table";
-export * from "./Table.styled";
+export * from "./ControlledTable";
+// export * from "./Table.styled";
