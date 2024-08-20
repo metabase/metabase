@@ -1747,3 +1747,78 @@
             (mt/with-temporary-setting-values [synchronous-batch-updates true]
               (client/client :get 202 (dashcard-url dashcard))
               (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
+
+(deftest entity-id-card-translations-test
+  (mt/with-temp
+    [:model/Card {id   :id eid   :entity_id} {}
+     :model/Card {id-0 :id eid-0 :entity_id} {}
+     :model/Card {id-1 :id eid-1 :entity_id} {}
+     :model/Card {id-2 :id eid-2 :entity_id} {}
+     :model/Card {id-3 :id eid-3 :entity_id} {}
+     :model/Card {id-4 :id eid-4 :entity_id} {}
+     :model/Card {id-5 :id eid-5 :entity_id} {}]
+    (is (= {eid id eid-0 id-0 eid-1 id-1 eid-2 id-2 eid-3 id-3 eid-4 id-4 eid-5 id-5}
+           (api.embed.common/table->entity-ids->ids {"report_card" [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
+
+(deftest entity-id-mixed-translations-test
+  (mt/with-temp
+    [;; prereqs to create the eid-able entities:
+     :model/Card               {model-id :id} {:type :model}
+     :model/Card {card-id :id} {}
+     :model/Field  {field-id :id} {}
+     :model/Table {table-id :id} {}
+
+     ;; eid models:
+     :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :http}
+     :model/Collection         {collection_id           :id collection_eid           :entity_id} {}
+     :model/User               {core_user_id            :id #_#_core_user_eid            :entity_id} {}
+     ;; filling entity id here doesn't work: do it manually below.
+
+     :model/Dimension          {dimension_id            :id dimension_eid            :entity_id} {:field_id field-id}
+     :model/LegacyMetric       {metric_id               :id metric_eid               :entity_id} {:table_id table-id :entity_id (u/generate-nano-id)}
+     :model/NativeQuerySnippet {native_query_snippet_id :id native_query_snippet_eid :entity_id} {:creator_id core_user_id}
+     :model/PermissionsGroup   {permissions_group_id    :id permissions_group_eid    :entity_id} {}
+     :model/Pulse              {pulse_id                :id pulse_eid                :entity_id} {}
+     :model/PulseCard          {pulse_card_id           :id pulse_card_eid           :entity_id} {:pulse_id pulse_id :card_id card-id}
+     :model/PulseChannel       {pulse_channel_id        :id pulse_channel_eid        :entity_id} {:pulse_id pulse_id}
+     :model/Card               {report_card_id          :id report_card_eid          :entity_id} {}
+     :model/Dashboard          {report_dashboard_id     :id report_dashboard_eid     :entity_id} {}
+     :model/DashboardTab       {dashboard_tab_id        :id dashboard_tab_eid        :entity_id} {:dashboard_id report_dashboard_id}
+     :model/DashboardCard      {report_dashboardcard_id :id report_dashboardcard_eid :entity_id} {:dashboard_id report_dashboard_id}
+     :model/Segment            {segment_id              :id segment_eid              :entity_id} {}
+     :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
+    (let [core_user_eid (u/generate-nano-id)]
+      (t2/update! :model/User core_user_id {:entity_id core_user_eid})
+      (is (= {action_eid action_id
+              collection_eid collection_id
+              core_user_eid core_user_id
+              dashboard_tab_eid dashboard_tab_id
+              dimension_eid dimension_id
+              metric_eid metric_id
+              native_query_snippet_eid native_query_snippet_id
+              permissions_group_eid permissions_group_id
+              pulse_eid pulse_id
+              pulse_card_eid pulse_card_id
+              pulse_channel_eid pulse_channel_id
+              report_card_eid report_card_id
+              report_dashboard_eid report_dashboard_id
+              report_dashboardcard_eid report_dashboardcard_id
+              segment_eid segment_id
+              timeline_eid timeline_id}
+           (api.embed.common/table->entity-ids->ids
+            {"action" [action_eid]
+             "collection" [collection_eid]
+             "core_user" [core_user_eid]
+             "dashboard_tab" [dashboard_tab_eid]
+             "dimension" [dimension_eid]
+             "metric" [metric_eid]
+             "native_query_snippet" [native_query_snippet_eid]
+             "permissions_group" [permissions_group_eid]
+             "pulse" [pulse_eid]
+             "pulse_card" [pulse_card_eid]
+             "pulse_channel" [pulse_channel_eid]
+             "report_card" [report_card_eid]
+             "report_dashboard" [report_dashboard_eid]
+             "report_dashboardcard" [report_dashboardcard_eid]
+             "segment" [segment_eid]
+             "timeline" [timeline_eid]}))))))

@@ -3,7 +3,9 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
    [medley.core :as m]
+   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -490,3 +492,50 @@
                          e)]
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
+
+
+;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
+
+(def ^{:private true
+       :arglists '([])} eid-table->model
+  "Map of table names to their corresponding model. This is a memozied function because the db connection used to
+  fetch the model information is not avaliable when this namespace gets loaded."
+  (memoize (fn [] (update-keys (v2.entity-ids/entity-id-table->model) keyword))))
+
+(def ^{:private true
+       :arglists '([])} eid-tables
+  "Sorted vec of tables that have an entity_id column"
+  (memoize (fn [] (vec (sort (keys (eid-table->model)))))))
+
+(def ^:private EntityId
+  "A Malli schema for an entity id, this is a little looser because it needs to be fast."
+  [:and {:description "entity id"}
+   :string
+   [:fn (fn [eid] (= 21 (count eid)))]])
+
+(def ^:private TableToEntityIds
+  "A Malli schema for a map of table names to a sequence of entity ids."
+  (mc/schema
+   (into [:map]
+         (for [table (eid-tables)]
+           [table {:optional true} [:sequential EntityId]]))))
+
+(mu/defn- entity-ids->id-for-table
+  "Given a table and a sequence of entity ids on that table, return a pairs of entity-id, id."
+  [table eids]
+  (let [model ((eid-table->model) table)]
+    (if model
+      (let [ids (when (seq eids)
+                  (t2/select [model :id :entity_id] :entity_id [:in eids]))]
+        (mapv (juxt :entity_id :id) ids))
+      (throw (ex-info "Unknown table." {:table table :valid-tables eid-tables})))))
+
+(defn table->entity-ids->ids
+  "Given a map of table names to a sequence of entity-ids for each, return a map from entity-id -> id."
+  [tables->entity-ids]
+  (when-not (mc/validate TableToEntityIds #p tables->entity-ids)
+    (throw (ex-info "Invalid format." {:explaination (mu/explain TableToEntityIds tables->entity-ids)})))
+  (into {}
+        (mapcat
+         (fn [[table eids]] (entity-ids->id-for-table table eids))
+         tables->entity-ids)))

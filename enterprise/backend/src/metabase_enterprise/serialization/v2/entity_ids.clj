@@ -74,6 +74,15 @@
                        :error    ::mismatched-model-count})))
     (set entity-id-models)))
 
+(defn entity-id-table->model
+  "Return a map of (lower-cased) application DB table name -> corresponding Toucan model for all models that have an
+   `entity_id` column."
+  []
+  (let [eid-table-set (entity-id-table-names)]
+    (->> (make-table-name->model)
+         (filter (fn [[k _]] (contains? eid-table-set k)))
+         (into (sorted-map)))))
+
 (defn- seed-entity-id-for-instance! [model instance]
   (let [primary-key (first (t2/primary-keys model))
         pk-value    (get instance primary-key)]
