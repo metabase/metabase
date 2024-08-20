@@ -31,7 +31,7 @@ By default, the plugins directory is called `plugins`, and lives in the same dir
 
 For example, if you're running Metabase from a directory called `/app/`, you should move the Vertica JDBC driver JAR to `/app/plugins/`:
 
-```bash
+```txt
 # example directory structure for running Metabase with Vertica support
 /app/metabase.jar
 /app/plugins/vertica-jdbc-8.0.0-0.jar
