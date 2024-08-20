@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-
 import Button from "metabase/core/components/Button/Button";
 import { hueRotate, lighten } from "metabase/lib/colors";
 import {
@@ -11,8 +10,11 @@ import {
 export const LayoutRoot = styled.div`
   position: relative;
   min-height: 100%;
-  padding: 1rem;
+  padding: 0.5rem;
   background-color: var(--mb-color-bg-light);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 
   ${breakpointMinMedium} {
     padding: 3rem 4rem;
@@ -51,10 +53,6 @@ export const LayoutIllustration = styled.div<{
   height: 100%;
   filter: ${({ isDefault }) =>
     isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
-  background-image: ${({ backgroundImageSrc }) =>
-    `url("${backgroundImageSrc}")`};
-  background-size: ${({ isDefault }) =>
-    isDefault ? "max(min(1728px, 260vh), 100%) auto" : "100% auto"};
   background-repeat: no-repeat;
   background-position: bottom;
 `;
@@ -67,5 +65,24 @@ export const LayoutEditButton = styled(Button)`
   &:hover {
     color: var(--mb-color-brand);
     background: ${() => lighten("brand", 0.6)};
+  }
+`;
+
+export const ContentContainer = styled.div`
+  margin-bottom: 40px;
+`;
+
+export const ChatSection = styled.div`
+  width: 100%;
+  margin: 0 auto;
+  padding-bottom: 15rem; /* Ensures there is space at the bottom of the screen */
+  position: relative;
+
+  ${breakpointMinMedium} {
+    padding-bottom: 15rem;
+  }
+
+  ${breakpointMinLarge} {
+    padding-bottom: 15rem;
   }
 `;

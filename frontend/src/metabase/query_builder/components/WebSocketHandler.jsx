@@ -1,10 +1,11 @@
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Icon } from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import useWebSocket from "metabase/hooks/useWebSocket";
 import ChatMessageList from "metabase/components/ChatMessageList/ChatMessageList";
+import FeedbackDialog from "metabase/components/FeedbackDialog/FeedbackDialog";
 import { CardApi } from "metabase/services";
 import Question from "metabase-lib/v1/Question";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
@@ -14,6 +15,7 @@ import Modal from "metabase/components/Modal";
 import { Tabs } from "metabase/ui";
 import CS from "metabase/css/core/index.css";
 import cx from "classnames";
+import { generateRandomId } from "metabase/lib/utils";
 
 const WebSocketHandler = () => {
     const dispatch = useDispatch();
@@ -31,7 +33,8 @@ const WebSocketHandler = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("reasoning");
-
+    const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+    const threadId = generateRandomId();
     const [id, setId] = useState(0);
     const { ws, isConnected } = useWebSocket(
         assistant_url,
@@ -148,7 +151,7 @@ const WebSocketHandler = () => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 2],
+                    configData: [dbInputValue || 9],
                 }),
             );
         }
@@ -161,7 +164,7 @@ const WebSocketHandler = () => {
                 text: inputValue,
                 sender: "user",
                 type: "text",
-                thread_id: 1,
+                thread_id: threadId,
             },
             {
                 id: Date.now() + Math.random(),
@@ -174,7 +177,7 @@ const WebSocketHandler = () => {
         const response = {
             type: "query",
             task: inputValue,
-            thread_id: 1,
+            thread_id: threadId,
         };
         if (isConnected) {
             ws && ws.send(JSON.stringify(response));
@@ -194,12 +197,9 @@ const WebSocketHandler = () => {
         }
     };
 
-    const chatVisualizationStyle = {
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
+    const handleFeedbackDialogOpen = () => {
+        setIsModalOpen(false);
+        setIsFeedbackDialogOpen(!isFeedbackDialogOpen);
     };
 
     return (
@@ -487,7 +487,7 @@ const WebSocketHandler = () => {
                                     fontWeight: "500",
                                     border: "1px solid #1664D6",
                                 }}
-                                onClick={closeModal}
+                                onClick={handleFeedbackDialogOpen}
                             >
                                 Provide feedback
                             </Button>
@@ -510,6 +510,10 @@ const WebSocketHandler = () => {
                     </div>
                 </Modal>
             )}
+            <FeedbackDialog
+                isOpen={isFeedbackDialogOpen}
+                onClose={handleFeedbackDialogOpen}
+            />
         </>
     );
 };
