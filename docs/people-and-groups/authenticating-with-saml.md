@@ -34,7 +34,7 @@ First you'll need to make sure things are configured correctly with your IdP. Ea
 We've written up some guides for the most common providers:
 
 - [Setting up SAML with Auth0](saml-auth0.md)
-- [Setting up SAML with Azure AD](saml-azure.md)
+- [Setting up SAML with Microsoft Entra ID](saml-azure.md)
 - [Setting up SAML with Google](saml-google.md)
 - [Setting up SAML with Keycloak](saml-keycloak.md)
 - [Setting up SAML with Okta](saml-okta.md)
