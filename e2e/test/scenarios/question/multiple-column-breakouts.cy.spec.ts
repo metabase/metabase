@@ -848,28 +848,42 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
 
       it("should be able to add post-aggregation aggregations for each breakout column", () => {
-        createQuestion(questionWith2TemporalBreakoutsDetails, {
-          visitQuestion: true,
-        });
-        openNotebook();
+        function testPostAggregationAggregation({
+          questionDetails,
+          column1Name,
+          column2Name,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          column1Name: string;
+          column2Name: string;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
+          openNotebook();
 
-        cy.log("add an aggregation for the year column");
-        getNotebookStep("summarize").button("Summarize").click();
-        popover().within(() => {
-          cy.findByText("Maximum of ...").click();
-          cy.findByText("Created At: Year").click();
-        });
+          cy.log("add an aggregation for the first column");
+          getNotebookStep("summarize").button("Summarize").click();
+          popover().within(() => {
+            cy.findByText("Maximum of ...").click();
+            cy.findByText(column1Name).click();
+          });
 
-        cy.log("add an aggregation for the month column");
-        getNotebookStep("summarize", { stage: 1 }).icon("add").click();
-        popover().within(() => {
-          cy.findByText("Minimum of ...").click();
-          cy.findByText("Created At: Month").click();
-        });
+          cy.log("add an aggregation for the second column");
+          getNotebookStep("summarize", { stage: 1 }).icon("add").click();
+          popover().within(() => {
+            cy.findByText("Minimum of ...").click();
+            cy.findByText(column2Name).click();
+          });
 
-        cy.log("assert query results");
-        cy.button("Visualize").click();
-        cy.wait("@dataset");
+          cy.log("assert query results");
+          cy.button("Visualize").click();
+          cy.wait("@dataset");
+        }
+
+        testPostAggregationAggregation({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Created At: Year",
+          column2Name: "Created At: Month",
+        });
         assertTableData({
           columns: ["Max of Created At: Year", "Min of Created At: Month"],
           firstRows: [["January 1, 2026, 12:00 AM", "April 1, 2022, 12:00 AM"]],
