@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import { isValidElement } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { TableInfoIcon } from "metabase/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
 import Questions from "metabase/entities/questions";
@@ -111,10 +112,19 @@ function DataSourceCrumbs({ question, variant, isObjectDetail, ...props }) {
 
 SourceDatasetBreadcrumbs.propTypes = {
   question: PropTypes.object.isRequired,
-  collection: PropTypes.object.isRequired,
 };
 
-function SourceDatasetBreadcrumbs({ question, collection, ...props }) {
+function SourceDatasetBreadcrumbs({ question, ...props }) {
+  const collectionId = question?.collectionId();
+
+  const { data: collection, isFetching } = useGetCollectionQuery(
+    collectionId ? { id: collectionId } : skipToken,
+  );
+
+  if (isFetching) {
+    return null;
+  }
+
   return (
     <HeadBreadcrumbs
       {...props}
