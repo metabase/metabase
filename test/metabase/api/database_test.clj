@@ -110,7 +110,7 @@
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
-(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+(defn- card-with-native-query [card-name & {:as kvs}]
   (merge
    {:name          card-name
     :database_id   (mt/id)
@@ -119,7 +119,7 @@
                     :native   {:query (format "SELECT * FROM VENUES")}}}
    kvs))
 
-(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+(defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
   {:name          card-name
    :database_id   (mt/id)
    :dataset_query {:database (mt/id)
