@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useMemo, useState, useContext } from "react";
+import { useContext, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,11 +12,11 @@ import { Checkbox } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
-  OptionContainer,
-  LabelWrapper,
-  OptionsList,
   EmptyStateContainer,
   FilterInputContainer,
+  LabelWrapper,
+  OptionContainer,
+  OptionsList,
 } from "./ListField.styled";
 import type { ListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";

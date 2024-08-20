@@ -8,7 +8,7 @@ import {
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { TimeValue, OperatorOption } from "./types";
+import type { OperatorOption, TimeValue } from "./types";
 
 export function getAvailableOptions(
   query: Lib.Query,

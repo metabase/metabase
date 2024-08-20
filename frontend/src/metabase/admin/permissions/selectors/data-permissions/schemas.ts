@@ -18,9 +18,9 @@ import {
   navigateToGranularPermissions,
 } from "../../permissions";
 import type {
+  DataPermissionValue,
   DatabaseEntityId,
   PermissionSectionConfig,
-  DataPermissionValue,
 } from "../../types";
 import { DataPermission, DataPermissionType } from "../../types";
 import {

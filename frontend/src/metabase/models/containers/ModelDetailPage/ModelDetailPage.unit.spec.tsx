@@ -4,11 +4,11 @@ import { IndexRedirect, Redirect, Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
-  setupModelActionsEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
-  setupCardQueryMetadataEndpoint,
+  setupModelActionsEndpoints,
 } from "__support__/server-mocks";
 import {
   fireEvent,
@@ -38,6 +38,7 @@ import type {
   WritebackQueryAction,
 } from "metabase-types/api";
 import {
+  createMockQueryAction as _createMockQueryAction,
   createMockCardQueryMetadata,
   createMockDatabase,
   createMockField,
@@ -45,7 +46,6 @@ import {
   createMockImplicitQueryAction,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockQueryAction as _createMockQueryAction,
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockTable,
@@ -53,9 +53,9 @@ import {
 } from "metabase-types/api/mocks";
 import {
   createNativeModelCard as _createNativeModelCard,
+  createStructuredModelCard as _createStructuredModelCard,
   createSavedNativeCard,
   createSavedStructuredCard,
-  createStructuredModelCard as _createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockSettingsState,

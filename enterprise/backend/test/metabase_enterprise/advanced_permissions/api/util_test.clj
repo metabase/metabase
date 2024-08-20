@@ -34,7 +34,7 @@
                 (data-perms/set-database-permission! group (data/id) :perms/create-queries :query-builder-and-native)
                 (let [{:keys [impersonations attributes]} args]
                   ;; set user login_attributes
-                  (met/with-user-attributes test-user-name-or-user-id attributes
+                  (met/with-user-attributes! test-user-name-or-user-id attributes
                     (do-with-conn-impersonation-defs group impersonations
                       (fn []
                         ;; bind user as current user, then run f

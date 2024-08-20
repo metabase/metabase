@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useCallback, useState, memo } from "react";
+import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
@@ -7,9 +7,9 @@ import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
 import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
+  DashCardId,
   Dashboard,
   DashboardCard,
-  DashCardId,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";

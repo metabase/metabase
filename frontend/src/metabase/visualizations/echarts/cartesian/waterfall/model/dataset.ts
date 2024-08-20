@@ -7,11 +7,11 @@ import {
   replaceZeroesForLogScale,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
-  DataKey,
   ChartDataset,
+  DataKey,
   Datum,
-  WaterfallXAxisModel,
   NumericAxisScaleTransforms,
+  WaterfallXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   WATERFALL_DATA_KEYS,

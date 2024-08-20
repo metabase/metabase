@@ -17,12 +17,12 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../../constants";
 
 import {
   QueryError,
+  QueryErrorContent,
   QueryErrorHeader,
   QueryErrorIcon,
-  QueryErrorTitle,
   QueryErrorLink,
   QueryErrorMessage,
-  QueryErrorContent,
+  QueryErrorTitle,
 } from "./VisualizationError.styled";
 import { AdminEmail } from "./components";
 import { adjustPositions, stripRemarks } from "./utils";

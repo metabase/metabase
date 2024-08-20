@@ -3,8 +3,8 @@ import { Fragment } from "react";
 import { connect } from "react-redux";
 
 import {
-  verifyCard,
   removeCardReview,
+  verifyCard,
 } from "metabase-enterprise/moderation/actions";
 import { getIsModerator } from "metabase-enterprise/moderation/selectors";
 import { getLatestModerationReview } from "metabase-enterprise/moderation/service";

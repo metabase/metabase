@@ -1,10 +1,10 @@
 import type {
+  CardId,
   DatabaseId,
   FieldId,
-  TableId,
   SegmentId,
+  TableId,
   TemplateTags,
-  CardId,
 } from "metabase-types/api";
 
 export interface NativeQuery {

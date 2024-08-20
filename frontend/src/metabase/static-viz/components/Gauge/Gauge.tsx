@@ -7,24 +7,24 @@ import type { ColorGetter } from "metabase/visualizations/types";
 import GaugeLabel from "./GaugeLabel";
 import GaugeNeedle from "./GaugeNeedle";
 import {
-  START_ANGLE,
-  END_ANGLE,
-  CHART_WIDTH,
-  GAUGE_OUTER_RADIUS,
-  GAUGE_INNER_RADIUS,
-  SEGMENT_LABEL_FONT_SIZE,
   CHART_HEIGHT,
+  CHART_WIDTH,
+  END_ANGLE,
+  GAUGE_INNER_RADIUS,
+  GAUGE_OUTER_RADIUS,
+  SEGMENT_LABEL_FONT_SIZE,
+  START_ANGLE,
 } from "./constants";
 import type { GaugeLabelData, GaugeSegment, Position } from "./types";
 import {
-  limit,
   calculateChartScale,
-  calculateValueFontSize,
   calculateRelativeValueAngle,
-  getCirclePositionInSvgCoordinate,
+  calculateValueFontSize,
+  colorGetter,
   gaugeAccessor,
   gaugeSorter,
-  colorGetter,
+  getCirclePositionInSvgCoordinate,
+  limit,
 } from "./utils";
 
 interface GaugeProps {

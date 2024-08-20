@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -15,9 +15,9 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Button, Flex, Modal, Text } from "metabase/ui";
 
 import {
+  AddSampleDatabaseLink,
   TableCellContent,
   TableCellSpinner,
-  AddSampleDatabaseLink,
 } from "../../containers/DatabaseListApp.styled";
 
 const query = {

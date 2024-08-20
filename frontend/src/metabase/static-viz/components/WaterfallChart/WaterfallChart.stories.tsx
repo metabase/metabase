@@ -4,8 +4,8 @@ import { color } from "metabase/lib/colors";
 import { data } from "metabase/static-viz/components/WaterfallChart/stories-data";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
-  measureTextWidth,
   measureTextHeight,
+  measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";

@@ -9,11 +9,11 @@ import { getCartesianChartDefinition } from "metabase/visualizations/visualizati
 
 import { GRAPH_GOAL_SETTINGS } from "../../lib/settings/goal";
 import {
-  GRAPH_DATA_SETTINGS,
-  GRAPH_TREND_SETTINGS,
-  GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,
   GRAPH_BUBBLE_SETTINGS,
+  GRAPH_COLORS_SETTINGS,
+  GRAPH_DATA_SETTINGS,
+  GRAPH_TREND_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "../../lib/settings/graph";
 import type {

@@ -2,8 +2,8 @@ import { KJUR } from "jsrsasign"; // using jsrsasign because jsonwebtoken doesn'
 import querystring from "querystring";
 
 import type {
-  EmbedResourceType,
   EmbedResource,
+  EmbedResourceType,
   EmbeddingParametersValues,
 } from "./types";
 

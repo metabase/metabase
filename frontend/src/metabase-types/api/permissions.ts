@@ -3,10 +3,10 @@ import type {
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import type {
-  DatabaseId,
-  TableId,
-  SchemaName,
   CollectionId,
+  DatabaseId,
+  SchemaName,
+  TableId,
 } from "metabase-types/api";
 
 import type { GroupId } from "./group";

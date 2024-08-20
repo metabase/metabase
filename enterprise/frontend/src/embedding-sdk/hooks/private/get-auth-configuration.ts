@@ -1,4 +1,4 @@
-import { match, P } from "ts-pattern";
+import { P, match } from "ts-pattern";
 
 import type { EmbeddingSessionToken, SDKConfig } from "embedding-sdk";
 import { presentApiKeyUsageWarning } from "embedding-sdk/lib/user-warnings";

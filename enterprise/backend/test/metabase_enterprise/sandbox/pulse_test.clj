@@ -34,7 +34,7 @@
       (is (= [[10]]
              (send-pulse-created-by-user! :rasta))))))
 
-(defn- alert-results
+(defn- alert-results!
   "Results for creating and running an Alert"
   [query]
   (mt/with-temp [Card                  pulse-card {:name          "Test card"
@@ -122,7 +122,7 @@
         (testing "GTAPs should apply to Pulses — they should get the same results as if running that query normally"
           (is (= [[3 13]]
                  (mt/rows
-                  (alert-results query)))))))))
+                  (alert-results! query)))))))))
 
 (defn- html->row-count [html]
   (or (some->> html (re-find #"of <strong.+>(\d+)</strong> rows") second Integer/parseUnsignedInt)
@@ -151,7 +151,7 @@
 
             (testing "Pulse should be sandboxed"
               (is (= 22
-                     (count (mt/rows (alert-results query))))))))))))
+                     (count (mt/rows (alert-results! query))))))))))))
 
 (deftest pulse-preview-test
   (testing "Pulse preview endpoints should be sandboxed"

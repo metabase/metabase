@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { CopyTextInput } from "metabase/components/CopyTextInput";
 import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import CS from "metabase/css/core/index.css";
-import { Text, Button, Flex, Group, Modal, Stack, Icon } from "metabase/ui";
+import { Button, Flex, Group, Icon, Modal, Stack, Text } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 const { fontFamilyMonospace } = getThemeOverrides();
 

@@ -5,8 +5,8 @@ import type { GroupsPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "../../types";
 
 import {
-  getModifiedGroupsPermissionsGraphParts,
   getModifiedCollectionPermissionsGraphParts,
+  getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./partial-updates";
 

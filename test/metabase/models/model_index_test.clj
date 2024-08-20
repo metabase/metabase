@@ -21,7 +21,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defmacro with-scheduler-setup [& body]
+(defmacro with-scheduler-setup! [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]
      ;; need cross thread rebinding from with-redefs not a binding
      (with-redefs [task/scheduler (constantly scheduler#)]
@@ -37,7 +37,7 @@
          (finally (qs/shutdown scheduler#))))))
 
 (deftest quick-run-through
-  (with-scheduler-setup
+  (with-scheduler-setup!
     (mt/dataset test-data
       (let [query     (mt/mbql-query products
                                      {:filter [:and
