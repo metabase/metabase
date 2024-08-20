@@ -10,38 +10,39 @@ export interface ResponsiveEChartsRendererProps extends EChartsRendererProps {
   onResize: (width: number, height: number) => void;
 }
 
-const _ResponsiveEChartsRenderer = forwardRef(
-  function _ResponsiveEChartsRenderer(
-    {
-      onResize,
-      width,
-      height,
-      ...echartsRenderedProps
-    }: ResponsiveEChartsRendererProps,
-    ref,
-  ) {
-    useEffect(() => {
-      if (isNumber(width) && isNumber(height)) {
-        onResize(width, height);
-      }
-    }, [width, height, onResize]);
-
-    if (!width || !height) {
-      return null;
+const _ResponsiveEChartsRenderer = forwardRef<
+  HTMLDivElement,
+  ResponsiveEChartsRendererProps
+>(function _ResponsiveEChartsRenderer(
+  {
+    onResize,
+    width,
+    height,
+    ...echartsRenderedProps
+  }: ResponsiveEChartsRendererProps,
+  ref,
+) {
+  useEffect(() => {
+    if (isNumber(width) && isNumber(height)) {
+      onResize(width, height);
     }
+  }, [width, height, onResize]);
 
-    return (
-      <ResponsiveEChartsRendererStyled>
-        <EChartsRenderer
-          ref={ref}
-          {...echartsRenderedProps}
-          width={width}
-          height={height}
-        />
-      </ResponsiveEChartsRendererStyled>
-    );
-  },
-);
+  if (!width || !height) {
+    return null;
+  }
+
+  return (
+    <ResponsiveEChartsRendererStyled>
+      <EChartsRenderer
+        ref={ref}
+        {...echartsRenderedProps}
+        width={width}
+        height={height}
+      />
+    </ResponsiveEChartsRendererStyled>
+  );
+});
 
 export const ResponsiveEChartsRenderer =
   ExplicitSize<ResponsiveEChartsRendererProps>({
