@@ -1,7 +1,6 @@
 import { assoc } from "icepick";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { handleActions, createAction } from "metabase/lib/redux";
+import { createAction, handleActions } from "metabase/lib/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 
@@ -24,13 +23,9 @@ export const startLoading = createAction(START_LOADING);
 
 export const endLoading = createAction(END_LOADING);
 
-export const startEditing = createAction(START_EDITING, () => {
-  MetabaseAnalytics.trackStructEvent("Data Reference", "Started Editing");
-});
+export const startEditing = createAction(START_EDITING);
 
-export const endEditing = createAction(END_EDITING, () => {
-  MetabaseAnalytics.trackStructEvent("Data Reference", "Ended Editing");
-});
+export const endEditing = createAction(END_EDITING);
 
 export const expandFormula = createAction(EXPAND_FORMULA);
 

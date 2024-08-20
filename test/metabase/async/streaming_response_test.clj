@@ -27,7 +27,7 @@
 
 (def ^:private thread-pool-size 5)
 
-(defn- do-with-streaming-response-thread-pool [thunk]
+(defn- do-with-streaming-response-thread-pool! [thunk]
   (let [pool (Executors/newFixedThreadPool thread-pool-size
                                            (.build
                                             (doto (BasicThreadFactory$Builder.)
@@ -40,13 +40,13 @@
         (finally
           (.shutdownNow pool))))))
 
-(defmacro ^:private with-streaming-response-thread-pool {:style/indent 0} [& body]
-  `(do-with-streaming-response-thread-pool (fn [] ~@body)))
+(defmacro ^:private with-streaming-response-thread-pool! {:style/indent 0} [& body]
+  `(do-with-streaming-response-thread-pool! (fn [] ~@body)))
 
 (defmacro ^:private with-test-driver-db! {:style/indent 0} [& body]
   `(t2.with-temp/with-temp [Database db# {:engine ::test-driver}]
      (mt/with-db db#
-       (with-streaming-response-thread-pool
+       (with-streaming-response-thread-pool!
          ~@body))))
 
 (def ^:private start-execution-chan

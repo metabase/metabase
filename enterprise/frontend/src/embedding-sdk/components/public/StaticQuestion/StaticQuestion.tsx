@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
-  withPublicComponentWrapper,
   SdkError,
   SdkLoader,
+  withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import { loadStaticQuestion } from "embedding-sdk/lib/load-static-question";

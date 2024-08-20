@@ -1,11 +1,11 @@
 import cx from "classnames";
 import type * as React from "react";
-import { useEffect, useMemo, useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
-import { usePrevious, useMount } from "react-use";
+import { useMount, usePrevious } from "react-use";
 import type { OnScrollParams } from "react-virtualized";
-import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
+import { AutoSizer, Collection, Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -32,32 +32,32 @@ import {
   PivotTableTopLeftCellsContainer,
 } from "./PivotTable.styled";
 import {
-  Cell,
-  TopHeaderCell,
-  LeftHeaderCell,
   BodyCell,
+  Cell,
+  LeftHeaderCell,
+  TopHeaderCell,
 } from "./PivotTableCell";
 import { RowToggleIcon } from "./RowToggleIcon";
 import {
-  DEFAULT_CELL_WIDTH,
   CELL_HEIGHT,
+  DEFAULT_CELL_WIDTH,
   LEFT_HEADER_LEFT_SPACING,
   MIN_HEADER_CELL_WIDTH,
   PIVOT_TABLE_BODY_LABEL,
 } from "./constants";
 import {
-  settings,
   _columnSettings as columnSettings,
   getTitleForColumn,
+  settings,
 } from "./settings";
-import type { PivotTableClicked, HeaderWidthType } from "./types";
+import type { HeaderWidthType, PivotTableClicked } from "./types";
 import {
+  checkRenderable,
+  getCellWidthsForSection,
   getLeftHeaderWidths,
   isSensible,
-  checkRenderable,
   leftHeaderCellSizeAndPositionGetter,
   topHeaderCellSizeAndPositionGetter,
-  getCellWidthsForSection,
 } from "./utils";
 
 const MIN_USABLE_BODY_WIDTH = 300;

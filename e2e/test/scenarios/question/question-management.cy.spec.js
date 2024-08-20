@@ -3,27 +3,27 @@ import _ from "underscore";
 
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitQuestion,
-  visitDashboard,
-  popover,
-  openNavigationSidebar,
-  navigationSidebar,
-  openQuestionActions,
-  questionInfoButton,
-  getPersonalCollectionName,
   describeWithSnowplow,
-  resetSnowplow,
   enableTracking,
-  expectNoBadSnowplowEvents,
-  expectGoodSnowplowEvents,
-  modal,
   entityPickerModal,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  getPersonalCollectionName,
+  modal,
+  navigationSidebar,
+  openNavigationSidebar,
+  openQuestionActions,
+  popover,
+  questionInfoButton,
+  resetSnowplow,
+  restore,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {

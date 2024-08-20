@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
-import { useEffect, type ComponentProps } from "react";
+import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
@@ -12,7 +12,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import { waitTimeContext } from "metabase/context/wait-time";
 import LegacyTooltip from "metabase/core/components/Tooltip";
 import { publicReducers } from "metabase/reducers-public";
-import { Box, Card, Text, Tooltip, Popover } from "metabase/ui";
+import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import {
   createMockCard,

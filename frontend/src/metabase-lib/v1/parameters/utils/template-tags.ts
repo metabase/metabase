@@ -5,8 +5,8 @@ import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targe
 import type {
   Card,
   Parameter,
-  ParameterValuesConfig,
   ParameterTarget,
+  ParameterValuesConfig,
   TemplateTag,
 } from "metabase-types/api";
 

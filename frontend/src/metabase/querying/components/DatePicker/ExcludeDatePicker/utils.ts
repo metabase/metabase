@@ -9,7 +9,7 @@ import type {
   ExcludeDatePickerValue,
 } from "../types";
 
-import { EXCLUDE_UNIT_OPTIONS, EXCLUDE_OPERATOR_OPTIONS } from "./constants";
+import { EXCLUDE_OPERATOR_OPTIONS, EXCLUDE_UNIT_OPTIONS } from "./constants";
 import type {
   ExcludeOperatorOption,
   ExcludeUnitOption,

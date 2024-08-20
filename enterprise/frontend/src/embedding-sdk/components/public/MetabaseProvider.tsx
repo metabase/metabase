@@ -1,5 +1,5 @@
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type ReactNode, type JSX, useEffect } from "react";
+import { type JSX, type ReactNode, useEffect } from "react";
 import { memo } from "react";
 import { Provider } from "react-redux";
 

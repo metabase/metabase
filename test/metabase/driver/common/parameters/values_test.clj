@@ -383,7 +383,7 @@
     (testing "Persisted Models are substituted"
       (mt/test-driver :postgres
         (mt/dataset test-data
-          (mt/with-persistence-enabled [persist-models!]
+          (mt/with-persistence-enabled! [persist-models!]
             (let [mbql-query (mt/mbql-query categories)]
               (mt/with-temp [Card model {:name "model"
                                          :type :model

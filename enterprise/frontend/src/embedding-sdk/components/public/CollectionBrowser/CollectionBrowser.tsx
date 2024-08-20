@@ -1,4 +1,4 @@
-import { type ComponentType, type CSSProperties, useState } from "react";
+import { type CSSProperties, type ComponentType, useState } from "react";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";

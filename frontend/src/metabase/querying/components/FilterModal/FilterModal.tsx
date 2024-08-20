@@ -10,11 +10,11 @@ import { SEARCH_KEY } from "./constants";
 import {
   appendStageIfAggregated,
   getGroupItems,
-  hasFilters,
-  removeFilters,
   getModalTitle,
   getModalWidth,
+  hasFilters,
   isSearchActive,
+  removeFilters,
   searchGroupItems,
 } from "./utils";
 

@@ -3,18 +3,18 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { setupFieldValuesEndpoints } from "__support__/server-mocks";
 import {
+  getByRole,
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
-  getByRole,
 } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
-  createSampleDatabase,
+  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
-  PRODUCTS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import type { DefaultPickerProps } from "./DefaultPicker";

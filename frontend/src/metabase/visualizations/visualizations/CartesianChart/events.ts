@@ -41,8 +41,8 @@ import type {
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 import type {
-  EChartsSeriesMouseEvent,
   EChartsSeriesBrushEndEvent,
+  EChartsSeriesMouseEvent,
 } from "metabase/visualizations/echarts/types";
 import { computeChange } from "metabase/visualizations/lib/numeric";
 import {

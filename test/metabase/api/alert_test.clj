@@ -63,20 +63,20 @@
 (defn- alert-response [response]
   (m/dissoc-in response [:creator :last_login]))
 
-(defmacro ^:private with-test-email [& body]
+(defmacro ^:private with-test-email! [& body]
   `(mt/with-temporary-setting-values [~'site-url "https://metabase.com/testmb"]
      (mt/with-fake-inbox
        ~@body)))
 
-(defmacro ^:private with-alert-setup
+(defmacro ^:private with-alert-setup!
   "Macro that will cleanup any created pulses and setups a fake-inbox to validate emails are sent for new alerts"
   [& body]
   `(mt/with-model-cleanup [Pulse]
-     (with-test-email
+     (with-test-email!
        ~@body)))
 
-(defn- do-with-alert-in-collection [f]
-  (pulse-test/with-pulse-in-collection [db collection alert card]
+(defn- do-with-alert-in-collection! [f]
+  (pulse-test/with-pulse-in-collection! [db collection alert card]
     (assert (t2/exists? PulseCard :card_id (u/the-id card), :pulse_id (u/the-id alert)))
     ;; Make this Alert actually be an alert
     (t2/update! Pulse (u/the-id alert) {:alert_condition "rows"})
@@ -87,7 +87,7 @@
       (let [card (t2/select-one Card :id (u/the-id card))]
         (f db collection alert card)))))
 
-(defmacro ^:private with-alert-in-collection
+(defmacro ^:private with-alert-in-collection!
   "Do `body` with a temporary Alert whose Card is in a Collection, setting the stage to write various tests below. (Make
   sure to grant All Users permissions to the Collection if needed.)"
   {:style/indent 1}
@@ -97,12 +97,12 @@
     (assert (not= alert-binding 'card)))
   (when card-binding
     (assert (not= card-binding 'alert)))
-  `(do-with-alert-in-collection
+  `(do-with-alert-in-collection!
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or alert-binding '_) ~(or card-binding '_)]
       ~@body)))
 
 ;; This stuff below is separate from `with-alert-in-collection` above!
-(defn- do-with-alerts-in-a-collection
+(defn- do-with-alerts-in-a-collection!
   "Do `f` with the Cards associated with `alerts-or-ids` in a new temporary Collection. Grant perms to All Users to that
   Collection using `f`.
 
@@ -119,11 +119,11 @@
           (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})))
       (f))))
 
-(defmacro ^:private with-alerts-in-readable-collection [alerts-or-ids & body]
-  `(do-with-alerts-in-a-collection perms/grant-collection-read-permissions! ~alerts-or-ids (fn [] ~@body)))
+(defmacro ^:private with-alerts-in-readable-collection! [alerts-or-ids & body]
+  `(do-with-alerts-in-a-collection! perms/grant-collection-read-permissions! ~alerts-or-ids (fn [] ~@body)))
 
-(defmacro ^:private with-alerts-in-writeable-collection [alerts-or-ids & body]
-  `(do-with-alerts-in-a-collection perms/grant-collection-readwrite-permissions! ~alerts-or-ids (fn [] ~@body)))
+(defmacro ^:private with-alerts-in-writeable-collection! [alerts-or-ids & body]
+  `(do-with-alerts-in-a-collection! perms/grant-collection-readwrite-permissions! ~alerts-or-ids (fn [] ~@body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -149,28 +149,28 @@
 (deftest get-alerts-test
   (testing "archived alerts should be excluded"
     (is (= #{"Not Archived"}
-           (with-alert-in-collection [_ _ not-archived-alert]
-             (with-alert-in-collection [_ _ archived-alert]
+           (with-alert-in-collection! [_ _ not-archived-alert]
+             (with-alert-in-collection! [_ _ archived-alert]
                (t2/update! Pulse (u/the-id not-archived-alert) {:name "Not Archived"})
                (t2/update! Pulse (u/the-id archived-alert)     {:name "Archived", :archived true})
-               (with-alerts-in-readable-collection [not-archived-alert archived-alert]
+               (with-alerts-in-readable-collection! [not-archived-alert archived-alert]
                  (set (map :name (mt/user-http-request :rasta :get 200 "alert")))))))))
 
   (testing "fetch archived alerts"
     (is (= #{"Archived"}
-           (with-alert-in-collection [_ _ not-archived-alert]
-             (with-alert-in-collection [_ _ archived-alert]
+           (with-alert-in-collection! [_ _ not-archived-alert]
+             (with-alert-in-collection! [_ _ archived-alert]
                (t2/update! Pulse (u/the-id not-archived-alert) {:name "Not Archived"})
                (t2/update! Pulse (u/the-id archived-alert)     {:name "Archived", :archived true})
-               (with-alerts-in-readable-collection [not-archived-alert archived-alert]
+               (with-alerts-in-readable-collection! [not-archived-alert archived-alert]
                  (set (map :name (mt/user-http-request :rasta :get 200 "alert" :archived true)))))))))
 
   (testing "fetch alerts by user ID -- should return alerts created by the user,
            or alerts for which the user is a known recipient"
-    (with-alert-in-collection [_ _ creator-alert]
-      (with-alert-in-collection [_ _ recipient-alert]
-        (with-alert-in-collection [_ _ other-alert]
-          (with-alerts-in-readable-collection [creator-alert recipient-alert other-alert]
+    (with-alert-in-collection! [_ _ creator-alert]
+      (with-alert-in-collection! [_ _ recipient-alert]
+        (with-alert-in-collection! [_ _ other-alert]
+          (with-alerts-in-readable-collection! [creator-alert recipient-alert other-alert]
             (t2/update! Pulse (u/the-id creator-alert) {:name "LuckyCreator" :creator_id (mt/user->id :lucky)})
             (t2/update! Pulse (u/the-id recipient-alert) {:name "LuckyRecipient"})
             (t2/update! Pulse (u/the-id other-alert) {:name "Other"})
@@ -196,8 +196,8 @@
 
 (deftest get-alert-test
   (testing "an alert can be fetched by ID"
-    (with-alert-in-collection [_ _ alert]
-      (with-alerts-in-readable-collection [alert]
+    (with-alert-in-collection! [_ _ alert]
+      (with-alerts-in-readable-collection! [alert]
         (is (= (u/the-id alert)
                (:id (mt/user-http-request :rasta :get 200 (str "alert/" (u/the-id alert)))))))))
 
@@ -314,7 +314,7 @@
            (mt/with-non-admin-groups-no-root-collection-perms
              (t2.with-temp/with-temp [Collection collection]
                (t2/update! Card (u/the-id card) {:collection_id (u/the-id collection)})
-               (with-alert-setup
+               (with-alert-setup!
                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
                  [(et/with-expected-messages 1
                     (alert-response
@@ -350,7 +350,7 @@
                                                  {"My question"                  true
                                                   "now getting alerts"           true
                                                   "confirmation that your alert" false}))}
-           (with-alert-setup
+           (with-alert-setup!
              (array-map
               :response (et/with-expected-messages 2
                           (-> ((alert-client :crowberto) :post 200 "alert"
@@ -376,7 +376,7 @@
                                            :display       "line"
                                            :collection_id (u/the-id collection)}]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-             (with-alert-setup
+             (with-alert-setup!
                (et/with-expected-messages 1
                  (mt/user-http-request
                   :rasta :post 200 "alert"
@@ -398,7 +398,7 @@
                                            :display       "bar"
                                            :collection_id (u/the-id collection)}]
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-             (with-alert-setup
+             (with-alert-setup!
                (et/with-expected-messages 1
                  (mt/user-http-request
                   :rasta :post 200 "alert"
@@ -529,7 +529,7 @@
                   (assoc-in [:channels 0 :recipients] (set (map recipient-details [:crowberto :rasta]))))
               (et/email-to :rasta {:subject "Crowberto Corv added you to an alert"
                                    :body    {"https://metabase.com/testmb" true, "now getting alerts" true}})]
-             (with-alert-setup
+             (with-alert-setup!
                [(et/with-expected-messages 1
                   (alert-response
                    (setify-recipient-emails
@@ -548,7 +548,7 @@
                    PulseChannelRecipient _     (recipient pc :rasta)]
       (is (= (-> (default-alert card)
                  (assoc-in [:card :collection_id] true))
-             (with-alerts-in-writeable-collection [alert]
+             (with-alerts-in-writeable-collection! [alert]
                (mt/with-model-cleanup [Pulse]
                  (alert-response
                   ((alert-client :rasta) :put 200 (alert-url alert)
@@ -562,7 +562,7 @@
                    PulseChannelRecipient _     (recipient pc :rasta)]
       (is (= (str "Non-admin users without monitoring or subscription permissions "
                   "are not allowed to modify the channels for an alert")
-             (with-alerts-in-writeable-collection [alert]
+             (with-alerts-in-writeable-collection! [alert]
                (mt/with-model-cleanup [Pulse]
                  ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card pc {} [(mt/fetch-user :crowberto)])))))))))
@@ -575,7 +575,7 @@
                    PulseChannel          pc    (pulse-channel alert)
                    PulseChannelRecipient _     (recipient pc :crowberto)
                    PulseChannelRecipient _     (recipient pc :rasta)]
-      (with-alert-setup
+      (with-alert-setup!
         (testing "API response"
           (is (= (-> (default-alert card)
                      (assoc-in [:channels 0 :recipients] [(recipient-details :crowberto)]))
@@ -600,7 +600,7 @@
                           PulseChannel          pc    (pulse-channel alert)
                           PulseChannelRecipient _     (recipient pc :rasta)]
              (mt/with-non-admin-groups-no-root-collection-perms
-               (with-alert-setup
+               (with-alert-setup!
                  ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card pc)))))))))
 
@@ -612,13 +612,13 @@
                             PulseCard             _     (pulse-card alert card)
                             PulseChannel          pc    (pulse-channel alert)
                             PulseChannelRecipient _     (recipient pc :crowberto)]
-               (with-alert-setup
+               (with-alert-setup!
                  ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card pc))))))))
 
   (testing "Non-admin users can update alerts in collection they have view permisisons"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (with-alert-in-collection [_ collection alert card]
+      (with-alert-in-collection! [_ collection alert card]
         (mt/with-temp [PulseCard pc (pulse-card alert card)]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
 
@@ -637,7 +637,7 @@
                                                 :display       "bar"
                                                 :collection_id (u/the-id collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-        (with-alert-setup
+        (with-alert-setup!
           (et/with-expected-messages 1
             (let [alert-details {:card             {:id (u/the-id card), :include_csv false, :include_xls false, :dashboard_card_id nil}
                                  :collection_id    (u/the-id collection)
@@ -709,9 +709,9 @@
                 (update-in [:channels 0] merge {:schedule_hour 15, :schedule_type "daily"})
                 (assoc-in [:card :collection_id] true))]
            (mt/with-non-admin-groups-no-root-collection-perms
-             (with-alert-setup
+             (with-alert-setup!
                (map alert-response
-                    (with-alerts-in-readable-collection [alert]
+                    (with-alerts-in-readable-collection! [alert]
                       ((alert-client :rasta) :get 200 (alert-question-url card)))))))))
 
   (testing "Non-admin users shouldn't see alerts they created if they're no longer recipients"
@@ -723,8 +723,8 @@
                           PulseChannel          pc    (pulse-channel alert)
                           PulseChannelRecipient pcr   (recipient pc :rasta)
                           PulseChannelRecipient _     (recipient pc :crowberto)]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert]
+               (with-alert-setup!
                  (array-map
                   :count-1 (count ((alert-client :rasta) :get 200 (alert-question-url card)))
                   :count-2 (do
@@ -748,8 +748,8 @@
                           PulseChannel          pc-2    (pulse-channel alert-2)
                           PulseChannelRecipient _       (recipient pc-2 :crowberto)
                           PulseChannel          _       (assoc (pulse-channel alert-2) :channel_type "slack")]
-             (with-alerts-in-readable-collection [alert-1 alert-2]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert-1 alert-2]
+               (with-alert-setup!
                  (array-map
                   :rasta     (api:alert-question-count :rasta     card)
                   :crowberto (api:alert-question-count :crowberto card))))))))
@@ -771,8 +771,8 @@
                    PulseChannel          pc-2    (pulse-channel alert-2)
                    PulseChannelRecipient _       (recipient pc-2 :crowberto)
                    PulseChannel          _       (assoc (pulse-channel alert-2) :channel_type "slack")]
-      (with-alerts-in-readable-collection [alert-1 alert-2]
-        (with-alert-setup
+      (with-alerts-in-readable-collection! [alert-1 alert-2]
+        (with-alert-setup!
           (is (= {:rasta     0
                   :crowberto 0}
                  (array-map
@@ -814,8 +814,8 @@
                           PulseChannel          pc    (pulse-channel alert)
                           PulseChannelRecipient _     (recipient pc :rasta)
                           PulseChannelRecipient _     (recipient pc :crowberto)]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert]
+               (with-alert-setup!
                  (array-map
                   :recipients-1 (recipient-emails (mt/user-http-request
                                                    :rasta :get 200 (alert-question-url card)))
@@ -837,8 +837,8 @@
                           PulseChannel          pc    (pulse-channel alert)
                           PulseChannelRecipient _     (recipient pc :rasta)
                           PulseChannelRecipient _     (recipient pc :crowberto)]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert]
+               (with-alert-setup!
                  (array-map
                   :recipients-1 (recipient-emails (mt/user-http-request :rasta :get 200 (alert-question-url card)))
                   :recipients-2 (do
@@ -856,8 +856,8 @@
                           PulseCard             _     (pulse-card alert card)
                           PulseChannel          pc    (pulse-channel alert)
                           PulseChannelRecipient _     (recipient pc :rasta)]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert]
+               (with-alert-setup!
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
                   :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
@@ -873,8 +873,8 @@
                           PulseChannel          pc-1  (assoc (pulse-channel alert) :channel_type :email)
                           PulseChannel          _     (assoc (pulse-channel alert) :channel_type :slack)
                           PulseChannelRecipient _     (recipient pc-1 :rasta)]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert]
+               (with-alert-setup!
                  (et/with-expected-messages 1 (api:unsubscribe! :rasta 204 alert))
                  (array-map
                   :archived? (t2/select-one-fn :archived Pulse :id (u/the-id alert))
@@ -892,8 +892,8 @@
                           PulseChannel          pc-1  (assoc (pulse-channel alert) :channel_type :email)
                           PulseChannel          _pc-2 (assoc (pulse-channel alert) :channel_type :slack)
                           PulseChannelRecipient _     (recipient pc-1 :rasta)]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert]
+               (with-alert-setup!
                  (et/with-expected-messages 1
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] false)))
@@ -913,8 +913,8 @@
                           PulseChannel          pc-1  (assoc (pulse-channel alert) :channel_type :email, :enabled false)
                           PulseChannel          _pc-2 (assoc (pulse-channel alert) :channel_type :slack)
                           PulseChannelRecipient _     (recipient pc-1 :rasta)]
-             (with-alerts-in-readable-collection [alert]
-               (with-alert-setup
+             (with-alerts-in-readable-collection! [alert]
+               (with-alert-setup!
                  (et/with-expected-messages 1
                    ((alert-client :crowberto)
                     :put 200 (alert-url alert) (assoc-in (default-alert-req card pc-1) [:channels 0 :enabled] true)))

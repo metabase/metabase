@@ -7,7 +7,7 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(defn- tests {:style/indent 2} [f-symb f group->input->expected]
+(defn- tests [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
     (t/testing group
       (doseq [[input expected] input->expected]
@@ -604,7 +604,7 @@
 ;;; |                                                  CANONICALIZE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- canonicalize-tests {:style/indent 0} [& {:as group->input->expected}]
+(defn- canonicalize-tests [& {:as group->input->expected}]
   (tests 'canonicalize #'mbql.normalize/canonicalize group->input->expected))
 
 (t/deftest ^:parallel wrap-implicit-field-id-test

@@ -1,6 +1,6 @@
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoaderComponent } from "embedding-sdk/store/selectors";
-import { Loader, Center } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 
 export const SdkLoader = ({ className }: { className?: string }) => {
   const CustomLoader = useSdkSelector(getLoaderComponent);

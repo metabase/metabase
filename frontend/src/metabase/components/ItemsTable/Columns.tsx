@@ -20,17 +20,17 @@ import type { CollectionItem, SearchResult } from "metabase-types/api";
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
 import { SortableColumnHeader } from "./BaseItemsTable";
 import {
-  ColumnHeader,
   BulkSelectWrapper,
-  ItemCell,
+  ColumnHeader,
+  DescriptionIcon,
   EntityIconCheckBox,
   ItemButton,
+  ItemCell,
   ItemLink,
   ItemNameCell,
-  DescriptionIcon,
-  TableColumn,
-  RowActionsContainer,
   ModelDetailLink,
+  RowActionsContainer,
+  TableColumn,
 } from "./BaseItemsTable.styled";
 
 type HeaderProps = Omit<SortableColumnHeaderProps, "name">;

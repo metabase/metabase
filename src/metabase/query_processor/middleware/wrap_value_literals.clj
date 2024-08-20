@@ -267,7 +267,6 @@
       (parse-temporal-string-literal effective-type s unit))
     [:value s info]))
 
-
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))

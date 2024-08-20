@@ -8,9 +8,9 @@ import { StaticVisualization } from "metabase/static-viz/components/StaticVisual
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
-  measureTextWidth,
   measureTextEChartsAdapter,
   measureTextHeight,
+  measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 

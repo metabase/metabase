@@ -1,4 +1,4 @@
-import type { ReactNode, MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
@@ -9,9 +9,9 @@ export const POPOVER_DELAY: [number, number] = [250, 150];
 export const POPOVER_TRANSITION_DURATION = 150;
 
 import {
-  WidthBound,
   Dropdown,
   HackyInvisibleTargetFiller,
+  WidthBound,
 } from "./Popover.styled";
 
 // When switching to another hover target in the same delay group,

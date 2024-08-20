@@ -4,6 +4,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type DashboardDetails,
+  type StructuredQuestionDetails,
   createDashboardWithTabs,
   createQuestionAndDashboard,
   dashboardParameterSidebar,
@@ -13,8 +15,6 @@ import {
   restore,
   updateDashboardCards,
   visitDashboard,
-  type DashboardDetails,
-  type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";

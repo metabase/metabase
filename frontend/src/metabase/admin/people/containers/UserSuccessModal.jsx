@@ -3,7 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import ModalContent from "metabase/components/ModalContent";

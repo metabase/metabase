@@ -6,10 +6,10 @@ import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   createOrdersIdField,
   createOrdersTable,
   createSampleDatabase,
-  ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 
 import { TimeFilterEditor } from "./TimeFilterEditor";

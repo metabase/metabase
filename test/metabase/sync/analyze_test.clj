@@ -18,7 +18,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.test.data :as data]
-   [metabase.test.sync :as test.sync :refer [sync-survives-crash?]]
+   [metabase.test.sync :as test.sync :refer [sync-survives-crash?!]]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -88,18 +88,18 @@
 
 (deftest survive-fingerprinting-errors
   (testing "Make sure we survive fingerprinting failing"
-    (sync-survives-crash? fingerprinters/fingerprinter)))
+    (sync-survives-crash?! fingerprinters/fingerprinter)))
 
 (deftest survive-classify-fields-errors
   (testing "Make sure we survive field classification failing"
-    (sync-survives-crash? classifiers.name/semantic-type-for-name-and-base-type)
-    (sync-survives-crash? classifiers.category/infer-is-category-or-list)
-    (sync-survives-crash? classifiers.no-preview-display/infer-no-preview-display)
-    (sync-survives-crash? classifiers.text-fingerprint/infer-semantic-type)))
+    (sync-survives-crash?! classifiers.name/semantic-type-for-name-and-base-type)
+    (sync-survives-crash?! classifiers.category/infer-is-category-or-list)
+    (sync-survives-crash?! classifiers.no-preview-display/infer-no-preview-display)
+    (sync-survives-crash?! classifiers.text-fingerprint/infer-semantic-type)))
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
-    (sync-survives-crash? classifiers.name/infer-entity-type-by-name)))
+    (sync-survives-crash?! classifiers.name/infer-entity-type-by-name)))
 
 (defn- classified-semantic-type [values]
   (let [field (mi/instance Field {:base_type :type/Text})]

@@ -19,8 +19,8 @@ import {
 } from "metabase/dashboard/selectors";
 import type {
   DashboardFullscreenControls,
-  DashboardRefreshPeriodControls,
   DashboardNightModeControls,
+  DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/pulse/actions";

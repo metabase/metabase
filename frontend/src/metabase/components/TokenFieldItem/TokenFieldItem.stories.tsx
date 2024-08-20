@@ -4,7 +4,7 @@ import cx from "classnames";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
-import { TokenFieldItem, TokenFieldAddon } from "./TokenFieldItem.styled";
+import { TokenFieldAddon, TokenFieldItem } from "./TokenFieldItem.styled";
 
 export default {
   title: "Core/TokenFieldItem",

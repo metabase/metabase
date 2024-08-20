@@ -413,7 +413,6 @@
    This function is provided for convenience and also makes sure various cleanup steps are performed when finished,
    for example updating FieldValues for On-Demand DBs.
    Returns newly created DashboardCards."
-  {:style/indent 2}
   [dashboard-or-id dashcards]
   (let [old-param-field-ids (dashboard-id->param-field-ids dashboard-or-id)
         dashboard-cards     (map (fn [dashcard]
@@ -436,7 +435,6 @@
    This function is provided as a convenience instead of doing this yourself; it also makes sure various cleanup steps
    are performed when finished, for example updating FieldValues for On-Demand DBs.
    Returns `nil`."
-  {:style/indent 1}
   [dashboard     :- DashboardWithSeriesAndCard
    new-dashcards :- [:sequential ms/Map]]
   (let [old-dashcards    (:dashcards dashboard)
