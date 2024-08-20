@@ -30,8 +30,8 @@ import {
 import {
   PRODUCTS_ID,
   createSampleDatabase,
-  createStructuredModelCard,
   createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

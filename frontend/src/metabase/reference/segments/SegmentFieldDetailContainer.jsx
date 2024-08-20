@@ -11,11 +11,11 @@ import * as actions from "metabase/reference/reference";
 import SegmentFieldDetail from "metabase/reference/segments/SegmentFieldDetail";
 
 import {
+  getDatabaseId,
+  getField,
+  getIsEditing,
   getSegment,
   getSegmentId,
-  getField,
-  getDatabaseId,
-  getIsEditing,
 } from "../selectors";
 
 import SegmentFieldSidebar from "./SegmentFieldSidebar";

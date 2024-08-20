@@ -7,7 +7,7 @@
  * Original can be found at https://github.com/timc1/kbar/blob/846b2c1a89f6cbff1ce947b82d04cb96a5066fbb/src/KBarResults.tsx
  */
 
-import { useKBar, KBAR_LISTBOX, getListboxItemId } from "kbar";
+import { KBAR_LISTBOX, getListboxItemId, useKBar } from "kbar";
 import * as React from "react";
 
 import type { PaletteActionImpl } from "../types";

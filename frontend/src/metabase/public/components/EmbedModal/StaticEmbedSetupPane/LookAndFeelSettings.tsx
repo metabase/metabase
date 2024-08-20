@@ -7,8 +7,8 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
-  EmbeddingDisplayOptions,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
 import {
   getDocsUrl,

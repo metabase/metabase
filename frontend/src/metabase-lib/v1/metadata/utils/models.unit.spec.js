@@ -5,22 +5,22 @@ import Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
   checkCanRefreshModelCache,
+  getDatasetMetadataCompletenessPercentage,
   getModelCacheSchemaName,
   isAdHocModelOrMetricQuestion,
-  getDatasetMetadataCompletenessPercentage,
 } from "metabase-lib/v1/metadata/utils/models";
 import {
-  getMockModelCacheInfo,
   COMMON_DATABASE_FEATURES,
+  getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
+  ORDERS_ID,
+  SAMPLE_DB_ID,
   createNativeModelCard as _createNativeModelCard,
   createSavedNativeCard as _createSavedNativeCard,
   createSavedStructuredCard as _createSavedStructuredCard,
   createStructuredModelCard as _createStructuredModelCard,
-  ORDERS_ID,
-  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 function getTemplateTag(tag = {}) {

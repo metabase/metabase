@@ -13,8 +13,8 @@ import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
 import { isNotNull } from "metabase/lib/types";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
-import { Tooltip, Text, Icon } from "metabase/ui";
-import type { ApiKey, Group, Member, User as IUser } from "metabase-types/api";
+import { Icon, Text, Tooltip } from "metabase/ui";
+import type { ApiKey, Group, User as IUser, Member } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import AddMemberRow from "../AddMemberRow";

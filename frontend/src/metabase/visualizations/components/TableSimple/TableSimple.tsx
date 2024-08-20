@@ -1,6 +1,6 @@
 import cx from "classnames";
 import { getIn } from "icepick";
-import { useCallback, useLayoutEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
@@ -24,12 +24,12 @@ import type {
 import { TableCell } from "./TableCell";
 import TableFooter from "./TableFooter";
 import {
-  Root,
   ContentContainer,
+  Root,
+  SortIcon,
   Table,
   TableContainer,
   TableHeaderCellContent,
-  SortIcon,
 } from "./TableSimple.styled";
 
 function getBoundingClientRectSafe(ref: {

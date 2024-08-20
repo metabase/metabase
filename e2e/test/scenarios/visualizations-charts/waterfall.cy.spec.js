@@ -1,15 +1,15 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertEChartsTooltip,
+  chartPathWithFillColor,
+  echartsContainer,
+  openNativeEditor,
   openOrdersTable,
   restore,
-  visitQuestionAdhoc,
-  openNativeEditor,
-  visualize,
   summarize,
-  echartsContainer,
-  chartPathWithFillColor,
-  testPairedTooltipValues,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -303,7 +303,18 @@ describe("scenarios > visualizations > waterfall", () => {
 
     chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
 
-    testPairedTooltipValues("C2:", "0.2");
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "C1",
+          value: "a",
+        },
+        {
+          name: "C2",
+          value: "0.2",
+        },
+      ],
+    });
   });
 
   describe("scenarios > visualizations > waterfall settings", () => {

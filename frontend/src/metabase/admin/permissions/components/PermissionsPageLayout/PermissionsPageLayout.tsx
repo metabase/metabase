@@ -6,12 +6,12 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
-  FullHeightContainer,
-  TabsContainer,
-  PermissionPageRoot,
-  PermissionPageContent,
-  PermissionPageSidebar,
   CloseSidebarButton,
+  FullHeightContainer,
+  PermissionPageContent,
+  PermissionPageRoot,
+  PermissionPageSidebar,
+  TabsContainer,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
 import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
@@ -26,10 +26,10 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";
 import {
+  Group,
+  Button as NewButton,
   Modal as NewModal,
   Text,
-  Button as NewButton,
-  Group,
 } from "metabase/ui";
 import type { PermissionsGraph } from "metabase-types/api";
 

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, Ref, MouseEvent } from "react";
+import type { ButtonHTMLAttributes, MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 
 import type { ActionIconProps, IconName } from "metabase/ui";

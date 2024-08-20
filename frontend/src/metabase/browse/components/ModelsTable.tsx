@@ -1,4 +1,4 @@
-import { type PropsWithChildren, useState, type CSSProperties } from "react";
+import { type CSSProperties, type PropsWithChildren, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -10,9 +10,9 @@ import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTa
 import {
   ItemNameCell,
   MaybeItemLink,
+  TBody,
   Table,
   TableColumn,
-  TBody,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
@@ -21,13 +21,13 @@ import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import {
+  Box,
+  FixedSizeIcon,
   Flex,
   Icon,
-  type IconProps,
   type IconName,
+  type IconProps,
   Skeleton,
-  FixedSizeIcon,
-  Box,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";

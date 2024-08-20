@@ -1,14 +1,14 @@
 import type {
-  SerializedError,
   AnyAction,
+  SerializedError,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
 import type { JSX, ReactNode } from "react";
 
 import type {
-  SDKConfig,
-  FetchRequestTokenFn,
   EmbeddingSessionToken,
+  FetchRequestTokenFn,
+  SDKConfig,
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";

@@ -1,9 +1,9 @@
 import {
   clearFilterWidget,
-  restore,
-  sidebar,
   editDashboard,
+  restore,
   saveDashboard,
+  sidebar,
   visitDashboard,
 } from "e2e/support/helpers";
 

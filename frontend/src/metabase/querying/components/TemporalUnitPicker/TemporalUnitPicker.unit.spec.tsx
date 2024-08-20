@@ -5,8 +5,8 @@ import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
 import {
-  TemporalUnitPicker,
   type TemporalUnitItem,
+  TemporalUnitPicker,
 } from "./TemporalUnitPicker";
 
 const DEFAULT_ITEMS: TemporalUnitItem[] = Lib.availableTemporalUnits().map(

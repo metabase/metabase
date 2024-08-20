@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type Question from "metabase-lib/v1/Question";
@@ -56,11 +55,6 @@ export class TagEditorSidebar extends Component<TagEditorSidebarProps> {
 
   setSection(section: "settings" | "help") {
     this.setState({ section });
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Template Tag Editor Section Change",
-      section,
-    );
   }
 
   render() {

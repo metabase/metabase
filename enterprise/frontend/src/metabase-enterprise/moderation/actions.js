@@ -1,7 +1,7 @@
 import { createThunkAction } from "metabase/lib/redux";
 import { softReloadCard } from "metabase/query_builder/actions";
 
-import { verifyItem, removeReview } from "./service";
+import { removeReview, verifyItem } from "./service";
 
 export const VERIFY_CARD = "metabase-enterprise/moderation/VERIFY_CARD";
 export const verifyCard = createThunkAction(

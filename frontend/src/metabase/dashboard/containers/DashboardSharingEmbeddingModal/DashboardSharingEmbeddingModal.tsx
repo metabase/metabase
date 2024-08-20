@@ -11,8 +11,8 @@ import type { EmbedOptions } from "metabase-types/store";
 import {
   createPublicLink,
   deletePublicLink,
-  updateEnableEmbedding,
   updateEmbeddingParams,
+  updateEnableEmbedding,
 } from "../../actions";
 
 export type DashboardSharingEmbeddingModalProps = {

@@ -6,9 +6,9 @@ import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTa
 import {
   ColumnHeader,
   ItemCell,
+  TBody,
   Table,
   TableColumn,
-  TBody,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import { Ellipsified } from "metabase/core/components/Ellipsified";

@@ -3,8 +3,8 @@ import { Route } from "react-router";
 
 import {
   setupCardsEndpoints,
-  setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";

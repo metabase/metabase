@@ -15,13 +15,13 @@ import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module
 import { useMantineTheme } from "metabase/ui";
 
 import {
-  ScalarRoot,
-  ScalarValueWrapper,
-  ScalarTitleContainer,
   ScalarDescriptionContainer,
   ScalarDescriptionIcon,
   ScalarDescriptionPlaceholder,
+  ScalarRoot,
+  ScalarTitleContainer,
   ScalarTitleContent,
+  ScalarValueWrapper,
 } from "./ScalarValue.styled";
 import { findSize, getMaxFontSize } from "./utils";
 

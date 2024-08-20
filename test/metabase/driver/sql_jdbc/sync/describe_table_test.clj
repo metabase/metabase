@@ -379,24 +379,25 @@
     [{:field-name "big_json" :base-type :type/JSON}]
     [[(json/generate-string (into {} (for [x (range 300)] [x :dobbs])))]]]])
 
-(deftest describe-big-nested-field-columns-test
+(deftest ^:parallel describe-big-nested-field-columns-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (mt/dataset big-json
       (when-not (mysql/mariadb? (mt/db))
         (testing "limit if huge. limit it and yell warning (#23635)"
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count
-                   (sql-jdbc.sync/describe-nested-field-columns
-                     driver/*driver*
-                     (mt/db)
-                     {:name "big_json_table" :id (mt/id "big_json_table")}))))
-          (is (str/includes?
-                (get-in (mt/with-log-messages-for-level :warn
-                          (sql-jdbc.sync/describe-nested-field-columns
-                            driver/*driver*
-                            (mt/db)
-                            {:name "big_json_table" :id (mt/id "big_json_table")})) [0 2])
-                "More nested field columns detected than maximum.")))))))
+                  (sql-jdbc.sync/describe-nested-field-columns
+                   driver/*driver*
+                   (mt/db)
+                   {:name "big_json_table" :id (mt/id "big_json_table")}))))
+          (mt/with-log-messages-for-level [messages :warn]
+            (sql-jdbc.sync/describe-nested-field-columns
+             driver/*driver*
+             (mt/db)
+             {:name "big_json_table" :id (mt/id "big_json_table")})
+            (is (str/includes?
+                 (-> (messages) first :message)
+                 "More nested field columns detected than maximum."))))))))
 
 (deftest ^:parallel big-nested-field-column-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)

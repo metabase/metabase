@@ -2,32 +2,33 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ADMIN_USER_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  visitQuestion,
+  assertEChartsTooltip,
   cartesianChartCircle,
-  visitQuestionAdhoc,
-  sidebar,
-  rightSidebar,
-  leftSidebar,
+  createNativeQuestion,
+  createQuestion,
   getDashboardCard,
-  visitDashboard,
-  openOrdersTable,
   getDraggableElements,
+  getNotebookStep,
+  leftSidebar,
+  main,
+  modal,
   moveDnDKitElement,
   openNativeEditor,
-  runNativeQuery,
-  main,
-  createQuestion,
   openNotebook,
-  getNotebookStep,
+  openOrdersTable,
+  popover,
   queryBuilderHeader,
-  modal,
-  withDatabase,
+  restore,
+  rightSidebar,
+  runNativeQuery,
+  sidebar,
   summarize,
-  visualize,
   tableInteractive,
-  createNativeQuestion,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -159,7 +160,16 @@ describe("issue 11435", () => {
   it("should use time formatting settings in tooltips for native questions (metabase#11435)", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
     hoverLineDot({ index: 1 });
-    popover().findByTextEnsureVisible("March 11, 2025, 8:45:17.010 PM");
+    assertEChartsTooltip({
+      header: "March 11, 2025, 8:45:17.010 PM",
+      rows: [
+        {
+          color: "#F9D45C",
+          name: "TOTAL",
+          value: "25.03",
+        },
+      ],
+    });
   });
 });
 

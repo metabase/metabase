@@ -4,7 +4,7 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useListTasksQuery, useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";

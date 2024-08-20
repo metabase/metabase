@@ -1,7 +1,6 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ChartSettingColorPicker } from "metabase/visualizations/components/settings/ChartSettingColorPicker";
 import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
@@ -207,9 +206,6 @@ export function getPersistableDefaultSettings(settingsDefs, completeSettings) {
 }
 
 export function updateSettings(storedSettings, changedSettings) {
-  for (const key of Object.keys(changedSettings)) {
-    MetabaseAnalytics.trackStructEvent("Chart Settings", "Change Setting", key);
-  }
   const newSettings = {
     ...storedSettings,
     ...changedSettings,

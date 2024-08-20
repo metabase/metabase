@@ -2,8 +2,8 @@
 import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import cx from "classnames";
-import { useState, useMemo } from "react";
-import { t, jt, msgid, ngettext } from "ttag";
+import { useMemo, useState } from "react";
+import { jt, msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import NumericInput from "metabase/components/NumericInput";
@@ -17,16 +17,15 @@ import Select, { Option } from "metabase/core/components/Select";
 import { Sortable, SortableList } from "metabase/core/components/Sortable";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getAccentColors,
   getStatusColorRanges,
 } from "metabase/lib/colors/groups";
 import { Icon } from "metabase/ui";
 import {
+  isBoolean,
   isNumeric,
   isString,
-  isBoolean,
 } from "metabase-lib/v1/types/utils/isa";
 
 const COMMON_OPERATOR_NAMES = {
@@ -156,19 +155,9 @@ export const ChartSettingsTableFormatting = props => {
         }}
         onRemove={index => {
           onChange([...value.slice(0, index), ...value.slice(index + 1)]);
-          MetabaseAnalytics.trackStructEvent(
-            "Chart Settings",
-            "Table Formatting",
-            "Remove Rule",
-          );
         }}
         onMove={(from, to) => {
           onChange(arrayMove(value, from, to));
-          MetabaseAnalytics.trackStructEvent(
-            "Chart Settings",
-            "Table Formatting",
-            "Move Rule",
-          );
         }}
       />
     );
@@ -493,12 +482,6 @@ const RuleEditor = ({
           <ColorRangeSelector
             value={rule.colors}
             onChange={colors => {
-              MetabaseAnalytics.trackStructEvent(
-                "Chart Settings",
-                "Table Formatting",
-                "Select Range  Colors",
-                colors,
-              );
               onChange({ ...rule, colors });
             }}
             colors={COLORS}

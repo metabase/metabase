@@ -1,9 +1,9 @@
 import type {
-  Log,
   Card,
-  Dashboard,
   Collection,
+  Dashboard,
   DatasetData,
+  Log,
   MetabaseInfo,
 } from "metabase-types/api";
 

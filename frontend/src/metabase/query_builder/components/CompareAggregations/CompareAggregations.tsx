@@ -2,20 +2,20 @@ import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Stack, Text, Input } from "metabase/ui";
+import { Box, Button, Flex, Input, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
 import {
+  BucketInput,
   ColumnPicker,
-  OffsetInput,
-  ReferenceAggregationPicker,
   ComparisonTypePicker,
   CurrentPeriodInput,
+  OffsetInput,
   OffsetPresets,
-  BucketInput,
+  ReferenceAggregationPicker,
 } from "./components";
 import type { ColumnType, ComparisonType } from "./types";
 import {

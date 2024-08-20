@@ -1,9 +1,9 @@
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_METADATA,
   columnFinder,
   createQuery,
   createQueryWithClauses,
-  SAMPLE_METADATA,
 } from "metabase-lib/test-helpers";
 import type { Series } from "metabase-types/api";
 import {
@@ -16,9 +16,9 @@ import {
 import { SAMPLE_DB_ID } from "metabase-types/api/mocks/presets";
 
 import {
+  type ColumnInfo,
   syncVizSettings,
   syncVizSettingsWithQuery,
-  type ColumnInfo,
   syncVizSettingsWithSeries,
 } from "./sync-viz-settings";
 

@@ -1,8 +1,8 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 
 import type { Collection, CollectionId } from "./collection";
-import type { DashboardId, DashCardId } from "./dashboard";
-import type { DatabaseId, Database } from "./database";
+import type { DashCardId, DashboardId } from "./dashboard";
+import type { Database, DatabaseId } from "./database";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";

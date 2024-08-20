@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Flex, Button, Modal, type ModalProps, Stack, Text } from "metabase/ui";
+import { Button, Flex, Modal, type ModalProps, Stack, Text } from "metabase/ui";
 import { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
 import { CopyScimInput } from "./ScimInputs";

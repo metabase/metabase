@@ -2,10 +2,10 @@ import userEvent from "@testing-library/user-event";
 
 import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import {
-  renderWithProviders,
-  screen,
   getByRole,
   getByText,
+  renderWithProviders,
+  screen,
 } from "__support__/ui";
 import type { Parameter, ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";

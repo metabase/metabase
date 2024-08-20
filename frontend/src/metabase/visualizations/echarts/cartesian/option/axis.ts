@@ -5,7 +5,6 @@ import { parseNumberValue } from "metabase/lib/number";
 import { CHART_STYLE } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
   BaseCartesianChartModel,
-  DataKey,
   Extent,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
@@ -362,23 +361,15 @@ export const buildMetricAxis = (
   settings: ComputedVisualizationSettings,
   position: "left" | "right",
   hasSplitLine: boolean,
-  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ): YAXisOption => {
   const shouldFlipAxisName = position === "right";
   const nameGap = getAxisNameGap(ticksWidth);
 
   const range = getYAxisRange(axisModel, yAxisScaleTransforms, settings);
-  let isFocused = false;
-  let isBlurred = false;
-
-  if (hoveredSeriesDataKey != null) {
-    isFocused = axisModel.seriesKeys.includes(hoveredSeriesDataKey);
-    isBlurred = !isFocused;
-  }
 
   return {
-    show: !isBlurred,
+    show: true,
     scale: !!settings["graph.y_axis.unpin_from_zero"],
     type: "value",
     ...range,
@@ -389,7 +380,7 @@ export const buildMetricAxis = (
       shouldFlipAxisName ? -90 : undefined,
     ),
     splitLine:
-      (hasSplitLine || isFocused) && !!settings["graph.y_axis.axis_enabled"]
+      hasSplitLine && !!settings["graph.y_axis.axis_enabled"]
         ? {
             lineStyle: {
               type: 5,
@@ -421,7 +412,6 @@ const buildMetricsAxes = (
   chartModel: BaseCartesianChartModel,
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
-  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ): YAXisOption[] => {
   const axes: YAXisOption[] = [];
@@ -436,7 +426,6 @@ const buildMetricsAxes = (
         settings,
         "left",
         true,
-        hoveredSeriesDataKey,
         renderingContext,
       ),
     );
@@ -452,7 +441,6 @@ const buildMetricsAxes = (
         settings,
         "right",
         isOnlyAxis,
-        hoveredSeriesDataKey,
         renderingContext,
       ),
     );
@@ -467,7 +455,6 @@ export const buildAxes = (
   chartMeasurements: ChartMeasurements,
   settings: ComputedVisualizationSettings,
   hasTimelineEvents: boolean,
-  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ) => {
   return {
@@ -483,7 +470,6 @@ export const buildAxes = (
       chartModel,
       chartMeasurements,
       settings,
-      hoveredSeriesDataKey,
       renderingContext,
     ),
   };

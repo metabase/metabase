@@ -22,11 +22,11 @@ import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/typ
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
+  isBoolean,
   isCoordinate,
   isDate,
   isNumber,
   isTime,
-  isBoolean,
 } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,

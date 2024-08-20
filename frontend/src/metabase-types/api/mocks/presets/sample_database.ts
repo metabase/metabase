@@ -7,15 +7,15 @@ import type {
   Table,
 } from "metabase-types/api";
 import {
+  createMockColumn,
   createMockDatabase,
-  createMockTable,
+  createMockDateTimeFieldFingerprint,
   createMockField,
   createMockFingerprint,
   createMockGlobalFieldFingerprint,
-  createMockTextFieldFingerprint,
   createMockNumberFieldFingerprint,
-  createMockDateTimeFieldFingerprint,
-  createMockColumn,
+  createMockTable,
+  createMockTextFieldFingerprint,
 } from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
