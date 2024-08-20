@@ -5,26 +5,13 @@ import {
 import type {
   Table,
   DatabasePermissions,
-  GroupTableAccessPolicy,
-  PermissionsGraph,
-  FieldReference,
+  GroupsPermissions,
 } from "metabase-types/api";
 
 type Options = {
   tables: Table[];
   chosenTables: Table[];
-
   groupIds: number[];
-  tenancyColumnNames: Record<string, string>;
-};
-
-type Sandbox = Pick<
-  GroupTableAccessPolicy,
-  "table_id" | "group_id" | "card_id" | "attribute_remappings"
->;
-
-type Graph = Omit<PermissionsGraph, "revision"> & {
-  sandboxes: Sandbox[];
 };
 
 const PERMISSIONS_DENY_ALL: DatabasePermissions = {
@@ -38,11 +25,13 @@ const ALL_USERS_GROUP_ID = 1;
 const SAMPLE_DB_ID = 1;
 const CONNECTED_DB_ID = 2;
 
-export function getPermissionGraph(options: Options): Graph {
-  const { chosenTables = [], groupIds, tenancyColumnNames } = options;
+/**
+ * Generates group permissions for defining the permissions graph.
+ */
+export function getPermissionsForGroups(options: Options): GroupsPermissions {
+  const { chosenTables = [], groupIds } = options;
 
-  const groups: Graph["groups"] = {};
-  const sandboxes: Sandbox[] = [];
+  const groups: GroupsPermissions = {};
 
   // Block access to everything from the "All Users" group
   groups[ALL_USERS_GROUP_ID] = {
@@ -105,48 +94,5 @@ export function getPermissionGraph(options: Options): Graph {
     };
   }
 
-  // Define column-based tenant isolation for each chosen tables
-  for (const tableId in tenancyColumnNames) {
-    const table = chosenTables.find(t => Number(t.id) === Number(tableId));
-
-    const tenancyColumnName = tenancyColumnNames[tableId];
-
-    if (!table || !tenancyColumnName) {
-      continue;
-    }
-
-    for (const groupId of groupIds) {
-      const tenancyField = table.fields?.find(
-        f => f.name === tenancyColumnName,
-      );
-
-      if (!tenancyField) {
-        continue;
-      }
-
-      // Create a field reference for sandboxing.
-      // example: ["field", 243, { "base-type": "type/Integer", "source-field": 263 }]
-      const fieldRef: FieldReference = [
-        "field",
-        Number(tenancyField.id),
-        {
-          "base-type": tenancyField.base_type,
-
-          // If the tenancy field is a foreign key, we need to reference the source field.
-          ...(tenancyField.target?.id && {
-            "source-field": tenancyField.target.id,
-          }),
-        },
-      ];
-
-      sandboxes.push({
-        card_id: null,
-        group_id: groupId,
-        table_id: parseInt(tableId, 10),
-        attribute_remappings: { [tenancyField.name]: ["dimension", fieldRef] },
-      });
-    }
-  }
-
-  return { groups, sandboxes };
+  return groups;
 }

@@ -1,6 +1,7 @@
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
-import { getPermissionGraph } from "./get-permission-graph";
+import { getPermissionsForGroups } from "./get-permission-groups";
+import { getTenancyIsolationSandboxes } from "./get-tenancy-isolation-sandboxes";
 
 const getMockTable = (id: number) =>
   createMockTable({
@@ -9,25 +10,28 @@ const getMockTable = (id: number) =>
     fields: [createMockField({ id, name: "customer_id" })],
   });
 
-describe("getPermissionsGraph for embedding CLI", () => {
-  it("should return a valid permissions graph", () => {
+describe("permission graph generation for embedding cli", () => {
+  it("should generate a valid permission graph", () => {
     const groupIds = [1, 2, 3];
     const chosenTables = [getMockTable(3), getMockTable(4)];
 
-    const graph = getPermissionGraph({
+    const options = {
       tables: [getMockTable(1), getMockTable(2), ...chosenTables],
       chosenTables,
       groupIds,
       tenancyColumnNames: { 3: "customer_id", 4: "customer_id" },
-    });
+    };
+
+    const groups = getPermissionsForGroups(options);
+    const sandboxes = getTenancyIsolationSandboxes(options);
 
     for (const groupId of groupIds) {
-      expect(graph.groups[groupId]).toStrictEqual(EXPECTED_PERMISSION_GROUP);
+      expect(groups[groupId]).toStrictEqual(EXPECTED_PERMISSION_GROUP);
     }
 
     // Expect 6 sandboxes: 3 customer groups x 2 tables with tenant isolation
-    expect(graph.sandboxes.length).toBe(6);
-    expect(graph.sandboxes[0]).toStrictEqual(EXPECTED_PERMISSION_SANDBOX);
+    expect(sandboxes.length).toBe(6);
+    expect(sandboxes[0]).toStrictEqual(EXPECTED_PERMISSION_SANDBOX);
   });
 });
 

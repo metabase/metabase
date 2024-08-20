@@ -3,7 +3,8 @@ import chalk from "chalk";
 import toggle from "inquirer-toggle";
 
 import type { CliStepMethod } from "../types/cli";
-import { getPermissionGraph } from "../utils/get-permission-graph";
+import { getPermissionsForGroups } from "../utils/get-permission-groups";
+import { getTenancyIsolationSandboxes } from "../utils/get-tenancy-isolation-sandboxes";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
 // Name of the permission groups and collections to create.
@@ -141,14 +142,17 @@ export const setupPermissions: CliStepMethod = async state => {
 
   const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
+  const options = {
+    tables: state.tables ?? [],
+    chosenTables: state.chosenTables,
+    groupIds,
+    tenancyColumnNames,
+  };
+
   // Update the permissions graph with sandboxed permissions
   const permissionGraph = {
-    ...getPermissionGraph({
-      tables: state.tables ?? [],
-      chosenTables: state.chosenTables,
-      groupIds,
-      tenancyColumnNames,
-    }),
+    groups: getPermissionsForGroups(options),
+    sandboxes: getTenancyIsolationSandboxes(options),
     revision,
     impersonations: [],
   };
