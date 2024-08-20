@@ -710,7 +710,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           createQuestion(questionDetails, { visitQuestion: true });
           openNotebook();
 
-          cy.log("add a filter for the year column");
+          cy.log("add a filter for the first column");
           getNotebookStep("summarize").button("Filter").click();
           popover().within(() => {
             cy.findByText(column1Name).click();
@@ -721,7 +721,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             cy.button("Add filter").click();
           });
 
-          cy.log("add a filter for the month column");
+          cy.log("add a filter for the second column");
           getNotebookStep("filter", { stage: 1 }).icon("add").click();
           popover().within(() => {
             cy.findByText(column2Name).click();
@@ -879,6 +879,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.wait("@dataset");
         }
 
+        cy.log("temporal breakouts");
         testPostAggregationAggregation({
           questionDetails: questionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
