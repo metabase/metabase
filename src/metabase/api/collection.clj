@@ -633,7 +633,9 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids {:include-archived-items :all})
+  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
+                                @api/*current-user-permissions-set*
+                                {:include-archived-items :all})
         descendant-collections (collection/descendants-flat parent-coll (collection/honeysql-filter-clause
                                                                          :id
                                                                          {:include-archived-items :all}))

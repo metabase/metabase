@@ -405,6 +405,13 @@
                            :when (= (last effective-ids) (:id coll-or-root))]
                        [collection-id collection])))))
 
+(def ^:private default-visibility-config
+  {:include-archived-items :exclude
+   :include-trash-collection? false
+   :effective-child-of nil
+   :archive-operation-id nil
+   :permission-level :read})
+
 (mu/defn permissions-set->visible-collection-ids :- VisibleCollections
   "There are four knobs we need to take into account when turning the permissions set into visible collection IDs.
   - permission-level: generally collections with `read` permission are visible. Sometimes we want to change this and only
@@ -418,12 +425,7 @@
    (permissions-set->visible-collection-ids permissions-set {}))
   ([permissions-set :- [:set :string]
     visibility-config :- CollectionVisibilityConfig]
-   (let [visibility-config (merge {:include-archived-items :exclude
-                                   :include-trash-collection? false
-                                   :effective-child-of nil
-                                   :archive-operation-id nil
-                                   :permission-level :read}
-                                  visibility-config)]
+   (let [visibility-config (merge default-visibility-config visibility-config)]
      (->> (permissions-set->collection-id->collection permissions-set visibility-config)
           (remove-non-effective-children (:effective-child-of visibility-config))
           (remove #(should-remove-for-archived? (:include-archived-items visibility-config) (val %)))
@@ -1469,6 +1471,31 @@
           ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
           (descendant-ids {:location "/", :id personal-collection-id}))))
 
+(def ^:private ^{:arglists '([read-or-write])} can-access-root-collection?
+  "Cached function to determine whether the current user can access the root collection"
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[read-or-write]]
+                         ;; If this is running in the context of a request, cache it for the duration of that request.
+                         ;; Otherwise, don't cache the results at all.)
+                         (if-let [req-id *request-id*]
+                           [req-id api/*current-user-id* read-or-write]
+                           [(random-uuid) api/*current-user-id* read-or-write]))}
+   (fn can-access-root-collection?*
+     [read-or-write]
+     (or api/*is-superuser?*
+         (t2/exists? :model/Permissions {:select [:p.*]
+                                         :from [[:permissions :p]]
+                                         :join [[:permissions_group :pg] [:= :pg.id :p.group_id]
+                                                [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
+                                         :where [:and
+                                                 [:= :pgm.user_id api/*current-user-id*]
+                                                 [:or
+                                                  [:= :p.object "/collection/root/"]
+                                                  (when (= :read read-or-write)
+                                                    [:= :p.object "/collection/root/read/"])]]})))
+   ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
+   :ttl/threshold (* 10 1000)))
+
 (mu/defn honeysql-filter-clause
   "Given a permissions-set and a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
   ([]
@@ -1477,47 +1504,59 @@
    (honeysql-filter-clause collection-id-field {}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig]
-   [:in collection-id-field
-    {:select :id
-     :from [[{:union-all (if api/*is-superuser?*
-                           [{:select :c.*
-                             :from [[:collection :c]]}]
-                           [{:select :c.*
-                             :from [[:collection :c]]
-                             :join [[:permissions :p] [:or
-                                                       (when (= :read (:permission-level visibility-config))
-                                                         [:= :p.object [:concat "/collection/" :id "/read/"]])
-                                                       [:= :p.object [:concat "/collection/" :id "/"]]
-                                                       [:and
-                                                        [:= nil :collection_id]
-                                                        [:or
-                                                         (when (= :read (:permission-level visibility-config))
-                                                           [:= :p.object "/collection/root/read/"])
-                                                         [:= :p.object "/collection/root/"]]]]
-                                    [:permissions_group :pg] [:= :pg.id :p.group_id]
-                                    [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.group_id]]
-                             :where [:= :pgm.user_id api/*current-user-id*]}
-                            {:select :c.*
-                             :from [[:collection :c]]
-                             :where [:in :id (user->personal-collection-and-descendant-ids api/*current-user-id*)]}])}
-             :dummy_alias]]
-     :where [:and
-             (when-not (:include-trash-collection? visibility-config)
-               [:not= (trash-collection-id) :id])
+   (let [visibility-config (merge default-visibility-config visibility-config)]
+     [:or
+      ;; the root collection is included when:
+      (when (and
+             ;; we have permission for it.
+             (can-access-root-collection? (:permission-level visibility-config))
 
-             (when (= :exclude (:include-archived-items visibility-config))
-               [:= :archived false])
+             ;; we're not *only* looking for archived items
+             (not= :only (:include-archived-items visibility-config))
 
-             (when (= :only (:include-archived-items visibility-config))
-               [:= :archived true])
+             ;; we're not looking for a particular `archive_operation_id`
+             (not (:archive-operation-id visibility-config))
 
-             (when-let [op-id (:archive-operation-id visibility-config)]
-               [:= :archive_operation_id op-id])
+             ;; we're not looking for the children of a collection (root definitely isn't a child!)
+             (not (:effective-child-of visibility-config)))
+        (when-not (= :only (:include-archived-items visibility-config))
+          [:= collection-id-field nil]))
+      ;; the non-root collections
+      [:in collection-id-field
+       {:select :id
+        :from [[{:union-all (if api/*is-superuser?*
+                              [{:select [:c.*]
+                                :from [[:collection :c]]}]
+                              [{:select [:c.*]
+                                :from [[:collection :c]]
+                                :join [[:permissions :p] [:or
+                                                          (when (= :read (:permission-level visibility-config))
+                                                            [:= :p.object [:concat "/collection/" :c.id "/read/"]])
+                                                          [:= :p.object [:concat "/collection/" :c.id "/"]]]
+                                       [:permissions_group :pg] [:= :pg.id :p.group_id]
+                                       [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
+                                :where [:= :pgm.user_id api/*current-user-id*]}
+                               {:select [:c.*]
+                                :from [[:collection :c]]
+                                :where [:in :id (user->personal-collection-and-descendant-ids api/*current-user-id*)]}])}
+                :dummy_alias]]
+        :where [:and
+                (when-not (:include-trash-collection? visibility-config)
+                  [:not= (trash-collection-id) :id])
 
-             (when-let [parent-coll (:effective-child-of visibility-config)]
-               (if (is-trash? parent-coll)
-                 [:= :archived_directly true]
-                 [:like :location (str (children-location parent-coll) "%")]))]}]))
+                (when (= :exclude (:include-archived-items visibility-config))
+                  [:= :archived false])
+
+                (when (= :only (:include-archived-items visibility-config))
+                  [:= :archived true])
+
+                (when-let [op-id (:archive-operation-id visibility-config)]
+                  [:= :archive_operation_id op-id])
+
+                (when-let [parent-coll (:effective-child-of visibility-config)]
+                  (if (is-trash? parent-coll)
+                    [:= :archived_directly true]
+                    [:like :location (str (children-location parent-coll) "%")]))]}]])))
 
 
 (mi/define-batched-hydration-method include-personal-collection-ids
