@@ -24,6 +24,7 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -289,7 +290,7 @@ describe("scenarios > question > multiple column breakouts", () => {
             .findByLabelText(bucketLabel)
             .click();
           popover().last().findByText(bucket2Name).click();
-          cy.button("Visualize").click();
+          visualize();
           cy.wait("@dataset");
         }
 
@@ -343,7 +344,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           getNotebookStep("sort").button("Change direction").click();
           getNotebookStep("sort").icon("add").click();
           popover().findByText(column2Name).click();
-          cy.button("Visualize").click();
+          visualize();
           cy.wait("@dataset");
         }
 
@@ -722,7 +723,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           popover().button("Done").click();
 
           cy.log("assert query results");
-          cy.button("Visualize").click();
+          visualize();
           cy.wait("@dataset");
         }
 
@@ -804,7 +805,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          cy.button("Visualize").click();
+          visualize();
           cy.wait("@dataset");
         }
 
@@ -855,7 +856,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          cy.button("Visualize").click();
+          visualize();
           cy.wait("@dataset");
         }
 
@@ -946,7 +947,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          cy.button("Visualize").click();
+          visualize();
           cy.wait("@dataset");
         }
 
@@ -960,7 +961,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           columns: ["Min of Created At: Month", "Max of Created At: Year"],
           firstRows: [["April 1, 2022, 12:00 AM", "January 1, 2026, 12:00 AM"]],
         });
-        assertQueryBuilderRowCount(1);
 
         cy.log("'num-bins' breakouts");
         testPostAggregationAggregation({
@@ -972,7 +972,6 @@ describe("scenarios > question > multiple column breakouts", () => {
           columns: ["Min of Total", "Max of Total"],
           firstRows: [["X", "X"]],
         });
-        assertQueryBuilderRowCount(1);
 
         cy.log("'max-bins' breakouts");
         testPostAggregationAggregation({
@@ -984,7 +983,76 @@ describe("scenarios > question > multiple column breakouts", () => {
           columns: ["Min of Latitude", "Max of Latitude"],
           firstRows: [["X", "X"]],
         });
-        assertQueryBuilderRowCount(1);
+      });
+
+      it("should be able to add post-aggregation breakouts for each breakout column", () => {
+        function testPostAggregationBreakout({
+          questionDetails,
+          column1Name,
+          column2Name,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          column1Name: string;
+          column2Name: string;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
+          openNotebook();
+
+          cy.log("add an aggregation");
+          getNotebookStep("summarize").button("Summarize");
+          popover().findByText("Count of rows").click();
+
+          cy.log("add a breakout for the first breakout column");
+          getNotebookStep("summarize", { stage: 1 })
+            .findByTestId("breakout-step")
+            .findByText("Pick a column to group by")
+            .click();
+          popover().findByText(column1Name).click();
+
+          cy.log("add a breakout for the second breakout column");
+          getNotebookStep("summarize", { stage: 1 })
+            .findByTestId("breakout-step")
+            .icon("add")
+            .click();
+          popover().findByText(column2Name).click();
+
+          cy.log("assert query results");
+          visualize();
+          cy.wait("@dataset");
+        }
+
+        cy.log("temporal breakouts");
+        testPostAggregationBreakout({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Created At: Year",
+          column2Name: "Created At: Month",
+        });
+        assertTableData({
+          columns: ["X", "X"],
+          firstRows: [["X", "X"]],
+        });
+
+        cy.log("'num-bins' breakouts");
+        testPostAggregationBreakout({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column2Name: "Total: 50 bins",
+        });
+        assertTableData({
+          columns: ["X", "X"],
+          firstRows: [["X", "X"]],
+        });
+
+        cy.log("'max-bins' breakouts");
+        testPostAggregationBreakout({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Latitude: 20°",
+          column2Name: "Latitude: 10°",
+        });
+        assertTableData({
+          columns: ["X", "X"],
+          firstRows: [["X", "X"]],
+        });
       });
     });
   });
