@@ -97,7 +97,7 @@ const NewItemMenu = ({
         action: () => dispatch(setOpenModal("collection")),
       },*/
     );
-
+    /*
     if (hasNativeWrite) {
       const collectionQuery = collectionId
         ? `?collectionId=${collectionId}`
@@ -109,7 +109,7 @@ const NewItemMenu = ({
         link: `/model/new${collectionQuery}`,
         onClose: onCloseNavbar,
       });
-    }
+    }*/
 
     if (hasModels && hasDatabaseWithActionsEnabled && hasNativeWrite) {
       items.push({
