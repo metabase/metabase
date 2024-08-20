@@ -3,7 +3,6 @@ import {
   createDashboardWithTabs,
   createQuestion,
   editDashboard,
-  filterWidget,
   getDashboardCard,
   popover,
   restore,
@@ -14,15 +13,12 @@ import type { CardId } from "metabase-types/api";
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const TAB_QUESTIONS = { id: 1, name: "Questions" };
-
 const TAB_MODELS = { id: 2, name: "Models" };
 
 const CARD_HEIGHT = 4;
-
 const CARD_WIDTH = 12;
 
 const QUESTION_BASED_COLUMN = 0;
-
 const MODEL_BASED_COLUMN = CARD_WIDTH;
 
 const DATE_PARAMETER = {
