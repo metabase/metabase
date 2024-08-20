@@ -6,8 +6,8 @@ import {
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
 import {
-  QueryColumnInfoIcon,
   HoverParent,
+  QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";

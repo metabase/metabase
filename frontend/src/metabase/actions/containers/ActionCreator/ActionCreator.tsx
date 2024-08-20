@@ -21,8 +21,8 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   DatabaseId,
-  WritebackActionId,
   WritebackAction,
+  WritebackActionId,
   WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";

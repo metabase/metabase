@@ -15,8 +15,8 @@ import { Box, Flex, Icon } from "metabase/ui";
 
 import {
   SetupListRoot,
-  TaskRegularLink,
   TaskExternalLink,
+  TaskRegularLink,
 } from "./SetupCheckList.styled";
 
 const TaskList = ({ tasks }) => (

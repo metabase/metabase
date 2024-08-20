@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
@@ -22,8 +22,8 @@ import {
 } from "metabase/dashboard/selectors";
 import type {
   DashboardFullscreenControls,
-  DashboardRefreshPeriodControls,
   DashboardNightModeControls,
+  DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -33,16 +33,16 @@ import type { Collection, Dashboard } from "metabase-types/api";
 
 import {
   EditWarning,
-  HeaderRow,
   HeaderBadges,
-  HeaderContent,
-  HeaderButtonsContainer,
   HeaderButtonSection,
-  HeaderLastEditInfoLabel,
+  HeaderButtonsContainer,
   HeaderCaption,
   HeaderCaptionContainer,
-  HeaderFixedWidthContainer,
   HeaderContainer,
+  HeaderContent,
+  HeaderFixedWidthContainer,
+  HeaderLastEditInfoLabel,
+  HeaderRow,
 } from "../../components/DashboardHeaderView.styled";
 
 type DashboardHeaderViewProps = {

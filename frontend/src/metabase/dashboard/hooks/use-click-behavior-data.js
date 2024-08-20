@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import {
-  getDashboardComplete,
   getDashCardById,
+  getDashboardComplete,
   getParameterValuesBySlugMap,
 } from "metabase/dashboard/selectors";
 import { getLinkTargets } from "metabase/lib/click-behavior";

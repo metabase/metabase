@@ -1,4 +1,4 @@
-import type { RelativeIntervalDirection, DatePickerOperator } from "../types";
+import type { DatePickerOperator, RelativeIntervalDirection } from "../types";
 
 export type OptionType =
   | "none"

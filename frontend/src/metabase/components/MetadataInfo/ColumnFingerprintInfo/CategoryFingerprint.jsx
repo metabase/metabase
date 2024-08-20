@@ -1,19 +1,19 @@
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { useGetFieldValuesQuery } from "metabase/api";
 import { formatNumber } from "metabase/lib/formatting";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
-  NoWrap,
-  LoadingSpinner,
-  RelativeContainer,
+  Container,
   Fade,
   FadeAndSlide,
-  Container,
   Li,
+  LoadingSpinner,
+  NoWrap,
+  RelativeContainer,
 } from "./CategoryFingerprint.styled";
 
 const propTypes = {

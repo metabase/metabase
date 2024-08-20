@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
@@ -8,15 +8,15 @@ import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import {
-  rem,
   Accordion,
   Box,
   Flex,
+  Icon,
+  List,
   Stack,
   Text,
   Title,
-  Icon,
-  List,
+  rem,
 } from "metabase/ui";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";

@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { useBooleanOptionFilter } from "metabase/querying/hooks/use-boolean-option-filter";
-import { Icon, Box, Button, Radio, Stack } from "metabase/ui";
+import { Box, Button, Icon, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterPickerFooter } from "../FilterPickerFooter";

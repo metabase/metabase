@@ -13,7 +13,7 @@ import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
-import { getSegments, getError, getLoading } from "../../selectors";
+import { getError, getLoading, getSegments } from "../../selectors";
 
 const emptyStateData = {
   title: t`Segments are interesting subsets of tables`,

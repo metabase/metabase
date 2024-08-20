@@ -9,15 +9,15 @@ import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "../constants";
 
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
+  getLastSettingsPutPayload,
   getSection,
   selectUsageReason,
   setup,
   skipLanguageStep,
   skipWelcomeScreen,
   submitUserInfoStep,
-  getLastSettingsPutPayload,
 } from "./setup";
 
 describe("setup (OSS)", () => {

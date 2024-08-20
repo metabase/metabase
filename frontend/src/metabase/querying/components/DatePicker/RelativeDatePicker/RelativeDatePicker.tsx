@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Divider, Flex, PopoverBackButton, Tabs, Box } from "metabase/ui";
+import { Box, Divider, Flex, PopoverBackButton, Tabs } from "metabase/ui";
 
 import type { RelativeDatePickerValue } from "../types";
 

@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useMemo, useCallback, useState, memo } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";

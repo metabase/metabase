@@ -1,4 +1,4 @@
-import { getValuesText, getStaticValues } from "./utils";
+import { getStaticValues, getValuesText } from "./utils";
 
 describe("getValuesText", () => {
   it("should stringify just values correctly", () => {

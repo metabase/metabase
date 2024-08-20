@@ -1,9 +1,9 @@
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  questionInfoButton,
-  visitModel,
   echartsContainer,
+  questionInfoButton,
+  restore,
+  visitModel,
 } from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {

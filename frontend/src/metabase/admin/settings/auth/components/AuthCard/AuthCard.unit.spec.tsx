@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
-import type { AuthSetting, AuthCardProps } from "./AuthCard";
+import type { AuthCardProps, AuthSetting } from "./AuthCard";
 import AuthCard from "./AuthCard";
 
 describe("AuthCard", () => {

@@ -1,12 +1,12 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  sidebar,
   getDraggableElements,
-  popover,
   moveDnDKitElement,
+  popover,
+  restore,
+  sidebar,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { PEOPLE_ID, PEOPLE } = SAMPLE_DATABASE;

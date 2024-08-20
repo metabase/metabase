@@ -1,4 +1,4 @@
-import { createReducer, createAction } from "@reduxjs/toolkit";
+import { createAction, createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { EmbeddingSessionToken, FetchRequestTokenFn } from "embedding-sdk";

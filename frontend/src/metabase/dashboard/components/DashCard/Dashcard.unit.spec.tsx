@@ -5,11 +5,11 @@ import {
   createMockCard,
   createMockDashboard,
   createMockDashboardCard,
+  createMockDataset,
   createMockDatasetData,
-  createMockTextDashboardCard,
   createMockHeadingDashboardCard,
   createMockLinkDashboardCard,
-  createMockDataset,
+  createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 

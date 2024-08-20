@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { useListCollectionItemsQuery } from "metabase/api";
 import {
   isInstanceAnalyticsCustomCollection,
-  isRootPersonalCollection,
   isRootCollection,
+  isRootPersonalCollection,
   isTrashedCollection,
 } from "metabase/collections/utils";
 import EntityMenu from "metabase/components/EntityMenu";
