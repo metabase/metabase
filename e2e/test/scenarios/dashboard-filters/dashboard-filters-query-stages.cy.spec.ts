@@ -111,7 +111,6 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       cy.log("date columns");
       getFilter("Date").click();
-
       verifyDashcardMappingOptions(0, [
         ["Order", ["Created At"]],
         ["Product", ["Created At"]],
@@ -128,50 +127,44 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ["User", ["Birth Date", "Created At"]],
       ]);
 
-      // cy.log("text columns");
-      // getFilter("Text").click();
+      cy.log("text columns");
+      getFilter("Text").click();
+      verifyDashcardMappingOptions(0, [
+        ["Product", ["Ean", "Title", "Category", "Vendor"]],
+        ["User", ["Address", "Email", "Password", "Name", "Source"]],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        ["Product", ["Ean", "Title", "Category", "Vendor"]],
+        ["User", ["Address", "Email", "Password", "Name", "Source"]],
+      ]);
+      verifyDashcardMappingOptions(2, [
+        ["Product", ["Ean", "Title", "Category", "Vendor"]],
+        ["User", ["Address", "Email", "Password", "Name", "Source"]],
+      ]);
 
-      // cy.log("number columns");
-      // getFilter("Number").click();
+      cy.log("number columns");
+      getFilter("Number").click();
+      verifyDashcardMappingOptions(0, [
+        ["Order", ["Subtotal", "Tax", "Total", "Discount", "Quantity"]],
+        ["Product", ["Price", "Rating"]],
+        ["User", ["Longitude", "Latitude"]],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        [
+          "Model based on a question",
+          ["Subtotal", "Tax", "Total", "Discount", "Quantity"],
+        ],
+        ["Product", ["Price", "Rating"]],
+        ["User", ["Longitude", "Latitude"]],
+      ]);
+      verifyDashcardMappingOptions(2, [
+        ["Q0 Order", ["Subtotal", "Tax", "Total", "Discount", "Quantity"]],
+        ["Product", ["Price", "Rating"]],
+        ["User", ["Longitude", "Latitude"]],
+      ]);
     });
   });
 });
-
-function verifyDashcardMappingOptions(
-  dashcardIndex: number,
-  sections: MappingSection[],
-) {
-  getDashboardCard(dashcardIndex).findByText("Select…").click();
-  verifyPopoverMappingOptions(sections);
-  cy.realPress("Escape");
-}
-
-type SectionName = string;
-type ColumnName = string;
-type MappingSection = [SectionName, ColumnName[]];
-
-function verifyPopoverMappingOptions(sections: MappingSection[]) {
-  popover().within(() => {
-    let index = 0;
-
-    for (const [sectionName, columnNames] of sections) {
-      getPopoverItems().eq(index).should("have.text", sectionName);
-      ++index;
-
-      for (const columnName of columnNames) {
-        getPopoverItems()
-          .eq(index)
-          .findByLabelText(columnName)
-          .should("be.visible");
-        ++index;
-      }
-    }
-  });
-}
-
-function getPopoverItems() {
-  return cy.get("[data-element-id=list-section]");
-}
 
 function createQ0() {
   return createQuestion({
@@ -275,4 +268,44 @@ function createTestDashboard({
 
 function getFilter(name: string) {
   return cy.findByTestId("fixed-width-filters").findByText(name);
+}
+
+function getPopoverItems() {
+  return cy.get("[data-element-id=list-section]");
+}
+
+function clickAway() {
+  cy.get("body").click(0, 0);
+}
+
+function verifyDashcardMappingOptions(
+  dashcardIndex: number,
+  sections: MappingSection[],
+) {
+  getDashboardCard(dashcardIndex).findByText("Select…").click();
+  verifyPopoverMappingOptions(sections);
+  clickAway();
+}
+
+type SectionName = string;
+type ColumnName = string;
+type MappingSection = [SectionName, ColumnName[]];
+
+function verifyPopoverMappingOptions(sections: MappingSection[]) {
+  popover().within(() => {
+    let index = 0;
+
+    for (const [sectionName, columnNames] of sections) {
+      getPopoverItems().eq(index).should("have.text", sectionName);
+      ++index;
+
+      for (const columnName of columnNames) {
+        getPopoverItems()
+          .eq(index)
+          .findByLabelText(columnName)
+          .should("be.visible");
+        ++index;
+      }
+    }
+  });
 }
