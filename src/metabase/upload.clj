@@ -217,7 +217,7 @@
 (defn- file-size-mb [csv-file]
   (/ (.length ^File csv-file) 1048576.0))
 
-(def ^:private separators ",;\t")
+(def ^:private separators ",;\t|")
 
 ;; This number was chosen arbitrarily. There is robustness / performance trade-off.
 (def ^:private max-inferred-lines 10)
