@@ -8959,6 +8959,93 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
+  - changeSet:
+      id: v51.2024-08-12T10:02:49
+      author: johnswanson
+      comment: Permissions columns
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: perm_value
+                  type: varchar(64)
+                  remarks: The value of the permission
+                  constraints:
+                    nullable: true
+              - column:
+                  name: perm_type
+                  type: varchar(64)
+                  remarks: The type of the permission
+                  constraints:
+                    nullable: true
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The linked collection, if applicable
+                  constraints:
+                    nullable: true
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_permissions_ref_collection_id
+            tableName: permissions
+
+
+  - changeSet:
+      id: v51.2024-08-20T11:02:24
+      author: johnswanson
+      comment: Populate `perm_value`, `perm_type`, and `collection_id` on permissions
+      rollback: # not needed.
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: permissions/collection-access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/collection-access-mariadb.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/collection-access-h2.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v51.2024-08-20T11:12:19
+      author: johnswanson
+      comment: Create index on `permissions.collection_id`
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_permissions_collection_id
+
+
+  - changeSet:
+      id: v51.2024-08-20T11:12:54
+      author: johnswanson
+      comment: Index on `permissions.perm_type`
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_type
+            indexName: idx_permissions_perm_type
+
+  - changeSet:
+      id: v51.2024-08-20T11:12:55
+      author: johnswanson
+      comment: Index on `permissions.perm_value`
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_value
+            indexName: idx_permissions_perm_value
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

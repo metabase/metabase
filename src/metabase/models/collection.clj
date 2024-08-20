@@ -1529,13 +1529,17 @@
                                 :from [[:collection :c]]}]
                               [{:select [:c.*]
                                 :from [[:collection :c]]
-                                :join [[:permissions :p] [:or
-                                                          (when (= :read (:permission-level visibility-config))
-                                                            [:= :p.object [:concat "/collection/" :c.id "/read/"]])
-                                                          [:= :p.object [:concat "/collection/" :c.id "/"]]]
+                                :join [[:permissions :p]
+                                       [:= :c.id :p.collection_id]
                                        [:permissions_group :pg] [:= :pg.id :p.group_id]
                                        [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
-                                :where [:= :pgm.user_id api/*current-user-id*]}
+                                :where [:and
+                                        [:= :pgm.user_id api/*current-user-id*]
+                                        [:= :p.perm_type "perms/collection-access"]
+                                        [:or
+                                         [:= :p.perm_value "read-and-write"]
+                                         (when (= :read (:permission-level visibility-config))
+                                           [:= :p.perm_value "read"])]]}
                                {:select [:c.*]
                                 :from [[:collection :c]]
                                 :where [:in :id (user->personal-collection-and-descendant-ids api/*current-user-id*)]}])}

@@ -345,9 +345,18 @@
 
 (derive :model/Permissions :metabase/model)
 
+(defn- maybe-add-collection-id [permissions]
+  (let [[match? coll-id-str read?] (re-matches #"^/collection/(\d+)/(read/)?" (:object permissions))]
+    (cond-> permissions
+      match? (assoc :collection_id (parse-long coll-id-str)
+                    :perm_type "perms/collection-access"
+                    :perm_value (if read?
+                                  "read"
+                                  "read-and-write")))))
+
 (t2/define-before-insert :model/Permissions
   [permissions]
-  (u/prog1 permissions
+  (u/prog1 (maybe-add-collection-id permissions)
     (assert-valid permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 
