@@ -313,7 +313,7 @@ const config = {
         process.env.REACT_APP_WEBSOCKET_SERVER || "wss://dev.chat.omniloy.com",
       REACT_APP_DB_CONFIG: process.env.REACT_APP_DB_CONFIG || 9,
       REACT_APP_SEMANTIC:
-        process.env.REACT_APP_SEMANTIC || "http://localhost:3001",
+        process.env.REACT_APP_SEMANTIC || "https://dev.semantic.omniloy.com",
       COMPANY_NAME: process.env.COMPANY_NAME || "omni_test",
     }),
     // https://github.com/remarkjs/remark/discussions/903
