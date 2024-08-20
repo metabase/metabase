@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "metabase/lib/redux";
 import { Box, Button, Icon } from "metabase/ui";
 import Input from "metabase/core/components/Input";
@@ -35,6 +34,8 @@ const WebSocketHandler = () => {
     const [selectedTab, setSelectedTab] = useState("reasoning");
     const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
     const threadId = generateRandomId();
+    const [insightsList, setInsightsList] = useState([]);
+
     const [id, setId] = useState(0);
     const { ws, isConnected } = useWebSocket(
         assistant_url,
@@ -72,6 +73,9 @@ const WebSocketHandler = () => {
             switch (func.function_name) {
                 case "getDatasetQuery":
                     await handleGetDatasetQuery(func);
+                    break;
+                case "getInsights":
+                    await handleGetInsights(func);
                     break;
                 default:
                     console.log(func);
@@ -112,6 +116,45 @@ const WebSocketHandler = () => {
         }
     };
 
+    const handleGetInsights = async func => {
+        const { insights } = func.arguments;
+        try {
+            const newInsightsList = [];
+
+            for (const insight of insights) {
+                const fetchedCard = await CardApi.get({ cardId: insight.cardId });
+                const queryCard = await CardApi.query({ cardId: insight.cardId });
+                const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
+                const getDatasetQuery = fetchedCard?.dataset_query;
+                const defaultQuestionTest = Question.create({
+                    databaseId: 1,
+                    name: fetchedCard.name,
+                    type: "query",
+                    display: fetchedCard.display,
+                    visualization_settings: {},
+                    dataset_query: getDatasetQuery,
+                    metadata: cardMetadata.payload.entities
+                });
+                const newQuestion = defaultQuestionTest.setCard(fetchedCard);
+
+                newInsightsList.push({
+                    insightExplanation: insight.insightExplanation,
+                    card: fetchedCard,
+                    queryCard: queryCard,
+                    defaultQuestion: newQuestion,
+                });
+            }
+
+            setInsightsList(prevInsights => [...prevInsights, ...newInsightsList]);
+
+        } catch (error) {
+            console.error("Error fetching card content:", error);
+        } finally {
+            setIsLoading(false);
+            removeLoadingMessage();
+        }
+    };
+
     const handleDefaultMessage = data => {
         addServerMessage(
             data.message || "Received a message from the server.",
@@ -124,7 +167,7 @@ const WebSocketHandler = () => {
             data.message || "Received a message from the server.",
             "text",
         );
-        setIsLoading(false)
+        setIsLoading(false);
         removeLoadingMessage();
     };
 
@@ -220,7 +263,6 @@ const WebSocketHandler = () => {
                         right: "16px",
                         cursor: "pointer",
                         padding: "8px",
-
                         color: "#FFF",
                         borderRadius: "50%",
                     }}
@@ -229,73 +271,110 @@ const WebSocketHandler = () => {
                 </Button>
                 <div
                     style={{
-                        flex: card ? "0 1 auto" : "1 1 auto",
+                        flex: "1 1 auto",
                         overflowY: "auto",
                         padding: "16px",
                         backgroundColor: "#FFF",
-                        borderRadius: card ? "0 0 12px 12px" : "12px",
+                        borderRadius: "12px",
                     }}
                 >
                     <ChatMessageList messages={messages} isLoading={isLoading} />
-                </div>
-                {card && defaultQuestion && result && (
-                    <>
-                        <div
-                            style={{
-                                flex: "1 0 50%",
-                                padding: "16px",
-                                overflow: "hidden",
-                                height: "400px",
-                                width: "auto",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                            }}
-                        >
-                            <VisualizationResult
-                                question={defaultQuestion}
-                                isDirty={false}
-                                queryBuilderMode={"view"}
-                                result={result}
-                                className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-                                rawSeries={[{ card, data: result && result.data }]}
-                                isRunning={false}
-                                navigateToNewCardInsideQB={null}
-                                onNavigateBack={() => console.log('back')}
-                                timelineEvents={[]}
-                                selectedTimelineEventIds={[]}
-                            />
-                        </div>
-                        <Button
-                            variant="outlined"
-                            style={{
-                                width: "auto",
-                                cursor: "pointer",
-                                border: "1px solid #E0E0E0",
-                                borderRadius: "8px",
-                                marginBottom: "1rem",
-                                color: "#FFF",
-                                marginLeft: "auto",
-                                marginRight: 0,
-                                backgroundColor: "#8A64DF",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "0.5rem 1rem",
-                                lineHeight: "1",
-                            }}
-                            onClick={openModal}
-                        >
-                            <Icon
-                                size={18}
-                                name="bookmark"
+                    
+                    {card && defaultQuestion && result && (
+                        <>
+                            <div
                                 style={{
-                                    marginRight: "0.5rem",
+                                    flex: "1 0 50%",
+                                    padding: "16px",
+                                    overflow: "hidden",
+                                    height: "400px",
+                                    width: "auto",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
                                 }}
-                            />
-                            <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
-                        </Button>
-                    </>
-                )}
+                            >
+                                <VisualizationResult
+                                    question={defaultQuestion}
+                                    isDirty={false}
+                                    queryBuilderMode={"view"}
+                                    result={result}
+                                    className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+                                    rawSeries={[{ card, data: result && result.data }]}
+                                    isRunning={false}
+                                    navigateToNewCardInsideQB={null}
+                                    onNavigateBack={() => console.log('back')}
+                                    timelineEvents={[]}
+                                    selectedTimelineEventIds={[]}
+                                />
+                            </div>
+                            <Button
+                                variant="outlined"
+                                style={{
+                                    width: "auto",
+                                    cursor: "pointer",
+                                    border: "1px solid #E0E0E0",
+                                    borderRadius: "8px",
+                                    marginBottom: "1rem",
+                                    color: "#FFF",
+                                    marginLeft: "auto",
+                                    marginRight: 0,
+                                    backgroundColor: "#8A64DF",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    padding: "0.5rem 1rem",
+                                    lineHeight: "1",
+                                }}
+                                onClick={openModal}
+                            >
+                                <Icon
+                                    size={18}
+                                    name="bookmark"
+                                    style={{
+                                        marginRight: "0.5rem",
+                                    }}
+                                />
+                                <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
+                            </Button>
+                        </>
+                    )}
+
+                    {insightsList.map((insight, index) => (
+                        <div key={index} style={{ marginBottom: "2rem" }}>
+                            <div style={{ marginBottom: "1rem" }}>
+                                <strong>Insight:</strong> {insight.insightExplanation}
+                            </div>
+                            <div
+                                style={{
+                                    padding: "16px",
+                                    overflow: "hidden",
+                                    height: "400px",
+                                    width: "auto",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    border: "1px solid #E0E0E0",
+                                    borderRadius: "8px",
+                                    backgroundColor: "#F8FAFD",
+                                }}
+                            >
+                                <VisualizationResult
+                                    question={insight.defaultQuestion}
+                                    isDirty={false}
+                                    queryBuilderMode={"view"}
+                                    result={insight.queryCard}
+                                    className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+                                    rawSeries={[{ card: insight.card, data: insight.queryCard && insight.queryCard.data }]}
+                                    isRunning={false}
+                                    navigateToNewCardInsideQB={null}
+                                    onNavigateBack={() => console.log('back')}
+                                    timelineEvents={[]}
+                                    selectedTimelineEventIds={[]}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
 
                 <div
                     style={{
@@ -470,8 +549,6 @@ const WebSocketHandler = () => {
                             >
                                 <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{codeQuery}</pre>
                             </Tabs.Panel>
-
-
                         </Tabs>
 
                         <div style={{ display: "flex", marginTop: "20px", paddingLeft: "1rem", paddingRight: "1rem", gap: "2rem" }}>
