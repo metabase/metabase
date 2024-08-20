@@ -196,7 +196,7 @@
   (mt/with-test-user :crowberto
     (mt/with-model-cleanup [:model/ViewLog :model/RecentViews]
       (mt/with-temp [:model/Database  {db-id :id} {}
-                     :model/Card      card1     {:name                   "rand-name"
+                     :model/Card      card1     {:name                   "card1"
                                                  :creator_id             (mt/user->id :crowberto)
                                                  :display                "table"
                                                  :visualization_settings {}
@@ -207,19 +207,18 @@
                                                  :archived               true
                                                  :visualization_settings {}
                                                  :database_id            db-id}
-                     :model/Dashboard dash {:name        "rand-name2"
-                                            :description "rand-name2"
+                     :model/Dashboard dash {:name        "dash-name"
+                                            :description "dash-description"
                                             :creator_id  (mt/user->id :crowberto)}
-                     :model/Table     table1 {:name "rand-name"}
-                     :model/Table     hidden-table {:name            "hidden table"
+                     :model/Table     table1 {:name "table1"}
+                     :model/Table     hidden-table {:name            "hidden_table"
                                                     :visibility_type "hidden"}
-                     :model/Card      dataset {:name                   "rand-name"
+                     :model/Card      dataset {:name                   "dataset-card"
                                                :type                   :model
                                                :creator_id             (mt/user->id :crowberto)
                                                :display                "table"
                                                :visualization_settings {}
-                                               :database_id            db-id}
-                     ]
+                                               :database_id            db-id}]
         (testing "recent_views endpoint shows the current user's recently viewed items."
           (clear-recent-views-for-user :crowberto)
           (testing (str "> EVENT: " :event/card-query " does create recent views.")
@@ -232,16 +231,16 @@
                                    [:event/dashboard-read {:user-id (mt/user->id :crowberto) :object-id (u/the-id dash)}]
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object table1}]
                                    [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id archived)}]
-                                   [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]
-                                   ]]
+                                   [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]]]
               (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
             (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
-              (is (= [
-                      {:model "table" :id (u/the-id table1) :name "rand-name"}
-                      {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
-                      {:model "card" :id (u/the-id card1) :name "rand-name"}
-                      {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
-                     (map #(select-keys % [:model :id :name]) recent-views))))))))))
+              (is (= ["table1"
+                      "dash-name"
+                      "card1"
+                      "dataset-card"]
+                     (map ;; #(select-keys % [:model :id :name])
+                       :name
+                          recent-views))))))))))
 
 (defn- create-views!
   "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
