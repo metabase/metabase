@@ -8,7 +8,7 @@ summary: |
 
 API endpoints for Query reference validation.
 
-## `GET metabase-enterprise.query-reference-validation.api/invalid-cards`
+## `GET /api/ee/query-reference-validation/invalid-cards`
 
 List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
   `errors` key. Supports pagination (`offset` and `limit`), so it returns something in the shape:
@@ -30,4 +30,4 @@ List of cards that have an invalid reference in their query. Shape of each card 
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)

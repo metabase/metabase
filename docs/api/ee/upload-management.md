@@ -8,7 +8,7 @@ summary: |
 
 API endpoints for Upload management.
 
-## `DELETE metabase-enterprise.upload-management.api/tables/:id`
+## `DELETE /api/ee/upload-management/tables/:id`
 
 Delete the uploaded table from the database, optionally archiving cards for which it is the primary source.
 
@@ -18,10 +18,10 @@ Delete the uploaded table from the database, optionally archiving cards for whic
 
 -  **`archive-cards`** nullable value must be a valid boolean string ('true' or 'false').
 
-## `GET metabase-enterprise.upload-management.api/tables`
+## `GET /api/ee/upload-management/tables`
 
 Get all `Tables` visible to the current user which were created by uploading a file.
 
 ---
 
-[<< Back to API index](../api-documentation.md)
+[<< Back to API index](../../api-documentation.md)
