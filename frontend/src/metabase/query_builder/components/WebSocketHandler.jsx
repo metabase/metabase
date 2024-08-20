@@ -40,7 +40,7 @@ const WebSocketHandler = () => {
     const [cardHash, setCardHash] = useState(null);
     const [id, setId] = useState(0);
     const { ws, isConnected } = useWebSocket(
-        "http://localhost:8090",
+        assistant_url,
         async e => {
             if (e.data) {
                 const data = JSON.parse(e.data);
@@ -93,9 +93,7 @@ const WebSocketHandler = () => {
         setId(func.arguments.cardId);
         try {
             const fetchedCard = await CardApi.get({ cardId: cardId });
-            console.log("🚀 ~ handleGetDatasetQuery ~ fetchedCard:", fetchedCard)
             const queryCard = await CardApi.query({ cardId: cardId });
-            console.log("🚀 ~ handleGetDatasetQuery ~ queryCard:", queryCard)
             const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
             const getDatasetQuery = fetchedCard?.dataset_query;
             const defaultQuestionTest = Question.create({
@@ -211,7 +209,7 @@ const WebSocketHandler = () => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 2],
+                    configData: [dbInputValue || 9],
                 }),
             );
         }
