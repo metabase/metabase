@@ -15,7 +15,9 @@ import { Tabs } from "metabase/ui";
 import CS from "metabase/css/core/index.css";
 import cx from "classnames";
 import { generateRandomId } from "metabase/lib/utils";
-
+import {
+    adhocQuestionHash
+} from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 const WebSocketHandler = () => {
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -35,10 +37,10 @@ const WebSocketHandler = () => {
     const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
     const threadId = generateRandomId();
     const [insightsList, setInsightsList] = useState([]);
-
+    const [cardHash, setCardHash] = useState(null);
     const [id, setId] = useState(0);
     const { ws, isConnected } = useWebSocket(
-        assistant_url,
+        "http://localhost:8090",
         async e => {
             if (e.data) {
                 const data = JSON.parse(e.data);
@@ -91,7 +93,9 @@ const WebSocketHandler = () => {
         setId(func.arguments.cardId);
         try {
             const fetchedCard = await CardApi.get({ cardId: cardId });
+            console.log("🚀 ~ handleGetDatasetQuery ~ fetchedCard:", fetchedCard)
             const queryCard = await CardApi.query({ cardId: cardId });
+            console.log("🚀 ~ handleGetDatasetQuery ~ queryCard:", queryCard)
             const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
             const getDatasetQuery = fetchedCard?.dataset_query;
             const defaultQuestionTest = Question.create({
@@ -103,11 +107,23 @@ const WebSocketHandler = () => {
                 dataset_query: getDatasetQuery,
                 metadata: cardMetadata.payload.entities
             });
+            const itemtohash = {
+                dataset_query: {
+                    database: getDatasetQuery.database,
+                    type: "query",
+                    query: getDatasetQuery.query
+                },
+                display: fetchedCard.display,
+                visualization_settings: {},
+                type: "question"
+            }
             const newQuestion = defaultQuestionTest.setCard(fetchedCard);
             setResult(queryCard);
             setCodeQuery(queryCard.data.native_form.query);
             setDefaultQuestion(newQuestion);
             setCard(fetchedCard);
+            const hash1 = adhocQuestionHash(itemtohash);
+            setCardHash(hash1)
         } catch (error) {
             console.error("Error fetching card content:", error);
         } finally {
@@ -171,8 +187,9 @@ const WebSocketHandler = () => {
         removeLoadingMessage();
     };
 
-    const redirect = () => {
-        dispatch(push(`/question/${id}`));
+    const redirect = async () => {
+        dispatch(push(`/question#${cardHash}`));
+        const deletedCard = await CardApi.delete({ id: id });
     }
 
     const addServerMessage = (message, type) => {
@@ -194,7 +211,7 @@ const WebSocketHandler = () => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 9],
+                    configData: [dbInputValue || 2],
                 }),
             );
         }
@@ -279,7 +296,7 @@ const WebSocketHandler = () => {
                     }}
                 >
                     <ChatMessageList messages={messages} isLoading={isLoading} />
-                    
+
                     {card && defaultQuestion && result && (
                         <>
                             <div
@@ -320,7 +337,7 @@ const WebSocketHandler = () => {
                                     marginLeft: "auto",
                                     marginRight: 0,
                                     backgroundColor: "#8A64DF",
-                                    display: "inline-flex",
+                                    display: "flex",
                                     alignItems: "center",
                                     padding: "0.5rem 1rem",
                                     lineHeight: "1",
