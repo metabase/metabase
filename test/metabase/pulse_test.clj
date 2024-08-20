@@ -691,7 +691,7 @@
                                                       :details  {:emails ["nonuser@metabase.com"]}}
                    PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                             :pulse_channel_id pc-id}]
-      (pulse.test-util/email-test-setup
+      (pulse.test-util/email-test-setup!
        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
        (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
        (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe"))))))

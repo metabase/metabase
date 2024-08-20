@@ -154,7 +154,7 @@
   client-real-response]
 
  [i18n.tu
-  with-mock-i18n-bundles
+  with-mock-i18n-bundles!
   with-user-locale]
 
  [initialize
@@ -214,7 +214,7 @@
   derecordize]
 
  [test.persistence
-  with-persistence-enabled]
+  with-persistence-enabled!]
 
  [test.users
   fetch-user
@@ -266,7 +266,7 @@
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
-  with-temp-scheduler
+  with-temp-scheduler!
   with-temp-vals-in-db
   with-temporary-setting-values
   with-temporary-raw-setting-values

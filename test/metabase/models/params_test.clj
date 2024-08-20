@@ -100,7 +100,7 @@
 
 (deftest hydate-param-fields-for-dashboard-test
   (testing "check that we can hydrate param_fields for a Dashboard"
-    (public-test/with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (public-test/with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"
