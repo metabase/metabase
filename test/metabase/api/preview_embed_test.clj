@@ -220,7 +220,7 @@
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
-(defn- dashboard-url {:style/indent 1} [dashboard & [additional-token-params]]
+(defn- dashboard-url [dashboard & [additional-token-params]]
   (str "preview_embed/dashboard/" (embed-test/dash-token dashboard (merge {:_embedding_params {}}
                                                                           additional-token-params))))
 
@@ -263,7 +263,7 @@
 
 ;;; ------------------ GET /api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id -------------------
 
-(defn- dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
+(defn- dashcard-url [dashcard & [additional-token-params]]
   (str "preview_embed/dashboard/" (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
                                                                                          additional-token-params))
        "/dashcard/" (u/the-id dashcard)
@@ -460,7 +460,7 @@
                    (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))))))
 
-(defn- pivot-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
+(defn- pivot-dashcard-url [dashcard & [additional-token-params]]
   (str "preview_embed/pivot/dashboard/"
        (embed-test/dash-token (:dashboard_id dashcard) (merge {:_embedding_params {}}
                                                               additional-token-params))

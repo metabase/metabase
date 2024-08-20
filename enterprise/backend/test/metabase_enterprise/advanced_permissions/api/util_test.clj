@@ -14,7 +14,6 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-conn-impersonation-defs
-  {:style/indent 2}
   [group [{:keys [db-id attribute] :as impersonation-def} & more] f]
   (if-not impersonation-def
     (f)

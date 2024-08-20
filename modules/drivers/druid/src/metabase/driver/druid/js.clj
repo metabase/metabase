@@ -31,7 +31,6 @@
 
 (defn function
   "Create a JavaScript function with `args` and `body`."
-  {:style/indent 1}
   ^String [args & body]
   (str "function" (argslist args) " { "
        (apply str body)

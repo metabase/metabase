@@ -64,7 +64,7 @@
 
   You should only use this function in places where you are working directly with SQL. For HoneySQL forms, use
   [[metabase.util.honey-sql-2/identifier]] instead."
-  {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name]), :style/indent 1}
+  {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name])}
   [driver & names]
   (let [identifier-type (condp = (count names)
                           1 :database

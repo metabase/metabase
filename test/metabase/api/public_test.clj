@@ -1151,7 +1151,7 @@
        "/field/" (u/the-id field-or-id)
        "/values"))
 
-(defn- do-with-sharing-enabled-and-temp-card-referencing {:style/indent 2} [table-kw field-kw f]
+(defn- do-with-sharing-enabled-and-temp-card-referencing [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (t2.with-temp/with-temp [Card card (merge (shared-obj) (mbql-card-referencing table-kw field-kw))]
       (f card))))
@@ -1188,7 +1188,7 @@
 
 ;;; ----------------------------- GET /api/public/dashboard/:uuid/field/:field/values nil -----------------------------
 
-(defn do-with-sharing-enabled-and-temp-dashcard-referencing {:style/indent 2} [table-kw field-kw f]
+(defn do-with-sharing-enabled-and-temp-dashcard-referencing [table-kw field-kw f]
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp [Dashboard     dashboard (shared-obj)
                    Card          card      (mbql-card-referencing table-kw field-kw)

@@ -103,7 +103,6 @@
   "The sample responses all have `InResponseTo=\"_1\"` and invalid assertion signatures (they were edited by hand) so
   manually add `_1` to the state manager and turn off the <Assertion> signature validator so we can actually run
   tests."
-  {:style/indent [:defn 2]}
   ([f]
    (do-with-some-validators-disabled nil #{:signature :not-on-or-after :recipient :issuer}
      f))

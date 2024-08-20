@@ -2643,7 +2643,6 @@
   "Walk form `x` and convert any byte arrays in the results to base-64-encoded strings. This is useful when writing
   tests that return byte arrays (such as things that work with query hashes), since identical arrays are not
   considered equal."
-  {:style/indent 0}
   [x]
   (walk/postwalk (fn [form]
                    (if (instance? (Class/forName "[B") form)

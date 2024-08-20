@@ -210,10 +210,9 @@
   `checkp` can be called with the form
 
       (checkp test field-name message)"
-  {:style/indent 1}
-  ([tst field-name message]
-   (when-not tst
-     (throw-invalid-param-exception (str field-name) message))))
+  [tst field-name message]
+  (when-not tst
+    (throw-invalid-param-exception (str field-name) message)))
 
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
@@ -494,7 +493,6 @@
   "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
   don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
   `obj` if the check is successful."
-  {:style/indent 2}
   ([obj]
    (check-404 obj)
    (try
@@ -516,7 +514,6 @@
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
   don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
   `obj` if the check is successful."
-  {:style/indent 2}
   ([obj]
    (check-404 obj)
    (try
@@ -537,7 +534,7 @@
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
   hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
-  {:added "0.32.0", :style/indent 2}
+  {:added "0.32.0"}
   [entity m]
   (try
     (check-403 (mi/can-create? entity m))
@@ -552,7 +549,7 @@
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `PUT` API endpoints instead have the `can-update?` logic for a given model hardcoded
   into them -- this should be considered an antipattern and be refactored out going forward."
-  {:added "0.36.0", :style/indent 2}
+  {:added "0.36.0"}
   [instance changes]
   (try
     (check-403 (mi/can-update? instance changes))

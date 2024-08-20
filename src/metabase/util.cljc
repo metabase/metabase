@@ -536,7 +536,6 @@
        :present #{:a :b :c}
        :non-nil #{:d :e :f})
      ;; -> {:a 100, :b nil, :d 200}"
-  {:style/indent 1}
   [m & {:keys [present non-nil], :as options}]
   {:pre [(every? #{:present :non-nil} (keys options))]}
   (merge (select-keys m present)
