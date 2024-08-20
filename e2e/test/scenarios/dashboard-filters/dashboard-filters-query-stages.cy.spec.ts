@@ -106,7 +106,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
     });
 
-    it("allows to map all columns", () => {
+    it("allows to map to all relevant columns", () => {
       editDashboard();
 
       cy.log("date columns");
