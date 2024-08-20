@@ -20,14 +20,21 @@ export const trackPageView = url => {
   }
 };
 
+/**
+ * Tracks a schema event.
+ * IMPORTANT NOTE:
+ * Only use this function directly if `trackActionEvent` doesn't fit your needs.
+ * We want to use the generic structured action event as much as possible to avoid to create or update schemas.
+ * If you need to track event specific context that does not fit the structured action event, you can pass context entities
+ * that are designed in a reusable way (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/)
+ *
+ * @param {string} schema - The schema of the event.
+ * @param {string} version - The version of the event.
+ * @param {object} data - The data associated with the event.
+ * @param {object[]} contextEntities - The context entities associated with the event.
+ * @returns {void}
+ */
 export const trackSchemaEvent = (schema, version, data, contextEntities) => {
-  /*
-  IMPORTANT NOTE:
-  Only use this function directly if `trackActionEvent` doesn't fit your needs.
-  We want to use the generic structured action event as much as possible to avoid to create or update schemas.
-  If you need to track event specific context that does not fit the structured action event, you can pass context entities
-  that are designed in a reusable way (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/)
-  */
   if (shouldLogAnalytics) {
     const { event, ...other } = data;
     // eslint-disable-next-line no-console
@@ -55,9 +62,9 @@ export const trackSchemaEvent = (schema, version, data, contextEntities) => {
  * @param {number} durationMs - (Optional) Duration in milliseconds
  * @param {string} result - (Optional) The outcome of the action (e.g. success, failure, …)
  * @param {string} eventDetail - (Optional) Can be used for additional details that describe the event, e.g. the type of question that was created in a question_created event.
- * @param {object} contextEntities - (Optional) Additional context entities (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/). We send the Metabase Instance context by default with each event.
+ * @param {object[]} contextEntities - (Optional) Additional context entities (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/). We send the Metabase Instance context by default with each event.
  */
-export const trackActionEvent = (
+export const trackActionEvent = ({
   name,
   triggeredFrom,
   targetId,
@@ -65,7 +72,7 @@ export const trackActionEvent = (
   result,
   eventDetail,
   contextEntities,
-) => {
+}) => {
   const event = {
     name,
     triggered_from: triggeredFrom,
