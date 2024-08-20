@@ -13,7 +13,7 @@
 
 (deftest find-test
   (mt/with-premium-features #{:sso-ldap}
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
                 :first-name "John"
@@ -93,7 +93,7 @@
 
 (deftest attribute-sync-test
   (mt/with-premium-features #{:sso-ldap}
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "find by email/username should return other attributes as well"
         (is (= {:dn         "cn=Lucky Pigeon,ou=Birds,dc=metabase,dc=com"
                 :first-name "Lucky"
@@ -166,7 +166,7 @@
 
 (deftest update-attributes-on-login-test
   (mt/with-premium-features #{:sso-ldap}
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "Existing user's attributes are updated on fetch"
         (try
           (let [user-info (ldap/find-user "jsmith1")]
@@ -216,7 +216,7 @@
 
 (deftest fetch-or-create-user-test
   (mt/with-premium-features #{:sso-ldap}
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "a new user is created when they don't already exist"
         (try
          (ldap/fetch-or-create-user! (ldap/find-user "jsmith1"))
@@ -252,7 +252,7 @@
 
 (deftest ldap-no-user-provisioning-test
   (mt/with-premium-features #{:sso-ldap}
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "an error is thrown when a new user is fetched and user provisioning is not enabled"
         (with-redefs [sso-settings/ldap-user-provisioning-enabled? (constantly false)
                       public-settings/site-name (constantly "test")]

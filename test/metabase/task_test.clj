@@ -47,15 +47,15 @@
       (cron/cron-schedule "0 0 6 * * ? *") ; at 6 AM every day
       (cron/with-misfire-handling-instruction-ignore-misfires)))))
 
-(defn- do-with-temp-scheduler-and-cleanup [f]
-  (mt/with-temp-scheduler
+(defn- do-with-temp-scheduler-and-cleanup! [f]
+  (mt/with-temp-scheduler!
     (try
       (f)
       (finally
         (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))))))
 
-(defmacro ^:private with-temp-scheduler-and-cleanup [& body]
-  `(do-with-temp-scheduler-and-cleanup (fn [] ~@body)))
+(defmacro ^:private with-temp-scheduler-and-cleanup! [& body]
+  `(do-with-temp-scheduler-and-cleanup! (fn [] ~@body)))
 
 (defn- triggers []
   (set
@@ -65,7 +65,7 @@
 
 (deftest schedule-job-test
   (testing "can we schedule a job?"
-    (with-temp-scheduler-and-cleanup
+    (with-temp-scheduler-and-cleanup!
       (task/schedule-task! (job) (trigger-1))
       (is (= #{{:cron-expression     "0 0 * * * ? *"
                 :misfire-instruction CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING}}
@@ -73,7 +73,7 @@
 
 (deftest reschedule-job-test
   (testing "does scheduling a job a second time work without throwing errors?"
-    (with-temp-scheduler-and-cleanup
+    (with-temp-scheduler-and-cleanup!
       (task/schedule-task! (job) (trigger-1))
       (task/schedule-task! (job) (trigger-1))
       (is (= #{{:cron-expression     "0 0 * * * ? *"
@@ -82,7 +82,7 @@
 
 (deftest reschedule-and-replace-job-test
   (testing "does scheduling a job with a *new* trigger replace the original? (can we reschedule a job?)"
-    (with-temp-scheduler-and-cleanup
+    (with-temp-scheduler-and-cleanup!
       (task/schedule-task! (job) (trigger-1))
       (task/schedule-task! (job) (trigger-2))
       (is (= #{{:cron-expression     "0 0 6 * * ? *"
@@ -91,7 +91,7 @@
 
 (deftest scheduler-info-test
   (testing "Make sure scheduler-info doesn't explode and returns info in the general shape we expect"
-    (mt/with-temp-scheduler
+    (mt/with-temp-scheduler!
       (is (malli= [:map {:closed true}
                    [:scheduler [:+ :string]]
                    [:jobs      [:sequential
@@ -111,7 +111,7 @@
                   (task/scheduler-info))))))
 
 (deftest start-scheduler-no-op-with-env-var-test
-  (tu/do-with-unstarted-temp-scheduler
+  (tu/do-with-unstarted-temp-scheduler!
    (^:once fn* []
     (testing (format "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set")
       (testing "Sanity check"
