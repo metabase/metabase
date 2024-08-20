@@ -29,7 +29,9 @@ describe("NewModelOptions (OSS)", () => {
 
       setup({ databases: [createMockDatabase()] });
 
-      expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
+      expect(
+        await screen.findByTestId("loading-indicator"),
+      ).toBeInTheDocument();
       expect(
         screen.queryByText("Metabase is no fun without any data"),
       ).not.toBeInTheDocument();

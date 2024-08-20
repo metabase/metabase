@@ -8,7 +8,7 @@ export const LoadingSpinner = ({ text }: { text?: string }) => (
     align="center"
     justify="center"
     h="100%"
-    data-testid="loading-spinner"
+    data-testid="loading-indicator"
     gap="md"
   >
     <Loader size="lg" />

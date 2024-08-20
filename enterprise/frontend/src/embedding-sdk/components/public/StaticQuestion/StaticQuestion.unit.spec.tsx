@@ -91,7 +91,7 @@ const setup = ({
 describe("StaticQuestion", () => {
   it("should render a loader on initialization", () => {
     setup();
-    expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
   });
 
   it("should render question if question is valid", async () => {

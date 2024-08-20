@@ -42,7 +42,7 @@ describe("PublicComponentWrapper", () => {
 
   it("renders loader when loginStatus is loading", () => {
     setup({ status: "loading" });
-    const loader = screen.getByTestId("loading-spinner");
+    const loader = screen.getByTestId("loading-indicator");
     expect(loader).toBeInTheDocument();
   });
 

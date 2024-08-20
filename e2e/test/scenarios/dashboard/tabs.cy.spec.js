@@ -700,7 +700,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {
-      cy.findByTestId("loading-spinner").should("exist");
+      cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
       cy.findAllByTestId("table-row").should("exist");
     });
@@ -708,7 +708,7 @@ describe("scenarios > dashboard > tabs", () => {
     // Loader in the 1st tab
     goToTab("Tab 1");
     getDashboardCard(0).within(() => {
-      cy.findByTestId("loading-spinner").should("exist");
+      cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
       cy.findAllByTestId("table-row").should("exist");
     });

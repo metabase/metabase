@@ -42,7 +42,7 @@ describe("search > recently viewed", () => {
 
     cy.findByPlaceholderText("Search…").click();
 
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
   });
 
   it("shows list of recently viewed items", () => {
@@ -63,7 +63,7 @@ describe("search > recently viewed", () => {
   it("shows up-to-date list of recently viewed items after another page is visited (metabase#36868)", () => {
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");

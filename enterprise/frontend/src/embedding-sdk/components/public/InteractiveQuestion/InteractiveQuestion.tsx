@@ -104,7 +104,7 @@ export const _InteractiveQuestion = ({
   }, [queryResults]);
 
   if (isQuestionLoading || isQueryRunning) {
-    return <Loader data-testid="loading-spinner" />;
+    return <Loader data-testid="loading-indicator" />;
   }
 
   if (!queryResults || !question) {
