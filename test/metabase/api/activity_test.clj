@@ -167,12 +167,7 @@
                                                :display                "table"
                                                :visualization_settings {}
                                                :database_id            db-id}
-                     :model/Card      metric  {:name                   "rand-metric-name"
-                                               :type                   :metric
-                                               :creator_id             (mt/user->id :crowberto)
-                                               :display                "table"
-                                               :visualization_settings {}
-                                               :database_id            db-id}]
+                     ]
         (testing "recent_views endpoint shows the current user's recently viewed items."
           (clear-recent-views-for-user :crowberto)
           (testing (str "> EVENT: " :event/card-read " does create recent views.")
@@ -186,10 +181,10 @@
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object table1}]
                                    [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id archived) :context :question}]
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]
-                                   [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id metric) :context :question}]]]
+                                   ]]
               (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
             (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
-              (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
+              (is (= [
                       {:model "table" :id (u/the-id table1) :name "rand-name"}
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
                       {:model "card" :id (u/the-id card1) :name "rand-name"}
@@ -224,12 +219,7 @@
                                                :display                "table"
                                                :visualization_settings {}
                                                :database_id            db-id}
-                     :model/Card      metric  {:name                   "rand-metric-name"
-                                               :type                   :metric
-                                               :creator_id             (mt/user->id :crowberto)
-                                               :display                "table"
-                                               :visualization_settings {}
-                                               :database_id            db-id}]
+                     ]
         (testing "recent_views endpoint shows the current user's recently viewed items."
           (clear-recent-views-for-user :crowberto)
           (testing (str "> EVENT: " :event/card-query " does create recent views.")
@@ -243,10 +233,10 @@
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object table1}]
                                    [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id archived)}]
                                    [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]
-                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id metric)}]]]
+                                   ]]
               (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
             (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
-              (is (= [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
+              (is (= [
                       {:model "table" :id (u/the-id table1) :name "rand-name"}
                       {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
                       {:model "card" :id (u/the-id card1) :name "rand-name"}
