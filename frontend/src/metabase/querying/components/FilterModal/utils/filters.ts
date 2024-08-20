@@ -6,10 +6,9 @@ import {
 } from "metabase/common/utils/column-groups";
 import type { GroupItem } from "metabase/querying/components/FilterContent";
 import * as Lib from "metabase-lib";
-import { getFilterStageIndexes } from "metabase-lib/v1/parameters/utils/targets";
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
-  const stageIndexes = getFilterStageIndexes(query);
+  const stageIndexes = Lib.filterStageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
@@ -47,7 +46,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 }
 
 export function hasFilters(query: Lib.Query) {
-  const stageIndexes = getFilterStageIndexes(query);
+  const stageIndexes = Lib.filterStageIndexes(query);
   const filters = stageIndexes.flatMap(stageIndex =>
     Lib.filters(query, stageIndex),
   );
@@ -55,7 +54,7 @@ export function hasFilters(query: Lib.Query) {
 }
 
 export function removeFilters(query: Lib.Query) {
-  const stageIndexes = getFilterStageIndexes(query);
+  const stageIndexes = Lib.filterStageIndexes(query);
   return stageIndexes.reduce(
     (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,

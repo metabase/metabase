@@ -172,7 +172,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     return { query, columns };
   }
 
-  const nextQuery = appendStageIfAggregated(query);
+  const nextQuery = Lib.appendStageIfSummarized(query);
   const availableColumns = getFilterableColumns(nextQuery);
   const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
@@ -198,7 +198,7 @@ function getTemporalColumns(query: Lib.Query) {
 }
 
 function getFilterableColumns(query: Lib.Query) {
-  const stageIndexes = getFilterStageIndexes(query);
+  const stageIndexes = Lib.filterStageIndexes(query);
 
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -214,20 +214,4 @@ function getFilterableColumns(query: Lib.Query) {
       }));
     });
   });
-}
-
-export function appendStageIfAggregated(query: Lib.Query) {
-  const aggregations = Lib.aggregations(query, -1);
-  const breakouts = Lib.breakouts(query, -1);
-
-  return aggregations.length > 0 && breakouts.length > 0
-    ? Lib.appendStage(query)
-    : query;
-}
-
-/**
- * Returns indexes of stages from which columns are exposed for filtering
- */
-export function getFilterStageIndexes(query: Lib.Query): number[] {
-  return Lib.stageCount(query) > 1 ? [-2, -1] : [-1];
 }

@@ -4,7 +4,6 @@ import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { appendStageIfAggregated } from "metabase-lib/v1/parameters/utils/targets";
 
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { SEARCH_KEY } from "./constants";
@@ -29,7 +28,7 @@ export const useFilterContent = (
   onSubmit: (newQuery: Lib.Query) => void,
 ) => {
   const [query, setQuery] = useState(() =>
-    appendStageIfAggregated(initialQuery),
+    Lib.appendStageIfSummarized(initialQuery),
   );
   const queryRef = useRef(query);
   const [version, setVersion] = useState(1);
