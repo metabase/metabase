@@ -47,10 +47,19 @@ export const validatePassword = async (password: string) => {
   }
 };
 
-export const subscribeToNewsletter = async (email: string): Promise<void> => {
+export const subscribeToNewsletter = (email: string) => {
   const body = new FormData();
   body.append("EMAIL", email);
   body.append(SUBSCRIBE_TOKEN, "");
 
-  await fetch(SUBSCRIBE_URL, { method: "POST", mode: "no-cors", body });
+  if ("sendBeacon" in navigator) {
+    navigator.sendBeacon(SUBSCRIBE_URL, body);
+  } else {
+    fetch(SUBSCRIBE_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body,
+      keepalive: true,
+    });
+  }
 };
