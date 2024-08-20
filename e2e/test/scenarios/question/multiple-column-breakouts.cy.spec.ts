@@ -6,6 +6,7 @@ import {
   type DashboardDetails,
   dragField,
   editDashboard,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
   filterWidget,
@@ -863,14 +864,14 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.log("add an aggregation for the first column");
           getNotebookStep("summarize").button("Summarize").click();
           popover().within(() => {
-            cy.findByText("Maximum of ...").click();
+            cy.findByText("Minimum of ...").click();
             cy.findByText(column1Name).click();
           });
 
           cy.log("add an aggregation for the second column");
           getNotebookStep("summarize", { stage: 1 }).icon("add").click();
           popover().within(() => {
-            cy.findByText("Minimum of ...").click();
+            cy.findByText("Maximum of ...").click();
             cy.findByText(column2Name).click();
           });
 
@@ -886,10 +887,104 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Created At: Month",
         });
         assertTableData({
-          columns: ["Max of Created At: Year", "Min of Created At: Month"],
-          firstRows: [["January 1, 2026, 12:00 AM", "April 1, 2022, 12:00 AM"]],
+          columns: ["Min of Created At: Month", "Max of Created At: Year"],
+          firstRows: [["April 1, 2022, 12:00 AM", "January 1, 2026, 12:00 AM"]],
         });
         assertQueryBuilderRowCount(1);
+
+        cy.log("'num-bins' breakouts");
+        testPostAggregationAggregation({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column2Name: "Total: 50 bins",
+        });
+        assertTableData({
+          columns: ["Min of Total", "Max of Total"],
+          firstRows: [["X", "X"]],
+        });
+        assertQueryBuilderRowCount(1);
+
+        cy.log("'max-bins' breakouts");
+        testPostAggregationAggregation({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Latitude: 20°",
+          column2Name: "Latitude: 10°",
+        });
+        assertTableData({
+          columns: ["Min of Latitude", "Max of Latitude"],
+          firstRows: [["X", "X"]],
+        });
+        assertQueryBuilderRowCount(1);
+      });
+
+      it("should be able to add post-aggregation expressions for each breakout column", () => {
+        function testDatePostAggregationExpression({
+          questionDetails,
+          column1Name,
+          column2Name,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          column1Name: string;
+          column2Name: string;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
+          openNotebook();
+
+          cy.log("add a post-aggregation expression for the first column");
+          getNotebookStep("summarize").button("Custom column").click();
+          enterCustomColumnDetails({
+            formula: `min(${column1Name})`,
+            name: "Min",
+            blur: true,
+          });
+          popover().button("Done").click();
+
+          cy.log("add a post-aggregation expression for the second column");
+          getNotebookStep("expression", { stage: 1 }).icon("add").click();
+          enterCustomColumnDetails({
+            formula: `max(${column2Name})`,
+            name: "Max",
+            blur: true,
+          });
+          popover().button("Done").click();
+
+          cy.log("assert query results");
+          cy.button("Visualize").click();
+          cy.wait("@dataset");
+        }
+
+        cy.log("temporal breakouts");
+        testDatePostAggregationExpression({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Created At: Year",
+          column2Name: "Created At: Month",
+        });
+        assertTableData({
+          columns: ["Min", "Max"],
+          firstRows: [["X", "X"]],
+        });
+
+        cy.log("'num-bins' breakouts");
+        testDatePostAggregationExpression({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column2Name: "Total: 50 bins",
+        });
+        assertTableData({
+          columns: ["Min", "Max"],
+          firstRows: [["X", "X"]],
+        });
+
+        cy.log("'max-bins' breakouts");
+        testDatePostAggregationExpression({
+          questionDetails: questionWith2TemporalBreakoutsDetails,
+          column1Name: "Latitude: 20°",
+          column2Name: "Latitude: 10°",
+        });
+        assertTableData({
+          columns: ["Min", "Max"],
+          firstRows: [["X", "X"]],
+        });
       });
     });
   });
