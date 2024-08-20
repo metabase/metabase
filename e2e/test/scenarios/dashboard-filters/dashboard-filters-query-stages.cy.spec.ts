@@ -113,46 +113,19 @@ describe("scenarios > dashboard > filters > query stages", () => {
       getFilter("Date").click();
 
       verifyDashcardMappingOptions(0, [
-        {
-          name: "Order",
-          columns: ["Created At"],
-        },
-        {
-          name: "Product",
-          columns: ["Created At"],
-        },
-        {
-          name: "User",
-          columns: ["Birth Date", "Created At"],
-        },
+        ["Order", ["Created At"]],
+        ["Product", ["Created At"]],
+        ["User", ["Birth Date", "Created At"]],
       ]);
       verifyDashcardMappingOptions(1, [
-        {
-          name: "Model based on a question",
-          columns: ["Created At"],
-        },
-        {
-          name: "Product",
-          columns: ["Created At"],
-        },
-        {
-          name: "User",
-          columns: ["Birth Date", "Created At"],
-        },
+        ["Model based on a question", ["Created At"]],
+        ["Product", ["Created At"]],
+        ["User", ["Birth Date", "Created At"]],
       ]);
       verifyDashcardMappingOptions(2, [
-        {
-          name: "Q0 Order",
-          columns: ["Created At"],
-        },
-        {
-          name: "Product",
-          columns: ["Created At"],
-        },
-        {
-          name: "User",
-          columns: ["Birth Date", "Created At"],
-        },
+        ["Q0 Order", ["Created At"]],
+        ["Product", ["Created At"]],
+        ["User", ["Birth Date", "Created At"]],
       ]);
 
       // cy.log("text columns");
@@ -173,23 +146,22 @@ function verifyDashcardMappingOptions(
   cy.realPress("Escape");
 }
 
-type MappingSection = {
-  name: string;
-  columns: string[];
-};
+type SectionName = string;
+type ColumnName = string;
+type MappingSection = [SectionName, ColumnName[]];
 
 function verifyPopoverMappingOptions(sections: MappingSection[]) {
   popover().within(() => {
     let index = 0;
 
-    for (const { name, columns } of sections) {
-      getPopoverItems().eq(index).should("have.text", name);
+    for (const [sectionName, columnNames] of sections) {
+      getPopoverItems().eq(index).should("have.text", sectionName);
       ++index;
 
-      for (const column of columns) {
+      for (const columnName of columnNames) {
         getPopoverItems()
           .eq(index)
-          .findByLabelText(column)
+          .findByLabelText(columnName)
           .should("be.visible");
         ++index;
       }
