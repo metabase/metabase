@@ -248,108 +248,105 @@ describe("scenarios > question > multiple column breakouts", () => {
 
   describe("current stage", () => {
     describe("notebook", () => {
-      function testNewQueryWithBreakouts({
-        tableName,
-        columnName,
-        bucketLabel,
-        bucket1Name,
-        bucket2Name,
-        expectedRowCount,
-      }: {
-        tableName: string;
-        columnName: string;
-        bucketLabel: string;
-        bucket1Name: string;
-        bucket2Name: string;
-        expectedRowCount: number;
-      }) {
-        startNewQuestion();
-        entityPickerModal().within(() => {
-          entityPickerModalTab("Tables").click();
-          cy.findByText(tableName).click();
-        });
-        getNotebookStep("summarize")
-          .findByText("Pick the metric you want to see")
-          .click();
-        popover().findByText("Count of rows").click();
-        getNotebookStep("summarize")
-          .findByText("Pick a column to group by")
-          .click();
-        popover()
-          .findByLabelText(columnName)
-          .findByLabelText(bucketLabel)
-          .click();
-        popover().last().findByText(bucket1Name).click();
-        getNotebookStep("summarize")
-          .findByTestId("breakout-step")
-          .icon("add")
-          .click();
-        popover()
-          .findByLabelText(columnName)
-          .findByLabelText(bucketLabel)
-          .click();
-        popover().last().findByText(bucket2Name).click();
-        cy.button("Visualize").click();
-        cy.wait("@dataset");
-        assertQueryBuilderRowCount(expectedRowCount);
-      }
+      it("should allow to create a query with multiple breakouts", () => {
+        function testNewQueryWithBreakouts({
+          tableName,
+          columnName,
+          bucketLabel,
+          bucket1Name,
+          bucket2Name,
+        }: {
+          tableName: string;
+          columnName: string;
+          bucketLabel: string;
+          bucket1Name: string;
+          bucket2Name: string;
+        }) {
+          startNewQuestion();
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Tables").click();
+            cy.findByText(tableName).click();
+          });
+          getNotebookStep("summarize")
+            .findByText("Pick the metric you want to see")
+            .click();
+          popover().findByText("Count of rows").click();
+          getNotebookStep("summarize")
+            .findByText("Pick a column to group by")
+            .click();
+          popover()
+            .findByLabelText(columnName)
+            .findByLabelText(bucketLabel)
+            .click();
+          popover().last().findByText(bucket1Name).click();
+          getNotebookStep("summarize")
+            .findByTestId("breakout-step")
+            .icon("add")
+            .click();
+          popover()
+            .findByLabelText(columnName)
+            .findByLabelText(bucketLabel)
+            .click();
+          popover().last().findByText(bucket2Name).click();
+          cy.button("Visualize").click();
+          cy.wait("@dataset");
+        }
 
-      it("should allow to create a query with multiple breakouts with temporal buckets", () => {
+        cy.log("temporal breakouts");
         testNewQueryWithBreakouts({
           tableName: "Orders",
           columnName: "Created At",
           bucketLabel: "Temporal bucket",
           bucket1Name: "Year",
           bucket2Name: "Month",
-          expectedRowCount: 49,
         });
-      });
+        assertQueryBuilderRowCount(49);
 
-      it("should allow to create a query with multiple breakouts with the 'num-bins' binning strategy", () => {
+        cy.log("'num-bins' breakouts");
         testNewQueryWithBreakouts({
           tableName: "Orders",
           columnName: "Total",
           bucketLabel: "Binning strategy",
           bucket1Name: "10 bins",
           bucket2Name: "50 bins",
-          expectedRowCount: 32,
         });
-      });
+        assertQueryBuilderRowCount(32);
 
-      it("should allow to create a query with multiple breakouts with the 'bin-width' binning strategy", () => {
+        cy.log("'bin-width' breakouts");
         testNewQueryWithBreakouts({
           tableName: "People",
           columnName: "Latitude",
           bucketLabel: "Binning strategy",
           bucket1Name: "Bin every 10 degrees",
           bucket2Name: "Bin every 20 degrees",
-          expectedRowCount: 6,
         });
+        assertQueryBuilderRowCount(6);
       });
 
-      function testSortByBreakout({
-        questionDetails,
-        column1Name,
-        column2Name,
-      }: {
-        questionDetails: StructuredQuestionDetails;
-        column1Name: string;
-        column2Name: string;
-      }) {
-        createQuestion(questionDetails, {
-          visitQuestion: true,
-        });
-        openNotebook();
-        getNotebookStep("summarize").findByText("Sort").click();
-        popover().findByText(column1Name).click();
-        getNotebookStep("sort").button("Change direction").click();
-        getNotebookStep("sort").icon("add").click();
-        popover().findByText(column2Name).click();
-        cy.button("Visualize").click();
-        cy.wait("@dataset");
-      }
+      it("should allow to sort by breakout columns", () => {
+        function testSortByBreakout({
+          questionDetails,
+          column1Name,
+          column2Name,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          column1Name: string;
+          column2Name: string;
+        }) {
+          createQuestion(questionDetails, {
+            visitQuestion: true,
+          });
+          openNotebook();
+          getNotebookStep("summarize").findByText("Sort").click();
+          popover().findByText(column1Name).click();
+          getNotebookStep("sort").button("Change direction").click();
+          getNotebookStep("sort").icon("add").click();
+          popover().findByText(column2Name).click();
+          cy.button("Visualize").click();
+          cy.wait("@dataset");
+        }
 
-      it("should allow to sort by breakout columns with temporal buckets", () => {
+        cy.log("temporal breakouts");
         testSortByBreakout({
           questionDetails: questionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
@@ -362,9 +359,8 @@ describe("scenarios > question > multiple column breakouts", () => {
             ["2026", "February 2026", "543"],
           ],
         });
-      });
 
-      it("should allow to sort by breakout columns with the 'num-bins' binning strategy", () => {
+        cy.log("'num-bins' breakouts");
         testSortByBreakout({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
           column1Name: "Total: 10 bins",
@@ -377,9 +373,8 @@ describe("scenarios > question > multiple column breakouts", () => {
             ["140  –  160", "145  –  150", "308"],
           ],
         });
-      });
 
-      it("should allow to sort by breakout columns with the 'bin-width' binning strategy", () => {
+        cy.log("'bin-width' breakouts");
         testSortByBreakout({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
@@ -396,40 +391,41 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("summarize sidebar", () => {
-      function testChangeBreakoutBuckets({
-        questionDetails,
-        columnPattern,
-        bucketLabel,
-        bucket1Name,
-        bucket2Name,
-      }: {
-        questionDetails: StructuredQuestionDetails;
-        columnPattern: RegExp;
-        bucketLabel: string;
-        bucket1Name: string;
-        bucket2Name: string;
-      }) {
-        createQuestion(questionDetails, { visitQuestion: true });
-        summarize();
-        cy.findByTestId("pinned-dimensions")
-          .findAllByLabelText(columnPattern)
-          .should("have.length", 2)
-          .eq(0)
-          .findByLabelText(bucketLabel)
-          .click();
-        popover().findByText(bucket1Name).click();
-        cy.wait("@dataset");
-        cy.findByTestId("pinned-dimensions")
-          .findAllByLabelText(columnPattern)
-          .should("have.length", 2)
-          .eq(1)
-          .findByLabelText(bucketLabel)
-          .click();
-        popover().findByText(bucket2Name).click();
-        cy.wait("@dataset");
-      }
+      it("should allow to change buckets for multiple breakouts of the same column", () => {
+        function testChangeBreakoutBuckets({
+          questionDetails,
+          columnPattern,
+          bucketLabel,
+          bucket1Name,
+          bucket2Name,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          columnPattern: RegExp;
+          bucketLabel: string;
+          bucket1Name: string;
+          bucket2Name: string;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
+          summarize();
+          cy.findByTestId("pinned-dimensions")
+            .findAllByLabelText(columnPattern)
+            .should("have.length", 2)
+            .eq(0)
+            .findByLabelText(bucketLabel)
+            .click();
+          popover().findByText(bucket1Name).click();
+          cy.wait("@dataset");
+          cy.findByTestId("pinned-dimensions")
+            .findAllByLabelText(columnPattern)
+            .should("have.length", 2)
+            .eq(1)
+            .findByLabelText(bucketLabel)
+            .click();
+          popover().findByText(bucket2Name).click();
+          cy.wait("@dataset");
+        }
 
-      it("should allow to change temporal buckets for multiple breakouts of the same column", () => {
+        cy.log("temporal breakouts");
         testChangeBreakoutBuckets({
           questionDetails: questionWith2TemporalBreakoutsDetails,
           columnPattern: /Created At/,
@@ -441,9 +437,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           columns: ["Created At: Quarter", "Created At: Week", "Count"],
           firstRows: [["Q2 2022", "April 24, 2022 – April 30, 2022", "1"]],
         });
-      });
 
-      it("should allow to change 'num-bins' binning strategies for multiple breakouts of the same column", () => {
+        cy.log("'num-bin' breakouts");
         testChangeBreakoutBuckets({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
           columnPattern: /Total/,
@@ -455,9 +450,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           columns: ["Total", "Total", "Count"],
           firstRows: [["-60  –  -40", "-50  –  -45", "1"]],
         });
-      });
 
-      it("should allow to change 'bin-width' binning strategies for multiple breakouts of the same column", () => {
+        cy.log("'bin-width' breakouts");
         testChangeBreakoutBuckets({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           columnPattern: /Latitude/,
@@ -525,49 +519,47 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("viz settings", () => {
-      function testColumnSettings({
-        questionDetails,
-        column1Name,
-        column2Name,
-      }: {
-        questionDetails: StructuredQuestionDetails;
-        column1Name: string;
-        column2Name: string;
-      }) {
-        createQuestion(questionDetails, { visitQuestion: true });
+      it("should be able to change formatting settings for breakouts of the same column", () => {
+        function testColumnSettings({
+          questionDetails,
+          column1Name,
+          column2Name,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          column1Name: string;
+          column2Name: string;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
 
-        cy.log("first breakout");
-        tableHeaderClick(column1Name, { columnIndex: 0 });
-        popover().icon("gear").click();
-        popover().findByDisplayValue(column1Name).clear().type("Breakout1");
-        cy.get("body").click();
+          cy.log("first breakout");
+          tableHeaderClick(column1Name, { columnIndex: 0 });
+          popover().icon("gear").click();
+          popover().findByDisplayValue(column1Name).clear().type("Breakout1");
+          cy.get("body").click();
 
-        cy.log("second breakout");
-        tableHeaderClick(column2Name);
-        popover().icon("gear").click();
-        popover().findByDisplayValue(column2Name).clear().type("Breakout2");
-        cy.get("body").click();
+          cy.log("second breakout");
+          tableHeaderClick(column2Name);
+          popover().icon("gear").click();
+          popover().findByDisplayValue(column2Name).clear().type("Breakout2");
+          cy.get("body").click();
+          assertTableData({ columns: ["Breakout1", "Breakout2", "Count"] });
+        }
 
-        assertTableData({ columns: ["Breakout1", "Breakout2", "Count"] });
-      }
-
-      it("should be able to change formatting settings for temporal breakouts of the same column", () => {
+        cy.log("temporal breakouts");
         testColumnSettings({
           questionDetails: questionWith2TemporalBreakoutsDetails,
           column1Name: "Created At: Year",
           column2Name: "Created At: Month",
         });
-      });
 
-      it("should be able to change formatting settings for 'num-bins' breakouts of the same column", () => {
+        cy.log("'num-bins' breakouts");
         testColumnSettings({
           questionDetails: questionWith2NumBinsBreakoutsDetails,
           column1Name: "Total",
           column2Name: "Total",
         });
-      });
 
-      it("should be able to change formatting settings for 'bin-width' breakouts of the same column", () => {
+        cy.log("'bin-width' breakouts");
         testColumnSettings({
           questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude",
@@ -575,49 +567,49 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
       });
 
-      function testPivotSplit({
-        questionDetails,
-        columnNamePattern,
-      }: {
-        questionDetails: StructuredQuestionDetails;
-        columnNamePattern: RegExp;
-      }) {
-        createQuestion(questionDetails, { visitQuestion: true });
+      it("should be able to change pivot split settings when there are more than 2 breakouts", () => {
+        function testPivotSplit({
+          questionDetails,
+          columnNamePattern,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          columnNamePattern: RegExp;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
 
-        cy.log("change display and assert the default settings");
-        cy.findByTestId("viz-type-button").click();
-        cy.findByTestId("chart-type-sidebar")
-          .findByTestId("Pivot Table-button")
-          .click();
-        cy.wait("@pivotDataset");
-        cy.findByTestId("pivot-table")
-          .findAllByText(columnNamePattern)
-          .should("have.length", 3);
+          cy.log("change display and assert the default settings");
+          cy.findByTestId("viz-type-button").click();
+          cy.findByTestId("chart-type-sidebar")
+            .findByTestId("Pivot Table-button")
+            .click();
+          cy.wait("@pivotDataset");
+          cy.findByTestId("pivot-table")
+            .findAllByText(columnNamePattern)
+            .should("have.length", 3);
 
-        cy.log("move a column from rows to columns");
-        cy.findByTestId("viz-settings-button").click();
-        dragField(2, 3);
-        cy.wait("@pivotDataset");
-        cy.findByTestId("pivot-table")
-          .findAllByText(columnNamePattern)
-          .should("have.length", 2);
+          cy.log("move a column from rows to columns");
+          cy.findByTestId("viz-settings-button").click();
+          dragField(2, 3);
+          cy.wait("@pivotDataset");
+          cy.findByTestId("pivot-table")
+            .findAllByText(columnNamePattern)
+            .should("have.length", 2);
 
-        cy.log("move a column from columns to rows");
-        dragField(4, 1);
-        cy.wait("@pivotDataset");
-        cy.findByTestId("pivot-table")
-          .findAllByText(columnNamePattern)
-          .should("have.length", 3);
-      }
+          cy.log("move a column from columns to rows");
+          dragField(4, 1);
+          cy.wait("@pivotDataset");
+          cy.findByTestId("pivot-table")
+            .findAllByText(columnNamePattern)
+            .should("have.length", 3);
+        }
 
-      it("should be able to change pivot split settings when there are more than 2 temporal breakouts", () => {
+        cy.log("temporal breakouts");
         testPivotSplit({
           questionDetails: questionWith5TemporalBreakoutsDetails,
           columnNamePattern: /^Created At/,
         });
-      });
 
-      it("should be able to change pivot split settings when there are more than 2 'num-bins' breakouts", () => {
+        cy.log("'num-bins' breakouts");
         testPivotSplit({
           questionDetails: questionWith5NumBinsBreakoutsDetails,
           columnNamePattern: /^Total$/,
@@ -697,7 +689,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
   describe("previous stage", () => {
     describe("notebook", () => {
-      it("should be able to add post-aggregation filters for each breakout column", () => {
+      it("should be able to add post-aggregation filters for each temporal breakout column", () => {
         createQuestion(questionWith2TemporalBreakoutsDetails, {
           visitQuestion: true,
         });
@@ -737,6 +729,89 @@ describe("scenarios > question > multiple column breakouts", () => {
           ],
         });
         assertQueryBuilderRowCount(3);
+      });
+
+      function testPostAggregationFilter({
+        questionDetails,
+        column1Name,
+        column1MinValue,
+        column1MaxValue,
+        column2Name,
+        column2MinValue,
+        column2MaxValue,
+      }: {
+        questionDetails: StructuredQuestionDetails;
+        column1Name: string;
+        column1MinValue: number;
+        column1MaxValue: number;
+        column2Name: string;
+        column2MinValue: number;
+        column2MaxValue: number;
+      }) {
+        createQuestion(questionDetails, { visitQuestion: true });
+        openNotebook();
+
+        cy.log("add a filter for the first column");
+        getNotebookStep("summarize").button("Filter").click();
+        popover().within(() => {
+          cy.findByText(column1Name).click();
+          cy.findByPlaceholderText("Min").clear().type(String(column1MinValue));
+          cy.findByPlaceholderText("Max").clear().type(String(column1MaxValue));
+          cy.button("Add filter").click();
+        });
+
+        cy.log("add a filter for the second column");
+        getNotebookStep("filter", { stage: 1 }).icon("add").click();
+        popover().within(() => {
+          cy.findByText(column2Name).click();
+          cy.findByPlaceholderText("Min").clear().type(String(column2MinValue));
+          cy.findByPlaceholderText("Max").clear().type(String(column2MaxValue));
+          cy.button("Add filter").click();
+        });
+
+        cy.log("assert query results");
+        cy.button("Visualize").click();
+        cy.wait("@dataset");
+      }
+
+      it("should be able to add post-aggregation filters for each 'num-bins' breakout column", () => {
+        testPostAggregationFilter({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column1MinValue: 10,
+          column1MaxValue: 50,
+          column2Name: "Total: 50 bins",
+          column2MinValue: 10,
+          column2MaxValue: 50,
+        });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["40  –  60", "50  –  55", "1,070"],
+            ["40  –  60", "55  –  60", "877"],
+          ],
+        });
+        assertQueryBuilderRowCount(2);
+      });
+
+      it("should be able to add post-aggregation filters for each 'bin-width' breakout column", () => {
+        testPostAggregationFilter({
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          column1Name: "Total: 10 bins",
+          column1MinValue: 10,
+          column1MaxValue: 50,
+          column2Name: "Total: 50 bins",
+          column2MinValue: 10,
+          column2MaxValue: 50,
+        });
+        assertTableData({
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["40  –  60", "50  –  55", "1,070"],
+            ["40  –  60", "55  –  60", "877"],
+          ],
+        });
+        assertQueryBuilderRowCount(2);
       });
 
       it("should be able to add post-aggregation aggregations for each breakout column", () => {
