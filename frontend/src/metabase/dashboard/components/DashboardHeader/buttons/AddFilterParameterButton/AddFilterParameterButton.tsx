@@ -3,12 +3,17 @@ import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";
 import {
+  addParameter,
   hideAddParameterPopover,
   showAddParameterPopover,
 } from "metabase/dashboard/actions";
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSectionMap,
+  type ParameterSection,
+} from "metabase/parameters/utils/dashboard-options";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Icon, Menu, Text } from "metabase/ui";
 
@@ -17,6 +22,13 @@ export const AddFilterParameterButton = () => {
   const dispatch = useDispatch();
   const isAddParameterPopoverOpen = useSelector(getIsAddParameterPopoverOpen);
   const [maxRightSectionWidth, setMaxRightSectionWidth] = useState(0);
+
+  const handleItemClick = (section: ParameterSection) => {
+    const defaultOption = getDefaultOptionForParameterSectionMap()[section.id];
+    if (defaultOption) {
+      dispatch(addParameter(defaultOption));
+    }
+  };
 
   const handleRightSectionRef = (rightSection: HTMLDivElement | null) => {
     if (rightSection) {
@@ -60,6 +72,7 @@ export const AddFilterParameterButton = () => {
               </Text>
             }
             aria-label={section.name}
+            onClick={() => handleItemClick(section)}
           >
             <Text c="inherit" fw="bold">
               {section.name}

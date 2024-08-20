@@ -9,6 +9,39 @@ import {
 
 import { AddFilterParameterButton } from "./AddFilterParameterButton";
 
+const SECTIONS = [
+  {
+    title: "Date picker",
+    subtitle: "Date range, specific date…",
+    icon: "calendar",
+  },
+  {
+    title: "Time grouping",
+    subtitle: "Day, week, month, year…",
+    icon: "clock",
+  },
+  {
+    title: "Location",
+    subtitle: "Country, State, Postal Code…",
+    icon: "location",
+  },
+  {
+    title: "Text or Category",
+    subtitle: "Contains, is, starts with…",
+    icon: "label",
+  },
+  {
+    title: "Number",
+    subtitle: "Between, greater than…",
+    icon: "number",
+  },
+  {
+    title: "ID",
+    subtitle: "Primary key, User ID…",
+    icon: "label",
+  },
+];
+
 const setup = ({ isAddParameterPopoverOpen = false } = {}) => {
   const state = createMockState({
     dashboard: createMockDashboardState({
@@ -40,6 +73,7 @@ describe("AddFilterParameterButton", () => {
         screen.getByTestId("add-filter-parameter-dropdown"),
       ).toBeInTheDocument();
     });
+
     it("should not render the popover when isAddParameterPopoverOpen is false", () => {
       setup({ isAddParameterPopoverOpen: false });
       expect(
@@ -54,6 +88,7 @@ describe("AddFilterParameterButton", () => {
       expect(
         screen.queryByTestId("add-filter-parameter-dropdown"),
       ).not.toBeInTheDocument();
+
       await userEvent.click(screen.getByLabelText("Add a filter or parameter"));
       expect(
         screen.getByTestId("add-filter-parameter-dropdown"),
@@ -67,6 +102,7 @@ describe("AddFilterParameterButton", () => {
       expect(
         screen.getByTestId("add-filter-parameter-dropdown"),
       ).toBeInTheDocument();
+
       await userEvent.click(screen.getByLabelText("Add a filter or parameter"));
       expect(
         screen.queryByTestId("add-filter-parameter-dropdown"),
@@ -78,6 +114,7 @@ describe("AddFilterParameterButton", () => {
       expect(
         screen.getByTestId("add-filter-parameter-dropdown"),
       ).toBeInTheDocument();
+
       await userEvent.click(document.body);
       expect(
         screen.queryByTestId("add-filter-parameter-dropdown"),
@@ -91,9 +128,24 @@ describe("AddFilterParameterButton", () => {
     const button = screen.getByLabelText("Add a filter or parameter");
     await userEvent.click(button);
 
-    const popover = screen.getByRole("dialog");
+    const menu = screen.getByRole("menu");
     expect(
-      within(popover).getByText("Add a filter or parameter"),
+      within(menu).getByText("Add a filter or parameter"),
     ).toBeInTheDocument();
   });
+
+  it.each(SECTIONS)(
+    "should render '$title' menu item with icon '$icon'",
+    async ({ title, subtitle, icon }) => {
+      setup();
+
+      await userEvent.click(screen.getByLabelText("Add a filter or parameter"));
+      const section = await screen.findByLabelText(title);
+      expect(within(section).getByText(title)).toBeInTheDocument();
+      expect(within(section).getByText(subtitle)).toBeInTheDocument();
+      expect(
+        within(section).getByLabelText(`${icon} icon`),
+      ).toBeInTheDocument();
+    },
+  );
 });
