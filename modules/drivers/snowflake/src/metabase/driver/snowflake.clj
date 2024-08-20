@@ -105,8 +105,7 @@
           secret-map   (secret/db-details-prop->secret-map details "private-key")
           private-key-file (cond
                              ;; Local file path
-                             (and (= private-key-options :local)
-                                  (some? (:value secret-map)))
+                             (= private-key-options "local")
                              (secret/value->file! secret-map :snowflake)
 
                              ;; Uploaded file stored in `secrets` table
