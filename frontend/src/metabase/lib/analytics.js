@@ -34,7 +34,12 @@ export const trackPageView = url => {
  * @param {object[]} contextEntities - The context entities associated with the event.
  * @returns {void}
  */
-export const trackSchemaEvent = (schema, version, data, contextEntities) => {
+export const trackSchemaEvent = (
+  schema,
+  version,
+  data,
+  contextEntities = [],
+) => {
   if (shouldLogAnalytics) {
     const { event, ...other } = data;
     // eslint-disable-next-line no-console
