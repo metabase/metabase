@@ -7,6 +7,7 @@ import type {
   DatabasePermissions,
   GroupTableAccessPolicy,
   PermissionsGraph,
+  FieldReference,
 } from "metabase-types/api";
 
 type Options = {
@@ -31,7 +32,7 @@ const PERMISSIONS_BLOCKED: DatabasePermissions = {
 };
 
 export function getPermissionGraph(options: Options): Graph {
-  const { tables = [] } = options;
+  const { tables = [], groupIds, tenancyColumnNames } = options;
 
   const groups: Graph["groups"] = {};
   const sandboxes: Sandbox[] = [];
@@ -62,7 +63,11 @@ export function getPermissionGraph(options: Options): Graph {
     return schemas;
   };
 
-  for (const groupId of options.groupIds) {
+  for (const groupId of groupIds) {
+    if (!groups[groupId]) {
+      groups[groupId] = {};
+    }
+
     groups[groupId][CONNECTED_DB_ID] = {
       [DataPermission.CREATE_QUERIES]: getDatabasePermission(
         DataPermissionValue.QUERY_BUILDER,
@@ -72,7 +77,7 @@ export function getPermissionGraph(options: Options): Graph {
         schemas: getDatabasePermission(DataPermissionValue.FULL),
       },
 
-      // TODO: we might need the "unrestricted" permission for unselected tables
+      // TODO: we _might_ need the "unrestricted" permission for unselected tables
       [DataPermission.VIEW_DATA]: getDatabasePermission(
         DataPermissionValue.SANDBOXED,
       ),
@@ -80,37 +85,50 @@ export function getPermissionGraph(options: Options): Graph {
   }
 
   // Add permissions sandboxing for each table
-  for (const tableId in options.tenancyColumnNames) {
-    const table = tables.find(t => t.id === tableId);
-    const tenancyColumnName = options.tenancyColumnNames[tableId];
+  for (const tableId in tenancyColumnNames) {
+    const table = tables.find(t => Number(t.id) === Number(tableId));
+    const tenancyColumnName = tenancyColumnNames[tableId];
 
     if (!table || !tenancyColumnName) {
+      console.log(`--- ${tableId} :: no table`);
       continue;
     }
 
-    for (const groupId of options.groupIds) {
-      // TODO: fetch the field metadata based on the tenancy column name
-      // example: ["field", 243, { "base-type": "type/Integer", "source-field": 263 }]
-      // example: ["field", 243, { "base-type": "type/Integer" }]
-      // example: ["field", 259, { "base-type": "type/Integer" }]
-
-      // console.log(
-      //   `--- table ${table.name} has ${table.fields?.length} fields ---`,
-      // );
-
+    for (const groupId of groupIds) {
       const tenancyField = table.fields?.find(
         f => f.name === tenancyColumnName,
       );
 
-      if (!tenancyField?.field_ref) {
+      if (!tenancyField) {
+        console.log(`--- ${table.name} :: no tenancy field`);
         continue;
       }
+
+      console.log(
+        `--- ${table.name} > ${tenancyField.name}:\n`,
+        JSON.stringify(tenancyField, null, 2),
+      );
+
+      // Create a field reference for sandboxing.
+      // example: ["field", 243, { "base-type": "type/Integer", "source-field": 263 }]
+      const fieldRef: FieldReference = [
+        "field",
+        Number(tenancyField.id),
+        {
+          "base-type": tenancyField.base_type,
+
+          // If the tenancy field is a foreign key, we need to reference the source field.
+          ...(tenancyField.target?.id && {
+            "source-field": tenancyField.target.id,
+          }),
+        },
+      ];
 
       sandboxes.push({
         group_id: groupId,
         table_id: parseInt(tableId, 10),
         attribute_remappings: {
-          [tenancyColumnName]: ["dimension", tenancyField.field_ref],
+          [tenancyColumnName]: ["dimension", fieldRef],
         },
         card_id: null,
       });

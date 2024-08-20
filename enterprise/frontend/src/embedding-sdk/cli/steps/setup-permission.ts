@@ -17,8 +17,12 @@ const printHelperText = (message: string) =>
 export const setupPermissions: CliStepMethod = async state => {
   const { cookie = "", instanceUrl, tables } = state;
 
+  printHelperText(
+    `e.g. does your table have a customer_id column to isolate tenants?`,
+  );
+
   const hasTenancyIsolation = await toggle({
-    message: `Is your tenancy isolation based on a column? (e.g. does your table have a customer_id column to isolate tenants?):`,
+    message: `Is your tenancy isolation based on a column?`,
     default: true,
   });
 
@@ -38,12 +42,10 @@ export const setupPermissions: CliStepMethod = async state => {
   const tenancyColumnNames: Record<string, string> = {};
 
   for (const table of tables) {
-    printHelperText(
-      `Leave empty if this table does not have a multi-tenancy column.`,
-    );
-
-    const fieldChoices =
-      table.fields?.map(f => ({ name: f.name, value: f.name })) ?? [];
+    const fieldChoices = [
+      { name: "(no multi-tenancy column for this table)", value: null },
+      ...(table.fields?.map(f => ({ name: f.name, value: f.name })) ?? []),
+    ];
 
     const columnName = await search({
       pageSize: 10,
