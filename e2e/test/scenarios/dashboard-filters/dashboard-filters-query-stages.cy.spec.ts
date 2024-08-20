@@ -2,6 +2,10 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createDashboardWithTabs,
   createQuestion,
+  editDashboard,
+  filterWidget,
+  getDashboardCard,
+  popover,
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -38,8 +42,8 @@ const TEXT_PARAMETER = {
 };
 
 const NUMBER_PARAMETER = {
-  name: "Equal to",
-  slug: "equal_to",
+  name: "Number",
+  slug: "number",
   id: "f5944ad9",
   type: "number/=",
   sectionId: "number",
@@ -64,43 +68,138 @@ describe("scenarios > dashboard > filters > query stages", () => {
     });
   });
 
-  it("base questions", () => {
-    cy.then(function () {
-      createDashboardWithTabs({
-        parameters: [DATE_PARAMETER, TEXT_PARAMETER, NUMBER_PARAMETER],
-        dashcards: [
-          {
-            id: -1,
-            size_x: CARD_WIDTH,
-            size_y: CARD_HEIGHT,
-            row: 0,
-            col: QUESTION_BASED_COLUMN,
-            card_id: this.q0.id,
-            card: this.q0,
-          },
-          {
-            id: -2,
-            size_x: CARD_WIDTH,
-            size_y: CARD_HEIGHT,
-            row: CARD_HEIGHT,
-            col: QUESTION_BASED_COLUMN,
-            card_id: this.q1.id,
-            card: this.q1,
-          },
-          {
-            id: -3,
-            size_x: CARD_WIDTH,
-            size_y: CARD_HEIGHT,
-            row: 0,
-            col: MODEL_BASED_COLUMN,
-            card_id: this.m1.id,
-            card: this.m1,
-          },
-        ],
-      }).then(dashboard => visitDashboard(dashboard.id));
+  describe("base questions", () => {
+    beforeEach(() => {
+      cy.then(function () {
+        createDashboardWithTabs({
+          parameters: [DATE_PARAMETER, TEXT_PARAMETER, NUMBER_PARAMETER],
+          dashcards: [
+            {
+              id: -1,
+              size_x: CARD_WIDTH,
+              size_y: CARD_HEIGHT,
+              row: 0,
+              col: QUESTION_BASED_COLUMN,
+              card_id: this.q0.id,
+              card: this.q0,
+            },
+            {
+              id: -2,
+              size_x: CARD_WIDTH,
+              size_y: CARD_HEIGHT,
+              row: CARD_HEIGHT,
+              col: QUESTION_BASED_COLUMN,
+              card_id: this.q1.id,
+              card: this.q1,
+            },
+            {
+              id: -3,
+              size_x: CARD_WIDTH,
+              size_y: CARD_HEIGHT,
+              row: 0,
+              col: MODEL_BASED_COLUMN,
+              card_id: this.m1.id,
+              card: this.m1,
+            },
+          ],
+        }).then(dashboard => visitDashboard(dashboard.id));
+      });
+    });
+
+    it("allows to map all columns", () => {
+      editDashboard();
+
+      cy.log("date columns");
+      getFilter("Date").click();
+
+      verifyDashcardMappingOptions(0, [
+        {
+          name: "Order",
+          columns: ["Created At"],
+        },
+        {
+          name: "Product",
+          columns: ["Created At"],
+        },
+        {
+          name: "User",
+          columns: ["Birth Date", "Created At"],
+        },
+      ]);
+      verifyDashcardMappingOptions(1, [
+        {
+          name: "Model based on a question",
+          columns: ["Created At"],
+        },
+        {
+          name: "Product",
+          columns: ["Created At"],
+        },
+        {
+          name: "User",
+          columns: ["Birth Date", "Created At"],
+        },
+      ]);
+      verifyDashcardMappingOptions(2, [
+        {
+          name: "Q0 Order",
+          columns: ["Created At"],
+        },
+        {
+          name: "Product",
+          columns: ["Created At"],
+        },
+        {
+          name: "User",
+          columns: ["Birth Date", "Created At"],
+        },
+      ]);
+
+      // cy.log("text columns");
+      // getFilter("Text").click();
+
+      // cy.log("number columns");
+      // getFilter("Number").click();
     });
   });
 });
+
+function verifyDashcardMappingOptions(
+  dashcardIndex: number,
+  sections: MappingSection[],
+) {
+  getDashboardCard(dashcardIndex).findByText("Select…").click();
+  verifyPopoverMappingOptions(sections);
+  cy.realPress("Escape");
+}
+
+type MappingSection = {
+  name: string;
+  columns: string[];
+};
+
+function verifyPopoverMappingOptions(sections: MappingSection[]) {
+  popover().within(() => {
+    let index = 0;
+
+    for (const { name, columns } of sections) {
+      getPopoverItems().eq(index).should("have.text", name);
+      ++index;
+
+      for (const column of columns) {
+        getPopoverItems()
+          .eq(index)
+          .findByLabelText(column)
+          .should("be.visible");
+        ++index;
+      }
+    }
+  });
+}
+
+function getPopoverItems() {
+  return cy.get("[data-element-id=list-section]");
+}
 
 function createQ0() {
   return createQuestion({
@@ -200,4 +299,8 @@ function createTestDashboard({
       })),
     ],
   });
+}
+
+function getFilter(name: string) {
+  return cy.findByTestId("fixed-width-filters").findByText(name);
 }
