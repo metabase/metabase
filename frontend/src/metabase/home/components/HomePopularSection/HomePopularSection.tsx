@@ -37,7 +37,7 @@ export const HomePopularSection = (): JSX.Element => {
             url={Urls.modelToUrl(item) ?? ""}
           />
         ))}
-        <HomeHelpCard />
+        {/*<HomeHelpCard />*/}
       </SectionBody>
     </div>
   );
