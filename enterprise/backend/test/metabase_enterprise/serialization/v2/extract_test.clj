@@ -29,9 +29,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (defn- by-model [model-name extraction]
   (->> extraction
@@ -871,7 +869,7 @@
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
                          :type        :implicit
-                         :created_at  OffsetDateTime
+                         :created_at  string?
                          :model_id    card-eid-1
                          :implicit    [{:kind "row/update"}]}
                         ser))
@@ -909,7 +907,7 @@
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
                          :type        :http
-                         :created_at  OffsetDateTime
+                         :created_at  string?
                          :model_id    card-eid-1
                          :http        [{:template {}}]}
                         ser))
@@ -950,7 +948,7 @@
                                         :label "my_action"}]
                          :type        :query
                          :creator_id  "ann@heart.band"
-                         :created_at  OffsetDateTime
+                         :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
                                                         :type     "native"
                                                         :native   {:native "select 1"}}}]

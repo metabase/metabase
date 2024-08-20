@@ -366,9 +366,10 @@
    :transform {:action_id (serdes/parent-ref)}})
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
-  {:copy      [:archived :created_at :description :entity_id :name :public_uuid :type]
+  {:copy      [:archived :description :entity_id :name :public_uuid :type]
    :skip      []
-   :transform {:creator_id             (serdes/fk :model/User)
+   :transform {:created_at             (serdes/date)
+               :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :model_id               (serdes/fk :model/Card)
                :query                  (serdes/nested :model/QueryAction :action_id opts)
