@@ -36,8 +36,8 @@
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
-                     [^ObjectId oid data-output]
-                     (.writeUTF data-output (.toHexString oid)))
+  [^ObjectId oid data-output]
+  (.writeUTF data-output (.toHexString oid)))
 
 (nippy/extend-thaw :mongodb/ObjectId
   [data-input]
@@ -93,7 +93,6 @@
 
     message))
 
-
 ;;; ### Syncing
 
 (declare update-field-attrs)
@@ -135,9 +134,9 @@
       (update :types (fn [types]
                        (update types (type field-value) u/safe-inc)))
       (update :semantic-types (fn [semantic-types]
-                               (if-let [st (val->semantic-type field-value)]
-                                 (update semantic-types st u/safe-inc)
-                                 semantic-types)))
+                                (if-let [st (val->semantic-type field-value)]
+                                  (update semantic-types st u/safe-inc)
+                                  semantic-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
@@ -174,10 +173,10 @@
               :database-position idx}
        (= :_id field-kw)           (assoc :pk? true)
        (:semantic-types field-info) (assoc :semantic-type (->> (:semantic-types field-info)
-                                                             (filterv #(some? (first %)))
-                                                             (sort-by second)
-                                                             last
-                                                             first))
+                                                               (filterv #(some? (first %)))
+                                                               (sort-by second)
+                                                               last
+                                                               first))
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/dbms-version :mongo
@@ -346,9 +345,9 @@
 ;; Following code is using monger. Leaving it here for a reference as it could be transformed when there is need
 ;; for ssl experiments.
 #_(comment
-  (require '[clojure.java.io :as io]
-           '[monger.credentials :as mcred])
-  (import javax.net.ssl.SSLSocketFactory)
+    (require '[clojure.java.io :as io]
+             '[monger.credentials :as mcred])
+    (import javax.net.ssl.SSLSocketFactory)
 
   ;; The following forms help experimenting with the behaviour of Mongo
   ;; servers with different configurations. They can be used to check if
@@ -357,52 +356,52 @@
   ;; constellations.
 
   ;; Test connection to Mongo with client and server SSL authentication.
-  (let [ssl-socket-factory
-        (driver.u/ssl-socket-factory
-         :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
-         :password "passw"
-         :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
-         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
-        connection-options
-        (mg/mongo-options {:ssl-enabled true
-                           :ssl-invalid-host-name-allowed false
-                           :socket-factory ssl-socket-factory})
-        credentials
-        (mcred/create "metabase" "admin" "metasample123")]
-    (with-open [connection (mg/connect (mg/server-address "127.0.0.1")
-                                       connection-options
-                                       credentials)]
-      (mg/get-db-names connection)))
+    (let [ssl-socket-factory
+          (driver.u/ssl-socket-factory
+           :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+           :password "passw"
+           :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+           :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+          connection-options
+          (mg/mongo-options {:ssl-enabled true
+                             :ssl-invalid-host-name-allowed false
+                             :socket-factory ssl-socket-factory})
+          credentials
+          (mcred/create "metabase" "admin" "metasample123")]
+      (with-open [connection (mg/connect (mg/server-address "127.0.0.1")
+                                         connection-options
+                                         credentials)]
+        (mg/get-db-names connection)))
 
   ;; Test what happens if the client only support server authentication.
-  (let [server-auth-ssl-socket-factory
-        (driver.u/ssl-socket-factory
-         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
-        server-auth-connection-options
-        (mg/mongo-options {:ssl-enabled true
-                           :ssl-invalid-host-name-allowed false
-                           :socket-factory server-auth-ssl-socket-factory
-                           :server-selection-timeout 200})
-        credentials
-        (mcred/create "metabase" "admin" "metasample123")]
-    (with-open [server-auth-connection
-                (mg/connect (mg/server-address "127.0.0.1")
-                            server-auth-connection-options
-                            credentials)]
-      (mg/get-db-names server-auth-connection)))
+    (let [server-auth-ssl-socket-factory
+          (driver.u/ssl-socket-factory
+           :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+          server-auth-connection-options
+          (mg/mongo-options {:ssl-enabled true
+                             :ssl-invalid-host-name-allowed false
+                             :socket-factory server-auth-ssl-socket-factory
+                             :server-selection-timeout 200})
+          credentials
+          (mcred/create "metabase" "admin" "metasample123")]
+      (with-open [server-auth-connection
+                  (mg/connect (mg/server-address "127.0.0.1")
+                              server-auth-connection-options
+                              credentials)]
+        (mg/get-db-names server-auth-connection)))
 
   ;; Test what happens if the client support only server authentication
   ;; with well known (default) CAs.
-  (let [unauthenticated-connection-options
-        (mg/mongo-options {:ssl-enabled true
-                           :ssl-invalid-host-name-allowed false
-                           :socket-factory (SSLSocketFactory/getDefault)
-                           :server-selection-timeout 200})
-        credentials
-        (mcred/create "metabase" "admin" "metasample123")]
-    (with-open [unauthenticated-connection
-                (mg/connect (mg/server-address "127.0.0.1")
-                            unauthenticated-connection-options
-                            credentials)]
-      (mg/get-db-names unauthenticated-connection)))
-  :.)
+    (let [unauthenticated-connection-options
+          (mg/mongo-options {:ssl-enabled true
+                             :ssl-invalid-host-name-allowed false
+                             :socket-factory (SSLSocketFactory/getDefault)
+                             :server-selection-timeout 200})
+          credentials
+          (mcred/create "metabase" "admin" "metasample123")]
+      (with-open [unauthenticated-connection
+                  (mg/connect (mg/server-address "127.0.0.1")
+                              unauthenticated-connection-options
+                              credentials)]
+        (mg/get-db-names unauthenticated-connection)))
+    :.)

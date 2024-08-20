@@ -20,107 +20,107 @@
 
 (deftest ^:synchronized sync-test
   (mt/test-driver
-   :druid-jdbc
-   (tqpt/with-flattened-dbdef
-     (testing "describe-database"
-       (is (= {:tables #{{:schema "druid", :name "checkins" :description nil}
-                         {:schema "druid", :name "json" :description nil}
-                         {:schema "druid", :name "big_json" :description nil}}}
-              (driver/describe-database :druid-jdbc (mt/db)))))
-     (testing "describe-table"
-       (is (=? {:schema "druid"
-                :name   "checkins"
-                :fields #{{:name "__time",
-                           :database-type "TIMESTAMP",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/DateTime,
-                           :database-position 0,
-                           :json-unfolding false}
-                          {:name "count",
-                           :database-type "BIGINT",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/BigInteger,
-                           :database-position 10,
-                           :json-unfolding false}
-                          {:name "id",
-                           :database-type "BIGINT",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/BigInteger,
-                           :database-position 1,
-                           :json-unfolding false}
-                          {:name "unique_users",
-                           :database-type "COMPLEX<hyperUnique>",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/DruidHyperUnique,
-                           :database-position 11,
-                           :json-unfolding false}
-                          {:name "user_last_login",
-                           :database-type "VARCHAR",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/Text,
-                           :database-position 2,
-                           :json-unfolding false}
-                          {:name "user_name",
-                           :database-type "VARCHAR",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/Text,
-                           :database-position 3,
-                           :json-unfolding false}
-                          {:name "user_password",
-                           :database-type "VARCHAR",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/Text,
-                           :database-position 4,
-                           :json-unfolding false}
-                          {:name "venue_category_name",
-                           :database-type "VARCHAR",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/Text,
-                           :database-position 5,
-                           :json-unfolding false}
-                          {:name "venue_latitude",
-                           :database-type "DOUBLE",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/Float,
-                           :database-position 6,
-                           :json-unfolding false}
-                          {:name "venue_longitude",
-                           :database-type "DOUBLE",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/Float,
-                           :database-position 7,
-                           :json-unfolding false}
-                          {:name "venue_name",
-                           :database-type "VARCHAR",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/Text,
-                           :database-position 8,
-                           :json-unfolding false}
-                          {:name "venue_price",
-                           :database-type "BIGINT",
-                           :database-required false,
-                           :database-is-auto-increment false,
-                           :base-type :type/BigInteger,
-                           :database-position 9,
-                           :json-unfolding false}}}
-               (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"}))))
-               (testing "Full sync does not throw an exception (field values are calculated only for eligible fields)"
-                 (is (=? [::success some?]
-                         (try (let [result (sync/sync-database! (mt/db))]
-                                [::success result])
-                              (catch Throwable t
-                                [::failure t]))))))))
+    :druid-jdbc
+    (tqpt/with-flattened-dbdef
+      (testing "describe-database"
+        (is (= {:tables #{{:schema "druid", :name "checkins" :description nil}
+                          {:schema "druid", :name "json" :description nil}
+                          {:schema "druid", :name "big_json" :description nil}}}
+               (driver/describe-database :druid-jdbc (mt/db)))))
+      (testing "describe-table"
+        (is (=? {:schema "druid"
+                 :name   "checkins"
+                 :fields #{{:name "__time",
+                            :database-type "TIMESTAMP",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/DateTime,
+                            :database-position 0,
+                            :json-unfolding false}
+                           {:name "count",
+                            :database-type "BIGINT",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/BigInteger,
+                            :database-position 10,
+                            :json-unfolding false}
+                           {:name "id",
+                            :database-type "BIGINT",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/BigInteger,
+                            :database-position 1,
+                            :json-unfolding false}
+                           {:name "unique_users",
+                            :database-type "COMPLEX<hyperUnique>",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/DruidHyperUnique,
+                            :database-position 11,
+                            :json-unfolding false}
+                           {:name "user_last_login",
+                            :database-type "VARCHAR",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/Text,
+                            :database-position 2,
+                            :json-unfolding false}
+                           {:name "user_name",
+                            :database-type "VARCHAR",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/Text,
+                            :database-position 3,
+                            :json-unfolding false}
+                           {:name "user_password",
+                            :database-type "VARCHAR",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/Text,
+                            :database-position 4,
+                            :json-unfolding false}
+                           {:name "venue_category_name",
+                            :database-type "VARCHAR",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/Text,
+                            :database-position 5,
+                            :json-unfolding false}
+                           {:name "venue_latitude",
+                            :database-type "DOUBLE",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/Float,
+                            :database-position 6,
+                            :json-unfolding false}
+                           {:name "venue_longitude",
+                            :database-type "DOUBLE",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/Float,
+                            :database-position 7,
+                            :json-unfolding false}
+                           {:name "venue_name",
+                            :database-type "VARCHAR",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/Text,
+                            :database-position 8,
+                            :json-unfolding false}
+                           {:name "venue_price",
+                            :database-type "BIGINT",
+                            :database-required false,
+                            :database-is-auto-increment false,
+                            :base-type :type/BigInteger,
+                            :database-position 9,
+                            :json-unfolding false}}}
+                (driver/describe-table :druid-jdbc (mt/db) {:schema "druid" :name "checkins"}))))
+      (testing "Full sync does not throw an exception (field values are calculated only for eligible fields)"
+        (is (=? [::success some?]
+                (try (let [result (sync/sync-database! (mt/db))]
+                       [::success result])
+                     (catch Throwable t
+                       [::failure t]))))))))
 
 (defn- db-dbms-version [db-or-id]
   (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
@@ -130,23 +130,23 @@
 
 (deftest dbms-version-test
   (mt/test-driver
-   :druid-jdbc
-   (testing (str "This tests populating the dbms_version field for a given database."
-                 " The sync happens automatically, so this test removes it first"
-                 " to ensure that it gets set when missing.")
-     (tqpt/with-flattened-dbdef
-       (let [db                   (mt/db)
-             version-on-load      (db-dbms-version db)
-             _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
-             db                   (t2/select-one Database :id (u/the-id db))
-             version-after-update (db-dbms-version db)
-             _                    (sync-dbms-ver/sync-dbms-version! db)]
-         (testing "On startup is the dbms-version specified?"
-           (is (nil? (check-dbms-version version-on-load))))
-         (testing "Check to make sure the test removed the timezone"
-           (is (nil? version-after-update)))
-         (testing "Check that the value was set again after sync"
-           (is (nil? (check-dbms-version (db-dbms-version db))))))))))
+    :druid-jdbc
+    (testing (str "This tests populating the dbms_version field for a given database."
+                  " The sync happens automatically, so this test removes it first"
+                  " to ensure that it gets set when missing.")
+      (tqpt/with-flattened-dbdef
+        (let [db                   (mt/db)
+              version-on-load      (db-dbms-version db)
+              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
+              db                   (t2/select-one Database :id (u/the-id db))
+              version-after-update (db-dbms-version db)
+              _                    (sync-dbms-ver/sync-dbms-version! db)]
+          (testing "On startup is the dbms-version specified?"
+            (is (nil? (check-dbms-version version-on-load))))
+          (testing "Check to make sure the test removed the timezone"
+            (is (nil? version-after-update)))
+          (testing "Check that the value was set again after sync"
+            (is (nil? (check-dbms-version (db-dbms-version db))))))))))
 
 ;;
 ;; Ported from [[druid/test/metabase/query_processor_test.clj]]
@@ -160,9 +160,9 @@
               [3 179661]
               [4  86284]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:sum [:* $id $venue_price]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:sum [:* $id $venue_price]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))))
 
 (deftest min-aggregation-test
@@ -173,9 +173,9 @@
               [3  8]
               [4 12]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:min [:+ $id $venue_price]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:min [:+ $id $venue_price]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))))
 
 (deftest max-aggregation-test
@@ -186,9 +186,9 @@
               [3  332.0]
               [4  248.25]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:max [:/ $id $venue_price]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:max [:/ $id $venue_price]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))))
 
 (deftest avg-aggregation-test
@@ -199,9 +199,9 @@
               [3 1562.2695652173913]
               [4 1760.8979591836735]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:avg [:* $id $venue_price]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:avg [:* $id $venue_price]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))))
 
 (deftest share-aggregation-test
@@ -209,8 +209,8 @@
     (testing "share"
       (is (= [[0.951]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:share [:< $venue_price 4]]]})
+                   checkins
+                   {:aggregation [[:share [:< $venue_price 4]]]})
                  mt/rows))))))
 
 (deftest count-where-aggregation-test
@@ -218,8 +218,8 @@
     (testing "count-where"
       (is (= [[951.0]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:count-where [:< $venue_price 4]]]})
+                   checkins
+                   {:aggregation [[:count-where [:< $venue_price 4]]]})
                  mt/rows))))))
 
 (deftest sum-where-aggregation-test
@@ -227,8 +227,8 @@
     (testing "sum-where"
       (is (= [[1796.0]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]})
+                   checkins
+                   {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]})
                  mt/rows))))))
 
 (deftest count-aggregation-test
@@ -239,9 +239,9 @@
               [3 116]
               [4  50]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:+ 1 [:count]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:+ 1 [:count]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))))
 
 (deftest expression-aggregations-test
@@ -252,9 +252,9 @@
               [3  460]
               [4  245]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))
 
     (testing "post-aggregation math w/ 3 args: count + sum + count"
@@ -263,12 +263,12 @@
               [3  575]
               [4  294]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:+
-                                  [:count $id]
-                                  [:sum $venue_price]
-                                  [:count $venue_price]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:+
+                                   [:count $id]
+                                   [:sum $venue_price]
+                                   [:count $venue_price]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))
 
     (testing "post-aggregation math w/ a constant: count * 10"
@@ -277,9 +277,9 @@
               [3 1150]
               [4  490]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:* [:count $id] 10]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:* [:count $id] 10]]
+                    :breakout    [$venue_price]})
                  mt/rows))))
 
     (testing "nested post-aggregation math: count + (count * sum)"
@@ -288,11 +288,11 @@
               [3  39790]
               [4  9653]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:+
-                                  [:count $id]
-                                  [:* [:count $id] [:sum $venue_price]]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:+
+                                   [:count $id]
+                                   [:* [:count $id] [:sum $venue_price]]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))
 
     (testing "post-aggregation math w/ avg: count + avg"
@@ -301,9 +301,9 @@
               [3  635.7565217391304]
               [4  489.2244897959184]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:+ [:count $id] [:avg $id]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:+ [:count $id] [:avg $id]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))
 
     (testing "aggregation with math inside the aggregation :scream_cat:"
@@ -312,9 +312,9 @@
               [3  460]
               [4  245]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:sum [:+ $venue_price 1]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:sum [:+ $venue_price 1]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))
 
     (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
@@ -323,11 +323,11 @@
               [3 -990]
               [4 -985]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:+
-                                  [:max $venue_price]
-                                  [:min [:- $venue_price $id]]]]
-                   :breakout    [$venue_price]})
+                   checkins
+                   {:aggregation [[:+
+                                   [:max $venue_price]
+                                   [:min [:- $venue_price $id]]]]
+                    :breakout    [$venue_price]})
                  mt/rows))))))
 
 (deftest named-top-level-aggregation-test
@@ -338,7 +338,7 @@
               [3  460]
               [4  245]]
              (mt/rows
-               (mt/run-mbql-query
+              (mt/run-mbql-query
                 checkins
                 {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
                  :breakout    [$venue_price]})))))))
@@ -352,18 +352,18 @@
                         [4  155]]
               :columns ["venue_price" "Sum-41"]}
              (mt/rows+column-names
-               (mt/run-mbql-query checkins
-                 {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
-                  :breakout    [$venue_price]})))))))
+              (mt/run-mbql-query checkins
+                {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest distinct-count-of-two-dimensions-test
   (tqpt/test-timeseries-drivers
-   (is (= {:rows    [[731]]
-           :columns ["count"]}
-          (mt/rows+column-names
-           (qp/process-query
-            (mt/mbql-query checkins
-                           {:aggregation [[:distinct [:+ $id $venue_price]]]})))))))
+    (is (= {:rows    [[731]]
+            :columns ["count"]}
+           (mt/rows+column-names
+            (qp/process-query
+             (mt/mbql-query checkins
+               {:aggregation [[:distinct [:+ $id $venue_price]]]})))))))
 
 (deftest order-by-aggregation-test
   (tqpt/test-timeseries-drivers
@@ -380,11 +380,11 @@
       (testing direction
         (is (= expected-rows
                (-> (mt/run-mbql-query
-                    checkins
-                    {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
-                     :breakout    [$venue_category_name $user_name]
-                     :order-by    [[direction [:aggregation 0]] [:asc $checkins.venue_category_name]]
-                     :limit       5})
+                     checkins
+                     {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
+                      :breakout    [$venue_category_name $user_name]
+                      :order-by    [[direction [:aggregation 0]] [:asc $checkins.venue_category_name]]
+                      :limit       5})
                    mt/rows)))))))
 
 (deftest hll-count-test
@@ -396,11 +396,11 @@
               ["Bar"      "Felipinho Asklepios" 10]
               ["Bar"      "Kaneonuskatew Eiran" 10]]
              (-> (mt/run-mbql-query
-                  checkins
-                  {:aggregation [[:aggregation-options [:count $checkins.user_name] {:name "unique_users"}]]
-                   :breakout   [$venue_category_name $user_name]
-                   :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
-                   :limit      5})
+                   checkins
+                   {:aggregation [[:aggregation-options [:count $checkins.user_name] {:name "unique_users"}]]
+                    :breakout   [$venue_category_name $user_name]
+                    :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+                    :limit      5})
                  mt/rows))))))
 
 (deftest multiple-filters-test
@@ -427,31 +427,31 @@
 
 (deftest ssh-tunnel-test
   (mt/test-driver
-   :druid-jdbc
-   (is (thrown?
-        java.net.ConnectException
-        (try
-          (let [engine  :druid-jdbc
-                details {:ssl            false
-                         :password       "changeme"
-                         :tunnel-host    "localhost"
-                         :tunnel-pass    "BOGUS-BOGUS"
-                         :port           5432
-                         :dbname         "test"
-                         :host           "http://localhost"
-                         :tunnel-enabled true
+    :druid-jdbc
+    (is (thrown?
+         java.net.ConnectException
+         (try
+           (let [engine  :druid-jdbc
+                 details {:ssl            false
+                          :password       "changeme"
+                          :tunnel-host    "localhost"
+                          :tunnel-pass    "BOGUS-BOGUS"
+                          :port           5432
+                          :dbname         "test"
+                          :host           "http://localhost"
+                          :tunnel-enabled true
                          ;; we want to use a bogus port here on purpose -
                          ;; so that locally, it gets a ConnectionRefused,
                          ;; and in CI it does too. Apache's SSHD library
                          ;; doesn't wrap every exception in an SshdException
-                         :tunnel-port    21212
-                         :tunnel-user    "bogus"}]
-            (driver.u/can-connect-with-details? engine details :throw-exceptions))
-          (catch Throwable e
-            (loop [^Throwable e e]
-              (or (when (instance? java.net.ConnectException e)
-                    (throw e))
-                  (some-> (.getCause e) recur)))))))))
+                          :tunnel-port    21212
+                          :tunnel-user    "bogus"}]
+             (driver.u/can-connect-with-details? engine details :throw-exceptions))
+           (catch Throwable e
+             (loop [^Throwable e e]
+               (or (when (instance? java.net.ConnectException e)
+                     (throw e))
+                   (some-> (.getCause e) recur)))))))))
 
 (defn- table-rows-sample []
   (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
@@ -464,17 +464,17 @@
 
 (deftest ^:synchronized table-rows-sample-test
   (mt/test-driver
-   :druid-jdbc
-   (tqpt/with-flattened-dbdef
-     (testing "Druid driver doesn't need to convert results to the expected timezone for us. QP middleware can handle that."
-       (let [expected [[1 "The Misfit Restaurant + Bar" (t/instant "2014-04-07T00:00:00Z")]
-                       [2 "Bludso's BBQ"                (t/instant "2014-09-18T00:00:00Z")]
-                       [3 "Philippe the Original"       (t/instant "2014-09-15T00:00:00Z")]
-                       [4 "Wurstküche"                  (t/instant "2014-03-11T00:00:00Z")]
-                       [5 "Hotel Biron"                 (t/instant "2013-05-05T00:00:00Z")]]]
-         (testing "UTC timezone"
-           (is (= expected
-                  (table-rows-sample))))
-         (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-           (is (= expected
-                  (table-rows-sample)))))))))
+    :druid-jdbc
+    (tqpt/with-flattened-dbdef
+      (testing "Druid driver doesn't need to convert results to the expected timezone for us. QP middleware can handle that."
+        (let [expected [[1 "The Misfit Restaurant + Bar" (t/instant "2014-04-07T00:00:00Z")]
+                        [2 "Bludso's BBQ"                (t/instant "2014-09-18T00:00:00Z")]
+                        [3 "Philippe the Original"       (t/instant "2014-09-15T00:00:00Z")]
+                        [4 "Wurstküche"                  (t/instant "2014-03-11T00:00:00Z")]
+                        [5 "Hotel Biron"                 (t/instant "2013-05-05T00:00:00Z")]]]
+          (testing "UTC timezone"
+            (is (= expected
+                   (table-rows-sample))))
+          (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+            (is (= expected
+                   (table-rows-sample)))))))))

@@ -222,12 +222,12 @@
 (defmethod sql.qp/date [:sqlite :quarter]
   [_driver _ expr]
   (->date
-    (->date expr (h2x/literal "start of month"))
-    [:||
-     (h2x/literal "-")
-     (h2x/mod (h2x/dec (strftime "%m" expr))
-              3)
-     (h2x/literal " months")]))
+   (->date expr (h2x/literal "start of month"))
+   [:||
+    (h2x/literal "-")
+    (h2x/mod (h2x/dec (strftime "%m" expr))
+             3)
+    (h2x/literal " months")]))
 
 ;; q = (m + 2) / 3
 (defmethod sql.qp/date [:sqlite :quarter-of-year]
@@ -389,12 +389,12 @@
           ;; total-month-diff counts month boundaries not whole months, so we need to adjust
           ;; if x<y but x>y in the month calendar then subtract one month
           ;; if x>y but x<y in the month calendar then add one month
-          [:case
-           [:and [:< x y] [:> (extract :day-of-month x) (extract :day-of-month y)]]
-           -1
-           [:and [:> x y] [:< (extract :day-of-month x) (extract :day-of-month y)]]
-           1
-           :else 0])))
+           [:case
+            [:and [:< x y] [:> (extract :day-of-month x) (extract :day-of-month y)]]
+            -1
+            [:and [:> x y] [:< (extract :day-of-month x) (extract :day-of-month y)]]
+            1
+            :else 0])))
 
 (defmethod sql.qp/datetime-diff [:sqlite :week]
   [driver _unit x y]
@@ -403,8 +403,8 @@
 (defmethod sql.qp/datetime-diff [:sqlite :day]
   [_driver _unit x y]
   (h2x/->integer
-    (h2x/- [:julianday y (h2x/literal "start of day")]
-           [:julianday x (h2x/literal "start of day")])))
+   (h2x/- [:julianday y (h2x/literal "start of day")]
+          [:julianday x (h2x/literal "start of day")])))
 
 (defmethod sql.qp/datetime-diff [:sqlite :hour]
   [driver _unit x y]

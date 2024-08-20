@@ -50,9 +50,9 @@
         next-run-at (calc-next-run (:schedule config) now)
         marker      (:marker state)]
     (t2/update! :model/CacheConfig {:id id}
-                     (cond-> {:next_run_at next-run-at}
-                       (not= marker result) (assoc :state {:marker result}
-                                                   :invalidated_at now)))))
+                (cond-> {:next_run_at next-run-at}
+                  (not= marker result) (assoc :state {:marker result}
+                                              :invalidated_at now)))))
 
 (defn- refresh-query-configs!
   "Fetches `:query`-strategy configs wants to re-check their queries, runs those queries and updates `invalidated_at`

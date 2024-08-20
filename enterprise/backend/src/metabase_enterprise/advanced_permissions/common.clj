@@ -81,7 +81,7 @@
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
   (t2/select-one-fn :is_group_manager PermissionsGroupMembership
-                       :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
+                    :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions."
@@ -148,7 +148,7 @@
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))
            (conj result db))
-        result))
+         result))
      []
      dbs)))
 

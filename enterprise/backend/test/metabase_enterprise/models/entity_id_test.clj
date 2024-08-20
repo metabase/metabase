@@ -8,7 +8,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.models]
    [metabase.models.revision-test]
    [metabase.models.serialization :as serdes]))
