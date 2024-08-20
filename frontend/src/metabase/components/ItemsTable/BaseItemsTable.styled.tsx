@@ -43,6 +43,41 @@ export const Table = styled.table<{ isInDragLayer?: boolean }>`
 
 Table.defaultProps = { className: AdminS.ContentTable };
 
+
+// Wrapper to handle scrolling
+export const TableWrapper = styled.div`
+  overflow: auto;
+  max-width: 100%;
+  max-height: 500px; /* Adjust height as needed */
+  /* Optional: Adjust width if necessary */
+  min-width: 600px; /* Ensure there's enough width to show horizontal scrollbar */
+`;
+
+export const CubeTable = styled.table<{ isInDragLayer?: boolean }>`
+  background-color: var(--mb-color-bg-white);
+  border-collapse: unset;
+  border-radius: 0.5rem;
+  min-width: 100%; /* Ensure the table takes full width of its container */
+
+  thead {
+    th {
+      border-top: 1px solid var(--mb-color-border);
+
+      &:first-of-type {
+        border-start-start-radius: 8px;
+        border-inline-start: 1px solid var(--mb-color-border);
+      }
+
+      &:last-child {
+        border-start-end-radius: 8px;
+        border-inline-end: 1px solid var(--mb-color-border);
+      }
+    }
+  }
+
+  ${props => (props.isInDragLayer ? `width: 50vw;` : "")}
+`;
+
 export const hideResponsively = ({
   hideAtContainerBreakpoint,
   containerName,

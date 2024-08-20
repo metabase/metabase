@@ -18,6 +18,7 @@ import { addCubeWrapper, extractCubeName, extractCubeNames, removeLineBreaks, se
 import { CubeHeader } from "./CubeHeader";
 import { BrowseHeaderContent } from "./BrowseHeader.styled";
 import { CubeDataItem } from "metabase-types/api";
+import { CubePreviewTable } from "metabase/components/Cube/CubePreviewTable";
 
 
 export const BrowseCubes = () => {
@@ -27,6 +28,8 @@ export const BrowseCubes = () => {
   const [selectedCube, setSelectedCube] = useState<CubeDataItem | null>(null);
   const [isSql, setIsSql] = useState<boolean>(false)
   const [title, setTitle] = useState<string>("")
+  const [activeTab, setActiveTab] = useState('Definition');
+
   useEffect(() => {
     if (cubeData) {
       setCubeFromUrl(cubeData);
@@ -100,6 +103,18 @@ export const BrowseCubes = () => {
     }
   };
 
+
+  const tabStyle = {
+    padding: '10px 20px',
+    cursor: 'pointer',
+    borderBottom: '2px solid transparent'
+  };
+
+  const activeTabStyle = {
+    ...tabStyle,
+    borderBottom: '2px solid #509EE3'
+  };
+
   if (error) {
     return <LoadingAndErrorWrapper error />;
   }
@@ -148,9 +163,25 @@ export const BrowseCubes = () => {
                       <div style={{ display: "flex", flexDirection: "column"}}>
                       <BrowseHeaderContent>
               </BrowseHeaderContent>
+              <div style={{ display: "flex", flexDirection: "row", gap: "20px", marginBottom: "10px" }}>
+          <div
+            style={activeTab === 'Definition' ? activeTabStyle : tabStyle}
+            onClick={() => setActiveTab('Definition')}
+          >
+            Definition
+          </div>
+          <div
+            style={activeTab === 'Preview' ? activeTabStyle : tabStyle}
+            onClick={() => setActiveTab('Preview')}
+          >
+            Preview
+          </div>
+        </div>
               <div style={{ display: "flex", flexDirection: "row"}}>
-                      <CubeTable cubeData={selectedCube}/>
-                      <Button 
+                { activeTab === "Definition" ? (
+                  <>
+                  <CubeTable cubeData={selectedCube}/>
+                  <Button 
                       style={{
                         width: "150px", 
                         height: "50px", 
@@ -162,6 +193,10 @@ export const BrowseCubes = () => {
                     >
                       {isSql ? t`Go back` : t`Edit Cube`}
                     </Button>
+                      </>
+                ) : (
+                    <CubePreviewTable cubeData={selectedCube}/>   
+                )}
               </div>
                       </div>
                     )}

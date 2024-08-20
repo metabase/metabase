@@ -117,6 +117,8 @@
                                  "http://localhost:3001/company/company-cube-files/blank_street"
                                  ;; Local Host Omni Test Semantic Layer
                                  "http://localhost:3001/company/company-cube-files/omni_test"
+                                 ;; Fetch Cubejs Data Semantic Layer
+                                 "http://localhost:3001/api/executeQuery"
                                  ;; Google analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    "www.google-analytics.com")
