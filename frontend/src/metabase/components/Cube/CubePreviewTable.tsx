@@ -229,7 +229,6 @@ export const CubePreviewTable = ({
         {sortedTypesWithSql.map((type) => (
           <TableColumn width={"80px"}/>
           ))}
-        {/* <Columns.RightEdge.Col /> */}
       </colgroup>
         <thead >
           <tr>
@@ -279,11 +278,6 @@ export const CubePreviewTable = ({
 };
 
 const TBodyRow = ({ cube,skeleton }: { cube: Record<string, any>, skeleton?:boolean }) => {
-  // console.log('cube from t dboy tow',cube)
-  const value = Object.values(cube)
-  console.log('value',value)
-  const key = Object.keys(cube)
-  console.log('key',key)
   const sortedKeys = Object.keys(cube).sort((a, b) => {
     const aNum = parseInt(a);
     const bNum = parseInt(b);
@@ -294,9 +288,6 @@ const TBodyRow = ({ cube,skeleton }: { cube: Record<string, any>, skeleton?:bool
   });
   
   const sortedValues = sortedKeys.map(key => cube[key]);
-  
-  console.log('sortedKeys', sortedKeys);
-  console.log('sortedValues', sortedValues);
   return (
     <ModelTableRow
     onClick={(e: React.MouseEvent) => {
