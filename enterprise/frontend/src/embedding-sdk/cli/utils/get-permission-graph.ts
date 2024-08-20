@@ -82,6 +82,9 @@ export function getPermissionGraph(options: Options): Graph {
       groups[groupId] = {};
     }
 
+    // Deny access to the sample database for every customer groups
+    groups[groupId][SAMPLE_DB_ID] = PERMISSIONS_DENY_ALL;
+
     // Configure sandboxed access for each groups
     groups[groupId][CONNECTED_DB_ID] = {
       [DataPermission.CREATE_QUERIES]: getDatabasePermission(
