@@ -340,7 +340,6 @@ function AhHocQuestionLeftSide(props) {
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
           <QuestionDataSource
-            className={CS.mb1}
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
