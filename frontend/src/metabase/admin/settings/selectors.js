@@ -369,17 +369,6 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "custom-formatting",
         widget: FormattingWidget,
       },
-      // FIXME: I think maybe the better approach is to allow in-object
-      // localized name editing, and allow users to download and re-upload CSVs
-      // with modified translations. Allowing them to edit offline makes things
-      // easier for us - we don't have to create a spreadsheet editor in the
-      // admin panel. And it's easier for them - they can use external tools
-      // like Google Sheets, Excel, Poedit, and ChatGPT to edit translations.
-      // But this means consuming the CSV file and updating all the objects
-      // with new names. For this it would be ideal to have the translations
-      // stored in a separate field from the name, so that distinct processes
-      // can update these separately without interfering with each other or
-      // creating race conditions.
       {
         key: "input-translations",
         type: "translationEditorLauncher",
