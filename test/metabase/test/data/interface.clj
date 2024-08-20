@@ -78,7 +78,8 @@
    [:coercion-strategy {:optional true} [:maybe ms/CoercionStrategy]]
    [:visibility-type   {:optional true} [:maybe (into [:enum] field/visibility-types)]]
    [:fk                {:optional true} [:maybe ms/KeywordOrString]]
-   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]])
+   [:field-comment     {:optional true} [:maybe ms/NonBlankString]]
+   [:nested-fields     {:optional true} [:maybe [:sequential :any]]]])
 
 (def ^:private ValidFieldDefinition
   [:and FieldDefinitionSchema (ms/InstanceOfClass FieldDefinition)])

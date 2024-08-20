@@ -702,11 +702,22 @@
       (when (integer? id-or-name)
         (:name (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
 
+(defn- field-nfc-path
+  [[_field id-or-name {::add/keys [nfc-path]}]]
+  (or nfc-path
+      (when (integer? id-or-name)
+        (:nfc-path (lib.metadata/field (qp.store/metadata-provider) id-or-name)))))
+
+(defmethod ->honeysql [:sql ::nfc-path]
+  [_driver [_ _nfc-path]]
+  nil)
+
 (defmethod ->honeysql [:sql :field]
   [driver [_ id-or-name {:keys [database-type] :as options}
            :as field-clause]]
   (try
     (let [source-table-aliases (field-source-table-aliases field-clause)
+          source-nfc-path      (field-nfc-path field-clause)
           source-alias         (field-source-alias field-clause)
           field                (when (integer? id-or-name)
                                  (lib.metadata/field (qp.store/metadata-provider) id-or-name))
@@ -716,7 +727,7 @@
                                    (:database-type field))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
-                                          (concat source-table-aliases [source-alias]))
+                                          (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
           maybe-add-db-type    (fn [expr]

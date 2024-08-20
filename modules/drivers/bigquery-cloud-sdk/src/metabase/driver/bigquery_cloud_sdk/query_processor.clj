@@ -595,6 +595,10 @@
       (should-qualify-identifier? identifier) update-identifier-prefix-components
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/nfc-path]
+  [_driver [_ nfc-path]]
+  nfc-path)
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
   [driver [_field _id-or-name {::add/keys [source-table], :as _opts} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
