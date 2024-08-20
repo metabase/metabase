@@ -187,6 +187,22 @@ const nativeUnitQuestionDetails = {
   },
 };
 
+const nativeTimeQuestionDetails = {
+  name: "SQL time",
+  display: "table",
+  native: {
+    query: "SELECT CAST('10:00' AS TIME) AS TIME",
+  },
+};
+
+const getNativeTimeQuestionBasedQuestionDetails = card => ({
+  query: {
+    "source-table": `card__${card.id}`,
+    aggregation: [["count"]],
+    breakout: [["field", "TIME", { "base-type": "type/Time" }]],
+  },
+});
+
 const parameterDetails = {
   id: "1",
   name: "Unit of Time",
@@ -856,6 +872,34 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       getDashboardCard().findByText("Created At: Quarter").should("be.visible");
       resetFilterWidgetToDefault();
       getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should show an error message when an incompatible temporal unit is used", () => {
+      cy.log("setup dashboard with a time column");
+      createNativeQuestion(nativeTimeQuestionDetails).then(({ body: card }) => {
+        cy.createDashboardWithQuestions({
+          questions: [getNativeTimeQuestionBasedQuestionDetails(card)],
+        }).then(({ dashboard }) => {
+          visitDashboard(dashboard.id);
+        });
+      });
+      editDashboard();
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "TIME");
+      saveDashboard();
+
+      cy.log("use an invalid temporal unit");
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().should(
+        "contain.text",
+        "This chart can not be broken out by the selected unit of time: year.",
+      );
+
+      cy.log("use an valid temporal unit");
+      filterWidget().click();
+      popover().findByText("Minute").click();
+      getDashboardCard().findByText("TIME: Minute").should("be.visible");
     });
   });
 
