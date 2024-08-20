@@ -22,6 +22,7 @@ const propTypes = {
   isReversed: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
+  onToggleSeriesVisibility: PropTypes.func,
   onRemoveSeries: PropTypes.func,
 };
 
@@ -33,8 +34,13 @@ const LegendItem = ({
   isReversed,
   onHoverChange,
   onSelectSeries,
+  onToggleSeriesVisibility,
   onRemoveSeries,
 }) => {
+  const handleDotClick = event => {
+    onToggleSeriesVisibility?.(event, index);
+  };
+
   const handleItemClick = event => {
     onSelectSeries && onSelectSeries(event, index, isReversed);
   };
@@ -58,7 +64,10 @@ const LegendItem = ({
         onMouseEnter={onHoverChange && handleItemMouseEnter}
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
-        <LegendItemDot color={item.color} />
+        <LegendItemDot
+          color={item.color}
+          onClick={onToggleSeriesVisibility && handleDotClick}
+        />
         <LegendItemTitle
           className={cx(
             DashboardS.fullscreenNormalText,

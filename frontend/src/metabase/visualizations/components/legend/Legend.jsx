@@ -26,6 +26,7 @@ const propTypes = {
   isVertical: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
+  onToggleSeriesVisibility: PropTypes.func,
   onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
   canRemoveSeries: PropTypes.func,
@@ -42,6 +43,7 @@ const Legend = ({
   isVertical,
   onHoverChange,
   onSelectSeries,
+  onToggleSeriesVisibility,
   onRemoveSeries,
   isReversed,
   canRemoveSeries = alwaysTrue,
@@ -88,6 +90,7 @@ const Legend = ({
             isReversed={isReversed}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
+            onToggleSeriesVisibility={onToggleSeriesVisibility}
             onRemoveSeries={
               canRemoveSeries(itemIndex) ? onRemoveSeries : undefined
             }
