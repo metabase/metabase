@@ -16,8 +16,11 @@ export type CliState = Partial<{
   /** Metabase instance settings */
   settings: Settings;
 
-  /** Database tables selected by the user */
+  /** Database tables present in the instance */
   tables: Table[];
+
+  /** Database tables selected by the user */
+  chosenTables: Table[];
 
   /** IDs and names of auto-generated dashboards */
   dashboards: DashboardInfo[];

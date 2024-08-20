@@ -15,7 +15,7 @@ const printHelperText = (message: string) =>
   printWithPadding(chalk.gray(message));
 
 export const setupPermissions: CliStepMethod = async state => {
-  const { cookie = "", instanceUrl, tables } = state;
+  const { cookie = "", instanceUrl } = state;
 
   printHelperText(
     `e.g. does your table have a customer_id column to isolate tenants?`,
@@ -32,7 +32,7 @@ export const setupPermissions: CliStepMethod = async state => {
     return [{ type: "success" }, state];
   }
 
-  if (!tables) {
+  if (!state.chosenTables) {
     return [
       { type: "error", message: "You have not selected any tables." },
       state,
@@ -41,7 +41,7 @@ export const setupPermissions: CliStepMethod = async state => {
 
   const tenancyColumnNames: Record<string, string> = {};
 
-  for (const table of tables) {
+  for (const table of state.chosenTables) {
     const fieldChoices = [
       { name: "(no multi-tenancy column for this table)", value: null },
       ...(table.fields?.map(f => ({ name: f.name, value: f.name })) ?? []),
@@ -141,13 +141,18 @@ export const setupPermissions: CliStepMethod = async state => {
 
   const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
+  // Update the permissions graph with sandboxed permissions
   const permissionGraph = {
-    ...getPermissionGraph({ tables, groupIds, tenancyColumnNames }),
+    ...getPermissionGraph({
+      tables: state.tables ?? [],
+      chosenTables: state.chosenTables,
+      groupIds,
+      tenancyColumnNames,
+    }),
     revision,
     impersonations: [],
   };
 
-  // Update the permissions graph
   res = await fetch(`${instanceUrl}/api/permissions/graph`, {
     method: "PUT",
     headers: { "content-type": "application/json", cookie },

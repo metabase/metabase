@@ -12,6 +12,8 @@ import type {
 
 type Options = {
   tables: Table[];
+  chosenTables: Table[];
+
   groupIds: number[];
   tenancyColumnNames: Record<string, string>;
 };
@@ -32,7 +34,7 @@ const PERMISSIONS_BLOCKED: DatabasePermissions = {
 };
 
 export function getPermissionGraph(options: Options): Graph {
-  const { tables = [], groupIds, tenancyColumnNames } = options;
+  const { chosenTables = [], groupIds, tenancyColumnNames } = options;
 
   const groups: Graph["groups"] = {};
   const sandboxes: Sandbox[] = [];
@@ -48,16 +50,28 @@ export function getPermissionGraph(options: Options): Graph {
     [CONNECTED_DB_ID]: PERMISSIONS_BLOCKED,
   };
 
-  const getDatabasePermission = <T extends DataPermissionValue>(value: T) => {
+  // Define database permissions for each table.
+  const getDatabasePermission = <P extends DataPermissionValue>(
+    allow: P,
+    deny?: P,
+  ) => {
     // Tables could be picked from multiple schemas, so we need to group them by schema.
-    const schemas: Record<string, Record<string, T>> = {};
+    const schemas: Record<string, Record<string, P>> = {};
 
-    for (const table of tables) {
+    // Deny access to all unselected tables
+    for (const table of options.tables) {
       if (!schemas[table.schema]) {
         schemas[table.schema] = {};
       }
 
-      schemas[table.schema][table.id] = value;
+      if (deny) {
+        schemas[table.schema][table.id] = deny;
+      }
+    }
+
+    // Allow (sandboxed) access to selected tables
+    for (const table of chosenTables) {
+      schemas[table.schema][table.id] = allow;
     }
 
     return schemas;
@@ -74,19 +88,23 @@ export function getPermissionGraph(options: Options): Graph {
       ),
 
       [DataPermission.DOWNLOAD]: {
-        schemas: getDatabasePermission(DataPermissionValue.FULL),
+        schemas: getDatabasePermission(
+          DataPermissionValue.FULL,
+          DataPermissionValue.NONE,
+        ),
       },
 
-      // TODO: we _might_ need the "unrestricted" permission for unselected tables
       [DataPermission.VIEW_DATA]: getDatabasePermission(
         DataPermissionValue.SANDBOXED,
+        DataPermissionValue.UNRESTRICTED,
       ),
     };
   }
 
   // Add permissions sandboxing for each table
   for (const tableId in tenancyColumnNames) {
-    const table = tables.find(t => Number(t.id) === Number(tableId));
+    const table = chosenTables.find(t => Number(t.id) === Number(tableId));
+
     const tenancyColumnName = tenancyColumnNames[tableId];
 
     if (!table || !tenancyColumnName) {
@@ -121,7 +139,7 @@ export function getPermissionGraph(options: Options): Graph {
         group_id: groupId,
         table_id: parseInt(tableId, 10),
         attribute_remappings: {
-          [tenancyColumnName]: ["dimension", fieldRef],
+          [tenancyField.name]: ["dimension", fieldRef],
         },
         card_id: null,
       });

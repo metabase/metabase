@@ -92,5 +92,5 @@ export const pickDatabaseTables: CliStepMethod = async state => {
     })),
   });
 
-  return [{ type: "done" }, { ...state, tables: chosenTables }];
+  return [{ type: "done" }, { ...state, tables, chosenTables }];
 };

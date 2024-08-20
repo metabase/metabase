@@ -6,7 +6,12 @@ import { createModelFromTable } from "../utils/create-model-from-table";
 import { createXrayDashboardFromModel } from "../utils/xray-models";
 
 export const createModelsAndXrays: CliStepMethod = async state => {
-  const { instanceUrl = "", databaseId, cookie = "", tables = [] } = state;
+  const {
+    instanceUrl = "",
+    databaseId,
+    cookie = "",
+    chosenTables = [],
+  } = state;
 
   if (databaseId === undefined) {
     return [{ type: "error", message: "No database selected." }, state];
@@ -17,7 +22,7 @@ export const createModelsAndXrays: CliStepMethod = async state => {
   try {
     // Create a model for each table
     const models = await Promise.all(
-      tables.map(table =>
+      chosenTables.map(table =>
         createModelFromTable({
           table,
           databaseId,
@@ -51,7 +56,7 @@ export const createModelsAndXrays: CliStepMethod = async state => {
 
     return [
       { type: "done" },
-      { ...state, dashboards, tables: tablesWithMetadata },
+      { ...state, dashboards, chosenTables: tablesWithMetadata },
     ];
   } catch (error) {
     spinner.fail();
