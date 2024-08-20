@@ -53,6 +53,7 @@ export const CopyQuestionForm = ({
   );
 
   const handleDuplicate = async (vals: CopyQuestionProperties) => {
+    vals.collection_id = 3;
     await onSubmit(vals);
     onSaved?.();
   };
@@ -78,10 +79,6 @@ export const CopyQuestionForm = ({
           nullable
           mb="1.5rem"
           minRows={4}
-        />
-        <FormCollectionPicker
-          name="collection_id"
-          title={t`Which collection should this go in?`}
         />
         <FormFooter>
           <FormErrorMessage inline />

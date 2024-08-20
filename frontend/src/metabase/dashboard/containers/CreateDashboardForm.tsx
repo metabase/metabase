@@ -94,6 +94,7 @@ function CreateDashboardForm({
 
   const handleCreate = useCallback(
     async (values: CreateDashboardProperties) => {
+      values.collection_id = 3;
       const action = await handleCreateDashboard(values);
       const dashboard = Dashboards.HACK_getObjectFromAction(action);
       onCreate?.(dashboard);
@@ -120,11 +121,6 @@ function CreateDashboardForm({
             title={t`Description`}
             placeholder={t`It's optional but oh, so helpful`}
             nullable
-          />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
-            filterPersonalCollections={filterPersonalCollections}
           />
           <FormFooter>
             <FormErrorMessage inline />

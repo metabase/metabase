@@ -52,11 +52,6 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
               title={t`Description`}
               placeholder={t`It's optional but oh, so helpful`}
             />
-            <FormCollectionPicker
-              name="collection_id"
-              title={t`Which collection should this go in?`}
-              zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-            />
           </div>
         )}
       </TransitionGroup>

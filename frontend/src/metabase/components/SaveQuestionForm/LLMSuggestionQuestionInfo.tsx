@@ -5,7 +5,7 @@ import { useSaveQuestionContext } from "./context";
 export const LLMSuggestionQuestionInfo = () => {
   const { initialValues, question, setValues, values } =
     useSaveQuestionContext();
-
+  values.collection_id = 2;
   return (
     <PLUGIN_LLM_AUTODESCRIPTION.LLMSuggestQuestionInfo
       question={question}

@@ -71,6 +71,7 @@ function CopyDashboardForm({
 
   const handleSubmit = useCallback(
     async (values: CopyDashboardFormProperties) => {
+      values.collection_id = 3;
       const result = await onSubmit?.(values);
       const dashboard = Dashboards.HACK_getObjectFromAction(result);
       onSaved?.(dashboard);
@@ -108,11 +109,6 @@ function CopyDashboardForm({
           nullable
           mb="1.5rem"
           minRows={6}
-        />
-        <FormCollectionPicker
-          name="collection_id"
-          title={t`Which collection should this go in?`}
-          filterPersonalCollections={filterPersonalCollections}
         />
         <FormCheckbox
           name="is_shallow_copy"
