@@ -113,10 +113,8 @@
                                  "metabase.us10.list-manage.com"
                                  ;; Semantic Layer
                                  "https://dev.semantic.omniloy.com/company/company-cube-files/omni_test"
-                                 ;; Local Host Blank Street Semantic Layer
-                                 "http://localhost:3001/company/company-cube-files/blank_street"
-                                 ;; Local Host Omni Test Semantic Layer
-                                 "http://localhost:3001/company/company-cube-files/omni_test"
+                                 ;; Semantic Layer Fetch Cubejs Data
+                                 "https://dev.semantic.omniloy.com/api/executeQuery"
                                  ;; Google analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    "www.google-analytics.com")
