@@ -82,9 +82,9 @@ export function getPermissionGraph(options: Options): Graph {
   // Add permissions sandboxing for each table
   for (const tableId in options.tenancyColumnNames) {
     const table = tables.find(t => t.id === tableId);
-    const columnName = options.tenancyColumnNames[tableId];
+    const tenancyColumnName = options.tenancyColumnNames[tableId];
 
-    if (!table || !columnName) {
+    if (!table || !tenancyColumnName) {
       continue;
     }
 
@@ -94,9 +94,15 @@ export function getPermissionGraph(options: Options): Graph {
       // example: ["field", 243, { "base-type": "type/Integer" }]
       // example: ["field", 259, { "base-type": "type/Integer" }]
 
-      const field = table.fields?.find(f => f.name === columnName);
+      // console.log(
+      //   `--- table ${table.name} has ${table.fields?.length} fields ---`,
+      // );
 
-      if (!field?.field_ref) {
+      const tenancyField = table.fields?.find(
+        f => f.name === tenancyColumnName,
+      );
+
+      if (!tenancyField?.field_ref) {
         continue;
       }
 
@@ -104,7 +110,7 @@ export function getPermissionGraph(options: Options): Graph {
         group_id: groupId,
         table_id: parseInt(tableId, 10),
         attribute_remappings: {
-          [columnName]: ["dimension", field.field_ref],
+          [tenancyColumnName]: ["dimension", tenancyField.field_ref],
         },
         card_id: null,
       });

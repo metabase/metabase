@@ -1,4 +1,4 @@
-import { input } from "@inquirer/prompts";
+import { search } from "@inquirer/prompts";
 import chalk from "chalk";
 import toggle from "inquirer-toggle";
 
@@ -10,6 +10,9 @@ import { propagateErrorResponse } from "../utils/propagate-error-response";
 const GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
 
 const printWithPadding = (message: string) => console.log(`  ${message}`);
+
+const printHelperText = (message: string) =>
+  printWithPadding(chalk.gray(message));
 
 export const setupPermissions: CliStepMethod = async state => {
   const { cookie = "", instanceUrl, tables } = state;
@@ -33,29 +36,26 @@ export const setupPermissions: CliStepMethod = async state => {
   }
 
   const tenancyColumnNames: Record<string, string> = {};
-  let defaultColumnName: string | undefined = undefined;
 
   for (const table of tables) {
-    printWithPadding(
-      chalk.gray(
-        `Leave empty if this table does not have a multi-tenancy column.`,
-      ),
+    printHelperText(
+      `Leave empty if this table does not have a multi-tenancy column.`,
     );
 
-    const columnName = await input({
-      message: `What is the multi-tenancy column for ${table.name} (e.g. customer_id):`,
-      default: defaultColumnName,
-      validate: name => {
-        if (!table.fields?.find(f => f.name === name)) {
-          return `Column ${name} does not exist in table "${table.name}"`;
-        }
+    const fieldChoices =
+      table.fields?.map(f => ({ name: f.name, value: f.name })) ?? [];
 
-        return true;
+    const columnName = await search({
+      pageSize: 10,
+      message: `What is the multi-tenancy column for ${table.name}?`,
+      source(term) {
+        return term
+          ? fieldChoices.filter(choice => choice.name.includes(term))
+          : fieldChoices;
       },
     });
 
     if (columnName) {
-      defaultColumnName = columnName;
       tenancyColumnNames[table.id] = columnName;
     }
   }
@@ -140,11 +140,7 @@ export const setupPermissions: CliStepMethod = async state => {
   const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
   const permissionGraph = {
-    ...getPermissionGraph({
-      tables,
-      groupIds,
-      tenancyColumnNames,
-    }),
+    ...getPermissionGraph({ tables, groupIds, tenancyColumnNames }),
     revision,
     impersonations: [],
   };

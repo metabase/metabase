@@ -43,9 +43,16 @@ export const createModelsAndXrays: CliStepMethod = async state => {
       dashboards.push({ id: dashboardId, name: model.modelName });
     }
 
+    // Populate the table metadata into the state (e.g. table fields),
+    // so we can use it for the permissions step.
+    const tablesWithMetadata = models.map(model => model.tableWithMetadata);
+
     spinner.succeed();
 
-    return [{ type: "done" }, { ...state, dashboards }];
+    return [
+      { type: "done" },
+      { ...state, dashboards, tables: tablesWithMetadata },
+    ];
   } catch (error) {
     spinner.fail();
 
