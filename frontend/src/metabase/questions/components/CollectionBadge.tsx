@@ -1,5 +1,6 @@
 import type { ComponentType, PropsWithChildren } from "react";
 
+import { L } from "metabase/common/components/LocalizeInput";
 import { Badge } from "metabase/components/Badge";
 import Collection from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -52,7 +53,7 @@ const CollectionBadgeInner = ({
       isSingleLine={isSingleLine}
       {...clickActionProps}
     >
-      {collection.getName()}
+      <L>{collection.getName()}</L>
     </Badge>
   );
 };

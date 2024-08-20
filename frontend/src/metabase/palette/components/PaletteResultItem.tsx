@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { L } from "metabase/common/components/LocalizeInput";
 import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
@@ -69,7 +70,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
           }}
         >
           <Text component="span" c="inherit" lh="1rem">
-            {item.name}
+            <L>{item.name}</L>
           </Text>
           {item.extra?.isVerified && (
             <Icon

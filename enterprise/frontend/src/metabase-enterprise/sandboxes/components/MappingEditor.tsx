@@ -1,11 +1,11 @@
 import cx from "classnames";
 import type React from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Button, Icon, TextInput } from "metabase/ui";
+import { Button, type ButtonProps, Icon, TextInput } from "metabase/ui";
 
 type DefaultRenderInputProps = {
   value: MappingValue;
@@ -33,7 +33,7 @@ type MappingType = Record<string, MappingValue>;
 
 interface MappingEditorProps {
   value: MappingType;
-  onChange: (val: MappingType) => void;
+  onChange: (val: MappingType | string) => void;
   onError?: (val: boolean) => void;
   className?: string;
   style?: React.CSSProperties;
@@ -48,6 +48,10 @@ interface MappingEditorProps {
   canDelete?: boolean;
   addText?: string;
   swapKeyAndValue?: boolean;
+  format?: string;
+  showDivider?: boolean;
+  alwaysShowAddButton?: boolean;
+  deleteButtonProps?: ButtonProps;
 }
 
 type Entry = {
@@ -91,10 +95,14 @@ export const MappingEditor = ({
   renderKeyInput = DefaultRenderInput,
   renderValueInput = DefaultRenderInput,
   divider,
+  showDivider = true,
   canAdd = true,
   canDelete = true,
   addText = "Add",
   swapKeyAndValue,
+  format,
+  alwaysShowAddButton = false,
+  deleteButtonProps,
 }: MappingEditorProps) => {
   const [entries, setEntries] = useState<Entry[]>(buildEntries(mapping));
 
@@ -103,9 +111,20 @@ export const MappingEditor = ({
     if (onError && hasError(newEntries)) {
       onError(hasError(newEntries));
     } else {
-      onChange(buildMapping(newEntries));
+      const mapping = buildMapping(newEntries);
+      if (format === "json") {
+        const str = JSON.stringify(mapping);
+        onChange(str);
+      } else {
+        onChange(mapping);
+      }
     }
   };
+
+  const noBlanks = useMemo(
+    () => _.every(entries, entry => entry.value !== "" && entry.key !== ""),
+    [entries],
+  );
 
   return (
     <table className={className} style={style}>
@@ -113,7 +132,7 @@ export const MappingEditor = ({
         <thead>
           <tr>
             <td>{!swapKeyAndValue ? keyHeader : valueHeader}</td>
-            <td />
+            {showDivider && <td />}
             <td>{!swapKeyAndValue ? valueHeader : keyHeader}</td>
           </tr>
         </thead>
@@ -138,12 +157,14 @@ export const MappingEditor = ({
               <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                 {!swapKeyAndValue ? keyInput : valueInput}
               </td>
-              <td
-                className={cx(CS.pb1, CS.px1)}
-                style={{ verticalAlign: "middle" }}
-              >
-                {divider}
-              </td>
+              {showDivider && (
+                <td
+                  className={cx(CS.pb1, CS.px1)}
+                  style={{ verticalAlign: "middle" }}
+                >
+                  {divider}
+                </td>
+              )}
               <td className={CS.pb1} style={{ verticalAlign: "bottom" }}>
                 {!swapKeyAndValue ? valueInput : keyInput}
               </td>
@@ -155,26 +176,26 @@ export const MappingEditor = ({
                     onClick={() => handleChange(removeEntry(entries, index))}
                     color={"text"}
                     data-testId="remove-mapping"
+                    {...deleteButtonProps}
                   />
                 </td>
               )}
             </tr>
           );
         })}
-        {_.every(entries, entry => entry.value !== "" && entry.key !== "") &&
-          canAdd && (
-            <tr>
-              <td colSpan={2}>
-                <Button
-                  leftIcon={<Icon name="add" />}
-                  variant="subtle"
-                  onClick={() => handleChange(addEntry(entries))}
-                >
-                  {addText}
-                </Button>
-              </td>
-            </tr>
-          )}
+        {((noBlanks && canAdd) || alwaysShowAddButton) && (
+          <tr>
+            <td colSpan={2}>
+              <Button
+                leftIcon={<Icon name="add" />}
+                variant="subtle"
+                onClick={() => handleChange(addEntry(entries))}
+              >
+                {addText}
+              </Button>
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   );

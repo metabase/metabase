@@ -7,6 +7,7 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
+import { L } from "metabase/common/components/LocalizeInput";
 import EventSandbox from "metabase/components/EventSandbox";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
@@ -142,7 +143,7 @@ function PinnedItemCard({
           {item ? (
             <>
               <Tooltip
-                tooltip={item.name}
+                tooltip={<L>{item.name}</L>}
                 placement="bottom"
                 maxWidth={TOOLTIP_MAX_WIDTH}
                 isEnabled={showTitleTooltip}
@@ -150,7 +151,7 @@ function PinnedItemCard({
                 <Title
                   onMouseEnter={e => maybeEnableTooltip(e, setShowTitleTooltip)}
                 >
-                  {item.name}
+                  <L>{item.name}</L>
                 </Title>
               </Tooltip>
               <Description tooltipMaxWidth={TOOLTIP_MAX_WIDTH}>

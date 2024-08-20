@@ -4,9 +4,11 @@ import { useLocation } from "react-use";
 import scrollIntoView from "scroll-into-view-if-needed";
 import { jt } from "ttag";
 
+import { ModalLauncher } from "metabase/common/components/LocalizeInput/ModalLauncher";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { alpha } from "metabase/lib/colors";
 import { Box } from "metabase/ui";
+import { MappingEditor } from "metabase-enterprise/sandboxes/components/MappingEditor"; // eslint-disable-line no-restricted-imports
 
 import { getEnvVarDocsUrl, settingToFormFieldId } from "../utils";
 
@@ -35,6 +37,8 @@ const SETTING_WIDGET_MAP = {
   boolean: SettingToggle,
   text: SettingText,
   hidden: () => null,
+  mapping: MappingEditor,
+  translationEditorLauncher: ModalLauncher,
 };
 
 export const SettingsSetting = props => {
@@ -98,7 +102,9 @@ export const SettingsSetting = props => {
         {setting.is_env_setting && !setting.forceRenderWidget ? (
           <SetByEnvVar setting={setting} />
         ) : (
-          <Widget id={settingId} {...widgetProps} />
+          <>
+            <Widget id={settingId} {...widgetProps} />
+          </>
         )}
       </SettingContent>
       {errorMessage && (

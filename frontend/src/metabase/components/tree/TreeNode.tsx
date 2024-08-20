@@ -1,6 +1,8 @@
 import * as React from "react";
 import _ from "underscore";
 
+import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
+import { localizeInput } from "metabase/common/utils/i18n";
 import { Icon } from "metabase/ui";
 
 import {
@@ -27,6 +29,8 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
     ref,
   ) {
     const { name, icon } = item;
+
+    const locale = useLocale();
 
     const iconProps = _.isObject(icon) ? icon : { name: icon };
 
@@ -76,7 +80,9 @@ const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
             <Icon {...iconProps} />
           </IconContainer>
         )}
-        <NameContainer data-testid="tree-item-name">{name}</NameContainer>
+        <NameContainer data-testid="tree-item-name">
+          {localizeInput(name, locale)}
+        </NameContainer>
       </TreeNodeRoot>
     );
   },

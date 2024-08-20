@@ -189,6 +189,11 @@ export function DashboardHeaderView({
                     isDisabled={!dashboard.can_write}
                     data-testid="dashboard-name-heading"
                     onChange={handleUpdateCaption}
+                    target={{
+                      type: "dashboard",
+                      id: dashboard.id,
+                      name: dashboard.name,
+                    }}
                   />
                   <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
                     color={color("brand")}

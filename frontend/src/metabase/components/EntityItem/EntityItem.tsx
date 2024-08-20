@@ -20,6 +20,7 @@ import {
   isItemPinned,
   isPreviewShown,
 } from "metabase/collections/utils";
+import { L } from "metabase/common/components/LocalizeInput";
 import EntityMenu from "metabase/components/EntityMenu";
 import CheckBox from "metabase/core/components/CheckBox";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -111,7 +112,9 @@ function EntityItemName({
       })}
       {...props}
     >
-      <Ellipsified>{name}</Ellipsified>
+      <Ellipsified>
+        <L>{name}</L>
+      </Ellipsified>
     </h3>
   );
 }

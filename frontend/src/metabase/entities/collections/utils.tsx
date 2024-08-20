@@ -1,8 +1,11 @@
+import type { ReactNode } from "react";
+
 import {
   isRootCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
+import { L } from "metabase/common/components/LocalizeInput";
 import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
@@ -63,7 +66,7 @@ export function getCollectionType(
 export interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
-  schemaName?: string;
+  schemaName?: ReactNode;
 }
 
 export function buildCollectionTree(
@@ -95,7 +98,8 @@ export function buildCollectionTree(
 
     return {
       ...collection,
-      schemaName: collection.originalName || collection.name,
+      name: <L>{collection.name}</L>,
+      schemaName: <L>{collection.originalName || collection.name}</L>,
       icon: getCollectionIcon(collection),
       children,
     };

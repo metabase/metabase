@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { IconName } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -11,7 +13,7 @@ export type ExpandedCollection = Collection & {
 
 export type CollectionTreeItem = {
   id: CollectionId;
-  name: string;
+  name: string | ReactNode;
   icon: IconName | any;
   children?: CollectionTreeItem[];
 };

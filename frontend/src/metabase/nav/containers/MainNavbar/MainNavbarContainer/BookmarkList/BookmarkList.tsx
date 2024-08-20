@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import { L } from "metabase/common/components/LocalizeInput";
 import CollapseSection from "metabase/components/CollapseSection";
 import { Sortable } from "metabase/core/components/Sortable";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -103,7 +104,7 @@ const BookmarkItem = ({
           </button>
         }
       >
-        {bookmark.name}
+        <L>{bookmark.name}</L>
       </SidebarBookmarkItem>
     </Sortable>
   );

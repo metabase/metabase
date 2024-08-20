@@ -10,6 +10,10 @@ import type {
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
+import { L } from "metabase/common/components/LocalizeInput";
+import { InputTranslationEditorModal } from "metabase/common/components/LocalizeInput/Modal";
+import type { Target } from "metabase/common/components/LocalizeInput/types";
+import { inputHasTranslation } from "metabase/common/components/LocalizeInput/utils";
 import Markdown from "metabase/core/components/Markdown";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
@@ -31,6 +35,7 @@ export interface EditableTextProps extends EditableTextAttributes {
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
   "data-testid"?: string;
+  target: Target;
 }
 
 const EditableText = forwardRef(function EditableText(
@@ -46,6 +51,7 @@ const EditableText = forwardRef(function EditableText(
     onFocus,
     onBlur,
     "data-testid": dataTestId,
+    target,
     ...props
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
@@ -120,11 +126,14 @@ const EditableText = forwardRef(function EditableText(
   };
 
   const shouldShowMarkdown = isMarkdown && !isInFocus && inputValue;
+  const shouldShowLocalizedValue = !isInFocus && !!inputValue;
+  const shouldUseTranslationEditor = inputHasTranslation(inputValue);
+  inputValue;
 
   return (
     <EditableTextRoot
-      onClick={isMarkdown ? handleRootElementClick : undefined}
       {...props}
+      onClick={handleRootElementClick}
       ref={ref}
       isEditing={isEditing}
       isDisabled={isDisabled}
@@ -134,6 +143,18 @@ const EditableText = forwardRef(function EditableText(
     >
       {shouldShowMarkdown ? (
         <Markdown>{inputValue}</Markdown>
+      ) : shouldShowLocalizedValue ? (
+        <L>{inputValue}</L>
+      ) : shouldUseTranslationEditor ? (
+        <>
+          <L>{inputValue}</L>
+          <InputTranslationEditorModal
+            opened={isInFocus}
+            initialTarget={target}
+            closeModal={handleBlur}
+            onChange={onChange}
+          />
+        </>
       ) : (
         <EditableTextArea
           ref={inputRef}
