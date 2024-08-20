@@ -14,7 +14,7 @@ import {
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
 import { isSmallScreen } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { WhatsNewNotification } from "metabase/nav/components/WhatsNewNotification";
 import { UploadCSV } from "metabase/nav/containers/MainNavbar/SidebarItems/UploadCSV";
@@ -40,6 +40,7 @@ import type { SelectedItem } from "../types";
 import BookmarkList from "./BookmarkList";
 import { BrowseNavSection } from "./BrowseNavSection";
 import { useListDashboardsQuery } from "metabase/api";
+import { setOpenModal } from "metabase/redux/ui";
 
 interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
@@ -281,6 +282,7 @@ function CollectionSectionHeading({
   currentUser,
   handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
+  const dispatch = useDispatch();
   const renderMenu = useCallback(
     ({ closePopover }: { closePopover: () => void }) => (
       <CollectionMenuList>
@@ -288,27 +290,29 @@ function CollectionSectionHeading({
           icon="add"
           onClick={() => {
             closePopover();
-            handleCreateNewCollection();
+            dispatch(setOpenModal("dashboard")); // Ejecuta la acción después de cerrar el popover
           }}
         >
           {t`New Dashboard`}
         </SidebarLink>
-        {currentUser.is_superuser && (
-          <SidebarLink
-            icon={
-              getCollectionIcon(
-                PERSONAL_COLLECTIONS as Collection,
-              ) as unknown as IconName
-            }
-            url={OTHER_USERS_COLLECTIONS_URL}
-            onClick={closePopover}
-          >
-            {t`Other users' personal collections`}
-          </SidebarLink>
-        )}
-      </CollectionMenuList>
+        {
+      currentUser.is_superuser && (
+        <SidebarLink
+          icon={
+            getCollectionIcon(
+              PERSONAL_COLLECTIONS as Collection,
+            ) as unknown as IconName
+          }
+          url={OTHER_USERS_COLLECTIONS_URL}
+          onClick={closePopover}
+        >
+          {t`Other users' personal collections`}
+        </SidebarLink>
+      )
+    }
+      </CollectionMenuList >
     ),
-    [currentUser, handleCreateNewCollection],
+  [currentUser, handleCreateNewCollection],
   );
 
   return (
