@@ -10,9 +10,9 @@ import {
 import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
+  type ParameterSection,
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
-  type ParameterSection,
 } from "metabase/parameters/utils/dashboard-options";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Icon, Menu, Text } from "metabase/ui";
