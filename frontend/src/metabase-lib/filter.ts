@@ -3,20 +3,22 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 
+import { aggregations } from "./aggregation";
+import { breakouts } from "./breakout";
 import {
   isBoolean,
-  isTime,
-  isTemporal,
   isCoordinate,
-  isStringOrStringLike,
   isNumeric,
+  isStringOrStringLike,
+  isTemporal,
+  isTime,
 } from "./column_types";
 import {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  DEFAULT_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -27,7 +29,7 @@ import {
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
-import { removeClause } from "./query";
+import { appendStage, removeClause, stageCount } from "./query";
 import {
   availableTemporalBuckets,
   temporalBucket,
@@ -40,6 +42,8 @@ import type {
   ColumnMetadata,
   CoordinateFilterOperatorName,
   CoordinateFilterParts,
+  DefaultFilterOperatorName,
+  DefaultFilterParts,
   ExcludeDateBucketName,
   ExcludeDateFilterOperatorName,
   ExcludeDateFilterParts,
@@ -48,8 +52,6 @@ import type {
   ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
-  DefaultFilterOperatorName,
-  DefaultFilterParts,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -98,6 +100,29 @@ export function removeFilters(query: Query, stageIndex: number): Query {
     (newQuery, filter) => removeClause(newQuery, stageIndex, filter),
     query,
   );
+}
+
+/**
+ * This function should live in metabase/querying/utils/filters/utils.ts
+ * but needs to be used in metabase-lib/v1 which would cause a forbidden import.
+ * TODO: Move it there when metabase-lib/v1 is no more.
+ */
+export function appendStageIfSummarized(query: Query): Query {
+  const isSummarized =
+    aggregations(query, -1).length > 0 && breakouts(query, -1).length > 0;
+
+  return isSummarized ? appendStage(query) : query;
+}
+
+/**
+ * Returns indexes of stages from which columns are exposed for filtering.
+ *
+ * This function should live in metabase/querying/utils/filters/utils.ts
+ * but needs to be used in metabase-lib/v1 which would cause a forbidden import.
+ * TODO: Move it there when metabase-lib/v1 is no more.
+ */
+export function filterStageIndexes(query: Query): number[] {
+  return stageCount(query) > 1 ? [-2, -1] : [-1];
 }
 
 export function filterArgsDisplayName(

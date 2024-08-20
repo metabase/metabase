@@ -10,7 +10,6 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import {
   hasSourceField,
@@ -125,11 +124,6 @@ class FieldRemappingSettings extends Component {
     this.clearEditingStates();
 
     if (mappingType.type === "original") {
-      MetabaseAnalytics.trackStructEvent(
-        "Data Model",
-        "Change Remapping Type",
-        "No Remapping",
-      );
       await deleteFieldDimension({ id: field.id });
       this.setState({ hasChanged: false });
     } else if (mappingType.type === "foreign") {
@@ -137,11 +131,6 @@ class FieldRemappingSettings extends Component {
       const entityNameFieldId = this.getFKTargetTableEntityNameOrNull();
 
       if (entityNameFieldId) {
-        MetabaseAnalytics.trackStructEvent(
-          "Data Model",
-          "Change Remapping Type",
-          "Foreign Key",
-        );
         await updateFieldDimension(
           { id: field.id },
           {
@@ -158,11 +147,6 @@ class FieldRemappingSettings extends Component {
         });
       }
     } else if (mappingType.type === "custom") {
-      MetabaseAnalytics.trackStructEvent(
-        "Data Model",
-        "Change Remapping Type",
-        "Custom Remappings",
-      );
       await updateFieldDimension(
         { id: field.id },
         {
@@ -183,10 +167,6 @@ class FieldRemappingSettings extends Component {
     this.clearEditingStates();
 
     if (hasSourceField(foreignKeyClause)) {
-      MetabaseAnalytics.trackStructEvent(
-        "Data Model",
-        "Update FK Remapping Target",
-      );
       await updateFieldDimension(
         { id: field.id },
         {
@@ -378,10 +358,6 @@ class ValueRemappings extends Component {
   }
 
   onSaveClick = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Data Model",
-      "Update Custom Remappings",
-    );
     // Returns the promise so that ButtonWithStatus can show the saving status
     return this.props.updateRemappings(this.state.editingRemappings);
   };

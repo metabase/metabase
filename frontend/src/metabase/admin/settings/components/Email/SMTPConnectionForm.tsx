@@ -16,7 +16,6 @@ import {
   FormRadioGroup,
   FormSubmitButton,
 } from "metabase/forms";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { color } from "metabase/lib/colors";
 import * as Errors from "metabase/lib/errors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -128,20 +127,10 @@ export const SMTPConnectionForm = ({
     try {
       await dispatch(sendTestEmail());
       setSendingEmail("success");
-      MetabaseAnalytics.trackStructEvent(
-        "Email Settings",
-        "Test Email",
-        "success",
-      );
 
       // show a confirmation for 3 seconds, then return to normal
       setTimeout(() => setSendingEmail("default"), 3000);
     } catch (error: any) {
-      MetabaseAnalytics.trackStructEvent(
-        "Email Settings",
-        "Test Email",
-        "error",
-      );
       setSendingEmail("default");
       setTestEmailError(error?.data?.message);
     }

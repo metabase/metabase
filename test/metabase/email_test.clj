@@ -69,7 +69,7 @@
   [n & body]
   `(do-with-expected-messages ~n (fn [] ~@body)))
 
-(defn do-with-fake-inbox
+(defn do-with-fake-inbox!
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
   [f]
   (with-redefs [email/send-email! fake-inbox-email-fn]
@@ -78,6 +78,8 @@
                                        email-smtp-port 587]
       (f))))
 
+;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-fake-inbox
   "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username`
    and `email-smtp-password` (which will cause `metabase.email/email-configured?` to return `true`, and execute `body`.
@@ -89,7 +91,7 @@
        @inbox)"
   [& body]
   {:style/indent 0}
-  `(do-with-fake-inbox (fn [] ~@body)))
+  `(do-with-fake-inbox! (fn [] ~@body)))
 
 (defn- create-email-body->regex-fn
   "Returns a function expecting the email body structure. It will apply the regexes in `regex-seq` over the body and

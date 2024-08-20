@@ -1466,7 +1466,7 @@
   [setting-k]
   (json/parse-string (t2/select-one-fn :value :setting :key (name setting-k))))
 
-(defn- call-with-ldap-and-sso-configured [ldap-group-mappings sso-group-mappings f]
+(defn- call-with-ldap-and-sso-configured! [ldap-group-mappings sso-group-mappings f]
   (mt/with-temporary-raw-setting-values
     [ldap-group-mappings    (json/generate-string ldap-group-mappings)
      saml-group-mappings    (json/generate-string sso-group-mappings)
@@ -1476,11 +1476,11 @@
      jwt-enabled            "true"]
     (f)))
 
-(defmacro ^:private with-ldap-and-sso-configured
+(defmacro ^:private with-ldap-and-sso-configured!
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mappings sso-group-mappings & body]
   (binding [setting/*allow-retired-setting-names* true]
-    `(call-with-ldap-and-sso-configured ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
+    `(call-with-ldap-and-sso-configured! ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
 
 ;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
 ;; even though it might make changes to some enterprise-only settings.
@@ -1498,14 +1498,14 @@
         ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
 
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
-      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
         (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
 
     (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
-      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
           [ldap-enabled "false"
            saml-enabled "false"
@@ -1516,7 +1516,7 @@
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
 
     (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
-      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
           [ldap-sync-admin-group "true"]
           (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
@@ -1678,7 +1678,7 @@
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
     (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
       (letfn [(do-test []
-                (api.database-test/with-db-scheduler-setup
+                (api.database-test/with-db-scheduler-setup!
                   (let [db-with-full-schedules (new-instance-with-default :metabase_database
                                                                           {:metadata_sync_schedule      "0 0 * * * ? *"
                                                                            :cache_field_values_schedule "0 0 1 * * ? *"
