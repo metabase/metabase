@@ -67,6 +67,8 @@ import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
 import chatAI_source from "./chatAI.svg?source";
 import chatAI_component from "./chatAI.svg?component";
+import chatBot_source from "./chatBot.svg?source";
+import chatBot_component from "./chatBot.svg?component";
 import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import chevrondown_component from "./chevrondown.svg?component";
@@ -524,6 +526,10 @@ export const Icons = {
   chat: {
     component: chatAI_component,
     source: chatAI_source,
+  },
+  chatBot: {
+    component: chatBot_component,
+    source: chatBot_source,
   },
   check: {
     component: check_component,

@@ -1,6 +1,7 @@
 import { HomeCard } from "../HomeCard";
 
 import {
+  CardContainer,
   CardIcon,
   CardTitle,
   CardTitlePrimary,
@@ -19,12 +20,12 @@ export const HomeXrayCard = ({
   message,
 }: HomeXrayCardProps): JSX.Element => {
   return (
-    <HomeCard url={url}>
+    <CardContainer as={HomeCard}>
       <CardIcon name="bolt_filled" />
       <CardTitle>
-        <CardTitleSecondary>{message}</CardTitleSecondary>{" "}
         <CardTitlePrimary>{title}</CardTitlePrimary>
+        <CardTitleSecondary>{message}</CardTitleSecondary>
       </CardTitle>
-    </HomeCard>
+    </CardContainer>
   );
 };
