@@ -1,17 +1,17 @@
-import { type PropsWithChildren, useMemo, type ReactNode } from "react";
+import { type PropsWithChildren, type ReactNode, useMemo } from "react";
 
 import {
   BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
   Filter,
+  FilterBar,
   FilterButton,
-  Summarize,
-  SummarizeButton,
   Notebook,
   NotebookButton,
+  QuestionResetButton,
   QuestionVisualization,
+  Summarize,
+  SummarizeButton,
+  Title,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";
 import { InteractiveQuestionProviderWithLocation } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";

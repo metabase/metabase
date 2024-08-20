@@ -6,8 +6,8 @@ import type { ModelResult } from "../types";
 
 import {
   getCollectionPathString,
-  sortModels,
   getMaxRecentModelCount,
+  sortModels,
 } from "./utils";
 
 describe("getCollectionPathString", () => {

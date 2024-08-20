@@ -54,7 +54,6 @@ export const getExtraButtons = ({
     title: t`Enter fullscreen`,
     icon: "expand",
     action: (e: MouseEvent) => onFullscreenChange(!isFullscreen, !e.altKey),
-    event: `Dashboard;Fullscreen Mode;${!isFullscreen}`,
   });
 
   extraButtons.push({
@@ -79,7 +78,6 @@ export const getExtraButtons = ({
       title: t`Move`,
       icon: "move",
       link: `${pathname}/move`,
-      event: "Dashboard;Move",
     });
   }
 
@@ -87,7 +85,6 @@ export const getExtraButtons = ({
     title: t`Duplicate`,
     icon: "clone",
     link: `${pathname}/copy`,
-    event: "Dashboard;Copy",
   });
 
   if (canEdit) {
@@ -97,7 +94,6 @@ export const getExtraButtons = ({
       title: t`Move to trash`,
       icon: "trash",
       link: `${pathname}/archive`,
-      event: "Dashboard;Archive",
     });
   }
 

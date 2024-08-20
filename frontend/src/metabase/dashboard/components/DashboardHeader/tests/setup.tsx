@@ -3,8 +3,8 @@ import { Route } from "react-router";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupBookmarksEndpoints,
-  setupCollectionsEndpoints,
   setupCollectionByIdEndpoint,
+  setupCollectionsEndpoints,
 } from "__support__/server-mocks";
 import { setupPulseEndpoint } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";

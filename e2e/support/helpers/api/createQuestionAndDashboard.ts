@@ -1,9 +1,9 @@
 import type { CardId, Dashboard, DashboardCard } from "metabase-types/api";
 
-import { createDashboard, type DashboardDetails } from "./createDashboard";
+import { type DashboardDetails, createDashboard } from "./createDashboard";
 import {
-  createQuestion,
   type StructuredQuestionDetails,
+  createQuestion,
 } from "./createQuestion";
 
 export const createQuestionAndDashboard = ({

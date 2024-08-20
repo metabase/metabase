@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 
 import type {
   ControlledPopoverWithTriggerProps,
-  RenderTrigger,
   PopoverWithTriggerContent,
+  RenderTrigger,
 } from "./ControlledPopoverWithTrigger";
 import ControlledPopoverWithTrigger from "./ControlledPopoverWithTrigger";
 

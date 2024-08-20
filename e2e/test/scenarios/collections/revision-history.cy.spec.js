@@ -1,19 +1,19 @@
 import { onlyOn } from "@cypress/skip-test";
 
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitDashboard,
-  saveDashboard,
-  visitQuestion,
-  questionInfoButton,
-  rightSidebar,
-  openQuestionsSidebar,
   editDashboard,
+  openQuestionsSidebar,
+  questionInfoButton,
+  restore,
+  rightSidebar,
+  saveDashboard,
   sidebar,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const PERMISSIONS = {

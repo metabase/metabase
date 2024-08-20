@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
 import {
-  QueryColumnInfoIcon,
   HoverParent,
+  QueryColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 
 export const ItemTitle = styled.div`

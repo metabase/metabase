@@ -213,8 +213,46 @@ describe("Dashboard utils", () => {
       expect(error).toStrictEqual(expectedGenericError);
     });
 
+    it("should return a curated error in case it is set in the response", () => {
+      const error = getDashcardResultsError([
+        createMockDataset({}),
+        createMockDataset({
+          error: "Wrong query",
+          error_is_curated: true,
+        }),
+      ]);
+
+      expect(error).toEqual({
+        icon: "warning",
+        message: "Wrong query",
+      });
+    });
+
+    it("should return a generic error in case the error is curated but is not a string", () => {
+      const error = getDashcardResultsError([
+        createMockDataset({}),
+        createMockDataset({
+          error: { status: 500 },
+          error_is_curated: true,
+        }),
+      ]);
+
+      expect(error).toEqual(expectedGenericError);
+    });
+
     it("should not return any errors if there are no any errors", () => {
       const error = getDashcardResultsError([createMockDataset({})]);
+
+      expect(error).toBeUndefined();
+    });
+
+    it("should not return any errors if the error is curated but there is no error message or object set", () => {
+      const error = getDashcardResultsError([
+        createMockDataset({
+          error: undefined,
+          error_is_curated: true,
+        }),
+      ]);
 
       expect(error).toBeUndefined();
     });

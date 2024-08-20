@@ -1,15 +1,15 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { isa } from "cljs/metabase.types";
-import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
+import { FK_SYMBOL, stripId } from "metabase/lib/formatting";
 import * as Lib from "metabase-lib";
 import ValidationError, {
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/v1/ValidationError";
-import { infer, MONOTYPE } from "metabase-lib/v1/expressions/typeinferencer";
+import { MONOTYPE, infer } from "metabase-lib/v1/expressions/typeinferencer";
 import Field from "metabase-lib/v1/metadata/Field";
 import type {
   AggregationOperator,
@@ -23,22 +23,22 @@ import type Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import { DATETIME_UNITS } from "metabase-lib/v1/queries/utils/query-time";
 import {
-  isFieldReference,
-  isExpressionReference,
+  BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
+  getBaseDimensionReference,
   isAggregationReference,
+  isExpressionReference,
+  isFieldReference,
   isTemplateTagReference,
   normalizeReferenceOptions,
-  getBaseDimensionReference,
-  BASE_DIMENSION_REFERENCE_OMIT_OPTIONS,
 } from "metabase-lib/v1/references";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import TemplateTagVariable from "metabase-lib/v1/variables/TemplateTagVariable";
 import type {
-  FieldReference,
   ConcreteFieldReference,
-  LocalFieldReference,
-  ExpressionReference,
   DatetimeUnit,
+  ExpressionReference,
+  FieldReference,
+  LocalFieldReference,
   VariableTarget,
 } from "metabase-types/api";
 

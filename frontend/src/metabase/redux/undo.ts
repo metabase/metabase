@@ -2,7 +2,6 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { Action } from "redux-actions";
 import _ from "underscore";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createAction, createThunkAction } from "metabase/lib/redux";
 import type { State } from "metabase-types/store";
 import type { Undo } from "metabase-types/store/undo";
@@ -28,7 +27,7 @@ export const addUndo = createThunkAction(ADD_UNDO, undo => {
     let timeoutId = null;
     if (timeout) {
       timeoutId = setTimeout(
-        () => dispatch(dismissUndo({ undoId: id, track: false })),
+        () => dispatch(dismissUndo({ undoId: id })),
         timeout,
       );
     }
@@ -59,7 +58,7 @@ export const resumeUndo = createThunkAction(RESUME_UNDO, undo => {
     return {
       ...undo,
       timeoutId: setTimeout(
-        () => dispatch(dismissUndo({ undoId: undo.id, track: false })),
+        () => dispatch(dismissUndo({ undoId: undo.id })),
         restTime,
       ),
       timeout: restTime,
@@ -101,10 +100,7 @@ export const getIsRecentlyAutoConnectedDashcard = createSelector(
 
 export const dismissUndo = createAction(
   DISMISS_UNDO,
-  ({ undoId, track = true }: { undoId: Undo["id"]; track?: boolean }) => {
-    if (track) {
-      MetabaseAnalytics.trackStructEvent("Undo", "Dismiss Undo");
-    }
+  ({ undoId }: { undoId: Undo["id"] }) => {
     return undoId;
   },
 );
@@ -114,12 +110,9 @@ export const dismissAllUndo = createAction(DISMISS_ALL_UNDO);
 export const performUndo = createThunkAction(PERFORM_UNDO, undoId => {
   return (dispatch, getState) => {
     const undo = getUndo(getState(), undoId);
-    if (!undo?.actionLabel) {
-      MetabaseAnalytics.trackStructEvent("Undo", "Perform Undo");
-    }
     if (undo) {
       undo.actions?.forEach(action => dispatch(action));
-      dispatch(dismissUndo({ undoId, track: false }));
+      dispatch(dismissUndo({ undoId }));
     }
   };
 });

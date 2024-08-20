@@ -1,5 +1,5 @@
 import { mockSettings } from "__support__/settings";
-import { screen, render } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import type { OptionsType } from "./types";

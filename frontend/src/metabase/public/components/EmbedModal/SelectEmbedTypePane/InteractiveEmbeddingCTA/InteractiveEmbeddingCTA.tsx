@@ -5,12 +5,12 @@ import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
-import { Text, Group, Stack, Box } from "metabase/ui";
+import { Box, Group, Stack, Text } from "metabase/ui";
 
 import {
-  ClickIcon,
   CTAContainer,
   CTAHeader,
+  ClickIcon,
   ProBadge,
 } from "./InteractiveEmbeddingCTA.styled";
 

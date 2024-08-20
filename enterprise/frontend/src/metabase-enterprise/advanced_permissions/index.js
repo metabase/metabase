@@ -8,22 +8,24 @@ import {
 } from "metabase/admin/permissions/utils/urls";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
-  PLUGIN_REDUCERS,
-  PLUGIN_ADVANCED_PERMISSIONS,
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
-  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
-  PLUGIN_DATA_PERMISSIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
+  PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_DATA_PERMISSIONS,
+  PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
 import {
-  upgradeViewPermissionsIfNeeded,
   shouldRestrictNativeQueryPermissions,
+  upgradeViewPermissionsIfNeeded,
 } from "./graph";
-import { getImpersonatedPostAction, advancedPermissionsSlice } from "./reducer";
+import { advancedPermissionsSlice, getImpersonatedPostAction } from "./reducer";
 import { getImpersonations } from "./selectors";
 
 const IMPERSONATED_PERMISSION_OPTION = {
@@ -42,15 +44,15 @@ const BLOCK_PERMISSION_OPTION = {
 
 if (hasPremiumFeature("advanced_permissions")) {
   const addSelectedAdvancedPermission = (options, value) => {
-    switch (value) {
-      case BLOCK_PERMISSION_OPTION.value:
-        return [...options, BLOCK_PERMISSION_OPTION];
-      case IMPERSONATED_PERMISSION_OPTION.value:
-        return [...options, IMPERSONATED_PERMISSION_OPTION];
+    if (value === IMPERSONATED_PERMISSION_OPTION.value) {
+      return [...options, IMPERSONATED_PERMISSION_OPTION];
     }
 
     return options;
   };
+
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS.push(BLOCK_PERMISSION_OPTION);
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(BLOCK_PERMISSION_OPTION);
 
   PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions =
     addSelectedAdvancedPermission;
@@ -87,23 +89,18 @@ if (hasPremiumFeature("advanced_permissions")) {
     value === BLOCK_PERMISSION_OPTION.value;
 
   PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission = value => {
-    if (
-      value === BLOCK_PERMISSION_OPTION.value ||
-      value === IMPERSONATED_PERMISSION_OPTION.value
-    ) {
+    if (value === IMPERSONATED_PERMISSION_OPTION.value) {
       return DataPermissionValue.UNRESTRICTED;
     }
 
     return null;
   };
-
   PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (value, subject) => {
-    return (
-      ["tables", "fields"].includes(subject) &&
-      [DataPermissionValue.BLOCKED, DataPermissionValue.IMPERSONATED].includes(
-        value,
-      )
-    );
+    if (subject === "tables" || subject === "fields") {
+      return value === DataPermissionValue.IMPERSONATED;
+    } else {
+      return false;
+    }
   };
 
   PLUGIN_ADVANCED_PERMISSIONS.isRestrictivePermission = value => {

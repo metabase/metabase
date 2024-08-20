@@ -82,7 +82,7 @@
      (select-keys (task.persist-refresh/job-info-by-db-id) ids))))
 
 (deftest reschedule-refresh-test
-  (mt/with-temp-scheduler
+  (mt/with-temp-scheduler!
     (mt/with-temp [Database db-1 {:settings {:persist-models-enabled true}}
                    Database db-2 {:settings {:persist-models-enabled true}}]
       (#'task.persist-refresh/job-init!)

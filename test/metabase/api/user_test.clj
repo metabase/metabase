@@ -918,16 +918,16 @@
                  (client/client creds :put 403 (format "user/%d" (u/the-id user))
                                 {:email "adifferentemail@metabase.com"}))))))))
 
-(defn- do-with-preserved-rasta-personal-collection-name [thunk]
+(defn- do-with-preserved-rasta-personal-collection-name! [thunk]
   (let [{collection-name :name, :keys [slug id]} (collection/user->personal-collection (mt/user->id :rasta))]
     (mt/with-temp-vals-in-db Collection id {:name collection-name, :slug slug}
       (thunk))))
 
-(defmacro ^:private with-preserved-rasta-personal-collection-name
+(defmacro ^:private with-preserved-rasta-personal-collection-name!
   "Preserve the name of Rasta's personal collection inside a body that might cause it to change (e.g. changing user name
   via the API.)"
   [& body]
-  `(do-with-preserved-rasta-personal-collection-name (fn [] ~@body)))
+  `(do-with-preserved-rasta-personal-collection-name! (fn [] ~@body)))
 
 (deftest update-groups-test
   (testing "PUT /api/user/:id"
@@ -943,7 +943,7 @@
       ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
         (mt/test-helpers-set-global-values!
-          (with-preserved-rasta-personal-collection-name
+          (with-preserved-rasta-personal-collection-name!
             (t2.with-temp/with-temp [PermissionsGroup group {:name "Blue Man Group"}]
               (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
                                     {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])
@@ -957,7 +957,7 @@
 
     (testing "if we pass user_group_memberships as a non-superuser the call should succeed, so long as the value doesn't change"
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
-        (with-preserved-rasta-personal-collection-name
+        (with-preserved-rasta-personal-collection-name!
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
                                 {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])
                                  :first_name             "Reggae"}))

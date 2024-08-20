@@ -17,8 +17,8 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
   Dashboard,
-  ParametersForActionExecution,
   ParameterValueOrArray,
+  ParametersForActionExecution,
   WritebackAction,
 } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";

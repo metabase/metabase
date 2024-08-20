@@ -3,9 +3,9 @@ import { useCallback, useContext } from "react";
 
 import type { LinkProps } from "metabase/core/components/Link";
 
-import { getTabId, getTabPanelId, TabContext } from "../Tab";
+import { TabContext, getTabId, getTabPanelId } from "../Tab";
 
-import { TabLinkRoot, TabLabel } from "./TabLink.styled";
+import { TabLabel, TabLinkRoot } from "./TabLink.styled";
 
 export interface TabLinkProps<T> extends LinkProps {
   value?: T;
