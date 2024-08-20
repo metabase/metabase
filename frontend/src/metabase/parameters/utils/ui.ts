@@ -15,6 +15,7 @@ export function getParameterIconName(
       return "calendar";
     case "location":
       return "location";
+    case "string":
     case "category":
       return "string";
     case "number":

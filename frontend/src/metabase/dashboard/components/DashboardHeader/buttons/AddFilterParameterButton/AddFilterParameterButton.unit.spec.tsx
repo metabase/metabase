@@ -28,7 +28,7 @@ const SECTIONS = [
   {
     title: "Text or Category",
     subtitle: "Contains, is, starts with…",
-    icon: "label",
+    icon: "string",
   },
   {
     title: "Number",
