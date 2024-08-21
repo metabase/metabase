@@ -1,3 +1,4 @@
+// @ts-expect-error widow.Cypress is not typed
 export const isCypressActive = !!window.Cypress;
 
 // eslint-disable-next-line no-undef
