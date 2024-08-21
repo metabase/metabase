@@ -42,7 +42,6 @@ export const CLI_STEPS = [
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
-  { id: "setupPermissions", executeStep: setupPermissions },
   {
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
@@ -53,6 +52,7 @@ export const CLI_STEPS = [
   },
   { id: "setupLicense", executeStep: setupLicense },
   { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
+  { id: "setupPermissions", executeStep: setupPermissions },
 ] as const;
 
 export async function runCli() {
