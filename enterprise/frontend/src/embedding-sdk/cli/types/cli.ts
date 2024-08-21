@@ -24,6 +24,9 @@ export type CliState = Partial<{
 
   /** IDs and names of auto-generated dashboards */
   dashboards: DashboardInfo[];
+
+  /** Sample values of the tenancy column (e.g. customer_id) in the selected tables */
+  tenancyColumnValues: (string | number)[];
 }>;
 
 export type CliError = {

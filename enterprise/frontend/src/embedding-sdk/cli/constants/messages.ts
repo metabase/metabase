@@ -1,3 +1,5 @@
+import { HARDCODED_USERS } from "../constants/hardcoded-users";
+
 import { CONTAINER_NAME } from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
@@ -54,4 +56,9 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   in turn helps us prioritize what to work on next.
 
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
+`;
+
+export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
+  At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
+  You can add your tenant's IDs to the "customer_id" user attribute in settings.
 `;

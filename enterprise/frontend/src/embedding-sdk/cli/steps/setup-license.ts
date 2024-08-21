@@ -2,6 +2,7 @@ import { input, select } from "@inquirer/prompts";
 import chalk from "chalk";
 import toggle from "inquirer-toggle";
 import open from "open";
+import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
@@ -38,6 +39,8 @@ export const setupLicense: CliStepMethod = async state => {
     }
   }
 
+  const spinner = ora();
+
   // Activate the license
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid license key
   while (true) {
@@ -54,6 +57,8 @@ export const setupLicense: CliStepMethod = async state => {
         },
       });
 
+      spinner.start("Activating the license...");
+
       const endpoint = `${state.instanceUrl}/api/setting/premium-embedding-token`;
 
       const res = await fetch(endpoint, {
@@ -67,9 +72,13 @@ export const setupLicense: CliStepMethod = async state => {
 
       await propagateErrorResponse(res);
 
+      spinner.succeed();
+
       return [{ type: "success" }, { ...state, token }];
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
+
+      spinner.fail();
 
       printWithPadding(
         chalk.red(`Failed to activate license. Reason: ${reason}`),
