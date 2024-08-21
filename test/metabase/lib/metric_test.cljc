@@ -235,8 +235,7 @@
   (testing "Should return the available metrics as sorted"
     (let [query   (lib/query metadata-provider-with-multiple-metrics (meta/table-metadata :venues))
           metrics (lib.metric/available-metrics query)]
-      (is (=? (:id (first metrics)) second-metric-id))
-      (is (=? (:id (second metrics)) metric-id))))
+      (is (=? [{:id second-metric-id} {:id metric-id}] metrics))))
 
   (testing "Metrics based on cards are available"
     (let [metric {:name "Metrics"
