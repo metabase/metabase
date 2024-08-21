@@ -23,8 +23,6 @@ export const setupPermissions: CliStepMethod = async state => {
   });
 
   if (!hasTenancyIsolation) {
-    // TODO: generate a sample Express app
-
     return [{ type: "success" }, state];
   }
 
