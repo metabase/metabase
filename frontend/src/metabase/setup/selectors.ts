@@ -107,6 +107,18 @@ export const getSteps = createSelector(
     const shouldShowLicenseStep =
       isEEBuild() && (!isPaidPlan || hasAddedPaidPlanInPreviousStep);
 
+    // note: when hosting is true, we should be on cloud and therefore not show
+    // the token step. There is an edge case that it's probably not possible in
+    // real life: somebody submitting a key with the hosting feature in the
+    // token step. This happens in our e2e test where we use the NO_FEATURES
+    // token which actually has the hosting feature so I added the
+    // hasAddedPaidPlanInPreviousStep check
+    const isHosted =
+      tokenFeatures &&
+      tokenFeatures["hosting"] &&
+      !hasAddedPaidPlanInPreviousStep;
+    const shouldShowDataUsageStep = !isHosted;
+
     const steps: { key: SetupStep; isActiveStep: boolean }[] = [
       { key: "welcome" as const },
       { key: "language" as const },
@@ -116,7 +128,7 @@ export const getSteps = createSelector(
         key: "db_connection" as const,
       },
       shouldShowLicenseStep && { key: "license_token" as const },
-      { key: "data_usage" as const },
+      shouldShowDataUsageStep ? { key: "data_usage" as const } : null,
       { key: "completed" as const },
     ]
       .filter(isNotFalsy)
