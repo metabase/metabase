@@ -22,17 +22,19 @@ export const INSTANCE_CONFIGURED_MESSAGE = `
   ${DELETE_CONTAINER_MESSAGE}
 `;
 
-export const EMBEDDING_FAILED_MESSAGE = `
-  Failed to enable embedding features.
-  ${DELETE_CONTAINER_MESSAGE}
-`;
-
 export const PREMIUM_TOKEN_REQUIRED_MESSAGE =
   "  Don't forget to add your premium token to your Metabase instance in the admin settings! The embedding demo will not work without a license.";
 
 export const getGeneratedComponentFilesMessage = (path: string) => `
   Generated example React components files in "${path}".
   You can import the <AnalyticsPage /> component in your React app.
+`;
+
+export const getEmbeddingFailedMessage = (reason: string) => `
+  Failed to enable embedding features.
+  ${DELETE_CONTAINER_MESSAGE}
+
+  Reason: ${reason}
 `;
 
 export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>

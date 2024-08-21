@@ -4,6 +4,8 @@ import toggle from "inquirer-toggle";
 import ora from "ora";
 import { promisify } from "util";
 
+import { propagateErrorResponse } from "embedding-sdk/cli/utils/propagate-error-response";
+
 import {
   CONTAINER_NAME,
   HARDCODED_JWT_SHARED_SECRET,
@@ -11,8 +13,8 @@ import {
 } from "../constants/config";
 import { EMBEDDING_DEMO_SETUP_TOKEN } from "../constants/env";
 import {
-  EMBEDDING_FAILED_MESSAGE,
   INSTANCE_CONFIGURED_MESSAGE,
+  getEmbeddingFailedMessage,
 } from "../constants/messages";
 import type { CliOutput, CliStepMethod } from "../types/cli";
 import { OUTPUT_STYLES, printEmptyLines } from "../utils/print";
@@ -165,22 +167,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
       headers: { "content-type": "application/json", cookie },
     });
 
-    if (!res.ok) {
-      const errorMessage = await res.text();
-      spinner.fail();
-
-      if (errorMessage.includes("Unauthenticated")) {
-        return onInstanceConfigured();
-      }
-
-      return [
-        {
-          type: "error",
-          message: EMBEDDING_FAILED_MESSAGE,
-        },
-        state,
-      ];
-    }
+    await propagateErrorResponse(res);
 
     spinner.succeed();
 
@@ -193,15 +180,13 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
   } catch (error) {
     spinner.fail("Failed to setup Metabase instance.");
 
-    return [
-      {
-        type: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to setup Metabase instance.",
-      },
-      state,
-    ];
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = getEmbeddingFailedMessage(reason);
+
+    if (reason.includes("Unauthenticated")) {
+      return onInstanceConfigured();
+    }
+
+    return [{ type: "error", message }, state];
   }
 };
