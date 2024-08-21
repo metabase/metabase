@@ -12,6 +12,11 @@ runs:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
 
+    - name: Prepare pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: |
