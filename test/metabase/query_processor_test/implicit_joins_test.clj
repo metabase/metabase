@@ -30,11 +30,11 @@
                 ["Irvine"       11]
                 ["Lakeland"     11]]
                (mt/formatted-rows [str int]
-                 (mt/run-mbql-query sightings
-                   {:aggregation [[:count]]
-                    :breakout    [$city_id->cities.name]
-                    :order-by    [[:desc [:aggregation 0]]]
-                    :limit       10}))))))))
+                                  (mt/run-mbql-query sightings
+                                    {:aggregation [[:count]]
+                                     :breakout    [$city_id->cities.name]
+                                     :order-by    [[:desc [:aggregation 0]]]
+                                     :limit       10}))))))))
 
 (deftest ^:parallel filter-by-fk-field-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -43,9 +43,9 @@
         ;; Number of Tupac sightings in the Expa office (he was spotted here 60 times)
         (is (= [[60]]
                (mt/formatted-rows [int]
-                 (mt/run-mbql-query sightings
-                   {:aggregation [[:count]]
-                    :filter      [:= $category_id->categories.id 8]}))))))))
+                                  (mt/run-mbql-query sightings
+                                    {:aggregation [[:count]]
+                                     :filter      [:= $category_id->categories.id 8]}))))))))
 
 (deftest ^:parallel fk-field-in-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -63,10 +63,10 @@
                 [897 "Wearing a Biggie Shirt"]
                 [499 "In the Expa Office"]]
                (mt/formatted-rows [int str]
-                 (mt/run-mbql-query sightings
-                   {:fields   [$id $category_id->categories.name]
-                    :order-by [[:desc $timestamp]]
-                    :limit    10}))))))))
+                                  (mt/run-mbql-query sightings
+                                    {:fields   [$id $category_id->categories.name]
+                                     :order-by [[:desc $timestamp]]
+                                     :limit    10}))))))))
 
 (deftest ^:parallel join-multiple-tables-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -114,16 +114,16 @@
 
 (deftest ^:parallel field-refs-test
   (mt/test-drivers
-   (mt/normal-drivers-with-feature :left-join)
-   (testing "Implicit joins should come back with `:fk->` field refs"
-     (is (= (mt/$ids venues $category_id->categories.name)
-            (-> (mt/cols
-                 (mt/run-mbql-query venues
-                                    {:fields   [$category_id->categories.name]
-                                     :order-by [[:asc $id]]
-                                     :limit    1}))
-                first
-                :field_ref))))))
+    (mt/normal-drivers-with-feature :left-join)
+    (testing "Implicit joins should come back with `:fk->` field refs"
+      (is (= (mt/$ids venues $category_id->categories.name)
+             (-> (mt/cols
+                  (mt/run-mbql-query venues
+                    {:fields   [$category_id->categories.name]
+                     :order-by [[:asc $id]]
+                     :limit    1}))
+                 first
+                 :field_ref))))))
 
 (deftest ^:parallel multiple-joins-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -145,10 +145,10 @@
                 ["Peter Pelican"    5]
                 ["Ronald Raven"     1]]
                (mt/formatted-rows [str int]
-                 (mt/run-mbql-query messages
-                   {:aggregation [[:count]]
-                    :breakout    [$sender_id->users.name]
-                    :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
+                                  (mt/run-mbql-query messages
+                                    {:aggregation [[:count]]
+                                     :breakout    [$sender_id->users.name]
+                                     :filter      [:= $receiver_id->users.name "Rasta Toucan"]}))))))))
 
 (deftest ^:parallel implicit-joins-with-expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
@@ -176,48 +176,48 @@
 
 (deftest ^:parallel test-23293
   (mt/test-drivers
-   (mt/normal-drivers-with-feature :left-join)
-   (testing "Implicit joins in multiple levels of a query should work ok (#23293)"
-     (mt/dataset
-      test-data
-      (qp.store/with-metadata-provider
-        (lib/composed-metadata-provider
-         (lib.tu/mock-metadata-provider
-          {:cards [{:id            1
-                    :name          "Card 1"
-                    :database-id   (mt/id)
-                    :dataset-query (mt/mbql-query orders
-                                                  {:fields
-                                                   [$id
-                                                    $user_id
-                                                    $subtotal
-                                                    $tax
-                                                    $total
-                                                    $discount
-                                                    $created_at
-                                                    $quantity
-                                                    $orders.product_id->products.category]})}]})
-         (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
-        (is (= [["Doohickey" 3976]]
-               (mt/formatted-rows
-                [str int]
-                (qp/process-query
-                 (mt/mbql-query
-                  nil
-                  {:source-table "card__1"
-                   :breakout     [$orders.product_id->products.category]
-                   :aggregation  [[:count]]
-                   :limit        1})))))
-        (testing "Should still work if the query is has refs generated by MLv2 that have extra keys"
+    (mt/normal-drivers-with-feature :left-join)
+    (testing "Implicit joins in multiple levels of a query should work ok (#23293)"
+      (mt/dataset
+        test-data
+        (qp.store/with-metadata-provider
+          (lib/composed-metadata-provider
+           (lib.tu/mock-metadata-provider
+            {:cards [{:id            1
+                      :name          "Card 1"
+                      :database-id   (mt/id)
+                      :dataset-query (mt/mbql-query orders
+                                       {:fields
+                                        [$id
+                                         $user_id
+                                         $subtotal
+                                         $tax
+                                         $total
+                                         $discount
+                                         $created_at
+                                         $quantity
+                                         $orders.product_id->products.category]})}]})
+           (lib.metadata.jvm/application-database-metadata-provider (mt/id)))
           (is (= [["Doohickey" 3976]]
                  (mt/formatted-rows
                   [str int]
                   (qp/process-query
                    (mt/mbql-query
-                    nil
-                    {:source-table "card__1"
-                     :breakout     [[:field
-                                     (mt/id :products :category)
-                                     {:source-field (mt/id :orders :product_id), :base-type :type/Integer}]]
-                     :aggregation  [[:count]]
-                     :limit        1})))))))))))
+                     nil
+                     {:source-table "card__1"
+                      :breakout     [$orders.product_id->products.category]
+                      :aggregation  [[:count]]
+                      :limit        1})))))
+          (testing "Should still work if the query is has refs generated by MLv2 that have extra keys"
+            (is (= [["Doohickey" 3976]]
+                   (mt/formatted-rows
+                    [str int]
+                    (qp/process-query
+                     (mt/mbql-query
+                       nil
+                       {:source-table "card__1"
+                        :breakout     [[:field
+                                        (mt/id :products :category)
+                                        {:source-field (mt/id :orders :product_id), :base-type :type/Integer}]]
+                        :aggregation  [[:count]]
+                        :limit        1})))))))))))

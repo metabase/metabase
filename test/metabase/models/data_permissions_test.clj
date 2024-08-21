@@ -20,15 +20,15 @@
 
 (deftest ^:parallel at-least-as-permissive?-test
   (testing "at-least-as-permissive? correctly compares permission values"
-   (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :legacy-no-self-service))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :blocked))
-   (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :unrestricted)))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :legacy-no-self-service))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :blocked))
-   (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
-   (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
-   (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :unrestricted))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :legacy-no-self-service))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :unrestricted :blocked))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :unrestricted)))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :legacy-no-self-service))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :legacy-no-self-service :blocked))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :unrestricted)))
+    (is (not (data-perms/at-least-as-permissive? :perms/view-data :blocked :legacy-no-self-service)))
+    (is (data-perms/at-least-as-permissive? :perms/view-data :blocked :blocked))))
 
 (deftest set-database-permission!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
@@ -38,23 +38,23 @@
                                                        :db_id     database-id
                                                        :group_id  group-id
                                                        :perm_type perm-type))]
-     (mt/with-restored-data-perms-for-group! group-id
-       (testing "`set-database-permission!` correctly updates an individual database's permissions"
-         (data-perms/set-database-permission! group-id database-id :perms/create-queries :no)
-         (is (= :no (perm-value :perms/create-queries)))
-         (data-perms/set-database-permission! group-id database-id :perms/create-queries :query-builder)
-         (is (= :query-builder (perm-value :perms/create-queries))))
+      (mt/with-restored-data-perms-for-group! group-id
+        (testing "`set-database-permission!` correctly updates an individual database's permissions"
+          (data-perms/set-database-permission! group-id database-id :perms/create-queries :no)
+          (is (= :no (perm-value :perms/create-queries)))
+          (data-perms/set-database-permission! group-id database-id :perms/create-queries :query-builder)
+          (is (= :query-builder (perm-value :perms/create-queries))))
 
-       (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :blocked"
-         (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
-         (is (= :blocked (perm-value :perms/view-data)))
-         (is (= :no (perm-value :perms/create-queries))))
+        (testing "`set-database-permission!` sets native query permissions to :no if data access is set to :blocked"
+          (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
+          (is (= :blocked (perm-value :perms/view-data)))
+          (is (= :no (perm-value :perms/create-queries))))
 
-       (testing "A database-level permission cannot be set to an invalid value"
-         (is (thrown-with-msg?
-              ExceptionInfo
-              #"Permission type :perms/create-queries cannot be set to :invalid-value"
-              (data-perms/set-database-permission! group-id database-id :perms/create-queries :invalid-value))))))))
+        (testing "A database-level permission cannot be set to an invalid value"
+          (is (thrown-with-msg?
+               ExceptionInfo
+               #"Permission type :perms/create-queries cannot be set to :invalid-value"
+               (data-perms/set-database-permission! group-id database-id :perms/create-queries :invalid-value))))))))
 
 (deftest set-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
@@ -66,10 +66,10 @@
                  :model/Table            {table-id-3 :id}    {:db_id database-id}
                  :model/Table            {table-id-4 :id}    {:db_id database-id-2}]
     (let [create-queries-perm-value (fn [table-id] (t2/select-one-fn :perm_value :model/DataPermissions
-                                                                   :db_id     database-id
-                                                                   :group_id  group-id
-                                                                   :table_id  table-id
-                                                                   :perm_type :perms/create-queries))]
+                                                                     :db_id     database-id
+                                                                     :group_id  group-id
+                                                                     :table_id  table-id
+                                                                     :perm_type :perms/create-queries))]
       (mt/with-restored-data-perms-for-group! group-id
         (testing "`set-table-permissions!` can set individual table permissions to different values"
           (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :no
@@ -561,7 +561,7 @@
                                                        :perm_type :perms/download-results)))
             (t2/delete! :model/Database :id new-db-id)))
 
-       (testing "A new database gets `no` download permissions if a group has `no` for any database"
+        (testing "A new database gets `no` download permissions if a group has `no` for any database"
           (data-perms/set-database-permission! group-id db-id-2 :perms/download-results :no)
           (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
             (is (= :no (t2/select-one-fn :perm_value

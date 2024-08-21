@@ -34,10 +34,10 @@
                        :type/Text)]}
               (qp.test-util/rows-and-cols
                (mt/format-rows-by [str int str]
-                 (mt/run-mbql-query venues
-                   {:fields   [$name $category_id]
-                    :order-by [[:asc $name]]
-                    :limit    4}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:fields   [$name $category_id]
+                                     :order-by [[:asc $name]]
+                                     :limit    4}))))))))
 
 (deftest ^:parallel basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -67,10 +67,10 @@
                        :semantic_type :type/Quantity}]}
               (qp.test-util/rows-and-cols
                (mt/format-rows-by [str int int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [$category_id]
-                    :limit       3}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]
+                                     :breakout    [$category_id]
+                                     :limit       3}))))))))
 
 (deftest ^:parallel nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -163,11 +163,11 @@
                                  :remapped_from (mt/format-name "category_id")
                                  :field_ref     $category_id->categories.name))]}
                 (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                      (mt/format-rows-by [str int str str]
-                        (mt/run-mbql-query venues
-                          {:fields   [$name $price $category_id]
-                           :order-by [[:asc $name]]
-                           :limit    4})))
+                                    (mt/format-rows-by [str int str str]
+                                                       (mt/run-mbql-query venues
+                                                         {:fields   [$name $price $category_id]
+                                                          :order-by [[:asc $name]]
+                                                          :limit    4})))
                     (update :cols (fn [[c1 c2 c3]]
                                     [c1 c2 (dissoc c3 :source_alias)])))))))))
 
@@ -266,7 +266,7 @@
               (mt/with-native-query-testing-context query
                 (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50Z" 3 "Rustic Paper Car"]]
                        (mt/formatted-rows [int int int 2.0 2.0 2.0 identity u.date/temporal-str->iso8601-str int str]
-                         (qp/process-query query))))))))))))
+                                          (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"
@@ -312,16 +312,16 @@
                                              qp.test-util/mock-fks-application-database-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
           (let [query (mt/mbql-query products
-                                     {:joins    [{:source-query {:source-table $$orders
-                                                                 :breakout     [$orders.product_id]
-                                                                 :aggregation  [[:sum $orders.quantity]]}
-                                                  :alias        "Orders"
-                                                  :condition    [:= $id &Orders.orders.product_id]
-                                                  :fields       [&Orders.title
-                                                                 &Orders.*sum/Integer]}]
-                                      :fields   [$title $category]
-                                      :order-by [[:asc $id]]
-                                      :limit    3})]
+                        {:joins    [{:source-query {:source-table $$orders
+                                                    :breakout     [$orders.product_id]
+                                                    :aggregation  [[:sum $orders.quantity]]}
+                                     :alias        "Orders"
+                                     :condition    [:= $id &Orders.orders.product_id]
+                                     :fields       [&Orders.title
+                                                    &Orders.*sum/Integer]}]
+                         :fields   [$title $category]
+                         :order-by [[:asc $id]]
+                         :limit    3})]
             (mt/with-native-query-testing-context query
               (let [results (qp/process-query query)]
                 (when (= driver/*driver* :h2)

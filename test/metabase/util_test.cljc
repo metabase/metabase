@@ -184,8 +184,8 @@
   (testing "select-keys-when"
     (is (= {:a 100, :b nil, :d 200}
            (u/select-keys-when {:a 100, :b nil, :d 200, :e nil}
-             :present #{:a :b :c}
-             :non-nil #{:d :e :f})))))
+                               :present #{:a :b :c}
+                               :non-nil #{:d :e :f})))))
 
 (deftest ^:parallel order-of-magnitude-test
   (are [n expected] (= expected
@@ -479,17 +479,17 @@
      (prop/for-all [xs (mg/generator [:sequential :int])
                     ys (mg/generator [:sequential :int])
                     zs (mg/generator [:sequential :int])]
-       (let [total-result-count (count (u/map-all vector xs ys zs))]
-         (= total-result-count (max (count xs) (count ys) (count zs)))))))
+                   (let [total-result-count (count (u/map-all vector xs ys zs))]
+                     (= total-result-count (max (count xs) (count ys) (count zs)))))))
 
 #?(:clj
    (defspec map-all-consumes-all-lengths-of-inputs-test 1000
      (prop/for-all [xs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
                     ys (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
                     zs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])]
-       (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
-             sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
-         (= expected sum)))))
+                   (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
+                         sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
+                     (= expected sum)))))
 
 #?(:clj
    (deftest ^:parallel case-enum-test
@@ -500,14 +500,14 @@
                   3))))
      (testing "case-enum works"
        (is (= 2 (u/case-enum Month/MAY
-                  Month/APRIL 1
-                  Month/MAY   2
-                  3))))
+                             Month/APRIL 1
+                             Month/MAY   2
+                             3))))
      (testing "checks for type of cases"
        (is (thrown? Exception #"`case-enum` only works.*"
                     (u/case-enum Month/JANUARY
-                      Month/JANUARY    1
-                      DayOfWeek/SUNDAY 2))))))
+                                 Month/JANUARY    1
+                                 DayOfWeek/SUNDAY 2))))))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]

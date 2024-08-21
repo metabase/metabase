@@ -1,6 +1,7 @@
 (ns metabase.lib.drill-thru.test-util
   "Adapted from frontend/src/metabase-lib/drills.unit.spec.ts"
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [is testing]]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -10,8 +11,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 

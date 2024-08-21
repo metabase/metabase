@@ -86,7 +86,6 @@
                   :target [:dimension [:field (mt/id :users :last_login) nil]]
                   :value  value}))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -106,14 +105,14 @@
         (driver/notify-database-updated driver/*driver* (mt/id)))
       (is (= [[29]]
              (mt/formatted-rows [int]
-               (qp/process-query
-                (mt/query checkins
-                  {:query      {:aggregation [[:count]]}
-                   :parameters [{:hash   "abc123"
-                                 :name   "foo"
-                                 :type   "date"
-                                 :target [:dimension $date]
-                                 :value  "2015-04-01~2015-05-01"}]}))))))))
+                                (qp/process-query
+                                 (mt/query checkins
+                                   {:query      {:aggregation [[:count]]}
+                                    :parameters [{:hash   "abc123"
+                                                  :name   "foo"
+                                                  :type   "date"
+                                                  :target [:dimension $date]
+                                                  :value  "2015-04-01~2015-05-01"}]}))))))))
 
 (deftest ^:parallel ids-e2e-test
   (mt/test-drivers (params-test-drivers)
@@ -123,33 +122,33 @@
         (testing message
           (is (= [[1]]
                  (mt/formatted-rows [int]
-                   (qp/process-query
-                    (mt/query checkins
-                      {:query      {:aggregation [[:count]]}
-                       :parameters [{:hash   "abc123"
-                                     :name   "foo"
-                                     :type   :number
-                                     :target [:dimension $id]
-                                     :value  value}]}))))))))))
+                                    (qp/process-query
+                                     (mt/query checkins
+                                       {:query      {:aggregation [[:count]]}
+                                        :parameters [{:hash   "abc123"
+                                                      :name   "foo"
+                                                      :type   :number
+                                                      :target [:dimension $id]
+                                                      :value  value}]}))))))))))
 
 (deftest ^:parallel categories-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that Categories work correctly (passed in as strings, as the frontend is wont to do; should get converted)"
       (is (= [[6]]
              (mt/formatted-rows [int]
-               (qp/process-query
-                (mt/query venues
-                  {:query      {:aggregation [[:count]]}
-                   :parameters [{:name   "price"
-                                 :type   :category
-                                 :target $price
-                                 :value  "4"}]}))))))))
+                                (qp/process-query
+                                 (mt/query venues
+                                   {:query      {:aggregation [[:count]]}
+                                    :parameters [{:name   "price"
+                                                  :type   :category
+                                                  :target $price
+                                                  :value  "4"}]}))))))))
 
 (deftest ^:parallel operations-e2e-test
   (mt/test-drivers (params-test-drivers)
     (testing "check that operations works correctly"
       (let [f #(mt/formatted-rows [int]
-                 (qp/process-query %))]
+                                  (qp/process-query %))]
         (testing "binary numeric"
           (is (= [[78]]
                  (f (mt/query venues
@@ -178,7 +177,7 @@
   (mt/test-drivers (params-test-drivers)
     (testing "check that operations works correctly"
       (let [f #(mt/formatted-rows [int]
-                 (qp/process-query %))]
+                                  (qp/process-query %))]
         (testing "unary string"
           (is (= (operations-e2e-test-2-expected-rows driver/*driver*)
                  (f (mt/query venues
@@ -194,12 +193,12 @@
       (testing "`:id` param type"
         (is (= [[9 "Nils Gotam"]]
                (mt/formatted-rows [int str]
-                 (qp/process-query
-                  (mt/query users
-                    {:parameters [{:name   "id"
-                                   :type   "id"
-                                   :target $id
-                                   :value  9}]})))))))))
+                                  (qp/process-query
+                                   (mt/query users
+                                     {:parameters [{:name   "id"
+                                                    :type   "id"
+                                                    :target $id
+                                                    :value  9}]})))))))))
 
 (deftest ^:parallel basic-where-test-2
   (mt/test-drivers (params-test-drivers)
@@ -207,13 +206,13 @@
       (testing "`:category` param type"
         (is (= [[6]]
                (mt/formatted-rows [int]
-                 (qp/process-query
-                  (mt/query venues
-                    {:query      {:aggregation [[:count]]}
-                     :parameters [{:name   "price"
-                                   :type   :category
-                                   :target $price
-                                   :value  4}]})))))))))
+                                  (qp/process-query
+                                   (mt/query venues
+                                     {:query      {:aggregation [[:count]]}
+                                      :parameters [{:name   "price"
+                                                    :type   :category
+                                                    :target $price
+                                                    :value  4}]})))))))))
 
 (deftest ^:parallel basic-where-test-3
   (mt/test-drivers (params-test-drivers)
@@ -221,13 +220,13 @@
       (testing "`:number/>=` param type"
         (is (= [[78]]
                (mt/formatted-rows [int]
-                 (qp/process-query
-                  (mt/query venues
-                    {:query      {:aggregation [[:count]]}
-                     :parameters [{:name   "price"
-                                   :type   :number/>=
-                                   :target $price
-                                   :value  [2]}]})))))))))
+                                  (qp/process-query
+                                   (mt/query venues
+                                     {:query      {:aggregation [[:count]]}
+                                      :parameters [{:name   "price"
+                                                    :type   :number/>=
+                                                    :target $price
+                                                    :value  [2]}]})))))))))
 
 ;; Make sure that *multiple* values work. This feature was added in 0.28.0. You are now allowed to pass in an array of
 ;; parameter values instead of a single value, which should stick them together in a single MBQL `:=` clause, which
@@ -243,7 +242,7 @@
                                    :value  [3 4]}]})]
         (is (= [[19]]
                (mt/formatted-rows [int]
-                 (qp/process-query query))))))))
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel multiple-values-test-2
   (testing "Make sure that *multiple* values work."
@@ -275,7 +274,7 @@
                                    :value  [3 4]}]})]
         (is (= [[19]]
                (mt/formatted-rows [int]
-                 (qp/process-query query))))))))
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel multiple-values-test-4
   (testing "Make sure multiple values with operators works"
@@ -345,12 +344,12 @@
                   [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
                   [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
                  (mt/formatted-rows :venues
-                   (qp/process-query
-                    (mt/query venues
-                              {:query      {:order-by [[:asc $id]]}
-                               :parameters [{:type   :id
-                                             :target [:dimension $category_id->categories.name]
-                                             :value  ["BBQ"]}]}))))))
+                                    (qp/process-query
+                                     (mt/query venues
+                                       {:query      {:order-by [[:asc $id]]}
+                                        :parameters [{:type   :id
+                                                      :target [:dimension $category_id->categories.name]
+                                                      :value  ["BBQ"]}]}))))))
         (testing "Operators work on fk"
           (is (= [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
                   [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
@@ -360,27 +359,27 @@
                   [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
                   [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
                  (mt/formatted-rows :venues
-                   (qp/process-query
-                    (mt/query venues
-                              {:query      {:order-by [[:asc $id]]}
-                               :parameters [{:type   :string/starts-with
-                                             :target [:dimension $category_id->categories.name]
-                                             :value  ["BB"]}]}))))))))))
+                                    (qp/process-query
+                                     (mt/query venues
+                                       {:query      {:order-by [[:asc $id]]}
+                                        :parameters [{:type   :string/starts-with
+                                                      :target [:dimension $category_id->categories.name]
+                                                      :value  ["BB"]}]}))))))))))
 
 (deftest ^:parallel test-mbql-parameters
   (testing "Should be able to pass parameters in to an MBQL query"
     (letfn [(venues-with-price [param]
               (ffirst
                (mt/rows
-                 (mt/process-query
-                  {:database   (mt/id)
-                   :type       :query
-                   :query      {:source-table (mt/id :venues)
-                                :aggregation  [[:count]]}
-                   :parameters [(merge
-                                 {:type   :category
-                                  :target [:dimension [:field (mt/id :venues :price) nil]]}
-                                 param)]}))))]
+                (mt/process-query
+                 {:database   (mt/id)
+                  :type       :query
+                  :query      {:source-table (mt/id :venues)
+                               :aggregation  [[:count]]}
+                  :parameters [(merge
+                                {:type   :category
+                                 :target [:dimension [:field (mt/id :venues :price) nil]]}
+                                param)]}))))]
       (doseq [[price expected] {1 22
                                 2 59}]
         (testing (format ":value = %d" price)

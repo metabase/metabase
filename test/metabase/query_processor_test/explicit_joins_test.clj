@@ -72,8 +72,8 @@
               ["Peter Pelican"    "SoMa Squadron"]
               ["Russell Crow"     "Mission Street Murder"]]
              (mt/rows
-               (qp/process-query
-                (query-with-strategy :left-join))))))))
+              (qp/process-query
+               (query-with-strategy :left-join))))))))
 
 (deftest ^:parallel right-outer-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
@@ -97,8 +97,8 @@
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
                (mt/rows
-                 (qp/process-query
-                  (query-with-strategy :right-join)))))))))
+                (qp/process-query
+                 (query-with-strategy :right-join)))))))))
 
 (deftest ^:parallel inner-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :inner-join)
@@ -116,8 +116,8 @@
               ["Peter Pelican"  "SoMa Squadron"]
               ["Russell Crow"   "Mission Street Murder"]]
              (mt/rows
-               (qp/process-query
-                (query-with-strategy :inner-join))))))))
+              (qp/process-query
+               (query-with-strategy :inner-join))))))))
 
 (deftest ^:parallel full-join-test
   (mt/test-drivers (mt/normal-drivers-with-feature :full-join)
@@ -145,8 +145,8 @@
                    (conj rows [nil "Fillmore Flock"]))]
         (is (= rows
                (mt/rows
-                 (qp/process-query
-                  (query-with-strategy :full-join)))))))))
+                (qp/process-query
+                 (query-with-strategy :full-join)))))))))
 
 (deftest ^:parallel automatically-include-all-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -171,14 +171,14 @@
                         [4  "Peter Pelican"    2   2   "SoMa Squadron"]
                         [1  "Russell Crow"     4   4   "Mission Street Murder"]]}
              (mt/format-rows-by [int str #(some-> % int) #(some-> % int) identity]
-               (mt/rows+column-names
-                 (mt/dataset bird-flocks
-                   (mt/run-mbql-query bird
-                     {:joins    [{:source-table $$flock
-                                  :condition    [:= $flock_id &f.flock.id]
-                                  :alias        "f"
-                                  :fields       :all}]
-                      :order-by [[:asc $name]]})))))))))
+                                (mt/rows+column-names
+                                 (mt/dataset bird-flocks
+                                   (mt/run-mbql-query bird
+                                     {:joins    [{:source-table $$flock
+                                                  :condition    [:= $flock_id &f.flock.id]
+                                                  :alias        "f"
+                                                  :fields       :all}]
+                                      :order-by [[:asc $name]]})))))))))
 
 (deftest ^:parallel include-no-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -203,28 +203,28 @@
                         [4  "Peter Pelican"    2]
                         [1  "Russell Crow"     4]]}
              (mt/format-rows-by [#(some-> % int) str #(some-> % int)]
-               (mt/rows+column-names
-                 (mt/dataset bird-flocks
-                   (mt/run-mbql-query bird
-                     {:joins    [{:source-table $$flock
-                                  :condition    [:= $flock_id &f.flock.id]
-                                  :alias        "f"
-                                  :fields       :none}]
-                      :order-by [[:asc $name]]})))))))))
+                                (mt/rows+column-names
+                                 (mt/dataset bird-flocks
+                                   (mt/run-mbql-query bird
+                                     {:joins    [{:source-table $$flock
+                                                  :condition    [:= $flock_id &f.flock.id]
+                                                  :alias        "f"
+                                                  :fields       :none}]
+                                      :order-by [[:asc $name]]})))))))))
 
 (deftest ^:parallel specific-fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include a list of specific Fields?"
       (let [{:keys [columns rows]} (mt/format-rows-by [#(some-> % int) str identity]
-                                     (mt/rows+column-names
-                                       (mt/dataset bird-flocks
-                                         (mt/run-mbql-query bird
-                                           {:fields   [$id $name]
-                                            :joins    [{:source-table $$flock
-                                                        :condition    [:= $flock_id &f.flock.id]
-                                                        :alias        "f"
-                                                        :fields       [&f.flock.name]}]
-                                            :order-by [[:asc $name]]}))))]
+                                                      (mt/rows+column-names
+                                                       (mt/dataset bird-flocks
+                                                         (mt/run-mbql-query bird
+                                                           {:fields   [$id $name]
+                                                            :joins    [{:source-table $$flock
+                                                                        :condition    [:= $flock_id &f.flock.id]
+                                                                        :alias        "f"
+                                                                        :fields       [&f.flock.name]}]
+                                                            :order-by [[:asc $name]]}))))]
         (is (= (mapv mt/format-name ["id" "name" "name_2"])
                columns))
         (is (= [[2  "Big Red"         "Bayview Brood"]
@@ -241,7 +241,7 @@
                 [15 "Orville Owl"     "Portrero Hill Parliament"]
                 [11 "Oswald Owl"      nil]
                 [10 "Pamela Pelican"  nil]
-                [8  "Patricia Pelican"nil]
+                [8  "Patricia Pelican" nil]
                 [13 "Paul Pelican"    "SoMa Squadron"]
                 [4  "Peter Pelican"   "SoMa Squadron"]
                 [1  "Russell Crow"    "Mission Street Murder"]]
@@ -252,15 +252,15 @@
     (testing (str "Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in"
                   " `:datetime-field` forms?")
       (let [{:keys [columns rows]} (mt/format-rows-by [int identity identity int identity int int]
-                                     (mt/rows+column-names
-                                       (mt/run-mbql-query users
-                                         {:source-table $$users
-                                          :joins        [{:source-table $$checkins
-                                                          :alias        "c"
-                                                          :fields       "all"
-                                                          :condition    [:= $id &c.checkins.id]}]
-                                          :order-by     [["asc" &c.checkins.id]]
-                                          :limit        3})))]
+                                                      (mt/rows+column-names
+                                                       (mt/run-mbql-query users
+                                                         {:source-table $$users
+                                                          :joins        [{:source-table $$checkins
+                                                                          :alias        "c"
+                                                                          :fields       "all"
+                                                                          :condition    [:= $id &c.checkins.id]}]
+                                                          :order-by     [["asc" &c.checkins.id]]
+                                                          :limit        3})))]
         (is (= (mapv mt/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
                columns))
         ;; not sure why only Oracle seems to do this
@@ -285,16 +285,16 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join ::foreign-keys-as-required-by-tests)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
-                                     (mt/rows+column-names
-                                       (mt/run-mbql-query checkins
-                                         {:source-query {:source-table $$checkins
-                                                         :aggregation  [[:sum $user_id->users.id]]
-                                                         :breakout     [$id]}
-                                          :joins        [{:alias        "u"
-                                                          :source-table $$users
-                                                          :condition    [:= *checkins.id &u.users.id]}]
-                                          :order-by     [[:asc [:field (mt/format-name "id") {:base-type :type/Integer}]]]
-                                          :limit        3})))]
+                                                      (mt/rows+column-names
+                                                       (mt/run-mbql-query checkins
+                                                         {:source-query {:source-table $$checkins
+                                                                         :aggregation  [[:sum $user_id->users.id]]
+                                                                         :breakout     [$id]}
+                                                          :joins        [{:alias        "u"
+                                                                          :source-table $$users
+                                                                          :condition    [:= *checkins.id &u.users.id]}]
+                                                          :order-by     [[:asc [:field (mt/format-name "id") {:base-type :type/Integer}]]]
+                                                          :limit        3})))]
         (is (= [(mt/format-name "id") "sum"]
                columns))
         (is (= [[1 5] [2 1] [3 8]]
@@ -304,17 +304,17 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we join against a source nested MBQL query?"
       (is (= [[29 "20th Century Cafe" 12  37.775 -122.423 2]
-              [ 8 "25°"               11 34.1015 -118.342 2]
+              [8 "25°"               11 34.1015 -118.342 2]
               [93 "33 Taps"            7 34.1018 -118.326 2]]
              (mt/format-rows-by :venues
-               (mt/rows
-                 (mt/run-mbql-query venues
-                   {:source-table $$venues
-                    :joins        [{:alias        "cat"
-                                    :source-query {:source-table $$categories}
-                                    :condition    [:= $category_id &cat.*categories.id]}]
-                    :order-by     [[:asc $name]]
-                    :limit        3}))))))))
+                                (mt/rows
+                                 (mt/run-mbql-query venues
+                                   {:source-table $$venues
+                                    :joins        [{:alias        "cat"
+                                                    :source-query {:source-table $$categories}
+                                                    :condition    [:= $category_id &cat.*categories.id]}]
+                                    :order-by     [[:asc $name]]
+                                    :limit        3}))))))))
 
 (deftest ^:parallel join-against-card-source-query-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -329,14 +329,14 @@
                 :columns
                 (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
                (mt/format-rows-by [int identity int 4.0 4.0 int int identity]
-                 (mt/rows+column-names
-                  (mt/run-mbql-query venues
-                    {:joins    [{:alias        "cat"
-                                 :source-table "card__1"
-                                 :fields       :all
-                                 :condition    [:= $category_id &cat.*categories.id]}]
-                     :order-by [[:asc $name]]
-                     :limit    3})))))))))
+                                  (mt/rows+column-names
+                                   (mt/run-mbql-query venues
+                                     {:joins    [{:alias        "cat"
+                                                  :source-table "card__1"
+                                                  :fields       :all
+                                                  :condition    [:= $category_id &cat.*categories.id]}]
+                                      :order-by [[:asc $name]]
+                                      :limit    3})))))))))
 
 ;; This is a very contrived test. We create two identical cards and join them both
 ;; in a third card. This means that first two cards bring fields that differ only in
@@ -424,21 +424,21 @@
         (is (= {:rows    [[1 3 46 3] [2 9 40 9] [4 7 5 7]]
                 :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
                (mt/format-rows-by [int int int int]
-                 (mt/rows+column-names
-                  (mt/run-mbql-query checkins
-                    {:source-query {:source-table $$checkins
-                                    :aggregation  [[:count]]
-                                    :breakout     [$venue_id]}
-                     :joins
-                     [{:fields       :all
-                       :alias        "venues"
-                       :source-table "card__1"
-                       :strategy     :inner-join
-                       :condition    [:=
-                                      [:field "count" {:base-type :type/Number}]
-                                      [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
-                     :order-by     [[:asc $venue_id]]
-                     :limit        3})))))))))
+                                  (mt/rows+column-names
+                                   (mt/run-mbql-query checkins
+                                     {:source-query {:source-table $$checkins
+                                                     :aggregation  [[:count]]
+                                                     :breakout     [$venue_id]}
+                                      :joins
+                                      [{:fields       :all
+                                        :alias        "venues"
+                                        :source-table "card__1"
+                                        :strategy     :inner-join
+                                        :condition    [:=
+                                                       [:field "count" {:base-type :type/Number}]
+                                                       [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
+                                      :order-by     [[:asc $venue_id]]
+                                      :limit        3})))))))))
 
 (deftest ^:parallel aggregate-join-results-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -465,8 +465,8 @@
                               ["2014-12-01T00:00:00Z" 70]]
                     :columns [(mt/format-name "last_login") "avg"]}
                    (mt/format-rows-by [u.date/temporal-str->iso8601-str int]
-                     (mt/rows+column-names
-                      (qp/process-query query)))))))))))
+                                      (mt/rows+column-names
+                                       (qp/process-query query)))))))))))
 
 (deftest ^:parallel get-all-columns-without-metadata-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -479,19 +479,19 @@
                 :columns [(mt/format-name "venue_id") "count" (mt/format-name "category_id") "count_2"]}
                (mt/rows+column-names
                 (mt/format-rows-by [int int int int]
-                  (mt/run-mbql-query checkins
-                    {:source-query {:source-table $$checkins
-                                    :aggregation  [[:count]]
-                                    :breakout     [$venue_id]}
-                     :joins        [{:source-table "card__1"
-                                     :alias        "venues"
-                                     :fields       :all
-                                     :strategy     :inner-join
-                                     :condition    [:=
-                                                    [:field "count" {:base-type :type/Number}]
-                                                    [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
-                     :order-by     [[:asc $venue_id]]
-                     :limit        3})))))))))
+                                   (mt/run-mbql-query checkins
+                                     {:source-query {:source-table $$checkins
+                                                     :aggregation  [[:count]]
+                                                     :breakout     [$venue_id]}
+                                      :joins        [{:source-table "card__1"
+                                                      :alias        "venues"
+                                                      :fields       :all
+                                                      :strategy     :inner-join
+                                                      :condition    [:=
+                                                                     [:field "count" {:base-type :type/Number}]
+                                                                     [:field "count" {:base-type :type/Number, :join-alias "venues"}]]}]
+                                      :order-by     [[:asc $venue_id]]
+                                      :limit        3})))))))))
 
 (deftest ^:parallel joined-field-in-time-interval-test
   (mt/test-drivers (mt/normal-drivers-with-feature :right-join)
@@ -499,46 +499,46 @@
       (is (= {:rows    []
               :columns (mapv mt/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
              (mt/rows+column-names
-               (mt/run-mbql-query venues
-                 {:joins    [{:source-table $$checkins
-                              :alias        "c"
-                              :strategy     :right-join
-                              :condition    [:= $id &c.checkins.venue_id]}]
-                  :filter   [:time-interval &c.checkins.date -30 :day]
-                  :order-by [[:asc &c.checkins.id]]
-                  :limit    10})))))))
+              (mt/run-mbql-query venues
+                {:joins    [{:source-table $$checkins
+                             :alias        "c"
+                             :strategy     :right-join
+                             :condition    [:= $id &c.checkins.venue_id]}]
+                 :filter   [:time-interval &c.checkins.date -30 :day]
+                 :order-by [[:asc &c.checkins.id]]
+                 :limit    10})))))))
 
 (deftest ^:parallel deduplicate-column-names-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do we gracefully handle situtations where joins would produce multiple columns with the same name? "
                   "(Multiple columns named `id` in the example below)")
       (let [{:keys [rows columns]} (mt/rows+column-names
-                                     (mt/format-rows-by [int  ; checkins.id
-                                                         str  ; checkins.date
-                                                         int  ; checkins.user_id
-                                                         int  ; checkins.venue_id
-                                                         int  ; users.id
-                                                         str  ; users.name
-                                                         str  ; users.last_login
-                                                         int  ; venues.id
-                                                         str  ; venues.name
-                                                         int  ; venues.category_id
-                                                         3.0  ; venues.latitude
-                                                         3.0  ; venues.longitude
-                                                         int] ; venues.price
-                                       (mt/run-mbql-query checkins
-                                         {:source-query {:source-table $$checkins
-                                                         :joins
-                                                         [{:fields       :all
-                                                           :alias        "u"
-                                                           :source-table $$users
-                                                           :condition    [:= $user_id &u.users.id]}]}
-                                          :joins        [{:fields       :all
-                                                          :alias        "v"
-                                                          :source-table $$venues
-                                                          :condition    [:= $user_id &v.venues.id]}]
-                                          :order-by     [[:asc $id]]
-                                          :limit        2})))]
+                                    (mt/format-rows-by [int  ; checkins.id
+                                                        str  ; checkins.date
+                                                        int  ; checkins.user_id
+                                                        int  ; checkins.venue_id
+                                                        int  ; users.id
+                                                        str  ; users.name
+                                                        str  ; users.last_login
+                                                        int  ; venues.id
+                                                        str  ; venues.name
+                                                        int  ; venues.category_id
+                                                        3.0  ; venues.latitude
+                                                        3.0  ; venues.longitude
+                                                        int] ; venues.price
+                                                       (mt/run-mbql-query checkins
+                                                         {:source-query {:source-table $$checkins
+                                                                         :joins
+                                                                         [{:fields       :all
+                                                                           :alias        "u"
+                                                                           :source-table $$users
+                                                                           :condition    [:= $user_id &u.users.id]}]}
+                                                          :joins        [{:fields       :all
+                                                                          :alias        "v"
+                                                                          :source-table $$venues
+                                                                          :condition    [:= $user_id &v.venues.id]}]
+                                                          :order-by     [[:asc $id]]
+                                                          :limit        2})))]
         (is (= (mapv
                 mt/format-name
                 ["id"   "date"   "user_id"     "venue_id"                       ; checkins
@@ -561,13 +561,13 @@
         (is (= [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
                 [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
                (mt/formatted-rows [int identity int int int identity int 4.0 4.0 int]
-                 (mt/run-mbql-query checkins
-                   {:joins    [{:fields       :all
-                                :source-table "card__1"
-                                :alias        "card"
-                                :condition    [:= $venue_id &card.venues.id]}]
-                    :order-by [[:asc $id]]
-                    :limit    2}))))))))
+                                  (mt/run-mbql-query checkins
+                                    {:joins    [{:fields       :all
+                                                 :source-table "card__1"
+                                                 :alias        "card"
+                                                 :condition    [:= $venue_id &card.venues.id]}]
+                                     :order-by [[:asc $id]]
+                                     :limit    2}))))))))
 
 (deftest ^:parallel joined-date-filter-test
   ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
@@ -579,15 +579,15 @@
       (mt/dataset attempted-murders
         (is (= [["2019-11-01T07:23:18Z" "2019-11-01T07:23:18Z"]]
                (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str]
-                (mt/run-mbql-query attempts
-                  {:fields [$datetime_tz]
-                   :filter [:and
-                            [:between $datetime_tz "2019-11-01" "2019-11-01"]
-                            [:between &attempts_joined.datetime_tz "2019-11-01" "2019-11-01"]]
-                   :joins  [{:alias        "attempts_joined"
-                             :condition    [:= $id &attempts_joined.id]
-                             :fields       [&attempts_joined.datetime_tz]
-                             :source-table $$attempts}]}))))))))
+                                  (mt/run-mbql-query attempts
+                                    {:fields [$datetime_tz]
+                                     :filter [:and
+                                              [:between $datetime_tz "2019-11-01" "2019-11-01"]
+                                              [:between &attempts_joined.datetime_tz "2019-11-01" "2019-11-01"]]
+                                     :joins  [{:alias        "attempts_joined"
+                                               :condition    [:= $id &attempts_joined.id]
+                                               :fields       [&attempts_joined.datetime_tz]
+                                               :source-table $$attempts}]}))))))))
 
 (deftest ^:parallel expressions-referencing-joined-aggregation-expressions-test
   (testing (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)
@@ -596,24 +596,24 @@
               [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
               [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
              (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-               (mt/run-mbql-query venues
-                 {:fields      [$id
-                                $name
-                                $category_ID
-                                $latitude
-                                $longitude
-                                $price
-                                [:expression "RelativePrice"]]
-                  :expressions {:RelativePrice [:/ $price &CategoriesStats.*AvgPrice/Integer]}
-                  :joins       [{:condition    [:= $category_id &CategoriesStats.venues.category_id]
-                                 :source-query {:source-table $$venues
-                                                :aggregation  [[:aggregation-options [:max $price] {:name "MaxPrice"}]
-                                                               [:aggregation-options [:avg $price] {:name "AvgPrice"}]
-                                                               [:aggregation-options [:min $price] {:name "MinPrice"}]]
-                                                :breakout     [$category_id]}
-                                 :alias        "CategoriesStats"
-                                 :fields       :all}]
-                  :limit       3})))))))
+                                (mt/run-mbql-query venues
+                                  {:fields      [$id
+                                                 $name
+                                                 $category_ID
+                                                 $latitude
+                                                 $longitude
+                                                 $price
+                                                 [:expression "RelativePrice"]]
+                                   :expressions {:RelativePrice [:/ $price &CategoriesStats.*AvgPrice/Integer]}
+                                   :joins       [{:condition    [:= $category_id &CategoriesStats.venues.category_id]
+                                                  :source-query {:source-table $$venues
+                                                                 :aggregation  [[:aggregation-options [:max $price] {:name "MaxPrice"}]
+                                                                                [:aggregation-options [:avg $price] {:name "AvgPrice"}]
+                                                                                [:aggregation-options [:min $price] {:name "MinPrice"}]]
+                                                                 :breakout     [$category_id]}
+                                                  :alias        "CategoriesStats"
+                                                  :fields       :all}]
+                                   :limit       3})))))))
 
 (deftest ^:parallel join-source-queries-with-joins-test
   (testing "Should be able to join against source queries that themselves contain joins (#12928)"
@@ -652,7 +652,7 @@
               (is (= [["Doohickey" "Affiliate" 783 "Doohickey" 3]
                       ["Doohickey" "Facebook" 816 "Doohickey" 3]]
                      (mt/formatted-rows [str str int str int]
-                       (qp/process-query query)))))))
+                                        (qp/process-query query)))))))
 
         (testing "and custom expressions (#13649) (#18086)"
           (let [query (mt/mbql-query orders
@@ -677,7 +677,7 @@
               ;; source.product_id, source.count, source.expr, source.Q2__product_id, source.Q2__count
               (is (= [[4 89 0.46 4 41]]
                      (mt/formatted-rows [int int 2.0 int int]
-                       (qp/process-query query)))))))))))
+                                        (qp/process-query query)))))))))))
 
 (deftest ^:parallel join-against-saved-question-with-sort-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
@@ -705,28 +705,28 @@
                      "Gizmo"
                      51]]
                    (mt/formatted-rows [int str str str str 2.0 1.0 u.date/temporal-str->iso8601-str str int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
 
 (deftest ^:parallel join-with-space-in-alias-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Some drivers don't allow Table alises with spaces in them. Make sure joins still work."
       (mt/dataset
-       test-data
-       (let [query (mt/mbql-query
-                    products
-                    {:joins    [{:source-query {:source-table $$orders}
-                                 :alias        "Q 1"
-                                 :condition    [:= $id [:field %orders.product_id {:join-alias "Q 1"}]]
-                                 :fields       :all}]
-                     :fields   [$id
-                                [:field %orders.id {:join-alias "Q 1"}]]
-                     :order-by [[:asc $id]
-                                [:asc [:field %orders.id {:join-alias "Q 1"}]]]
-                     :limit    2})]
-         (mt/with-native-query-testing-context query
-           (is (= [[1 448] [1 493]]
-                  (mt/formatted-rows [int int]
-                                     (qp/process-query query))))))))))
+        test-data
+        (let [query (mt/mbql-query
+                      products
+                      {:joins    [{:source-query {:source-table $$orders}
+                                   :alias        "Q 1"
+                                   :condition    [:= $id [:field %orders.product_id {:join-alias "Q 1"}]]
+                                   :fields       :all}]
+                       :fields   [$id
+                                  [:field %orders.id {:join-alias "Q 1"}]]
+                       :order-by [[:asc $id]
+                                  [:asc [:field %orders.id {:join-alias "Q 1"}]]]
+                       :limit    2})]
+          (mt/with-native-query-testing-context query
+            (is (= [[1 448] [1 493]]
+                   (mt/formatted-rows [int int]
+                                      (qp/process-query query))))))))))
 
 (deftest ^:parallel joining-nested-queries-with-same-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
@@ -764,7 +764,7 @@
                     ["2016-06-01T00:00:00Z" 2 "2016-06-01T00:00:00Z" 1]
                     ["2016-08-01T00:00:00Z" 2 nil nil]]
                    (mt/formatted-rows [u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
 
 (deftest ^:parallel join-against-same-table-as-source-query-source-table-test
   (testing "Joining against the same table as the source table of the source query should work (#18502)"
@@ -902,13 +902,13 @@
                                  "users.id\\` AS user_id, u.* FROM categories LEFT JOIN users u ON 1 = 1; --"]]
           (testing (format "Join alias: `%s`" (pr-str evil-join-alias))
             (let [evil-query (mt/mbql-query
-                              venues
-                              {:joins [{:source-table $$categories
-                                        :alias        evil-join-alias
-                                        :condition    [:= $id $id]
-                                        :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
-                               :order-by [[:asc $id] [:asc [:field %categories.id {:join-alias evil-join-alias}]]]
-                               :limit 1})]
+                               venues
+                               {:joins [{:source-table $$categories
+                                         :alias        evil-join-alias
+                                         :condition    [:= $id $id]
+                                         :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
+                                :order-by [[:asc $id] [:asc [:field %categories.id {:join-alias evil-join-alias}]]]
+                                :limit 1})]
               (mt/with-native-query-testing-context evil-query
                 (is (= expected-rows
                        (mt/rows (qp/process-query evil-query))))))))))))
@@ -952,7 +952,7 @@
               (is (= [[1 "Red Medicine"          "Asian"  "Asian"]
                       [2 "Stout Burgers & Beers" "Burger" "Burger"]]
                      (mt/formatted-rows [int str str str]
-                       (qp/process-query query)))))))))))
+                                        (qp/process-query query)))))))))))
 
 (deftest ^:parallel join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
@@ -1011,7 +1011,7 @@
             (mt/with-native-query-testing-context query
               (is (= [[1 1 14]]
                      (mt/formatted-rows [int int int]
-                       (qp/process-query query)))))))))))
+                                        (qp/process-query query)))))))))))
 
 (deftest ^:parallel join-with-brakout-and-aggregation-expression
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
@@ -1036,7 +1036,7 @@
                 ["Doohickey" "Balistreri-Ankunding" "2018-02-01T00:00:00Z" 315.36 3.1536]
                 ["Doohickey" "Balistreri-Ankunding" "2018-03-01T00:00:00Z" 315.36 3.1536]]
                (mt/formatted-rows [str str u.date/temporal-str->iso8601-str 2.0 4.0]
-                 (qp/process-query query))))))))
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel mlv2-references-in-join-conditions-test
   (testing "Make sure join conditions that contain MLv2-generated refs with extra info like `:base-type` work correctly (#33083)"
@@ -1105,21 +1105,21 @@
                                 {:breakout    [$id]
                                  :aggregation [[:sum $rating]]})])
           query             (lib/query metadata-provider
-                              (mt/mbql-query nil
-                                {:source-table "card__1"
-                                 :joins        [{:source-table "card__2"
-                                                 :alias        "Q2 - Product"
-                                                 :condition    [:=
-                                                                [:field "PRODUCT_ID" {:base-type :type/Integer}]
-                                                                [:field "ID" {:base-type :type/BigInteger, :join-alias "Q2 - Product"}]]
-                                                 :fields       [[:field "sum" {:base-type :type/Float, :join-alias "Q2 - Product"}]]}]
-                                 :expressions  {"Sum Divide" [:/
-                                                              [:field "sum" {:base-type :type/Float, :join-alias "Q2 - Product"}]
-                                                              [:field "sum" {:base-type :type/Float}]]}
-                                 :filter       [:=
-                                                [:field %products.id {:base-type :type/BigInteger, :join-alias "Q2 - Product"}]
-                                                12]}))]
+                                       (mt/mbql-query nil
+                                         {:source-table "card__1"
+                                          :joins        [{:source-table "card__2"
+                                                          :alias        "Q2 - Product"
+                                                          :condition    [:=
+                                                                         [:field "PRODUCT_ID" {:base-type :type/Integer}]
+                                                                         [:field "ID" {:base-type :type/BigInteger, :join-alias "Q2 - Product"}]]
+                                                          :fields       [[:field "sum" {:base-type :type/Float, :join-alias "Q2 - Product"}]]}]
+                                          :expressions  {"Sum Divide" [:/
+                                                                       [:field "sum" {:base-type :type/Float, :join-alias "Q2 - Product"}]
+                                                                       [:field "sum" {:base-type :type/Float}]]}
+                                          :filter       [:=
+                                                         [:field %products.id {:base-type :type/BigInteger, :join-alias "Q2 - Product"}]
+                                                         12]}))]
       #_["PRODUCT_ID" "sum" "Sum Divide" "sum_2"]
       (is (= [[12 8887.4 0.0005 4.4]]
              (mt/formatted-rows [int 1.0 4.0 1.0]
-               (qp/process-query query)))))))
+                                (qp/process-query query)))))))

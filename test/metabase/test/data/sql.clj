@@ -23,7 +23,6 @@
   (driver/add-parent! driver :sql/test-extensions)
   (log/infof "Added SQL test extensions for %s ✏️" driver))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Interface (Identifier Names)                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -74,7 +73,6 @@
          (map (partial ddl.i/format-name driver))
          (apply sql.u/quote-name driver identifier-type))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Interface (Comments)                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -97,7 +95,6 @@
   (when (seq field-comment)
     (format "COMMENT '%s'" field-comment)))
 
-
 (defmulti standalone-column-comment-sql
   "Return standalone `COMMENT` statement for a column."
   {:arglists '([driver dbdef tabledef fielddef])}
@@ -111,8 +108,8 @@
   [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
   (when (seq field-comment)
     (format "COMMENT ON COLUMN %s IS '%s';"
-      (qualify-and-quote driver database-name table-name field-name)
-      field-comment)))
+            (qualify-and-quote driver database-name table-name field-name)
+            field-comment)))
 
 (defmulti inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
@@ -135,9 +132,8 @@
   [driver {:keys [database-name]} {:keys [table-name table-comment]}]
   (when (seq table-comment)
     (format "COMMENT ON TABLE %s IS '%s';"
-      (qualify-and-quote driver database-name table-name)
-      table-comment)))
-
+            (qualify-and-quote driver database-name table-name)
+            table-comment)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Interface (DDL SQL Statements)                                         |

@@ -16,31 +16,31 @@
 
 (defspec topic-gets-unqualified 2000
   (prop/for-all [ns-kw topic-generator]
-    (= (keyword (name ns-kw))
-       (:unqualified-topic (audit-log/construct-event ns-kw {} nil)))))
+                (= (keyword (name ns-kw))
+                   (:unqualified-topic (audit-log/construct-event ns-kw {} nil)))))
 
 (defspec user-id-params-take-precedence 1000
   (prop/for-all [topic topic-generator
                  event-params (mg/generator ::audit-log/event-params)
                  user-id (mg/generator [:maybe pos-int?])]
-    (let [constructed-event (audit-log/construct-event topic event-params user-id)]
-      (= (cond
-           (:user-id event-params) (:user-id event-params)
-           user-id user-id
-           :else nil)
-         (:user-id constructed-event)))))
+                (let [constructed-event (audit-log/construct-event topic event-params user-id)]
+                  (= (cond
+                       (:user-id event-params) (:user-id event-params)
+                       user-id user-id
+                       :else nil)
+                     (:user-id constructed-event)))))
 
 (defspec model-id-params-take-precedence 1000
   (prop/for-all [topic topic-generator
                  event-params (mg/generator ::audit-log/event-params)
                  user-id (mg/generator [:maybe pos-int?])]
-    (let [object (:object event-params)
-          constructed-event (audit-log/construct-event topic event-params user-id)]
-      (= (cond
-           (:model-id event-params) (:model-id event-params)
-           (u/id object) (u/id object)
-           :else nil)
-         (:model-id constructed-event)))))
+                (let [object (:object event-params)
+                      constructed-event (audit-log/construct-event topic event-params user-id)]
+                  (= (cond
+                       (:model-id event-params) (:model-id event-params)
+                       (u/id object) (u/id object)
+                       :else nil)
+                     (:model-id constructed-event)))))
 
 (deftest basic-record-event-test
   (mt/with-premium-features #{:audit-app}
@@ -60,10 +60,10 @@
       (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
         (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create
-                                     {:object card
-                                      :user-id (mt/user->id :rasta)
-                                      :model :model/Card
-                                      :model-id card-id})
+                                   {:object card
+                                    :user-id (mt/user->id :rasta)
+                                    :model :model/Card
+                                    :model-id card-id})
           (is (partial=
                {:topic    :card-create
                 :user_id  (mt/user->id :rasta)

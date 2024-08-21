@@ -219,22 +219,22 @@
               (map-indexed (fn [idx {:keys [table table-id metadata? native? card-name]}]
                              [card-name
                               (merge
-                                {:lib/type      :metadata/card
-                                 :id            (inc idx)
-                                 :database-id   (:id (lib.metadata/database metadata-provider))
-                                 :name          (str "Mock " (name table) " card")
-                                 :dataset-query (if native?
-                                                  {:database (:id (lib.metadata/database metadata-provider))
-                                                   :type     :native
-                                                   :native   {:query (str "SELECT * FROM " (name table))}}
-                                                  {:database (:id (lib.metadata/database metadata-provider))
-                                                   :type     :query
-                                                   :query    {:source-table table-id}})}
-                                (when metadata?
-                                  {:result-metadata
-                                   (->> (lib.metadata/fields metadata-provider table-id)
-                                        (sort-by :id)
-                                        (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
+                               {:lib/type      :metadata/card
+                                :id            (inc idx)
+                                :database-id   (:id (lib.metadata/database metadata-provider))
+                                :name          (str "Mock " (name table) " card")
+                                :dataset-query (if native?
+                                                 {:database (:id (lib.metadata/database metadata-provider))
+                                                  :type     :native
+                                                  :native   {:query (str "SELECT * FROM " (name table))}}
+                                                 {:database (:id (lib.metadata/database metadata-provider))
+                                                  :type     :query
+                                                  :query    {:source-table table-id}})}
+                               (when metadata?
+                                 {:result-metadata
+                                  (->> (lib.metadata/fields metadata-provider table-id)
+                                       (sort-by :id)
+                                       (mapv #(if native? (dissoc % :table-id :id :fk-target-field-id) %)))}))])))
         table-key-and-ids))
 
 (defn- make-mock-cards-special-cases
@@ -279,9 +279,9 @@
    (metadata-provider-with-mock-card meta/metadata-provider card))
   ([metadata-provider card]
    (lib/composed-metadata-provider
-     metadata-provider
-     (mock-metadata-provider
-       {:cards [card]}))))
+    metadata-provider
+    (mock-metadata-provider
+     {:cards [card]}))))
 
 (defn metadata-provider-with-card-from-query
   "A metadata provider with a card created from query and given id."
@@ -289,22 +289,22 @@
    (metadata-provider-with-card-from-query meta/metadata-provider id query))
   ([metadata-provider id query & [card-details]]
    (metadata-provider-with-mock-card
-     metadata-provider
-     (merge {:lib/type        :metadata/card
-             :id              id
-             :database-id     (:id (lib.metadata/database metadata-provider))
-             :dataset-query   (lib.convert/->legacy-MBQL query)
-             :name            (str (gensym))
-             :result-metadata (->> (lib/returned-columns query)
-                                   (sort-by :id))}
-            card-details))))
+    metadata-provider
+    (merge {:lib/type        :metadata/card
+            :id              id
+            :database-id     (:id (lib.metadata/database metadata-provider))
+            :dataset-query   (lib.convert/->legacy-MBQL query)
+            :name            (str (gensym))
+            :result-metadata (->> (lib/returned-columns query)
+                                  (sort-by :id))}
+           card-details))))
 
 (def metadata-provider-with-mock-cards
   "A metadata provider with all of the [[mock-cards]]. Composed with the normal [[meta/metadata-provider]]."
   (lib/composed-metadata-provider
-    meta/metadata-provider
-    (providers.mock/mock-metadata-provider
-      {:cards (vals mock-cards)})))
+   meta/metadata-provider
+   (providers.mock/mock-metadata-provider
+    {:cards (vals mock-cards)})))
 
 (mu/defn field-literal-ref :- ::lib.schema.ref/field.literal
   "Get a `:field` 'literal' ref (a `:field` ref that uses a string column name rather than an integer ID) for a column

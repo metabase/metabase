@@ -38,14 +38,14 @@
                                                    (swap! progress-calls update state conj n)
                                                    (orig-set-progress id state n))]
         (http-fake/with-fake-routes-in-isolation
-            {(:upload_url migration)
-             (fn [{:keys [body request-method]}]
+          {(:upload_url migration)
+           (fn [{:keys [body request-method]}]
                ;; slurp it to progress the upload
-               (slurp body)
-               (is (= request-method :put))
-               {:status 200})
-             (str (cloud-migration/migration-url (:external_id migration) "/uploaded"))
-             (constantly {:status 201})}
+             (slurp body)
+             (is (= request-method :put))
+             {:status 200})
+           (str (cloud-migration/migration-url (:external_id migration) "/uploaded"))
+           (constantly {:status 201})}
           (#'cloud-migration/migrate! migration)
           (is (-> @progress-calls :upload count (> 3))
               "several progress calls during upload")

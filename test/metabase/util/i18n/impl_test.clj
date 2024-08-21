@@ -88,11 +88,11 @@
 
 (deftest translate-test
   (mt/with-mock-i18n-bundles!  {"es"    {:messages
-                                        {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
-                                         "I''m good thanks"               "Está bien, gracias"
-                                         "must be {0} characters or less" "deben tener {0} caracteres o menos"}}
-                               "es_MX" {:messages
-                                        {"I''m good thanks" "Está muy bien, gracias"}}}
+                                         {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
+                                          "I''m good thanks"               "Está bien, gracias"
+                                          "must be {0} characters or less" "deben tener {0} caracteres o menos"}}
+                                "es_MX" {:messages
+                                         {"I''m good thanks" "Está muy bien, gracias"}}}
     (testing "Should be able to translate stuff"
       (is (= "¡Tu base de datos ha sido añadida!"
              (i18n.impl/translate "es" "Your database has been added!"))))

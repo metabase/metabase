@@ -25,7 +25,7 @@
                 (-> result :data :cols)))
         (is (= [[120]]
                (mt/formatted-rows [int]
-                 result)))))))
+                                  result)))))))
 
 (deftest ^:parallel cumulative-sum-test-2
   (mt/test-drivers (mt/normal-drivers)
@@ -50,7 +50,7 @@
                   [14 105]
                   [15 120]]
                  (mt/formatted-rows [int int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-test-3
   (mt/test-drivers (mt/normal-drivers)
@@ -75,7 +75,7 @@
                   ["Spiros Teofil"       112]
                   ["Szymon Theutrich"    120]]
                  (mt/formatted-rows [str int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-test-4
   (mt/test-drivers (mt/normal-drivers)
@@ -89,7 +89,7 @@
                   [3 4681]
                   [4 5050]]
                  (mt/formatted-rows [int int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -108,7 +108,7 @@
                   [#t "2016-05-01" 1318.49]
                   [#t "2016-06-01" 3391.41]]
                  (mt/formatted-rows [->local-date 2.0]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-test
   (mt/test-drivers (mt/normal-drivers)
@@ -119,7 +119,7 @@
           (mt/with-native-query-testing-context query
             (is (= [[15]]
                    (mt/formatted-rows [int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -144,7 +144,7 @@
                   ["Spiros Teofil"       14]
                   ["Szymon Theutrich"    15]]
                  (mt/formatted-rows [str int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-breakout-test-2
   (mt/test-drivers (mt/normal-drivers)
@@ -158,7 +158,7 @@
                   [3 94]
                   [4 100]]
                  (mt/formatted-rows [int int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-multiple-breakouts-test
   (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
@@ -182,7 +182,7 @@
                   [#t "2017-02-01" #t "2017-01-01" 411]
                   [#t "2017-03-01" #t "2017-01-01" 667]]
                  (mt/formatted-rows [->local-date ->local-date int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-three-breakouts-test
   (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY second and third BREAKOUTS (#2862, #42003)"
@@ -198,7 +198,7 @@
                   [#t "2016-05-06" #t "2016-01-01" #t "2016-05-01" 2]
                   [#t "2016-05-08" #t "2016-01-01" #t "2016-05-01" 3]]
                  (mt/formatted-rows [->local-date ->local-date ->local-date int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-without-field-test
   (mt/test-drivers (mt/normal-drivers)
@@ -212,7 +212,7 @@
                   [3 94]
                   [4 100]]
                  (mt/formatted-rows [int int]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-with-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers)
@@ -231,7 +231,7 @@
                     [#t "2016-05-01" 20]
                     [#t "2016-06-01" 57]]
                    (mt/formatted-rows [->local-date int]
-                     (qp/process-query query))))))))))
+                                      (qp/process-query query))))))))))
 
 (deftest ^:parallel cumulative-sum-with-multiple-breakouts-test
   (testing "Should be ORDERED BY first BREAKOUT and PARTITIONED BY the second BREAKOUT (#2862, #42003)"
@@ -256,7 +256,7 @@
                   [#t "2017-02-01" #t "2017-01-01" 22338.43]
                   [#t "2017-03-01" #t "2017-01-01" 36454.11]]
                  (mt/formatted-rows [->local-date ->local-date 2.0]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-sum-with-three-breakouts-test
   (testing "Three breakouts: should be ORDERED BY first BREAKOUT and PARTITIONED BY last two BREAKOUTS (#2862, #42003)"
@@ -273,7 +273,7 @@
                   [#t "2016-05-06" #t "2016-01-01" #t "2016-05-01" 186.07]
                   [#t "2016-05-08" #t "2016-01-01" #t "2016-05-01" 270.94]]
                  (mt/formatted-rows [->local-date ->local-date ->local-date 2.0]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel cumulative-count-and-sum-in-expressions-test
   (testing "Cumulative count should work inside expressions (#13634, #15118)"
@@ -301,7 +301,7 @@
                   [#t "2016-05-01" 20 1318.49 66.92]
                   [#t "2016-06-01" 57 3391.41 60.50]]
                  (mt/formatted-rows [->local-date int 2.0 2.0]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel expressions-inside-cumulative-aggregations-test
   (testing "Expressions inside of cumulative aggregations should work correctly"
@@ -320,7 +320,7 @@
                   [#t "2016-05-01" 1338.49]
                   [#t "2016-06-01" 3448.41]]
                  (mt/formatted-rows [->local-date 2.0]
-                   (qp/process-query query)))))))))
+                                    (qp/process-query query)))))))))
 
 (deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative)
@@ -345,7 +345,7 @@
                 [#t "2016-05-01" 20 1318.49 1265.73]
                 [#t "2016-06-01" 57 3391.41 2072.92]]
                (mt/formatted-rows [->local-date int 2.0 2.0]
-                 (qp/process-query query))))))))
+                                  (qp/process-query query))))))))
 
 (deftest ^:parallel cumulative-aggregation-with-filter-and-temporal-bucketed-breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join :window-functions/cumulative)

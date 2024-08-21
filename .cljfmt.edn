@@ -10,7 +10,7 @@
 
  :paths
  ["src"
-  #_"test"
+  "test"
   "enterprise/backend"
   "bin/build"
   "modules/drivers"
