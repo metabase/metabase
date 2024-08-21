@@ -2,18 +2,17 @@ import { t } from "ttag";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
-import Button from "metabase/core/components/Button";
-import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import CS from "metabase/css/core/index.css";
 import {
   Form,
+  FormErrorMessage,
   FormRadioGroup,
+  FormSubmitButton,
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { DEFAULT_MODAL_Z_INDEX, Radio, Stack } from "metabase/ui";
+import { Button, DEFAULT_MODAL_Z_INDEX, Radio, Stack } from "metabase/ui";
 
 import { useSaveQuestionContext } from "./context";
 import type { SaveQuestionFormProps } from "./types";
@@ -65,9 +64,9 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
         <FormSubmitButton
+          variant="filled"
           title={t`Save`}
           data-testid="save-question-button"
-          primary
         />
       </FormFooter>
     </Form>
