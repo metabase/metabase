@@ -55,6 +55,15 @@ const questionWith2TemporalBreakoutsDetails: StructuredQuestionDetails = {
   },
 };
 
+const multiStageQuestionWith2TemporalBreakoutsDetails: StructuredQuestionDetails =
+  {
+    name: "Test question",
+    query: {
+      "source-query": questionWith2TemporalBreakoutsDetails.query,
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
+    },
+  };
+
 const questionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
@@ -85,6 +94,15 @@ const questionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails = {
   },
 };
 
+const multiStageQuestionWith2NumBinsBreakoutsDetails: StructuredQuestionDetails =
+  {
+    name: "Test question",
+    query: {
+      "source-query": questionWith2NumBinsBreakoutsDetails.query,
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
+    },
+  };
+
 const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
   query: {
@@ -114,6 +132,15 @@ const questionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails = {
     "table.pivot": false,
   },
 };
+
+const multiStageQuestionWith2BinWidthBreakoutsDetails: StructuredQuestionDetails =
+  {
+    name: "Test question",
+    query: {
+      "source-query": questionWith2BinWidthBreakoutsDetails.query,
+      filter: [">", ["field", "count", { "base-type": "type/Integer" }], 0],
+    },
+  };
 
 const questionWith5TemporalBreakoutsDetails: StructuredQuestionDetails = {
   name: "Test question",
@@ -1262,6 +1289,84 @@ describe("scenarios > question > multiple column breakouts", () => {
           ],
         });
         assertQueryBuilderRowCount(2);
+      });
+    });
+
+    describe("viz settings", () => {
+      it("should be able to toggle the fields that correspond to breakout columns in the previous stage", () => {
+        function toggleColumn(columnName: string, isVisible: boolean) {
+          cy.findByTestId("visible-columns")
+            .findByTestId(`${columnName}-column`)
+            .should(isVisible ? "not.be.checked" : "be.checked")
+            .click();
+          cy.findByTestId("visible-columns")
+            .findByTestId(`${columnName}-column`)
+            .should(isVisible ? "be.checked" : "not.be.checked");
+        }
+
+        function testVisibleFields({
+          questionDetails,
+          queryColumn1Name,
+          queryColumn2Name,
+          tableColumn1Name,
+          tableColumn2Name,
+        }: {
+          questionDetails: StructuredQuestionDetails;
+          queryColumn1Name: string;
+          queryColumn2Name: string;
+          tableColumn1Name: string;
+          tableColumn2Name: string;
+        }) {
+          createQuestion(questionDetails, { visitQuestion: true });
+          assertTableData({
+            columns: ["Count", tableColumn1Name, tableColumn2Name],
+          });
+
+          cy.findByTestId("viz-settings-button").click();
+          toggleColumn(queryColumn1Name, false);
+          cy.wait("@dataset");
+          assertTableData({ columns: ["Count", tableColumn2Name] });
+
+          toggleColumn(queryColumn2Name, false);
+          cy.wait("@dataset");
+          assertTableData({ columns: ["Count"] });
+
+          toggleColumn(queryColumn1Name, true);
+          cy.wait("@dataset");
+          assertTableData({ columns: ["Count", tableColumn1Name] });
+
+          toggleColumn(queryColumn2Name, true);
+          assertTableData({
+            columns: ["Count", tableColumn1Name, tableColumn2Name],
+          });
+        }
+
+        cy.log("temporal breakouts");
+        testVisibleFields({
+          questionDetails: multiStageQuestionWith2TemporalBreakoutsDetails,
+          queryColumn1Name: "Created At: Year",
+          queryColumn2Name: "Created At: Month",
+          tableColumn1Name: "Created At: Year",
+          tableColumn2Name: "Created At: Month",
+        });
+
+        cy.log("'num-bins' breakouts");
+        testVisibleFields({
+          questionDetails: multiStageQuestionWith2NumBinsBreakoutsDetails,
+          queryColumn1Name: "Total: 10 bins",
+          queryColumn2Name: "Total: 50 bins",
+          tableColumn1Name: "Total",
+          tableColumn2Name: "Total",
+        });
+
+        cy.log("'bin-width' breakouts");
+        testVisibleFields({
+          questionDetails: multiStageQuestionWith2BinWidthBreakoutsDetails,
+          queryColumn1Name: "Latitude: 20°",
+          queryColumn2Name: "Latitude: 10°",
+          tableColumn1Name: "Latitude",
+          tableColumn2Name: "Latitude",
+        });
       });
     });
   });
