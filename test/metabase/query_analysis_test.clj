@@ -5,10 +5,12 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models :refer [Card]]
+   [metabase.models.persisted-info :as persisted-info]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest native-query-enabled-test
@@ -88,9 +90,16 @@
                                                                                          :display-name tag-name
                                                                                          :type         "card"
                                                                                          :card-id      (:id c1)}}}))}]
-      (is (= [{:table "t"}
-              ;; When we figure out how to compile c1 to use a model cache table, we can remove this table
-              {:schema "public", :table "venues", :table-id (mt/id :venues)}]
+        ;; TODO extract model persistence logic from the task, so that we can use the module API for this
+      (let [pi (persisted-info/turn-on-model! (t2/select-one-pk :model/User) c1)]
+        (t2/update! :model/PersistedInfo (:id pi) {:active true
+                                                   :state "persisted"
+                                                   :query_hash (persisted-info/query-hash (:dataset_query c1))
+                                                   :definition (persisted-info/metadata->definition (:result_metadata c1) (:table_name pi))
+                                                   :state_change_at :%now
+                                                   :refresh_end :%now}))
+
+      (is (= [{:table "t"}]
              (:tables (field-id-references c2)))))))
 
 (deftest replace-fields-and-tables!-test
