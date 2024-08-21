@@ -2,11 +2,11 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen } from "__support__/ui";
 import Question from "metabase-lib/v1/Question";
 import {
-  createSampleDatabase,
-  SAMPLE_DB_ID,
-  ORDERS_ID,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { FilterHeaderButton } from "./FilterHeaderButton";
