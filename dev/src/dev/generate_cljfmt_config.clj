@@ -78,7 +78,6 @@
                           ;; important libraries
                           "methodical"
                           "saml20-clj"
-                          "throttle.core"
                           "toucan2"])))
          (mapcat (fn [ns-symb]
                    (try

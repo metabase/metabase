@@ -194,15 +194,15 @@
                                      :last_used_at  #t "2024-02-14T23:59:00Z"}]
     (testing "Items viewed after midnight on the morning of the cutoff date are returned."
       (are [expected cutoff-date]
-          (= expected
-             (:total
-              (stale/find-stale-candidates*
-               {:collection-ids #{col-id}
-                :cutoff-date    (LocalDate/parse cutoff-date)
-                :limit          10
-                :offset         0
-                :sort-column    :name
-                :sort-direction :asc})))
+           (= expected
+              (:total
+               (stale/find-stale-candidates*
+                {:collection-ids #{col-id}
+                 :cutoff-date    (LocalDate/parse cutoff-date)
+                 :limit          10
+                 :offset         0
+                 :sort-column    :name
+                 :sort-direction :asc})))
         ;; At midnight the morning of 2-16, all items are included
         4 "2024-02-16"
         ;; At midnight the morning of 2-15, only the items viewed just before midnight are included

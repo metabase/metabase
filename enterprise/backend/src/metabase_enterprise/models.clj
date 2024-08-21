@@ -15,7 +15,7 @@
              (not (isa? x :metabase/model)))
     (doseq [feature @premium-features/premium-features]
       (u/ignore-exceptions
-       (let [model-namespace (symbol (str "metabase-enterprise." (name feature) ".models." (u/->kebab-case-en (name x))))]
+        (let [model-namespace (symbol (str "metabase-enterprise." (name feature) ".models." (u/->kebab-case-en (name x))))]
          ;; use `classloader/require` which is thread-safe and plays nice with our plugins system
-         (classloader/require model-namespace)))))
+          (classloader/require model-namespace)))))
   x)

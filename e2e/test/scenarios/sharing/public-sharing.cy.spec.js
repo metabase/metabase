@@ -8,6 +8,7 @@ import {
   createAction,
   describeEE,
   modal,
+  openSharingMenu,
   restore,
   setActionsEnabledForDB,
   setTokenFeatures,
@@ -309,10 +310,11 @@ describeEE(
     it("should validate approved email domains for a question alert", () => {
       visitQuestion(ORDERS_QUESTION_ID);
 
-      cy.icon("bell").click();
-      cy.button("Set up an alert").click();
+      openSharingMenu("Create alert");
+      modal().findByText("Set up an alert").click();
 
-      cy.findByRole("heading", { name: "Email" })
+      modal()
+        .findByRole("heading", { name: "Email" })
         .closest("li")
         .within(() => {
           addEmailRecipient(deniedEmail);
@@ -323,7 +325,7 @@ describeEE(
 
     it("should validate approved email domains for a dashboard subscription (metabase#17977)", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.icon("subscription").click();
+      openSharingMenu("Subscriptions");
 
       cy.findByRole("heading", { name: "Email it" }).click();
 

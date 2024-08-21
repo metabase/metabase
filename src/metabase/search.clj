@@ -13,10 +13,10 @@
   metabase.search.impl/keep-me)
 
 (p/import-vars
-  [metabase.search.config
-   SearchableModel
-   all-models]
-  [metabase.search.impl
-   query-model-set
-   search-context
-   search])
+ [metabase.search.config
+  SearchableModel
+  all-models]
+ [metabase.search.impl
+  query-model-set
+  search-context
+  search])

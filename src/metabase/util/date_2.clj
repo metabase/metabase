@@ -36,7 +36,7 @@
     ;; not using it to make ranges in MBQL filter clauses anyway
     ;;
     ;; TIMEZONE FIXME - not sure we even want to be adding zone-id info for the timestamps above either
-    #_LocalTime   #_ (t/offset-time t (t/zone-id timezone-id))
+    #_LocalTime   #_(t/offset-time t (t/zone-id timezone-id))
     t))
 
 (defn parse
@@ -555,7 +555,6 @@
   ZonedDateTime
   (with-time-zone-same-instant [t zone-id]
     (t/with-zone-same-instant t zone-id)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Etc                                                       |

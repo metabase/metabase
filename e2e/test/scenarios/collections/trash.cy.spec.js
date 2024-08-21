@@ -18,6 +18,7 @@ import {
   popover,
   restore,
   selectSidebarItem,
+  sharingMenuButton,
   sidebar,
   undo,
   visitCollection,
@@ -530,13 +531,12 @@ describe("scenarios > collections > trash", () => {
         cy.findByTestId("notebook-button").should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");
+        sharingMenuButton().should("not.exist");
       });
 
       // should not have disabled action in bottom footer
       cy.findAllByTestId("view-footer").within(() => {
         cy.findByText("Visualization").should("not.exist");
-        cy.icon("bell").should("not.exist");
-        cy.icon("share").should("not.exist");
       });
     });
 
@@ -545,8 +545,7 @@ describe("scenarios > collections > trash", () => {
 
       cy.findAllByTestId("dashboard-header").within(() => {
         cy.icon("pencil").should("not.exist");
-        cy.icon("subscription").should("not.exist");
-        cy.icon("share").should("not.exist");
+        sharingMenuButton().should("not.exist");
         cy.icon("clock").should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");

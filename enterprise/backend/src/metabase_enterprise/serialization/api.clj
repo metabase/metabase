@@ -176,8 +176,8 @@
                              {:default     false
                               :description "Serialize details how to connect to each db"})
    continue_on_error      (mu/with [:maybe ms/BooleanValue]
-                             {:default     false
-                              :description "Do not break execution on errors"})}
+                                   {:default     false
+                                    :description "Do not break execution on errors"})}
   (api/check-superuser)
   (let [start              (System/nanoTime)
         opts               {:targets                  (mapv #(vector "Collection" %)

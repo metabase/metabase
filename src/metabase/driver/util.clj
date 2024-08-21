@@ -36,25 +36,25 @@
   of [[metabase.driver/humanize-connection-error-message]]."
   {:cannot-connect-check-host-and-port
    {:message (deferred-tru
-               (str "Hmm, we couldn''t connect to the database."
-                    " "
-                    "Make sure your Host and Port settings are correct"))
+              (str "Hmm, we couldn''t connect to the database."
+                   " "
+                   "Make sure your Host and Port settings are correct"))
     :errors  {:host (deferred-tru "check your host settings")
               :port (deferred-tru "check your port settings")}}
 
    :ssh-tunnel-auth-fail
    {:message (deferred-tru
-               (str "We couldn''t connect to the SSH tunnel host."
-                    " "
-                    "Check the Username and Password."))
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Username and Password."))
     :errors  {:tunnel-user (deferred-tru "check your username")
               :tunnel-pass (deferred-tru "check your password")}}
 
    :ssh-tunnel-connection-fail
    {:message (deferred-tru
-               (str "We couldn''t connect to the SSH tunnel host."
-                    " "
-                    "Check the Host and Port."))
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Host and Port."))
     :errors  {:tunnel-host (deferred-tru "check your host settings")
               :tunnel-port (deferred-tru "check your port settings")}}
 
@@ -64,9 +64,9 @@
 
    :invalid-hostname
    {:message (deferred-tru
-               (str "It looks like your Host is invalid."
-                    " "
-                    "Please double-check it and try again."))
+              (str "It looks like your Host is invalid."
+                   " "
+                   "Please double-check it and try again."))
     :errors  {:host (deferred-tru "check your host settings")}}
 
    :password-incorrect
@@ -223,7 +223,6 @@
       (:engine (lib.metadata/database (qp.store/metadata-provider)))
       (database->driver* (u/the-id database-or-id)))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Available Drivers Info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -304,9 +303,9 @@
 (defn- file-upload-props [{prop-name :name, visible-if :visible-if, disp-nm :display-name, :as conn-prop}]
   (if (premium-features/is-hosted?)
     [(-> (assoc conn-prop
-           :name (str prop-name "-value")
-           :type "textFile"
-           :treat-before-posting "base64")
+                :name (str prop-name "-value")
+                :type "textFile"
+                :treat-before-posting "base64")
          (dissoc :secret-kind))]
     [(cond-> {:name (str prop-name "-options")
               :display-name disp-nm
@@ -316,12 +315,12 @@
                         {:name (trs "Uploaded file path")
                          :value "uploaded"}]
               :default "local"}
-             visible-if (assoc :visible-if visible-if))
+       visible-if (assoc :visible-if visible-if))
      (-> {:name (str prop-name "-value")
           :type "textFile"
           :treat-before-posting "base64"
           :visible-if {(keyword (str prop-name "-options")) "uploaded"}}
-       (dissoc :secret-kind))
+         (dissoc :secret-kind))
      {:name (str prop-name "-path")
       :type "string"
       :display-name (trs "File path")
@@ -353,7 +352,7 @@
   "Invokes the getter function on a info type connection property and adds it to the connection property map as its
   placeholder value. Returns nil if no placeholder value or getter is provided, or if the getter returns a non-string
   value or throws an exception."
-  [{ getter :getter, placeholder :placeholder, :as conn-prop}]
+  [{getter :getter, placeholder :placeholder, :as conn-prop}]
   (let [content (or placeholder
                     (try (getter)
                          (catch Throwable e
@@ -392,14 +391,13 @@
       :helper-text (trs "You can use patterns like \"auth*\" to match multiple {0}" (u/lower-case-en disp-name))
       :required true}]))
 
-
 (defn find-schema-filters-prop
   "Finds the first property of type `:schema-filters` for the given `driver` connection properties. Returns `nil`
   if the driver has no property of that type."
   [driver]
   (first (filter (fn [conn-prop]
                    (= :schema-filters (keyword (:type conn-prop))))
-           (driver/connection-properties driver))))
+                 (driver/connection-properties driver))))
 
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
@@ -457,7 +455,7 @@
               (cond-> prop
                 (seq v-ifs*)
                 (assoc :visible-if v-ifs*))))
-         final-props)))
+          final-props)))
 
 (def data-url-pattern
   "A regex to match data-URL-encoded files uploaded via the frontend"
@@ -485,8 +483,8 @@
 
           secrets-server->client (reduce (fn [acc prop]
                                            (assoc acc (keyword (:name prop)) prop))
-                                   {}
-                                   (connection-props-server->client driver (vals secret-names->props)))]
+                                         {}
+                                         (connection-props-server->client driver (vals secret-names->props)))]
       (reduce-kv (fn [acc prop-name _prop]
                    (let [subprop    (fn [suffix]
                                       (keyword (str prop-name suffix)))
@@ -513,11 +511,11 @@
                        ;; upload), then we need to ensure the nil value is merged, rather than the stale value from the
                        ;; app DB being picked
                        path  (-> ; from outer cond->
-                               (assoc val-kw nil) ; local path specified; remove the -value entry, if it exists
-                               (assoc source-kw :file-path)) ; and set the :source to :file-path
+                              (assoc val-kw nil) ; local path specified; remove the -value entry, if it exists
+                              (assoc source-kw :file-path)) ; and set the :source to :file-path
                        value (-> ; from outer cond->
-                               (assoc path-kw nil) ; value specified; remove the -path entry, if it exists
-                               (assoc source-kw nil)) ; and remove the :source mapping
+                              (assoc path-kw nil) ; value specified; remove the -path entry, if it exists
+                              (assoc source-kw nil)) ; and remove the :source mapping
                        true  (dissoc (subprop "-options")))))
                  db-details
                  secret-names->props))))
@@ -668,7 +666,7 @@
 (defn ssl-socket-factory
   "Generates a `SocketFactory` with the custom certificates added."
   ^SocketFactory [& {:keys [_private-key _own-cert _trust-cert] :as args}]
-    (.getSocketFactory (ssl-context args)))
+  (.getSocketFactory (ssl-context args)))
 
 (def default-sensitive-fields
   "Set of fields that should always be obfuscated in API responses, as they contain sensitive data."

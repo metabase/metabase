@@ -47,7 +47,7 @@
               :when table-name
               ;; ignore any models defined in test namespaces.
               :when (not (str/includes? (namespace model) "test"))]
-         [table-name model])))
+          [table-name model])))
 
 (defn- entity-id-models
   "Return a set of all Toucan models that have an `entity_id` column."
@@ -57,10 +57,10 @@
         entity-id-table-name->model (into {}
                                           (map (fn [table-name]
                                                  (if-let [model (table-name->model table-name)]
-                                                  [table-name model]
-                                                  (throw (ex-info (trs "Model not found for table {0}" table-name)
-                                                                  {:table-name table-name
-                                                                   :error      ::model-not-found})))))
+                                                   [table-name model]
+                                                   (throw (ex-info (trs "Model not found for table {0}" table-name)
+                                                                   {:table-name table-name
+                                                                    :error      ::model-not-found})))))
                                           entity-id-table-names)
         entity-id-models            (set (vals entity-id-table-name->model))]
     ;; make sure we've resolved all the tables that have entity_id to their corresponding models.

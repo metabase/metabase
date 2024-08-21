@@ -5,7 +5,7 @@
   (:require
    [clojure.pprint :as pprint]
    [clojure.string :as str]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [metabase.config :as config]
@@ -18,11 +18,11 @@
   [logger-name level x more]
   `(let [level#  (glogi-level ~level)
          logger# ~logger-name]
-    (when (is-loggable? logger# level#)
-     (let [x# ~x]
-       (if (instance? js/Error x#)
-         (lambdaisland.glogi/log logger# level# (print-str ~@more) x#)
-         (lambdaisland.glogi/log logger# level# (print-str x# ~@more) nil))))))
+     (when (is-loggable? logger# level#)
+       (let [x# ~x]
+         (if (instance? js/Error x#)
+           (lambdaisland.glogi/log logger# level# (print-str ~@more) x#)
+           (lambdaisland.glogi/log logger# level# (print-str x# ~@more) nil))))))
 
 (defn- glogi-logf
   "Macro helper for [[logf]] in CLJS."
@@ -83,7 +83,7 @@
   `(do
      ~(config/build-type-case
         :dev
-       `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
+        `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
      ~(macros/case
         :cljs (glogi-logp (str *ns*) level x more)
         :clj  (tools-logp *ns*       level x more))))
@@ -185,10 +185,10 @@
                       #(str/trim-newline
                         (with-out-str
                           #_{:clj-kondo/ignore [:discouraged-var]}
-                           (pprint/with-pprint-dispatch pprint/code-dispatch
-                             (pprint/pprint '~expr)
-                             (print "=> ")
-                             (pprint/pprint %)))))
+                          (pprint/with-pprint-dispatch pprint/code-dispatch
+                            (pprint/pprint '~expr)
+                            (print "=> ")
+                            (pprint/pprint %)))))
      :clj  `(clojure.tools.logging/spy ~level ~expr))))
 
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
@@ -199,8 +199,8 @@
    `(spyf :debug ~fmt ~expr))
   ([level fmt expr]
    (macros/case
-    :cljs (glogi-spy (str *ns*) level expr #(format ~fmt %))
-    :clj  `(spyf ~level ~fmt ~expr))))
+     :cljs (glogi-spy (str *ns*) level expr #(format ~fmt %))
+     :clj  `(spyf ~level ~fmt ~expr))))
 
 (defmacro with-no-logs
   "Turns off logs in body."

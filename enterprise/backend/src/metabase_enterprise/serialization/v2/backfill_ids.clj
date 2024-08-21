@@ -30,9 +30,9 @@
   [model]
   (or
     ;; toucan1 models
-    (isa? model ::mi/entity-id)
+   (isa? model ::mi/entity-id)
     ;; toucan2 models
-    (isa? model :hook/entity-id)))
+   (isa? model :hook/entity-id)))
 
 (defn backfill-ids!
   "Updates all rows of all models that are (a) serialized and (b) have `entity_id` columns to have the

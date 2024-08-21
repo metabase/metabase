@@ -1,4 +1,5 @@
 import type { Alert, AlertCard } from "../alert";
+import type { Channel } from "../notifications";
 
 import { createMockUserInfo } from "./user";
 
@@ -12,7 +13,7 @@ export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
 
   card: createMockAlertCard(),
   parameters: [],
-  channels: [],
+  channels: [createMockChannel()],
 
   dashboard_id: null,
   collection_id: null,
@@ -29,6 +30,18 @@ export const createMockAlert = (opts?: Partial<Alert>): Alert => ({
   created_at: "2020-01-01T00:00:00.000Z",
   updated_at: "2020-01-01T00:00:00.000Z",
 
+  ...opts,
+});
+
+export const createMockChannel = (opts?: Partial<Channel>): Channel => ({
+  channel_type: "email",
+  details: {},
+  enabled: true,
+  recipients: [],
+  schedule_day: null,
+  schedule_frame: null,
+  schedule_hour: null,
+  schedule_type: "daily",
   ...opts,
 });
 

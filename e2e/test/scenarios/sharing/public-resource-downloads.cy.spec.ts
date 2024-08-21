@@ -11,6 +11,7 @@ import {
   expectNoBadSnowplowEvents,
   getDashboardCardMenu,
   main,
+  openSharingMenu,
   popover,
   resetSnowplow,
   restore,
@@ -40,8 +41,7 @@ describeWithSnowplowEE(
 
         cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
 
-        cy.icon("share").click();
-        popover().findByText("Create a public link").click();
+        openSharingMenu("Create a public link");
 
         popover()
           .findByTestId("public-link-input")
@@ -122,8 +122,7 @@ describeWithSnowplowEE(
 
         cy.visit(`/question/${ORDERS_BY_YEAR_QUESTION_ID}`);
 
-        cy.icon("share").click();
-        popover().findByText("Create a public link").click();
+        openSharingMenu("Create a public link");
 
         popover()
           .findByTestId("public-link-input")
