@@ -197,6 +197,16 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
 export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
+const defaultLandingPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const defaultLoginPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
@@ -207,16 +217,10 @@ export const PLUGIN_SELECTORS = {
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
   getLoginPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLoginPageIllustration;
   },
   getLandingPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLandingPageIllustration;
   },
   getNoDataIllustration: (_state: State): string => {
     return noResultsSource;
