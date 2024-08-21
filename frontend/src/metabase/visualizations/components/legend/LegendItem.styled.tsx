@@ -26,16 +26,6 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   }
 `;
 
-export const LegendItemDot = styled.div`
-  flex: 0 0 auto;
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 50%;
-  background-color: ${({ color }) => color};
-  color-adjust: exact;
-  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
-`;
-
 export const LegendItemTitle = styled.div`
   color: var(--mb-color-text-primary);
   font-weight: bold;

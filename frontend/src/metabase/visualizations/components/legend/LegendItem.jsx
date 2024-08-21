@@ -7,12 +7,12 @@ import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 import {
-  LegendItemDot,
   LegendItemLabel,
   LegendItemRemoveIcon,
   LegendItemRoot,
   LegendItemTitle,
 } from "./LegendItem.styled";
+import { LegendItemDot } from "./LegendItemDot";
 
 const propTypes = {
   item: PropTypes.object,
@@ -66,6 +66,7 @@ const LegendItem = ({
       >
         <LegendItemDot
           color={item.color}
+          isVisible={item.visible}
           onClick={onToggleSeriesVisibility && handleDotClick}
         />
         <LegendItemTitle
