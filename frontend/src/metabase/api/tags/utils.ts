@@ -435,6 +435,10 @@ export function provideSubscriptionListTags(
   ];
 }
 
+export function provideSubscriptionChannelListTags(): TagDescription<TagType>[] {
+  return [listTag("subscription-channel")];
+}
+
 export function provideSubscriptionTags(
   subscription: DashboardSubscription,
 ): TagDescription<TagType>[] {

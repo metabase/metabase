@@ -28,9 +28,9 @@
 (comment hiccup.util/keep-me)
 
 (p/import-vars
-  [datetime
-   format-temporal-str
-   temporal-string?])
+ [datetime
+  format-temporal-str
+  temporal-string?])
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"

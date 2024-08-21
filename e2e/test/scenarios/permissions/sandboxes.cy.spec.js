@@ -15,6 +15,7 @@ import {
   openOrdersTable,
   openPeopleTable,
   openReviewsTable,
+  openSharingMenu,
   popover,
   remapDisplayValueToFK,
   restore,
@@ -961,7 +962,7 @@ describeEE("formatting > sandboxes", () => {
 
       cy.signInAsSandboxedUser();
       visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.findByLabelText("subscriptions").click();
+      openSharingMenu("Subscriptions");
 
       // should forward to email since that is the only one setup
       sidebar().findByText("Email this dashboard").should("exist");
@@ -1057,7 +1058,7 @@ describeEE("formatting > sandboxes", () => {
 
         cy.signInAsSandboxedUser();
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.findByLabelText("subscriptions").click();
+        openSharingMenu("Subscriptions");
 
         sidebar()
           .findByPlaceholderText("Enter user names or email addresses")

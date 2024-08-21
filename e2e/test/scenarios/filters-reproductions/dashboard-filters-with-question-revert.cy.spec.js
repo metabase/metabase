@@ -6,6 +6,7 @@ import {
   getDashboardCard,
   getIframeBody,
   modal,
+  openSharingMenu,
   popover,
   questionInfoButton,
   restore,
@@ -219,8 +220,7 @@ describe("issue 35954", () => {
         });
 
         visitDashboard(id);
-        cy.findByTestId("resource-embed-button").click();
-        cy.findByTestId("embed-menu-embed-modal-item").click();
+        openSharingMenu("Embed");
         modal().findByText("Static embed").click();
 
         cy.findByTestId("embedding-preview").within(() => {

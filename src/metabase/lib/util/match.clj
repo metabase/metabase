@@ -185,7 +185,7 @@
       (when (contains? (set &parents) :time-interval)
         &match))
     ;; -> [[:field 1 nil]]"
-  {:style/indent 1}
+  {:style/indent :defn}
   [x & patterns-and-results]
   ;; Actual implementation of these macros is in `mbql.util.match`. They're in a seperate namespace because they have
   ;; lots of other functions and macros they use for their implementation (which means they have to be public) that we
@@ -194,7 +194,7 @@
 
 (defmacro match-one
   "Like `match` but returns a single match rather than a sequence of matches."
-  {:style/indent 1}
+  {:style/indent :defn}
   [x & patterns-and-results]
   `(first (match* ~x ~patterns-and-results)))
 
@@ -228,7 +228,7 @@
   "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
   and `&parents` and `&match` anaphors are available in the same way. (`&match` is particularly useful here if you
   want to use keywords or sets of keywords as patterns.)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [x & patterns-and-results]
   ;; as with `match` actual impl is in `match` namespace to discourage you from using the constituent functions and
   ;; macros that power this macro directly
@@ -236,7 +236,7 @@
 
 (defmacro replace-in
   "Like `replace`, but only replaces things in the part of `x` in the keypath `ks` (i.e. the way to `update-in` works.)"
-  {:style/indent 2}
+  {:style/indent :defn}
   [x ks & patterns-and-results]
   `(metabase.lib.util.match.impl/update-in-unless-empty ~x ~ks (fn [x#] (replace* x# ~patterns-and-results))))
 

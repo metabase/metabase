@@ -113,7 +113,6 @@
                              (select-keys item [:strategy :config :model :model_id])
                              nil))))
 
-
 ;;; Invalidation
 
 (defn- invalidate-cards [databases dashboards questions]

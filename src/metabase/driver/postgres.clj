@@ -609,8 +609,8 @@
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (lib.metadata/field (qp.store/metadata-provider) stored-field-id))]
     (and
-      (some? stored-field)
-      (lib.field/json-field? stored-field))))
+     (some? stored-field)
+     (lib.field/json-field? stored-field))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
@@ -625,7 +625,6 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -755,8 +754,8 @@
 
       true
       (as-> params ;; from outer cond->
-        (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
-                       :ssl-use-client-auth)
+            (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
+                    :ssl-use-client-auth)
         (apply dissoc params all-subprops)))))
 
 (def ^:private disable-ssl-params

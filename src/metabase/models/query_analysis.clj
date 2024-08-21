@@ -127,5 +127,5 @@
   "Given a seq of cards, return a map of card-id => reference errors"
   [cards]
   (merge-with concat
-    (field-reference-errors cards)
-    (table-reference-errors cards)))
+              (field-reference-errors cards)
+              (table-reference-errors cards)))

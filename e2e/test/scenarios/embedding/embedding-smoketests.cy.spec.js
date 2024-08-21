@@ -5,8 +5,11 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   modal,
+  openSharingMenu,
   openStaticEmbeddingModal,
   restore,
+  sharingMenu,
+  sharingMenuButton,
   visitDashboard,
   visitIframe,
   visitQuestion,
@@ -34,10 +37,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
 
+    sharingMenuButton().should("not.exist");
+
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
-      cy.icon("bell").should("not.exist");
-      cy.icon("share").should("not.exist");
     });
   });
 
@@ -324,14 +327,8 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  cy.icon("share").click();
-
-  cy.findByTestId("embed-menu-embed-modal-item").should("be.disabled");
-
-  cy.findByTestId("embed-menu-embed-modal-item").within(() => {
-    cy.findByText("Embedding is off").should("be.visible");
-    cy.findByText("Enable it in settings").should("be.visible");
-  });
+  openSharingMenu();
+  sharingMenu().findByText(/embedding is off/i);
 }
 
 function visitAndEnableSharing(object, acceptTerms = true) {

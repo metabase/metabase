@@ -59,7 +59,6 @@
       (log/error e "Error logging in")
       (sso-error-page e :in))))
 
-
 ;; ------------------------------ Single Logout aka SLO ------------------------------
 
 (def metabase-slo-redirect-url
