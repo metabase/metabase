@@ -124,30 +124,37 @@ export const setupPermissions: CliStepMethod = async state => {
     return [{ type: "error", message }, state];
   }
 
-  const groupIds: number[] = Object.values(jwtGroupMappings).flat();
+  try {
+    const groupIds: number[] = Object.values(jwtGroupMappings).flat();
 
-  const options = {
-    tables: state.tables ?? [],
-    chosenTables: state.chosenTables,
-    groupIds,
-    tenancyColumnNames,
-  };
+    const options = {
+      tables: state.tables ?? [],
+      chosenTables: state.chosenTables,
+      groupIds,
+      tenancyColumnNames,
+    };
 
-  const permissionGraph = {
-    groups: getPermissionsForGroups(options),
-    sandboxes: getTenancyIsolationSandboxes(options),
-    revision: 0,
-    impersonations: [],
-  };
+    const permissionGraph = {
+      groups: getPermissionsForGroups(options),
+      sandboxes: getTenancyIsolationSandboxes(options),
+      revision: 0,
+      impersonations: [],
+    };
 
-  // Update the permissions graph with sandboxed permissions
-  res = await fetch(`${instanceUrl}/api/permissions/graph`, {
-    method: "PUT",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(permissionGraph),
-  });
+    // Update the permissions graph with sandboxed permissions
+    res = await fetch(`${instanceUrl}/api/permissions/graph`, {
+      method: "PUT",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(permissionGraph),
+    });
 
-  await propagateErrorResponse(res);
+    await propagateErrorResponse(res);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Failed to update permissions. Reason: ${reason}`;
+
+    return [{ type: "error", message }, state];
+  }
 
   return [{ type: "success" }, state];
 };
