@@ -52,60 +52,60 @@
 
 (deftest ^:parallel join-with-aggregation-reference-in-fields-metadata-test
   (mt/dataset test-data
-    (let [query (mt/mbql-query products
-                  {:joins [{:source-query {:source-table $$orders
-                                           :breakout     [$orders.product_id]
-                                           :aggregation  [[:sum $orders.quantity]]}
-                            :alias        "Orders"
-                            :condition    [:= $id &Orders.orders.product_id]
-                            :fields       [&Orders.orders.product_id
-                                           &Orders.*sum/Integer]}]
-                   :fields [$id]})
-          mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                (lib.convert/->pMBQL query))]
-      (is (=? [{:base-type :type/BigInteger
-                :semantic-type :type/PK
-                :table-id (mt/id :products)
-                :name "ID"
-                :lib/source :source/fields
-                :lib/source-column-alias "ID"
-                :effective-type :type/BigInteger
-                :id (mt/id :products :id)
-                :lib/desired-column-alias "ID"
-                :display-name "ID"}
-               {:metabase.lib.join/join-alias "Orders"
-                :base-type :type/Integer
-                :semantic-type :type/FK
-                :table-id (mt/id :orders)
-                :name "PRODUCT_ID"
-                :lib/source :source/joins
-                :lib/source-column-alias "PRODUCT_ID"
-                :effective-type :type/Integer
-                :id (mt/id :orders :product_id)
-                :lib/desired-column-alias "Orders__PRODUCT_ID"
-                :display-name "Product ID"
-                :source-alias "Orders"}
-               {:metabase.lib.join/join-alias "Orders"
-                :lib/type :metadata/column
-                :base-type :type/Integer
-                :name "sum"
-                :lib/source :source/joins
-                :lib/source-column-alias "sum"
-                :effective-type :type/Integer
-                :lib/desired-column-alias "Orders__sum"
-                :display-name "Sum of Quantity"
-                :source-alias "Orders"}]
-              (lib.metadata.calculation/returned-columns mlv2-query))))))
+              (let [query (mt/mbql-query products
+                                         {:joins [{:source-query {:source-table $$orders
+                                                                  :breakout     [$orders.product_id]
+                                                                  :aggregation  [[:sum $orders.quantity]]}
+                                                   :alias        "Orders"
+                                                   :condition    [:= $id &Orders.orders.product_id]
+                                                   :fields       [&Orders.orders.product_id
+                                                                  &Orders.*sum/Integer]}]
+                                          :fields [$id]})
+                    mlv2-query (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                          (lib.convert/->pMBQL query))]
+                (is (=? [{:base-type :type/BigInteger
+                          :semantic-type :type/PK
+                          :table-id (mt/id :products)
+                          :name "ID"
+                          :lib/source :source/fields
+                          :lib/source-column-alias "ID"
+                          :effective-type :type/BigInteger
+                          :id (mt/id :products :id)
+                          :lib/desired-column-alias "ID"
+                          :display-name "ID"}
+                         {:metabase.lib.join/join-alias "Orders"
+                          :base-type :type/Integer
+                          :semantic-type :type/FK
+                          :table-id (mt/id :orders)
+                          :name "PRODUCT_ID"
+                          :lib/source :source/joins
+                          :lib/source-column-alias "PRODUCT_ID"
+                          :effective-type :type/Integer
+                          :id (mt/id :orders :product_id)
+                          :lib/desired-column-alias "Orders__PRODUCT_ID"
+                          :display-name "Product ID"
+                          :source-alias "Orders"}
+                         {:metabase.lib.join/join-alias "Orders"
+                          :lib/type :metadata/column
+                          :base-type :type/Integer
+                          :name "sum"
+                          :lib/source :source/joins
+                          :lib/source-column-alias "sum"
+                          :effective-type :type/Integer
+                          :lib/desired-column-alias "Orders__sum"
+                          :display-name "Sum of Quantity"
+                          :source-alias "Orders"}]
+                        (lib.metadata.calculation/returned-columns mlv2-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
   (binding [lib.card/*force-broken-card-refs* false]
     (t2.with-temp/with-temp [:model/Card card {:dataset_query
                                                (mt/mbql-query venues
-                                                 {:joins
-                                                  [{:source-table $$categories
-                                                    :condition    [:= $category_id &c.categories.id]
-                                                    :fields       :all
-                                                    :alias        "c"}]})}]
+                                                              {:joins
+                                                               [{:source-table $$categories
+                                                                 :condition    [:= $category_id &c.categories.id]
+                                                                 :fields       :all
+                                                                 :alias        "c"}]})}]
       (let [query      {:database (mt/id)
                         :type     :query
                         :query    {:source-card (u/the-id card)}}

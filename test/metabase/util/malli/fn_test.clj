@@ -217,24 +217,24 @@
 
 (deftest ^:parallel error-location-tests
   (tools.macro/macrolet [(check-error-location [expr]
-                                               `(try ~expr
-                                                     (is false "Did not throw")
-                                                     (catch Exception e# (from-here? e#))))]
-                        (testing "Top stack trace is this namespace, not in validate"
-                          (testing "single arity input"
-                            (check-error-location (foo 1)))
-                          (testing "single arity output"
-                            (check-error-location (foo "good input")))
-                          (testing "multi arity input"
-                            (check-error-location (bar 1 2)))
-                          (testing "multi arity output"
-                            (check-error-location (bar "good input" 2)))
-                          (testing "var args input"
-                            (check-error-location (bar 1 2 3 4 5)))
-                          (testing "var args output"
-                            (check-error-location (bar "good input" 2 3 4 5))))
-                        (testing "sanity check-error-location that it works"
-                          (is (= :yes (works? "valid input"))))))
+                           `(try ~expr
+                                 (is false "Did not throw")
+                                 (catch Exception e# (from-here? e#))))]
+    (testing "Top stack trace is this namespace, not in validate"
+      (testing "single arity input"
+        (check-error-location (foo 1)))
+      (testing "single arity output"
+        (check-error-location (foo "good input")))
+      (testing "multi arity input"
+        (check-error-location (bar 1 2)))
+      (testing "multi arity output"
+        (check-error-location (bar "good input" 2)))
+      (testing "var args input"
+        (check-error-location (bar 1 2 3 4 5)))
+      (testing "var args output"
+        (check-error-location (bar "good input" 2 3 4 5))))
+    (testing "sanity check-error-location that it works"
+      (is (= :yes (works? "valid input"))))))
 
 (deftest instrument-ns-test
   (doseq [mode ["test" "prod" "dev"]]
