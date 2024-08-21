@@ -87,17 +87,22 @@
     (sweep-query-analysis-loop!)))
 
 (defmethod task/init! ::SweepQueryAnalysis [_]
-  (let [job     (jobs/build
+  (let [job-key (jobs/key "metabase.task.backfill-query-fields.job")
+        job     (jobs/build
                   (jobs/of-type SweepQueryAnalysis)
-                  (jobs/with-identity (jobs/key "metabase.task.backfill-query-fields.job"))
-                  (jobs/store-durably))
+                  (jobs/with-identity job-key)
+                  (jobs/store-durably)
+                  (jobs/request-recovery))
         trigger (triggers/build
                   (triggers/with-identity (triggers/key "metabase.task.backfill-query-fields.trigger"))
                   (triggers/start-now)
                   (triggers/with-schedule
-                   (cron/schedule
-                    (cron/cron-schedule
-                     ;; run every 4 hours at a random minute:
-                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
-                    (cron/with-misfire-handling-instruction-do-nothing))))]
-    (task/schedule-task! job trigger)))
+                    (cron/schedule
+                      (cron/cron-schedule
+                       ;; run every 4 hours at a random minute:
+                       (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
+                      (cron/with-misfire-handling-instruction-ignore-misfires))))]
+    ;; Schedule the repeats
+    (task/schedule-task! job trigger)
+    ;; Don't wait, try to kick it off immediately
+    (task/trigger-now! job-key)))
