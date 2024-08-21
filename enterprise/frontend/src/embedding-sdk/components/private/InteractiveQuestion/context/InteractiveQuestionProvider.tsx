@@ -1,31 +1,15 @@
-import {
-  type PropsWithChildren,
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-} from "react";
+import { createContext, useContext, useEffect, useMemo } from "react";
 
-import type { SdkPluginsConfig } from "embedding-sdk";
-import {
-  type LoadQuestionHookResult,
-  useLoadQuestion,
-} from "embedding-sdk/hooks/private/use-load-question";
+import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { QueryParams } from "metabase/query_builder/actions";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
-interface InteractiveQuestionContextType
-  extends Omit<LoadQuestionHookResult, "loadQuestion"> {
-  plugins: SdkPluginsConfig | null;
-  mode: Mode | null | undefined;
-  resetQuestion: () => void;
-  onReset?: () => void;
-  onNavigateBack?: () => void;
-}
+import type {
+  InteractiveQuestionContextType,
+  InteractiveQuestionProviderProps,
+} from "./types";
 
 /**
  * Note: This context should only be used as a wrapper for the InteractiveQuestionResult
@@ -37,14 +21,6 @@ export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
-type InteractiveQuestionProviderProps = PropsWithChildren<
-  {
-    componentPlugins?: SdkPluginsConfig;
-    onReset?: () => void;
-    onNavigateBack?: () => void;
-  } & LoadSdkQuestionParams
->;
-
 const DEFAULT_OPTIONS = {};
 
 export const InteractiveQuestionProvider = ({
@@ -52,7 +28,6 @@ export const InteractiveQuestionProvider = ({
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
-  onReset,
   onNavigateBack,
   children,
 }: Omit<InteractiveQuestionProviderProps, "options"> & {
@@ -91,7 +66,7 @@ export const InteractiveQuestionProvider = ({
     isQuestionLoading,
     isQueryRunning,
     resetQuestion: loadQuestion,
-    onReset: onReset || loadQuestion,
+    onReset: loadQuestion,
     onNavigateBack,
     runQuestion,
     updateQuestion,
