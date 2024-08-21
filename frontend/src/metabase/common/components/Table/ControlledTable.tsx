@@ -25,6 +25,7 @@ export type ControlledTableProps<Row extends BaseRow> = {
   onSort?: (props: sortProps) => void;
   onPageChange?: (page: number) => void;
   page?: number;
+  pageSize?: number;
   totalItems?: number;
   ifEmpty?: React.ReactNode;
   cols?: React.ReactNode;
@@ -46,6 +47,7 @@ export function ControlledTable<Row extends BaseRow>({
   sortColumn,
   onSort,
   page,
+  pageSize,
   onPageChange,
   totalItems,
   ifEmpty,
@@ -53,10 +55,10 @@ export function ControlledTable<Row extends BaseRow>({
   ...rest
 }: ControlledTableProps<Row>) {
   return (
-    <div>
+    <>
       <table {...rest} className={CS.Table}>
-        <colgroup>{cols}</colgroup>
-        <thead dir="ltr">
+        {cols && <colgroup>{cols}</colgroup>}
+        <thead>
           <tr>
             {columns.map(column => (
               <th key={String(column.key)}>
@@ -76,7 +78,7 @@ export function ControlledTable<Row extends BaseRow>({
             ))}
           </tr>
         </thead>
-        <tbody dir="ltr">
+        <tbody>
           {rows.length > 0
             ? rows.map((row, index) => (
                 <React.Fragment key={String(row.id) || index}>
@@ -87,19 +89,22 @@ export function ControlledTable<Row extends BaseRow>({
         </tbody>
       </table>
 
-      {onPageChange && page !== undefined && (
-        <Flex justify="end">
-          <PaginationControls
-            page={page}
-            pageSize={15}
-            total={totalItems}
-            itemsLength={rows.length}
-            onNextPage={() => onPageChange(page + 1)}
-            onPreviousPage={() => onPageChange(page - 1)}
-          />
-        </Flex>
-      )}
-    </div>
+      {onPageChange &&
+        page !== undefined &&
+        pageSize !== undefined &&
+        totalItems && (
+          <Flex justify="end">
+            <PaginationControls
+              page={page}
+              pageSize={pageSize}
+              total={totalItems}
+              itemsLength={rows.length}
+              onNextPage={() => onPageChange(page + 1)}
+              onPreviousPage={() => onPageChange(page - 1)}
+            />
+          </Flex>
+        )}
+    </>
   );
 }
 

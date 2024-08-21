@@ -11,7 +11,7 @@
     text-align: left;
     padding: 0.5rem;
     border-bottom: 1px solid var(--mb-color-border);
-    padding-inline-start: 1rem;
+    padding-inline: 0.75rem;
   }
 
   tbody {
@@ -26,7 +26,6 @@
 
   td {
     border-bottom: 1px solid var(--mb-color-border);
-    padding-inline: 0.5rem;
-    padding-inline-start: 1rem;
+    padding-inline: 0.75rem;
   }
 }

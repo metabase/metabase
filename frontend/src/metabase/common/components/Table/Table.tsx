@@ -70,7 +70,6 @@ export function Table<Row extends BaseRow>({
         setSortColumn(name);
         setSortDirection(direction);
       }}
-      tableProps={tableProps}
       sortColumn={
         sortColumn ? { name: sortColumn, direction: sortDirection } : undefined
       }

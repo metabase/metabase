@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, queryIcon } from "__support__/ui";
 
+import { ControlledTable } from "./ControlledTable";
 import { Table } from "./Table";
 
 type Pokemon = {
@@ -42,6 +43,22 @@ const sampleData: Pokemon[] = [
     name: "Scorbunny",
     type: "Fire",
     generation: 8,
+  },
+];
+
+/** The Japanese words for blue and green are sorted differently in the ja-JP locale vs. the en-US locale */
+const sampleJapaneseData: Pokemon[] = [
+  {
+    id: 1,
+    name: "青いゼニガメ (Blue Squirtle)",
+    type: "Water",
+    generation: 1,
+  },
+  {
+    id: 2,
+    name: "緑のフシギダネ (Green Bulbasaur)",
+    type: "Grass",
+    generation: 1,
   },
 ];
 
@@ -125,6 +142,46 @@ describe("common > components > Table", () => {
     firstRowShouldHaveText("Squirtle");
   });
 
+  it("should respect locales when sorting tables", async () => {
+    render(
+      <>
+        <Table
+          data-testid="japanese-table"
+          columns={sampleColumns}
+          rows={sampleJapaneseData}
+          rowRenderer={renderRow}
+          locale="ja-JP"
+        />
+        <Table
+          data-testid="english-table"
+          columns={sampleColumns}
+          rows={sampleJapaneseData}
+          rowRenderer={renderRow}
+          locale="en-US"
+        />
+      </>,
+    );
+
+    expect(queryIcon("chevrondown")).not.toBeInTheDocument();
+    expect(queryIcon("chevronup")).not.toBeInTheDocument();
+
+    const japaneseTable = await screen.findByTestId("japanese-table");
+    const englishTable = await screen.findByTestId("english-table");
+
+    // Sort both tables
+    await userEvent.click(await within(japaneseTable).findByText("Name"));
+    await userEvent.click(await within(englishTable).findByText("Name"));
+
+    // The locales affect the order of the rows:
+    const englishRows = within(englishTable).getAllByRole("row");
+    expect(englishRows[1]).toHaveTextContent("Green");
+    expect(englishRows[2]).toHaveTextContent("Blue");
+
+    const japaneseRows = within(japaneseTable).getAllByRole("row");
+    expect(japaneseRows[1]).toHaveTextContent("Blue");
+    expect(japaneseRows[2]).toHaveTextContent("Green");
+  });
+
   it("should sort on multiple columns", async () => {
     render(
       <Table
@@ -151,6 +208,99 @@ describe("common > components > Table", () => {
     await userEvent.click(sortGenButton);
     expect(getIcon("chevronup")).toBeInTheDocument();
     firstRowShouldHaveText("8");
+  });
+
+  it("should present the empty component if no rows are given", async () => {
+    render(
+      <Table
+        columns={sampleColumns}
+        rows={[]}
+        rowRenderer={renderRow}
+        ifEmpty={
+          <tr>
+            <td colSpan={3}>No Results</td>
+          </tr>
+        }
+      />,
+    );
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getByText("Type")).toBeInTheDocument();
+    expect(screen.getByText("Generation")).toBeInTheDocument();
+    expect(screen.getByText("No Results")).toBeInTheDocument();
+  });
+
+  it("should allow you provide a format values when sorting", async () => {
+    render(
+      <Table
+        columns={sampleColumns}
+        rows={sampleData}
+        rowRenderer={renderRow}
+        formatValueForSorting={(row, colName) => {
+          if (colName === "type") {
+            if (row.type === "Water") {
+              return 10;
+            }
+            return 1;
+          }
+          return row[colName as keyof Pokemon];
+        }}
+      />,
+    );
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getByText("Type")).toBeInTheDocument();
+    expect(screen.getByText("Generation")).toBeInTheDocument();
+
+    const sortNameButton = screen.getByText("Type");
+    // Ascending
+    await userEvent.click(sortNameButton);
+    // Descending
+    await userEvent.click(sortNameButton);
+    firstRowShouldHaveText("Squirtle");
+  });
+});
+
+describe("common > components > ControlledTable", () => {
+  it("should call the onSort handler with values when a row is clicked", async () => {
+    const onSort = jest.fn();
+
+    render(
+      <ControlledTable
+        columns={sampleColumns}
+        rows={sampleData}
+        rowRenderer={renderRow}
+        onSort={onSort}
+      />,
+    );
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getByText("Type")).toBeInTheDocument();
+    expect(screen.getByText("Generation")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Type"));
+
+    expect(onSort).toHaveBeenCalledWith({ name: "type", direction: "asc" });
+  });
+
+  it("if pageination props are passed, it should render the pagination controller.", async () => {
+    const onPageChange = jest.fn();
+
+    render(
+      <ControlledTable
+        columns={sampleColumns}
+        rows={sampleData}
+        rowRenderer={renderRow}
+        onPageChange={onPageChange}
+        page={0}
+        totalItems={sampleData.length}
+        pageSize={2}
+      />,
+    );
+    expect(screen.getByText("Name")).toBeInTheDocument();
+    expect(screen.getByText("Type")).toBeInTheDocument();
+    expect(screen.getByText("Generation")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("navigation", { name: /pagination/ }),
+    ).toBeInTheDocument();
   });
 });
 
