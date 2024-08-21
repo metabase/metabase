@@ -70,6 +70,25 @@ const PRODUCT_ID_FIELD: ConcreteFieldReference = [
   },
 ];
 
+const ORDERS_DATE_COLUMNS = ["Created At"];
+const ORDERS_NUMBER_COLUMNS = [
+  "Subtotal",
+  "Tax",
+  "Total",
+  "Discount",
+  "Quantity",
+];
+const PRODUCTS_DATE_COLUMNS = ["Created At"];
+const PRODUCTS_TEXT_COLUMNS = ["Ean", "Title", "Category", "Vendor"];
+const PRODUCTS_NUMBER_COLUMNS = ["Price", "Rating"];
+
+const PEOPLE_DATE_COLUMNS = ["Birth Date", "Created At"];
+const PEOPLE_TEXT_COLUMNS = ["Address", "Email", "Password", "Name", "Source"];
+const PEOPLE_NUMBER_COLUMNS = ["Longitude", "Latitude"];
+
+const REVIEWS_DATE_COLUMNS = ["Created At"];
+const REVIEWS_TEXT_COLUMNS = ["Reviewer", "Body"];
+
 /**
  * "Questions" tab - dashcards are questions
  * "Models" tab - dashcards are models
@@ -136,55 +155,52 @@ describe("scenarios > dashboard > filters > query stages", () => {
       cy.log("date columns");
       getFilter("Date").click();
       verifyDashcardMappingOptions(0, [
-        ["Order", ["Created At"]],
-        ["Product", ["Created At"]],
-        ["User", ["Birth Date", "Created At"]],
+        ["Order", ORDERS_DATE_COLUMNS],
+        ["Product", PRODUCTS_DATE_COLUMNS],
+        ["User", PEOPLE_DATE_COLUMNS],
       ]);
       verifyDashcardMappingOptions(1, [
-        ["M1 Model based on a question", ["Created At"]],
-        ["Product", ["Created At"]],
-        ["User", ["Birth Date", "Created At"]],
+        ["M1 Orders Model", ORDERS_DATE_COLUMNS],
+        ["Product", PRODUCTS_DATE_COLUMNS],
+        ["User", PEOPLE_DATE_COLUMNS],
       ]);
       verifyDashcardMappingOptions(2, [
-        ["Q0 Order", ["Created At"]],
-        ["Product", ["Created At"]],
-        ["User", ["Birth Date", "Created At"]],
+        ["Q0 Order", ORDERS_DATE_COLUMNS],
+        ["Product", PRODUCTS_DATE_COLUMNS],
+        ["User", PEOPLE_DATE_COLUMNS],
       ]);
 
       cy.log("text columns");
       getFilter("Text").click();
       verifyDashcardMappingOptions(0, [
-        ["Product", ["Ean", "Title", "Category", "Vendor"]],
-        ["User", ["Address", "Email", "Password", "Name", "Source"]],
+        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["User", PEOPLE_TEXT_COLUMNS],
       ]);
       verifyDashcardMappingOptions(1, [
-        ["Product", ["Ean", "Title", "Category", "Vendor"]],
-        ["User", ["Address", "Email", "Password", "Name", "Source"]],
+        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["User", PEOPLE_TEXT_COLUMNS],
       ]);
       verifyDashcardMappingOptions(2, [
-        ["Product", ["Ean", "Title", "Category", "Vendor"]],
-        ["User", ["Address", "Email", "Password", "Name", "Source"]],
+        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["User", PEOPLE_TEXT_COLUMNS],
       ]);
 
       cy.log("number columns");
       getFilter("Number").click();
       verifyDashcardMappingOptions(0, [
-        ["Order", ["Subtotal", "Tax", "Total", "Discount", "Quantity"]],
-        ["Product", ["Price", "Rating"]],
-        ["User", ["Longitude", "Latitude"]],
+        ["Order", ORDERS_NUMBER_COLUMNS],
+        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
       verifyDashcardMappingOptions(1, [
-        [
-          "M1 Model based on a question",
-          ["Subtotal", "Tax", "Total", "Discount", "Quantity"],
-        ],
-        ["Product", ["Price", "Rating"]],
-        ["User", ["Longitude", "Latitude"]],
+        ["M1 Orders Model", ORDERS_NUMBER_COLUMNS],
+        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
       verifyDashcardMappingOptions(2, [
-        ["Q0 Order", ["Subtotal", "Tax", "Total", "Discount", "Quantity"]],
-        ["Product", ["Price", "Rating"]],
-        ["User", ["Longitude", "Latitude"]],
+        ["Q0 Order", ORDERS_NUMBER_COLUMNS],
+        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
     });
   });
@@ -224,7 +240,58 @@ describe("scenarios > dashboard > filters > query stages", () => {
       });
     });
 
-    it("allows to map to all relevant columns", () => {});
+    it("allows to map to all relevant columns", () => {
+      editDashboard();
+
+      cy.log("date columns");
+      getFilter("Date").click();
+      verifyDashcardMappingOptions(0, [
+        ["Q1 Orders question", ORDERS_DATE_COLUMNS],
+        ["Review", REVIEWS_DATE_COLUMNS],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]],
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        ["Q1 Orders question", ORDERS_DATE_COLUMNS],
+        ["Review", REVIEWS_DATE_COLUMNS],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]],
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+
+      cy.log("text columns");
+      getFilter("Text").click();
+      verifyDashcardMappingOptions(0, [
+        ["Review", REVIEWS_TEXT_COLUMNS],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]],
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(2, [
+        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+
+      cy.log("number columns");
+      getFilter("Number").click();
+      verifyDashcardMappingOptions(0, [
+        ["Order", ORDERS_NUMBER_COLUMNS],
+        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        ["M1 Orders Model", ORDERS_NUMBER_COLUMNS],
+        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(2, [
+        ["Q0 Order", ORDERS_NUMBER_COLUMNS],
+        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+    });
   });
 });
 
