@@ -79,7 +79,7 @@ If something goes wrong, Metabase will display the error message it received fro
 
 You could write an action that would update the `plan` column for a record in the `invoices` table in the Sample Database:
 
-```
+```sql
 {% raw %}
 UPDATE invoices
 SET plan = {{ plan }}
@@ -99,7 +99,7 @@ The code in brackets `[[ ]]` makes the statement optional: the bracket-enclosed 
 
 Insert statements are pretty straightforward:
 
-```
+```sql
 {% raw %}
 INSERT INTO invoices (
   account_id
@@ -122,7 +122,7 @@ VALUES (
 
 If you get a type error when you submit a form, you may need to `CAST` the data type in the query so it matches the data type of the target field in the database. Here we're casting a value to a `boolean`:
 
-```
+```sql
 {% raw %}
 UPDATE invoices
 SET expected_invoice = CAST({{expected_invoice}} AS boolean)
@@ -134,7 +134,7 @@ WHERE id = {{id}};
 
 You can also reference saved questions in actions. Here we're taking the results of a `SELECT` statement on a saved question ("Potential customers") and inserting the results into a `people_to_write` table.
 
-```
+```sql
 {% raw %}
 WITH prospects AS {{#6-potential-customers}}
 

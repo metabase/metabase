@@ -250,7 +250,6 @@
       {:left-join [Database [:= (mdb.query/qualify Database :id)
                                 (mdb.query/qualify Table :db_id)]]})
     ;; -> {\"googleanalytics\" 4, \"postgres\" 48, \"h2\" 9}"
-  {:style/indent 2}
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
                                      (merge {:group-by [column]}

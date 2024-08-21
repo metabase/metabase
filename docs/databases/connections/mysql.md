@@ -113,13 +113,13 @@ You'll see the same error message when attempting to connect to the MySQL server
 
 **How to fix this:** Recreate the MySQL user with the correct host name:
 
-```
+```sql
 CREATE USER 'metabase'@'172.17.0.1' IDENTIFIED BY 'thepassword';
 ```
 
 Otherwise, if necessary, a wildcard may be used for the host name:
 
-```
+```sql
 CREATE USER 'metabase'@'%' IDENTIFIED BY 'thepassword';
 ```
 
@@ -132,7 +132,7 @@ FLUSH PRIVILEGES;
 
 Remember to drop the old user:
 
-```
+```sql
 DROP USER 'metabase'@'localhost';
 ```
 
@@ -155,21 +155,21 @@ Use the `['--default-authentication-plugin=mysql_native_password']` modifiers wh
 
 - or in docker-compose:
 
-```
+```yml
 mysql:
-    image: mysql:8.xx.xx
-    container_name: mysql
-    hostname: mysql
-    ports:
-      - 3306:3306
-    environment:
-      - "MYSQL_ROOT_PASSWORD=xxxxxx"
-      - "MYSQL_USER=metabase"
-      - "MYSQL_PASSWORD=xxxxxx"
-      - "MYSQL_DATABASE=metabase"
-    volumes:
-      - $PWD/mysql:/var/lib/mysql
-    command: ['--default-authentication-plugin=mysql_native_password']
+  image: mysql:8.xx.xx
+  container_name: mysql
+  hostname: mysql
+  ports:
+    - 3306:3306
+  environment:
+    - "MYSQL_ROOT_PASSWORD=xxxxxx"
+    - "MYSQL_USER=metabase"
+    - "MYSQL_PASSWORD=xxxxxx"
+    - "MYSQL_DATABASE=metabase"
+  volumes:
+    - $PWD/mysql:/var/lib/mysql
+  command: ["--default-authentication-plugin=mysql_native_password"]
 ```
 
 ## Further reading
