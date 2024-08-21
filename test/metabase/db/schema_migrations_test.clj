@@ -2076,6 +2076,12 @@
                                                                                 :created_at :%now
                                                                                 :updated_at :%now
                                                                                 :active     true})
+              table-id-3 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                :schema     "SchemaName"
+                                                                                :name       "Table 3"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true})
               group-id   (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})
               perm-id-1  (t2/insert-returning-pk! (t2/table-name :model/Permissions)
                                                   {:object   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-1)
@@ -2084,7 +2090,7 @@
                                                   {:object (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-2)
                                                    :group_id group-id})
               _          (t2/insert-returning-pk! (t2/table-name :model/Permissions)
-                                                  {:object (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-2)
+                                                  {:object (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-3)
                                                    :group_id group-id})
               _          (t2/query-one {:insert-into :sandboxes
                                         :values      [{:group_id             group-id
@@ -2104,7 +2110,8 @@
           (migrate! :down 49)
           (is (=? expected (t2/select-one :sandboxes :table_id table-id-1)))
           (is (= #{(format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-1)
-                   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-2)}
+                   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-2)
+                   (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-3)}
                  (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))))))
 
 (deftest view-count-test
