@@ -68,194 +68,194 @@
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
   (mu/with-api-error-message
-    [:int {:min 0}]
+   [:int {:min 0}]
     ;; FIXME: greater than _or equal to_ zero.
-    (deferred-tru "value must be an integer greater than zero.")))
+   (deferred-tru "value must be an integer greater than zero.")))
 
 (def Int
   "Schema representing an integer."
   (mu/with-api-error-message
-    int?
-    (deferred-tru "value must be an integer.")))
+   int?
+   (deferred-tru "value must be an integer.")))
 
 (def PositiveInt
   "Schema representing an integer than must also be greater than zero."
   (mu/with-api-error-message
-    pos-int?
-    (deferred-tru "value must be an integer greater than zero.")))
+   pos-int?
+   (deferred-tru "value must be an integer greater than zero.")))
 
 (def NegativeInt
   "Schema representing an integer than must be less than zero."
   (mu/with-api-error-message
-    neg?
-    (deferred-tru "value must be a negative integer")))
+   neg?
+   (deferred-tru "value must be a negative integer")))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (mu/with-api-error-message
-    [:and number? pos?]
-    (deferred-tru "value must be a number greater than zero.")))
+   [:and number? pos?]
+   (deferred-tru "value must be a number greater than zero.")))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
   (mu/with-api-error-message
-    [:or :string :keyword]
-    (deferred-tru "value must be a keyword or string.")))
+   [:or :string :keyword]
+   (deferred-tru "value must be a keyword or string.")))
 
 (def FieldType
   "Schema for a valid Field base or effective (data) type (does it derive from `:type/*`)?"
   (mu/with-api-error-message
-    [:fn #(isa? % :type/*)]
-    (deferred-tru "value must be a valid field type.")))
+   [:fn #(isa? % :type/*)]
+   (deferred-tru "value must be a valid field type.")))
 
 (def FieldSemanticType
   "Schema for a valid Field semantic type deriving from `:Semantic/*`."
   (mu/with-api-error-message
-    [:fn #(isa? % :Semantic/*)]
-    (deferred-tru "value must be a valid field semantic type.")))
+   [:fn #(isa? % :Semantic/*)]
+   (deferred-tru "value must be a valid field semantic type.")))
 
 (def FieldRelationType
   "Schema for a valid Field relation type deriving from `:Relation/*`"
   (mu/with-api-error-message
-    [:fn #(isa? % :Relation/*)]
-    (deferred-tru "value must be a valid field relation type.")))
+   [:fn #(isa? % :Relation/*)]
+   (deferred-tru "value must be a valid field relation type.")))
 
 (def FieldSemanticOrRelationType
   "Schema for a valid Field semantic *or* Relation type. This is currently needed because the `semantic_column` is used
   to store either the semantic type or relation type info. When this is changed in the future we can get rid of this
   schema. See #15486."
   (mu/with-api-error-message
-    [:fn (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
-    (deferred-tru "value must be a valid field semantic or relation type.")))
+   [:fn (fn [k] (or (isa? k :Semantic/*) (isa? k :Relation/*)))]
+   (deferred-tru "value must be a valid field semantic or relation type.")))
 
 (def CoercionStrategy
   "Schema for a valid Field coercion strategy (does it derive from `:Coercion/*`)?"
   (mu/with-api-error-message
-    [:fn #(isa? % :Coercion/*)]
-    (deferred-tru "value must be a valid coercion strategy.")))
+   [:fn #(isa? % :Coercion/*)]
+   (deferred-tru "value must be a valid coercion strategy.")))
 
 (def FieldTypeKeywordOrString
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
   (mu/with-api-error-message
-    [:fn #(isa? (keyword %) :type/*)]
-    (deferred-tru "value must be a valid field data type (keyword or string).")))
+   [:fn #(isa? (keyword %) :type/*)]
+   (deferred-tru "value must be a valid field data type (keyword or string).")))
 
 (def FieldSemanticTypeKeywordOrString
   "Like `FieldSemanticType` but accepts either a keyword or string."
   (mu/with-api-error-message
-    [:fn #(isa? (keyword %) :Semantic/*)]
-    (deferred-tru "value must be a valid field semantic type (keyword or string).")))
+   [:fn #(isa? (keyword %) :Semantic/*)]
+   (deferred-tru "value must be a valid field semantic type (keyword or string).")))
 
 (def FieldRelationTypeKeywordOrString
   "Like `FieldRelationType` but accepts either a keyword or string."
   (mu/with-api-error-message
-    [:fn #(isa? (keyword %) :Relation/*)]
-    (deferred-tru "value must be a valid field relation type (keyword or string).")))
+   [:fn #(isa? (keyword %) :Relation/*)]
+   (deferred-tru "value must be a valid field relation type (keyword or string).")))
 
 (def FieldSemanticOrRelationTypeKeywordOrString
   "Like `FieldSemanticOrRelationType` but accepts either a keyword or string."
   (mu/with-api-error-message
-    [:fn (fn [k]
-           (let [k (keyword k)]
-             (or (isa? k :Semantic/*)
-                 (isa? k :Relation/*))))]
-    (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
+   [:fn (fn [k]
+          (let [k (keyword k)]
+            (or (isa? k :Semantic/*)
+                (isa? k :Relation/*))))]
+   (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
 (def LegacyFieldOrExpressionReference
   "Schema for a valid legacy `:field` or `:expression` reference for API usage. TODO -- why are these passed into the
   REST API at all? MBQL clauses are not things we should ask for as API parameters."
   (mu/with-api-error-message
-    [:fn (fn [k]
-           ((comp (mc/validator mbql.s/Field)
-                  mbql.normalize/normalize-tokens) k))]
-    (deferred-tru "value must an array with :field id-or-name and an options map")))
+   [:fn (fn [k]
+          ((comp (mc/validator mbql.s/Field)
+                 mbql.normalize/normalize-tokens) k))]
+   (deferred-tru "value must an array with :field id-or-name and an options map")))
 
 (def CoercionStrategyKeywordOrString
   "Like `CoercionStrategy` but accepts either a keyword or string."
   (mu/with-api-error-message
-    [:fn #(isa? (keyword %) :Coercion/*)]
-    (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
+   [:fn #(isa? (keyword %) :Coercion/*)]
+   (deferred-tru "value must be a valid coercion strategy (keyword or string).")))
 
 (def EntityTypeKeywordOrString
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
   (mu/with-api-error-message
-    [:fn #(isa? (keyword %) :entity/*)]
-    (deferred-tru "value must be a valid entity type (keyword or string).")))
+   [:fn #(isa? (keyword %) :entity/*)]
+   (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (def Map
   "Schema for a valid map."
   (mu/with-api-error-message
-    :map
-    (deferred-tru "Value must be a map.")))
+   :map
+   (deferred-tru "Value must be a map.")))
 
 (def Email
   "Schema for a valid email string."
   (mu/with-api-error-message
-    [:and
-     :string
-     [:fn u/email?]]
-    (deferred-tru "value must be a valid email address.")))
+   [:and
+    :string
+    [:fn u/email?]]
+   (deferred-tru "value must be a valid email address.")))
 
 (def ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
   (mu/with-api-error-message
-    [:and
-     :string
-     [:fn (every-pred string? #'u.password/is-valid?)]]
-    (deferred-tru "password is too common.")))
+   [:and
+    :string
+    [:fn (every-pred string? #'u.password/is-valid?)]]
+   (deferred-tru "password is too common.")))
 
 (def IntString
   "Schema for a string that can be parsed as an integer.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (mu/with-api-error-message
-    [:and
-     :string
-     [:fn #(u/ignore-exceptions (Integer/parseInt %))]]
-    (deferred-tru "value must be a valid integer.")))
+   [:and
+    :string
+    [:fn #(u/ignore-exceptions (Integer/parseInt %))]]
+   (deferred-tru "value must be a valid integer.")))
 
 (def IntStringGreaterThanZero
   "Schema for a string that can be parsed as an integer, and is greater than zero.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (mu/with-api-error-message
-    [:and
-     :string
-     [:fn #(u/ignore-exceptions (< 0 (Integer/parseInt %)))]]
-    (deferred-tru "value must be a valid integer greater than zero.")))
+   [:and
+    :string
+    [:fn #(u/ignore-exceptions (< 0 (Integer/parseInt %)))]]
+   (deferred-tru "value must be a valid integer greater than zero.")))
 
 (def IntStringGreaterThanOrEqualToZero
   "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
   Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (mu/with-api-error-message
-    [:and
-     :string
-     [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]
-    (deferred-tru "value must be a valid integer greater than or equal to zero.")))
+   [:and
+    :string
+    [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]
+   (deferred-tru "value must be a valid integer greater than or equal to zero.")))
 
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mu/with-api-error-message
-    [:and
-     :string
-     [:fn #(u/ignore-exceptions (boolean (u.date/parse %)))]]
-    (deferred-tru "value must be a valid date string")))
+   [:and
+    :string
+    [:fn #(u/ignore-exceptions (boolean (u.date/parse %)))]]
+   (deferred-tru "value must be a valid date string")))
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
   (mu/with-api-error-message
-    [:and
-     :string
-     [:fn #(try
-             (json/parse-string %)
-             true
-             (catch Throwable _
-               false))]]
-    (deferred-tru "value must be a valid JSON string.")))
+   [:and
+    :string
+    [:fn #(try
+            (json/parse-string %)
+            true
+            (catch Throwable _
+              false))]]
+   (deferred-tru "value must be a valid JSON string.")))
 
 (def ^:private keyword-or-non-blank-str-malli
   (mc/schema
-    [:or :keyword NonBlankString]))
+   [:or :keyword NonBlankString]))
 
 (def BooleanValue
   "Schema for a valid representation of a boolean
@@ -279,11 +279,11 @@
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
   (mc/schema
-    [:map
-     [:values {:optional true} [:* :any]]
-     [:card_id {:optional true} PositiveInt]
-     [:value_field {:optional true} LegacyFieldOrExpressionReference]
-     [:label_field {:optional true} LegacyFieldOrExpressionReference]]))
+   [:map
+    [:values {:optional true} [:* :any]]
+    [:card_id {:optional true} PositiveInt]
+    [:value_field {:optional true} LegacyFieldOrExpressionReference]
+    [:label_field {:optional true} LegacyFieldOrExpressionReference]]))
 
 (def RemappedFieldValue
   "Has two components:
@@ -306,20 +306,20 @@
    [:values FieldValuesList]])
 
 #_(def ParameterSource
-      (mc/schema
-        [:multi {:dispatch :values_source_type}
-         ["card"        [:map
-                         [:values_source_type :string]
-                         [:values_source_config
-                          [:map {:closed true}
-                           [:card_id {:optional true} IntGreaterThanZero]
-                           [:value_field {:optional true} Field]
-                           [:label_field {:optional true} Field]]]]]
-         ["static-list" [:map
-                         [:values_source_type :string]
-                         [:values_source_config
-                          [:map {:closed true}
-                           [:values {:optional true} [:* :any]]]]]]]))
+    (mc/schema
+     [:multi {:dispatch :values_source_type}
+      ["card"        [:map
+                      [:values_source_type :string]
+                      [:values_source_config
+                       [:map {:closed true}
+                        [:card_id {:optional true} IntGreaterThanZero]
+                        [:value_field {:optional true} Field]
+                        [:label_field {:optional true} Field]]]]]
+      ["static-list" [:map
+                      [:values_source_type :string]
+                      [:values_source_config
+                       [:map {:closed true}
+                        [:values {:optional true} [:* :any]]]]]]]))
 
 (def Parameter
   "Schema for a valid Parameter.

@@ -69,13 +69,13 @@
   [m]
   (let [fields (atom #{})]
     (walk/prewalk
-      (fn [v]
-        (when (vector? v)
-          (let [[f id] v]
-            (when (and id (= :field f))
-              (swap! fields conj id))))
-        v)
-      m)
+     (fn [v]
+       (when (vector? v)
+         (let [[f id] v]
+           (when (and id (= :field f))
+             (swap! fields conj id))))
+       v)
+     m)
     @fields))
 
 (defn semantic-groups
@@ -86,13 +86,13 @@
   [{:keys [table_id definition]}]
   (let [field-ids            (find-field-ids definition)
         potential-dimensions (t2/select :model/Field
-                               :id [:not-in field-ids]
-                               :table_id table_id
-                               :semantic_type [:not-in [:type/PK]])]
+                                        :id [:not-in field-ids]
+                                        :table_id table_id
+                                        :semantic_type [:not-in [:type/PK]])]
     (update-vals
-      (->> potential-dimensions
-           (group-by :semantic_type))
-      set)))
+     (->> potential-dimensions
+          (group-by :semantic_type))
+     set)))
 
 (defmulti
   ^{:doc      "Get a reference for a given model to be injected into a template
@@ -115,33 +115,33 @@
             less-than? #(u.date/greater-than-period-duration? % duration)]
         (cond
          ;; e.g. if [duration between earliest and latest] < 3 hours then use `:minute` resolution
-         (and (less-than? (t/hours 3))  (can-use? :minute)) :minute
-         (and (less-than? (t/days 7))   (can-use? :hour))   :hour
-         (and (less-than? (t/months 6)) (can-use? :day))    :day
-         (and (less-than? (t/years 10)) (can-use? :month))  :month
-         (can-use? :year) :year
-         (can-use? :hour) :hour))
+          (and (less-than? (t/hours 3))  (can-use? :minute)) :minute
+          (and (less-than? (t/days 7))   (can-use? :hour))   :hour
+          (and (less-than? (t/months 6)) (can-use? :day))    :day
+          (and (less-than? (t/years 10)) (can-use? :month))  :month
+          (can-use? :year) :year
+          (can-use? :hour) :hour))
       (if (can-use? :day) :day :hour))))
 
 (defmethod ->reference [:mbql Field]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (mbql.normalize/normalize
                    (cond
-                    link               [:field id {:source-field link}]
-                    fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                    id                 [:field id {:base-type base_type}]
-                    :else              [:field name {:base-type base_type}]))]
+                     link               [:field id {:source-field link}]
+                     fk_target_field_id [:field fk_target_field_id {:source-field id}]
+                     id                 [:field id {:base-type base_type}]
+                     :else              [:field name {:base-type base_type}]))]
     (cond
-     (isa? base_type :type/Temporal)
-     (mbql.u/with-temporal-unit reference (keyword (or aggregation
-                                                       (optimal-temporal-resolution field))))
+      (isa? base_type :type/Temporal)
+      (mbql.u/with-temporal-unit reference (keyword (or aggregation
+                                                        (optimal-temporal-resolution field))))
 
-     (and aggregation
-          (isa? base_type :type/Number))
-     (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
+      (and aggregation
+           (isa? base_type :type/Number))
+      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
 
-     :else
-     reference)))
+      :else
+      reference)))
 
 (defmethod ->reference [:string Field]
   [_ {:keys [display_name full-name link]}]
@@ -184,14 +184,14 @@
   "Map a metric aggregate definition from nominal types to semantic types."
   [m decoder]
   (walk/prewalk
-    (fn [v]
-      (if (vector? v)
-        (let [[d n] v]
-          (if (= "dimension" d)
-            (decoder n)
-            v))
-        v))
-    m))
+   (fn [v]
+     (if (vector? v)
+       (let [[d n] v]
+         (if (= "dimension" d)
+           (decoder n)
+           v))
+       v))
+   m))
 
 (mu/defn ground-metric :- [:sequential ads/grounded-metric]
   "Generate \"grounded\" metrics from the mapped dimensions (dimension name -> field matches).
@@ -399,8 +399,8 @@
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field
-    :link (m/find-first (comp :link #{(:table_id field)} u/the-id) tables)
-    :db (source->db source)))
+         :link (m/find-first (comp :link #{(:table_id field)} u/the-id) tables)
+         :db (source->db source)))
 
 (defn- add-field-links-to-definitions [dimensions field]
   (->> dimensions
@@ -431,23 +431,23 @@
                (let [[fname {:keys [filter] :as v}] (first fltr)
                      dims (dashboard-templates/collect-dimensions v)
                      opts (->> (map (comp
-                                      (partial map (partial ->reference :mbql))
-                                      :matches
-                                      ground-dimensions) dims)
+                                     (partial map (partial ->reference :mbql))
+                                     :matches
+                                     ground-dimensions) dims)
                                (apply math.combo/cartesian-product)
                                (map (partial zipmap dims)))]
                  (seq (for [opt opts
                             :let [f
                                   (walk/prewalk
-                                    (fn [x]
-                                      (if (vector? x)
-                                        (let [[ds dim-name] x]
-                                          (if (and (= "dimension" ds)
-                                                   (string? dim-name))
-                                            (opt dim-name)
-                                            x))
-                                        x))
-                                    filter)]]
+                                   (fn [x]
+                                     (if (vector? x)
+                                       (let [[ds dim-name] x]
+                                         (if (and (= "dimension" ds)
+                                                  (string? dim-name))
+                                           (opt dim-name)
+                                           x))
+                                       x))
+                                   filter)]]
                         (assoc v :filter f :filter-name fname))))))
        flatten))
 
@@ -462,9 +462,9 @@
    {:keys [dimension-specs
            metric-specs
            filter-specs]} :- [:map
-                               [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
-                               [:metric-specs [:maybe [:sequential ads/metric-template]]]
-                               [:filter-specs [:maybe [:sequential ads/filter-template]]]]]
+                              [:dimension-specs [:maybe [:sequential ads/dimension-template]]]
+                              [:metric-specs [:maybe [:sequential ads/metric-template]]]
+                              [:filter-specs [:maybe [:sequential ads/filter-template]]]]]
   (let [dims      (->> (find-dimensions context dimension-specs)
                        (add-field-self-reference context))
         metrics   (-> (normalize-seq-of-maps :metric metric-specs)

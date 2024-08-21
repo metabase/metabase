@@ -1,8 +1,8 @@
 (ns metabase.xrays.domain-entities.malli
   (:refer-clojure :exclude [defn])
   (:require
-    [malli.instrument]
-    [net.cgrand.macrovich :as macros]))
+   [malli.instrument]
+   [net.cgrand.macrovich :as macros]))
 
 (defmacro -define-getter
   "Generates an accessor, given the symbol and path to the value."
@@ -40,7 +40,7 @@
   (macros/case
     :cljs `(def ~out-sym
              (metabase.xrays.domain-entities.converters/outgoing
-               (metabase.xrays.domain-entities.malli/schema-for-path ~schema ~path)))))
+              (metabase.xrays.domain-entities.malli/schema-for-path ~schema ~path)))))
 
 (defmacro -define-js-returning-getter
   "Generates a getter that converts back to a JS object, in CLJS.
