@@ -309,6 +309,14 @@ Timeout in minutes for databases query execution, both Metabase application data
   Adjusting the timeout does not impact Metabase’s frontend.
   Please be aware that other services (like Nginx) may still drop long-running queries.
 
+### `MB_DOWNLOAD_ROW_LIMIT`
+
+- Type: integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
+
+Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.
+
 ### `MB_EE_AI_FEATURES_ENABLED`
 
 - Type: boolean
@@ -1533,6 +1541,15 @@ Allowed email address domain(s) for new Dashboard Subscriptions and Alerts. To s
 - Default: `true`
 
 Enable or disable surveys.
+
+### `MB_SYNCHRONOUS_BATCH_UPDATES`
+
+- Type: boolean
+- Default: `false`
+- [Exported as](../installation-and-operation/serialization.md): `synchronous-batch-updates`.
+- [Configuration file name](./config-file.md): `synchronous-batch-updates`
+
+Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.
 
 ### `MB_UNAGGREGATED_QUERY_ROW_LIMIT`
 
