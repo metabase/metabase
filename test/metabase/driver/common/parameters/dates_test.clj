@@ -454,9 +454,9 @@
       (gen/elements time-units)))))
 
 (tc/quick-check 1000
-                (prop/for-all [[tr tr+from-zero] time-range-generator]
-                              (= (params.dates/date-string->range tr)
-                                 (params.dates/date-string->range tr+from-zero))))
+  (prop/for-all [[tr tr+from-zero] time-range-generator]
+    (= (params.dates/date-string->range tr)
+       (params.dates/date-string->range tr+from-zero))))
 
 (deftest custom-start-of-week-test
   (testing "Relative filters should respect the custom `start-of-week` Setting (#14294)"

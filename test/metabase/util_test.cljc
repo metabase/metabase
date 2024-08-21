@@ -297,16 +297,16 @@
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/small-integer)]
-                (let [result (u/pick-first pos? coll)]
-                  (or (and (nil? result)
-                           (every? (complement pos?) coll))
-                      (let [[x ys] result
-                            [non-pos [m & rest]] (split-with (complement pos?) coll)]
-                        (and (vector? result)
-                             (= (count result) 2)
-                             (pos? x)
-                             (= x m)
-                             (= ys (concat non-pos rest))))))))
+    (let [result (u/pick-first pos? coll)]
+      (or (and (nil? result)
+               (every? (complement pos?) coll))
+          (let [[x ys] result
+                [non-pos [m & rest]] (split-with (complement pos?) coll)]
+            (and (vector? result)
+                 (= (count result) 2)
+                 (pos? x)
+                 (= x m)
+                 (= ys (concat non-pos rest))))))))
 
 (deftest ^:parallel normalize-map-test
   (testing "nil and empty maps return empty maps"
@@ -479,17 +479,17 @@
      (prop/for-all [xs (mg/generator [:sequential :int])
                     ys (mg/generator [:sequential :int])
                     zs (mg/generator [:sequential :int])]
-                   (let [total-result-count (count (u/map-all vector xs ys zs))]
-                     (= total-result-count (max (count xs) (count ys) (count zs)))))))
+       (let [total-result-count (count (u/map-all vector xs ys zs))]
+         (= total-result-count (max (count xs) (count ys) (count zs)))))))
 
 #?(:clj
    (defspec map-all-consumes-all-lengths-of-inputs-test 1000
      (prop/for-all [xs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
                     ys (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
                     zs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])]
-                   (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
-                         sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
-                     (= expected sum)))))
+       (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
+             sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
+         (= expected sum)))))
 
 #?(:clj
    (deftest ^:parallel case-enum-test
