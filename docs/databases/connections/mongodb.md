@@ -67,7 +67,7 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
 
 1. Log into your [Atlas cluster](https://cloud.mongodb.com)
-2. Go to "Network Access"
+2. Go to **Network Access**
 3. Add the IP addresses that your Metabase uses to connect.
 
 ### Connect Metabase to your cluster
@@ -78,25 +78,26 @@ If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP add
 
 2. Select the cluster you want to connect to, and click **Connect**.
 
-   ![Your cluster screengrab](../images/mongo_1.png "Your cluster")
+   ![Your cluster screengrab](../images/atlas-connect.png)
 
 3. Select **Drivers**.
 
-   ![Connect screengrab](../images/mongo_2.png "Connect")
+4. Copy the connection string from **Add your connection string into your application code** section
 
-4. Copy the connection string from "Add your connection string into your application code" section
+   ![Connect screengrab](../images/connection-string.png)
 
-5. Edit the connection string to include the name of the database after `/`, like this:
+5. In Metabase, go to Admin -> Databases, and click the **Add database** button.
+6. Select MongoDB from the dropdown, and enter your desired **Display name** for this database.
+7. Click on **"Paste the connection string"** and paste your connection string.
+8. Edit the connection string to include the name of the database after `/`:
 
-```
-mongodb+srv://metabot:metapass@my-test-cluster.a5ej7.mongodb.net/**my-database**?retryWrites=true&w=majority&appName=my-test-cluster
-```
+   ```
+   mongodb+srv://metabot:metapass@my-test-cluster.a5ej7.mongodb.net/DATABASE_NAME?retryWrites=true&w=majority&appName=my-test-cluster
+   ```
 
-6. In Metabase, go to Admin -> Databases, and click the **Add database** button.
-7. Select MongoDB from the dropdown, and enter your desired **Display name** for this database.
-8. Click on "Paste the connection string" and paste your edited connection string.
+See more information about [Advanced options](#settings-common-to-both-connection-options).
 
-See more information about [Advanced options](#settings-common-to-both-connection-options). If you are using Metabase fields to input connection information for your Atlas cluster instead of using the connection string, you might need to turn on **Use DNS SRV when connecting**.
+If you are using Metabase fields to input connection information for your Atlas cluster instead of using the connection string, you might need to turn on **Use DNS SRV when connecting**.
 
 ## Configuring SSL via the command line
 
