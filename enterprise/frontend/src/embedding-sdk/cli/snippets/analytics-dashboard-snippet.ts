@@ -1,14 +1,29 @@
 import { SDK_PACKAGE_NAME } from "../constants/config";
 import type { DashboardInfo } from "../types/dashboard";
 
-export const getAnalyticsDashboardSnippet = (
-  instanceUrl: string,
-  dashboards: DashboardInfo[],
-) => `
+interface Options {
+  instanceUrl: string;
+  dashboards: DashboardInfo[];
+  tenancyIsolationEnabled: boolean;
+}
+
+export const getAnalyticsDashboardSnippet = (options: Options) => {
+  const { instanceUrl, dashboards, tenancyIsolationEnabled } = options;
+
+  let leftHeaders = "";
+  let imports = `import { ThemeSwitcher } from './theme-switcher'`;
+
+  // We cannot switch users if SSO is not enabled.
+  if (tenancyIsolationEnabled) {
+    imports += `\nimport { UserSwitcher } from './user-switcher'`;
+    leftHeaders += "\n<UserSwitcher />\n";
+  }
+
+  return `
 import { useState } from 'react'
 import { InteractiveDashboard } from '${SDK_PACKAGE_NAME}'
 
-import { ThemeSwitcher } from './theme-switcher'
+${imports}
 
 export const AnalyticsDashboard = () => {
   const [dashboardId, setDashboardId] = useState(DASHBOARDS[0].id)
@@ -28,7 +43,7 @@ export const AnalyticsDashboard = () => {
                 {dashboard.name}
               </option>
             ))}
-          </select>
+          </select>${leftHeaders}
         </div>
 
         <div className="analytics-header-right">
@@ -48,3 +63,4 @@ export const AnalyticsDashboard = () => {
 
 const DASHBOARDS = ${JSON.stringify(dashboards, null, 2)}
 `;
+};

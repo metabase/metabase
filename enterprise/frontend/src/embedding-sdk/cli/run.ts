@@ -13,6 +13,7 @@ import {
   createApiKey,
   createModelsAndXrays,
   generateCredentials,
+  generateExpressServerFile,
   generateReactComponentFiles,
   pickDatabaseTables,
   pollMetabaseInstance,
@@ -45,6 +46,10 @@ export const CLI_STEPS = [
   {
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
+  },
+  {
+    id: "generateExpressServerFile",
+    executeStep: generateExpressServerFile,
   },
 ] as const;
 

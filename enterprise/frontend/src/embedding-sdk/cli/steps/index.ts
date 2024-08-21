@@ -13,3 +13,4 @@ export * from "./pick-database-tables";
 export * from "./create-models-and-xrays";
 export * from "./setup-permission";
 export * from "./generate-component-files";
+export * from "./generate-express-server-file";

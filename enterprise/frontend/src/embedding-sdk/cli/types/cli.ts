@@ -24,6 +24,9 @@ export type CliState = Partial<{
 
   /** IDs and names of auto-generated dashboards */
   dashboards: DashboardInfo[];
+
+  /** Do we have tenancy isolation enabled? */
+  tenancyIsolationEnabled: boolean;
 }>;
 
 export type CliError = {

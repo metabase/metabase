@@ -2,6 +2,9 @@ import { search } from "@inquirer/prompts";
 import chalk from "chalk";
 import toggle from "inquirer-toggle";
 
+import { printEmptyLines } from "embedding-sdk/cli/utils/print";
+
+import { NO_TENANCY_COLUMN_WARNING_MESSAGE } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { getPermissionsForGroups } from "../utils/get-permission-groups";
 import { getTenancyIsolationSandboxes } from "../utils/get-tenancy-isolation-sandboxes";
@@ -28,8 +31,6 @@ export const setupPermissions: CliStepMethod = async state => {
   });
 
   if (!hasTenancyIsolation) {
-    // TODO: generate a sample Express app
-
     return [{ type: "success" }, state];
   }
 
@@ -64,14 +65,15 @@ export const setupPermissions: CliStepMethod = async state => {
   }
 
   if (Object.keys(tenancyColumnNames).length === 0) {
-    const message = "Your tables do not have any multi-tenancy column.";
+    printEmptyLines(1);
+    console.warn(chalk.yellow(NO_TENANCY_COLUMN_WARNING_MESSAGE));
 
-    return [{ type: "error", message }, state];
+    return [{ type: "success" }, state];
   }
 
   let res;
 
-  // Create new collections
+  // Create new customer collections
   try {
     await Promise.all(
       GROUP_NAMES.map(async groupName => {
@@ -156,5 +158,5 @@ export const setupPermissions: CliStepMethod = async state => {
 
   await propagateErrorResponse(res);
 
-  return [{ type: "success" }, state];
+  return [{ type: "success" }, { ...state, tenancyIsolationEnabled: true }];
 };
