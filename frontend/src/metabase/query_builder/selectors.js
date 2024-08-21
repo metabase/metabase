@@ -272,6 +272,7 @@ export const getTables = createSelector(
 
     return [];
   },
+  { devModeChecks: { inputStabilityCheck: "never" } },
 );
 
 export const getTableMetadata = createSelector(
@@ -294,6 +295,7 @@ export const getSampleDatabaseId = createSelector(
     const sampleDatabase = _.findWhere(databases, { is_sample: true });
     return sampleDatabase && sampleDatabase.id;
   },
+  { devModeChecks: { inputStabilityCheck: "never" } },
 );
 
 export const getDatabaseFields = createSelector(

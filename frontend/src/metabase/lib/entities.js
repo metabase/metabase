@@ -465,18 +465,22 @@ export function createEntity(def) {
   const getLoading = createSelector(
     [getRequestState],
     requestState => requestState.loading,
+    { devModeChecks: { inputStabilityCheck: "never" } },
   );
   const getLoaded = createSelector(
     [getRequestState],
     requestState => requestState.loaded,
+    { devModeChecks: { inputStabilityCheck: "never" } },
   );
   const getFetched = createSelector(
     [getRequestState],
     requestState => requestState.fetched,
+    { devModeChecks: { inputStabilityCheck: "never" } },
   );
   const getError = createSelector(
     [getRequestState],
     requestState => requestState.error,
+    { devModeChecks: { inputStabilityCheck: "never" } },
   );
 
   const defaultSelectors = {

@@ -104,7 +104,11 @@ export const VisualizationEmptyState = ({ className }) => (
 export function VisualizationRunningState({ className = "" }) {
   const [isSlow] = useTimeout(SLOW_MESSAGE_TIMEOUT);
 
-  const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory);
+  const getLoadingMessage = useSelector(getWhiteLabeledLoadingMessageFactory, {
+    devModeChecks: {
+      stabilityCheck: "never",
+    },
+  });
 
   // show the slower loading message only when the loadingMessage is
   // not customized
