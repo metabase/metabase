@@ -178,7 +178,7 @@ export const BrowseCubes = () => {
           </div>
         </div>
               <div style={{ display: "flex", flexDirection: "row"}}>
-                { activeTab === "Definition" ? (
+                { activeTab === "Definition" && (
                   <>
                   <CubeTable cubeData={selectedCube}/>
                   <Button 
@@ -194,8 +194,6 @@ export const BrowseCubes = () => {
                       {isSql ? t`Go back` : t`Edit Cube`}
                     </Button>
                       </>
-                ) : (
-                    <CubePreviewTable cubeData={selectedCube}/>   
                 )}
               </div>
                       </div>
@@ -221,6 +219,9 @@ export const BrowseCubes = () => {
             )}
           </div>
         </BrowseSection>
+        {cubeData && selectedCube && activeTab === "Preview" && (
+        <CubePreviewTable cubeData={selectedCube}/> 
+  )}
       </BrowseMain>
     </BrowseContainer>
   );

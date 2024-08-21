@@ -34,7 +34,7 @@ export const databaseApi = Api.injectEndpoints({
     >({
       query: params => ({
         method: "GET",
-        url: "/api/database",
+        url: "/api/database?include=tables",
         params,
       }),
       providesTags: response => provideDatabaseListTags(response?.data ?? []),
