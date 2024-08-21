@@ -14,8 +14,8 @@ import {
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
-  createSampleDatabase,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../test-utils";

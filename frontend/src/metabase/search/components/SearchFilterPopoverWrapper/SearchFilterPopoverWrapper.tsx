@@ -6,7 +6,7 @@ import type {
   SearchFilterPropTypes,
 } from "metabase/search/types";
 import type { StackProps } from "metabase/ui";
-import { Button, Center, Group, Loader, FocusTrap } from "metabase/ui";
+import { Button, Center, FocusTrap, Group, Loader } from "metabase/ui";
 
 import {
   DropdownApplyButtonDivider,
@@ -34,7 +34,7 @@ export const SearchFilterPopoverWrapper = ({
   if (isLoading) {
     return (
       <Center p="lg">
-        <Loader data-testid="loading-spinner" />
+        <Loader data-testid="loading-indicator" />
       </Center>
     );
   }

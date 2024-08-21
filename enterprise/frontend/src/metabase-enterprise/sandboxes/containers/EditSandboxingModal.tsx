@@ -15,8 +15,8 @@ import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import type { GroupTableAccessPolicy, UserAttribute } from "metabase-types/api";
 
 import {
-  updatePolicy,
   fetchPolicy,
+  updatePolicy,
   updateTableSandboxingPermission,
 } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";

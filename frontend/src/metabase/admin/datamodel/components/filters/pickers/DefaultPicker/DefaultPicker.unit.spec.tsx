@@ -10,10 +10,10 @@ import {
 import { checkNotNull } from "metabase/lib/types";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import {
-  createSampleDatabase,
+  PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
-  PRODUCTS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import type { DefaultPickerProps } from "./DefaultPicker";

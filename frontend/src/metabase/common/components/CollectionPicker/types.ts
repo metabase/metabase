@@ -1,10 +1,10 @@
 import type {
+  CardId,
   CollectionId,
-  ListCollectionItemsRequest,
-  SearchResult,
   CollectionItemModel,
   DashboardId,
-  CardId,
+  ListCollectionItemsRequest,
+  SearchResult,
 } from "metabase-types/api";
 
 import type {

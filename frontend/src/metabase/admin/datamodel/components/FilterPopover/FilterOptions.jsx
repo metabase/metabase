@@ -1,7 +1,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import CS from "metabase/css/core/index.css";

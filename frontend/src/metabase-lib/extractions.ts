@@ -4,10 +4,10 @@ import { expressionParts } from "./expression";
 import type {
   ColumnExtraction,
   ColumnMetadata,
-  Query,
   DrillThru,
-  ExpressionParts,
   ExpressionArg,
+  ExpressionParts,
+  Query,
 } from "./types";
 
 export function extract(

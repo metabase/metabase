@@ -4,9 +4,9 @@ import { useState } from "react";
 import { setupSearchEndpoints } from "__support__/server-mocks";
 import {
   renderWithProviders,
-  within,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import type { EnabledSearchModel, SearchModel } from "metabase-types/api";
 import {

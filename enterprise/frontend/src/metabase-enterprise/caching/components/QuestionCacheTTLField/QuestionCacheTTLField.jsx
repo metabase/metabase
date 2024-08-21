@@ -7,8 +7,8 @@ import { duration } from "metabase/lib/formatting";
 import { getQuestionsImplicitCacheTTL } from "../../utils";
 
 import {
-  CacheTTLInput,
   CacheTTLExpandedField,
+  CacheTTLInput,
   StyledRadio,
 } from "./QuestionCacheTTLField.styled";
 

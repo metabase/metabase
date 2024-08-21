@@ -1,11 +1,11 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  restore,
-  popover,
-  addPostgresDatabase,
   POPOVER_ELEMENT,
-  setTokenFeatures,
+  addPostgresDatabase,
   openNativeEditor,
+  popover,
+  restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const PG_DB_ID = 2;

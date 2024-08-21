@@ -23,11 +23,11 @@ import FormTextArea from "../FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
 
 import {
-  FormSection,
   FormBody,
   FormBodyContent,
   FormFooter,
   FormFooterContent,
+  FormSection,
 } from "./MetricForm.styled";
 
 const QUERY_BUILDER_FEATURES = {

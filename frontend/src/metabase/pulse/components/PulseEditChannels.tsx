@@ -15,8 +15,8 @@ import type {
   Alert,
   Channel,
   ChannelSpec,
-  FormInput,
   ChannelType,
+  FormInput,
   Pulse,
   User,
 } from "metabase-types/api";

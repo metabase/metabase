@@ -1,15 +1,15 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  entityPickerModal,
-  restore,
-  visualize,
-  changeBinningForDimension,
-  summarize,
-  startNewQuestion,
-  echartsContainer,
   cartesianChartCircle,
+  changeBinningForDimension,
   chartPathWithFillColor,
+  echartsContainer,
+  entityPickerModal,
   entityPickerModalTab,
+  restore,
+  startNewQuestion,
+  summarize,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =

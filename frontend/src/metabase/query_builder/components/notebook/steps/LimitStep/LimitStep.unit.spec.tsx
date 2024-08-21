@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 
-import { createMockNotebookStep, DEFAULT_QUERY } from "../../test-utils";
+import { DEFAULT_QUERY, createMockNotebookStep } from "../../test-utils";
 
 import { LimitStep } from "./LimitStep";
 

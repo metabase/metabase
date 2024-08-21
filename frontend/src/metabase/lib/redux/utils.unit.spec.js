@@ -1,6 +1,6 @@
 import { delay } from "metabase/lib/promise";
 
-import { fetchData, updateData, mergeEntities } from "./utils";
+import { fetchData, mergeEntities, updateData } from "./utils";
 
 describe("Metadata", () => {
   const getDefaultArgs = ({

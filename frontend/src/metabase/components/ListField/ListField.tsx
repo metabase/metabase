@@ -11,11 +11,11 @@ import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 
 import {
-  OptionContainer,
-  LabelWrapper,
-  OptionsList,
   EmptyStateContainer,
   FilterInputContainer,
+  LabelWrapper,
+  OptionContainer,
+  OptionsList,
 } from "./ListField.styled";
 import type { ListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";

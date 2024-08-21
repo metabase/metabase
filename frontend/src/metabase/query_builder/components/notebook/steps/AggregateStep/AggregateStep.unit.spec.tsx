@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderWithProviders, screen, getIcon } from "__support__/ui";
+import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
-  createQuery,
   columnFinder,
+  createQuery,
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 

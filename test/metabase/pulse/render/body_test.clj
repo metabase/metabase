@@ -260,7 +260,7 @@
 (deftest error-test
   (testing "renders error"
     (is (= "An error occurred while displaying this card."
-           (-> (body/render :render-error nil nil nil nil nil) :content last))))
+           (-> (body/render :render-error nil nil nil nil nil) :content last str))))
   (testing "renders card error"
     (is (= "There was a problem with this question."
            (-> (body/render :card-error nil nil nil nil nil) :content last)))))
@@ -881,19 +881,19 @@
                                                               {:table.cell_column "TOTAL"
                                                                :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                                                                    {:column_title "CASH MONEY"}}}}]
-    (mt/with-current-user (mt/user->id :rasta)
-      (let [card-doc        (render.tu/render-card-as-hickory card-id)
-            card-header-els (hik.s/select (hik.s/tag :th) card-doc)
-            dashcard-doc    (render.tu/render-dashcard-as-hickory dashcard-id)
-            dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
-            card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
-                             "Total" "Discount ($)" "Created At" "Quantity"]
-            dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
-                             "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
-        (is (= {:card     card-header
-                :dashcard dashcard-header}
-               {:card     (mapcat :content card-header-els)
-                :dashcard (mapcat :content dash-header-els)}))))))))
+       (mt/with-current-user (mt/user->id :rasta)
+         (let [card-doc        (render.tu/render-card-as-hickory card-id)
+               card-header-els (hik.s/select (hik.s/tag :th) card-doc)
+               dashcard-doc    (render.tu/render-dashcard-as-hickory dashcard-id)
+               dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
+               card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                "Total" "Discount ($)" "Created At" "Quantity"]
+               dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+           (is (= {:card     card-header
+                   :dashcard dashcard-header}
+                  {:card     (mapcat :content card-header-els)
+                   :dashcard (mapcat :content dash-header-els)}))))))))
 
 (deftest table-renders-respect-conditional-formatting
   (testing "Rendered Tables respect the conditional formatting on a card."
@@ -925,7 +925,7 @@
                         (let [style-str (:style attrs)]
                           (when (str/includes? style-str "background-color")
                             (-> el :content first))))
-                           (mapcat :content (take 20 card-row-els))))))))))))
+                      (mapcat :content (take 20 card-row-els))))))))))))
 
 (deftest table-renders-conditional-formatting-even-with-hidden-column
   (testing "Rendered Tables respect the conditional formatting on a card."

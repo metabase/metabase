@@ -1,6 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
@@ -8,12 +8,12 @@ import { parseTimestamp } from "metabase/lib/time";
 import { isExpression } from "metabase-lib/v1/expressions";
 import { getFilterArgumentFormatOptions } from "metabase-lib/v1/operators/utils";
 import {
-  isStandard,
-  isSegment,
+  getFilterOptions,
+  hasFilterOptions,
   isCustom,
   isFieldFilter,
-  hasFilterOptions,
-  getFilterOptions,
+  isSegment,
+  isStandard,
   setFilterOptions,
 } from "metabase-lib/v1/queries/utils/filter";
 import {
@@ -22,9 +22,9 @@ import {
   isStartingFrom,
 } from "metabase-lib/v1/queries/utils/query-time";
 import type {
-  Filter as FilterObject,
   FieldFilter,
   FieldReference,
+  Filter as FilterObject,
 } from "metabase-types/api";
 
 import type Dimension from "../../Dimension";

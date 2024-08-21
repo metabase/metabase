@@ -10,7 +10,7 @@ import type { VisualizationSettings } from "metabase-types/api";
 import { PivotTableCell, ResizeHandle } from "./PivotTable.styled";
 import { RowToggleIcon } from "./RowToggleIcon";
 import { LEFT_HEADER_LEFT_SPACING, RESIZE_HANDLE_WIDTH } from "./constants";
-import type { HeaderItem, BodyItem, PivotTableClicked } from "./types";
+import type { BodyItem, HeaderItem, PivotTableClicked } from "./types";
 
 interface CellProps {
   value: React.ReactNode;

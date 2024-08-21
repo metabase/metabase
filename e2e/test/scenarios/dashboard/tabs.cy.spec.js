@@ -1,54 +1,54 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  saveDashboard,
-  openQuestionsSidebar,
-  undo,
-  dashboardCards,
-  sidebar,
-  visitDashboardAndCreateTab,
-  describeWithSnowplow,
-  resetSnowplow,
-  expectNoBadSnowplowEvents,
-  visitDashboard,
-  editDashboard,
+  addHeadingWhileEditing,
+  addLinkWhileEditing,
+  createDashboardWithTabs,
   createNewTab,
-  expectGoodSnowplowEvents,
-  enableTracking,
+  dashboardCards,
+  dashboardGrid,
   deleteTab,
-  visitCollection,
-  main,
+  describeWithSnowplow,
+  duplicateTab,
+  editDashboard,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  filterWidget,
   getDashboardCard,
   getDashboardCards,
-  getTextCardDetails,
   getHeadingCardDetails,
   getLinkCardDetails,
-  updateDashboardCards,
+  getTextCardDetails,
   goToTab,
-  moveDashCardToTab,
-  addLinkWhileEditing,
-  expectGoodSnowplowEvent,
-  selectDashboardFilter,
-  filterWidget,
-  popover,
-  createDashboardWithTabs,
-  dashboardGrid,
+  main,
   modal,
-  addHeadingWhileEditing,
-  setFilter,
+  moveDashCardToTab,
+  openQuestionsSidebar,
   openStaticEmbeddingModal,
+  popover,
   publishChanges,
+  resetSnowplow,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  sidebar,
+  undo,
+  updateDashboardCards,
+  visitCollection,
+  visitDashboard,
+  visitDashboardAndCreateTab,
   visitIframe,
-  duplicateTab,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -700,7 +700,7 @@ describe("scenarios > dashboard > tabs", () => {
 
     // Loader in the 2nd tab
     getDashboardCard(0).within(() => {
-      cy.findByTestId("loading-spinner").should("exist");
+      cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
       cy.findAllByTestId("table-row").should("exist");
     });
@@ -708,7 +708,7 @@ describe("scenarios > dashboard > tabs", () => {
     // Loader in the 1st tab
     goToTab("Tab 1");
     getDashboardCard(0).within(() => {
-      cy.findByTestId("loading-spinner").should("exist");
+      cy.findByTestId("loading-indicator").should("exist");
       cy.wait("@saveCard");
       cy.findAllByTestId("table-row").should("exist");
     });

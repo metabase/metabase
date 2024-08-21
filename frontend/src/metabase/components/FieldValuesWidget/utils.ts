@@ -17,7 +17,7 @@ import {
   isNumberParameter,
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
-import type { Dashboard, Parameter, FieldValue } from "metabase-types/api";
+import type { Dashboard, FieldValue, Parameter } from "metabase-types/api";
 
 import type { ValuesMode } from "./types";
 

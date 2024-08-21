@@ -1,18 +1,18 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitDashboard,
-  visitPublicDashboard,
-  filterWidget,
-  popover,
-  openNewPublicLinkDropdown,
-  createPublicDashboardLink,
-  dashboardParametersContainer,
-  goToTab,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  createPublicDashboardLink,
+  dashboardParametersContainer,
   describeEE,
+  filterWidget,
+  goToTab,
+  openNewPublicLinkDropdown,
+  popover,
+  restore,
   setTokenFeatures,
+  visitDashboard,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;

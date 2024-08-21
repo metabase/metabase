@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { UtilApi } from "metabase/services";
 
-import { Logs, DEFAULT_POLLING_DURATION_MS } from "./Logs";
+import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
 
 const log = {
@@ -34,7 +34,7 @@ describe("Logs", () => {
       fetchMock.get("path:/api/util/logs", []);
       render(<Logs />);
       await waitFor(() => [
-        expect(screen.getByTestId("loading-spinner")).toBeInTheDocument(),
+        expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
       ]);
     });
@@ -45,7 +45,7 @@ describe("Logs", () => {
       utilSpy.mockReturnValueOnce(new Promise(res => (resolve = res)));
       render(<Logs />);
       await waitFor(() => [
-        expect(screen.getByTestId("loading-spinner")).toBeInTheDocument(),
+        expect(screen.getByTestId("loading-indicator")).toBeInTheDocument(),
         expect(utilSpy).toHaveBeenCalledTimes(1),
       ]);
       act(() => {

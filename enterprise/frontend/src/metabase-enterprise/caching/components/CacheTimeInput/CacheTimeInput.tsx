@@ -3,9 +3,9 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import {
+  TimeInput,
   TimeInputMessage,
   TimeInputRoot,
-  TimeInput,
 } from "./CacheTimeInput.styled";
 
 export interface CacheTimeInputProps {

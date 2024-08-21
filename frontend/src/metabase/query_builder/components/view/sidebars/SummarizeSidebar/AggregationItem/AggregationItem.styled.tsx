@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const Root = styled.button`

@@ -1,11 +1,11 @@
-import { LineChart, BarChart, ScatterChart, CustomChart } from "echarts/charts";
+import { BarChart, CustomChart, LineChart, ScatterChart } from "echarts/charts";
 import {
   BrushComponent,
   DataZoomComponent,
+  DatasetComponent,
   GridComponent,
   MarkLineComponent,
   ToolboxComponent,
-  DatasetComponent,
 } from "echarts/components";
 import { use } from "echarts/core";
 import { LabelLayout } from "echarts/features";

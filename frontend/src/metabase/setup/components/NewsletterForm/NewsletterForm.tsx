@@ -14,6 +14,7 @@ import { subscribeToNewsletter } from "../../utils";
 import {
   EmailForm,
   EmailFormHeader,
+  EmailFormInput,
   EmailFormLabel,
   EmailFormLabelCard,
   EmailFormLabelIcon,
@@ -22,7 +23,6 @@ import {
   EmailFormSuccessContainer,
   EmailFormSuccessIcon,
   EmailFormSuccessText,
-  EmailFormInput,
 } from "./NewsletterForm.styled";
 
 const NEWSLETTER_SCHEMA = Yup.object({

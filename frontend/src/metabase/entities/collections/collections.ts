@@ -5,20 +5,20 @@ import { collectionApi } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
 import {
   createEntity,
-  undo,
   entityCompatibleQuery,
+  undo,
 } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls/collections";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
-  ListCollectionsRequest,
-  ListCollectionsTreeRequest,
   Collection,
   CreateCollectionRequest,
+  ListCollectionsRequest,
+  ListCollectionsTreeRequest,
   UpdateCollectionRequest,
 } from "metabase-types/api";
-import type { GetState, ReduxAction, Dispatch } from "metabase-types/store";
+import type { Dispatch, GetState, ReduxAction } from "metabase-types/store";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";

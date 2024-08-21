@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
+  CollectionEssentials,
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
@@ -208,3 +209,10 @@ export function isValidCollectionId(
   const id = canonicalCollectionId(collectionId);
   return id === null || typeof id === "number";
 }
+
+export const getCollectionName = (collection: CollectionEssentials) => {
+  if (isRootCollection(collection)) {
+    return t`Our analytics`;
+  }
+  return collection?.name || t`Untitled collection`;
+};

@@ -13,9 +13,9 @@ import noResultsSource from "assets/img/no_results.svg";
 import { strategies } from "metabase/admin/performance/constants/complex";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
+  type DataPermission,
   DataPermissionValue,
   type DatabaseEntityId,
-  type DataPermission,
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
@@ -32,7 +32,6 @@ import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
-  Database as DatabaseType,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
@@ -41,6 +40,7 @@ import type {
   CollectionEssentials,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  Database as DatabaseType,
   Dataset,
   Group,
   GroupPermissions,
@@ -97,6 +97,8 @@ export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
   impersonated: [],
 };
 
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS = [];
+
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
@@ -133,7 +135,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     | ((
         permissions: GroupsPermissions,
         groupId: number,
-        { databaseId }: DatabaseEntityId,
+        entityId: EntityId,
         value: any,
         database: Database,
         permission: DataPermission,

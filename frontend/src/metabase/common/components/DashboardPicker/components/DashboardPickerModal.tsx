@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -12,10 +12,10 @@ import {
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
 import type {
+  DashboardPickerInitialValueItem,
   DashboardPickerItem,
   DashboardPickerOptions,
   DashboardPickerValueItem,
-  DashboardPickerInitialValueItem,
 } from "../types";
 import { getCollectionId } from "../utils";
 

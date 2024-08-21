@@ -5,13 +5,13 @@ import { t } from "ttag";
 
 import {
   createNewTab,
-  renameTab,
   deleteTab as deleteTabAction,
+  duplicateTab as duplicateTabAction,
   initTabs,
+  moveTab as moveTabAction,
+  renameTab,
   selectTab,
   undoDeleteTab,
-  moveTab as moveTabAction,
-  duplicateTab as duplicateTabAction,
 } from "metabase/dashboard/actions";
 import { trackTabDuplicated } from "metabase/dashboard/analytics";
 import { getSelectedTabId, getTabs } from "metabase/dashboard/selectors";

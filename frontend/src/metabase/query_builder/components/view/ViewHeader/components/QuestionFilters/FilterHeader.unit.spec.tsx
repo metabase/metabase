@@ -8,11 +8,11 @@ import * as Lib from "metabase-lib";
 import { createQuery } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PEOPLE,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { FilterHeader } from "./QuestionFilters";

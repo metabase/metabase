@@ -8,7 +8,7 @@ import Dashboards from "metabase/entities/dashboards";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 import { Icon } from "metabase/ui";
-import type { Dashboard, CollectionId, DashboardId } from "metabase-types/api";
+import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import { ToastRoot } from "./DashboardMoveModal.styled";

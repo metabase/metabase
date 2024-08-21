@@ -6,10 +6,10 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
-  RegularClickAction,
   ClickObject,
-  PopoverClickAction,
   OnChangeCardAndRun,
+  PopoverClickAction,
+  RegularClickAction,
 } from "metabase/visualizations/types";
 import {
   isPopoverClickAction,

@@ -1,17 +1,17 @@
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openNativeEditor,
-  moveDnDKitElement,
   filterWidget,
-  popover,
-  visitQuestionAdhoc,
-  visitQuestion,
-  openPublicLinkPopoverFromMenu,
-  queryBuilderMain,
-  visitDashboard,
   getDashboardCard,
+  moveDnDKitElement,
+  openNativeEditor,
+  openPublicLinkPopoverFromMenu,
+  popover,
+  queryBuilderMain,
+  restore,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";

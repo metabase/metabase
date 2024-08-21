@@ -1,15 +1,15 @@
 import { createMockDashboard } from "metabase-types/api/mocks";
 
 import {
-  INITIALIZE,
-  SET_EDITING_DASHBOARD,
-  SET_SIDEBAR,
   CLOSE_SIDEBAR,
-  REMOVE_PARAMETER,
-  SET_DASHBOARD_ATTRIBUTES,
-  FETCH_DASHBOARD_CARD_DATA,
   FETCH_CARD_DATA,
   FETCH_CARD_DATA_PENDING,
+  FETCH_DASHBOARD_CARD_DATA,
+  INITIALIZE,
+  REMOVE_PARAMETER,
+  SET_DASHBOARD_ATTRIBUTES,
+  SET_EDITING_DASHBOARD,
+  SET_SIDEBAR,
 } from "./actions";
 import { dashboardReducers as reducer } from "./reducers";
 

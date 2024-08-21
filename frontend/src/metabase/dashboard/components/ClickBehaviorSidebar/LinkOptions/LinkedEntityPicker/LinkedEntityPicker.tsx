@@ -18,21 +18,21 @@ import { useSelector } from "metabase/lib/redux";
 import { Icon, Select } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  Dashboard,
-  DashboardId,
-  QuestionDashboardCard,
   CardId,
   ClickBehavior,
-  EntityCustomDestinationClickBehavior,
+  Dashboard,
+  DashboardId,
   DashboardTab,
+  EntityCustomDestinationClickBehavior,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import { Heading } from "../../ClickBehaviorSidebar.styled";
 import { SidebarItem } from "../../SidebarItem";
 import {
   LinkTargetEntityPickerContent,
-  SelectedEntityPickerIcon,
   SelectedEntityPickerContent,
+  SelectedEntityPickerIcon,
 } from "../LinkOptions.styled";
 
 const LINK_TARGETS = {

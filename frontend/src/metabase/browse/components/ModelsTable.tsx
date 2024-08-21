@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { getCollectionName } from "metabase/collections/utils";
+import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import {
@@ -11,33 +13,35 @@ import {
 import {
   ItemLink,
   ItemNameCell,
+  TBody,
   Table,
   TableColumn,
-  TBody,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { color } from "metabase/lib/colors";
+import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Icon, type IconProps } from "metabase/ui";
+import { FixedSizeIcon, Box } from "metabase/ui";
 
 import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
-import { getCollectionName, getIcon } from "../utils";
+import { getIcon } from "../utils";
 
-import {
-  CollectionBreadcrumbsWithTooltip,
-  SimpleCollectionDisplay,
-} from "./CollectionBreadcrumbsWithTooltip";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
+import S from "./ModelsTable.module.css";
 import {
   ModelCell,
   ModelNameColumn,
   ModelTableRow,
 } from "./ModelsTable.styled";
-import { getModelDescription, sortModels } from "./utils";
+import {
+  getCollectionPathString,
+  getModelDescription,
+  sortModels,
+} from "./utils";
 
 export interface ModelsTableProps {
   models: ModelResult[];
@@ -60,14 +64,7 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
   sort_direction: SortDirection.Asc,
 };
 
-const LARGE_DATASET_THRESHOLD = 500;
-
-export const ModelsTable = ({ models }: ModelsTableProps) => {
-  // for large datasets, we need to simplify the display to avoid performance issues
-  const isLargeDataset = models.length > LARGE_DATASET_THRESHOLD;
-
-  const [showLoading, setShowLoading] = useState(isLargeDataset);
-
+export const ModelsTable = ({ models = [] }: ModelsTableProps) => {
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
   );
@@ -80,19 +77,8 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   const descriptionWidth = 100 - collectionWidth;
 
   const handleUpdateSortOptions = (newSortingOptions: SortingOptions) => {
-    if (isLargeDataset) {
-      setShowLoading(true);
-    }
     setSortingOptions(newSortingOptions);
   };
-
-  useEffect(() => {
-    // we need a better virtualized table solution for large datasets
-    // for now, we show loading text to make this component feel more responsive
-    if (isLargeDataset && showLoading) {
-      setTimeout(() => setShowLoading(false), 10);
-    }
-  }, [isLargeDataset, showLoading, sortedModels]);
 
   return (
     <Table aria-label={t`Table of models`}>
@@ -149,31 +135,16 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
         </tr>
       </thead>
       <TBody>
-        {showLoading ? (
-          <TableLoader />
-        ) : (
-          sortedModels.map((model: ModelResult) => (
-            <TBodyRow
-              model={model}
-              key={`${model.model}-${model.id}`}
-              simpleDisplay={isLargeDataset}
-            />
-          ))
-        )}
+        {sortedModels.map((model: ModelResult) => (
+          <TBodyRow model={model} key={`${model.model}-${model.id}`} />
+        ))}
       </TBody>
     </Table>
   );
 };
 
-const TBodyRow = ({
-  model,
-  simpleDisplay,
-}: {
-  model: ModelResult;
-  simpleDisplay: boolean;
-}) => {
+const TBodyRow = ({ model }: { model: ModelResult }) => {
   const icon = getIcon(model);
-  const containerName = `collections-path-for-${model.id}`;
   const dispatch = useDispatch();
   const { id, name } = model;
 
@@ -208,14 +179,24 @@ const TBodyRow = ({
         }`}
         {...collectionProps}
       >
-        {simpleDisplay ? (
-          <SimpleCollectionDisplay collection={model.collection} />
-        ) : (
-          <CollectionBreadcrumbsWithTooltip
-            containerName={containerName}
-            collection={model.collection}
-          />
-        )}
+        <Link
+          className={S.collectionLink}
+          to={Urls.collection(model.collection)}
+          onClick={e => e.stopPropagation()}
+        >
+          <Flex gap="sm">
+            <FixedSizeIcon name="folder" />
+            <Box w="calc(100% - 1.5rem)">
+              <EllipsifiedPath
+                tooltip={getCollectionPathString(model.collection)}
+                items={[
+                  ...(model.collection?.effective_ancestors || []),
+                  model.collection,
+                ].map(c => getCollectionName(c))}
+              />
+            </Box>
+          </Flex>
+        </Link>
       </ModelCell>
 
       {/* Description */}
@@ -261,7 +242,7 @@ const NameCell = ({
         <Icon
           size={16}
           {...icon}
-          color={color("brand")}
+          color={"var(--mb-color-brand)"}
           style={{ flexShrink: 0 }}
         />
         <EntityItem.Name name={model.name} variant="list" id={headingId} />
@@ -269,13 +250,3 @@ const NameCell = ({
     </ItemNameCell>
   );
 };
-
-const TableLoader = () => (
-  <tr>
-    <td colSpan={4}>
-      <Flex justify="center" color="text-light">
-        {t`Loading…`}
-      </Flex>
-    </td>
-  </tr>
-);

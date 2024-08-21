@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { colors } from "metabase/lib/colors";
-import { Icon, Alert, Anchor, Text, Box } from "metabase/ui";
+import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
 
 export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
   const [isExpanded, { toggle }] = useToggle(false);

@@ -1,43 +1,43 @@
-import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  POPOVER_ELEMENT,
+  adhocQuestionHash,
+  appBar,
   commandPalette,
   commandPaletteSearch,
   createQuestion,
-  restore,
-  visualize,
-  openTable,
-  openOrdersTable,
-  popover,
-  modal,
-  summarize,
-  openNativeEditor,
-  startNewQuestion,
-  openNavigationSidebar,
-  navigationSidebar,
+  editDashboard,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
-  withDatabase,
-  adhocQuestionHash,
   expressionEditorWidget,
-  enterCustomColumnDetails,
-  showDashboardCardActions,
   filterWidget,
-  saveDashboard,
-  editDashboard,
-  visitDashboard,
-  openColumnOptions,
-  questionInfoButton,
-  rightSidebar,
   getNotebookStep,
   leftSidebar,
-  POPOVER_ELEMENT,
-  appBar,
-  visitQuestion,
-  openProductsTable,
   mockSessionProperty,
+  modal,
+  navigationSidebar,
+  openColumnOptions,
+  openNativeEditor,
+  openNavigationSidebar,
+  openOrdersTable,
+  openProductsTable,
+  openTable,
+  popover,
+  questionInfoButton,
+  restore,
+  rightSidebar,
+  saveDashboard,
+  showDashboardCardActions,
+  startNewQuestion,
+  summarize,
+  visitDashboard,
+  visitQuestion,
   visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -307,7 +307,7 @@ describe("postgres > user > query", { tags: "@external" }, () => {
 
     // Wait until "doing science" spinner disappears (DOM is ready for assertions)
     // TODO: if this proves to be reliable, extract it as a helper function for waiting on DOM to render
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     // Assertions
     cy.log("Fails in v0.36.6");
@@ -995,13 +995,13 @@ describe("issue 19341", () => {
     // Test "Saved Questions" table is hidden in QB data selector
     startNewQuestion();
     entityPickerModal().within(() => {
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
       cy.findByText("Orders").should("exist");
       cy.findAllByRole("tab").should("not.exist");
 
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search…").type("Ord");
-      cy.findByTestId("loading-spinner").should("not.exist");
+      cy.findByTestId("loading-indicator").should("not.exist");
 
       cy.findAllByTestId("result-item").then($result => {
         const searchResults = $result.toArray();

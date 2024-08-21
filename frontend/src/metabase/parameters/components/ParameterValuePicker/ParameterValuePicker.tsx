@@ -13,9 +13,9 @@ import { OwnDatePicker } from "./OwnDatePicker";
 import { ListPickerWrapper } from "./ParameterValuePicker.styled";
 import { PlainValueInput } from "./PlainValueInput";
 import {
-  shouldUsePlainInput,
-  shouldUseListPicker,
   getSingleStringOrNull,
+  shouldUseListPicker,
+  shouldUsePlainInput,
 } from "./core";
 
 interface ParameterValuePickerProps {

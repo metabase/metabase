@@ -11,11 +11,11 @@ import MetricRevisions from "metabase/reference/metrics/MetricRevisions";
 import * as actions from "metabase/reference/reference";
 
 import {
-  getUser,
-  getMetric,
-  getMetricId,
   getDatabaseId,
   getIsEditing,
+  getMetric,
+  getMetricId,
+  getUser,
 } from "../selectors";
 
 import MetricSidebar from "./MetricSidebar";

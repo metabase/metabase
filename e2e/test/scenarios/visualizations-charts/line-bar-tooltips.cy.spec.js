@@ -1,18 +1,18 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitDashboard,
-  saveDashboard,
+  POPOVER_ELEMENT,
   addOrUpdateDashboardCard,
-  modal,
   cartesianChartCircle,
-  chartPathWithFillColor,
   cartesianChartCircleWithColor,
+  chartPathWithFillColor,
+  echartsTriggerBlur,
+  modal,
+  popover,
+  restore,
+  saveDashboard,
   testPairedTooltipValues,
   testTooltipPairs,
-  popover,
-  echartsTriggerBlur,
-  POPOVER_ELEMENT,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

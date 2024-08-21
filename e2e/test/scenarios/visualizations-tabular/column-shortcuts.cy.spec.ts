@@ -3,18 +3,18 @@ import _ from "underscore";
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  createQuestion,
   describeWithSnowplow,
   enterCustomColumnDetails,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getNotebookStep,
   openNotebook,
   openOrdersTable,
   popover,
+  resetSnowplow,
   restore,
   visualize,
-  createQuestion,
-  expectGoodSnowplowEvent,
-  resetSnowplow,
-  expectNoBadSnowplowEvents,
 } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID, ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;

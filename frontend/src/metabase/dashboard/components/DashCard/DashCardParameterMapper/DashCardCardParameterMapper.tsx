@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
@@ -9,11 +9,11 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
 import CS from "metabase/css/core/index.css";
 import {
-  isNativeDashCard,
-  isVirtualDashCard,
   getVirtualCardType,
-  showVirtualDashCardInfoText,
+  isNativeDashCard,
   isQuestionDashCard,
+  isVirtualDashCard,
+  showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/lib/redux";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
@@ -21,8 +21,8 @@ import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-o
 import { getMetadata } from "metabase/selectors/metadata";
 import { Icon } from "metabase/ui";
 import {
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -44,23 +44,23 @@ import type { State } from "metabase-types/store";
 
 import { resetParameterMapping, setParameterMapping } from "../../../actions";
 import {
-  getEditingParameter,
   getDashcardParameterMappingOptions,
+  getEditingParameter,
   getParameterTarget,
   getQuestionByCard,
 } from "../../../selectors";
 import { getMappingOptionByTarget } from "../utils";
 
 import {
-  Container,
   CardLabel,
+  ChevrondownIcon,
+  CloseIconButton,
+  Container,
   Header,
+  KeyIcon,
   TargetButton,
   TargetButtonText,
   TextCardDefault,
-  CloseIconButton,
-  ChevrondownIcon,
-  KeyIcon,
   Warning,
 } from "./DashCardCardParameterMapper.styled";
 import { DisabledNativeCardHelpText } from "./DisabledNativeCardHelpText";

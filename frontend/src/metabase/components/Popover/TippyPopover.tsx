@@ -2,7 +2,7 @@ import * as TippyReact from "@tippyjs/react";
 import cx from "classnames";
 import { merge } from "icepick";
 import PropTypes from "prop-types";
-import { useState, useMemo, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type * as tippy from "tippy.js";
 
 import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";

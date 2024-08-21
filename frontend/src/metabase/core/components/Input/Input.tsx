@@ -11,10 +11,10 @@ import type { InputSize } from "../../style/types";
 import {
   InputField,
   InputLeftButton,
+  InputResetButton,
   InputRightButton,
   InputRoot,
   InputSubtitle,
-  InputResetButton,
 } from "./Input.styled";
 
 export type InputColorScheme = "brand" | "filter";

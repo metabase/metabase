@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { formatColumn } from "metabase/lib/formatting";
 import ObjectDetail from "metabase/visualizations/components/ObjectDetail";
 import {
-  tableColumnSettings,
   columnSettings,
+  tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
 import {
   getDefaultSize,

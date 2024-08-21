@@ -1,6 +1,6 @@
 import { useSelector } from "metabase/lib/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { Transition, Flex, Text } from "metabase/ui";
+import { Flex, Text, Transition } from "metabase/ui";
 
 import { BulkActionsToast, ToastCard } from "./BulkActionBar.styled";
 

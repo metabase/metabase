@@ -5,35 +5,35 @@ import _ from "underscore";
 
 import {
   inferAndUpdateEntityPermissions,
+  restrictCreateQueriesPermissionsIfNeeded,
   updateFieldsPermission,
+  updatePermission,
   updateSchemasPermission,
   updateTablesPermission,
-  updatePermission,
-  restrictNativeQueryPermissionsIfNeeded,
 } from "metabase/admin/permissions/utils/graph";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import Group from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
+  combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-  combineReducers,
 } from "metabase/lib/redux";
 import {
-  PLUGIN_DATA_PERMISSIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
 
 import { trackPermissionChange } from "./analytics";
-import { DataPermissionType, DataPermission } from "./types";
+import { DataPermission, DataPermissionType } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 import {
-  getModifiedGroupsPermissionsGraphParts,
   getModifiedCollectionPermissionsGraphParts,
+  getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./utils/graph/partial-updates";
 
@@ -219,12 +219,18 @@ export const saveDataPermissions = createThunkAction(
       allGroupIds,
       advancedPermissions.modifiedGroupIds,
     );
+    const modifiedGroupIds = Object.keys(modifiedGroups);
 
-    return await PermissionsApi.updateGraph({
+    const response = await PermissionsApi.updateGraph({
       groups: modifiedGroups,
       revision: dataPermissionsRevision,
       ...advancedPermissions.permissions,
     });
+
+    return {
+      ...response,
+      modifiedGroupIds,
+    };
   },
 );
 
@@ -315,7 +321,11 @@ const dataPermissions = handleActions(
     },
     [SAVE_DATA_PERMISSIONS]: {
       next: (state, { payload }) =>
-        mergeGroupsPermissionsUpdates(state, payload.groups),
+        mergeGroupsPermissionsUpdates(
+          state,
+          payload.groups,
+          payload.modifiedGroupIds,
+        ),
     },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
@@ -352,7 +362,7 @@ const dataPermissions = handleActions(
           );
         }
 
-        state = restrictNativeQueryPermissionsIfNeeded(
+        state = restrictCreateQueriesPermissionsIfNeeded(
           state,
           groupId,
           entityId,
@@ -360,9 +370,6 @@ const dataPermissions = handleActions(
           value,
           database,
         );
-
-        const shouldDowngradeNative =
-          permissionInfo.type === DataPermissionType.ACCESS;
 
         if (entityId.tableId != null) {
           const updatedPermissions = updateFieldsPermission(
@@ -372,7 +379,6 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
-            shouldDowngradeNative,
           );
           return inferAndUpdateEntityPermissions(
             updatedPermissions,
@@ -380,7 +386,6 @@ const dataPermissions = handleActions(
             entityId,
             database,
             permissionInfo.permission,
-            shouldDowngradeNative,
           );
         } else if (entityId.schemaName != null) {
           return updateTablesPermission(
@@ -390,7 +395,6 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
-            shouldDowngradeNative,
           );
         } else {
           return updateSchemasPermission(
@@ -400,7 +404,6 @@ const dataPermissions = handleActions(
             value,
             database,
             permissionInfo.permission,
-            shouldDowngradeNative,
           );
         }
       },
@@ -422,7 +425,11 @@ const originalDataPermissions = handleActions(
     },
     [SAVE_DATA_PERMISSIONS]: {
       next: (state, { payload }) =>
-        mergeGroupsPermissionsUpdates(state, payload.groups),
+        mergeGroupsPermissionsUpdates(
+          state,
+          payload.groups,
+          payload.modifiedGroupIds,
+        ),
     },
   },
   null,

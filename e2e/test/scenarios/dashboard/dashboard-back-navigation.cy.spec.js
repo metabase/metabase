@@ -1,33 +1,33 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   appBar,
   collectionTable,
   createAction,
+  filterWidget,
   getActionCardDetails,
-  getTextCardDetails,
   getDashboardCard,
   getDashboardCardMenu,
   getDashboardCards,
+  getTextCardDetails,
   modal,
+  openQuestionsSidebar,
   popover,
   queryBuilderHeader,
   restore,
   rightSidebar,
+  saveDashboard,
   setActionsEnabledForDB,
+  sidebar,
   summarize,
   visitDashboard,
   visitDashboardAndCreateTab,
   visualize,
-  openQuestionsSidebar,
-  sidebar,
-  saveDashboard,
-  filterWidget,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -329,7 +329,7 @@ describe(
       cy.wait("@dashboard");
 
       getDashboardCard().within(() => {
-        cy.findByTestId("loading-spinner").should("be.visible");
+        cy.findByTestId("loading-indicator").should("be.visible");
         cy.findByText("Sleep card").click();
         cy.wait("@card");
       });

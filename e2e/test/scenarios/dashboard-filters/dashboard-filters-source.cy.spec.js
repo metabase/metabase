@@ -1,23 +1,23 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  describeEE,
   editDashboard,
+  filterWidget,
+  getDashboardCard,
+  openQuestionActions,
   popover,
   restore,
   saveDashboard,
+  setDropdownFilterType,
   setFilter,
-  visitDashboard,
-  openQuestionActions,
-  visitQuestion,
-  setFilterQuestionSource,
   setFilterListSource,
-  visitEmbeddedPage,
-  visitPublicDashboard,
-  describeEE,
+  setFilterQuestionSource,
   setSearchBoxFilterType,
   setTokenFeatures,
-  setDropdownFilterType,
-  getDashboardCard,
-  filterWidget,
+  visitDashboard,
+  visitEmbeddedPage,
+  visitPublicDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;

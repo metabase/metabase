@@ -34,11 +34,11 @@ import {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  Dashboard as IDashboard,
-  DashboardId,
   DashCardDataMap,
   DashCardId,
+  DashboardId,
   DatabaseId,
+  Dashboard as IDashboard,
   ParameterId,
   ParameterValueOrArray,
 } from "metabase-types/api";
@@ -47,14 +47,15 @@ import type { SelectedTabId, State, StoreDashcard } from "metabase-types/store";
 import * as dashboardActions from "../../actions";
 import { DASHBOARD_SLOW_TIMEOUT } from "../../constants";
 import {
-  getDashcardDataMap,
   getClickBehaviorSidebarDashcard,
   getDashboardBeforeEditing,
   getDashboardComplete,
+  getDashcardDataMap,
   getDocumentTitle,
+  getEmbeddedParameterVisibility,
   getFavicon,
-  getIsAdditionalInfoVisible,
   getIsAddParameterPopoverOpen,
+  getIsAdditionalInfoVisible,
   getIsDirty,
   getIsEditing,
   getIsEditingParameter,
@@ -68,7 +69,6 @@ import {
   getSelectedTabId,
   getSidebar,
   getSlowCards,
-  getEmbeddedParameterVisibility,
 } from "../../selectors";
 
 type OwnProps = {

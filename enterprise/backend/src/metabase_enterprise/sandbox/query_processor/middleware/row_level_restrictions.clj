@@ -16,6 +16,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
+   [metabase.models.data-permissions :as data-perms]
+   [metabase.models.database :as database]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -259,8 +261,18 @@
                      (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
                                                  :throw-exceptions? true))
 
-    (let [table-ids (sandbox->table-ids sandbox)]
-      {:perms/view-data (zipmap table-ids (repeat :unrestricted))
+    (let [table-ids (sandbox->table-ids sandbox)
+          table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
+          unblocked-table-ids (filter (fn [table-id] (data-perms/user-has-permission-for-table?
+                                                      api/*current-user-id*
+                                                      :perms/view-data
+                                                      :unrestricted
+                                                      (get table-id->db-id table-id)
+                                                      table-id))
+                                      table-ids)]
+      ;; Here, we grant view-data to only unblocked table ids. Otherwise sandboxed users with a joined table that's
+      ;; _blocked_ can be queried against from the query builder
+      {:perms/view-data (zipmap unblocked-table-ids (repeat :unrestricted))
        :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
 (defn- merge-perms

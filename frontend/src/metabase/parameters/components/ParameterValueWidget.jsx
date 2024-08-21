@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";

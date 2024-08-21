@@ -10,15 +10,15 @@ import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
-import { Icon, Box } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
 import * as AGGREGATION from "metabase-lib/v1/queries/utils/aggregation";
 
 import { QueryDefinitionTooltip } from "../QueryDefinitionTooltip";
 
 import {
-  AggregationItemList,
   AggregationFieldList,
+  AggregationItemList,
 } from "./AggregationPopover.styled";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;

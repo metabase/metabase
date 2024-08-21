@@ -1,7 +1,7 @@
 import type {
-  ListSubscriptionsRequest,
-  DashboardSubscription,
   CreateSubscriptionRequest,
+  DashboardSubscription,
+  ListSubscriptionsRequest,
   UpdateSubscriptionRequest,
 } from "metabase-types/api";
 

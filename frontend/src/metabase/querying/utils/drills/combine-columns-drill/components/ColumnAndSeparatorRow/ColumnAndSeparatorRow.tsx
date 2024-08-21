@@ -1,4 +1,4 @@
-import { useState, type FocusEvent } from "react";
+import { type FocusEvent, useState } from "react";
 import { t } from "ttag";
 
 import {

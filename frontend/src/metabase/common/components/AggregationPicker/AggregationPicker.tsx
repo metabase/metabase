@@ -13,11 +13,11 @@ import * as Lib from "metabase-lib";
 import { QueryColumnPicker } from "../QueryColumnPicker";
 
 import {
-  Root,
   ColumnPickerContainer,
   ColumnPickerHeaderContainer,
-  ColumnPickerHeaderTitleContainer,
   ColumnPickerHeaderTitle,
+  ColumnPickerHeaderTitleContainer,
+  Root,
 } from "./AggregationPicker.styled";
 
 interface AggregationPickerProps {

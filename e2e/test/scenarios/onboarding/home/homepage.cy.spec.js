@@ -1,30 +1,30 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  describeEE,
-  popover,
-  restore,
-  visitDashboard,
-  modal,
+  createDashboard,
+  dashboardGrid,
   dashboardHeader,
-  navigationSidebar,
-  openNavigationSidebar,
+  describeEE,
   describeWithSnowplow,
+  enableTracking,
+  entityPickerModal,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
   main,
-  undoToast,
+  modal,
+  navigationSidebar,
+  openNavigationSidebar,
+  popover,
+  resetSnowplow,
+  restore,
   setTokenFeatures,
-  entityPickerModal,
-  dashboardGrid,
+  undoToast,
+  visitDashboard,
   visitQuestion,
-  createDashboard,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -499,7 +499,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.visit("/");
       dashboardGrid()
-        .findAllByTestId("loading-spinner")
+        .findAllByTestId("loading-indicator")
         .should("have.length", 0);
 
       cy.findByTestId("main-logo-link").click().click();

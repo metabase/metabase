@@ -4,8 +4,8 @@ import type { IconName } from "metabase/ui";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   ClickBehaviorType,
-  QuestionDashboardCard,
   DatasetColumn,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 type ClickBehaviorOption = {

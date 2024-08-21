@@ -91,7 +91,7 @@
                                                                         (qp/userland-query query info)
                                                                         nil))))})
           result                       (result-fn card-id)
-          series-results               (map (comp result-fn :id) multi-cards)]
+          series-results               (mapv (comp result-fn :id) multi-cards)]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
                      (is-card-empty? (assoc card :result (:result result))))
         (update result :dashcard assoc :series-results series-results)))

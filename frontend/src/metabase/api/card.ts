@@ -10,12 +10,12 @@ import type {
 
 import { Api } from "./api";
 import {
-  provideCardListTags,
-  provideCardTags,
   idTag,
   invalidateTags,
   listTag,
+  provideCardListTags,
   provideCardQueryMetadataTags,
+  provideCardTags,
 } from "./tags";
 
 export const cardApi = Api.injectEndpoints({

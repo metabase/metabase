@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { Location } from "history";
-import { type MouseEvent, useState, Fragment } from "react";
+import { Fragment, type MouseEvent, useState } from "react";
 import { useMount } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 
@@ -49,17 +49,17 @@ import { getPulseFormInput } from "metabase/pulse/selectors";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon, Menu, Tooltip, Loader, Flex } from "metabase/ui";
+import { Flex, Icon, Loader, Menu, Tooltip } from "metabase/ui";
 import { saveDashboardPdf } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Bookmark as IBookmark,
+  CardId,
+  Dashboard,
   DashboardId,
   DashboardTabId,
-  Dashboard,
-  DatabaseId,
   Database,
-  CardId,
+  DatabaseId,
+  Bookmark as IBookmark,
   ParameterMappingOptions,
 } from "metabase-types/api";
 import type {
@@ -71,8 +71,8 @@ import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
 import { ExtraEditButtonsMenu } from "../ExtraEditButtonsMenu/ExtraEditButtonsMenu";
 
 import {
-  DashboardHeaderButton,
   DashboardHeaderActionDivider,
+  DashboardHeaderButton,
   SectionMenuItem,
 } from "./DashboardHeader.styled";
 import { DashboardHeaderComponent } from "./DashboardHeaderView";

@@ -1,4 +1,4 @@
-import { ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import { formatValue } from "metabase/lib/formatting";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -7,8 +7,8 @@ import {
   hasFields,
 } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
-  isFieldFilterParameter,
   getParameterType,
+  isFieldFilterParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 
 import { formatDateValue } from "./date-formatting";

@@ -22,8 +22,8 @@ import {
   ArchiveEmptyState,
   ArchiveHeader,
   ArchiveRoot,
-  VirtualizedListWrapper,
   CardWithMaxWidth,
+  VirtualizedListWrapper,
 } from "./ArchiveApp.styled";
 
 export function ArchiveApp() {

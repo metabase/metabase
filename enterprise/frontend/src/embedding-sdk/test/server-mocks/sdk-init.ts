@@ -12,9 +12,9 @@ import {
 } from "embedding-sdk/test/mocks/state";
 import type { EnterpriseSettings } from "metabase-enterprise/settings/types";
 import type {
-  User,
-  TokenFeatures,
   SettingDefinition,
+  TokenFeatures,
+  User,
 } from "metabase-types/api";
 import {
   createMockSettings,

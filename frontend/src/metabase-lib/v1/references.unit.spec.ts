@@ -1,7 +1,7 @@
 import {
-  isFieldReference,
-  isExpressionReference,
   isAggregationReference,
+  isExpressionReference,
+  isFieldReference,
   isTemplateTagReference,
   normalizeReferenceOptions,
 } from "metabase-lib/v1/references";

@@ -1,11 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  startNewQuestion,
+  createQuestion,
   entityPickerModal,
   entityPickerModalTab,
-  createQuestion,
   getNotebookStep,
+  restore,
+  startNewQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

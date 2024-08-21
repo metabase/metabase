@@ -13,14 +13,14 @@ import title from "metabase/hoc/Title";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import { setErrorPage } from "metabase/redux/app";
-import { addParamValues, addFields } from "metabase/redux/metadata";
+import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  PublicApi,
   EmbedApi,
-  setPublicQuestionEndpoints,
-  setEmbedQuestionEndpoints,
+  PublicApi,
   maybeUsePivotEndpoint,
+  setEmbedQuestionEndpoints,
+  setPublicQuestionEndpoints,
 } from "metabase/services";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";

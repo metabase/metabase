@@ -1,14 +1,15 @@
 /* eslint jest/expect-expect: ["error", { "assertFunctionNames": ["expect", "expectSectionToHaveLabel", "expectSectionsToHaveLabelsInOrder"] }] */
 
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
 import {
   clickNextStep,
-  expectSectionsToHaveLabelsInOrder,
   expectSectionToHaveLabel,
+  expectSectionsToHaveLabelsInOrder,
   getLastSettingsPutPayload,
   selectUsageReason,
   setup,
@@ -55,7 +56,7 @@ describe("setup (EE, hosting and embedding feature)", () => {
     await selectUsageReason("embedding");
     await clickNextStep();
 
-    screen.getByText("Finish").click();
+    await userEvent.click(screen.getByText("Finish"));
 
     expect(await getLastSettingsPutPayload()).toEqual({
       "embedding-homepage": "visible",

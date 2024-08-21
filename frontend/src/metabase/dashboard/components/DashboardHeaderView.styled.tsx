@@ -6,9 +6,9 @@ import EditableText from "metabase/core/components/EditableText";
 import { color } from "metabase/lib/colors";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
+  breakpointMaxMedium,
   breakpointMaxSmall,
   breakpointMinSmall,
-  breakpointMaxMedium,
 } from "metabase/styled-components/theme";
 
 import { FixedWidthContainer } from "./Dashboard/Dashboard.styled";

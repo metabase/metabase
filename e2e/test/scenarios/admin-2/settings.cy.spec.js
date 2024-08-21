@@ -6,29 +6,29 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  openOrdersTable,
-  popover,
   describeEE,
-  setupMetabaseCloud,
-  onlyOnOSS,
-  isEE,
-  isOSS,
-  setTokenFeatures,
-  undoToast,
   describeWithSnowplow,
+  echartsContainer,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  resetSnowplow,
-  openNativeEditor,
-  runNativeQuery,
-  modal,
-  setupSMTP,
+  isEE,
+  isOSS,
   main,
-  echartsContainer,
+  mockSessionPropertiesTokenFeatures,
+  modal,
+  onlyOnOSS,
+  openNativeEditor,
+  openOrdersTable,
+  popover,
+  resetSnowplow,
+  restore,
+  runNativeQuery,
+  setTokenFeatures,
+  setupMetabaseCloud,
+  setupSMTP,
+  undoToast,
   visitQuestion,
   visitQuestionAdhoc,
-  mockSessionPropertiesTokenFeatures,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -1013,7 +1013,7 @@ describe("scenarios > admin > localization", () => {
 
     cy.wait("@dataset");
 
-    cy.findByTestId("loading-spinner").should("not.exist");
+    cy.findByTestId("loading-indicator").should("not.exist");
 
     // verify that the correct row is displayed
     cy.findByTestId("TableInteractive-root").within(() => {

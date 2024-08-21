@@ -12,12 +12,12 @@ import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
-  QuestionDashboardCard,
-  DashboardId,
   DashCardId,
+  DashboardId,
+  Parameter,
   ParameterId,
   ParameterTarget,
-  Parameter,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
 

@@ -12,10 +12,10 @@ import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, Text, Button, Icon, Checkbox } from "metabase/ui";
+import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
 import {
-  useListUploadTablesQuery,
   useDeleteUploadTableMutation,
+  useListUploadTablesQuery,
 } from "metabase-enterprise/api";
 import type { Table } from "metabase-types/api";
 

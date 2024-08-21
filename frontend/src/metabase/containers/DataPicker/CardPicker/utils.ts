@@ -1,7 +1,7 @@
 import {
+  currentUserPersonalCollections,
   isRootPersonalCollection,
   nonPersonalOrArchivedCollection,
-  currentUserPersonalCollections,
 } from "metabase/collections/utils";
 import {
   PERSONAL_COLLECTIONS,

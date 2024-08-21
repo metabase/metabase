@@ -222,8 +222,7 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted
-                                                                                              (mt/id :venues) :unrestricted}
+                   ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted}
                                                                        :perms/create-queries {(mt/id :checkins) :query-builder
                                                                                               (mt/id :venues) :query-builder}}}})
                 (apply-row-level-permissions
@@ -1170,3 +1169,34 @@
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
                (qp/process-query query))))))))
+
+(deftest sandbox-join-permissions-unrestricted-test
+  (testing "sandboxing with unrestricted data perms on the sandboxed table works"
+    (met/with-gtaps! (mt/$ids orders
+                              {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                               :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
+      (let [query (mt/mbql-query orders)]
+        (is (= 11 (count (mt/rows (qp/process-query query)))))))))
+
+(deftest sandbox-join-permissions-not-allowed-when-table-blocked-test
+  (testing "sandboxed query fails when sandboxed table is joined to a table that the current user is blocked on"
+    (met/with-gtaps! (mt/$ids orders
+                              {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                               :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
+      (let [query (mt/mbql-query orders)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query query)))))))
+
+(deftest sandbox-join-permissions-test-uses-nested-sandboxes-test
+  (testing "Nested sandbox query works when sandboxed definition is based on a fk to another sandboxed table"
+    (met/with-gtaps! (mt/$ids orders
+                              {:attributes {"user_id" 1}
+                               :gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}
+                                            ;; Since noone's zipcode == 1, this sandboxed table will return nothing
+                                            :people {:remappings {"user_id" [:dimension $people.zip]}}}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
+      (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))

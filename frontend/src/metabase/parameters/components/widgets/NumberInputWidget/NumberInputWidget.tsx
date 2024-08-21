@@ -8,10 +8,10 @@ import CS from "metabase/css/core/index.css";
 import { parseNumberValue } from "metabase/lib/number";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  WidgetRoot,
-  WidgetLabel,
   Footer,
   TokenFieldWrapper,
+  WidgetLabel,
+  WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import type { Parameter } from "metabase-types/api";
 
