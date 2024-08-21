@@ -5,17 +5,17 @@ import {
 } from "e2e/support/cypress_data";
 import { THIRD_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  openNativeEditor,
-  visitQuestionAdhoc,
-  summarize,
-  rightSidebar,
+  entityPickerModal,
   filter,
   filterField,
-  visitCollection,
-  popover,
-  entityPickerModal,
+  openNativeEditor,
   openQuestionActions,
+  popover,
+  restore,
+  rightSidebar,
+  summarize,
+  visitCollection,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > native", () => {

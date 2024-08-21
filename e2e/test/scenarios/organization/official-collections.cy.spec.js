@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  describeEE,
-  openNewCollectionItemFlowFor,
-  navigationSidebar,
-  getCollectionActions,
-  popover,
-  openCollectionMenu,
-  setTokenFeatures,
   commandPaletteSearch,
+  describeEE,
+  getCollectionActions,
+  navigationSidebar,
+  openCollectionMenu,
+  openNewCollectionItemFlowFor,
+  popover,
+  restore,
+  setTokenFeatures,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

@@ -6,9 +6,9 @@ import * as Lib from "metabase-lib";
 import { createQuery, findSegment } from "metabase-lib/test-helpers";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import type { SegmentItem } from "../types";

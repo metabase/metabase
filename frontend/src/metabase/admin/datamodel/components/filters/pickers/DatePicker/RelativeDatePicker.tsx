@@ -18,13 +18,13 @@ import {
 } from "metabase-lib/v1/queries/utils/query-time";
 
 import {
+  DateUnitSelector,
   GridContainer,
   GridText,
   MoreButton,
+  NumericInput,
   OptionButton,
   OptionsContainer,
-  DateUnitSelector,
-  NumericInput,
 } from "./RelativeDatePicker.styled";
 
 type RelativeDatePickerProps = {

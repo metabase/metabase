@@ -5,8 +5,8 @@ import Tooltip from "metabase/core/components/Tooltip";
 
 import {
   ActionIcon,
-  StyledAnchor,
   HEADER_ICON_SIZE,
+  StyledAnchor,
 } from "./DashCardActionButton.styled";
 
 interface Props extends HTMLAttributes<HTMLAnchorElement> {

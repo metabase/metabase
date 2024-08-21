@@ -6,8 +6,8 @@ import { Icon } from "metabase/ui";
 
 import {
   IconContainer,
-  PermissionsSelectOptionRoot,
   PermissionsSelectLabel,
+  PermissionsSelectOptionRoot,
 } from "./PermissionsSelectOption.styled";
 
 export const optionShape = {

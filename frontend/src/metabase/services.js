@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import api, { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Question from "metabase-lib/v1/Question";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";

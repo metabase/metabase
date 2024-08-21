@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,

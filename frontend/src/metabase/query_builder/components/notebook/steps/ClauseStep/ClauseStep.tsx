@@ -1,5 +1,5 @@
 import type { DndContextProps, DragEndEvent } from "@dnd-kit/core";
-import { PointerSensor, useSensor, DndContext } from "@dnd-kit/core";
+import { DndContext, PointerSensor, useSensor } from "@dnd-kit/core";
 import { restrictToParentElement } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";

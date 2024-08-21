@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/api";
@@ -7,7 +7,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErr
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
-import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
+import { Button, Group, Icon, Stack, Text, Title } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
 

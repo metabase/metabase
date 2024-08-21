@@ -8,7 +8,7 @@ import { color } from "metabase/lib/colors";
 import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import { updateQuestion, setUIControls } from "metabase/query_builder/actions";
+import { setUIControls, updateQuestion } from "metabase/query_builder/actions";
 import { NativeQueryEditorRoot } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { Box, Button, Flex, Icon, rem } from "metabase/ui";

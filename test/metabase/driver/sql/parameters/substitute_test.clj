@@ -324,7 +324,7 @@
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
-(defn- substitute-e2e {:style/indent 1} [sql params]
+(defn- substitute-e2e [sql params]
   (let [[query params] (driver/with-driver :h2
                          (mt/with-metadata-provider meta/metadata-provider
                            (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]

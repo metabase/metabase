@@ -23,10 +23,10 @@
   (m/distinct-by
    add/normalize-clause
    (lib.util.match/match (walk/prewalk (fn [x]
-                                 (if (map? x)
-                                   (dissoc x :source-query :source-metadata)
-                                   x))
-                               inner-query)
+                                         (if (map? x)
+                                           (dissoc x :source-query :source-metadata)
+                                           x))
+                                       inner-query)
      [:field _ (_ :guard :join-alias)]
      &match)))
 
@@ -180,7 +180,7 @@
        (seq aggregations))
    ;; 3. contains an `:expression` ref
    (lib.util.match/match-one (concat breakouts aggregations)
-                             :expression)))
+     :expression)))
 
 (defn nest-expressions
   "Pushes the `:source-table`/`:source-query`, `:expressions`, and `:joins` in the top-level of the query into a

@@ -3,12 +3,12 @@ import * as Yup from "yup";
 
 import FormFooter from "metabase/core/components/FormFooter";
 import {
-  FormTextInput,
   Form,
-  FormProvider,
-  FormSubmitButton,
   FormErrorMessage,
   FormGroupsWidget,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";

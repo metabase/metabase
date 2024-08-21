@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, act } from "__support__/ui";
+import { act, render, screen } from "__support__/ui";
 
 import { DelayGroup, useDelayGroup } from "./DelayGroup";
 

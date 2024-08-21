@@ -12,6 +12,7 @@ import {
   resetSnowplow,
   restore,
 } from "e2e/support/helpers";
+import { SUBSCRIBE_URL } from "metabase/setup/constants";
 
 const { admin } = USERS;
 
@@ -190,12 +191,26 @@ describe("scenarios > setup", () => {
       );
       cy.button("Finish").click();
 
+      // we need a mocked response (second parameter) to make sure we're not hitting the real endpoint
+      cy.intercept(SUBSCRIBE_URL, {}).as("subscribe");
+
       // Finish & Subscribe
+      cy.findByText(
+        "Get infrequent emails about new releases and feature updates.",
+      ).click();
+
       cy.findByText("Take me to Metabase").click();
     });
+
     cy.location("pathname").should("eq", "/");
 
     main().findByText("Embed Metabase in your app").should("not.exist");
+
+    cy.wait("@subscribe").then(({ request }) => {
+      const formData = request.body;
+      // the body is encoded as formData, but it should contain the email in plan text
+      expect(formData).to.include(admin.email);
+    });
   });
 
   // Values in this test are set through MB_USER_DEFAULTS environment variable!

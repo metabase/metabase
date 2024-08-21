@@ -1,17 +1,17 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren } from "react";
 
 import {
   BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
   Filter,
+  FilterBar,
   FilterButton,
-  Summarize,
-  SummarizeButton,
   Notebook,
   NotebookButton,
+  QuestionResetButton,
   QuestionVisualization,
+  Summarize,
+  SummarizeButton,
+  Title,
   SaveQuestion,
   SaveButton,
 } from "embedding-sdk/components/private/InteractiveQuestion/components";

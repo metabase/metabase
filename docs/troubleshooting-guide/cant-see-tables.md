@@ -27,7 +27,7 @@ Sometimes your browser will show an old cached list of tables. Browser extension
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Test the connection to your database by running:
-   ```
+   ```sql
    SELECT 1
    ```
 
@@ -43,7 +43,7 @@ To make sure that your table is actually queryable by Metabase:
 
 1. Go to the Metabase [SQL editor](../questions/native-editor/writing-sql.md).
 2. Look for your table:
-   ```
+   ```sql
    SELECT *
    FROM your_table
    ```

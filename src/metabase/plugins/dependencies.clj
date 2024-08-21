@@ -35,7 +35,6 @@
 (defn log-once
   "Log a message a single time, such as warning that a plugin cannot be initialized because of required dependencies.
   Subsequent calls with duplicate messages are automatically ignored."
-  {:style/indent 1}
   ([message]
    (log-once nil message))
 

@@ -6,11 +6,11 @@ import _ from "underscore";
 
 import { delay } from "metabase/lib/promise";
 import {
-  setRequestLoading,
-  setRequestLoaded,
   setRequestError,
-  setRequestUnloaded,
+  setRequestLoaded,
+  setRequestLoading,
   setRequestPromise,
+  setRequestUnloaded,
 } from "metabase/redux/requests";
 
 // convenience

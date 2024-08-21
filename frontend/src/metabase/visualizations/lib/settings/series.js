@@ -4,15 +4,15 @@ import { t } from "ttag";
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import {
   SERIES_COLORS_SETTING_KEY,
-  getSeriesDefaultLinearInterpolate,
-  getSeriesDefaultLineMarker,
-  getSeriesDefaultLineMissing,
+  SERIES_SETTING_KEY,
   getSeriesColors,
   getSeriesDefaultDisplay,
-  SERIES_SETTING_KEY,
-  getSeriesDefaultShowSeriesValues,
-  getSeriesDefaultLineStyle,
+  getSeriesDefaultLineMarker,
+  getSeriesDefaultLineMissing,
   getSeriesDefaultLineSize,
+  getSeriesDefaultLineStyle,
+  getSeriesDefaultLinearInterpolate,
+  getSeriesDefaultShowSeriesValues,
 } from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
