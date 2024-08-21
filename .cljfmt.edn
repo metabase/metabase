@@ -9,7 +9,7 @@
  true
 
  :paths
- ["src/metabase/query_processor"
+ ["src"
   #_"test"
   "enterprise/backend"
   "bin/build"

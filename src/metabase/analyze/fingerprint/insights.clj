@@ -14,8 +14,8 @@
    [metabase.util.date-2 :as u.date]
    [redux.core :as redux])
   (:import
-   (java.util Random)
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.util Random)))
 
 (set! *warn-on-reflection* true)
 

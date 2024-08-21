@@ -249,7 +249,7 @@
                                   :id
                                   :name
                                   :semantic_type]
-                        :table_id table-id)
+                                 :table_id table-id)
          enums        (reduce
                        (fn [acc {field-name :name :as field}]
                          (if-some [enums (field->pseudo-enums table field enum-cardinality-threshold)]
@@ -272,9 +272,9 @@
          foreign-keys (for [{field-name :name :keys [semantic_type fk_target_field_id]} fields
                             :when (= :type/FK semantic_type)
                             :let [{fk-field-name :name fk-table-id :table_id} (t2/select-one [Field :name :table_id]
-                                                                                :id fk_target_field_id)
+                                                                                             :id fk_target_field_id)
                                   {fk-table-name :name fk-table-schema :schema} (t2/select-one [Table :name :schema]
-                                                                                  :id fk-table-id)]]
+                                                                                               :id fk-table-id)]]
                         [[:foreign-key field-name]
                          [:references (cond->>
                                        fk-table-name

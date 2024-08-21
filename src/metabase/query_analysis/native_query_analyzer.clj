@@ -191,8 +191,8 @@
                 {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
                  :from   [[(t2/table-name :model/Table) :t]]
                  :where  [:and
-                         [:= :t.db_id db-id]
-                         (into [:or] (map table-query tables))]}))))
+                          [:= :t.db_id db-id]
+                          (into [:or] (map table-query tables))]}))))
 
 (defn- fill-missing-table-ids-hack
   "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
