@@ -1,6 +1,5 @@
 (ns metabase.models.native-query-snippet
   (:require
-   [medley.core :as m]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.native-query-snippet.permissions :as snippet.perms]
@@ -81,17 +80,11 @@
 (defmethod serdes/extract-query "NativeQuerySnippet" [_ opts]
   (serdes/extract-query-collections NativeQuerySnippet opts))
 
-(defmethod serdes/extract-one "NativeQuerySnippet"
-  [_model-name _opts snippet]
-  (-> (serdes/extract-one-basics "NativeQuerySnippet" snippet)
-      (update :creator_id serdes/*export-user*)
-      (m/update-existing :collection_id #(serdes/*export-fk* % 'Collection))))
-
-(defmethod serdes/load-xform "NativeQuerySnippet" [snippet]
-  (-> snippet
-      serdes/load-xform-basics
-      (update :creator_id serdes/*import-user*)
-      (m/update-existing :collection_id #(serdes/*import-fk* % 'Collection))))
+(defmethod serdes/make-spec "NativeQuerySnippet" [_model-name _opts]
+  {:copy      [:archived :content :description :entity_id :name]
+   :transform {:created_at    (serdes/date)
+               :collection_id (serdes/fk :model/Collection)
+               :creator_id    (serdes/fk :model/User)}})
 
 (defmethod serdes/dependencies "NativeQuerySnippet"
   [{:keys [collection_id]}]

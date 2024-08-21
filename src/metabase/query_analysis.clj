@@ -216,7 +216,7 @@
       (cond
         (not card)       (log/warnf "Card not found: %s" card-id)
         (:archived card) (log/warnf "Skipping archived card: %s" card-id)
-        :else            (log/infof "Performing query analysis for card %s" card-id))
+        :else            (log/debugf "Performing query analysis for card %s" card-id))
       (when (and card (not (:archived card)))
         (update-query-analysis-for-card! card))))
 
@@ -238,12 +238,24 @@
     ::queued    (offer-fn! card-or-id)
     ::disabled  nil))
 
+(defn- maybe-enqueue! [queue card-or-id]
+  (let [id        (u/the-id card-or-id)
+        enqueued? (queue/maybe-put! queue card-or-id)]
+    (if enqueued?
+      (log/debugf "Queued Card %s for async analysis" id)
+      (log/warnf "Deferred analysis of Card %s, as the queue is full" id))))
+
+(defn- blocking-put! [queue timeout card-or-id]
+  (let [id (u/the-id card-or-id)]
+    (log/debugf "Synchronously analyzing Card %s" id)
+    (queue/blocking-put! queue timeout card-or-id)))
+
 (defn analyze-async!
   "Asynchronously hand-off the given card for analysis, at a high priority. This is typically the method you want."
   ([card-or-id]
    (analyze-async! worker-queue card-or-id))
   ([queue card-or-id]
-   (queue-or-analyze! (partial queue/maybe-put! queue) card-or-id)))
+   (queue-or-analyze! (partial maybe-enqueue! queue) card-or-id)))
 
 (defn analyze-sync!
   "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."

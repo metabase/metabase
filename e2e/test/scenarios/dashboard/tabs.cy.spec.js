@@ -683,7 +683,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    setFilter("Time", "Relative Date");
+    setFilter("Date picker", "Relative Date");
 
     selectDashboardFilter(getDashboardCard(0), "Created At");
     saveDashboard();

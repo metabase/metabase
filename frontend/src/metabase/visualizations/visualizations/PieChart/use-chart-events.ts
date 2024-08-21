@@ -14,7 +14,10 @@ import {
 } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
-import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
+import {
+  getMarkerColorClass,
+  useClickedStateTooltipSync,
+} from "metabase/visualizations/echarts/tooltip";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
@@ -174,6 +177,8 @@ export function useChartEvents(
     },
     [chart, hoveredIndex],
   );
+
+  useClickedStateTooltipSync(chartRef.current, props.clicked);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [

@@ -372,7 +372,7 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       [
         createMockParameter({
           id: UNIT_OF_TIME_FILTER_ID,
-          name: "Unit of Time",
+          name: "Time grouping",
           sectionId: "temporal-unit",
           slug: "unit_of_time",
           type: "temporal-unit",
@@ -828,7 +828,7 @@ LightThemeUnitOfTime.args = createDefaultArgs({
 LightThemeUnitOfTime.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", {
-    name: "Unit of Time",
+    name: "Time grouping",
   });
   await userEvent.click(filter);
 

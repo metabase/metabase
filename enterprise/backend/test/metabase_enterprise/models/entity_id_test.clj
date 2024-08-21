@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
+   [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.models]
    [metabase.models.revision-test]
    [metabase.models.serialization :as serdes]))
@@ -23,6 +24,7 @@
     :model/Database
     :model/Table
     :model/Field
+    :model/FieldValues
     ;; Settings have human-selected unique names.
     :model/Setting})
 
@@ -59,6 +61,7 @@
     :model/PermissionsGroupMembership
     :model/PermissionsRevision
     :model/PersistedInfo
+    :model/Pulse
     :model/PulseCard
     :model/PulseChannel
     :model/PulseChannelRecipient
@@ -83,15 +86,23 @@
     :model/CloudMigration})
 
 (deftest ^:parallel comprehensive-entity-id-test
-  (doseq [model (->> (v2.entity-ids/toucan-models)
-                     (remove (fn [model]
-                               (not= (namespace model) "model")))
-                     (remove entities-not-exported)
-                     (remove entities-external-name))]
-    (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
-                          "an external name, or explicitly listed as excluded from serialization")
-                     model)
-      (is (serdes.backfill/has-entity-id? model)))))
+  (let [entity-id-models (->> (v2.entity-ids/toucan-models)
+                              (remove (fn [model]
+                                        (not= (namespace model) "model")))
+                              (remove entities-not-exported)
+                              (remove entities-external-name))]
+    (testing "All exported models should get entity id except those with other unique property (like name)"
+      (is (= (set (concat serdes.models/exported-models
+                          ;; those are inline models which still have entity_id
+                          ["DashboardCard" "DashboardTab" "Dimension"]))
+             (set (->> (concat entity-id-models
+                               entities-external-name)
+                       (map name))))))
+    (doseq [model entity-id-models]
+      (testing (format (str "Model %s should either: have the ::mi/entity-id property, or be explicitly listed as having "
+                            "an external name, or explicitly listed as excluded from serialization")
+                       model)
+        (is (serdes.backfill/has-entity-id? model))))))
 
 (deftest ^:parallel comprehensive-identity-hash-test
   (doseq [model (->> (v2.entity-ids/toucan-models)
