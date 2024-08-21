@@ -2012,9 +2012,19 @@
         (migrate-up!)
         (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
         (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
+        (insert-perm! "perms/view-data" "unrestricted")
         (insert-perm! "perms/create-queries" "no" table-id)
         (migrate! :down 49)
-        (is (= #{(format "/block/db/%d/" db-id)}
+        ;; In this scenario, the sandbox path is preserved, but the block path overrides it
+        (is (= #{(format "/block/db/%d/" db-id)
+                 (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
 
       (testing "Impersonated data access"
@@ -2048,31 +2058,54 @@
   (mt/test-drivers [:postgres :h2]
     (testing "Can we rollback to 49 when sandboxing is configured"
       (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
-        (let [db-id         (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
-                                                                                       :engine     "h2"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
-                                                                                       :details    "{}"}))
-              table-id      (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                                    :schema     "SchemaName"
-                                                                                    :name       "Table"
-                                                                                    :created_at :%now
-                                                                                    :updated_at :%now
-                                                                                    :active     true}))
-              permission-id (t2/insert-returning-pk! (t2/table-name :model/Permissions) {:object "/db/fake-permission/"
-                                                                                         :group_id 1})
-              _             (t2/query-one {:insert-into :sandboxes
-                                           :values      [{:group_id             1
-                                                          :table_id             table-id
-                                                          :attribute_remappings "{\"foo\", 1}"
-                                                          :permission_id        permission-id}]})
-              expected        {:group_id             1
-                               :table_id             table-id
-                               :attribute_remappings "{\"foo\", 1}"}]
+        (clear-permissions!)
+        (let [db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "DB"
+                                                                                           :engine     "h2"
+                                                                                           :created_at :%now
+                                                                                           :updated_at :%now
+                                                                                           :details    "{}"}))
+              table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                        :schema     "SchemaName"
+                                                                                        :name       "Table 1"
+                                                                                        :created_at :%now
+                                                                                        :updated_at :%now
+                                                                                        :active     true}))
+              table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                        :schema     "SchemaName"
+                                                                                        :name       "Table 2"
+                                                                                        :created_at :%now
+                                                                                        :updated_at :%now
+                                                                                        :active     true}))
+              group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+              perm-id-1  (t2/insert-returning-pk! (t2/table-name :model/Permissions)
+                                                  {:object   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-1)
+                                                   :group_id group-id})
+              perm-id-2  (t2/insert-returning-pk! (t2/table-name :model/Permissions)
+                                                  {:object (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-2)
+                                                   :group_id group-id})
+              _          (t2/insert-returning-pk! (t2/table-name :model/Permissions)
+                                                  {:object (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-2)
+                                                   :group_id group-id})
+              _          (t2/query-one {:insert-into :sandboxes
+                                        :values      [{:group_id             group-id
+                                                       :table_id             table-id-1
+                                                       :attribute_remappings "{\"foo\", 1}"
+                                                       :permission_id        perm-id-1}]})
+              _          (t2/query-one {:insert-into :sandboxes
+                                        :values      [{:group_id             group-id
+                                                       :table_id             table-id-2
+                                                       :attribute_remappings "{\"foo\", 1}"
+                                                       :permission_id        perm-id-2}]})
+              expected   {:group_id             group-id
+                          :table_id             table-id-1
+                          :attribute_remappings "{\"foo\", 1}"}]
           (migrate!)
-          (is (=? expected (t2/select-one :sandboxes :table_id table-id)))
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id-1)))
           (migrate! :down 49)
-          (is (=? expected (t2/select-one :sandboxes :table_id table-id))))))))
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id-1)))
+          (is (= #{(format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-1)
+                   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-2)}
+                 (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))))))
 
 (deftest view-count-test
   (testing "report_card.view_count and report_dashboard.view_count should be populated"
