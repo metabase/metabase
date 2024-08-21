@@ -82,22 +82,22 @@
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
-             SweepQueryAnalysis [_ctx]
+  SweepQueryAnalysis [_ctx]
   (when (public-settings/query-analysis-enabled)
     (sweep-query-analysis-loop!)))
 
 (defmethod task/init! ::SweepQueryAnalysis [_]
   (let [job     (jobs/build
-                  (jobs/of-type SweepQueryAnalysis)
-                  (jobs/with-identity (jobs/key "metabase.task.backfill-query-fields.job"))
-                  (jobs/store-durably))
+                 (jobs/of-type SweepQueryAnalysis)
+                 (jobs/with-identity (jobs/key "metabase.task.backfill-query-fields.job"))
+                 (jobs/store-durably))
         trigger (triggers/build
-                  (triggers/with-identity (triggers/key "metabase.task.backfill-query-fields.trigger"))
-                  (triggers/start-now)
-                  (triggers/with-schedule
-                   (cron/schedule
-                    (cron/cron-schedule
+                 (triggers/with-identity (triggers/key "metabase.task.backfill-query-fields.trigger"))
+                 (triggers/start-now)
+                 (triggers/with-schedule
+                  (cron/schedule
+                   (cron/cron-schedule
                      ;; run every 4 hours at a random minute:
-                     (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
-                    (cron/with-misfire-handling-instruction-do-nothing))))]
+                    (format "0 %d 0/4 1/1 * ? *" (rand-int 60)))
+                   (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))
