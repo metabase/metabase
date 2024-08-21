@@ -3,8 +3,8 @@ import debounce from "lodash.debounce";
 import type {
   CSSProperties,
   ComponentType,
-  PropsWithoutRef,
   ForwardedRef,
+  PropsWithoutRef,
 } from "react";
 import React, { Component } from "react";
 import ReactDOM from "react-dom";

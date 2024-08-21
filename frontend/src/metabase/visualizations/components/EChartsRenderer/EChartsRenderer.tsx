@@ -1,7 +1,7 @@
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 import { init } from "echarts/core";
 import mergeRefs from "merge-refs";
-import { useEffect, useRef, forwardRef } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 import { useMount, useUnmount, useUpdateEffect } from "react-use";
 
 import { registerEChartsModules } from "metabase/visualizations/echarts";
