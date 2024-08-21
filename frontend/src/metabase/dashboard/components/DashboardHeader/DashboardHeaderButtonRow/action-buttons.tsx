@@ -17,12 +17,10 @@ import {
   DashboardActionMenu,
   DashboardInfoButton,
   EditDashboardButton,
-  ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
   NightModeToggleButton,
   getExtraButtons,
-  shouldRenderSubscriptionButton,
 } from "../buttons";
 
 import type {

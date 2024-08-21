@@ -5,17 +5,14 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   modal,
+  openSharingMenu,
   openStaticEmbeddingModal,
   restore,
-  visitQuestion,
-  visitDashboard,
-  modal,
-  visitIframe,
-  openStaticEmbeddingModal,
-  visitQuestion,
-  sharingMenuButton,
-  openSharingMenu,
   sharingMenu,
+  sharingMenuButton,
+  visitDashboard,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";

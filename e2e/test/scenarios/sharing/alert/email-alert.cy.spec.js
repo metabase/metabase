@@ -1,14 +1,13 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  modal,
+  openSharingMenu,
   openTable,
+  popover,
   restore,
   setupSMTP,
   visitQuestion,
-  openTable,
-  openSharingMenu,
-  modal,
-  popover,
 } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;

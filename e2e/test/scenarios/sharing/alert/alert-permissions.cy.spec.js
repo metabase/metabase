@@ -6,15 +6,14 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   getFullName,
-  restore,
-  setupSMTP,
-  visitQuestion,
-  getFullName,
-  popover,
+  modal,
   notificationList,
   openSharingMenu,
+  popover,
+  restore,
+  setupSMTP,
   sharingMenu,
-  modal,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { normal, admin } = USERS;
