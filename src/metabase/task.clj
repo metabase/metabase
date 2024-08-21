@@ -224,8 +224,17 @@
         (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
         (reschedule-task! job trigger)))))
 
+(mu/defn trigger-now!
+  "Immediatley trigger exeuction of task"
+  [job-key :- (ms/InstanceOfClass JobKey)]
+  (try
+    (when-let [scheduler (scheduler)]
+        (.triggerJob scheduler job-key))
+      (catch Throwable e
+        (log/errorf e "Failed to trigger immediate execution of task %s" job-key))))
+
 (mu/defn delete-task!
-  "delete a task from the scheduler"
+  "Delete a task from the scheduler"
   [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)

@@ -1,4 +1,3 @@
-export * from "./add-embedding-token";
 export * from "./check-docker-running";
 export * from "./create-api-key";
 export * from "./generate-credentials";
@@ -12,3 +11,4 @@ export * from "./add-database-connection";
 export * from "./pick-database-tables";
 export * from "./create-models-and-xrays";
 export * from "./generate-component-files";
+export * from "./setup-license";
