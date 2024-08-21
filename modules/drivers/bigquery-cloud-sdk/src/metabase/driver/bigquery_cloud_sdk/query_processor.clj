@@ -25,7 +25,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.google.cloud.bigquery Field$Mode FieldValue)
+   (com.google.cloud.bigquery Field Field$Mode FieldValue FieldValueList)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (metabase.driver.common.parameters FieldFilter)))
 
@@ -74,8 +74,8 @@
 
 (defmulti parse-result-of-type
   "Parse the values that come back in results of a BigQuery query based on their column type."
-  {:added "0.41.0" :arglists '([column-type column-mode timezone-id v])}
-  (fn [column-type _ _ _] column-type))
+  {:added "0.41.0" :arglists '([column-type column-mode timezone-id field v])}
+  (fn [column-type _ _ _ _] column-type))
 
 (defn- parse-value
   [column-mode v parse-fn]
@@ -95,31 +95,53 @@
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [_column-type column-mode _ v]
+  [_column-type column-mode _ _ v]
   (parse-value column-mode v identity))
 
+(defmethod parse-result-of-type "RECORD"
+  [_column-type _column-mode timezone-id ^Field field ^FieldValueList v]
+  (let [subfields (.getSubFields field)]
+    (into
+      {}
+      (keep (fn [^Field subfield]
+              (let [subname (.getName subfield)
+                    subvalue (some-> v (.get subname) .getValue)
+                    column-mode (.getMode subfield)
+                    parsed-value (when subvalue
+                                   (parse-result-of-type
+                                     (.. subfield getType name)
+                                     column-mode
+                                     timezone-id
+                                     subfield
+                                     subvalue))
+                    result (cond-> parsed-value
+                             (seq? parsed-value) not-empty)]
+                (when result
+                  [(keyword subname) result]))))
+      subfields)))
+
 (defmethod parse-result-of-type "STRING"
-  [_a column-mode _b v]
+  [_a column-mode _b _ v]
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "BOOLEAN"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Boolean/parseBoolean %)))
 
 (defmethod parse-result-of-type "FLOAT"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Double/parseDouble %)))
 
 (defmethod parse-result-of-type "INTEGER"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Long/parseLong %)))
 
 (defmethod parse-result-of-type "NUMERIC"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v bigdec))
 
 (defmethod parse-result-of-type "BIGNUMERIC"
-  [_column-type column-mode _timezone-id v]
+  [_column-type column-mode _timezone-id _ v]
   (parse-value column-mode v bigdec))
 
 (defn- parse-timestamp-str [timezone-id s]
@@ -130,19 +152,19 @@
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ column-mode _timezone-id v]
+  [_ column-mode _timezone-id _ v]
   (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ column-mode _timezone-id v]
+  [_ column-mode _timezone-id _ v]
   (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "TIMESTAMP"
-  [_ column-mode timezone-id v]
+  [_ column-mode timezone-id _ v]
   (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
 
 (defmethod parse-result-of-type "TIME"
-  [_ column-mode timezone-id v]
+  [_ column-mode timezone-id _ v]
   (parse-value column-mode v (fn [v] (u.date/parse v timezone-id))))
 
 

@@ -279,8 +279,8 @@
           (finally
             (drop-mv-if-exists! view-name)))))))
 
-(mt/defdataset records3
-  [["records3"
+(mt/defdataset nested-records
+  [["records"
     [{:field-name     "name"
       :base-type      :type/Text
       :effective-type :type/Text}
@@ -302,27 +302,28 @@
   (mt/test-driver
     :bigquery-cloud-sdk
     (mt/dataset
-      records3
-      (is (=
-            [["x" false ["r"] :type/Integer]
-             ["aa" false ["r" "rr"] :type/Integer]
-             ["b" false ["r"] :type/Text]
-             ["id" false nil :type/Integer]
-             ["name" false nil :type/Text]
-             ["r" true nil :type/Dictionary]
-             ["rr" true ["r"] :type/Dictionary]]
-            (t2/select-fn-vec (juxt :name :json_unfolding :nfc_path :base_type)
-                              :model/Field
-                              :table_id
-                              (mt/id :records3)
-                              {:order-by [[:name :asc]]})))
-      (is (= {:columns ["r.a" "r.b"]
+      nested-records
+      (is (= {:columns ["r.a" "r.b" "r.rr.aa"]
               :rows [[1 "a" 10] [2 "b" nil] [3 "c" nil]]}
              (mt/rows+column-names
-               (mt/run-mbql-query records3
-                 {:fields [(mt/id :records3 :r :a)
-                           (mt/id :records3 :r :b)
-                           (mt/id :records3 :r :rr :aa)]})))))))
+               (mt/run-mbql-query records
+                 {:fields [(mt/id :records :r :a)
+                           (mt/id :records :r :b)
+                           (mt/id :records :r :rr :aa)]})))))))
+
+(deftest query-nested-fields-test
+  (mt/test-driver
+    :bigquery-cloud-sdk
+    (mt/dataset
+      nested-records
+      (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
+              :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query records
+                 {:fields [(mt/id :records :r :a)
+                           (mt/id :records :r :b)
+                           (mt/id :records :r :rr :aa)
+                           (mt/id :records :r :rr)]})))))))
 
 (deftest sync-table-with-required-filter-test
   (mt/test-driver :bigquery-cloud-sdk

@@ -272,13 +272,10 @@
               :base-type         (bigquery-type->base-type f-mode type-name)
               :database-position database-position
               :nfc-path          nfc-path
-              :json-unfolding    (if (= "RECORD" type-name)
-                                   true
-                                   false)
-              :nested-fields (set (fields->metabase-field-info
-                                    database-position
-                                    (conj (or nfc-path []) field-name)
-                                    (.getSubFields field)))}))))
+              :nested-fields     (set (fields->metabase-field-info
+                                        database-position
+                                        (conj (or nfc-path []) field-name)
+                                        (.getSubFields field)))}))))
      (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name
@@ -337,7 +334,7 @@
                      (let [column-name (.getName field)]
                        (log/warnf "Warning: missing type mapping for parsing BigQuery results column %s of type %s."
                                   column-name column-type)))
-                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
+                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id* field))))
           (.getFields schema))))
 
 (defn- parse-field-value [^FieldValue cell parser]
