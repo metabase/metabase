@@ -18,10 +18,27 @@
 
  ;; See https://github.com/weavejester/cljfmt/blob/master/cljfmt/resources/cljfmt/indents/clojure.clj for the default
  ;; definitions
+ ;;
+ ;;    [[:block 0]]
+ ;;             ^ number of special args
+ ;;
+ ;; `:block` indentation means format with all arguments indented 2 spaces except for the 'special' arguments which
+ ;; normally are supposed to go on the first line. e.g. `let` gets [[:block 1]] because it has one 'special' arg.
+ ;;
+ ;;    [[:inner 0]]
+ ;;             ^ depth
+ ;;    [[:inner 2 0]]
+ ;;               ^ argument index to restrict this rule to
+ ;;
+ ;; `:inner` indentation is like `:defn` indentation. `[[:inner 0]]` (default for `defn`) means all arguments at depth
+ ;; zero get indented 2 spaces if not on the first line regardless of number of elements on the first line.
  :extra-indents
  {;; clojure.core stuff
   fn*                                                                                  [[:inner 0]]
   with-meta                                                                            [[:default]]
+
+  extend-protocol [[:block 1] [:inner 1]]
+
   ;; library stuff. Libraries that specify their own `:style/indent` specs are included in the section after this
   ;; since it is generated automatically.
   clojure.core.logic/fresh                                                             [[:block 1]]
