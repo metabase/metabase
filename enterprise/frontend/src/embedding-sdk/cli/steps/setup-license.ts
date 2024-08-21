@@ -75,7 +75,7 @@ export const setupLicense: CliStepMethod = async state => {
         chalk.red(`Failed to activate license. Reason: ${reason}`),
       );
 
-      const shouldAbandon = await select({
+      const skipLicenseSetup = await select({
         message: `Do you want to try another license key?`,
         choices: [
           { name: "Try another license key.", value: false },
@@ -83,7 +83,7 @@ export const setupLicense: CliStepMethod = async state => {
         ],
       });
 
-      if (shouldAbandon) {
+      if (skipLicenseSetup) {
         return [{ type: "success" }, state];
       }
     }
