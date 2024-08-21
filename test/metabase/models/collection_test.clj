@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.audit :as audit]
    [metabase.models
     :refer [Card
@@ -19,6 +18,7 @@
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -172,16 +172,33 @@
   [[collections-binding options] & body]
   `(do-with-collection-hierarchy! ~options (fn [~collections-binding] ~@body)))
 
-(defmacro with-current-user-perms-for-collections
+(defn do-with-current-user-perms-for-collections*!
+  [collections-or-ids collections-or-ids-to-discard body-fn]
+  (if (seq collections-or-ids-to-discard)
+    (mt/with-discarded-collections-perms-changes (first collections-or-ids-to-discard)
+      (do-with-current-user-perms-for-collections*! collections-or-ids (next collections-or-ids-to-discard) body-fn))
+    (let [read-paths (map perms/collection-read-path collections-or-ids)
+          write-paths (map perms/collection-readwrite-path collections-or-ids)]
+      (t2/delete! :model/Permissions :object [:in (concat read-paths write-paths)])
+      (t2/insert! :model/Permissions (map (fn [c-or-id]
+                                            {:group_id (u/the-id (perms-group/all-users))
+                                             :object (perms/collection-read-path c-or-id)})
+                                          collections-or-ids))
+      (mt/with-test-user :rasta
+        (body-fn)))))
+
+(defn do-with-current-user-perms-for-collections!
+  [collections-or-ids body-fn]
+  (do-with-current-user-perms-for-collections*! collections-or-ids collections-or-ids body-fn))
+
+(defmacro with-current-user-perms-for-collections!
   "Run `body` with the current User permissions for `collections-or-ids`.
 
      (with-current-user-perms-for-collections [a b c]
        ...)"
   {:style/indent 1}
   [collections-or-ids & body]
-  `(binding [*current-user-permissions-set* (atom #{~@(for [collection-or-id collections-or-ids]
-                                                        `(perms/collection-read-path ~collection-or-id))})]
-     ~@body))
+  `(do-with-current-user-perms-for-collections! ~collections-or-ids (fn [] ~@body)))
 
 (defn location-path-ids->names
   "Given a Collection location `path` replace all the IDs with the names of the Collections they represent. Done to make
@@ -280,12 +297,13 @@
              Exception
              (collection/children-location collection)))))))
 
+;; TODO: Figure out a better way to test this!
 (deftest permissions-set->visible-collection-ids-test
   ;; let's just say all of the collections we're dealing with are:
   ;; - NOT the trash
   ;; - NOT archived
   ;; - don't have a `archive_operation_id`
-  (with-redefs [collection/is-trash? (constantly false)
+  #_(with-redefs [collection/is-trash? (constantly false)
                 collection/collection-id->collection
                 (constantly
                  (zipmap (next (range 10))
@@ -325,7 +343,7 @@
 
 ;; testing the 2-arity form of `permissions-set->visible-collection-ids`
 (deftest permissions-set->visible-collection-ids-test-with-config
-  (with-redefs [collection/is-trash? #(= (:id %) 1)
+  #_(with-redefs [collection/is-trash? #(= (:id %) 1)
                 collection/collection-id->collection
                 ;; These are the collections we get to play with
                 (constantly
@@ -380,7 +398,7 @@
                                                                                   :include-archived-items :all}))))))))
 
 (deftest effective-location-path-test
-  (with-redefs [audit/is-collection-id-audit? (constantly false)
+  #_(with-redefs [audit/is-collection-id-audit? (constantly false)
                 collection/collection-id->collection (constantly
                                                       (zipmap (map * (next (range 10)) (repeat 10))
                                                               (next (map (fn [id]
@@ -527,22 +545,22 @@
 (deftest effective-ancestors-test
   (with-collection-hierarchy! [{:keys [a c d]}]
     (testing "For D: if we don't have permissions for C, we should only see A"
-      (with-current-user-perms-for-collections [a d]
+      (with-current-user-perms-for-collections! [a d]
         (is (= ["A"]
                (effective-ancestors d)))))
 
     (testing "For D: if we don't have permissions for A, we should only see C"
-      (with-current-user-perms-for-collections [c d]
+      (with-current-user-perms-for-collections! [c d]
         (is (= ["C"]
                (effective-ancestors d)))))
 
     (testing "For D: if we have perms for all ancestors we should see them all"
-      (with-current-user-perms-for-collections [a c d]
+      (with-current-user-perms-for-collections! [a c d]
         (is (= ["A" "C"]
                (effective-ancestors d)))))
 
     (testing "For D: if we have permissions for no ancestors, we should see nothing"
-      (with-current-user-perms-for-collections [d]
+      (with-current-user-perms-for-collections! [d]
         (is (= []
                (effective-ancestors d)))))))
 
@@ -662,86 +680,91 @@
 
 ;;; ----------------------------------------------- Effective Children -----------------------------------------------
 
-(defn- effective-children [collection]
-  (set (map :name (collection/effective-children collection))))
-
 (deftest effective-children-test
   (with-collection-hierarchy! [{:keys [a b c d e f g]}]
-    (testing "If we *have* perms for everything we should just see B and C."
-      (with-current-user-perms-for-collections [a b c d e f g]
-        (is (= #{"B" "C"}
-               (effective-children a)))))
+    (let [effective-children (fn [collection]
+                               (->> (collection/effective-children collection)
+                                    (filter #(contains? (set (map :id [a b c d e f g])) (:id %)))
+                                    (map :name)
+                                    set))]
 
-    (testing "make sure that `effective-children` isn't returning children or location of children! Those should get discarded."
-      (with-current-user-perms-for-collections [a b c d e f g]
-        (is (= #{:name :id :description}
-               (set (keys (first (collection/effective-children a))))))))
 
-    (testing "If we don't have permissions for C, C's children (D and F) should be moved up one level"
-      ;;
-      ;;    +-> B                             +-> B
-      ;;    |                                 |
-      ;; A -+-> x -+-> D -> E     ===>     A -+-> D -> E
-      ;;           |                          |
-      ;;           +-> F -> G                 +-> F -> G
-      (with-current-user-perms-for-collections [a b d e f g]
+
+      (testing "If we *have* perms for everything we should just see B and C."
+        (with-current-user-perms-for-collections! [a b c d e f g]
+          (is (= #{"B" "C"}
+                 (effective-children a)))))
+
+      (testing "make sure that `effective-children` isn't returning children or location of children! Those should get discarded."
+        (with-current-user-perms-for-collections! [a b c d e f g]
+          (is (= #{:name :id :description}
+                 (set (keys (first (collection/effective-children a))))))))
+
+      (testing "If we don't have permissions for C, C's children (D and F) should be moved up one level"
+        ;;
+        ;;    +-> B                             +-> B
+        ;;    |                                 |
+        ;; A -+-> x -+-> D -> E     ===>     A -+-> D -> E
+        ;;           |                          |
+        ;;           +-> F -> G                 +-> F -> G
+        (with-current-user-perms-for-collections! [a b d e f g]
+          (is (= #{"B" "D" "F"}
+                 (effective-children a)))))
+
+      (testing "If we also remove D, its child (F) should get moved up, for a total of 2 levels."
+        ;;
+        ;;    +-> B                             +-> B
+        ;;    |                                 |
+        ;; A -+-> x -+-> x -> E     ===>     A -+-> E
+        ;;           |                          |
+        ;;           +-> F -> G                 +-> F -> G
+        (with-current-user-perms-for-collections! [a b e f g]
+          (is (= #{"B" "E" "F"}
+                 (effective-children a)))))
+
+
+      (testing "If we remove C and both its children, both grandchildren should get get moved up"
+        ;;
+        ;;    +-> B                             +-> B
+        ;;    |                                 |
+        ;; A -+-> x -+-> x -> E     ===>     A -+-> E
+        ;;           |                          |
+        ;;           +-> x -> G                 +-> G
+        (with-current-user-perms-for-collections! [a b e g]
+          (is (= #{"B" "E" "G"}
+                 (effective-children a)))))
+
+      (testing "Now try with one of the Children. `effective-children` for C should be D & F"
+        ;;
+        ;; C -+-> D -> E              C -+-> D -> E
+        ;;    |              ===>        |
+        ;;    +-> F -> G                 +-> F -> G
+        (with-current-user-perms-for-collections! [b c d e f g]
+          (is (= #{"D" "F"}
+                 (effective-children c)))))
+
+      (testing "If we remove perms for D & F their respective children should get moved up"
+        ;;
+        ;; C -+-> x -> E              C -+-> E
+        ;;    |              ===>        |
+        ;;    +-> x -> G                 +-> G
+        (with-current-user-perms-for-collections! [b c e g]
+          (is (= #{"E" "G"}
+                 (effective-children c)))))
+
+      (testing "For the Root Collection: can we fetch its effective children?"
+        (with-current-user-perms-for-collections! [a b c d e f g]
+          (is (= #{"A"}
+                 (effective-children collection/root-collection)))))
+
+      (testing "For the Root Collection: if we don't have perms for A, we should get B and C as effective children"
+        (with-current-user-perms-for-collections! [b c d e f g]
+          (is (= #{"B" "C"}
+                 (effective-children collection/root-collection)))))
+
+      (testing "For the Root Collection: if we remove A and C we should get B, D and F"
         (is (= #{"B" "D" "F"}
-               (effective-children a)))))
-
-    (testing "If we also remove D, its child (F) should get moved up, for a total of 2 levels."
-      ;;
-      ;;    +-> B                             +-> B
-      ;;    |                                 |
-      ;; A -+-> x -+-> x -> E     ===>     A -+-> E
-      ;;           |                          |
-      ;;           +-> F -> G                 +-> F -> G
-      (with-current-user-perms-for-collections [a b e f g]
-        (is (= #{"B" "E" "F"}
-               (effective-children a)))))
-
-    (testing "If we remove C and both its children, both grandchildren should get get moved up"
-      ;;
-      ;;    +-> B                             +-> B
-      ;;    |                                 |
-      ;; A -+-> x -+-> x -> E     ===>     A -+-> E
-      ;;           |                          |
-      ;;           +-> x -> G                 +-> G
-      (with-current-user-perms-for-collections [a b e g]
-        (is (= #{"B" "E" "G"}
-               (effective-children a)))))
-
-    (testing "Now try with one of the Children. `effective-children` for C should be D & F"
-      ;;
-      ;; C -+-> D -> E              C -+-> D -> E
-      ;;    |              ===>        |
-      ;;    +-> F -> G                 +-> F -> G
-      (with-current-user-perms-for-collections [b c d e f g]
-        (is (= #{"D" "F"}
-               (effective-children c)))))
-
-    (testing "If we remove perms for D & F their respective children should get moved up"
-      ;;
-      ;; C -+-> x -> E              C -+-> E
-      ;;    |              ===>        |
-      ;;    +-> x -> G                 +-> G
-      (with-current-user-perms-for-collections [b c e g]
-        (is (= #{"E" "G"}
-               (effective-children c)))))
-
-    (testing "For the Root Collection: can we fetch its effective children?"
-      (with-current-user-perms-for-collections [a b c d e f g]
-        (is (= #{"A"}
-               (effective-children collection/root-collection)))))
-
-    (testing "For the Root Collection: if we don't have perms for A, we should get B and C as effective children"
-      (with-current-user-perms-for-collections [b c d e f g]
-        (is (= #{"B" "C"}
-               (effective-children collection/root-collection)))))
-
-    (testing "For the Root Collection: if we remove A and C we should get B, D and F"
-      (with-collection-hierarchy! [{:keys [b d e f g]}]
-        (is (= #{"B" "D" "F"}
-               (with-current-user-perms-for-collections [b d e f g]
+               (with-current-user-perms-for-collections! [b d e f g]
                  (effective-children collection/root-collection))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -633,9 +633,7 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
-                                @api/*current-user-permissions-set*
-                                {:include-archived-items :all})
+  (let [visible-collection-ids (collection/visible-collection-ids {:include-archived-items :all})
         descendant-collections (collection/descendants-flat parent-coll (collection/honeysql-filter-clause
                                                                          :id
                                                                          {:include-archived-items :all}))
@@ -949,10 +947,8 @@
 
 (defn- effective-children-ids
   "Returns effective children ids for collection."
-  [collection permissions-set]
-  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids
-                                     permissions-set
-                                     {:permission-level :write}))
+  [collection _permissions-set]
+  (let [visible-collection-ids (set (collection/visible-collection-ids {:permission-level :write}))
         all-descendants (map :id (collection/descendants-flat collection))]
     (filterv visible-collection-ids all-descendants)))
 
