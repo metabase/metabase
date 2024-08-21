@@ -17,7 +17,7 @@ export const getAnalyticsDashboardSnippet = (options: Options) => {
   }
 
   return `
-import { useState } from 'react'
+import { useState, useContext } from 'react'
 import { InteractiveDashboard } from '${SDK_PACKAGE_NAME}'
 import { AnalyticsContext } from "./analytics-provider"
 
