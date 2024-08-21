@@ -11,8 +11,9 @@
                  :order-by [[:asc $id]]})]
     (mt/with-native-query-testing-context query
       (is (= expected
-             (mt/formatted-rows [int str]
-                                (qp/process-query query)))))))
+             (mt/formatted-rows
+              [int str]
+              (qp/process-query query)))))))
 
 (deftest ^:parallel page-test
   (mt/test-drivers (mt/normal-drivers)

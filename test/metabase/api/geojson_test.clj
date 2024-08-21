@@ -187,9 +187,10 @@
                                      :url test-not-json-geojson-url))))
       (testing "it's ok for the content-type header to be missing"
         (is (= {:type "Point" :coordinates [37.77986 -122.429]}
-               (mt/user-http-request :crowberto :get 200 "geojson" :url missing-content-type-url)))) (testing "cannot be called by non-admins"
-                                                                                                       (is (= "You don't have permissions to do that."
-                                                                                                              (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url)))))))
+               (mt/user-http-request :crowberto :get 200 "geojson" :url missing-content-type-url))))
+      (testing "cannot be called by non-admins"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url)))))))
 
 (defprotocol GeoJsonTestServer
   (-port [_]))

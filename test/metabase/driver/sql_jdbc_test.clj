@@ -109,11 +109,12 @@
     (testing (format "\nnative query =\n%s" (u/pprint-to-str native-query))
       (is (= expected
              (ffirst
-              (mt/formatted-rows [int]
-                                 (qp/process-query
-                                  {:database (mt/id)
-                                   :type     :native
-                                   :native   native-query}))))))))
+              (mt/formatted-rows
+               [int]
+               (qp/process-query
+                {:database (mt/id)
+                 :type     :native
+                 :native   native-query}))))))))
 
 (deftest ^:parallel splice-parameters-mbql-string-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"

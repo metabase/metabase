@@ -194,7 +194,8 @@
     (is (= [[4]]
            (->> (run-mbql-query checkins
                   {:aggregation [[:distinct $venue_price]]})
-                (mt/formatted-rows [int]))))))
+                (mt/formatted-rows
+                 [int]))))))
 
 (deftest ^:parallel breakout-test
   (tqpt/test-timeseries-drivers
@@ -858,53 +859,60 @@
   (tqpt/test-timeseries-drivers
     (testing "dimension columns"
       (is (=  [[1.0]]
-              (mt/formatted-rows [double]
-                                 (run-mbql-query checkins
-                                   {:aggregation [[:min $venue_price]]})))))
+              (mt/formatted-rows
+               [double]
+               (run-mbql-query checkins
+                 {:aggregation [[:min $venue_price]]})))))
 
     (testing "metric columns"
       (is (= [[1.0]]
-             (mt/formatted-rows [double]
-                                (run-mbql-query checkins
-                                  {:aggregation [[:min $count]]})))))
+             (mt/formatted-rows
+              [double]
+              (run-mbql-query checkins
+                {:aggregation [[:min $count]]})))))
 
     (testing "with breakout"
       ;; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
       (is (= [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]]
              ;; formatting to str because Druid JDBC does return int
-             (mt/formatted-rows [str double]
-                                (run-mbql-query checkins
-                                  {:aggregation [[:min $venue_latitude]]
-                                   :breakout    [$venue_price]})))))))
+             (mt/formatted-rows
+              [str double]
+              (run-mbql-query checkins
+                {:aggregation [[:min $venue_latitude]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest ^:parallel max-test
   (tqpt/test-timeseries-drivers
     (testing "dimension columns"
       (is (= [[4.0]]
-             (mt/formatted-rows [double]
-                                (run-mbql-query checkins
-                                  {:aggregation [[:max $venue_price]]})))))
+             (mt/formatted-rows
+              [double]
+              (run-mbql-query checkins
+                {:aggregation [[:max $venue_price]]})))))
 
     (testing "metric columns"
       (is (= [[1.0]]
-             (mt/formatted-rows [double]
-                                (run-mbql-query checkins
-                                  {:aggregation [[:max $count]]})))))
+             (mt/formatted-rows
+              [double]
+              (run-mbql-query checkins
+                {:aggregation [[:max $count]]})))))
 
     (testing "with breakout"
       (is (= [["1" 37.8078] ["2" 40.7794] ["3" 40.7262] ["4" 40.7677]]
-             (mt/formatted-rows [str double]
-                                (run-mbql-query checkins
-                                  {:aggregation [[:max $venue_latitude]]
-                                   :breakout    [$venue_price]})))))))
+             (mt/formatted-rows
+              [str double]
+              (run-mbql-query checkins
+                {:aggregation [[:max $venue_latitude]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest ^:parallel multiple-aggregations-test
   (tqpt/test-timeseries-drivers
     (testing "Do we properly handle queries that have more than one of the same aggregation? (#4166)"
       (is (= [[35643 1992]]
-             (mt/formatted-rows [int int]
-                                (run-mbql-query checkins
-                                  {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]})))))))
+             (mt/formatted-rows
+              [int int]
+              (run-mbql-query checkins
+                {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]})))))))
 
 (deftest ^:parallel sort-aggregations-in-timeseries-queries-test
   (tqpt/test-timeseries-drivers
@@ -913,9 +921,10 @@
               ["Chinese"    3.0]
               ["Wine Bar"   3.0]
               ["Japanese"   2.7]]
-             (mt/formatted-rows [str 1.0]
-                                (run-mbql-query checkins
-                                  {:aggregation [[:avg $venue_price]]
-                                   :breakout    [[:field $venue_category_name nil]]
-                                   :order-by    [[:desc [:aggregation 0]]]
-                                   :limit       4})))))))
+             (mt/formatted-rows
+              [str 1.0]
+              (run-mbql-query checkins
+                {:aggregation [[:avg $venue_price]]
+                 :breakout    [[:field $venue_category_name nil]]
+                 :order-by    [[:desc [:aggregation 0]]]
+                 :limit       4})))))))

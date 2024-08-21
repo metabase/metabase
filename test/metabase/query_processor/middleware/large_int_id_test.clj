@@ -92,15 +92,17 @@
               [2 48]
               [3 47]
               [4 61]]
-             (mt/formatted-rows [int int]
-                                (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
+             (mt/formatted-rows
+              [int int]
+              (qp/process-query (assoc query :middleware {:js-int-to-string? true}))))))
     (testing "aggregation does not convert to strings with middleware disabled (default)"
       (is (= [[1 55]
               [2 48]
               [3 47]
               [4 61]]
-             (mt/formatted-rows [int int]
-                                (qp/process-query (assoc query :middleware {}))))))))
+             (mt/formatted-rows
+              [int int]
+              (qp/process-query (assoc query :middleware {}))))))))
 
 (defn- convert-id-to-string [rows]
   (qp.store/with-metadata-provider (mt/id)

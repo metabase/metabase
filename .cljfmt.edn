@@ -41,6 +41,7 @@
   clojure.core.logic/fresh                                                             [[:block 1]]
   clojure.core.logic/matcha                                                            [[:block 1]]
   clojure.core.logic/run                                                               [[:block 2]]
+  clojure.core.match/match                                                             [[:block 1]]
   clojure.tools.macro/macrolet                                                         [[:block 1] [:inner 2 0]]
   clojurewerkz.quartzite.jobs/build                                                    [[:default]]
   clojurewerkz.quartzite.jobs/with-description                                         [[:default]]

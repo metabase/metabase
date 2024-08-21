@@ -761,32 +761,34 @@
   (mt/test-drivers (sql-parameters-engines)
     (is (= [29]
            (mt/first-row
-            (mt/format-rows-by [int]
-                               (process-native
-                                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
-                                             :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                             :display-name "Checkin Date"
-                                                                             :type         :dimension
-                                                                             :widget-type  :date/range
-                                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
-                                :parameters [{:type   :date/range
-                                              :target [:dimension [:template-tag "checkin_date"]]
-                                              :value  "2015-04-01~2015-05-01"}])))))))
+            (mt/format-rows-by
+             [int]
+             (process-native
+              :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
+                           :template-tags {"checkin_date" {:name         "checkin_date"
+                                                           :display-name "Checkin Date"
+                                                           :type         :dimension
+                                                           :widget-type  :date/range
+                                                           :dimension    [:field (mt/id :checkins :date) nil]}}}
+              :parameters [{:type   :date/range
+                            :target [:dimension [:template-tag "checkin_date"]]
+                            :value  "2015-04-01~2015-05-01"}])))))))
 
 (deftest ^:parallel e2e-no-parameter-test
   (mt/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
              (mt/first-row
-              (mt/format-rows-by [int]
-                                 (process-native
-                                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
-                                               :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                               :display-name "Checkin Date"
-                                                                               :type         :dimension
-                                                                               :widget-type  :date/all-options
-                                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
-                                  :parameters []))))))))
+              (mt/format-rows-by
+               [int]
+               (process-native
+                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (table-identifier :checkins))
+                             :template-tags {"checkin_date" {:name         "checkin_date"
+                                                             :display-name "Checkin Date"
+                                                             :type         :dimension
+                                                             :widget-type  :date/all-options
+                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters []))))))))
 
 (deftest ^:parallel e2e-relative-dates-test
   (mt/test-drivers (sql-parameters-engines)
@@ -795,18 +797,19 @@
                   "which is fully-tested :D")
       (is (= [0]
              (mt/first-row
-              (mt/format-rows-by [int]
-                                 (process-native
-                                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                                      (table-identifier :checkins))
-                                               :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                               :display-name "Checkin Date"
-                                                                               :type         :dimension
-                                                                               :widget-type  :date/relative
-                                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
-                                  :parameters [{:type   :date/relative
-                                                :target [:dimension [:template-tag "checkin_date"]]
-                                                :value  "thismonth"}]))))))))
+              (mt/format-rows-by
+               [int]
+               (process-native
+                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                    (table-identifier :checkins))
+                             :template-tags {"checkin_date" {:name         "checkin_date"
+                                                             :display-name "Checkin Date"
+                                                             :type         :dimension
+                                                             :widget-type  :date/relative
+                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters [{:type   :date/relative
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "thismonth"}]))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::e2e-exclude-date-parts-test]
   [driver _feature _database]
@@ -847,21 +850,22 @@
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
              (mt/first-row
-              (mt/format-rows-by [int]
-                                 (process-native
-                                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
-                                                                      (table-identifier :checkins))
-                                               :template-tags {"checkin_date" {:name         "checkin_date"
-                                                                               :display-name "Checkin Date"
-                                                                               :type         :dimension
-                                                                               :widget-type  :date/all-options
-                                                                               :dimension    [:field (mt/id :checkins :date) nil]}}}
-                                  :parameters [{:type   :date/range
-                                                :target [:dimension [:template-tag "checkin_date"]]
-                                                :value  "2015-01-01~2016-09-01"}
-                                               {:type   :date/single
-                                                :target [:dimension [:template-tag "checkin_date"]]
-                                                :value  "2015-07-01"}]))))))))
+              (mt/format-rows-by
+               [int]
+               (process-native
+                :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                    (table-identifier :checkins))
+                             :template-tags {"checkin_date" {:name         "checkin_date"
+                                                             :display-name "Checkin Date"
+                                                             :type         :dimension
+                                                             :widget-type  :date/all-options
+                                                             :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters [{:type   :date/range
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "2015-01-01~2016-09-01"}
+                             {:type   :date/single
+                              :target [:dimension [:template-tag "checkin_date"]]
+                              :value  "2015-07-01"}]))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::e2e-parse-native-dates-test]
   [driver _feature _database]

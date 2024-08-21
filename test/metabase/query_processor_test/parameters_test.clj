@@ -21,8 +21,9 @@
 
 (defn- run-count-query [query]
   (or (ffirst
-       (mt/formatted-rows [int]
-                          (qp/process-query query)))
+       (mt/formatted-rows
+        [int]
+        (qp/process-query query)))
       ;; HACK (!) Mongo returns `nil` count instead of 0 — (#5419) — workaround until this is fixed
       0))
 
@@ -211,8 +212,9 @@
                                          :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
                                          :value  "2014-01-06"}])]
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
-                 (mt/formatted-rows :checkins
-                                    (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  :checkins
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters

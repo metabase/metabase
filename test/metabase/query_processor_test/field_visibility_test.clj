@@ -51,7 +51,8 @@
                       [14 "Broen Olujimi"]
                       [15 "Rüstem Hebel"]]}
               ;; Filter out the timestamps from the results since they're hard to test :/
-              (mt/format-rows-by [int identity]
-                                 (qp.test-util/rows-and-cols
-                                  (mt/run-mbql-query users
-                                    {:order-by [[:asc $id]]}))))))))
+              (mt/format-rows-by
+               [int identity]
+               (qp.test-util/rows-and-cols
+                (mt/run-mbql-query users
+                  {:order-by [[:asc $id]]}))))))))

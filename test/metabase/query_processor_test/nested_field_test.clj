@@ -94,20 +94,22 @@
                 ["foursquare" 100]
                 ["twitter"     98]
                 ["yelp"        90]]
-               (mt/formatted-rows [str int]
-                                  (mt/run-mbql-query tips
-                                    {:aggregation [[:count]]
-                                     :breakout    [$tips.source.service]}))))
+               (mt/formatted-rows
+                [str int]
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :breakout    [$tips.source.service]}))))
 
         (is (= [[nil 297]
                 ["amy" 20]
                 ["biggie" 11]
                 ["bob" 20]]
-               (mt/formatted-rows [str int]
-                                  (mt/run-mbql-query tips
-                                    {:aggregation [[:count]]
-                                     :breakout    [$tips.source.username]
-                                     :limit       4}))))))))
+               (mt/formatted-rows
+                [str int]
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :breakout    [$tips.source.username]
+                   :limit       4}))))))))
 
 (deftest ^:parallel fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -148,8 +150,9 @@
                 ["cam_saul"      10]
                 ["rasta_toucan"  13]
                 [nil            400]]
-               (mt/formatted-rows [identity int]
-                                  (mt/run-mbql-query tips
-                                    {:aggregation [[:count]]
-                                     :breakout    [$tips.source.mayor]
-                                     :order-by    [[:asc [:aggregation 0]]]}))))))))
+               (mt/formatted-rows
+                [identity int]
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :breakout    [$tips.source.mayor]
+                   :order-by    [[:asc [:aggregation 0]]]}))))))))

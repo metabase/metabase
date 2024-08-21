@@ -723,11 +723,12 @@
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]
               [10 "Fred 62"]]
-             (mt/format-rows-by [int str]
-                                (api.field/search-values (t2/select-one Field :id (mt/id :venues :id))
-                                                         (t2/select-one Field :id (mt/id :venues :name))
-                                                         "Red"
-                                                         nil)))))))
+             (mt/format-rows-by
+              [int str]
+              (api.field/search-values (t2/select-one Field :id (mt/id :venues :id))
+                                       (t2/select-one Field :id (mt/id :venues :name))
+                                       "Red"
+                                       nil)))))))
 
 (deftest ^:parallel search-values-test-2
   (testing "make sure `search-values` works on with our various drivers"
@@ -754,11 +755,12 @@
   (testing "make sure limit works"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]
-             (mt/format-rows-by [int str]
-                                (api.field/search-values (t2/select-one Field :id (mt/id :venues :id))
-                                                         (t2/select-one Field :id (mt/id :venues :name))
-                                                         "Red"
-                                                         1)))))))
+             (mt/format-rows-by
+              [int str]
+              (api.field/search-values (t2/select-one Field :id (mt/id :venues :id))
+                                       (t2/select-one Field :id (mt/id :venues :name))
+                                       "Red"
+                                       1)))))))
 
 (deftest ^:parallel search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"

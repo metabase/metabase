@@ -942,7 +942,8 @@
           :breakout    [:field $created_at {:temporal-unit unit}]
           :aggregation [[:count]]})
        mt/process-query
-       (mt/formatted-rows [fmt-str-or-int int])))
+       (mt/formatted-rows
+        [fmt-str-or-int int])))
 
 (deftest week-of-year-and-week-count-should-be-consistent-test
   (testing "consistent break out between weeks and week-of-year (#4910)"
@@ -1316,10 +1317,11 @@
       (mt/dataset checkins:1-per-day
         (is (= 1
                (ffirst
-                (mt/formatted-rows [int]
-                                   (mt/run-mbql-query checkins
-                                     {:aggregation [[:count]]
-                                      :filter      [:time-interval $timestamp :current :day]})))))))))
+                (mt/formatted-rows
+                 [int]
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:time-interval $timestamp :current :day]})))))))))
 
 (deftest ^:parallel time-interval-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
@@ -1327,10 +1329,11 @@
       (mt/dataset checkins:1-per-day
         (is (= 7
                (ffirst
-                (mt/formatted-rows [int]
-                                   (mt/run-mbql-query checkins
-                                     {:aggregation [[:count]]
-                                      :filter      [:time-interval $timestamp :last :week]})))))))))
+                (mt/formatted-rows
+                 [int]
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:time-interval $timestamp :last :week]})))))))))
 
 (deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
@@ -1416,10 +1419,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
-             (mt/formatted-rows [int]
-                                (mt/run-mbql-query checkins
-                                  {:aggregation [[:count]]
-                                   :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query checkins
+                {:aggregation [[:count]]
+                 :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
 
 (deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
@@ -1427,22 +1431,24 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset office-checkins
       (is (= [[1]]
-             (mt/formatted-rows [int]
-                                (mt/run-mbql-query checkins
-                                  {:aggregation [[:count]]
-                                   :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query checkins
+                {:aggregation [[:count]]
+                 :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))))
 
 (deftest ^:parallel default-bucketing-test-3
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset office-checkins
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
         (is (= [[1]]
-               (mt/formatted-rows [int]
-                                  (mt/run-mbql-query checkins
-                                    {:aggregation [[:count]]
-                                     :filter      [:and
-                                                   [:= [:field $timestamp nil] "2019-01-16"]
-                                                   [:= [:field $id nil] 6]]}))))))))
+               (mt/formatted-rows
+                [int]
+                (mt/run-mbql-query checkins
+                  {:aggregation [[:count]]
+                   :filter      [:and
+                                 [:= [:field $timestamp nil] "2019-01-16"]
+                                 [:= [:field $id nil] 6]]}))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::empty-results-wrong-because-of-issue-5419]
   [_driver _feature _database]
@@ -1482,10 +1488,11 @@
 
 (defn- count-of-checkins [unit filter-value]
   (ffirst
-   (mt/formatted-rows [int]
-                      (mt/run-mbql-query checkins
-                        {:aggregation [[:count]]
-                         :filter      [:= [:field %date {:temporal-unit unit}] filter-value]}))))
+   (mt/formatted-rows
+    [int]
+    (mt/run-mbql-query checkins
+      {:aggregation [[:count]]
+       :filter      [:= [:field %date {:temporal-unit unit}] filter-value]}))))
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
@@ -1645,7 +1652,8 @@
                                         :value  "month"}]})
           unit-totals (fn [unit]
                         (->> (qp/process-query (assoc-in query-months [:parameters 0 :value] unit))
-                             (mt/formatted-rows [identity 2.0])
+                             (mt/formatted-rows
+                              [identity 2.0])
                              (map second)))]
       (testing "monthly"
         (is (= [37019.52 32923.82 36592.60 35548.11 43556.61 39537.82
@@ -1685,11 +1693,12 @@
                     first
                     [[thursday-day-of-week 2]
                      [saturday-day-of-week 1]])
-                   (mt/formatted-rows [int int]
-                                      (mt/run-mbql-query checkins
-                                        {:aggregation [[:count]]
-                                         :breakout    [!day-of-week.date]
-                                         :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
+                   (mt/formatted-rows
+                    [int int]
+                    (mt/run-mbql-query checkins
+                      {:aggregation [[:count]]
+                       :breakout    [!day-of-week.date]
+                       :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
 
 (deftest first-day-of-week-for-day-of-week-bucketing-test
   (testing "First day of week for `:day-of-week` bucketing should be the consistent (#17801)"
@@ -1707,7 +1716,8 @@
           (mt/with-temporary-setting-values [start-of-week first-day-of-week]
             (mt/with-native-query-testing-context query
               (is (= expected-rows
-                     (mt/formatted-rows [int int] (qp/process-query query)))))))))))
+                     (mt/formatted-rows
+                      [int int] (qp/process-query query)))))))))))
 
 (deftest filter-by-current-quarter-test
   (mt/test-drivers (mt/normal-drivers)
@@ -1719,7 +1729,8 @@
           (is (= (if (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db))
                    []
                    [[0]])
-                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [int] (qp/process-query query)))))))))
 
 (deftest filter-by-expression-time-interval-test
   (testing "Datetime expressions can filter to a date range (#33528)"

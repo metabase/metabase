@@ -174,8 +174,9 @@
                                                  :value  "2014-02-01~2015-02-29"}]})))]
           (testing (format "\nquery = %s" (u/pprint-to-str query))
             (is (= [[41]]
-                   (mt/formatted-rows [int]
-                                      (qp/process-query query))))))))))
+                   (mt/formatted-rows
+                    [int]
+                    (qp/process-query query))))))))))
 
 ;;; :type/ISO8601DateTimeString tests
 
