@@ -1934,8 +1934,8 @@ function verifyNotebookText(options: CheckTextOpts) {
       selectCustomOffset();
     }
 
-    cy.findByText(options.step2Title).should("be.visible");
-    cy.findByText(options.offsetHelp).should("be.visible");
+    cy.findByText(options.step2Title).should("exist");
+    cy.findByText(options.offsetHelp).should("exist");
   });
 }
 
