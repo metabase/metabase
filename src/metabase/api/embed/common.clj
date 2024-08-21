@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -500,12 +499,26 @@
        :arglists '([])} eid-table->model
   "Map of table names to their corresponding model. This is a memozied function because the db connection used to
   fetch the model information is not avaliable when this namespace gets loaded."
-  (memoize (fn [] (update-keys (v2.entity-ids/entity-id-table->model) keyword))))
+  {:permissions_group :model/PermissionsGroup,
+   :report_dashboard :model/Dashboard,
+   :pulse_channel :model/PulseChannel,
+   :pulse_card :model/PulseCard,
+   :native_query_snippet :model/NativeQuerySnippet,
+   :report_dashboardcard :model/DashboardCard,
+   :core_user :model/User,
+   :segment :model/Segment,
+   :pulse :model/Pulse,
+   :dimension :model/Dimension,
+   :action :model/Action,
+   :dashboard_tab :model/DashboardTab,
+   :timeline :model/Timeline,
+   :report_card :model/Card,
+   :collection :model/Collection})
 
 (def ^{:private true
        :arglists '([])} eid-tables
   "Sorted vec of tables that have an entity_id column"
-  (memoize (fn [] (vec (sort (keys (eid-table->model)))))))
+  (vec (sort (keys eid-table->model))))
 
 (def ^:private EntityId
   "A Malli schema for an entity id, this is a little looser because it needs to be fast."
@@ -517,13 +530,13 @@
   "A Malli schema for a map of table names to a sequence of entity ids."
   (mc/schema
    (into [:map]
-         (for [table (eid-tables)]
+         (for [table eid-tables]
            [table {:optional true} [:sequential EntityId]]))))
 
 (mu/defn- entity-ids->id-for-table
   "Given a table and a sequence of entity ids on that table, return a pairs of entity-id, id."
   [table eids]
-  (let [model ((eid-table->model) table)]
+  (let [model (eid-table->model table)]
     (if model
       (let [ids (when (seq eids)
                   (t2/select [model :id :entity_id] :entity_id [:in eids]))]
