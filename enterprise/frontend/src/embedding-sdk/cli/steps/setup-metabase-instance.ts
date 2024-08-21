@@ -4,13 +4,6 @@ import toggle from "inquirer-toggle";
 import ora from "ora";
 import { promisify } from "util";
 
-import type { CliOutput, CliStepMethod } from "embedding-sdk/cli/types/cli";
-import {
-  OUTPUT_STYLES,
-  printEmptyLines,
-  printInfo,
-} from "embedding-sdk/cli/utils/print";
-
 import {
   CONTAINER_NAME,
   HARDCODED_JWT_SHARED_SECRET,
@@ -21,6 +14,8 @@ import {
   EMBEDDING_FAILED_MESSAGE,
   INSTANCE_CONFIGURED_MESSAGE,
 } from "../constants/messages";
+import type { CliOutput, CliStepMethod } from "../types/cli";
+import { OUTPUT_STYLES, printEmptyLines } from "../utils/print";
 import { retry } from "../utils/retry";
 
 const exec = promisify(execCallback);
@@ -42,10 +37,9 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
   // If the instance we are configuring is not clean,
   // therefore we cannot ensure the setup steps are performed.
   const onInstanceConfigured = async (): Promise<CliOutput> => {
-    spinner.fail();
     printEmptyLines();
-    printInfo(
-      "The instance is already configured. Do you want to delete the container and start over?",
+    console.log(
+      "  The instance is already configured. Delete the container and start over?",
     );
     const shouldRestartSetup = await toggle({
       message: `${OUTPUT_STYLES.error("WARNING: This will delete all data.")}`,

@@ -4,7 +4,7 @@ import { renderToString } from "react-dom/server";
 import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart/use-chart-events";
 
-import { TOOLTIP_BASE_OPTION } from "../tooltip";
+import { getTooltipBaseOption } from "../tooltip";
 
 import type { PieChartFormatters } from "./format";
 import type { PieChartModel } from "./model/types";
@@ -27,9 +27,10 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
+  containerRef: React.RefObject<HTMLDivElement>,
 ): TooltipOption => {
   return {
-    ...TOOLTIP_BASE_OPTION,
+    ...getTooltipBaseOption(containerRef),
     trigger: "item",
     formatter: params => {
       if (Array.isArray(params) || typeof params.dataIndex !== "number") {

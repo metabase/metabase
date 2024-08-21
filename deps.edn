@@ -77,7 +77,7 @@
   io.github.eerohele/pp                     {:git/tag "2024-01-04.60"           ; super fast pretty-printing library
                                              :git/sha "a428751"
                                              :git/url "https://github.com/eerohele/pp"}
-  io.github.metabase/macaw                  {:mvn/version "0.1.65"}             ; Parse native SQL queries
+  io.github.metabase/macaw                  {:mvn/version "0.2.3"}              ; Parse native SQL queries
   ;; The 2.X line of Resilience4j requires Java 17, so we cannot upgrade this dependency until that is our minimum JVM version
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1" #_ "must be 1.7.1"} ; Support for retrying operations
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
@@ -538,10 +538,27 @@
    ;; different port from `:test` so you can run it at the same time as `:test`.
    :jvm-opts ["-Dmb.jetty.port=3002"]}
 
-  ;; clj -T:cljfmt fix '{:paths ["src/metabase/events/view_log.clj"]}'
+  ;; to fix indentation in source files:
+  ;;
+  ;;     clj -T:cljfmt fix
+  ;;
+  ;; to fix errors in specific source files:
+  ;;
+  ;;     clj -T:cljfmt fix '{:paths ["src/metabase/query_processor/card.clj"]}'
+  ;;
+  ;; to check for errors without fixing them:
+  ;;
+  ;;    clj -T:cljfmt check
   :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:git/tag "0.11.2", :git/sha "fb26b22f569724b05c93eb2502592dfc2de898c3"}}
-   :ns-default cljfmt.tool}
+  {:deps       {#_io.github.weavejester/cljfmt
+                #_{:git/tag "0.12.0", :git/sha "434408f6909924f524c8027b37422d32bb49622d"}
+                ;; using my fork of cljfmt until https://github.com/weavejester/cljfmt/pull/346 and
+                ;; https://github.com/weavejester/cljfmt/pull/347 are merged upstream and released since they are
+                ;; important bugfixes over 0.12.0.
+                io.github.camsaul/cljfmt
+                {:git/sha "6c4e25193df1688dcdbbd6314d0453d63686b6a4"}}
+   :ns-default cljfmt.tool
+   :exec-fn    cljfmt.tool/fix}
 
 ;;; building Uberjar, build and release scripts
 

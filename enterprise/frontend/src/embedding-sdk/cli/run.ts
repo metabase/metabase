@@ -6,7 +6,6 @@ import {
 } from "./constants/messages";
 import {
   addDatabaseConnectionStep,
-  addEmbeddingToken,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
@@ -17,6 +16,7 @@ import {
   generateReactComponentFiles,
   pickDatabaseTables,
   pollMetabaseInstance,
+  setupLicense,
   setupMetabaseInstance,
   setupPermissions,
   showMetabaseCliTitle,
@@ -29,7 +29,6 @@ export const CLI_STEPS = [
   { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
-  { id: "addEmbeddingToken", executeStep: addEmbeddingToken },
   { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
   { id: "generateCredentials", executeStep: generateCredentials },
   {
@@ -51,6 +50,7 @@ export const CLI_STEPS = [
     id: "generateExpressServerFile",
     executeStep: generateExpressServerFile,
   },
+  { id: "setupLicense", executeStep: setupLicense },
 ] as const;
 
 export async function runCli() {

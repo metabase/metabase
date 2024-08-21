@@ -37,6 +37,11 @@ export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
   You can still use the SDK, but you will not be able to sandbox your tables.
 `;
 
+export const getGeneratedComponentFilesMessage = (path: string) => `
+  Generated example React components files in "${path}".
+  You can import the <AnalyticsPage /> component in your React app.
+`;
+
 export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
@@ -68,8 +73,3 @@ export const getExpressServerGeneratedMessage = (filePath: string) => {
   Start the server with "node ${filePath}".
 `;
 };
-
-export const getReactComponentGeneratedMessage = (path: string) => `
-  Generated example React components files in "${path}".
-  You can import the <AnalyticsPage /> component in your React app.
-`;

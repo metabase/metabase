@@ -20,7 +20,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [steffan-westcott.clj-otel.api.trace.span :as span]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard
@@ -29,16 +29,16 @@
   [dashboard-id card-id dashcard-id]
   (api/check-404
    (or (t2/exists? DashboardCard
-         :id           dashcard-id
-         :dashboard_id dashboard-id
-         :card_id      card-id)
+                   :id           dashcard-id
+                   :dashboard_id dashboard-id
+                   :card_id      card-id)
        (and
         (t2/exists? DashboardCard
-          :id           dashcard-id
-          :dashboard_id dashboard-id)
+                    :id           dashcard-id
+                    :dashboard_id dashboard-id)
         (t2/exists? DashboardCardSeries
-          :card_id          card-id
-          :dashboardcard_id dashcard-id)))))
+                    :card_id          card-id
+                    :dashboardcard_id dashcard-id)))))
 
 (defn- resolve-param-for-card
   [card-id dashcard-id param-id->param {param-id :id, :as request-param}]
@@ -109,8 +109,8 @@
                            ;; make sure we include target info so we can actually map this back to a template
                            ;; tag/param declaration
                            :target (some (fn [{mapping-card-id :card_id, :keys [target]}]
-                                            (when (= mapping-card-id card-id)
-                                              target))
+                                           (when (= mapping-card-id card-id)
+                                             target))
                                          mappings)}]))
          (filter (fn [[_ {:keys [target]}]]
                    target)))

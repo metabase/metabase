@@ -8,17 +8,14 @@
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
    [metabase.models
-    :refer [Action Card Collection Dashboard DashboardCard Database Field
+    :refer [Card Collection Dashboard DashboardCard Database Field
             FieldValues NativeQuerySnippet Segment Table Timeline
             TimelineEvent User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -621,7 +618,7 @@
                              [:collection_id               [:= (:entity_id @coll1s)]]
                              [:name                        [:= "Some events"]]
                              [:creator_id                  [:= "tom@bost.on"]]
-                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                             [:created_at                  :string]
                              [:entity_id                   [:= (:entity_id timeline1)]]
                              [:description                 [:maybe :string]]
                              [:events                      [:sequential
@@ -632,11 +629,9 @@
                                                              [:archived                    :boolean]
                                                              [:description                 [:maybe :string]]
                                                              [:creator_id                  :string]
-                                                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:created_at                  :string]
                                                              [:timestamp                   :string]
-                                                             [:icon {:optional true}       [:maybe :string]]
-                                                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]]]]
-                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:icon {:optional true}       [:maybe :string]]]]]
                              [:icon {:optional true}       [:maybe :string]]
                              [:default {:optional true}    :boolean]]
                             timeline1))
@@ -967,13 +962,13 @@
                                      :type :model
                                      :database_id (:id db)
                                      :dataset_query {:database (:id db)
-                                                     :native {:type   :native
-                                                              :native {:query "wow"}}})
+                                                     :type   :native
+                                                     :native {:query "select 1"}})
                 _action-id (action/insert! {:entity_id     eid
                                             :name          "the action"
                                             :model_id      (:id card)
                                             :type          :query
-                                            :dataset_query "wow"
+                                            :dataset_query (mt/mbql-query users {:limit 1})
                                             :database_id   (:id db)})]
             (reset! serialized (into [] (serdes.extract/extract {})))
             (let [action-serialized (first (filter (fn [{[{:keys [model id]}] :serdes/meta}]
@@ -981,12 +976,13 @@
                                                    @serialized))]
               (is (some? action-serialized))
               (testing ":type should be a string"
-                (is (string? (:type action-serialized))))))))
+                (is (keyword? (:type action-serialized))))))))
       (testing "loading succeeds"
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))
-          (let [action (t2/select-one Action :entity_id eid)]
+          (let [action (action/select-action :entity_id eid)]
             (is (some? action))
+            (is (some? (:dataset_query action)))
             (testing ":type should be a keyword again"
               (is (keyword? (:type action))))))))))
 
