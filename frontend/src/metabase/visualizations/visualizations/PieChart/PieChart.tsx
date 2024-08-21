@@ -27,6 +27,7 @@ export function PieChart(props: VisualizationProps) {
   } = props;
   const hoveredIndex = props.hovered?.index;
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   const [sideLength, setSideLength] = useState(0);
 
@@ -58,7 +59,7 @@ export function PieChart(props: VisualizationProps) {
         sideLength,
         hoveredIndex,
       ),
-      tooltip: getTooltipOption(chartModel, formatters),
+      tooltip: getTooltipOption(chartModel, formatters, containerRef),
     }),
     [
       chartModel,
@@ -113,8 +114,6 @@ export function PieChart(props: VisualizationProps) {
     );
 
   return (
-    // @ts-expect-error - `ChartWithLegend` has bad types due to it being in js
-    // and due to using a HoC
     <ChartWithLegend
       legendTitles={legendTitles}
       legendColors={legendColors}
@@ -126,9 +125,8 @@ export function PieChart(props: VisualizationProps) {
       isDashboard={isDashboard}
     >
       <ChartRenderer
+        ref={containerRef}
         option={option}
-        width={"auto"}
-        height={"auto"}
         onInit={handleInit}
         onResize={handleResize}
         eventHandlers={eventHandlers}
@@ -136,7 +134,6 @@ export function PieChart(props: VisualizationProps) {
         // we need it to be `false`, otherwise echarts will bug out and be stuck
         // in emphasis state after hovering a slice
         notMerge={false}
-        style={null}
       />
       {valuesColorsCss}
     </ChartWithLegend>
