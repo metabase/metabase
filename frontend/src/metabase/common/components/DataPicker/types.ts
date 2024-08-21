@@ -51,11 +51,18 @@ export type MetricItem = {
   model: "metric";
 };
 
+export type SemanticItem = {
+  id: TableId;
+  name: string;
+  model: "semantic";
+};
+
 export type TablePickerValue = {
   id: TableId;
   name: string;
   model: "table";
   db_id: DatabaseId;
+  is_cube: boolean;
   schema: SchemaName;
 };
 
@@ -63,7 +70,8 @@ export type DataPickerValue =
   | TablePickerValue
   | QuestionItem
   | ModelItem
-  | MetricItem;
+  | MetricItem
+  | SemanticItem
 
 export type NotebookDataPickerFolderItem =
   | CollectionItem
@@ -74,7 +82,8 @@ export type NotebookDataPickerValueItem =
   | TableItem
   | QuestionItem
   | ModelItem
-  | MetricItem;
+  | MetricItem
+  | SemanticItem
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
   QuestionPickerOptions;

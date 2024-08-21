@@ -18,6 +18,7 @@ const ENABLED_SEARCH_MODELS = [
   "table",
   "action",
   "indexed-entity",
+  "semantic",
 ] as const;
 
 export const SEARCH_MODELS = [...ENABLED_SEARCH_MODELS, "segment"] as const;

@@ -13,6 +13,7 @@ interface Props {
   isLoading: boolean;
   selectedItem: NotebookDataPickerFolderItem | null;
   onClick: (item: NotebookDataPickerFolderItem) => void;
+  shouldShowDatabase?: (database: Database) => boolean;
 }
 
 const isFolder = () => true;
@@ -24,14 +25,21 @@ export const DatabaseList = ({
   isLoading,
   selectedItem,
   onClick,
+  shouldShowDatabase,
 }: Props) => {
+  const filteredDatabases = useMemo(() => {
+    return shouldShowDatabase
+      ? databases?.filter(shouldShowDatabase)
+      : databases;
+  }, [databases, shouldShowDatabase]);
+
   const items: NotebookDataPickerFolderItem[] | undefined = useMemo(() => {
-    return databases?.map(database => ({
+    return filteredDatabases?.map(database => ({
       id: database.id,
       model: "database",
       name: database.name,
     }));
-  }, [databases]);
+  }, [filteredDatabases]);
 
   const hasOnly1Item = useAutoSelectOnlyItem({
     disabled: Boolean(selectedItem),

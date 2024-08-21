@@ -137,8 +137,14 @@ export const isTableItem = (
   return value?.model === "table";
 };
 
+export const isSemanticItem = (
+  value: DataPickerValue | undefined,
+): value is TablePickerValue => {
+  return value?.model === "semantic";
+};
+
 export const isValidValueItem = (model: SearchModel): boolean => {
-  return ["table", "card", "dataset", "metric"].includes(model);
+  return ["table", "card", "dataset", "metric", "semantic"].includes(model);
 };
 
 export const createShouldShowItem = (

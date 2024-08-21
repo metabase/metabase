@@ -20,6 +20,7 @@ import type {
   DataPickerModalOptions,
   DataPickerValue,
   NotebookDataPickerValueItem,
+  TablePickerValue,
 } from "../types";
 import {
   createShouldShowItem,
@@ -122,7 +123,6 @@ export const DataPickerModal = ({
       if (!isValidValueItem(item.model)) {
         return;
       }
-
       onChange(getQuestionVirtualTableId(item.id));
       tryLogRecentItem(item);
       onClose();
@@ -130,8 +130,9 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
+
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
-    hasModels && hasNestedQueriesEnabled
+    /*hasModels && hasNestedQueriesEnabled
       ? {
           displayName: t`Models`,
           model: "dataset" as const,
@@ -146,55 +147,52 @@ export const DataPickerModal = ({
             />
           ),
         }
-      : undefined,
-    hasMetrics && hasNestedQueriesEnabled
-      ? {
-          displayName: t`Metrics`,
-          model: "metric" as const,
-          icon: "metric",
-          element: (
-            <QuestionPicker
-              initialValue={isMetricItem(value) ? value : undefined}
-              models={METRIC_PICKER_MODELS}
-              options={options}
-              shouldShowItem={metricsShouldShowItem}
-              onItemSelect={handleCardChange}
-            />
-          ),
-        }
-      : undefined,
+      : undefined,*/
     {
-      displayName: t`Tables`,
+      displayName: t`Raw Data`,
       model: "table" as const,
       icon: "table",
       element: (
         <TablePicker
           databaseId={databaseId}
-          value={isTableItem(value) ? value : undefined}
+          value={value}
           onChange={handleChange}
+          shouldShowDatabase={database => database.is_cube === true}// Filtra las bases de datos donde is_cube es true
         />
+
       ),
     },
-    hasQuestions && hasNestedQueriesEnabled
+    {
+      displayName: t`Semantic Layer`,
+      model: "semantic" as const,
+      icon: "table",
+      element: (
+        <TablePicker
+          databaseId={databaseId}
+          value={value}
+          onChange={handleChange}
+          shouldShowDatabase={database => database.is_cube === false}// Filtra las bases de datos donde is_cube es true
+        />
+
+      ),
+    },
+    /*hasQuestions && hasNestedQueriesEnabled
       ? {
-          displayName: t`Saved questions`,
-          model: "card" as const,
-          icon: "folder",
-          element: (
-            <QuestionPicker
-              initialValue={isQuestionItem(value) ? value : undefined}
-              models={QUESTION_PICKER_MODELS}
-              options={options}
-              shouldShowItem={questionsShouldShowItem}
-              onItemSelect={handleCardChange}
-            />
-          ),
-        }
-      : undefined,
-  ].filter(
-    (tab): tab is EntityTab<NotebookDataPickerValueItem["model"]> =>
-      tab != null && models.includes(tab.model),
-  );
+        displayName: t`Saved questions`,
+        model: "card" as const,
+        icon: "folder",
+        element: (
+          <QuestionPicker
+            initialValue={isQuestionItem(value) ? value : undefined}
+            models={QUESTION_PICKER_MODELS}
+            options={options}
+            shouldShowItem={questionsShouldShowItem}
+            onItemSelect={handleCardChange}
+          />
+        ),
+      }
+      : undefined*/ 
+  ];
 
   return (
     <EntityPickerModal
