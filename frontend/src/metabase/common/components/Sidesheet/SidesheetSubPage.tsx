@@ -1,6 +1,6 @@
 import type React from "react";
 
-import { Button, Icon, Title, Flex } from "metabase/ui";
+import { Button, Flex, Icon, Title } from "metabase/ui";
 
 import { Sidesheet } from "./Sidesheet";
 

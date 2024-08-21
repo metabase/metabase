@@ -1,4 +1,4 @@
-import { Button, Icon, Flex, type ButtonProps } from "metabase/ui";
+import { Button, type ButtonProps, Flex, Icon } from "metabase/ui";
 
 export const SidesheetButton = (props: ButtonProps) => (
   <Button variant="subtle" p={0} {...props} />

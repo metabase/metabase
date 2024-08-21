@@ -1,7 +1,7 @@
 import type React from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Title, Box, type MantineStyleSystemProps } from "metabase/ui";
+import { Box, type MantineStyleSystemProps, Title } from "metabase/ui";
 
 interface SidesheetCardSectionProps {
   title?: string;

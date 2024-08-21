@@ -1,4 +1,5 @@
 import type React from "react";
+import { t } from "ttag";
 
 import { Modal, Stack } from "metabase/ui";
 
@@ -35,7 +36,7 @@ export function Sidesheet({
 }: SidesheetProps) {
   return (
     <Modal.Root opened={!!isOpen} onClose={onClose} h="100dvh">
-      <Modal.Overlay onClick={onClose} />
+      <Modal.Overlay aria-label={t`modal overlay`} />
       <Modal.Content
         transitionProps={{ transition: "slide-left" }}
         px="none"
@@ -49,9 +50,10 @@ export function Sidesheet({
               {title}
             </Modal.Title>
           )}
-          <Modal.CloseButton onClick={onClose} />
+          <Modal.CloseButton aria-label={t`close`} />
         </Modal.Header>
         <Modal.Body
+          data-testid="sidesheet"
           p={0}
           style={{
             display: "flex",

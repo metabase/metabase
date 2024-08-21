@@ -4,7 +4,7 @@ import { useMount } from "react-use";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet/SidesheetCardSection";
 import SideSheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { Flex, Tabs, Stack, Icon, Switch } from "metabase/ui";
+import { Flex, Icon, Stack, Switch, Tabs } from "metabase/ui";
 
 import { SidesheetButtonWithChevron } from "./SidesheetButton";
 import { SidesheetSubPage } from "./SidesheetSubPage";

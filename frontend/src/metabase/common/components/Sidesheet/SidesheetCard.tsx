@@ -1,7 +1,7 @@
 import type React from "react";
 
 import CS from "metabase/css/core/index.css";
-import { Paper, Title, Stack, type MantineStyleSystemProps } from "metabase/ui";
+import { type MantineStyleSystemProps, Paper, Stack, Title } from "metabase/ui";
 
 interface SidesheetCardProps {
   title?: string;
