@@ -157,7 +157,7 @@ export const DataPickerModal = ({
           databaseId={databaseId}
           value={value}
           onChange={handleChange}
-          shouldShowDatabase={database => database.is_cube === true}// Filtra las bases de datos donde is_cube es true
+          shouldShowDatabase={database => database.is_cube === false}// Filtra las bases de datos donde is_cube es true
         />
 
       ),
@@ -171,7 +171,7 @@ export const DataPickerModal = ({
           databaseId={databaseId}
           value={value}
           onChange={handleChange}
-          shouldShowDatabase={database => database.is_cube === false}// Filtra las bases de datos donde is_cube es true
+          shouldShowDatabase={database => database.is_cube === true}// Filtra las bases de datos donde is_cube es true
         />
 
       ),
