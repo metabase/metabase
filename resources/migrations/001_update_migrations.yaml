@@ -8960,14 +8960,15 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   - changeSet:
-      id: v51.2024-08-21T08:33:07
+      id: v51.2024-08-21T08:33:06
       author: johnswanson
-      comment: Permissions columns
+      comment: Add permissions.perm_value
       preConditions:
-         - not:
-              - columnExists:
-                  tableName: permissions
-                  columnName: perm_value
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_value
       changes:
         - addColumn:
             columns:
@@ -8980,14 +8981,15 @@ databaseChangeLog:
             tableName: permissions
 
   - changeSet:
-      id: v51.2024-08-21T08:33:08
+      id: v51.2024-08-21T08:33:07
       author: johnswanson
       comment: Add permissions.perm_type
       preConditions:
-          - not:
-              - columnExists:
-                  tableName: permissions
-                  columnName: perm_type
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_type
       changes:
         - addColumn:
             columns:
@@ -9000,14 +9002,15 @@ databaseChangeLog:
             tableName: permissions
 
   - changeSet:
-      id: v51.2024-08-21T08:33:09
+      id: v51.2024-08-21T08:33:08
       author: johnswanson
       comment: Add permissions.collection_id
       preConditions:
-          - not:
-              - columnExists:
-                  tableName: permissions
-                  columnName: collection_id
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: collection_id
       changes:
         - addColumn:
             tableName: permissions
@@ -9018,10 +9021,21 @@ databaseChangeLog:
                   remarks: The linked collection, if applicable
                   constraints:
                     nullable: true
-                    referencedTableName: collection
-                    referencedColumnNames: id
-                    foreignKeyName: fk_permissions_ref_collection_id
 
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v51.2024-08-21T08:33:09
+      author: johnswanson
+      comment: Add `permissions.collection_id` foreign key constraint
+      preConditions:
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_permissions_ref_collection_id
+            onDelete: CASCADE
 
   - changeSet:
       id: v51.2024-08-21T08:33:10
