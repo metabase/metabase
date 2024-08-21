@@ -16,6 +16,7 @@ import {
   generateReactComponentFiles,
   pickDatabaseTables,
   pollMetabaseInstance,
+  setupEmbeddingSettings,
   setupLicense,
   setupMetabaseInstance,
   setupPermissions,
@@ -51,6 +52,7 @@ export const CLI_STEPS = [
     executeStep: generateExpressServerFile,
   },
   { id: "setupLicense", executeStep: setupLicense },
+  { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
 ] as const;
 
 export async function runCli() {
