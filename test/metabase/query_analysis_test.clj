@@ -35,8 +35,9 @@
           (->> refs
                ;; lowercase names to avoid tests being driver-dependent
                (map #(-> %
+                         (u/update-if-exists :schema u/lower-case-en)
                          (update :table u/lower-case-en)
-                         (update :column u/lower-case-en)))
+                         (u/update-if-exists :column u/lower-case-en)))
                (sort-by (juxt :table :column)))))))
 
 (deftest parse-mbql-test
@@ -73,6 +74,24 @@
                :column "name"
                :explicit-reference true}]
              (:fields (field-id-references mlv2-query)))))))
+
+(deftest parse-native-test
+  (testing "Parsing Native queries that reference models do not return cache tables"
+    (mt/with-temp [Card c1 {:type          :model
+                            :dataset_query (mt/mbql-query venues
+                                             {:aggregation [[:distinct $name]
+                                                            [:distinct $price]]
+                                              :limit       5})}
+                   Card c2 {:dataset_query (let [tag-name (str "#" (:id c1) "-some-card")]
+                                             (mt/native-query {:query         (format "SELECT * FROM t JOIN {{%s}} ON true" tag-name)
+                                                               :template-tags {tag-name {:name         tag-name
+                                                                                         :display-name tag-name
+                                                                                         :type         "card"
+                                                                                         :card-id      (:id c1)}}}))}]
+      (is (= [{:table "t"}
+              ;; When we figure out how to compile c1 to use a model cache table, we can remove this table
+              {:schema "public", :table "venues", :table-id (mt/id :venues)}]
+             (:tables (field-id-references c2)))))))
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
