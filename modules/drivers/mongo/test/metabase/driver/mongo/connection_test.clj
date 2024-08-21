@@ -57,15 +57,15 @@
     (are [host msg]
          (thrown-with-msg? Throwable msg
                            (mongo.connection/with-mongo-database [^MongoDatabase db
-                                                           {:host               host
-                                                            :port               1015
-                                                            :user               "test-user"
-                                                            :authdb             "test-authdb"
-                                                            :pass               "test-passwd"
-                                                            :dbname             "test-dbname"
-                                                            :ssl                true
-                                                            :additional-options "connectTimeoutMS=2000&serverSelectionTimeoutMS=2000"
-                                                            :use-srv            true}]
+                                                                  {:host               host
+                                                                   :port               1015
+                                                                   :user               "test-user"
+                                                                   :authdb             "test-authdb"
+                                                                   :pass               "test-passwd"
+                                                                   :dbname             "test-dbname"
+                                                                   :ssl                true
+                                                                   :additional-options "connectTimeoutMS=2000&serverSelectionTimeoutMS=2000"
+                                                                   :use-srv            true}]
                              (mongo.util/list-collection-names db)))
       "db.fqdn.test" #"Failed looking up SRV record"
       "local.test" #"Using DNS SRV requires a FQDN for host")
@@ -88,82 +88,82 @@
 
 (deftest ^:parallel additional-connection-options-test
   (mt/test-driver
-   :mongo
-   (testing "test that people can specify additional connection options like `?readPreference=nearest`"
-     (is (= (com.mongodb.ReadPreference/nearest)
-            (-> (assoc mock-details :additional-options "readPreference=nearest")
-                mongo.connection/db-details->mongo-client-settings
-                .getReadPreference)))
-     (is (= (com.mongodb.ReadPreference/secondaryPreferred)
-            (-> mock-details
-                (assoc :additional-options "readPreference=secondaryPreferred")
-                mongo.connection/db-details->mongo-client-settings
-                .getReadPreference))))
-   (testing "make sure we can specify multiple options"
-     (let [settings (-> mock-details
-                        (assoc :additional-options "readPreference=secondary&replicaSet=test")
-                        mongo.connection/db-details->mongo-client-settings)]
-       (is (= "test"
-              (-> settings .getClusterSettings .getRequiredReplicaSetName)))
-       (is (= (com.mongodb.ReadPreference/secondary)
-              (.getReadPreference settings)))))
-   (testing "make sure that invalid additional options throw an Exception"
-     (is (thrown-with-msg?
-          IllegalArgumentException
-          #"No match for read preference of ternary"
-          (-> mock-details
-              (assoc :additional-options "readPreference=ternary")
-              mongo.connection/db-details->mongo-client-settings))))))
+    :mongo
+    (testing "test that people can specify additional connection options like `?readPreference=nearest`"
+      (is (= (com.mongodb.ReadPreference/nearest)
+             (-> (assoc mock-details :additional-options "readPreference=nearest")
+                 mongo.connection/db-details->mongo-client-settings
+                 .getReadPreference)))
+      (is (= (com.mongodb.ReadPreference/secondaryPreferred)
+             (-> mock-details
+                 (assoc :additional-options "readPreference=secondaryPreferred")
+                 mongo.connection/db-details->mongo-client-settings
+                 .getReadPreference))))
+    (testing "make sure we can specify multiple options"
+      (let [settings (-> mock-details
+                         (assoc :additional-options "readPreference=secondary&replicaSet=test")
+                         mongo.connection/db-details->mongo-client-settings)]
+        (is (= "test"
+               (-> settings .getClusterSettings .getRequiredReplicaSetName)))
+        (is (= (com.mongodb.ReadPreference/secondary)
+               (.getReadPreference settings)))))
+    (testing "make sure that invalid additional options throw an Exception"
+      (is (thrown-with-msg?
+           IllegalArgumentException
+           #"No match for read preference of ternary"
+           (-> mock-details
+               (assoc :additional-options "readPreference=ternary")
+               mongo.connection/db-details->mongo-client-settings))))))
 
 (deftest ^:parallel test-ssh-connection
   (testing "Gets an error when it can't connect to mongo via ssh tunnel"
     (mt/test-driver
-     :mongo
-     (is (thrown?
-          java.net.ConnectException
-          (try
-            (let [engine :mongo
-                  details {:ssl            false
-                           :password       "changeme"
-                           :tunnel-host    "localhost"
-                           :tunnel-pass    "BOGUS-BOGUS"
-                           :port           5432
-                           :dbname         "test"
-                           :host           "localhost"
-                           :tunnel-enabled true
+      :mongo
+      (is (thrown?
+           java.net.ConnectException
+           (try
+             (let [engine :mongo
+                   details {:ssl            false
+                            :password       "changeme"
+                            :tunnel-host    "localhost"
+                            :tunnel-pass    "BOGUS-BOGUS"
+                            :port           5432
+                            :dbname         "test"
+                            :host           "localhost"
+                            :tunnel-enabled true
                            ;; we want to use a bogus port here on purpose -
                            ;; so that locally, it gets a ConnectionRefused,
                            ;; and in CI it does too. Apache's SSHD library
                            ;; doesn't wrap every exception in an SshdException
-                           :tunnel-port    21212
-                           :tunnel-user    "bogus"}]
-              (driver.u/can-connect-with-details? engine details :throw-exceptions))
-            (catch Throwable e
-              (loop [^Throwable e e]
-                (or (when (instance? java.net.ConnectException e)
-                      (throw e))
-                    (some-> (.getCause e) recur))))))))))
+                            :tunnel-port    21212
+                            :tunnel-user    "bogus"}]
+               (driver.u/can-connect-with-details? engine details :throw-exceptions))
+             (catch Throwable e
+               (loop [^Throwable e e]
+                 (or (when (instance? java.net.ConnectException e)
+                       (throw e))
+                     (some-> (.getCause e) recur))))))))))
 
 (deftest hard-password-test
   (mt/test-driver
-   :mongo
-   (testing "Passwords and usernames containing `$ : / ? # [ ] @` are usable (#38697)"
-     (let [s "$ : / ? # [ ] @"
-           settings (mongo.connection/db-details->mongo-client-settings {:user s
-                                                                         :pass s
-                                                                         :host "localhost"
-                                                                         :dbname "justdb"})
-           ^MongoCredential credential (.getCredential settings)]
-       (is (= s (.getUserName credential)))
-       (is (= s (str/join "" (.getPassword credential))))
-       (is (= "admin" (.getSource credential)))))))
+    :mongo
+    (testing "Passwords and usernames containing `$ : / ? # [ ] @` are usable (#38697)"
+      (let [s "$ : / ? # [ ] @"
+            settings (mongo.connection/db-details->mongo-client-settings {:user s
+                                                                          :pass s
+                                                                          :host "localhost"
+                                                                          :dbname "justdb"})
+            ^MongoCredential credential (.getCredential settings)]
+        (is (= s (.getUserName credential)))
+        (is (= s (str/join "" (.getPassword credential))))
+        (is (= "admin" (.getSource credential)))))))
 
 (deftest application-name-test
   (mt/test-driver
-   :mongo
-   (with-redefs [config/mb-app-id-string "$ : / ? # [ ] @"]
-     (let [db-details {:host "test-host.place.com"
-                       :dbname "datadb"}
-           settings (mongo.connection/db-details->mongo-client-settings db-details)]
-       (is (= "$ : / ? # [ ] @"
-              (.getApplicationName settings)))))))
+    :mongo
+    (with-redefs [config/mb-app-id-string "$ : / ? # [ ] @"]
+      (let [db-details {:host "test-host.place.com"
+                        :dbname "datadb"}
+            settings (mongo.connection/db-details->mongo-client-settings db-details)]
+        (is (= "$ : / ? # [ ] @"
+               (.getApplicationName settings)))))))

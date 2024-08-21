@@ -46,6 +46,7 @@
 
 (metabase.util.malli/defn with
   "Update a malli schema with an arbitrary map of properties"
+  {:style/indent [:form]}
   [mschema props]
   (mut/update-properties (mc/schema mschema) merge props))
 

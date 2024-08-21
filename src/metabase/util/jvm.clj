@@ -39,7 +39,7 @@
 
     (u/varargs String)
     (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1, :arglists '([klass] [klass xs])}
+  {:style/indent [:defn], :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getTypeName ^Class (ns-resolve *ns* klass)))))
