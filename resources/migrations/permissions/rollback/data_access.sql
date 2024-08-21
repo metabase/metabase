@@ -25,6 +25,23 @@ WHERE dp.perm_type = 'perms/data-access'
   AND dp.perm_value = 'block'
   AND dp.table_id IS NULL;
 
+-- Insert unrestricted permissions for tables, excluding those with sandboxed permissions
+INSERT INTO permissions (object, group_id)
+SELECT concat('/db/',
+              dp.db_id,
+              '/schema/',
+              replace(replace(dp.schema_name, '\', '\\'), '/', '\/'),
+              '/table/',
+              dp.table_id,
+              '/'),
+       dp.group_id
+FROM data_permissions dp
+LEFT JOIN sandboxes sb ON dp.table_id = sb.table_id AND dp.group_id = sb.group_id
+WHERE dp.perm_type = 'perms/data-access'
+  AND dp.perm_value = 'unrestricted'
+  AND dp.table_id IS NOT NULL
+  AND sb.table_id IS NULL;
+
 -- Insert unrestricted permissions for every table in a DB if the DB has unrestricted access and any table in the DB has a sandbox,
 -- excluding the sandboxed tables themselves
 INSERT INTO permissions (object, group_id)
