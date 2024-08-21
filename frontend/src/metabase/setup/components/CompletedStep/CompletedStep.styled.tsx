@@ -10,6 +10,7 @@ export const StepRoot = styled.section`
   border-radius: 0.5rem;
   background-color: ${color("white")};
   gap: 32px;
+  margin-bottom: 1.75rem;
 `;
 
 export const StepTitle = styled.div`
