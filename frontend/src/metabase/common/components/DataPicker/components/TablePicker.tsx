@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import { isNotNull } from "metabase/lib/types";
 import { Flex } from "metabase/ui";
-import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
+import type { Database, DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { AutoScrollBox } from "../../EntityPicker";
 import type {
@@ -29,9 +29,17 @@ interface Props {
   databaseId?: DatabaseId;
   value: TablePickerValue | undefined;
   onChange: (value: NotebookDataPickerValueItem) => void;
+  shouldShowItem?: (item: NotebookDataPickerValueItem) => boolean;
+  shouldShowDatabase?: (database: Database) => boolean;
 }
 
-export const TablePicker = ({ databaseId, value, onChange }: Props) => {
+export const TablePicker = ({
+  databaseId,
+  value,
+  onChange,
+  shouldShowItem,
+  shouldShowDatabase,
+}: Props) => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(
     databaseId ?? value?.db_id,
   );
@@ -76,6 +84,14 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
     () => getTableItem(tables, tableId),
     [tables, tableId],
   );
+
+  // Filtra las tablas utilizando `shouldShowItem` si está presente
+  const filteredTables = useMemo(() => {
+    if (!tables) return [];
+    return shouldShowItem
+      ? tables.filter(table => shouldShowItem(table))
+      : tables;
+  }, [tables, shouldShowItem]);
 
   const handleFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
@@ -123,6 +139,7 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
             isLoading={isLoadingDatabases}
             selectedItem={selectedDbItem}
             onClick={folder => handleFolderSelect({ folder })}
+            shouldShowDatabase={shouldShowDatabase}
           />
         )}
 
@@ -143,7 +160,7 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
             isCurrentLevel
             isLoading={isLoadingTables}
             selectedItem={selectedTableItem}
-            tables={isLoadingTables ? undefined : tables}
+            tables={isLoadingTables ? undefined : filteredTables}
             onClick={handleItemSelect}
           />
         )}

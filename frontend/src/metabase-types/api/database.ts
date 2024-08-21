@@ -38,6 +38,7 @@ export type DatabaseFeature =
   | "connection-impersonation-requires-role";
 
 export interface Database extends DatabaseData {
+  is_cube: boolean;
   id: DatabaseId;
   is_saved_questions: boolean;
   features?: DatabaseFeature[];
