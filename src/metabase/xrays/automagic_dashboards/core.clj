@@ -273,7 +273,6 @@
 (defn- table-like?
   [card-or-question]
   (and
-    (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
     (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
 
 (defn- table-id
@@ -471,7 +470,7 @@
    (-> dashboard-template
        (select-keys [:title :description :transient_title :groups])
        (cond->
-         (:comparison? root)
+        (:comparison? root)
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context available-metrics {}))))

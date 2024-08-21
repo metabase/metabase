@@ -30,34 +30,34 @@
       [user :- (ms/InstanceOf User)]
       ...)"
   (memoize
-    (fn [model]
-      (mu/with-api-error-message
-        [:fn
-         {:error/message (format "value must be an instance of %s" (name model))}
-         #(models.dispatch/instance-of? model %)]
-        (deferred-tru "value must be an instance of {0}" (name model))))))
+   (fn [model]
+     (mu/with-api-error-message
+      [:fn
+       {:error/message (format "value must be an instance of %s" (name model))}
+       #(models.dispatch/instance-of? model %)]
+      (deferred-tru "value must be an instance of {0}" (name model))))))
 
 (def ^{:arglists '([^Class klass])} InstanceOfClass
   "Helper for creating schemas to check whether something is an instance of a given class."
   (memoize
-    (fn [^Class klass]
-      [:fn
-       {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
-       (partial instance? klass)])))
+   (fn [^Class klass]
+     [:fn
+      {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+      (partial instance? klass)])))
 
 (def ^{:arglists '([maps-schema k])} maps-with-unique-key
   "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`."
   (memoize
-    (fn [maps-schema k]
-      (mu/with-api-error-message
-        [:and
-         [:fn (fn [maps]
-                (= (count maps)
-                   (-> (map #(get % k) maps)
-                       distinct
-                       count)))]
-         maps-schema]
-        (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
+   (fn [maps-schema k]
+     (mu/with-api-error-message
+      [:and
+       [:fn (fn [maps]
+              (= (count maps)
+                 (-> (map #(get % k) maps)
+                     distinct
+                     count)))]
+       maps-schema]
+      (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
@@ -327,48 +327,48 @@
   Parameters we store on dashboard/card, and it has some difference with Parameter in MBQL."
   ;; TODO we could use :multi to dispatch values_source_type to the correct values_source_config
   (mu/with-api-error-message
-    [:map [:id NonBlankString]
-     [:type keyword-or-non-blank-str-malli]
+   [:map [:id NonBlankString]
+    [:type keyword-or-non-blank-str-malli]
      ;; TODO how to merge this with ParameterSource above?
-     [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
-     [:values_source_config {:optional true} ValuesSourceConfig]
-     [:slug {:optional true} :string]
-     [:name {:optional true} :string]
-     [:default {:optional true} :any]
-     [:sectionId {:optional true} NonBlankString]
-     [:temporal_units {:optional true}
-      [:sequential ::lib.schema.temporal-bucketing/unit]]]
-    (deferred-tru "parameter must be a map with :id and :type keys")))
+    [:values_source_type {:optional true} [:enum "static-list" "card" nil]]
+    [:values_source_config {:optional true} ValuesSourceConfig]
+    [:slug {:optional true} :string]
+    [:name {:optional true} :string]
+    [:default {:optional true} :any]
+    [:sectionId {:optional true} NonBlankString]
+    [:temporal_units {:optional true}
+     [:sequential ::lib.schema.temporal-bucketing/unit]]]
+   (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
   "Schema for a valid Parameter Mapping"
   (mu/with-api-error-message
-    [:map [:parameter_id NonBlankString]
-     [:target :any]
-     [:card_id {:optional true} PositiveInt]]
-    (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
+   [:map [:parameter_id NonBlankString]
+    [:target :any]
+    [:card_id {:optional true} PositiveInt]]
+   (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (mu/with-api-error-message
-    [:maybe [:map-of
-             :keyword
-             [:enum "disabled" "enabled" "locked"]]]
-    (deferred-tru "value must be a valid embedding params map.")))
+   [:maybe [:map-of
+            :keyword
+            [:enum "disabled" "enabled" "locked"]]]
+   (deferred-tru "value must be a valid embedding params map.")))
 
 (def ValidLocale
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
   (mu/with-api-error-message
-    [:and
-     NonBlankString
-     [:fn i18n/available-locale?]]
-    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
+   [:and
+    NonBlankString
+    [:fn i18n/available-locale?]]
+   (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
 
 (def NanoIdString
   "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
   (mu/with-api-error-message
-    [:re #"^[A-Za-z0-9_\-]{21}$"]
-    (deferred-tru "String must be a valid 21-character NanoID string.")))
+   [:re #"^[A-Za-z0-9_\-]{21}$"]
+   (deferred-tru "String must be a valid 21-character NanoID string.")))
 
 (def UUIDString
   "Schema for a UUID string"
