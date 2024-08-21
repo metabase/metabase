@@ -213,12 +213,12 @@
   [card-or-id]
   (let [card    (->analyzable card-or-id)
         card-id (:id card)]
-      (cond
-        (not card)       (log/warnf "Card not found: %s" card-id)
-        (:archived card) (log/warnf "Skipping archived card: %s" card-id)
-        :else            (log/infof "Performing query analysis for card %s" card-id))
-      (when (and card (not (:archived card)))
-        (update-query-analysis-for-card! card))))
+    (cond
+      (not card)       (log/warnf "Card not found: %s" card-id)
+      (:archived card) (log/warnf "Skipping archived card: %s" card-id)
+      :else            (log/infof "Performing query analysis for card %s" card-id))
+    (when (and card (not (:archived card)))
+      (update-query-analysis-for-card! card))))
 
 (defn next-card-or-id!
   "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer.

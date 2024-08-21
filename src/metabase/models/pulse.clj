@@ -158,10 +158,10 @@
 (defmethod mi/can-read? Pulse
   [notification]
   (if (is-alert? notification)
-   (mi/current-user-has-full-permissions? :read notification)
-   (or api/*is-superuser?*
-       (or (current-user-is-creator? notification)
-           (current-user-is-recipient? notification)))))
+    (mi/current-user-has-full-permissions? :read notification)
+    (or api/*is-superuser?*
+        (or (current-user-is-creator? notification)
+            (current-user-is-recipient? notification)))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
@@ -187,38 +187,38 @@
   "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
   required since the card may be a placeholder."
   (mu/with-api-error-message
-    [:map
-     [:include_csv                        ms/BooleanValue]
-     [:include_xls                        ms/BooleanValue]
-     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
-     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
+   [:map
+    [:include_csv                        ms/BooleanValue]
+    [:include_xls                        ms/BooleanValue]
+    [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
+    [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
   (mu/with-api-error-message
-    [:merge CardBase
-     [:map
-      [:id ms/PositiveInt]]]
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
+   [:merge CardBase
+    [:map
+     [:id ms/PositiveInt]]]
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
   additional information used by the UI to display it from `Card`. This is a superset of `CardRef` and is coercible to
   a `CardRef`"
   (mu/with-api-error-message
-    [:merge CardRef
-     [:map
-      [:name               [:maybe string?]]
-      [:description        [:maybe string?]]
-      [:display            [:maybe ms/KeywordOrString]]
-      [:collection_id      [:maybe ms/PositiveInt]]
-      [:dashboard_id       [:maybe ms/PositiveInt]]
-      [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
-    (deferred-tru "value must be a map with the following keys `({0})`"
-        (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
-                        "dashboard_id" "parameter_mappings"]))))
+   [:merge CardRef
+    [:map
+     [:name               [:maybe string?]]
+     [:description        [:maybe string?]]
+     [:display            [:maybe ms/KeywordOrString]]
+     [:collection_id      [:maybe ms/PositiveInt]]
+     [:dashboard_id       [:maybe ms/PositiveInt]]
+     [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
+   (deferred-tru "value must be a map with the following keys `({0})`"
+                 (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
+                                 "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
@@ -430,7 +430,6 @@
    :format_rows       (get card :format_rows true)
    :dashboard_card_id (get card :dashboard_card_id nil)})
 
-
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
 
 (mu/defn update-notification-cards!
@@ -492,12 +491,12 @@
   [notification-or-id channels :- [:sequential :map]]
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
         old-channels   (group-by (comp keyword :channel_type) (t2/select PulseChannel
-                                                                :pulse_id (u/the-id notification-or-id)))
+                                                                         :pulse_id (u/the-id notification-or-id)))
         handle-channel #(create-update-delete-channel! (u/the-id notification-or-id)
                                                        (first (get new-channels %))
                                                        (first (get old-channels %)))]
     (assert (zero? (count (get new-channels nil)))
-      "Cannot have channels without a :channel_type attribute")
+            "Cannot have channels without a :channel_type attribute")
     ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
     ;; it with a new one immediately thereafter.
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
@@ -548,8 +547,8 @@
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
   (t2/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
-    :pulse_id (u/the-id notification-or-id)
-    {:order-by [[:position :asc]]}))
+             :pulse_id (u/the-id notification-or-id)
+             {:order-by [[:position :asc]]}))
 
 (mu/defn- card-refs-have-changed? :- :boolean
   [notification-or-id new-card-refs :- [:sequential CardRef]]
@@ -576,9 +575,9 @@
                     [:archived            {:optional true} boolean?]
                     [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (t2/update! Pulse (u/the-id notification)
-    (u/select-keys-when notification
-      :present [:collection_id :collection_position :archived]
-      :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+              (u/select-keys-when notification
+                                  :present [:collection_id :collection_position :archived]
+                                  :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
@@ -626,9 +625,9 @@
 
 (defmethod serdes/load-xform "Pulse" [pulse]
   (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes/*import-user*)
-      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
+    true                   (update :creator_id    serdes/*import-user*)
+    (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
+    (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
 
 (defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
   (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])

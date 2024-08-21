@@ -325,7 +325,7 @@
   of `dst-column`."
   [src-column dst-column]
   (or
-    (and (string? src-column)   (string? dst-column))
-    (and (number? src-column)   (number? dst-column))
-    (and (temporal? src-column) (temporal? dst-column))
-    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))
+   (and (string? src-column)   (string? dst-column))
+   (and (number? src-column)   (number? dst-column))
+   (and (temporal? src-column) (temporal? dst-column))
+   (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))

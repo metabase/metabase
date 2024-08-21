@@ -192,8 +192,9 @@
   consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries & body]
-  `(do-with-auto-retries ~num-retries
-     (fn [] ~@body)))
+  `(do-with-auto-retries
+    ~num-retries
+    (fn [] ~@body)))
 
 (def ^:private ^Base64$Decoder base64-decoder
   "A shared Base64 decoder instance."

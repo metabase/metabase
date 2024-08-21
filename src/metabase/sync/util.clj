@@ -77,6 +77,7 @@
     ;; Only one `sync-db!` for `database-id` will be allowed at any given moment; duplicates will be ignored
     (with-duplicate-ops-prevented :sync database-id
       #(sync-db! database-id))"
+  {:style/indent [:form]}
   [operation database-or-id f]
   (fn []
     (when-not (contains? (@operation->db-ids operation) (u/the-id database-or-id))
@@ -100,10 +101,10 @@
              (keyword (or (namespace event-name-prefix) "event")
                       (str (name prefix) suffix)))]
      (with-sync-events
-       (event-keyword event-name-prefix "-begin")
-       (event-keyword event-name-prefix "-end")
-       database-or-id
-       f)))
+      (event-keyword event-name-prefix "-begin")
+      (event-keyword event-name-prefix "-end")
+      database-or-id
+      f)))
 
   ([begin-event-name :- Topic
     end-event-name   :- Topic
@@ -163,7 +164,7 @@
   [database f]
   (fn []
     (driver/sync-in-context (driver.u/database->driver database) database
-      f)))
+                            f)))
 
 ;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
 ;; list of exception classes (like, driver-specific exceptions)
@@ -207,16 +208,19 @@
 
 (mu/defn do-sync-operation
   "Internal implementation of [[sync-operation]]; use that instead of calling this directly."
-  [operation :- :keyword ; something like `:sync-metadata` or `:refingerprint`
+  [operation :- :keyword                ; something like `:sync-metadata` or `:refingerprint`
    database  :- (ms/InstanceOf :model/Database)
    message   :- ms/NonBlankString
    f         :- fn?]
-  ((with-duplicate-ops-prevented operation database
-     (with-sync-events operation database
-       (with-start-and-finish-logging message
-         (with-db-logging-disabled
-           (sync-in-context database
-             (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+  ((with-duplicate-ops-prevented
+    operation database
+    (with-sync-events
+     operation database
+     (with-start-and-finish-logging
+      message
+      (with-db-logging-disabled
+       (sync-in-context database
+                        (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -481,12 +485,12 @@
                     (fn [& args]
                       (try
                         (task-history/with-task-history
-                          {:task            step-name
-                           :db_id           (u/the-id database)
-                           :on-success-info (fn [result]
-                                              (if (instance? Throwable result)
-                                                (throw result)
-                                                {:task_details (dissoc result :start-time :end-time :log-summary-fn)}))}
+                         {:task            step-name
+                          :db_id           (u/the-id database)
+                          :on-success-info (fn [result]
+                                             (if (instance? Throwable result)
+                                               (throw result)
+                                               {:task_details (dissoc result :start-time :end-time :log-summary-fn)}))}
                           (apply sync-fn database args))
                         (catch Throwable e
                           (if *log-exceptions-and-continue?*

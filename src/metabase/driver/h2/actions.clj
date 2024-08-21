@@ -88,19 +88,19 @@
   (when-let [[_match column]
              (re-find #"Referential integrity constraint violation: \"[^\:]+: [^\s]+ FOREIGN KEY\(([^\s]+)\)" error-message)]
     (let  [column (db-identifier->name column)]
-     (merge {:type error-type}
-            (case action-type
-              :row/create
-              {:message (tru "Unable to create a new record.")
-               :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
+      (merge {:type error-type}
+             (case action-type
+               :row/create
+               {:message (tru "Unable to create a new record.")
+                :errors {column (tru "This {0} does not exist." (str/capitalize column))}}
 
-              :row/delete
-              {:message (tru "Other tables rely on this row so it cannot be deleted.")
-               :errors  {}}
+               :row/delete
+               {:message (tru "Other tables rely on this row so it cannot be deleted.")
+                :errors  {}}
 
-              :row/update
-              {:message (tru "Unable to update the record.")
-               :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
+               :row/update
+               {:message (tru "Unable to update the record.")
+                :errors  {column (tru "This {0} does not exist." (str/capitalize column))}})))))
 
 (defmethod sql-jdbc.actions/maybe-parse-sql-error [:h2 actions/incorrect-value-type]
   [_driver error-type _database _action-type error-message]

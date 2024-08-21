@@ -80,9 +80,9 @@
            {:database_type new-database-type})
          (when new-base-type?
            (log/infof "Base type of %s has changed from '%s' to '%s'. This field will be refingerprinted and analyzed."
-                     (common/field-metadata-name-for-logging table metabase-field)
-                     old-base-type
-                     new-base-type)
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-base-type
+                      new-base-type)
            {:base_type           new-base-type
             :effective_type      new-base-type
             :coercion_strategy   nil

@@ -259,7 +259,6 @@
 (defn- ->iso-8601-date-time [t]
   (t/format :iso-local-date-time t))
 
-
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
   [{:keys [start end]} field-clause]
@@ -406,9 +405,9 @@
       (m/update-existing :end #(if inclusive-end?
                                  %
                                  (u.date/add % (case (:unit temporal-range)
-                                                   (:year :quarter :month :week :day)
-                                                   :day
-                                                   (:unit temporal-range)) 1)))))
+                                                 (:year :quarter :month :week :day)
+                                                 :day
+                                                 (:unit temporal-range)) 1)))))
 
 (def ^:private DateStringRange
   "Schema for a valid date range returned by `date-string->range`."

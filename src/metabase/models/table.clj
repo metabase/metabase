@@ -77,8 +77,8 @@
       (if (= (:db_id table) audit/audit-db-id)
         (do
          ;; Tables in audit DB should start out with no query access in all groups
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
-         (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
+          (data-perms/set-new-table-permissions! non-admin-groups table :perms/view-data :unrestricted)
+          (data-perms/set-new-table-permissions! non-admin-groups table :perms/create-queries :no))
         (do
           ;; Normal tables start out with unrestricted data access in all groups, but query access only in All Users
           (data-perms/set-new-table-permissions! (conj non-magic-groups all-users-group) table :perms/view-data :unrestricted)
@@ -93,7 +93,7 @@
 (t2/define-after-insert :model/Table
   [table]
   (u/prog1 table
-   (set-new-table-permissions! table)))
+    (set-new-table-permissions! table)))
 
 (defmethod mi/can-read? :model/Table
   ([instance]
@@ -124,11 +124,9 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Table pk))))
 
-
 (defmethod serdes/hash-fields :model/Table
   [_table]
   [:schema :name (serdes/hydrated-hash :db)])
-
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------
 
@@ -161,8 +159,8 @@
   "Field ordering is valid if all the fields from a given table are present and only from that table."
   [table field-ordering]
   (= (t2/select-pks-set :model/Field
-       :table_id (u/the-id table)
-       :active   true)
+                        :table_id (u/the-id table)
+                        :active   true)
      (set field-ordering)))
 
 (defn custom-order-fields!
@@ -171,11 +169,10 @@
   {:pre [(valid-field-order? table field-order)]}
   (t2/update! Table (u/the-id table) {:field_order :custom})
   (doall
-    (map-indexed (fn [position field-id]
-                   (t2/update! :model/Field field-id {:position        position
-                                                      :custom_position position}))
-                 field-order)))
-
+   (map-indexed (fn [position field-id]
+                  (t2/update! :model/Field field-id {:position        position
+                                                     :custom_position position}))
+                field-order)))
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -239,10 +236,10 @@
   (with-objects :fields
     (fn [table-ids]
       (t2/select :model/Field
-        :active          true
-        :table_id        [:in table-ids]
-        :visibility_type [:not= "retired"]
-        {:order-by       field-order-rule}))
+                 :active          true
+                 :table_id        [:in table-ids]
+                 :visibility_type [:not= "retired"]
+                 {:order-by       field-order-rule}))
     tables))
 
 (mi/define-batched-hydration-method fields

@@ -93,11 +93,11 @@
     [[(t2/table-name db-model) alias]]))
 
 (mu/defn- base-query-for-model :- [:map {:closed true}
-                                            [:select :any]
-                                            [:from :any]
-                                            [:where :any]
-                                            [:join {:optional true} :any]
-                                            [:left-join {:optional true} :any]]
+                                   [:select :any]
+                                   [:from :any]
+                                   [:where :any]
+                                   [:join {:optional true} :any]
+                                   [:left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
   [model :- SearchableModel context :- SearchContext]
@@ -473,20 +473,20 @@
   "Adds `collection_effective_ancestors` to *datasets* in the search results."
   [search-results]
   (let [annotate     (fn [result]
-                        (cond-> result
-                          (= (:model result) "dataset")
-                          (assoc :collection_effective_ancestors
-                                 (->> (t2/hydrate
-                                       (if (nil? (:collection_id result))
-                                         collection/root-collection
-                                         {:location (:collection_location result)})
-                                       :effective_ancestors)
-                                      :effective_ancestors
+                       (cond-> result
+                         (= (:model result) "dataset")
+                         (assoc :collection_effective_ancestors
+                                (->> (t2/hydrate
+                                      (if (nil? (:collection_id result))
+                                        collection/root-collection
+                                        {:location (:collection_location result)})
+                                      :effective_ancestors)
+                                     :effective_ancestors
                                       ;; two pieces for backwards compatibility:
                                       ;; - remove the root collection
                                       ;; - remove the `personal_owner_id`
-                                      (remove collection.root/is-root-collection?)
-                                      (map #(dissoc % :personal_owner_id))))))]
+                                     (remove collection.root/is-root-collection?)
+                                     (map #(dissoc % :personal_owner_id))))))]
     (map annotate search-results)))
 
 (defn- add-collection-effective-location

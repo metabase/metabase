@@ -71,10 +71,10 @@
   [{:keys [time-style] :or {time-style "h:mm A"} :as viz-settings}]
   ;; NOTE - If :time-enabled is present but nil it will return nil
   (when-some [base-time-format (case (get viz-settings :time-enabled "minutes")
-                               "minutes" "mm"
-                               "seconds" "mm:ss"
-                               "milliseconds" "mm:ss.SSS"
-                               nil nil)]
+                                 "minutes" "mm"
+                                 "seconds" "mm:ss"
+                                 "milliseconds" "mm:ss.SSS"
+                                 nil nil)]
     (case time-style
       "HH:mm" (format "HH:%s" base-time-format)
       ;; Deprecated time style which should be already converted to HH:mm when viz settings are
@@ -116,7 +116,7 @@
   (some-fn :unit :semantic_type :effective_type :base_type))
 
 (defmulti format-timestring
-"Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
+  "Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
 The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
 - `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
 - `:type/Date` - A date without hour and minute information
@@ -237,7 +237,7 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
   ([timezone-id temporal-str col viz-settings]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
    (let [merged-viz-settings (common/normalize-keys
-                               (common/viz-settings-for-col col viz-settings))]
+                              (common/viz-settings-for-col col viz-settings))]
      (if (str/blank? temporal-str)
        ""
        (format-timestring timezone-id temporal-str col merged-viz-settings)))))

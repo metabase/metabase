@@ -83,14 +83,14 @@
                      (pr-str table-name))
                 (pr-str sql-args))
     (try
-     (execute-select-probe-query driver conn sql-args)
-     (log/trace "SELECT privileges confirmed")
-     true
-     (catch Throwable e
-       (log/trace e "Assuming no SELECT privileges: caught exception")
-       (when-not (.getAutoCommit conn)
-         (.rollback conn))
-       false))))
+      (execute-select-probe-query driver conn sql-args)
+      (log/trace "SELECT privileges confirmed")
+      true
+      (catch Throwable e
+        (log/trace e "Assuming no SELECT privileges: caught exception")
+        (when-not (.getAutoCommit conn)
+          (.rollback conn))
+        false))))
 
 (defn- jdbc-get-tables
   [driver ^DatabaseMetaData metadata catalog schema-pattern tablename-pattern types]

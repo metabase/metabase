@@ -53,7 +53,6 @@
 ;;; This file is probably best not read top to bottom - it's organized in `def` order, not necessarily a good order for
 ;;; understanding. Probably you want to read below on the "Export process" and "Import process" next.
 
-
 ;;; # Entity IDs
 ;;; Every serializable entity needs the be identified in a way that is:
 ;;;
@@ -846,7 +845,6 @@
   (->> elements
        (map #(str (:model %) " " (:id %)))
        (str/join " > ")))
-
 
 ;;; # Utilities for implementing serdes
 ;;; Note that many of these use `^::cache` to cache their lookups during deserialization. This greatly reduces the
