@@ -16,7 +16,6 @@ import {
   ExploreResultsLink,
   FilterHeaderButton,
   QuestionActions,
-  QuestionFiltersHeaderToggle,
   QuestionNotebookButton,
   QuestionSummarizeWidget,
   ToggleNativeQueryPreview,
