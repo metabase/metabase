@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Flex, Button } from "metabase/ui";
+import { Button, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
