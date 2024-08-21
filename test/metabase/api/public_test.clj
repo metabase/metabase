@@ -1146,9 +1146,10 @@
 (defmacro ^:private with-sharing-enabled-and-temp-card-referencing!
   {:style/indent 3}
   [table-kw field-kw [card-binding] & body]
-  `(do-with-sharing-enabled-and-temp-card-referencing! ~table-kw ~field-kw
-                                                       (fn [~card-binding]
-                                                         ~@body)))
+  `(do-with-sharing-enabled-and-temp-card-referencing!
+    ~table-kw ~field-kw
+    (fn [~card-binding]
+      ~@body)))
 
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
   (is (= {:values          [["20th Century Cafe"]
@@ -1190,9 +1191,10 @@
 (defmacro with-sharing-enabled-and-temp-dashcard-referencing!
   {:style/indent 3}
   [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
-  `(do-with-sharing-enabled-and-temp-dashcard-referencing! ~table-kw ~field-kw
-                                                           (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-                                                             ~@body)))
+  `(do-with-sharing-enabled-and-temp-dashcard-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+      ~@body)))
 
 (deftest should-be-able-to-use-it-when-everything-is-g2g
   (with-sharing-enabled-and-temp-dashcard-referencing! :venues :name [dashboard]

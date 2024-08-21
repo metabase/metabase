@@ -388,7 +388,7 @@
             ;; For each of two languages and two regions, we check that:
             ;; 1. the locale's first day of the week is ignored, and
             ;; 2. the names are correctly translated for the *user* locale.
-            [user-locale exp-names] [ ;; US uses Sunday=1 in both English and Spanish.
+            [user-locale exp-names] [;; US uses Sunday=1 in both English and Spanish.
                                      ["en_US" weekdays-english]
                                      ["es_US" weekdays-spanish]
                                      ;; Europe uses Monday=1 in both English and Spanish.

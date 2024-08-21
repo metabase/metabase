@@ -976,9 +976,10 @@
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing!
   {:style/indent 3}
   [table-kw field-kw [card-binding] & body]
-  `(do-with-embedding-enabled-and-temp-card-referencing! ~table-kw ~field-kw
-                                                         (fn [~(or card-binding '_)]
-                                                           ~@body)))
+  `(do-with-embedding-enabled-and-temp-card-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or card-binding '_)]
+      ~@body)))
 
 ;; should be able to fetch values for a Field referenced by a public Card
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
@@ -1077,9 +1078,10 @@
 (defmacro ^:private with-embedding-enabled-and-temp-dashcard-referencing!
   {:style/indent 3}
   [table-kw field-kw [dash-binding card-binding dashcard-binding] & body]
-  `(do-with-embedding-enabled-and-temp-dashcard-referencing! ~table-kw ~field-kw
-                                                             (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-                                                               ~@body)))
+  `(do-with-embedding-enabled-and-temp-dashcard-referencing!
+    ~table-kw ~field-kw
+    (fn [~(or dash-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+      ~@body)))
 
 ;; should be able to use it when everything is g2g
 (deftest should-be-able-to-use-it-when-everything-is-g2g
