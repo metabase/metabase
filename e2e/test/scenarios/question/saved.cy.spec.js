@@ -7,6 +7,7 @@ import {
   appBar,
   collectionOnTheGoModal,
   entityPickerModal,
+  entityPickerModalTab,
   modal,
   openNotebook,
   openOrdersTable,
@@ -294,6 +295,30 @@ describe("scenarios > question > saved", () => {
       // scrollHeight: height of the text content, including content not visible on the screen
       const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
       expect(heightDifference).to.eq(0);
+    });
+  });
+
+  it("should not show '- Modified' suffix after we click 'Save' on a new model (metabase#42773)", () => {
+    cy.log("Use UI to create a model based on the Products table");
+    cy.visit("/model/new");
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.button("Save").click();
+      cy.wait("@cardCreate");
+      // It is important to have extremely short timeout in order to catch the issue
+      cy.findByDisplayValue("Products - Modified", { timeout: 10 }).should(
+        "not.exist",
+      );
     });
   });
 });
