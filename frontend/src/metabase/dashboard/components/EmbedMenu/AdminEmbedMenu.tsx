@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import type {
   EmbedMenuModes,
   EmbedMenuProps,
@@ -14,8 +15,6 @@ import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedBut
 import { ViewFooterSharingButton } from "metabase/query_builder/components/view/ViewFooterSharingButton";
 import { getSetting } from "metabase/selectors/settings";
 import { Center, Icon, Menu, Stack, Text, Title } from "metabase/ui";
-
-import { AdminEmbedMenuContainer } from "./AdminEmbedMenu.styled";
 
 export const AdminEmbedMenu = ({
   resource,
@@ -59,9 +58,15 @@ export const AdminEmbedMenu = ({
 
   return (
     <Menu withinPortal position="bottom-start">
-      <Menu.Target>{target}</Menu.Target>
+      <Menu.Target>
+        <Center>{target}</Center>
+      </Menu.Target>
 
-      <AdminEmbedMenuContainer w="13.75rem" data-testid="embed-header-menu">
+      <Menu.Dropdown
+        className={CS.overflowAuto}
+        w="13.75rem"
+        data-testid="embed-header-menu"
+      >
         <Menu.Item
           data-testid="embed-menu-public-link-item"
           py={isPublicSharingEnabled ? "md" : "sm"}
@@ -105,7 +110,7 @@ export const AdminEmbedMenu = ({
             </Stack>
           )}
         </Menu.Item>
-      </AdminEmbedMenuContainer>
+      </Menu.Dropdown>
     </Menu>
   );
 };
