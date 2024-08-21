@@ -102,7 +102,6 @@
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
   as part of the query, however there's a bug currently preventing that from working when remapped. This allows the
   data compared to be smaller and avoid that bug."
-  {:style/indent 1}
   [columns-pred results]
   (let [results-data (qp.test-util/data results)
         col-indexes  (keep-indexed (fn [idx col]

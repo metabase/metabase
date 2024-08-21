@@ -1,10 +1,10 @@
 import { assocIn } from "icepick";
 
 import {
+  combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-  combineReducers,
 } from "metabase/lib/redux";
 
 import { ApplicationPermissionsApi } from "./api";

@@ -14,12 +14,12 @@ import type {
 } from "metabase-types/api";
 
 import {
-  ActionSettingsWrapper,
-  ParameterMapperContainer,
   ActionSettingsHeader,
   ActionSettingsLeft,
   ActionSettingsRight,
+  ActionSettingsWrapper,
   ModalActions,
+  ParameterMapperContainer,
 } from "./ActionDashcardSettings.styled";
 import {
   ActionParameterMappingForm,

@@ -13,9 +13,9 @@ import noResultsSource from "assets/img/no_results.svg";
 import { strategies } from "metabase/admin/performance/constants/complex";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
+  type DataPermission,
   DataPermissionValue,
   type DatabaseEntityId,
-  type DataPermission,
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
@@ -32,15 +32,16 @@ import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
-  Database as DatabaseType,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
+  CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  Database as DatabaseType,
   Dataset,
   Group,
   GroupPermissions,
@@ -49,7 +50,6 @@ import type {
   SearchResult,
   User,
   UserListResult,
-  CollectionId,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 

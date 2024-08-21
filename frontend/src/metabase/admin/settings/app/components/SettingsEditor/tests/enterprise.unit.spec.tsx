@@ -12,7 +12,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import type { SetupOpts } from "./setup";
-import { setup, EMAIL_URL } from "./setup";
+import { EMAIL_URL, setup } from "./setup";
 
 const setupEnterprise = async (opts?: SetupOpts) => {
   await setup({ ...opts, hasEnterprisePlugins: true });

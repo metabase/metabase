@@ -1,29 +1,29 @@
-import { SAMPLE_DB_ID, USER_GROUPS, USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
-  ORDERS_DASHBOARD_ID,
   NODATA_USER_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  withDatabase,
-  startNewQuestion,
+  commandPaletteSearch,
   describeEE,
-  visitQuestion,
-  setTokenFeatures,
-  popover,
+  entityPickerModal,
+  filterWidget,
+  getFullName,
+  modal,
   onlyOnEE,
+  openQuestionActions,
+  popover,
+  restore,
+  setTokenFeatures,
   setupSMTP,
   sidebar,
-  modal,
-  commandPaletteSearch,
-  openQuestionActions,
-  entityPickerModal,
-  getFullName,
-  visitQuestionAdhoc,
+  startNewQuestion,
   visitDashboard,
-  filterWidget,
+  visitQuestion,
+  visitQuestionAdhoc,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;

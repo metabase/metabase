@@ -5,8 +5,8 @@ import MetabaseSettings from "metabase/lib/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {
-  ExplainerTextContainer,
   BrandLinkWithLeftMargin,
+  ExplainerTextContainer,
 } from "./ExplainerText.styled";
 
 export function ExplainerText() {

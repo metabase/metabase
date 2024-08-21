@@ -16,10 +16,10 @@ import { isTemplateTagReference } from "metabase-lib/v1/references";
 import type {
   BaseDashboardCard,
   DashboardCard,
-  ParameterTarget,
-  QuestionDashboardCard,
   DimensionReference,
   Parameter,
+  ParameterTarget,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 const VIZ_WITH_CUSTOM_MAPPING_UI = ["placeholder", "link"];

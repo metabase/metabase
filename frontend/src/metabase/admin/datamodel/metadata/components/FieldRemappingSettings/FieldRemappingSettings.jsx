@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,8 +12,8 @@ import CS from "metabase/css/core/index.css";
 import Fields from "metabase/entities/fields";
 import { getMetadataUnfiltered } from "metabase/selectors/metadata";
 import {
-  hasSourceField,
   getFieldTargetId,
+  hasSourceField,
 } from "metabase-lib/v1/queries/utils/field-ref";
 import { isEntityName, isFK } from "metabase-lib/v1/types/utils/isa";
 
@@ -23,8 +23,8 @@ import {
   FieldMappingContainer,
   FieldMappingRoot,
   FieldSelectButton,
-  ForeignKeyList,
   FieldValueMappingInput,
+  ForeignKeyList,
 } from "./FieldRemappingSettings.styled";
 
 const MAP_OPTIONS = {

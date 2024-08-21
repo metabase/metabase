@@ -5,9 +5,9 @@ import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
-  OperatorPickerButton,
   OperatorList,
   OperatorListItem,
+  OperatorPickerButton,
 } from "./JoinConditionOperatorPicker.styled";
 
 interface JoinConditionOperatorPickerProps {

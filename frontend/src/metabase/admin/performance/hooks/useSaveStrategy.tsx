@@ -6,8 +6,8 @@ import { PLUGIN_CACHING } from "metabase/plugins";
 import { CacheConfigApi } from "metabase/services";
 import type {
   CacheConfig,
-  CacheableModel,
   CacheStrategy,
+  CacheableModel,
 } from "metabase-types/api";
 
 import { rootId } from "../constants/simple";

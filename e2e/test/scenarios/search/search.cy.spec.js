@@ -7,10 +7,10 @@ import {
   assertIsEllipsified,
   expectSearchResultContent,
   getSearchBar,
+  isScrollableHorizontally,
   main,
   restore,
   visitFullAppEmbeddingUrl,
-  isScrollableHorizontally,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;

@@ -3,10 +3,10 @@ import type { ComponentPropsWithoutRef } from "react";
 import _ from "underscore";
 
 import {
-  screen,
   getIcon,
   queryIcon,
   renderWithProviders,
+  screen,
 } from "__support__/ui";
 import type { Card, Series } from "metabase-types/api";
 import {

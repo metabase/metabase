@@ -33,7 +33,6 @@
   `(do-with-user-attributes! ~test-user-name-or-user-id ~attributes-map (fn [] ~@body)))
 
 (defn- do-with-gtap-defs!
-  {:style/indent 2}
   [group [[table-kw {:keys [query remappings]} :as gtap-def] & more] f]
   (if-not gtap-def
     (f)

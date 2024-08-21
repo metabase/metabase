@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { addSectionToDashboard } from "metabase/dashboard/actions";
 import { SectionLayoutPreview } from "metabase/dashboard/components/DashboardHeader/SectionLayoutPreview";
-import { layoutOptions, type SectionLayout } from "metabase/dashboard/sections";
+import { type SectionLayout, layoutOptions } from "metabase/dashboard/sections";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { darken } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";

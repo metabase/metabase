@@ -17,10 +17,10 @@ import type Query from "metabase-lib/v1/queries/Query";
 
 import {
   OptionIconContainer,
+  OptionLabel,
   OptionList,
   OptionRoot,
   OptionText,
-  OptionLabel,
   SettingsButton,
 } from "./ChartTypeSidebar.styled";
 

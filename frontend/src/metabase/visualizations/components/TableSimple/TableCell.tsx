@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback, useMemo, isValidElement } from "react";
+import { isValidElement, useCallback, useMemo } from "react";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -14,7 +14,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import type { ClickObject } from "metabase-lib";
-import { isID, isFK } from "metabase-lib/v1/types/utils/isa";
+import { isFK, isID } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -26,7 +26,7 @@ import type {
 
 import MiniBar from "../MiniBar";
 
-import { CellRoot, CellContent } from "./TableCell.styled";
+import { CellContent, CellRoot } from "./TableCell.styled";
 
 type GetCellDataOpts = {
   value: RowValue;

@@ -26,7 +26,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -173,8 +173,8 @@
   "Create the default `:make-run` function for [[process-query-for-card]]."
   [qp export-format]
   (^:once fn* [query info]
-   (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
-     (qp (update query :info merge info) rff))))
+    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
+      (qp (update query :info merge info) rff))))
 
 (mu/defn process-query-for-card
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a

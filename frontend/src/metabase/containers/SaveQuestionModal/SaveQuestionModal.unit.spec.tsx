@@ -5,18 +5,18 @@ import { createMockMetadata } from "__support__/metadata";
 import type { CollectionEndpoints } from "__support__/server-mocks";
 import {
   setupCollectionByIdEndpoint,
-  setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   getBrokenUpTextMatcher,
+  mockGetBoundingClientRect,
+  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
-  mockGetBoundingClientRect,
-  mockScrollBy,
 } from "__support__/ui";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections";

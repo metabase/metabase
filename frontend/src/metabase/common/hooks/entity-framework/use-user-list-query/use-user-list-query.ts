@@ -5,9 +5,9 @@ import type {
 import { useEntityListQuery } from "metabase/common/hooks/entity-framework/use-entity-list-query";
 import Users from "metabase/entities/users";
 import type {
+  UserListMetadata,
   UserListQuery,
   UserListResult,
-  UserListMetadata,
 } from "metabase-types/api";
 
 /**

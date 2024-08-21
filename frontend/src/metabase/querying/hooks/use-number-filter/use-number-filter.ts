@@ -5,11 +5,11 @@ import * as Lib from "metabase-lib";
 import type { NumberValue } from "./types";
 import {
   getAvailableOptions,
-  getDefaultValues,
-  getOptionByOperator,
-  getFilterClause,
-  isValidFilter,
   getDefaultOperator,
+  getDefaultValues,
+  getFilterClause,
+  getOptionByOperator,
+  isValidFilter,
 } from "./utils";
 
 interface UseNumberFilterProps {

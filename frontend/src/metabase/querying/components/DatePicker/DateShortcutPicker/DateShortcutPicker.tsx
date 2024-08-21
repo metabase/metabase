@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 
-import { Button, Box, Divider } from "metabase/ui";
+import { Box, Button, Divider } from "metabase/ui";
 
 import { MIN_WIDTH } from "../constants";
 import type {

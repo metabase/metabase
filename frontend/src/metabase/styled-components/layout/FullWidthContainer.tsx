@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
 import {
-  breakpointMinSmall,
   breakpointMinLarge,
+  breakpointMinSmall,
 } from "metabase/styled-components/theme";
 
 export const FullWidthContainer = styled.div`

@@ -142,7 +142,7 @@ export function buildColumnTarget(
     throw new Error(`Cannot build column target field reference: ${fieldRef}`);
   }
 
-  return ["dimension", fieldRef];
+  return ["dimension", fieldRef, { "stage-number": stageIndex }];
 }
 
 export function buildTemplateTagVariableTarget(

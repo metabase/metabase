@@ -15,7 +15,7 @@
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -95,7 +95,6 @@
     (save-execution-metadata! (assoc query-execution :error (str message)) nil)
     (catch Throwable e
       (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -189,8 +188,8 @@
                         ;; skip internal queries as it use honeysql, not mbql
                         ;; temporarily disabled because it impacts query performance
                         #_field-usages       #_(when-not (qp.util/internal-query? query)
-                                                (field-usage/pmbql->field-usages
-                                                 (lib/query (qp.store/metadata-provider) preprocessed-query)))]
+                                                 (field-usage/pmbql->field-usages
+                                                  (lib/query (qp.store/metadata-provider) preprocessed-query)))]
                     (add-and-save-execution-metadata-xform! execution-info #_field-usages nil result)))]
           (try
             (qp query rff*)

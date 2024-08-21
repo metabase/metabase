@@ -20,12 +20,12 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import {
-  isDefaultGroup,
-  isAdminGroup,
   getGroupNameLocalized,
+  isAdminGroup,
+  isDefaultGroup,
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
-import { Stack, Text, Group, Button, Icon } from "metabase/ui";
+import { Button, Group, Icon, Stack, Text } from "metabase/ui";
 
 import { AddRow } from "./AddRow";
 import { DeleteModalTrigger, EditGroupButton } from "./GroupsListing.styled";

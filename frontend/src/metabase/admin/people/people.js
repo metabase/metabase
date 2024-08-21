@@ -3,19 +3,19 @@ import _ from "underscore";
 
 import Users from "metabase/entities/users";
 import {
+  combineReducers,
   createAction,
   createThunkAction,
   handleActions,
-  combineReducers,
 } from "metabase/lib/redux";
 import { PermissionsApi } from "metabase/services";
 
 import {
-  LOAD_MEMBERSHIPS,
+  CLEAR_TEMPORARY_PASSWORD,
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
+  LOAD_MEMBERSHIPS,
   UPDATE_MEMBERSHIP,
-  CLEAR_TEMPORARY_PASSWORD,
 } from "./events";
 import { getMemberships } from "./selectors";
 

@@ -21,9 +21,9 @@ import { getCardsSeriesModels, getDimensionModel } from "../../model/series";
 import { getAxisTransforms } from "../../model/transforms";
 import { getTrendLines } from "../../model/trend-line";
 import type {
-  ScatterPlotModel,
   ChartDataset,
   Extent,
+  ScatterPlotModel,
   SeriesModel,
 } from "../../model/types";
 

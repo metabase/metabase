@@ -1,4 +1,4 @@
-import { css, type Theme } from "@emotion/react";
+import { type Theme, css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { darken } from "metabase/lib/colors";

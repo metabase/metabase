@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, cleanup } from "__support__/ui";
+import { cleanup, render, screen } from "__support__/ui";
 
 import type { TextInputBlurChangeProps } from "./TextInputBlurChange";
 import { TextInputBlurChange } from "./TextInputBlurChange";

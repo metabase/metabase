@@ -1,12 +1,12 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  openTable,
-  visitQuestionAdhoc,
   getBinningButtonForDimension,
+  openTable,
+  popover,
+  restore,
   summarize,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =

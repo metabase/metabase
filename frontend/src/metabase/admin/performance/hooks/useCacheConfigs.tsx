@@ -4,8 +4,8 @@ import _ from "underscore";
 
 import { CacheConfigApi } from "metabase/services";
 import type {
-  CacheConfigAPIResponse,
   CacheConfig,
+  CacheConfigAPIResponse,
   CacheableModel,
 } from "metabase-types/api";
 

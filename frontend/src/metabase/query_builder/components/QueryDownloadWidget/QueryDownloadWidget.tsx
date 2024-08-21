@@ -6,8 +6,8 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Flex, Popover } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  DashboardId,
   DashCardId,
+  DashboardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";

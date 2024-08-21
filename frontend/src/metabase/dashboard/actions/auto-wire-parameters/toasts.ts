@@ -8,11 +8,11 @@ import {
 } from "metabase/dashboard/actions";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import type {
-  QuestionDashboardCard,
   DashCardId,
   DashboardParameterMapping,
   Parameter,
   ParameterId,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { Dispatch, GetState } from "metabase-types/store";
 

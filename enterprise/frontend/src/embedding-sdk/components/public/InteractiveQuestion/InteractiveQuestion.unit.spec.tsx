@@ -3,8 +3,8 @@ import { within } from "@testing-library/react";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
@@ -32,8 +32,8 @@ import {
 import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
 
 import {
-  getQuestionParameters,
   InteractiveQuestion,
+  getQuestionParameters,
 } from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
