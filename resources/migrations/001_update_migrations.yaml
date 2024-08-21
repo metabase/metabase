@@ -8960,9 +8960,14 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   - changeSet:
-      id: v51.2024-08-12T10:02:49
+      id: v51.2024-08-21T08:33:07
       author: johnswanson
       comment: Permissions columns
+      preConditions:
+         - not:
+              - columnExists:
+                  tableName: permissions
+                  columnName: perm_value
       changes:
         - addColumn:
             columns:
@@ -8972,12 +8977,41 @@ databaseChangeLog:
                   remarks: The value of the permission
                   constraints:
                     nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v51.2024-08-21T08:33:08
+      author: johnswanson
+      comment: Add permissions.perm_type
+      preConditions:
+          - not:
+              - columnExists:
+                  tableName: permissions
+                  columnName: perm_type
+      changes:
+        - addColumn:
+            columns:
               - column:
                   name: perm_type
                   type: varchar(64)
                   remarks: The type of the permission
                   constraints:
                     nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v51.2024-08-21T08:33:09
+      author: johnswanson
+      comment: Add permissions.collection_id
+      preConditions:
+          - not:
+              - columnExists:
+                  tableName: permissions
+                  columnName: collection_id
+      changes:
+        - addColumn:
+            tableName: permissions
+            columns:
               - column:
                   name: collection_id
                   type: int
@@ -8987,11 +9021,10 @@ databaseChangeLog:
                     referencedTableName: collection
                     referencedColumnNames: id
                     foreignKeyName: fk_permissions_ref_collection_id
-            tableName: permissions
 
 
   - changeSet:
-      id: v51.2024-08-20T11:02:24
+      id: v51.2024-08-21T08:33:10
       author: johnswanson
       comment: Populate `perm_value`, `perm_type`, and `collection_id` on permissions
       rollback: # not needed.
@@ -9010,9 +9043,14 @@ databaseChangeLog:
             relativeToChangelogFile: true
 
   - changeSet:
-      id: v51.2024-08-20T11:12:19
+      id: v51.2024-08-21T08:33:11
       author: johnswanson
       comment: Create index on `permissions.collection_id`
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_collection_id
       changes:
         - createIndex:
             tableName: permissions
@@ -9023,9 +9061,14 @@ databaseChangeLog:
 
 
   - changeSet:
-      id: v51.2024-08-20T11:12:54
+      id: v51.2024-08-21T08:33:12
       author: johnswanson
       comment: Index on `permissions.perm_type`
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_type
       changes:
         - createIndex:
             tableName: permissions
@@ -9035,9 +9078,14 @@ databaseChangeLog:
             indexName: idx_permissions_perm_type
 
   - changeSet:
-      id: v51.2024-08-20T11:12:55
+      id: v51.2024-08-21T08:33:13
       author: johnswanson
       comment: Index on `permissions.perm_value`
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_value
       changes:
         - createIndex:
             tableName: permissions
