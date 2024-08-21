@@ -99,6 +99,7 @@ export interface VisualizationProps {
   isSettings: boolean;
   showAllLegendItems?: boolean;
   hovered?: HoveredObject;
+  clicked?: ClickObject;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];

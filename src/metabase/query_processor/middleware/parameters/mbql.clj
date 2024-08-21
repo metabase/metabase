@@ -108,7 +108,7 @@
                        :base-type  base-type
                        :unit       new-unit})))
     (lib.util.match/replace-in
-      query [:query :breakout]
+     query [:query :breakout]
       [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
       [:field target-field-id (assoc opts :temporal-unit new-unit)])))
 

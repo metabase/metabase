@@ -814,7 +814,7 @@
   - Use [[metabase.driver.sql.util/format-sql]] in this method's implementation, providing dialect keyword
     representation that corresponds to to their driver's formatting (eg. `:sqlserver` uses `:tsql`).
   - Completly reimplement this method with their special formatting code."
-  {:added "0.47.0", :arglists '([driver native-form]), :style/indent 1}
+  {:added "0.47.0", :arglists '([driver native-form])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -878,7 +878,7 @@
     (defn sync-in-context [driver database f]
       (with-connection [_ database]
         (f)))"
-  {:added "0.32.0", :arglists '([driver database f]), :style/indent 2}
+  {:added "0.32.0", :arglists '([driver database f])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -170,7 +170,6 @@
 
    For implementing more fine grained retry policies like exponential backoff,
    consider using the `metabase.util.retry` namespace."
-  {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
     (f)
