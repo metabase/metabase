@@ -4,12 +4,8 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import {
-  canonicalCollectionId,
-  getInstanceAnalyticsCustomCollection,
-  isInstanceAnalyticsCollection,
-} from "metabase/collections/utils";
-import { useCollectionListQuery } from "metabase/common/hooks";
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -94,23 +90,12 @@ export const SaveQuestionModal = ({
   onSave,
   onClose,
   multiStep,
-  initialCollectionId,
 }: SaveQuestionModalProps) => {
-  const { data: collections } = useCollectionListQuery();
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
-  // we can't use null because that can be ID of the root collection
-  const instanceAnalyticsCollectionId =
-    collections?.find(isInstanceAnalyticsCollection)?.id ?? "not found";
-  const isInInstanceAnalyticsQuestion =
-    originalQuestion?.collectionId() === instanceAnalyticsCollectionId;
-
-  if (collections && isInInstanceAnalyticsQuestion) {
-    const customCollection = getInstanceAnalyticsCustomCollection(collections);
-    if (customCollection) {
-      initialCollectionId = customCollection.id;
-    }
-  }
+  const initialCollectionId = useGetDefaultCollectionId(
+    originalQuestion?.collectionId(),
+  );
 
   const getOriginalNameModification = (originalQuestion: Question | null) =>
     originalQuestion
@@ -128,9 +113,7 @@ export const SaveQuestionModal = ({
       description:
         originalQuestion?.description() || question.description() || "",
       collection_id:
-        question.collectionId() === undefined ||
-        isReadonly ||
-        isInInstanceAnalyticsQuestion
+        question.collectionId() === undefined || isReadonly
           ? initialCollectionId
           : question.collectionId(),
       saveType:
@@ -140,13 +123,7 @@ export const SaveQuestionModal = ({
           ? "overwrite"
           : "create",
     }),
-    [
-      initialCollectionId,
-      isInInstanceAnalyticsQuestion,
-      isReadonly,
-      originalQuestion,
-      question,
-    ],
+    [initialCollectionId, isReadonly, originalQuestion, question],
   );
 
   const collectionId = canonicalCollectionId(initialValues.collection_id);
