@@ -31,16 +31,16 @@
 
 (defn- field-id-references [card-or-query]
   (-> (:dataset_query card-or-query card-or-query)
-       (#'query-analysis/query-references)
-       (update-vals
-        (fn [refs]
-          (->> refs
+      (#'query-analysis/query-references)
+      (update-vals
+       (fn [refs]
+         (->> refs
                ;; lowercase names to avoid tests being driver-dependent
-               (map #(-> %
-                         (u/update-if-exists :schema u/lower-case-en)
-                         (update :table u/lower-case-en)
-                         (u/update-if-exists :column u/lower-case-en)))
-               (sort-by (juxt :table :column)))))))
+              (map #(-> %
+                        (u/update-if-exists :schema u/lower-case-en)
+                        (update :table u/lower-case-en)
+                        (u/update-if-exists :column u/lower-case-en)))
+              (sort-by (juxt :table :column)))))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
@@ -56,13 +56,13 @@
                                                        :alias        "Venues"
                                                        :condition    [:= $checkins.venue_id $venues.id]}]})}]
       (is (= (mt/$ids
-              [{:table-id (mt/id :venues), :table "venues", :field-id %venues.name, :column "name", :explicit-reference true}
-               {:table-id (mt/id :venues), :table "venues", :field-id %venues.price, :column "price", :explicit-reference true}])
+               [{:table-id (mt/id :venues), :table "venues", :field-id %venues.name, :column "name", :explicit-reference true}
+                {:table-id (mt/id :venues), :table "venues", :field-id %venues.price, :column "price", :explicit-reference true}])
              (:fields (field-id-references c1))))
       (is (empty? (:fields (field-id-references c2))))
       (is (= (mt/$ids
-              [{:table-id (mt/id :checkins), :table "checkins", :field-id %checkins.venue_id, :column "venue_id", :explicit-reference true}
-               {:table-id (mt/id :venues), :table "venues", :field-id %venues.id, :column "id", :explicit-reference true}])
+               [{:table-id (mt/id :checkins), :table "checkins", :field-id %checkins.venue_id, :column "venue_id", :explicit-reference true}
+                {:table-id (mt/id :venues), :table "venues", :field-id %venues.id, :column "id", :explicit-reference true}])
              (:fields (field-id-references c3))))))
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
