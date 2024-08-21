@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -44,7 +45,15 @@
            (assoc strategy :avg-execution-ms (or et 0)))
     strategy))
 
-(defn- append-stage-if-summarized
+(defn- filter-stage-used?
+  [parameters]
+  (boolean
+   (some (fn [{:keys [target]}]
+           (and (mbql.u/is-clause? :dimension target)
+                (contains? (get target 2) :stage-number)))
+         parameters)))
+
+(defn- ensure-filter-stage
   [query]
   (let [inner-query (:query query)]
     (cond-> query
@@ -67,7 +76,7 @@
                 ;; parameters refer to stages as if a new stage was appended.
                 ;; This is so that we can distinguish if a filter should be applied
                 ;; before of after summarizing.
-                (seq parameters) append-stage-if-summarized)
+                (filter-stage-used? parameters) ensure-filter-stage)
         cs    (-> (cache-strategy card (:dashboard-id ids))
                   (enrich-strategy query))]
     (assoc query :cache-strategy cs)))
