@@ -15,7 +15,7 @@ import type {
 import { QueryDownloadPopover } from "../QueryDownloadPopover";
 import { useDownloadData } from "../QueryDownloadPopover/use-download-data";
 
-interface QueryDownloadWidgetProps {
+export type QueryDownloadWidgetProps = {
   className?: string;
   question: Question;
   result: Dataset;
@@ -24,7 +24,7 @@ interface QueryDownloadWidgetProps {
   visualizationSettings?: VisualizationSettings;
   dashcardId?: DashCardId;
   dashboardId?: DashboardId;
-}
+};
 
 const QueryDownloadWidget = ({
   className,

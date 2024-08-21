@@ -84,6 +84,7 @@ export interface Dataset {
   error_is_curated?: boolean;
   context?: string;
   status?: string;
+  cached?: string | null;
 }
 
 export interface EmbedDatasetData {
