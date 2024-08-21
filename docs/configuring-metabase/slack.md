@@ -32,7 +32,7 @@ You may get a warning that says:
 
 This warning is expected (Metabase is the third party here). You can click on **Configure** to see the app manifest Metabase sent along in the URL. Here is the manifest in YAML format:
 
-```
+```yml
 _metadata:
   major_version: 1
   minor_version: 1

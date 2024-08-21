@@ -9,7 +9,6 @@ import {
   skipDatabase,
   submitDatabase,
   submitLicenseToken,
-  submitSetup,
   submitUsageReason,
   submitUser,
   submitUserInvite,
@@ -74,8 +73,5 @@ export const reducer = createReducer(initialState, builder => {
   });
   builder.addCase(updateTracking.fulfilled, (state, { meta }) => {
     state.isTrackingAllowed = meta.arg;
-  });
-  builder.addCase(submitSetup.fulfilled, state => {
-    state.step = "completed";
   });
 });

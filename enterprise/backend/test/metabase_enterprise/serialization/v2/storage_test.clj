@@ -11,7 +11,6 @@
    [metabase.models :refer [Card Collection Dashboard DashboardCard Database Field FieldValues NativeQuerySnippet
                             Table]]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -143,8 +142,7 @@
                 "Slashes in directory names get escaped"))
 
           (testing "the Field was properly exported"
-            (is (= (-> (ts/extract-one "Field" (:id website))
-                       (update :created_at u.date/format))
+            (is (= (ts/extract-one "Field" (:id website))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases" "My Company Data"
                                                 "tables"    "Customers"

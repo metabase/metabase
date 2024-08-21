@@ -837,7 +837,7 @@
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
+  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -848,7 +848,8 @@
           ;; this column is not used anymore
           :cache_ttl]
    :transform
-   {:database_id            (serdes/fk :model/Database :name)
+   {:created_at             (serdes/date)
+    :database_id            (serdes/fk :model/Database :name)
     :table_id               (serdes/fk :model/Table)
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
