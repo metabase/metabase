@@ -281,28 +281,10 @@
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
-  [query current-user-perms]
-  (let [build-path (fn [x y z] (h2x/concat (h2x/literal x) y (h2x/literal z)))
-        has-perm-clause (fn [x y z] [:in (build-path x y z) current-user-perms])]
-    (if (contains? current-user-perms "/")
-      query
-      ;; User has /collection/:id/ or /collection/:id/read/ for the collection the model is in. We will check
-      ;; permissions on the database after the query is complete, in `check-permissions-for-model`
-      (let [has-root-access?
-            (or (contains? current-user-perms "/collection/root/")
-                (contains? current-user-perms "/collection/root/read/"))
-
-            collection-perm-clause
-            [:or
-             (when has-root-access? [:= :collection_id nil])
-             [:and
-              [:not= :collection_id nil]
-              [:or
-               (has-perm-clause "/collection/" :collection_id "/")
-               (has-perm-clause "/collection/" :collection_id "/read/")]]]]
-        (sql.helpers/where
-         query
-         collection-perm-clause)))))
+  [query _current-user-perms]
+  (sql.helpers/where
+   query
+   (collection/honeysql-filter-clause)))
 
 (defmethod search-query-for-model "indexed-entity"
   [model {:keys [current-user-perms] :as search-ctx}]
