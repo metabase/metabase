@@ -216,7 +216,7 @@
       (cond
         (not card)       (log/warnf "Card not found: %s" card-id)
         (:archived card) (log/warnf "Skipping archived card: %s" card-id)
-        :else            (log/infof "Performing query analysis for card %s" card-id))
+        :else            (log/debugf "Performing query analysis for card %s" card-id))
       (when (and card (not (:archived card)))
         (update-query-analysis-for-card! card))))
 
