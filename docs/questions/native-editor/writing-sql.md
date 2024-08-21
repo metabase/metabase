@@ -24,7 +24,7 @@ After clicking **SQL query**, you'll see an editor where you can write and run q
 
 To try it out, make sure you've selected the [Sample Database][sample-database-gloss], then paste in this short SQL query:
 
-```
+```sql
 SELECT
     sum(subtotal),
     created_at

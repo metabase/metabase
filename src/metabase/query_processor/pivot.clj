@@ -339,8 +339,8 @@
       (qp/process-query first-query rff))))
 
 (mu/defn- pivot-options :- [:map
-                                     [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
-                                     [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
+                            [:pivot-rows [:maybe [:sequential [:int {:min 0}]]]]
+                            [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
   settings and generates pivot-rows and pivot-cols to use for generating subqueries."
   [query        :- [:map

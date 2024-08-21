@@ -146,7 +146,6 @@
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
   the caller has its own retry logic."
-  {:style/indent 0}
   [{:keys [subject recipients message-type message] :as email}]
   (try
     (when-not (email-smtp-host)

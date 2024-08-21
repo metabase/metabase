@@ -177,9 +177,9 @@
   (:table-id (field-instance field-clause)))
 
 (mu/defn- field-source-table-alias :- [:or
-                                                ::lib.schema.common/non-blank-string
-                                                ::lib.schema.id/table
-                                                [:= ::source]]
+                                       ::lib.schema.common/non-blank-string
+                                       ::lib.schema.id/table
+                                       [:= ::source]]
   "Determine the appropriate `::source-table` alias for a `field-clause`."
   [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
   (let [table-id            (field-table-id field-clause)
@@ -237,9 +237,9 @@
         (when-let [field-name (let [[_ id-or-name] field-clause]
                                 (when (string? id-or-name)
                                   id-or-name))]
-          (or ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
-              ;; name we're searching for.
-              (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
+          ;; First, look for Expressions or fields from the source query stage whose `::desired-alias` matches the
+          ;; name we're searching for.
+          (or (m/find-first (fn [[tag _id-or-name {::keys [desired-alias], :as _opts} :as _ref]]
                               (when (#{:expression :field} tag)
                                 (= desired-alias field-name)))
                             all-exports)

@@ -37,6 +37,7 @@ const PATHS_WITHOUT_NAVBAR = [
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/question\//,
   /\/model\//,
+  /\/metric\//,
   /\/dashboard\//,
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];

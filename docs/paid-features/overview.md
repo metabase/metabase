@@ -17,7 +17,7 @@ Pro and Enterprise plans include more ways to authenticate people and manage gro
 
 - [Authenticating with SAML](../people-and-groups/authenticating-with-saml.md)
   - [Setting up SAML with Auth0](../people-and-groups/saml-auth0.md)
-  - [Setting up SAML with Azure AD](../people-and-groups/saml-azure.md)
+  - [Setting up SAML with Microsoft Entra ID](../people-and-groups/saml-azure.md)
   - [Setting up SAML with Google](../people-and-groups/saml-google.md)
   - [Setting up SAML with Keycloak](../people-and-groups/saml-keycloak.md)
   - [Setting up SAML with Okta](../people-and-groups/saml-okta.md)

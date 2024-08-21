@@ -168,7 +168,6 @@
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
-  {:style/indent 1}
   ([table  :- (ms/InstanceOf :model/Table)
     fields :- [:sequential (ms/InstanceOf :model/Field)]
     rff]
