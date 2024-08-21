@@ -14,22 +14,21 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (defn- swapped-clauses-prop [clause-fn clause-key query]
-  (prop/for-all*
-   [(gen/elements (clause-fn query))
-    (gen/elements (clause-fn query))]
-   (fn [source-clause target-clause]
-     (or (= source-clause target-clause) ; Skip any case where we happened to draw the same one twice.
-         (let [swapped (lib/swap-clauses query -1 source-clause target-clause)]
-           (and ;; Correctly rearranged the clauses.
-            (= (for [clause (clause-fn query)]
-                 (cond
-                   (= source-clause clause) target-clause
-                   (= target-clause clause) source-clause
-                   :else                    clause))
-               (clause-fn swapped))
-                 ;; And didn't change anything else.
-            (= (m/dissoc-in query   [:stages 0 clause-key])
-               (m/dissoc-in swapped [:stages 0 clause-key]))))))))
+  (prop/for-all* [(gen/elements (clause-fn query))
+                  (gen/elements (clause-fn query))]
+    (fn [source-clause target-clause]
+      (or (= source-clause target-clause) ; Skip any case where we happened to draw the same one twice.
+          (let [swapped (lib/swap-clauses query -1 source-clause target-clause)]
+            (and ;; Correctly rearranged the clauses.
+             (= (for [clause (clause-fn query)]
+                  (cond
+                    (= source-clause clause) target-clause
+                    (= target-clause clause) source-clause
+                    :else                    clause))
+                (clause-fn swapped))
+                          ;; And didn't change anything else.
+             (= (m/dissoc-in query   [:stages 0 clause-key])
+                (m/dissoc-in swapped [:stages 0 clause-key]))))))))
 
 (defspec swap-clauses-on-aggregations-test-permutations
   (swapped-clauses-prop
