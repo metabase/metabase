@@ -185,6 +185,17 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values")]),
     }),
+    listDatabasesWithTables: builder.query<
+      ListDatabasesResponse,
+      ListDatabasesRequest | void
+    >({
+      query: params => ({
+        method: "GET",
+        url: "/api/database?include=tables",
+        params,
+      }),
+      providesTags: response => provideDatabaseListTags(response?.data ?? []),
+    })
   }),
 });
 
@@ -202,4 +213,5 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
+  useListDatabasesWithTablesQuery
 } = databaseApi;
