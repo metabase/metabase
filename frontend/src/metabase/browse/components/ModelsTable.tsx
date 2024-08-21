@@ -24,7 +24,7 @@ import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Icon, type IconProps } from "metabase/ui";
-import { FixedSizeIcon, Box } from "metabase/ui";
+import { Box, FixedSizeIcon } from "metabase/ui";
 
 import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
