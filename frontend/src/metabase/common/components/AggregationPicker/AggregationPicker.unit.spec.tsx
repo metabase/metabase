@@ -18,6 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
+  PRODUCTS,
   SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
@@ -97,6 +98,41 @@ function createQueryWithInlineExpressionWithOperator() {
             "aggregation-options",
             ["count"],
             { name: "My count", "display-name": "My count" },
+          ],
+        ],
+      },
+    },
+  });
+}
+
+function createQueryWithDateExpressionAndAggregation() {
+  return createQuery({
+    query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        expressions: {
+          "Created At plus one month": [
+            "datetime-add",
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+              },
+            ],
+            1,
+            "month",
+          ],
+        },
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "expression",
+            "Created At plus one month",
+            {
+              "base-type": "type/DateTime",
+            },
           ],
         ],
       },
@@ -380,6 +416,13 @@ describe("AggregationPicker", () => {
   describe("column compare shortcut", () => {
     it("does not display the shortcut if there are no aggregations", () => {
       setup();
+      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
+    });
+
+    it("does not display the shortcut if there are no possible breakouts to use", () => {
+      setup({
+        query: createQueryWithDateExpressionAndAggregation(),
+      });
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });
 

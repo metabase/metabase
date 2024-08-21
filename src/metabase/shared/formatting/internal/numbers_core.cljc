@@ -36,6 +36,6 @@
 (defprotocol NumberFormatter
   (format-number-basic [this number] "Returns a String that represents the number in this format.")
   (split-exponent [this formatted]
-                  "Given a scientific notation string, split it at the locale-dependent exponent.
+    "Given a scientific notation string, split it at the locale-dependent exponent.
                   Returns a map `{:mantissa \"123\" :exponent \"+4\"}`.")
   (wrap-currency [this text] "Given an opaque string, wraps it with the currency prefix/suffix for this locale."))

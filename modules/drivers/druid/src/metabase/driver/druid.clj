@@ -52,9 +52,9 @@
 (defmethod driver/execute-reducible-query :druid
   [_driver query _context respond]
   (druid.execute/execute-reducible-query
-    (partial druid.client/do-query-with-cancellation qp.pipeline/*canceled-chan*)
-    (update-in query [:native :query] add-timeout-to-query qp.pipeline/*query-timeout-ms*)
-    respond))
+   (partial druid.client/do-query-with-cancellation qp.pipeline/*canceled-chan*)
+   (update-in query [:native :query] add-timeout-to-query qp.pipeline/*query-timeout-ms*)
+   respond))
 
 (defmethod driver/db-start-of-week :druid
   [_]

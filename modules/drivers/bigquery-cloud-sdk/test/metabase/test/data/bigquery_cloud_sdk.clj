@@ -60,10 +60,10 @@
 
 (defn- test-db-details []
   (reduce
-     (fn [acc env-var]
-       (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
-     {}
-     [:project-id :service-account-json]))
+   (fn [acc env-var]
+     (assoc acc env-var (tx/db-test-env-var :bigquery-cloud-sdk env-var)))
+   {}
+   [:project-id :service-account-json]))
 
 (defn- bigquery
   "Get an instance of a `Bigquery` client."
@@ -85,7 +85,6 @@
          :dataset-filters-type "inclusion"
          :dataset-filters-patterns (test-dataset-id database-name)
          :include-user-id-and-hash true))
-
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
@@ -167,7 +166,7 @@
    ^String table-id :- ::lib.schema.common/non-blank-string
    field-definitions]
   (u/ignore-exceptions
-   (delete-table! dataset-id table-id))
+    (delete-table! dataset-id table-id))
   (let [tbl-id (TableId/of dataset-id table-id)
         schema (Schema/of (u/varargs Field (field-definitions->Fields (cons {:field-name "id"
                                                                              :base-type :type/Integer}
@@ -188,7 +187,7 @@
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]
-   "Convert a value to an appropriate Google type when inserting a new row."))
+    "Convert a value to an appropriate Google type when inserting a new row."))
 
 (extend-protocol Insertable
   nil
@@ -247,8 +246,8 @@
                  req                         (rows->request dataset-id table-id chunk)
                  ^InsertAllResponse response (.insertAll (bigquery) req)]]
     (log/info  (u/format-color 'blue "Sent request to insert %d rows into `%s.%s.%s`"
-                (count (.getRows req))
-                (project-id) dataset-id table-id))
+                               (count (.getRows req))
+                               (project-id) dataset-id table-id))
     (when (seq (.getInsertErrors response))
       (log/errorf "Error inserting rows: %s" (u/pprint-to-str (seq (.getInsertErrors response))))
       (throw (ex-info "Error inserting rows"
@@ -326,24 +325,24 @@
   (doseq [outdated (filter transient-dataset-outdated? (get-all-datasets))]
     (log/info (u/format-color 'blue "Deleting temporary dataset more than two hours old: %s`." outdated))
     (u/ignore-exceptions
-     (destroy-dataset! outdated)))
+      (destroy-dataset! outdated)))
   (let [dataset-id (test-dataset-id database-name)]
     (u/auto-retry 2
-     (try
-       (log/infof "Creating dataset %s..." (pr-str dataset-id))
+      (try
+        (log/infof "Creating dataset %s..." (pr-str dataset-id))
        ;; if the dataset failed to load successfully last time around, destroy whatever was loaded so we start
        ;; again from a blank slate
-       (u/ignore-exceptions
-        (destroy-dataset! dataset-id))
-       (create-dataset! dataset-id)
+        (u/ignore-exceptions
+          (destroy-dataset! dataset-id))
+        (create-dataset! dataset-id)
        ;; now create tables and load data.
-       (doseq [tabledef table-definitions]
-         (load-tabledef! dataset-id tabledef))
-       (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
-       (catch Throwable e
-         (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
-         (log/error (u/pprint-to-str 'red (Throwable->map e)))
-         (throw e))))))
+        (doseq [tabledef table-definitions]
+          (load-tabledef! dataset-id tabledef))
+        (log/info (u/format-color 'green "Successfully created %s." (pr-str dataset-id)))
+        (catch Throwable e
+          (log/error (u/format-color 'red  "Failed to load BigQuery dataset %s." (pr-str dataset-id)))
+          (log/error (u/pprint-to-str 'red (Throwable->map e)))
+          (throw e))))))
 
 (defmethod tx/destroy-db! :bigquery-cloud-sdk
   [_ {:keys [database-name]}]

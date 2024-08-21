@@ -115,48 +115,48 @@
 (deftest model-caching-granular-controls-test-2
   (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls disabled, refresh tables in an 'off' state, but not 'deletable'"
-        (mt/with-premium-features #{}
-          (with-temp-persist-models [db creating off]
-            (testing "Calls refresh on each persisted-info row"
-              (let [card-ids (atom #{})
-                    test-refresher (reify task.persist-refresh/Refresher
-                                     (refresh! [_ _database _definition card]
-                                       (swap! card-ids conj (:id card))
-                                       {:state :success})
-                                     (unpersist! [_ _database _persisted-info]))]
-                (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
-                (is (= #{(u/the-id creating) (u/the-id off)} @card-ids))
-                (is (partial= {:task "persist-refresh"
-                               :task_details {:success 2 :error 0}}
-                              (t2/select-one TaskHistory
-                                             :db_id (u/the-id db)
-                                             :task "persist-refresh"
-                                             {:order-by [[:id :desc]]}))))))))))
+      (mt/with-premium-features #{}
+        (with-temp-persist-models [db creating off]
+          (testing "Calls refresh on each persisted-info row"
+            (let [card-ids (atom #{})
+                  test-refresher (reify task.persist-refresh/Refresher
+                                   (refresh! [_ _database _definition card]
+                                     (swap! card-ids conj (:id card))
+                                     {:state :success})
+                                   (unpersist! [_ _database _persisted-info]))]
+              (#'task.persist-refresh/refresh-tables! (u/the-id db) test-refresher)
+              (is (= #{(u/the-id creating) (u/the-id off)} @card-ids))
+              (is (partial= {:task "persist-refresh"
+                             :task_details {:success 2 :error 0}}
+                            (t2/select-one TaskHistory
+                                           :db_id (u/the-id db)
+                                           :task "persist-refresh"
+                                           {:order-by [[:id :desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-3
   (mt/with-model-cleanup [TaskHistory]
     (testing "with :cache-granular-controls enabled, deletes any tables with state=deletable or state=off"
-        (mt/with-premium-features #{:cache-granular-controls}
-          (with-temp-persist-models [pdeletable poff]
-            (let [deletable-persisted-infos [pdeletable poff]
-                  called-on (atom #{})
-                  test-refresher (reify task.persist-refresh/Refresher
-                                   (refresh! [_ _ _ _]
-                                     (is false "refresh! called on a model that should not be refreshed"))
-                                   (unpersist! [_ _database persisted-info]
-                                     (swap! called-on conj (u/the-id persisted-info))))
-                  queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
-              (testing "Query finds deletabable, and off persisted infos"
-                (is (= (set (map u/the-id deletable-persisted-infos)) queued-for-deletion)))
+      (mt/with-premium-features #{:cache-granular-controls}
+        (with-temp-persist-models [pdeletable poff]
+          (let [deletable-persisted-infos [pdeletable poff]
+                called-on (atom #{})
+                test-refresher (reify task.persist-refresh/Refresher
+                                 (refresh! [_ _ _ _]
+                                   (is false "refresh! called on a model that should not be refreshed"))
+                                 (unpersist! [_ _database persisted-info]
+                                   (swap! called-on conj (u/the-id persisted-info))))
+                queued-for-deletion (into #{} (map :id) (#'task.persist-refresh/deletable-models))]
+            (testing "Query finds deletabable, and off persisted infos"
+              (is (= (set (map u/the-id deletable-persisted-infos)) queued-for-deletion)))
               ;; we manually pass in the deleteable ones to not catch others in a running instance
-              (testing "Both deletables are pruned by prune-deletables!"
-                (#'task.persist-refresh/prune-deletables! test-refresher deletable-persisted-infos)
-                (is (= (set (map u/the-id deletable-persisted-infos)) @called-on))
-                (is (partial= {:task "unpersist-tables"
-                               :task_details {:success 2 :error 0, :skipped 0}}
-                              (t2/select-one TaskHistory
-                                             :task "unpersist-tables"
-                                             {:order-by [[:id :desc]]}))))))))))
+            (testing "Both deletables are pruned by prune-deletables!"
+              (#'task.persist-refresh/prune-deletables! test-refresher deletable-persisted-infos)
+              (is (= (set (map u/the-id deletable-persisted-infos)) @called-on))
+              (is (partial= {:task "unpersist-tables"
+                             :task_details {:success 2 :error 0, :skipped 0}}
+                            (t2/select-one TaskHistory
+                                           :task "unpersist-tables"
+                                           {:order-by [[:id :desc]]}))))))))))
 
 (deftest model-caching-granular-controls-test-4
   (mt/with-model-cleanup [TaskHistory]

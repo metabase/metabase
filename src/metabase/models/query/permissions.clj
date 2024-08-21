@@ -40,7 +40,6 @@
                     :permissions-error?   true}
                    additional-ex-data))))
 
-
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
 
 ;; Is calculating permissions for queries complicated? Some would say so. Refer to this handy flow chart to see how
@@ -81,8 +80,8 @@
   nil)
 
 (mu/defn- card-instance :- [:and
-                                     (ms/InstanceOf :model/Card)
-                                     [:map [:collection_id [:maybe ms/PositiveInt]]]]
+                            (ms/InstanceOf :model/Card)
+                            [:map [:collection_id [:maybe ms/PositiveInt]]]]
   [card-id :- ::lib.schema.id/card]
   (or (get *card-instances* card-id)
       (if (qp.store/initialized?)
@@ -241,7 +240,7 @@
 
   If the [:gtap ::perms] path is present in the query, these perms are implicitly granted to the current user."
   [{{gtap-perms :gtaps} ::perms, :as query} required-perms & {:keys [throw-exceptions?]
-                                                                    :or   {throw-exceptions? true}}]
+                                                              :or   {throw-exceptions? true}}]
   (try
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]

@@ -22,8 +22,8 @@
 (set! *warn-on-reflection* true)
 
 (comment
- p/keep-me
- Grouper/keep-me)
+  p/keep-me
+  Grouper/keep-me)
 
 (defsetting synchronous-batch-updates
   (deferred-tru "Process batches updates synchronously. If true, all `submit!` calls will be processed immediately. Default is false.")

@@ -161,26 +161,26 @@
 (defn- date-range-filter-clause
   [dt-col dt-val]
   (let [date-range (try
-                    (params.dates/date-string->range dt-val {:inclusive-end? false})
-                    (catch Exception _e
-                      (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
+                     (params.dates/date-string->range dt-val {:inclusive-end? false})
+                     (catch Exception _e
+                       (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
         start      (some-> (:start date-range) u.date/parse)
         end        (some-> (:end date-range) u.date/parse)
         dt-col     (if (some #(instance? LocalDate %) [start end])
                      [:cast dt-col :date]
                      dt-col)]
     (cond
-     (= start end)
-     [:= dt-col start]
+      (= start end)
+      [:= dt-col start]
 
-     (nil? start)
-     [:< dt-col end]
+      (nil? start)
+      [:< dt-col end]
 
-     (nil? end)
-     [:> dt-col start]
+      (nil? end)
+      [:> dt-col start]
 
-     :else
-     [:and [:>= dt-col start] [:< dt-col end]])))
+      :else
+      [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action"]]
   (defmethod build-optional-filter-query [:created-at model]
@@ -246,8 +246,8 @@
 (defmethod build-optional-filter-query [:last-edited-at "action"]
   [_filter model query last-edited-at]
   (sql.helpers/where query (date-range-filter-clause
-                              (search.config/column-with-model-alias model :updated_at)
-                              last-edited-at)))
+                            (search.config/column-with-model-alias model :updated_at)
+                            last-edited-at)))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.
