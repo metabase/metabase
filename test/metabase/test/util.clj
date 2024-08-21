@@ -474,10 +474,11 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
-                                       (fn []
-                                         (with-temporary-setting-values ~more
-                                           ~@body)))))
+    `(do-with-temporary-setting-value!
+      ~(keyword setting-k) ~value
+      (fn []
+        (with-temporary-setting-values ~more
+          ~@body)))))
 
 ;;; TODO FIXME -- either rename this to `with-temporary-raw-setting-values!` or fix it and make it thread-safe
 #_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
@@ -488,11 +489,12 @@
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
   (if (empty? bindings)
     `(do ~@body)
-    `(do-with-temporary-setting-value! ~(keyword setting-k) ~value
-                                       (fn []
-                                         (with-temporary-raw-setting-values ~more
-                                           ~@body))
-                                       :raw-setting? true)))
+    `(do-with-temporary-setting-value!
+      ~(keyword setting-k) ~value
+      (fn []
+        (with-temporary-raw-setting-values ~more
+          ~@body))
+      :raw-setting? true)))
 
 (defn do-with-discarded-setting-changes! [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)

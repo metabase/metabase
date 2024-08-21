@@ -317,14 +317,15 @@
 ;; into the API
 
 (defn- user-facing-info-with-db-and-env-var-values! [setting db-value env-var-value]
-  (tu/do-with-temporary-setting-value! setting db-value
-                                       (fn []
-                                         (tu/do-with-temp-env-var-value!
-                                          (setting/setting-env-map-name (keyword setting))
-                                          env-var-value
-                                          (fn []
-                                            (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
-                                                    :key :description))))))
+  (tu/do-with-temporary-setting-value!
+   setting db-value
+   (fn []
+     (tu/do-with-temp-env-var-value!
+      (setting/setting-env-map-name (keyword setting))
+      env-var-value
+      (fn []
+        (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
+                :key :description))))))
 
 (deftest user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
