@@ -28,7 +28,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -172,10 +171,6 @@
     (or api/*is-superuser?*
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
-
-(defmethod serdes/hash-fields Pulse
-  [_pulse]
-  [:name (serdes/hydrated-hash :collection) :created_at])
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -613,22 +608,3 @@
   ;; fetch the fully updated pulse, log an update event, and return it
   (u/prog1 (retrieve-alert (u/the-id alert))
     (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
-
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defmethod serdes/extract-one "Pulse"
-  [_model-name _opts pulse]
-  (cond-> (serdes/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes/*export-fk* 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes/*export-fk* 'Dashboard)
-    true                   (update :creator_id    serdes/*export-user*)))
-
-(defmethod serdes/load-xform "Pulse" [pulse]
-  (cond-> (serdes/load-xform-basics pulse)
-    true                   (update :creator_id    serdes/*import-user*)
-    (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
-
-(defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
-  (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
-                  (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

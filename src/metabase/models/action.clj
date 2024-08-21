@@ -8,7 +8,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -151,12 +150,6 @@
           (t2/delete! existing-model :action_id id)
           (t2/insert! new-model (assoc type-row :action_id id)))
         (t2/update! existing-model id type-row)))))
-
-(defn- hydrate-subtype [action]
-  (let [subtype (type->model (:type action))]
-    (-> action
-        (merge (t2/select-one subtype :action_id (:id action)))
-        (dissoc :action_id))))
 
 (defn- normalize-query-actions [actions]
   (when (seq actions)
@@ -351,46 +344,48 @@
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 
-(defmethod serdes/extract-query "Action" [_model opts]
-  (eduction (map hydrate-subtype)
-            (t2/reducible-select Action {:where (or (:where opts) true)})))
-
 (defmethod serdes/hash-fields :model/Action [_action]
   [:name (serdes/hydrated-hash :model) :created_at])
 
-(defmethod serdes/extract-one "Action" [_model-name _opts action]
-  (-> (serdes/extract-one-basics "Action" action)
-      (update :creator_id serdes/*export-user*)
-      (update :model_id serdes/*export-fk* 'Card)
-      (update :type name)
-      (cond-> (= (:type action) :query)
-        (update :database_id serdes/*export-fk-keyed* 'Database :name))))
+(defmethod serdes/generate-path "QueryAction" [_ _] nil)
+(defmethod serdes/make-spec "QueryAction" [_model-name _opts]
+  {:copy      []
+   :transform {:action_id     (serdes/parent-ref)
+               :database_id   (serdes/fk :model/Database :name)
+               :dataset_query {:export serdes/export-mbql :import serdes/import-mbql}}})
 
-(defmethod serdes/load-xform "Action" [action]
-  (-> action
-      serdes/load-xform-basics
-      (update :creator_id serdes/*import-user*)
-      (update :model_id serdes/*import-fk* 'Card)
-      (update :type keyword)
-      (cond-> (= (:type action) "query")
-        (update :database_id serdes/*import-fk-keyed* 'Database :name))))
+(defmethod serdes/generate-path "HTTPAction" [_ _] nil)
+(defmethod serdes/make-spec "HTTPAction" [_model-name _opts]
+  {:copy      [:error_handle :response_handle :template]
+   :transform {:action_id (serdes/parent-ref)}})
 
-(defmethod serdes/ingested-model-columns "Action" [_ingested]
-  (into #{} (conj action-columns :database_id :dataset_query :kind :template :response_handle :error_handle :type)))
+(defmethod serdes/generate-path "ImplicitAction" [_ _] nil)
+(defmethod serdes/make-spec "ImplicitAction" [_model-name _opts]
+  {:copy      [:kind]
+   :transform {:action_id (serdes/parent-ref)}})
 
-(defmethod serdes/load-update! "Action" [_model-name ingested local]
-  (log/tracef "Upserting Action %d: old %s new %s" (:id local) (pr-str local) (pr-str ingested))
-  (update! (assoc ingested :id (:id local)) local)
-  (select-action :id (:id local)))
-
-(defmethod serdes/load-insert! "Action" [_model-name ingested]
-  (log/tracef "Inserting Action: %s" (pr-str ingested))
-  (insert! ingested))
+(defmethod serdes/make-spec "Action" [_model-name opts]
+  {:copy      [:archived :description :entity_id :name :public_uuid :type]
+   :skip      []
+   :transform {:created_at             (serdes/date)
+               :creator_id             (serdes/fk :model/User)
+               :made_public_by_id      (serdes/fk :model/User)
+               :model_id               (serdes/fk :model/Card)
+               :query                  (serdes/nested :model/QueryAction :action_id opts)
+               :http                   (serdes/nested :model/HTTPAction :action_id opts)
+               :implicit               (serdes/nested :model/ImplicitAction :action_id opts)
+               :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
+               :parameter_mappings     {:export serdes/export-parameter-mappings
+                                        :import serdes/import-parameter-mappings}
+               :visualization_settings {:export serdes/export-visualization-settings
+                                        :import serdes/import-visualization-settings}}})
 
 (defmethod serdes/dependencies "Action" [action]
-  (concat [[{:model "Card" :id (:model_id action)}]]
-          (when (= (:type action) "query")
-            [[{:model "Database" :id (:database_id action)}]])))
+  (concat
+   ;; other stuff is implicitly referenced through a Card
+   [[{:model "Card" :id (:model_id action)}]]
+   (when (= (:type action) :query)
+     [[{:model "Database" :id (-> action :query first :database_id)}]])))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]

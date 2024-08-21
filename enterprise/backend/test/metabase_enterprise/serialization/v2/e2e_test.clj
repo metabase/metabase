@@ -372,7 +372,7 @@
                                     [key value]))
                          (yaml/from-file (io/file dump-dir "settings.yaml")))))))))))))
 
-;; This is a seperate test instead of a `testing` block inside `e2e-storage-ingestion-test`
+;; This is a separate test instead of a `testing` block inside `e2e-storage-ingestion-test`
 ;; because it's quite tricky to set up the generative test to generate parameters with source is card
 (deftest card-and-dashboard-has-parameter-with-source-is-card-test
   (testing "Dashboard and Card that has parameter with source is a card must be deserialized correctly"

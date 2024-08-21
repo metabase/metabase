@@ -579,7 +579,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ORDERS_CREATED_AT_FIELD,
       [
         {
-          name: "Unit of Time",
+          name: "Time grouping",
           slug: "unit-of-time",
           id: "fed1b910",
           type: "temporal-unit",
@@ -588,7 +588,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ],
     );
     editDashboard();
-    editFilter("Unit of Time");
+    editFilter("Time grouping");
 
     dashboardParameterSidebar()
       .findAllByLabelText("chevrondown icon")

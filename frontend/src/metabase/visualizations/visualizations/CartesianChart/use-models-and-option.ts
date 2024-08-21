@@ -19,20 +19,23 @@ import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesi
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-export function useModelsAndOption({
-  rawSeries,
-  series: transformedSeries,
-  isPlaceholder,
-  settings,
-  card,
-  fontFamily,
-  width,
-  height,
-  timelineEvents,
-  selectedTimelineEventIds,
-  onRender,
-  hovered,
-}: VisualizationProps) {
+export function useModelsAndOption(
+  {
+    rawSeries,
+    series: transformedSeries,
+    isPlaceholder,
+    settings,
+    card,
+    fontFamily,
+    width,
+    height,
+    timelineEvents,
+    selectedTimelineEventIds,
+    onRender,
+    hovered,
+  }: VisualizationProps,
+  containerRef: React.RefObject<HTMLDivElement>,
+) {
   const renderingContext = useBrowserRenderingContext({ fontFamily });
 
   const rawSeriesWithRemappings = useMemo(
@@ -105,8 +108,8 @@ export function useModelsAndOption({
   }, [selectedTimelineEventIds, hovered?.timelineEvents]);
 
   const tooltipOption = useMemo(() => {
-    return getTooltipOption(chartModel, settings);
-  }, [chartModel, settings]);
+    return getTooltipOption(chartModel, settings, containerRef);
+  }, [chartModel, settings, containerRef]);
 
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
