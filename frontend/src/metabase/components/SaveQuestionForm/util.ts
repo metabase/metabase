@@ -1,13 +1,9 @@
-import { match, P } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
-import {
-  canonicalCollectionId,
-  getInstanceAnalyticsCustomCollection,
-  isInstanceAnalyticsCollection,
-} from "metabase/collections/utils";
+import { canonicalCollectionId } from "metabase/collections/utils";
 import type Question from "metabase-lib/v1/Question";
-import type { CardType, Collection } from "metabase-types/api";
+import type { CardType } from "metabase-types/api";
 
 import type { FormValues } from "./types";
 
@@ -64,25 +60,11 @@ export async function submitQuestion(
 }
 
 export const getInitialValues = (
-  collections: Collection[],
   originalQuestion: Question | null,
   question: Question,
   initialCollectionId: FormValues["collection_id"],
 ): FormValues => {
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
-
-  // we can't use null because that can be ID of the root collection
-  const instanceAnalyticsCollectionId =
-    collections?.find(isInstanceAnalyticsCollection)?.id ?? "not found";
-  const isInInstanceAnalyticsQuestion =
-    originalQuestion?.collectionId() === instanceAnalyticsCollectionId;
-
-  if (collections && isInInstanceAnalyticsQuestion) {
-    const customCollection = getInstanceAnalyticsCustomCollection(collections);
-    if (customCollection) {
-      initialCollectionId = customCollection.id;
-    }
-  }
 
   const getOriginalNameModification = (originalQuestion: Question | null) =>
     originalQuestion
@@ -99,9 +81,7 @@ export const getInitialValues = (
     description:
       originalQuestion?.description() || question.description() || "",
     collection_id:
-      question.collectionId() === undefined ||
-      isReadonly ||
-      isInInstanceAnalyticsQuestion
+      question.collectionId() === undefined || isReadonly
         ? initialCollectionId
         : question.collectionId(),
     saveType:

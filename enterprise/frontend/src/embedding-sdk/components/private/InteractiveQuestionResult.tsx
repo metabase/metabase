@@ -7,23 +7,24 @@ import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import {
-  BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
-  Filter,
-  FilterButton,
-  Summarize,
-  SummarizeButton,
-  Notebook,
-  NotebookButton,
-  QuestionVisualization,
-} from "embedding-sdk/components/public/InteractiveQuestion/components";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
+
+import {
+  BackButton,
+  Filter,
+  FilterBar,
+  FilterButton,
+  Notebook,
+  NotebookButton,
+  QuestionResetButton,
+  QuestionVisualization,
+  Summarize,
+  SummarizeButton,
+  Title,
+} from "./InteractiveQuestion/components";
+import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
 interface InteractiveQuestionResultProps {
   height?: string | number;

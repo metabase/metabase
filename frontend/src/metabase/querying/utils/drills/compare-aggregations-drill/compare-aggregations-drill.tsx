@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
-  canAddTemporalCompareAggregation,
   CompareAggregations,
+  canAddTemporalCompareAggregation,
 } from "metabase/query_builder/components/CompareAggregations";
 import { trackColumnCompareViaColumnHeader } from "metabase/querying/analytics";
 import type {

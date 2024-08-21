@@ -1,10 +1,10 @@
-import type { TransitionEventHandler, SyntheticEvent } from "react";
-import { useEffect, useState, forwardRef } from "react";
-import type { ResizeCallbackData, ResizableBoxProps } from "react-resizable";
+import type { SyntheticEvent, TransitionEventHandler } from "react";
+import { forwardRef, useEffect, useState } from "react";
+import type { ResizableBoxProps, ResizeCallbackData } from "react-resizable";
 import { ResizableBox } from "react-resizable";
 import { useWindowSize } from "react-use";
 
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setNotebookNativePreviewSidebarWidth,
   setUIControls,
@@ -14,7 +14,7 @@ import Notebook, {
 } from "metabase/query_builder/components/notebook/Notebook";
 import { NotebookNativePreview } from "metabase/query_builder/components/notebook/NotebookNativePreview";
 import { getUiControls } from "metabase/query_builder/selectors";
-import { Flex, Box, rem } from "metabase/ui";
+import { Box, Flex, rem } from "metabase/ui";
 
 // There must exist some transition time, no matter how short,
 // because we need to trigger the 'onTransitionEnd' in the component

@@ -1,30 +1,29 @@
-import { type PropsWithChildren, useMemo } from "react";
+import { type PropsWithChildren, type ReactNode, useMemo } from "react";
 
+import {
+  BackButton,
+  Filter,
+  FilterBar,
+  FilterButton,
+  Notebook,
+  NotebookButton,
+  QuestionResetButton,
+  QuestionVisualization,
+  Summarize,
+  SummarizeButton,
+  Title,
+} from "embedding-sdk/components/private/InteractiveQuestion/components";
+import { InteractiveQuestionProviderWithLocation } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
-import {
-  BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
-  Filter,
-  FilterButton,
-  Summarize,
-  SummarizeButton,
-  Notebook,
-  NotebookButton,
-  QuestionVisualization,
-} from "./components";
-import { InteractiveQuestionProviderWithLocation } from "./context";
-
 type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
   withResetButton?: boolean;
   withTitle?: boolean;
-  customTitle?: React.ReactNode;
+  customTitle?: ReactNode;
   plugins?: SdkPluginsConfig;
   height?: string | number;
 }>;

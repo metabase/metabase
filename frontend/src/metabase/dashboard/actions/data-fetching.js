@@ -7,11 +7,11 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
 import {
-  DashboardApi,
   CardApi,
-  PublicApi,
+  DashboardApi,
   EmbedApi,
   MetabaseApi,
+  PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -19,19 +19,19 @@ import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import {
-  getDashboardComplete,
-  getDashCardBeforeEditing,
-  getLoadingDashCards,
   getCanShowAutoApplyFiltersToast,
+  getDashCardBeforeEditing,
   getDashCardById,
+  getDashboardComplete,
+  getLoadingDashCards,
   getSelectedTabId,
 } from "../selectors";
 import {
-  isVirtualDashCard,
-  getAllDashboardCards,
-  getDashboardType,
   fetchDataOrError,
+  getAllDashboardCards,
   getCurrentTabDashboardCards,
+  getDashboardType,
+  isVirtualDashCard,
 } from "../utils";
 
 import {

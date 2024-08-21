@@ -5,10 +5,10 @@ import { Icon } from "metabase/ui";
 import {
   HeaderBackIcon,
   HeaderCloseButton,
+  HeaderLink,
   HeaderMenu,
   HeaderRoot,
   HeaderTitle,
-  HeaderLink,
 } from "./ModalHeader.styled";
 
 export interface ModalHeaderProps {

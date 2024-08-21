@@ -5,20 +5,20 @@ import {
   getMetabaseInstanceSetupCompleteMessage,
 } from "./constants/messages";
 import {
+  addDatabaseConnectionStep,
   addEmbeddingToken,
+  checkIfReactProject,
   checkIsDockerRunning,
+  checkSdkAvailable,
   createApiKey,
+  createModelsAndXrays,
   generateCredentials,
+  generateReactComponentFiles,
+  pickDatabaseTables,
   pollMetabaseInstance,
   setupMetabaseInstance,
   showMetabaseCliTitle,
   startLocalMetabaseContainer,
-  checkIfReactProject,
-  checkSdkAvailable,
-  addDatabaseConnectionStep,
-  pickDatabaseTables,
-  createModelsAndXrays,
-  generateReactComponentFiles,
 } from "./steps";
 import type { CliState } from "./types/cli";
 import { printEmptyLines, printInfo } from "./utils/print";

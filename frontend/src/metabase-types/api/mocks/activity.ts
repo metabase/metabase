@@ -1,8 +1,8 @@
 import type {
   PopularItem,
+  RecentCollectionItem,
   RecentItem,
   RecentTableItem,
-  RecentCollectionItem,
 } from "metabase-types/api";
 
 export const createMockRecentTableItem = (

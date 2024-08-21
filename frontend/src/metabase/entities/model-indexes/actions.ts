@@ -7,7 +7,7 @@ import {
   listModelIndexes,
 } from "metabase/api";
 import type Question from "metabase-lib/v1/Question";
-import type { FieldReference, Field } from "metabase-types/api";
+import type { Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import type { Dispatch } from "metabase-types/store";
 

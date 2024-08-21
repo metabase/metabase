@@ -4,8 +4,8 @@ import { getColumnIcon } from "metabase/common/utils/columns";
 import { Checkbox, Grid, Group } from "metabase/ui";
 
 import {
-  useDefaultFilter,
   type OperatorOption,
+  useDefaultFilter,
 } from "../../../hooks/use-default-filter";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";

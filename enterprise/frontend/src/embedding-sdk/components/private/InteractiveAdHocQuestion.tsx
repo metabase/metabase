@@ -2,8 +2,7 @@ import { useMemo } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 
-import { InteractiveQuestionProviderWithLocation } from "../public/InteractiveQuestion/context";
-
+import { InteractiveQuestionProviderWithLocation } from "./InteractiveQuestion/context";
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 
 interface InteractiveAdHocQuestionProps {

@@ -15,10 +15,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -621,7 +618,7 @@
                              [:collection_id               [:= (:entity_id @coll1s)]]
                              [:name                        [:= "Some events"]]
                              [:creator_id                  [:= "tom@bost.on"]]
-                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                             [:created_at                  :string]
                              [:entity_id                   [:= (:entity_id timeline1)]]
                              [:description                 [:maybe :string]]
                              [:events                      [:sequential
@@ -632,11 +629,9 @@
                                                              [:archived                    :boolean]
                                                              [:description                 [:maybe :string]]
                                                              [:creator_id                  :string]
-                                                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:created_at                  :string]
                                                              [:timestamp                   :string]
-                                                             [:icon {:optional true}       [:maybe :string]]
-                                                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]]]]
-                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:icon {:optional true}       [:maybe :string]]]]]
                              [:icon {:optional true}       [:maybe :string]]
                              [:default {:optional true}    :boolean]]
                             timeline1))
@@ -1205,7 +1200,7 @@
                                (merge entity (get changes (:entity_id entity))))))
         logs-extract  (fn [re logs]
                         (keep #(rest (re-find re %))
-                              (map (fn [[_log-level _error message]] message) logs)))]
+                              (map :message logs)))]
     (mt/with-empty-h2-app-db
       (mt/with-temp [Collection coll {:name "coll"}
                      Card       c1   {:name "card1" :collection_id (:id coll)}
@@ -1217,26 +1212,28 @@
                                                (if (= (:entity_id instance) (:entity_id c1))
                                                  (throw (ex-info "Skip me" {}))
                                                  (extract-one model-name opts instance)))]
-              (is (= [["Card" (str (:id c1))]]
-                     (logs-extract #"Skipping (\w+) (\d+)"
-                                   (mt/with-log-messages-for-level ['metabase.models.serialization :warn]
-                                     (let [ser            (vec (serdes.extract/extract {:no-settings       true
-                                                                                        :no-data-model     true
-                                                                                        :continue-on-error true}))
-                                           {errors true
-                                            others false} (group-by #(instance? Exception %) ser)]
-                                       (is (= 1 (count errors)))
-                                       (is (= 3 (count others)))))))))))
+              (mt/with-log-messages-for-level [messages [metabase.models.serialization :warn]]
+                (let [ser            (vec (serdes.extract/extract {:no-settings       true
+                                                                   :no-data-model     true
+                                                                   :continue-on-error true}))
+                      {errors true
+                       others false} (group-by #(instance? Exception %) ser)]
+                  (is (= 1 (count errors)))
+                  (is (= 3 (count others))))
+                (is (= [["Card" (str (:id c1))]]
+                       (logs-extract #"Skipping (\w+) (\d+)"
+                                     (messages))))))))
         (testing "It's possible to skip a few errors during load"
           (let [ser     (vec (serdes.extract/extract {:no-settings   true
                                                       :no-data-model true}))
                 changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
-            (is (= [["Failed to read file for Collection does-not-exist"]]
-                   (logs-extract #"Skipping deserialization error: (.*) \{.*\}$"
-                                 (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                                   (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
-                                     (is (= 1 (count (:errors report))))
-                                     (is (= 3 (count (:seen report)))))))))))))))
+            (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+              (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
+                (is (= 1 (count (:errors report))))
+                (is (= 3 (count (:seen report)))))
+              (is (= [["Failed to read file for Collection does-not-exist"]]
+                     (logs-extract #"Skipping deserialization error: (.*) \{.*\}$"
+                                   (messages)))))))))))
 
 (deftest with-dbs-works-as-expected-test
   (ts/with-dbs [source-db dest-db]

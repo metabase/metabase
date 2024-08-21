@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
   editDashboard,
-  saveDashboard,
-  visitDashboard,
-  sidebar,
+  filterWidget,
   getDashboardCard,
-  updateDashboardCards,
   popover,
+  restore,
+  saveDashboard,
+  sidebar,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 

@@ -1,7 +1,7 @@
 import type { LocationDescriptorObject } from "history";
 import { useKBar } from "kbar";
 import type { ChangeEvent, MouseEvent } from "react";
-import { useEffect, useCallback, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { usePrevious } from "react-use";
@@ -26,12 +26,12 @@ import { Icon } from "metabase/ui";
 
 import { CommandPaletteTrigger } from "./CommandPaletteTrigger";
 import {
-  SearchInputContainer,
-  SearchIcon,
   CloseSearchButton,
-  SearchInput,
-  SearchResultsFloatingContainer,
   SearchBarRoot,
+  SearchIcon,
+  SearchInput,
+  SearchInputContainer,
+  SearchResultsFloatingContainer,
 } from "./SearchBar.styled";
 
 const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);

@@ -2,18 +2,18 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createAction,
   editDashboard,
+  getActionCardDetails,
+  getDashboardCard,
+  getNextUnsavedDashboardCardId,
+  modal,
   restore,
   saveDashboard,
   setActionsEnabledForDB,
-  visitDashboard,
-  getDashboardCard,
-  getActionCardDetails,
-  getNextUnsavedDashboardCardId,
-  modal,
-  createAction,
-  updateDashboardCards,
   undoToast,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,

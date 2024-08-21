@@ -393,7 +393,6 @@
 
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  {:style/indent 2}
   [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema & other-conditions]
   (let [paths (conj (perms.u/->v2-path path) path)
         where {:where (apply list

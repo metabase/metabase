@@ -1,7 +1,7 @@
 import type { PinDropTargetRenderArgs } from "./PinDropZone.styled";
 import {
-  StyledPinDropTarget,
   PinDropTargetIndicator,
+  StyledPinDropTarget,
 } from "./PinDropZone.styled";
 
 type PinDropZoneProps = {

@@ -20,8 +20,6 @@
             Field
             FieldValues
             NativeQuerySnippet
-            Pulse
-            PulseCard
             Segment
             Table
             Timeline
@@ -31,7 +29,6 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.time OffsetDateTime)))
@@ -342,7 +339,7 @@
                                                          :filter [:>= [:field ["My Database" nil "Schemaless Table" "Some Field"] nil] 18]
                                                          :aggregation [[:count]]}
                                                  :database "My Database"}
-                   :created_at                  OffsetDateTime}
+                   :created_at                  string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -366,7 +363,7 @@
                                          :card_id      c1-eid
                                          :target [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
                                                               {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}]
-                   :created_at         OffsetDateTime}
+                   :created_at         string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -413,7 +410,7 @@
                       :enabled true}]
                     :column_settings
                     {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                   :created_at    OffsetDateTime}
+                   :created_at    string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -441,7 +438,7 @@
                    :dataset_query  {:query    {:source-table c4-eid
                                                :aggregation [[:count]]}
                                     :database "My Database"}
-                   :created_at     OffsetDateTime}
+                   :created_at     string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -455,7 +452,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards include their Dashcards"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id other-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" other-dash-id)]
           (is (=? {:serdes/meta            [{:model "Dashboard" :id other-dash :label "dave_s_dash"}]
                    :entity_id              other-dash
                    :dashcards
@@ -476,9 +473,9 @@
                                                 :enabled true}]
                                               :column_settings
                                               {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                     :created_at             OffsetDateTime}
+                     :created_at             string?}
                     {:action_id action-eid}]
-                   :created_at             OffsetDateTime}
+                   :created_at             string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -496,7 +493,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "Dashboards with parameters where the source is a card"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id param-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -515,7 +512,7 @@
                  (set (serdes/dependencies ser))))))
 
       (testing "Cards with parameters where the source is a card"
-        (let [ser (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id param-dash-id]}))]
+        (let [ser (ts/extract-one "Dashboard" param-dash-id)]
           (is (=? {:parameters
                    [{:id                   "abc"
                      :name                 "CATEGORY"
@@ -579,7 +576,7 @@
          :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
         (testing "Inlined dashcards include their series' card entity IDs"
           (let [ser (t2/with-call-count [q]
-                      (u/prog1 (u/rfirst (serdes/extract-all "Dashboard" {:where [:= :id dash-id]}))
+                      (u/prog1 (ts/extract-one "Dashboard" dash-id)
                         (is (< (q) 13))))]
             (is (=? {:entity_id dash-eid
                      :dashcards [{:entity_id dc1-eid
@@ -626,14 +623,14 @@
                                                              :field_id fk-id
                                                              :human_readable_field_id cust-name}]
       (testing "dimensions without foreign keys are inlined into their Fields\n"
-        (let [ser (u/rfirst (serdes/extract-all "Field" {:where [:= :id email-id]}))]
+        (let [ser (ts/extract-one "Field" email-id)]
           (is (malli= [:map
                        [:serdes/meta [:= [{:model "Database", :id "My Database"}
                                           {:model "Table", :id "Schemaless Table"}
                                           {:model "Field", :id "email"}]]]
                        [:dimensions  [:sequential
                                       [:map
-                                       [:created_at (ms/InstanceOfClass OffsetDateTime)]
+                                       [:created_at :string]
                                        [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
                       ser))
           (is (not (contains? ser :id)))
@@ -648,7 +645,7 @@
                    (set (serdes/dependencies ser)))))))
 
       (testing "foreign key dimensions are inlined into their Fields"
-        (let [ser (u/rfirst (serdes/extract-all "Field" {:where [:= :id fk-id]}))]
+        (let [ser (ts/extract-one "Field" fk-id)]
           (is (malli= [:map
                        [:serdes/meta        [:= [{:model "Database" :id "My Database"}
                                                  {:model "Schema" :id "PUBLIC"}
@@ -659,13 +656,13 @@
                        [:dimensions         [:sequential
                                              [:map
                                               [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]
-                                              [:created_at              (ms/InstanceOfClass OffsetDateTime)]]]]]
+                                              [:created_at              :string]]]]]
                       ser))
           (is (not (contains? ser :id)))
 
           (testing "dimensions are properly inlined"
             (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
-                      :created_at              OffsetDateTime}]
+                      :created_at              string?}]
                     (:dimensions ser))))
 
           (testing "which depend on the Table and both real and human-readable foreign Fields"
@@ -718,7 +715,7 @@
                                       :label "snippet_1"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    OffsetDateTime}
+                     :created_at    string?}
                     ser))
             (is (not (contains? ser :id)))
 
@@ -733,7 +730,7 @@
                                              :id    s2-eid
                                              :label "snippet_2"}]]]
                          [:creator_id  [:= "ann@heart.band"]]
-                         [:created_at  (ms/InstanceOfClass OffsetDateTime)]
+                         [:created_at  :string]
                          [:collection_id {:optional true} :nil]]
                         ser))
             (is (not (contains? ser :id)))
@@ -777,11 +774,11 @@
                         :timeline_id line-id}]
       (testing "timelines"
         (testing "with no events"
-          (let [ser (serdes/extract-one "Timeline" {} (t2/select-one Timeline :id empty-id))]
+          (let [ser (ts/extract-one "Timeline" empty-id)]
             (is (=? {:serdes/meta   [{:model "Timeline" :id empty-eid :label "empty_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    OffsetDateTime}
+                     :created_at    string?}
                     ser))
             (is (not (contains? ser :id)))
 
@@ -790,15 +787,14 @@
                      (set (serdes/dependencies ser)))))))
 
         (testing "with events"
-          (let [ser   (serdes/extract-one "Timeline" {} (t2/select-one Timeline :id line-id))
-                stamp "2020-04-11T00:00:00Z"]
+          (let [ser (ts/extract-one "Timeline" line-id)]
             (is (=? {:serdes/meta   [{:model "Timeline" :id line-eid :label "populated_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    OffsetDateTime
-                     :events        [{:timestamp  stamp
+                     :created_at    string?
+                     :events        [{:timestamp  "2020-04-11T00:00:00Z"
                                       :creator_id "ann@heart.band"
-                                      :created_at OffsetDateTime}]}
+                                      :created_at string?}]}
                     ser))
             (is (not (contains? ser :id)))
             (is (not (contains? (-> ser :events first) :id)))
@@ -835,7 +831,7 @@
                                  :filter       [:< [:field ["My Database" nil
                                                             "Schemaless Table" "Some Field"]
                                                     nil] 18]}
-                   :created_at  OffsetDateTime}
+                   :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
 
@@ -995,7 +991,7 @@
                                  {:model "Table"    :id "Schemaless Table"}
                                  {:model "Field"    :id "Some Field"}
                                  {:model "FieldValues" :id "0"}] ; Always 0.
-                   :created_at  OffsetDateTime
+                   :created_at  string?
                    :values      values}
                   ser))
           (is (not (contains? ser :id)))
@@ -1014,234 +1010,9 @@
         (testing "with :include-field-values true"
           (let [models (->> {:include-field-values true} extract/extract (map (comp :model last :serdes/meta)))]
             ;; why 14?
-            (is (= 14 (count (filter #{"FieldValues"} models))))))))))
-
-(deftest pulses-test
-  (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User
-                       {ann-id       :id}
-                       {:first_name "Ann"
-                        :last_name  "Wilson"
-                        :email      "ann@heart.band"}
-
-                       Collection
-                       {coll-id      :id
-                        coll-eid     :entity_id}
-                       {:name "Some Collection"}
-
-                       Dashboard
-                       {dash-id      :id
-                        dash-eid     :entity_id}
-                       {:name "A Dashboard"}
-
-                       Pulse
-                       {p-none-id    :id
-                        p-none-eid   :entity_id}
-                       {:name       "Pulse w/o collection or dashboard"
-                        :creator_id ann-id}
-
-                       Pulse
-                       {p-coll-id    :id
-                        p-coll-eid   :entity_id}
-                       {:name          "Pulse with only collection"
-                        :creator_id    ann-id
-                        :collection_id coll-id}
-
-                       Pulse
-                       {p-dash-id    :id
-                        p-dash-eid   :entity_id}
-                       {:name         "Pulse with only dashboard"
-                        :creator_id   ann-id
-                        :dashboard_id dash-id}
-
-                       Pulse
-                       {p-both-id    :id
-                        p-both-eid   :entity_id}
-                       {:name          "Pulse with both collection and dashboard"
-                        :creator_id    ann-id
-                        :collection_id coll-id
-                        :dashboard_id  dash-id}]
-      (testing "pulse with neither collection nor dashboard"
-        (let [ser (serdes/extract-one "Pulse" {} (t2/select-one Pulse :id p-none-id))]
-          (is (malli= [:map
-                       [:serdes/meta                    [:= [{:model "Pulse"
-                                                              :id    p-none-eid
-                                                              :label "pulse_w_o_collection_or_dashboard"}]]]
-                       [:creator_id                     [:= "ann@heart.band"]]
-                       [:created_at                     (ms/InstanceOfClass OffsetDateTime)]
-                       [:dashboard_id {:optional true}  :nil]
-                       [:collection_id {:optional true} :nil]]
-                      ser))
-          (is (not (contains? ser :id)))
-
-          (testing "has no deps"
-            (is (= #{}
-                   (set (serdes/dependencies ser)))))))
-
-      (testing "pulse with just collection"
-        (let [ser (serdes/extract-one "Pulse" {} (t2/select-one Pulse :id p-coll-id))]
-          (is (malli= [:map
-                       [:serdes/meta   [:= [{:model "Pulse"
-                                             :id    p-coll-eid
-                                             :label "pulse_with_only_collection"}]]]
-                       [:creator_id    [:= "ann@heart.band"]]
-                       [:collection_id [:= coll-eid]]
-                       [:created_at    (ms/InstanceOfClass OffsetDateTime)]
-                       [:dashboard_id {:optional true} :nil]]
-                      ser))
-          (is (not (contains? ser :id)))
-
-          (testing "depends on the collection"
-            (is (= #{[{:model "Collection" :id coll-eid}]}
-                   (set (serdes/dependencies ser)))))))
-
-      (testing "pulse with just dashboard"
-        (let [ser (serdes/extract-one "Pulse" {} (t2/select-one Pulse :id p-dash-id))]
-          (is (malli= [:map
-                       [:serdes/meta  [:= [{:model "Pulse"
-                                            :id    p-dash-eid
-                                            :label "pulse_with_only_dashboard"}]]]
-                       [:creator_id   [:= "ann@heart.band"]]
-                       [:dashboard_id [:= dash-eid]]
-                       [:created_at   (ms/InstanceOfClass OffsetDateTime)]
-                       [:collection_id {:optional true} :nil]]
-                      ser))
-          (is (not (contains? ser :id)))
-
-          (testing "depends on the dashboard"
-            (is (= #{[{:model "Dashboard" :id dash-eid}]}
-                   (set (serdes/dependencies ser)))))))
-
-      (testing "pulse with both collection and dashboard"
-        (let [ser (serdes/extract-one "Pulse" {} (t2/select-one Pulse :id p-both-id))]
-          (is (=? {:serdes/meta   [{:model "Pulse"
-                                    :id    p-both-eid
-                                    :label "pulse_with_both_collection_and_dashboard"}]
-                   :creator_id    "ann@heart.band"
-                   :dashboard_id  dash-eid
-                   :collection_id coll-eid
-                   :created_at    OffsetDateTime}
-                  ser))
-          (is (not (contains? ser :id)))
-
-          (testing "depends on the collection and dashboard"
-            (is (= #{[{:model "Collection" :id coll-eid}]
-                     [{:model "Dashboard"  :id dash-eid}]}
-                   (set (serdes/dependencies ser))))))))))
-
-(deftest pulse-cards-test
-  (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User
-                       {ann-id        :id}
-                       {:first_name "Ann"
-                        :last_name  "Wilson"
-                        :email      "ann@heart.band"}
-
-                       Dashboard
-                       {dash-id       :id
-                        dash-eid      :entity_id}
-                       {:name "A Dashboard"}
-
-                       Database
-                       {db-id         :id}
-                       {:name "My Database"}
-
-                       Table
-                       {table-id      :id}
-                       {:name "Schemaless Table" :db_id db-id}
-
-                       Card
-                       {card1-id      :id
-                        card1-eid     :entity_id}
-                       {:name          "Some Question"
-                        :database_id   db-id
-                        :table_id      table-id
-                        :creator_id    ann-id
-                        :dataset_query "{\"json\": \"string values\"}"}
-
-                       DashboardCard
-                       {dashcard-id   :id
-                        dashcard-eid  :entity_id}
-                       {:card_id       card1-id
-                        :dashboard_id  dash-id}
-
-                       Pulse
-                       {pulse-id      :id
-                        pulse-eid     :entity_id}
-                       {:name       "Legacy Pulse"
-                        :creator_id ann-id}
-
-                       Pulse
-                       {sub-id        :id
-                        sub-eid       :entity_id}
-                       {:name       "Dashboard sub"
-                        :creator_id ann-id
-                        :dashboard_id dash-id}
-
-                       PulseCard
-                       {pc1-pulse-id  :id
-                        pc1-pulse-eid :entity_id}
-                       {:pulse_id          pulse-id
-                        :card_id           card1-id
-                        :position          1}
-
-                       PulseCard
-                       {pc2-pulse-id  :id
-                        pc2-pulse-eid :entity_id}
-                       {:pulse_id          pulse-id
-                        :card_id           card1-id
-                        :position          2}
-
-                       PulseCard
-                       {pc1-sub-id    :id
-                        pc1-sub-eid   :entity_id}
-                       {:pulse_id          sub-id
-                        :card_id           card1-id
-                        :position          1
-                        :dashboard_card_id dashcard-id}]
-      (testing "legacy pulse cards"
-        (let [ser (serdes/extract-one "PulseCard" {} (t2/select-one PulseCard :id pc1-pulse-id))]
-          (is (malli= [:map
-                       [:serdes/meta                        [:= [{:model "Pulse" :id pulse-eid}
-                                                                 {:model "PulseCard" :id pc1-pulse-eid}]]]
-                       [:card_id                            [:= card1-eid]]
-                       [:dashboard_card_id {:optional true} :nil]]
-                      ser))
-          (is (not (contains? ser :id)))
-
-          (testing "depends on the pulse and card"
-            (is (= #{[{:model "Pulse" :id pulse-eid}]
-                     [{:model "Card"  :id card1-eid}]}
-                   (set (serdes/dependencies ser))))))
-
-        (let [ser (serdes/extract-one "PulseCard" {} (t2/select-one PulseCard :id pc2-pulse-id))]
-          (is (malli= [:map
-                       [:serdes/meta                        [:= [{:model "Pulse" :id pulse-eid}
-                                                                 {:model "PulseCard" :id pc2-pulse-eid}]]]
-                       [:card_id                            [:= card1-eid]]
-                       [:dashboard_card_id {:optional true} :nil]]
-                      ser))
-          (is (not (contains? ser :id)))
-
-          (testing "depends on the pulse and card"
-            (is (= #{[{:model "Pulse" :id pulse-eid}]
-                     [{:model "Card"  :id card1-eid}]}
-                   (set (serdes/dependencies ser)))))))
-
-      (testing "dashboard sub cards"
-        (let [ser (serdes/extract-one "PulseCard" {} (t2/select-one PulseCard :id pc1-sub-id))]
-          (is (=? {:serdes/meta                    [{:model "Pulse" :id sub-eid}
-                                                    {:model "PulseCard" :id pc1-sub-eid}]
-                   :card_id                        card1-eid
-                   :dashboard_card_id              [dash-eid dashcard-eid]}
-                  ser))
-          (is (not (contains? ser :id)))
-
-          (testing "depends on the pulse, card and parent dashboard"
-            (is (= #{[{:model "Pulse" :id sub-eid}]
-                     [{:model "Card"  :id card1-eid}]
-                     [{:model "Dashboard" :id dash-eid}]}
-                   (set (serdes/dependencies ser))))))))))
+            (is (= 14
+                   (t2/count :model/FieldValues)
+                   (count (filter #{"FieldValues"} models))))))))))
 
 (deftest cards-test
   (mt/with-empty-h2-app-db
@@ -1645,22 +1416,23 @@
                                                      :dataset_query {:query {:source-table (str "card__" card1-id)
                                                                              :aggregation  [[:count]]}}}]
       (testing "Complain about card not available for exporting"
-        (is (some #(str/starts-with? % "Failed to export Dashboard")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll1-id]]
-                                            :no-settings   true
-                                            :no-data-model true}))))))
-
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll1-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Dashboard")
+                    (into #{}
+                          (map :message)
+                          (messages))))))
       (testing "Complain about card depending on an outside card"
-        (is (some #(str/starts-with? % "Failed to export Cards")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll2-id]]
-                                            :no-settings   true
-                                            :no-data-model true})))))))))
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll2-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Cards")
+                    (into #{}
+                          (map :message)
+                          (messages)))))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db
@@ -1706,3 +1478,65 @@
                                   :no-data-model true})]
         (is (= #{(:entity_id c)}
                (by-model "Collection" ser)))))))
+
+(deftest extract-nested-test
+  (testing "extract-nested working"
+    (mt/with-temp [:model/Dashboard           d   {:name "Top Dash"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d) :card_id (:id c1)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (let [spec (serdes/make-spec "DashboardCard" nil)]
+        (is (= {(:id dc1) [s]}
+               (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
+        (is (=? (assoc dc1 :series [s])
+                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+      (let [spec (serdes/make-spec "Dashboard" nil)]
+        (is (= {(:id d) [(assoc dc1 :series [s])]}
+               (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
+        (is (=? (assoc d
+                       :dashcards [(assoc dc1 :series [s])]
+                       :tabs nil)
+                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+
+(deftest extract-nested-efficient-test
+  (testing "extract-nested is efficient"
+    (mt/with-temp [:model/Dashboard           d1  {:name "Top Dash 1"}
+                   :model/Dashboard           d2  {:name "Top Dash 2"}
+                   :model/Card                c1  {:name "Some Card"}
+                   :model/Card                c2  {:name "Some Inner Card"}
+                   :model/Card                c3  {:name "Card for Dash 2"}
+                   :model/DashboardCard       dc1 {:dashboard_id (:id d1) :card_id (:id c1)}
+                   :model/DashboardCard       dc2 {:dashboard_id (:id d2) :card_id (:id c2)}
+                   :model/DashboardCard       dc3 {:dashboard_id (:id d2) :card_id (:id c3)}
+                   :model/DashboardCardSeries s   {:dashboardcard_id (:id dc1) :card_id (:id c2)}]
+      (t2/with-call-count [qc]
+        (is (=? [(assoc d1
+                        :dashcards [(assoc dc1 :series [s])]
+                        :tabs nil)
+                 (assoc d2
+                        :dashcards [(assoc dc2 :series nil)
+                                    (assoc dc3 :series nil)]
+                        :tabs nil)]
+                (into [] (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+        ;; 1 per dashboard/dashcard/series/tabs
+        (is (= 4 (qc)))))))
+
+(deftest extract-nested-partitioned-test
+  (testing "extract-nested will partition stuff by 100s"
+    (mt/with-empty-h2-app-db
+      (let [d   (ts/create! :model/Dashboard {:name "Dash"})
+            c1  (ts/create! :model/Card {:name "Card"})
+            dcs (vec (for [_ (range 7)]
+                       (ts/create! :model/DashboardCard {:dashboard_id (:id d)
+                                                         :card_id      (:id c1)})))]
+        (t2/with-call-count [qc]
+          (is (=? [(assoc d :dashcards dcs)]
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
+                                                              :where [:= :id (:id d)]}))))
+          ;; query count breakdown:
+          ;; - 1 for dashboard
+          ;; - 1 for tabs, there are none
+          ;; - 1 for dashcards, there are 7
+          ;; - 2 for series (7 dashcards / 5 -> 2 batches)
+          (is (= 5 (qc))))))))

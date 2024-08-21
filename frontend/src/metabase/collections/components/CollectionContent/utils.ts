@@ -1,4 +1,4 @@
-import type { DragEventHandler, DragEvent } from "react";
+import type { DragEvent, DragEventHandler } from "react";
 import type { DropzoneRootProps } from "react-dropzone";
 
 export const composeFileEventHandler =

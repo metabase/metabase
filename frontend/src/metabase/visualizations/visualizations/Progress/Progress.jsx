@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import Color from "color";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
 import _ from "underscore";

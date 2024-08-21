@@ -5,7 +5,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Icon } from "metabase/ui";
 
-import { NudgeCard, Description, Subtitle, ProLink } from "./NudgeToPro.styled";
+import { Description, NudgeCard, ProLink, Subtitle } from "./NudgeToPro.styled";
 
 export const NudgeToPro = () => {
   const upgradeUrl = useSelector(state =>

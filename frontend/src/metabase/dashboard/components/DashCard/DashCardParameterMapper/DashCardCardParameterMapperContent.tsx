@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -7,13 +7,13 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
-  isVirtualDashCard,
   getVirtualCardType,
+  isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
 import { useDispatch } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
-import { Flex, Icon, Transition, Tooltip, Box } from "metabase/ui";
+import { Box, Flex, Icon, Tooltip, Transition } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {

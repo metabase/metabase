@@ -2,18 +2,18 @@ import { SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 import { FIRST_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  navigationSidebar,
-  undo,
-  main,
-  describeEE,
-  onlyOnOSS,
-  setTokenFeatures,
-  getCollectionActions,
-  modal,
-  restore,
-  visitCollection,
   createCollection,
+  describeEE,
+  getCollectionActions,
+  main,
+  modal,
+  navigationSidebar,
+  onlyOnOSS,
   popover,
+  restore,
+  setTokenFeatures,
+  undo,
+  visitCollection,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > clean up", () => {

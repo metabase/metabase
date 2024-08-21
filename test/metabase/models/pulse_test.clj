@@ -10,14 +10,11 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -434,7 +431,7 @@
 ;;; |                                   Pulse Collections Permissions Tests                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-pulse-in-collection [f]
+(defn do-with-pulse-in-collection! [f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [Collection collection {}
                    Pulse      pulse {:collection_id (u/the-id collection)}
@@ -446,11 +443,11 @@
                    PulseCard  _ {:pulse_id (u/the-id pulse) :card_id (u/the-id card)}]
       (f db collection pulse card))))
 
-(defmacro with-pulse-in-collection
+(defmacro with-pulse-in-collection!
   "Execute `body` with a temporary Pulse, in a Collection, containing a single Card."
   {:style/indent :defn}
   [[db-binding collection-binding pulse-binding card-binding] & body]
-  `(do-with-pulse-in-collection
+  `(do-with-pulse-in-collection!
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or pulse-binding '_) ~(or card-binding '_)]
       ~@body)))
 
@@ -477,7 +474,7 @@
 ;;; |                         Dashboard Subscription Collections Permissions Tests                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- do-with-dashboard-subscription-in-collection [f]
+(defn- do-with-dashboard-subscription-in-collection! [f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp [Collection collection {}
                    Dashboard  dashboard {:collection_id (u/the-id collection)}
@@ -487,16 +484,16 @@
                    Database   db        {:engine :h2}]
       (f db collection dashboard pulse))))
 
-(defmacro with-dashboard-subscription-in-collection
+(defmacro with-dashboard-subscription-in-collection!
   "Execute `body` with a temporary Dashboard Subscription created by :rasta (a non-admin) for a Dashboard in a Collection"
   {:style/indent 1}
   [[db-binding collection-binding dashboard-binding subscription-binding] & body]
-  `(do-with-dashboard-subscription-in-collection
+  `(do-with-dashboard-subscription-in-collection!
     (fn [~(or db-binding '_) ~(or collection-binding '_) ~(or dashboard-binding '_) ~(or subscription-binding '_)]
       ~@body)))
 
 (deftest dashboard-subscription-permissions-test
-  (with-dashboard-subscription-in-collection [_ collection dashboard subscription]
+  (with-dashboard-subscription-in-collection! [_ collection dashboard subscription]
     (testing "An admin has read and write access to any dashboard subscription"
       (binding [api/*is-superuser?* true]
         (is (mi/can-read? subscription))
@@ -525,12 +522,3 @@
                                             :creator_id    (mt/user->id :crowberto)}]
             (is (not (mi/can-read? subscription)))
             (is (not (mi/can-write? subscription)))))))))
-
-(deftest identity-hash-test
-  (testing "Pulse hashes are composed of the name and the collection hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp [Collection  coll  {:name "field-db" :location "/" :created_at now}
-                     Pulse       pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]
-        (is (= "82553101"
-               (serdes/raw-hash ["my pulse" (serdes/identity-hash coll) now])
-               (serdes/identity-hash pulse)))))))

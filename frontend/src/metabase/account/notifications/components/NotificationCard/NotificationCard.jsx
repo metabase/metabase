@@ -13,10 +13,10 @@ import {
 import Settings from "metabase/lib/settings";
 
 import {
-  NotificationContent,
-  NotificationIcon,
-  NotificationDescription,
   NotificationCardRoot,
+  NotificationContent,
+  NotificationDescription,
+  NotificationIcon,
   NotificationMessage,
 } from "./NotificationCard.styled";
 

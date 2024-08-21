@@ -288,7 +288,7 @@
                                                                     {:col 10 :size_x 10}])]
       (is (= 20 size_x)))))
 
-(defn- do-with-testing-model
+(defn- do-with-indexed-model!
   [{:keys [query pk-ref value-ref]} f]
   (t2.with-temp/with-temp [Card model {:type          :model
                                        :dataset_query query}]
@@ -304,7 +304,7 @@
                                               :model_index_id (:id model-index)
                                               :model_pk 1)})))))
 
-(defmacro with-indexed-model
+(defmacro with-indexed-model!
   "Creates a model based on `query-info`, which is indexed.
 
   `query-info` is a map with keys:
@@ -312,8 +312,8 @@
   - pk-ref: a field_ref for the model's pk
   - value-ref: a field_ref for the model's label."
   [[bindings query-info] & body]
-  `(do-with-testing-model ~query-info
-                          (fn [~bindings] ~@body)))
+  `(do-with-indexed-model! ~query-info
+                           (fn [~bindings] ~@body)))
 
 (def Tab-Id-Schema
   "Schema for tab-ids. Must be integers for the front-end, but negative so we know they do not (yet) exist in the db."
@@ -356,10 +356,10 @@
 (deftest create-linked-dashboard-test-regular-queries
   (mt/dataset test-data
     (testing "x-ray an mbql model"
-      (with-indexed-model [{:keys [model model-index model-index-value]}
-                           {:query     (mt/mbql-query products)
-                            :pk-ref    (mt/$ids :products $id)
-                            :value-ref (mt/$ids :products $title)}]
+      (with-indexed-model! [{:keys [model model-index model-index-value]}
+                            {:query     (mt/mbql-query products)
+                             :pk-ref    (mt/$ids :products $id)
+                             :value-ref (mt/$ids :products $title)}]
         (let [dash (#'api.magic/create-linked-dashboard
                     {:model             model
                      :model-index       model-index
@@ -416,10 +416,10 @@
               id-field-ref    (:field_ref (by-id results-meta "id"))
               title-field-ref (:field_ref (by-id results-meta "title"))
               id-field-id     (mt/id :products :id)]
-          (with-indexed-model [{:keys [model model-index model-index-value]}
-                               {:query     (mt/native-query {:query "select * from products"})
-                                :pk-ref    id-field-ref
-                                :value-ref title-field-ref}]
+          (with-indexed-model! [{:keys [model model-index model-index-value]}
+                                {:query     (mt/native-query {:query "select * from products"})
+                                 :pk-ref    id-field-ref
+                                 :value-ref title-field-ref}]
             ;; need user metadata edits to find linked tables to an otherwise opaque native query
             (t2/update! :model/Card (:id model)
                         {:result_metadata (annotating results-meta id-field-ref
@@ -452,7 +452,7 @@
 (deftest create-linked-dashboard-test-single-link
   (mt/dataset test-data
     (testing "with only single linked table"
-      (with-indexed-model [{:keys [model model-index model-index-value]}
+      (with-indexed-model! [{:keys [model model-index model-index-value]}
                            {:query     (mt/mbql-query people)
                             :pk-ref    (mt/$ids :people $id)
                             :value-ref (mt/$ids :people $email)}]
