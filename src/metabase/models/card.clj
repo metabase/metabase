@@ -242,11 +242,12 @@
   (mi/instances-with-hydrated-data
    cards k
    #(group-by :source_card_id
-              (t2/select :model/Card
-                         :source_card_id [:in (map :id cards)],
-                         :archived false,
-                         :type :metric,
-                         {:order-by [[:name :asc]]}))
+              (->> (t2/select :model/Card
+                              :source_card_id [:in (map :id cards)],
+                              :archived false,
+                              :type :metric,
+                              {:order-by [[:name :asc]]})
+                   (filter mi/can-read?)))
    :id))
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
