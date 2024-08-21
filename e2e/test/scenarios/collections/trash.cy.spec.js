@@ -18,12 +18,12 @@ import {
   popover,
   restore,
   selectSidebarItem,
+  sharingMenuButton,
   sidebar,
   undo,
   visitCollection,
   visitDashboard,
   visitQuestion,
-  sharingMenuButton,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > trash", () => {

@@ -4,7 +4,7 @@ import { useSetting } from "metabase/common/hooks";
 import Link from "metabase/core/components/Link";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Menu, Center, Icon, Title, Stack, Text } from "metabase/ui";
+import { Center, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 
 export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
   const isEmbeddingEnabled = useSetting("enable-embedding");

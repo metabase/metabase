@@ -1,6 +1,6 @@
 import type {
-  CreateSubscriptionRequest,
   ChannelApiResponse,
+  CreateSubscriptionRequest,
   DashboardSubscription,
   ListSubscriptionsRequest,
   UpdateSubscriptionRequest,
@@ -11,9 +11,9 @@ import {
   idTag,
   invalidateTags,
   listTag,
+  provideSubscriptionChannelListTags,
   provideSubscriptionListTags,
   provideSubscriptionTags,
-  provideSubscriptionChannelListTags,
 } from "./tags";
 
 export const subscriptionApi = Api.injectEndpoints({

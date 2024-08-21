@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { setupQuestionSharingMenu, openMenu } from "./setup";
+import { openMenu, setupQuestionSharingMenu } from "./setup";
 
 describe("QuestionSharingMenu > Enterprise", () => {
   it('Should show the "Subscriptions" menu item to non-admins if the user has subscriptions/alerts permissions', async () => {

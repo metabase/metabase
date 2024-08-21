@@ -6,6 +6,7 @@ import {
   getDashboardCard,
   getIframeBody,
   modal,
+  openSharingMenu,
   popover,
   questionInfoButton,
   restore,
@@ -15,7 +16,6 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitQuestion,
-  openSharingMenu,
 } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;

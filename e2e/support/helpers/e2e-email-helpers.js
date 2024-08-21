@@ -1,4 +1,4 @@
-import { sidebar, openSharingMenu } from "e2e/support/helpers";
+import { openSharingMenu, sidebar } from "e2e/support/helpers";
 
 import { WEBMAIL_CONFIG } from "../cypress_data";
 

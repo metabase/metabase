@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { useListCardAlertsQuery, skipToken } from "metabase/api";
+import { skipToken, useListCardAlertsQuery } from "metabase/api";
 import { useSelector } from "metabase/lib/redux";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
-import { Menu, Center, Icon, Title } from "metabase/ui";
+import { Center, Icon, Menu, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 export function AlertMenuItem({

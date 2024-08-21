@@ -8,18 +8,18 @@ import {
   describeEE,
   modal,
   modifyPermission,
+  openSharingMenu,
   popover,
   restore,
   setTokenFeatures,
   setupSMTP,
-  sidebar,
-  undoToast,
-  openSharingMenu,
   sharingMenu,
+  sharingMenuButton,
+  sidebar,
+  tableInteractive,
+  undoToast,
   visitDashboard,
   visitQuestion,
-  tableInteractive,
-  sharingMenuButton,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

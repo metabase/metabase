@@ -8,12 +8,12 @@ import {
   filterWidget,
   goToTab,
   openNewPublicLinkDropdown,
+  openSharingMenu,
   popover,
   restore,
   setTokenFeatures,
   visitDashboard,
   visitPublicDashboard,
-  openSharingMenu,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;

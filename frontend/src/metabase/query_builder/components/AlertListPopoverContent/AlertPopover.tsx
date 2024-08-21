@@ -1,4 +1,4 @@
-import { useState, forwardRef, type Ref } from "react";
+import { type Ref, forwardRef, useState } from "react";
 import { useMount } from "react-use";
 
 import { useListCardAlertsQuery } from "metabase/api";

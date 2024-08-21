@@ -6,7 +6,7 @@ import {
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
 
-import { setupDashboardSharingMenu, openMenu } from "./setup";
+import { openMenu, setupDashboardSharingMenu } from "./setup";
 
 describe("DashboardSharingMenu", () => {
   it("should have a 'sharing' tooltip by default", () => {

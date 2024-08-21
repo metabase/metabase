@@ -8,15 +8,15 @@ import {
   createAction,
   describeEE,
   modal,
+  openSharingMenu,
   restore,
   setActionsEnabledForDB,
+  setTokenFeatures,
   setupSMTP,
   sidebar,
   visitDashboard,
   visitDashboardAndCreateTab,
   visitQuestion,
-  setTokenFeatures,
-  openSharingMenu,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;

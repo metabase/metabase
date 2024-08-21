@@ -16,7 +16,7 @@ import type {
 import { getSetting } from "metabase/selectors/settings";
 import { PublicLinkCopyPanel } from "metabase/sharing/components/PublicLinkPopover/PublicLinkCopyPanel";
 import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
-import { Group, Text, Anchor, Stack } from "metabase/ui";
+import { Anchor, Group, Stack, Text } from "metabase/ui";
 
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";

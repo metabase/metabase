@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import { createMockAlert } from "metabase-types/api/mocks";
 
-import { setupQuestionSharingMenu, openMenu } from "./setup";
+import { openMenu, setupQuestionSharingMenu } from "./setup";
 
 describe("QuestionSharingMenu", () => {
   it("should not render anything if the question is a model", async () => {

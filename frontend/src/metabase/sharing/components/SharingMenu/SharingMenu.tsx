@@ -1,4 +1,4 @@
-import React, { forwardRef, type Ref } from "react";
+import React, { type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/components/ToolbarButton";

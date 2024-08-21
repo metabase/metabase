@@ -5,12 +5,11 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   mockSlackConfigured,
+  openSharingMenu,
   restore,
   setupSMTP,
-  visitModel,
-  openSharingMenu,
   sharingMenuButton,
-  sharingMenu,
+  visitModel,
   visitQuestion,
 } from "e2e/support/helpers";
 

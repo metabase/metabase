@@ -6,7 +6,7 @@ import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { Menu, Center, Icon, Title, Stack, Text } from "metabase/ui";
+import { Center, Icon, Menu, Stack, Text, Title } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 export function DashboardSubscriptionMenuItem({

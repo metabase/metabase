@@ -3,8 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupAlertsEndpoints,
-  setupUsersEndpoints,
   setupNotificationChannelsEndpoints,
+  setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";

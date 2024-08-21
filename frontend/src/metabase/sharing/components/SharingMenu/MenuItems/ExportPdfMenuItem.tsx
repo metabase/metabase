@@ -1,7 +1,7 @@
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { isWithinIframe } from "metabase/lib/dom";
-import { Menu, Icon, Center, Title } from "metabase/ui";
+import { Center, Icon, Menu, Title } from "metabase/ui";
 import {
   getExportTabAsPdfButtonText,
   saveDashboardPdf,

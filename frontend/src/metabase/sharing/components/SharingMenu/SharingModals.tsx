@@ -1,4 +1,4 @@
-import { forwardRef, type Ref } from "react";
+import { type Ref, forwardRef } from "react";
 
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { AlertPopover } from "metabase/query_builder/components/AlertListPopoverContent/AlertPopover";
@@ -8,8 +8,8 @@ import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
 
 import {
-  QuestionPublicLinkPopover,
   DashboardPublicLinkPopover,
+  QuestionPublicLinkPopover,
 } from "../PublicLinkPopover";
 
 import type {
