@@ -3,6 +3,7 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import { useListCollectionsTreeQuery } from "metabase/api";
 import { logout } from "metabase/auth/actions";
 import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
 import {
@@ -53,7 +54,6 @@ interface Props extends MainNavbarProps {
   currentUser: User;
   selectedItems: SelectedItem[];
   bookmarks: Bookmark[];
-  collections: Collection[];
   rootCollection: Collection;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
@@ -75,7 +75,6 @@ function MainNavbarContainer({
   isOpen,
   currentUser,
   hasOwnDatabase,
-  collections = [],
   rootCollection,
   hasDataAccess,
   allError,
@@ -90,6 +89,11 @@ function MainNavbarContainer({
   ...props
 }: Props) {
   const [modal, setModal] = useState<NavbarModal>(null);
+
+  const { data: collections = [] } = useListCollectionsTreeQuery({
+    "exclude-other-user-collections": true,
+    "exclude-archived": true,
+  });
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
     const preparedCollections = [];
@@ -191,14 +195,6 @@ export default _.compose(
   Collections.load({
     id: ROOT_COLLECTION.id,
     entityAlias: "rootCollection",
-    loadingAndErrorWrapper: false,
-  }),
-  Collections.loadList({
-    query: () => ({
-      tree: true,
-      "exclude-other-user-collections": true,
-      "exclude-archived": true,
-    }),
     loadingAndErrorWrapper: false,
   }),
   Databases.loadList({
