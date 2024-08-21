@@ -156,5 +156,5 @@ export const setupPermissions: CliStepMethod = async state => {
 
   await propagateErrorResponse(res);
 
-  return [{ type: "success" }, { ...state, tenancyIsolationEnabled: true }];
+  return [{ type: "success" }, state];
 };
