@@ -2059,24 +2059,24 @@
     (testing "Can we rollback to 49 when sandboxing is configured"
       (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
         (clear-permissions!)
-        (let [db-id      (first (t2/insert-returning-pks! (t2/table-name :model/Database) {:name       "DB"
-                                                                                           :engine     "h2"
-                                                                                           :created_at :%now
-                                                                                           :updated_at :%now
-                                                                                           :details    "{}"}))
-              table-id-1 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
-                                                                                        :schema     "SchemaName"
-                                                                                        :name       "Table 1"
-                                                                                        :created_at :%now
-                                                                                        :updated_at :%now
-                                                                                        :active     true}))
-              table-id-2 (first (t2/insert-returning-pks! (t2/table-name :model/Table) {:db_id      db-id
-                                                                                        :schema     "SchemaName"
-                                                                                        :name       "Table 2"
-                                                                                        :created_at :%now
-                                                                                        :updated_at :%now
-                                                                                        :active     true}))
-              group-id   (first (t2/insert-returning-pks! (t2/table-name :model/PermissionsGroup) {:name "Test Group"}))
+        (let [db-id      (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
+                                                                                   :engine     "h2"
+                                                                                   :created_at :%now
+                                                                                   :updated_at :%now
+                                                                                   :details    "{}"})
+              table-id-1 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                :schema     "SchemaName"
+                                                                                :name       "Table 1"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true})
+              table-id-2 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                :schema     "SchemaName"
+                                                                                :name       "Table 2"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true})
+              group-id   (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})
               perm-id-1  (t2/insert-returning-pk! (t2/table-name :model/Permissions)
                                                   {:object   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-1)
                                                    :group_id group-id})
