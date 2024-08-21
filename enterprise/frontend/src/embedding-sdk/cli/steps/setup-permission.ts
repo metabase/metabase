@@ -1,13 +1,16 @@
 import { search } from "@inquirer/prompts";
+import chalk from "chalk";
 import toggle from "inquirer-toggle";
 
-import { printEmptyLines } from "embedding-sdk/cli/utils/print";
+import {
+  printEmptyLines,
+  printHelperText,
+} from "embedding-sdk/cli/utils/print";
 
 import { NO_TENANCY_COLUMN_WARNING_MESSAGE } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { getPermissionsForGroups } from "../utils/get-permission-groups";
 import { getTenancyIsolationSandboxes } from "../utils/get-tenancy-isolation-sandboxes";
-import { printHelperText } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
 // Name of the permission groups and collections to create.
