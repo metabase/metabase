@@ -46,7 +46,7 @@ const ORDERS_SCALAR_MODEL_METRIC = {
 const ORDERS_SCALAR_FILTER_METRIC = {
   name: "Orders metric with filter",
   type: "metric",
-  description: "This is a description",
+  description: "This is a description _with markdown_",
   query: {
     "source-table": ORDERS_ID,
     filter: [">", ["field", ORDERS.TOTAL, null], 100],
