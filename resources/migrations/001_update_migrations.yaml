@@ -9060,6 +9060,7 @@ databaseChangeLog:
       id: v51.2024-08-21T08:33:11
       author: johnswanson
       comment: Create index on `permissions.collection_id`
+      rollback: # deleted with the column
       preConditions:
         - not:
             - indexExists:
@@ -9078,6 +9079,7 @@ databaseChangeLog:
       id: v51.2024-08-21T08:33:12
       author: johnswanson
       comment: Index on `permissions.perm_type`
+      rollback: # deleted with the column
       preConditions:
         - not:
             - indexExists:
@@ -9095,6 +9097,7 @@ databaseChangeLog:
       id: v51.2024-08-21T08:33:13
       author: johnswanson
       comment: Index on `permissions.perm_value`
+      rollback: # deleted with the column
       preConditions:
         - not:
             - indexExists:
