@@ -166,7 +166,7 @@ export const useCommandPaletteBasicActions = ({
       },
       {
         id: "navigate_chat",
-        name: t`Chat`,
+        name: t`Ask Omni`,
         section: "basic",
         icon: "chat",
         perform: () => {
