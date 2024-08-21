@@ -8908,6 +8908,25 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
+  - changeSet:
+      id: v51.2024-08-21T14:35:00
+      author: jordigiam
+      comment: Add field is_cube into metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: metabase_database
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_cube
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

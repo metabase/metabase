@@ -33,7 +33,9 @@ export const BrowseDatabases = () => {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  if (!databases?.length) {
+  const filteredDatabases = databases?.filter(database => database.is_cube === false);
+
+  if (!filteredDatabases?.length) {
     return (
       <CenteredEmptyState
         title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
@@ -52,7 +54,7 @@ export const BrowseDatabases = () => {
       <BrowseMain>
         <BrowseSection>
           <DatabaseGrid data-testid="database-browser">
-            {databases.map(database => (
+            {filteredDatabases.map(database => (
               <div key={database.id}>
                 <DatabaseCardLink to={Urls.browseDatabase(database)}>
                   <DatabaseCard>
