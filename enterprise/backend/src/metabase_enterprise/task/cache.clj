@@ -87,7 +87,7 @@
    (triggers/with-schedule
     (cron/schedule
        ;; run every minute
-      (cron/cron-schedule "0 * * * * ? *")))))
+     (cron/cron-schedule "0 * * * * ? *")))))
 
 (defenterprise init-cache-task!
   "Inits periodical task checking for cache expiration"

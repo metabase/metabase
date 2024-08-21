@@ -75,8 +75,9 @@
   hits the `Sync` button in the admin panel multiple times.
 
     ;; Only one `sync-db!` for `database-id` will be allowed at any given moment; duplicates will be ignored
-    (with-duplicate-ops-prevented :sync database-id
-      #(sync-db! database-id))"
+    (with-duplicate-ops-prevented
+     :sync database-id
+     #(sync-db! database-id))"
   {:style/indent [:form]}
   [operation database-or-id f]
   (fn []

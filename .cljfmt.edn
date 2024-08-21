@@ -35,6 +35,7 @@
   clojurewerkz.quartzite.triggers/build                                                [[:default]]
   clojurewerkz.quartzite.triggers/with-description                                     [[:default]]
   clojurewerkz.quartzite.triggers/with-identity                                        [[:default]]
+  clojurewerkz.quartzite.triggers/with-priority                                        [[:default]]
   clojurewerkz.quartzite.triggers/with-schedule                                        [[:default]]
   def-map-type                                                                         [[:block 2] [:inner 1]]
   defprotocol+                                                                         [[:block 1] [:inner 1]]

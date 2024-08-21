@@ -248,7 +248,8 @@
   []
   (u/prog1 (maybe-install-audit-db)
     (let [audit-db (t2/select-one :model/Database :is_audit true)]
-       ;; prevent sync while loading
-      ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
-         (fn []
-           (maybe-load-analytics-content! audit-db)))))))
+      ;; prevent sync while loading
+      ((sync-util/with-duplicate-ops-prevented
+        :sync-database audit-db
+        (fn []
+          (maybe-load-analytics-content! audit-db)))))))
