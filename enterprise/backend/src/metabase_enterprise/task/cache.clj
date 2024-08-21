@@ -75,19 +75,19 @@
 
 (def ^:private cache-job
   (jobs/build
-    (jobs/with-description "Schedule Caches refresh task")
-    (jobs/of-type Cache)
-    (jobs/with-identity (jobs/key "metabase-enterprise.cache.job"))
-    (jobs/store-durably)))
+   (jobs/with-description "Schedule Caches refresh task")
+   (jobs/of-type Cache)
+   (jobs/with-identity (jobs/key "metabase-enterprise.cache.job"))
+   (jobs/store-durably)))
 
 (def ^:private cache-trigger
   (triggers/build
-    (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
-    (triggers/start-now)
-    (triggers/with-schedule
-      (cron/schedule
+   (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
+   (triggers/start-now)
+   (triggers/with-schedule
+    (cron/schedule
         ;; run every minute
-        (cron/cron-schedule "0 * * * * ? *")))))
+     (cron/cron-schedule "0 * * * * ? *")))))
 
 (defenterprise init-cache-task!
   "Inits periodical task checking for cache expiration"

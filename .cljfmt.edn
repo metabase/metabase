@@ -9,67 +9,69 @@
  true
 
  :paths
- [#_"src/metabase/actions"
-  #_"src/metabase/analytics"
-  #_"src/metabase/analyze"
-  #_"src/metabase/api"
-  #_"src/metabase/async"
-  #_"src/metabase/channel"
-  #_"src/metabase/cmd"
-  #_"src/metabase/core"
-  #_"src/metabase/db"
-  #_"src/metabase/driver"
-  #_"src/metabase/email"
-  #_"src/metabase/embed"
-  #_"src/metabase/events"
-  #_"src/metabase/formatter"
-  #_"src/metabase/integrations"
-  #_"src/metabase/legacy_mbql"
-  #_"src/metabase/lib"
-  #_"src/metabase/mbql"
-  #_"src/metabase/metabot"
-  #_"src/metabase/models"
-  #_"src/metabase/native_query_analyzer"
-  #_"src/metabase/permissions"
-  #_"src/metabase/plugins"
-  #_"src/metabase/public_settings"
-  #_"src/metabase/pulse"
-  #_"src/metabase/query_analysis"
-  "src/metabase/query_processor"
-  #_"src/metabase/search"
-  #_"src/metabase/server"
-  #_"src/metabase/settings"
-  #_"src/metabase/shared"
-  #_"src/metabase/sync"
-  #_"src/metabase/task"
-  #_"src/metabase/types"
-  #_"src/metabase/upload"
-  #_"src/metabase/util"
-  #_"src/metabase/xrays"
-  #_"src"
+ ["src/metabase/query_processor"
   #_"test"
   "enterprise/backend"
   "bin/build"
-  "modules/drivers"]
+  "modules/drivers"
+  #_"dev"]
 
  ;; See https://github.com/weavejester/cljfmt/blob/master/cljfmt/resources/cljfmt/indents/clojure.clj for the default
  ;; definitions
+ ;;
+ ;;    [[:block 0]]
+ ;;             ^ number of special args
+ ;;
+ ;; `:block` indentation means format with all arguments indented 2 spaces except for the 'special' arguments which
+ ;; normally are supposed to go on the first line. e.g. `let` gets [[:block 1]] because it has one 'special' arg.
+ ;;
+ ;;    [[:inner 0]]
+ ;;             ^ depth
+ ;;    [[:inner 2 0]]
+ ;;               ^ argument index to restrict this rule to
+ ;;
+ ;; `:inner` indentation is like `:defn` indentation. `[[:inner 0]]` (default for `defn`) means all arguments at depth
+ ;; zero get indented 2 spaces if not on the first line regardless of number of elements on the first line.
  :extra-indents
  {;; clojure.core stuff
   fn*                                                                                  [[:inner 0]]
   with-meta                                                                            [[:default]]
-  ;; library stuff
-  clojurewerkz.quartzite.jobs/build                                                    [[:block 0]]
-  clojurewerkz.quartzite.schedule.cron/schedule                                        [[:block 0]]
-  clojurewerkz.quartzite.triggers/build                                                [[:block 0]]
+
+  extend-protocol [[:block 1] [:inner 1]]
+
+  ;; library stuff. Libraries that specify their own `:style/indent` specs are included in the section after this
+  ;; since it is generated automatically.
+  clojure.core.logic/fresh                                                             [[:block 1]]
+  clojure.core.logic/matcha                                                            [[:block 1]]
+  clojure.core.logic/run                                                               [[:block 2]]
+  clojurewerkz.quartzite.jobs/build                                                    [[:default]]
+  clojurewerkz.quartzite.jobs/with-description                                         [[:default]]
+  clojurewerkz.quartzite.jobs/with-identity                                            [[:default]]
+  clojurewerkz.quartzite.schedule.cron/schedule                                        [[:default]]
+  clojurewerkz.quartzite.schedule.cron/with-misfire-handling-instruction-do-nothing    [[:default]]
+  clojurewerkz.quartzite.triggers/build                                                [[:default]]
+  clojurewerkz.quartzite.triggers/with-description                                     [[:default]]
+  clojurewerkz.quartzite.triggers/with-identity                                        [[:default]]
+  clojurewerkz.quartzite.triggers/with-priority                                        [[:default]]
+  clojurewerkz.quartzite.triggers/with-schedule                                        [[:default]]
+  def-map-type                                                                         [[:block 2] [:inner 1]]
+  defprotocol+                                                                         [[:block 1] [:inner 1]]
+  defrecord+                                                                           [[:block 2] [:inner 1]]
+  deftype+                                                                             [[:block 2] [:inner 1]]
+  net.cgrand.macrovich/case                                                            [[:block 0]]
+  potemkin.namespaces/import-vars                                                      [[:default]]
+  potemkin.types/def-map-type                                                          [[:block 2] [:inner 1]]
   potemkin.types/defprotocol+                                                          [[:block 1] [:inner 1]]
   potemkin.types/defrecord+                                                            [[:block 2] [:inner 1]]
   potemkin.types/deftype+                                                              [[:block 2] [:inner 1]]
+  potemkin/def-map-type                                                                [[:block 2] [:inner 1]]
   potemkin/defprotocol+                                                                [[:block 1] [:inner 1]]
   potemkin/defrecord+                                                                  [[:block 2] [:inner 1]]
   potemkin/deftype+                                                                    [[:block 2] [:inner 1]]
+  potemkin/import-vars                                                                 [[:default]]
   taoensso.nippy/extend-freeze                                                         [[:inner 0]]
   taoensso.nippy/extend-thaw                                                           [[:inner 0]]
+  throttle.core/with-throttling                                                        [[:block 1]]
   ;; the rest of the stuff in this list is generated automatically based on `:style/indent` specs
   ;; by running [[dev.generate-cljfmt-config/specs]]... use that code to update this list
   metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!          [[:inner 0]]
@@ -123,6 +125,7 @@
   metabase.api.public-test/with-temp-public-dashboard                                  [[:block 1]]
   metabase.api.public-test/with-temp-public-dashboard-and-card                         [[:block 1]]
   metabase.api.search-test/do-test-users                                               [[:block 1]]
+  metabase.api.session/http-401-on-error                                               [[:block 0]]
   metabase.async.streaming-response/streaming-response                                 [[:block 2]]
   metabase.async.streaming-response-test/with-streaming-response-thread-pool           [[:block 0]]
   metabase.async.streaming-response-test/with-test-driver-db!                          [[:block 0]]
@@ -198,6 +201,7 @@
   metabase.sync.util/sum-for                                                           [[:block 1]]
   metabase.sync.util/sync-operation                                                    [[:block 3]]
   metabase.sync.util/with-db-logging-disabled                                          [[:default]]
+  metabase.sync.util/with-duplicate-ops-prevented                                      [[:default]]
   metabase.sync.util/with-emoji-progress-bar                                           [[:block 1]]
   metabase.sync.util/with-error-handling                                               [[:block 1]]
   metabase.sync.util/with-start-and-finish-logging                                     [[:default]]
@@ -259,9 +263,11 @@
   metabase.test.util.public-settings/with-additional-premium-features                  [[:block 1]]
   metabase.test.util.public-settings/with-premium-features                             [[:block 1]]
   metabase.test.util.thread-local/test-helpers-set-global-values!                      [[:block 0]]
-  metabase.timeseries-query-processor-test/run-mbql-query                              [[:inner 0]]
   metabase.timeseries-query-processor-test.util/test-timeseries-drivers                [[:block 0]]
+  metabase.timeseries-query-processor-test/run-mbql-query                              [[:inner 0]]
   metabase.upload-test/with-upload-table!                                              [[:inner 0]]
+  metabase.upload.types/with-currency                                                  [[:default]]
+  metabase.upload.types/with-parens                                                    [[:default]]
   metabase.util/auto-retry                                                             [[:block 1]]
   metabase.util/ignore-exceptions                                                      [[:block 0]]
   metabase.util/or-with                                                                [[:block 1]]
@@ -297,7 +303,6 @@
   methodical.macros/defmethod                                                          [[:inner 0]]
   methodical.macros/defmulti                                                           [[:inner 0]]
   saml20-clj.sp.response/validate-confirmation-datas                                   [[:block 1]]
-  throttle.core/with-throttling                                                        [[:block 2]]
   toucan2.connection/with-transaction                                                  [[:block 1]]
   toucan2.core/build                                                                   [[:block 0]]
   toucan2.core/compile                                                                 [[:block 0]]
