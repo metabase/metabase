@@ -70,7 +70,10 @@ export const setupLicense: CliStepMethod = async state => {
       return [{ type: "success" }, { ...state, token }];
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      printWithPadding(`Failed to activate license. Reason: ${reason}`);
+
+      printWithPadding(
+        chalk.red(`Failed to activate license. Reason: ${reason}`),
+      );
 
       const shouldAbandon = await select({
         message: `Do you want to try another license key?`,
