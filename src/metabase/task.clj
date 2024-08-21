@@ -225,9 +225,9 @@
   [job-key :- (ms/InstanceOfClass JobKey)]
   (try
     (when-let [scheduler (scheduler)]
-        (.triggerJob scheduler job-key))
-      (catch Throwable e
-        (log/errorf e "Failed to trigger immediate execution of task %s" job-key))))
+      (.triggerJob scheduler job-key))
+    (catch Throwable e
+      (log/errorf e "Failed to trigger immediate execution of task %s" job-key))))
 
 (mu/defn delete-task!
   "Delete a task from the scheduler"
