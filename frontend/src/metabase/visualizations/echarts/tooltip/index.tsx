@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 import type React from "react";
 import { useEffect, useMemo } from "react";
+import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
@@ -147,4 +148,19 @@ export const usePieChartValuesColorsClasses = (chartModel: PieChartModel) => {
   }, [chartModel.slices]);
 
   return useInjectSeriesColorsClasses(hexColors);
+};
+
+export const useCloseTooltipOnScroll = (
+  chartRef: React.MutableRefObject<EChartsType | undefined>,
+) => {
+  useEffect(() => {
+    const handleScroll = _.throttle(() => {
+      chartRef.current?.dispatchAction({
+        type: "hideTip",
+      });
+    }, 50);
+
+    window.addEventListener("scroll", handleScroll, true);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [chartRef]);
 };

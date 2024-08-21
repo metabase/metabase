@@ -6,7 +6,10 @@ import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/forma
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
-import { usePieChartValuesColorsClasses } from "metabase/visualizations/echarts/tooltip";
+import {
+  useCloseTooltipOnScroll,
+  usePieChartValuesColorsClasses,
+} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
@@ -112,6 +115,8 @@ export function PieChart(props: VisualizationProps) {
         ...hoverData,
       },
     );
+
+  useCloseTooltipOnScroll(chartRef);
 
   return (
     <ChartWithLegend
