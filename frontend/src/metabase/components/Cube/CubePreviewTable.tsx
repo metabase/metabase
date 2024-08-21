@@ -12,7 +12,7 @@ import VisualizationResult from "metabase/query_builder/components/Visualization
 import CS from "metabase/css/core/index.css";
 import cx from "classnames";
 import LoadingSpinner from "../LoadingSpinner";
-import { useListDatabasesQuery } from "metabase/api";
+import { useListDatabasesWithTablesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
 
 export interface CubeTableProps {
@@ -41,7 +41,7 @@ export const CubePreviewTable = ({
   const [defaultQuestion, setDefaultQuestion] = useState<any>(null);
   const [codeQuery, setCodeQuery] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true)
-  const { data, error } = useListDatabasesQuery();
+  const { data, error } = useListDatabasesWithTablesQuery();
   const databases = data?.data;
   const dispatch = useDispatch();
 
