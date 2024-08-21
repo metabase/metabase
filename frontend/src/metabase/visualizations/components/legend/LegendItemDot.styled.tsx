@@ -32,8 +32,7 @@ export const Button = styled.button`
   height: 20px;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
 
-  &:hover,
-  &:focus {
+  &:hover {
     ${InnerCircle} {
       transform: scale(0.8);
       border-width: 0;
