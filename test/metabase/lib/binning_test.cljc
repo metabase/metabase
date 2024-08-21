@@ -69,20 +69,20 @@
 (deftest ^:parallel binning-equality-test
   (testing "should compare 'default' binning values"
     (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
-      true {:strategy :default} {:strategy :default}
-      false {:strategy :default} {:strategy :num-bins :num-bins 10}
-      false {:strategy :default} {:strategy :bin-width :bin-width 10}))
+      true  {:strategy :default} {:strategy :default}
+      false {:strategy :default} {:strategy :num-bins, :num-bins 10}
+      false {:strategy :default} {:strategy :bin-width, :bin-width 10}))
   (testing "should compare 'num-bins' binning values"
     (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
-      true {:strategy :num-bins :num-bins 10} {:strategy :num-bins :num-bins 10}
-      true {:strategy :num-bins :num-bins 10 :bin-width 3} {:strategy :num-bins :num-bins 10}
-      true {:strategy :num-bins :num-bins 10 :bin-width 3} {:strategy :num-bins :num-bins 10 :bin-width 4}
-      true {:strategy :num-bins :num-bins 10} {:strategy :num-bins :num-bins 10 :metadata-fn (fn [] nil)}
-      false {:strategy :num-bins :num-bins 10} {:strategy :num-bins :num-bins 20}))
+      true  {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 10}
+      true  {:strategy :num-bins, :num-bins 10, :bin-width 3} {:strategy :num-bins, :num-bins 10}
+      true  {:strategy :num-bins, :num-bins 10, :bin-width 3} {:strategy :num-bins, :num-bins 10, :bin-width 4}
+      true  {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 10, :metadata-fn (fn [] nil)}
+      false {:strategy :num-bins, :num-bins 10}               {:strategy :num-bins, :num-bins 20}))
   (testing "should compare 'bin-width' binning values"
     (are [expected x y] (= expected (lib.binning/binning= x y) (lib.binning/binning= y x))
-      true {:strategy :bin-width :bin-width 10} {:strategy :bin-width :bin-width 10}
-      true {:strategy :bin-width :bin-width 10 :num-bins 3} {:strategy :bin-width :bin-width 10}
-      true {:strategy :bin-width :bin-width 10 :num-bins 3} {:strategy :bin-width :bin-width 10 :num-bins 4}
-      true {:strategy :bin-width :bin-width 10} {:strategy :bin-width :bin-width 10 :metadata-fn (fn [] nil)}
-      false {:strategy :bin-width :bin-width 10} {:strategy :bin-width :bin-width 20})))
+      true  {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 10}
+      true  {:strategy :bin-width, :bin-width 10, :num-bins 3} {:strategy :bin-width, :bin-width 10}
+      true  {:strategy :bin-width, :bin-width 10, :num-bins 3} {:strategy :bin-width, :bin-width 10, :num-bins 4}
+      true  {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 10, :metadata-fn (fn [] nil)}
+      false {:strategy :bin-width, :bin-width 10}              {:strategy :bin-width, :bin-width 20})))
