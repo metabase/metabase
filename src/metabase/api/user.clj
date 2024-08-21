@@ -299,36 +299,7 @@
   "An efficient check for whether a user has a readable model. Does not use `collection/honeysql-filter-clause` in case
   the number of collections the user has access to is very large."
   [model & additional-clauses]
-  (if api/*is-superuser?*
-    (t2/exists? model {:where (into [:and
-                                     [:= :archived false]
-                                     (mi/exclude-internal-content-hsql model)]
-                                    additional-clauses)})
-    (or (t2/exists? model {:join [[:permissions :p] [:or
-                                                     [:= :p.object [:concat "/collection/" :collection_id "/"]]
-                                                     [:= :p.object [:concat "/collection/" :collection_id "/read/"]]
-                                                     [:and
-                                                      [:= nil :collection_id]
-                                                      [:or [:= :p.object "/collection/root/"]
-                                                       [:= :p.object "/collection/root/read/"]]]]
-
-                                  [:permissions_group :pg]
-                                  [:= :pg.id :p.group_id]
-
-                                  [:permissions_group_membership :pgm]
-                                  [:= :pgm.group_id :pg.id]]
-
-                           :where (into
-                                   [:and
-                                    [:= :archived false]
-                                    (mi/exclude-internal-content-hsql model)
-                                    [:= :pgm.user_id api/*current-user-id*]]
-                                   additional-clauses)})
-        (t2/exists? model {:where (into
-                                   [:and
-                                    [:= :archived false]
-                                    (mi/exclude-internal-content-hsql model)
-                                    [:in :collection_id (collection/user->personal-collection-and-descendant-ids api/*current-user-id*)]])}))))
+  (t2/exists? model {:where (into [:and (collection/honeysql-filter-clause)] additional-clauses)}))
 
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
