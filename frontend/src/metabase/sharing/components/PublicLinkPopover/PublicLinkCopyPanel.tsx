@@ -2,10 +2,6 @@ import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
 import {
-  PublicLinkCopyButton,
-  RemoveLinkAnchor,
-} from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel.styled";
-import {
   Anchor,
   Box,
   Group,
@@ -15,6 +11,10 @@ import {
   Tooltip,
 } from "metabase/ui";
 
+import {
+  PublicLinkCopyButton,
+  RemoveLinkAnchor,
+} from "./PublicLinkCopyPanel.styled";
 import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({

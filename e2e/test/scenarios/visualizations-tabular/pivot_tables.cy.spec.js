@@ -10,7 +10,7 @@ import {
   main,
   modal,
   openNotebook,
-  openPublicLinkPopoverFromMenu,
+  openSharingMenu,
   openStaticEmbeddingModal,
   popover,
   queryBuilderMain,
@@ -680,13 +680,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in a public link", () => {
+          cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            cy.icon("share").click();
+            openSharingMenu();
             modal().within(() => {
               cy.findByText("Save").click();
             });
           }
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
             .invoke("val")
@@ -708,8 +709,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
+          cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            cy.icon("share").click();
+            openSharingMenu();
             modal().within(() => {
               cy.findByText("Save").click();
             });

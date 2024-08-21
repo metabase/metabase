@@ -33,9 +33,9 @@ import {
   getTextCardDetails,
   modal,
   openDashboardMenu,
-  openEmbedModalFromMenu,
   openProductsTable,
   openQuestionsSidebar,
+  openSharingMenu,
   popover,
   queryBuilderHeader,
   removeDashboardCard,
@@ -929,7 +929,7 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
 
     modal().within(() => {
       cy.icon("close").click();

@@ -223,11 +223,12 @@
   [tables]
   (with-objects :metrics
     (fn [table-ids]
-      (t2/select :model/Card
-                 :table_id [:in table-ids],
-                 :archived false,
-                 :type :metric,
-                 {:order-by [[:name :asc]]}))
+      (->> (t2/select :model/Card
+                      :table_id [:in table-ids],
+                      :archived false,
+                      :type :metric,
+                      {:order-by [[:name :asc]]})
+           (filter mi/can-read?)))
     tables))
 
 (defn with-fields
