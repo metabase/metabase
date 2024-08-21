@@ -279,6 +279,54 @@ describe("#39152 sharing an unsaved question", () => {
   });
 });
 
+describe("metabase#46893 - popover should appear next to button, not at the top left of the page", () => {
+  it("should show the public link popover next to the dashboard sharing button", () => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+
+    createResource("dashboard").then(({ body: { id } }) => {
+      createPublicDashboardLink(id);
+      visitDashboard(id);
+    });
+
+    cy.findByTestId("resource-embed-button").click();
+
+    cy.findByTestId("embed-header-menu").then($menu => {
+      cy.findByTestId("resource-embed-button").then($button => {
+        const menuRect = $menu[0].getBoundingClientRect();
+        const buttonRect = $button[0].getBoundingClientRect();
+
+        expect(menuRect.left).to.be.closeTo(buttonRect.left, 20);
+        expect(menuRect.top).to.be.closeTo(buttonRect.bottom, 20);
+      });
+    });
+  });
+
+  it("should show the public link popover next to the question sharing button", () => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+
+    createResource("question").then(({ body: { id } }) => {
+      createPublicQuestionLink(id);
+      visitQuestion(id);
+    });
+
+    cy.findByTestId("resource-embed-button").click();
+
+    cy.findByTestId("embed-header-menu").then($menu => {
+      cy.findByTestId("resource-embed-button").then($button => {
+        const menuRect = $menu[0].getBoundingClientRect();
+        const buttonRect = $button[0].getBoundingClientRect();
+
+        expect(menuRect.right).to.be.closeTo(buttonRect.right, 20);
+        expect(menuRect.bottom).to.be.closeTo(buttonRect.top, 20);
+      });
+    });
+  });
+});
+
 ["dashboard", "question"].forEach(resource => {
   describeWithSnowplow(`public ${resource} sharing snowplow events`, () => {
     beforeEach(() => {
