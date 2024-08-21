@@ -466,9 +466,10 @@ describe("scenarios > metrics > editing", () => {
         cy.findByLabelText("More info").should("exist").realHover();
       });
 
-      hovercard()
-        .contains(ORDERS_SCALAR_FILTER_METRIC.description)
-        .should("be.visible");
+      hovercard().within(() => {
+        cy.contains("This is a description").should("be.visible");
+        cy.contains("with markdown").should("be.visible");
+      });
     });
   });
 });
