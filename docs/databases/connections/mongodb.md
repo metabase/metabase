@@ -10,7 +10,7 @@ Metabase supports MongoDB version 4.2 or higher.
 
 ## How Metabase syncs data in MongoDB
 
-Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first 10 000 documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
+Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first 10,000 documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
 
 ## Connecting to MongoDB
 
@@ -70,7 +70,7 @@ If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP add
 2. Go to **Network Access**
 3. Add the IP addresses that your Metabase uses to connect.
 
-### Connect Metabase to your cluster
+### Connect Metabase to your Atlas cluster
 
 > The connection string provided in Atlas "Connect" interface does not include the database. Metabase requires you to provide a database name when connecting, so you'll need to edit the connection string to add the database name.
 
@@ -82,12 +82,12 @@ If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP add
 
 3. Select **Drivers**.
 
-4. Copy the connection string from **Add your connection string into your application code** section
+4. Copy the connection string from **Add your connection string into your application code** section.
 
    ![Connect screengrab](../images/connection-string.png)
 
 5. In Metabase, go to Admin -> Databases, and click the **Add database** button.
-6. Select MongoDB from the dropdown, and enter your desired **Display name** for this database.
+6. Select MongoDB from the dropdown, and enter a **Display name** for this database.
 7. Click on **"Paste the connection string"** and paste your connection string.
 8. Edit the connection string to include the name of the database after `/`:
 
@@ -95,9 +95,9 @@ If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP add
    mongodb+srv://metabot:metapass@my-test-cluster.a5ej7.mongodb.net/DATABASE_NAME?retryWrites=true&w=majority&appName=my-test-cluster
    ```
 
-See more information about [Advanced options](#settings-common-to-both-connection-options).
+If you're using Metabase fields to input connection information for your Atlas cluster instead of using the connection string, you might need to turn on **Use DNS SRV when connecting**.
 
-If you are using Metabase fields to input connection information for your Atlas cluster instead of using the connection string, you might need to turn on **Use DNS SRV when connecting**.
+See more information about [Advanced options](#settings-common-to-both-connection-options).
 
 ## Configuring SSL via the command line
 
