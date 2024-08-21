@@ -264,8 +264,8 @@
                                     :condition [:= $tips.source.categories &Tips.$tips.source.categories]}]})
                   compiled (mongo.qp/mbql->native query)
                   let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
-                 (is (and (not (str/includes? let-lhs "."))
-                          (str/includes? let-lhs "source_categories"))))))))))
+              (is (and (not (str/includes? let-lhs "."))
+                       (str/includes? let-lhs "source_categories"))))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
@@ -287,29 +287,29 @@
 
 (deftest ^:parallel multiple-aggregations-with-distinct-count-expression-test
   (mt/test-driver
-   :mongo
-   (testing "Should generate correct queries for `:distinct` in expressions (#35425)"
-     (is (= {:projections ["expression" "expression_2"],
-             :query
-             [{"$group"
-               {"_id"                 nil,
-                "expression~count"    {"$addToSet" "$name"},
-                "expression~count1"   {"$addToSet" "$price"},
-                "expression_2~count"  {"$addToSet" "$name"},
-                "expression_2~count1" {"$addToSet" "$price"}}}
-              {"$addFields"
-               {"expression"   {"$add" [{"$size" "$expression~count"} {"$size" "$expression~count1"}]},
-                "expression_2" {"$subtract" [{"$size" "$expression_2~count"} {"$size" "$expression_2~count1"}]}}}
-              {"$sort" {"_id" 1}}
-              {"$project" {"_id" false, "expression" true, "expression_2" true}}
-              {"$limit" 5}],
-             :collection "venues",
-             :mbql? true}
-            (qp.compile/compile
-             (mt/mbql-query venues
-                            {:aggregation [[:+ [:distinct $name] [:distinct $price]]
-                                           [:- [:distinct $name] [:distinct $price]]]
-                             :limit       5})))))))
+    :mongo
+    (testing "Should generate correct queries for `:distinct` in expressions (#35425)"
+      (is (= {:projections ["expression" "expression_2"],
+              :query
+              [{"$group"
+                {"_id"                 nil,
+                 "expression~count"    {"$addToSet" "$name"},
+                 "expression~count1"   {"$addToSet" "$price"},
+                 "expression_2~count"  {"$addToSet" "$name"},
+                 "expression_2~count1" {"$addToSet" "$price"}}}
+               {"$addFields"
+                {"expression"   {"$add" [{"$size" "$expression~count"} {"$size" "$expression~count1"}]},
+                 "expression_2" {"$subtract" [{"$size" "$expression_2~count"} {"$size" "$expression_2~count1"}]}}}
+               {"$sort" {"_id" 1}}
+               {"$project" {"_id" false, "expression" true, "expression_2" true}}
+               {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
+             (qp.compile/compile
+              (mt/mbql-query venues
+                {:aggregation [[:+ [:distinct $name] [:distinct $price]]
+                               [:- [:distinct $name] [:distinct $price]]]
+                 :limit       5})))))))
 
 (defn- extract-projections [projections q]
   (select-keys (get-in q [:query 0 "$project"]) projections))
@@ -576,38 +576,38 @@
 
 (deftest ^:parallel uniqe-alias-index-test
   (mt/test-driver
-   :mongo
-   (testing "Field aliases have deterministic unique indices"
-     (let [query (mt/mbql-query
-                  nil
-                  {:joins [{:alias "Products"
-                            :source-table $$products
-                            :condition [:= &Products.products.id $orders.product_id]
-                            :fields :all}
-                           {:alias "People"
-                            :source-table $$people
-                            :condition [:= &People.people.id $orders.user_id]
-                            :fields :all}]
-                   :source-query {:source-table $$orders
-                                  :joins [{:alias "Products"
-                                           :source-table $$products
-                                           :condition [:= &Products.products.id $orders.product_id]
-                                           :fields :all}
-                                          {:alias "People"
-                                           :source-table $$people
-                                           :condition [:= &People.people.id $orders.user_id]
-                                           :fields :all}]}})
-           compiled (qp.compile/compile query)
-           indices (reduce (fn [acc lookup-stage]
-                             (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
+    :mongo
+    (testing "Field aliases have deterministic unique indices"
+      (let [query (mt/mbql-query
+                    nil
+                    {:joins [{:alias "Products"
+                              :source-table $$products
+                              :condition [:= &Products.products.id $orders.product_id]
+                              :fields :all}
+                             {:alias "People"
+                              :source-table $$people
+                              :condition [:= &People.people.id $orders.user_id]
+                              :fields :all}]
+                     :source-query {:source-table $$orders
+                                    :joins [{:alias "Products"
+                                             :source-table $$products
+                                             :condition [:= &Products.products.id $orders.product_id]
+                                             :fields :all}
+                                            {:alias "People"
+                                             :source-table $$people
+                                             :condition [:= &People.people.id $orders.user_id]
+                                             :fields :all}]}})
+            compiled (qp.compile/compile query)
+            indices (reduce (fn [acc lookup-stage]
+                              (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.
-                                   index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                                    index (Integer/parseInt (re-find #"\d+$" let-var-name))]
                                ;; Following expression tests that index is unique.
-                               (is (not (contains? acc index)))
-                               (conj acc index)))
-                           #{}
-                           (filter #(contains? % "$lookup") (:query compiled)))]
-       (is (= #{1 2 3 4} indices))))))
+                                (is (not (contains? acc index)))
+                                (conj acc index)))
+                            #{}
+                            (filter #(contains? % "$lookup") (:query compiled)))]
+        (is (= #{1 2 3 4} indices))))))
 
 (deftest ^:parallel parse-query-string-test
   (testing "`parse-query-string` returns no `Bson...` typed values  (#38181)"

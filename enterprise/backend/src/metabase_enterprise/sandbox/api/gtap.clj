@@ -28,8 +28,8 @@
 ;; TODO - not sure what other endpoints we might need, e.g. for fetching the list above but for a given group or Table
 
 #_(def ^:private AttributeRemappings
-   (mu/with-api-error-message [:maybe [:map-of ms/NonBlankString ms/NonBlankString]]
-     "value must be a valid attribute remappings map (attribute name -> remapped name)"))
+    (mu/with-api-error-message [:maybe [:map-of ms/NonBlankString ms/NonBlankString]]
+      "value must be a valid attribute remappings map (attribute name -> remapped name)"))
 
 (api/defendpoint POST "/"
   "Create a new GTAP."
@@ -57,8 +57,8 @@
   ;; This allows existing values to be "cleared" by being set to nil
   (when (some #(contains? body %) [:card_id :attribute_remappings])
     (t2/update! GroupTableAccessPolicy id
-      (u/select-keys-when body
-        :present #{:card_id :attribute_remappings})))
+                (u/select-keys-when body
+                                    :present #{:card_id :attribute_remappings})))
   (t2/select-one GroupTableAccessPolicy :id id))
 
 (api/defendpoint POST "/validate"
@@ -86,7 +86,7 @@
       (raise (ex-info (str (tru "Error: sandboxing is not enabled for this instance.")
                            " "
                            (tru "Please check you have set a valid Enterprise token and try again."))
-               {:status-code 403}))
+                      {:status-code 403}))
       (handler request respond raise))))
 
 ;; All endpoints in this namespace require superuser perms to view

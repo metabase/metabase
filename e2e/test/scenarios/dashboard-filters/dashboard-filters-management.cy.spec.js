@@ -166,7 +166,7 @@ describe("scenarios > dashboard > filters > management", () => {
       cy.log("verify ID doesn't render operator select");
       sidebar().findAllByRole("searchbox").should("have.length", 1);
 
-      changeFilterType("Time");
+      changeFilterType("Date picker");
 
       cy.log("verify Date default value: All Options");
       verifyOperatorValue("All Options");
@@ -374,7 +374,7 @@ function selectFilter(name) {
 }
 
 function changeFilterType(type) {
-  sidebar().findByText("Filter type").next().click();
+  sidebar().findByText("Filter or parameter type").next().click();
   popover().findByText(type).click();
 }
 

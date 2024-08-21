@@ -2,6 +2,7 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
+import { getGeneratedComponentFilesMessage } from "../constants/messages";
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
 import { getComponentSnippets } from "../utils/get-component-snippets";
@@ -59,9 +60,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   await fs.writeFile(`${path}/index.js`, exportIndexContent);
 
-  printSuccess(
-    `Generated example React components files in "${path}". You can import the <AnalyticsPage /> component in your React app from this path.`,
-  );
+  printSuccess(getGeneratedComponentFilesMessage(path));
 
   return [{ type: "done" }, state];
 };

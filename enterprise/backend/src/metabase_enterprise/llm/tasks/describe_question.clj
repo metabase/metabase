@@ -13,11 +13,11 @@
   (let [visualization_settings (u/remove-nils visualization_settings)
         {:keys [query]} (qp.compile/compile-with-inline-parameters dataset_query)]
     (cond->
-      {:sql_query           query
-       :display_type        display
-       :column_descriptions (zipmap
-                              (map (some-fn :display_name :name) result_metadata)
-                              (map (some-fn :semantic_type :effective_type) result_metadata))}
+     {:sql_query           query
+      :display_type        display
+      :column_descriptions (zipmap
+                            (map (some-fn :display_name :name) result_metadata)
+                            (map (some-fn :semantic_type :effective_type) result_metadata))}
       (seq visualization_settings)
       (assoc :visualization_settings visualization_settings))))
 
@@ -33,8 +33,8 @@
         json-str             (json/generate-string summary-with-prompts)
         client               (-> (llm-client/create-chat-completion)
                                  (llm-client/wrap-parse-json
-                                   (fn [rsp] (rename-keys rsp {:friendly_title   :title
-                                                               :friendly_summary :description}))))]
+                                  (fn [rsp] (rename-keys rsp {:friendly_title   :title
+                                                              :friendly_summary :description}))))]
     (client
      {:messages
       [{:role "system"

@@ -6,7 +6,10 @@ import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/forma
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
 import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
-import { usePieChartValuesColorsClasses } from "metabase/visualizations/echarts/tooltip";
+import {
+  useCloseTooltipOnScroll,
+  usePieChartValuesColorsClasses,
+} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
@@ -27,6 +30,7 @@ export function PieChart(props: VisualizationProps) {
   } = props;
   const hoveredIndex = props.hovered?.index;
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   const [sideLength, setSideLength] = useState(0);
 
@@ -58,7 +62,7 @@ export function PieChart(props: VisualizationProps) {
         sideLength,
         hoveredIndex,
       ),
-      tooltip: getTooltipOption(chartModel, formatters),
+      tooltip: getTooltipOption(chartModel, formatters, containerRef),
     }),
     [
       chartModel,
@@ -112,9 +116,9 @@ export function PieChart(props: VisualizationProps) {
       },
     );
 
+  useCloseTooltipOnScroll(chartRef);
+
   return (
-    // @ts-expect-error - `ChartWithLegend` has bad types due to it being in js
-    // and due to using a HoC
     <ChartWithLegend
       legendTitles={legendTitles}
       legendColors={legendColors}
@@ -126,9 +130,8 @@ export function PieChart(props: VisualizationProps) {
       isDashboard={isDashboard}
     >
       <ChartRenderer
+        ref={containerRef}
         option={option}
-        width={"auto"}
-        height={"auto"}
         onInit={handleInit}
         onResize={handleResize}
         eventHandlers={eventHandlers}
@@ -136,7 +139,6 @@ export function PieChart(props: VisualizationProps) {
         // we need it to be `false`, otherwise echarts will bug out and be stuck
         // in emphasis state after hovering a slice
         notMerge={false}
-        style={null}
       />
       {valuesColorsCss}
     </ChartWithLegend>

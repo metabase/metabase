@@ -48,13 +48,9 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "section",
     tooltip: "Add section",
   },
-  [DASHBOARD_ACTION.ADD_TEMPORAL_UNIT]: {
-    icon: "clock",
-    tooltip: "Add a Unit of Time widget",
-  },
   [DASHBOARD_ACTION.ADD_FILTER_PARAMETER]: {
     icon: "filter",
-    tooltip: "Add a filter",
+    tooltip: "Add a filter or parameter",
   },
   [DASHBOARD_ACTION.ADD_ACTION_ELEMENT]: {
     icon: "click",

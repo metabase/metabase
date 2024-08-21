@@ -470,7 +470,7 @@
 
 (defmacro as-admin
   "Execude code in body as an admin user."
-  {:style/indent :defn}
+  {:style/indent 0}
   [& body]
   `(do-with-current-user
     (merge

@@ -123,7 +123,7 @@
 (defmethod can-optimize-filter? :>=
   [filter-clause]
   (lib.util.match/match-one
-   filter-clause
+    filter-clause
     [_tag
     ;; Don't optimize >= with column that has default temporal bucket
      (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
@@ -133,7 +133,7 @@
 (defmethod can-optimize-filter? :<
   [filter-clause]
   (lib.util.match/match-one
-   filter-clause
+    filter-clause
     [_tag
     ;; Don't optimize < with column that has default temporal bucket
      (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
