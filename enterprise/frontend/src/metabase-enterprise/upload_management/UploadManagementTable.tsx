@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
-import { Table } from "metabase/common/components/Table";
+import { ClientSortableTable } from "metabase/common/components/Table";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -17,7 +17,7 @@ import {
   useDeleteUploadTableMutation,
   useListUploadTablesQuery,
 } from "metabase-enterprise/api";
-import type { Table as UploadTable } from "metabase-types/api";
+import type { Table } from "metabase-types/api";
 
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { getDateDisplay } from "./utils";
@@ -31,7 +31,7 @@ const columns = [
 ];
 
 export function UploadManagementTable() {
-  const [selectedItems, setSelectedItems] = useState<UploadTable[]>([]);
+  const [selectedItems, setSelectedItems] = useState<Table[]>([]);
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const dispatch = useDispatch();
@@ -47,7 +47,7 @@ export function UploadManagementTable() {
   });
 
   const deleteTable = useCallback(
-    async (table: UploadTable, sendToTrash: boolean) => {
+    async (table: Table, sendToTrash: boolean) => {
       return deleteTableRequest({
         tableId: table.id,
         "archive-cards": sendToTrash,
@@ -62,7 +62,7 @@ export function UploadManagementTable() {
   );
 
   const renderRow = useCallback(
-    (row: UploadTable) => (
+    (row: Table) => (
       <UploadTableRow
         item={row}
         isSelected={selectedItemIds.has(row.id)}
@@ -149,7 +149,7 @@ export function UploadManagementTable() {
       <Text fw="bold" color="text-medium">
         {t`Uploaded Tables`}
       </Text>
-      <Table
+      <ClientSortableTable
         data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}
@@ -166,10 +166,10 @@ const UploadTableRow = ({
   onTrash,
   isSelected,
 }: {
-  item: UploadTable;
-  onSelect: (item: UploadTable) => void;
-  onDeselect: (item: UploadTable) => void;
-  onTrash: (item: UploadTable) => void;
+  item: Table;
+  onSelect: (item: Table) => void;
+  onDeselect: (item: Table) => void;
+  onTrash: (item: Table) => void;
   isSelected: boolean;
 }) => {
   const createdAtString = getDateDisplay(item.created_at);

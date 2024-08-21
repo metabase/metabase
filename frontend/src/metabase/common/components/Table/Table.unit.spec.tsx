@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { getIcon, queryIcon } from "__support__/ui";
 
-import { ControlledTable } from "./ControlledTable";
+import { ClientSortableTable } from "./ClientSortableTable";
 import { Table } from "./Table";
 
 type Pokemon = {
@@ -90,7 +90,7 @@ const renderRow = (row: Pokemon) => {
 describe("common > components > Table", () => {
   it("should render table headings", () => {
     render(
-      <Table
+      <ClientSortableTable
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
@@ -104,7 +104,7 @@ describe("common > components > Table", () => {
 
   it("should render table row data", () => {
     render(
-      <Table
+      <ClientSortableTable
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
@@ -121,7 +121,7 @@ describe("common > components > Table", () => {
 
   it("should sort the table", async () => {
     render(
-      <Table
+      <ClientSortableTable
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
@@ -145,14 +145,14 @@ describe("common > components > Table", () => {
   it("should respect locales when sorting tables", async () => {
     render(
       <>
-        <Table
+        <ClientSortableTable
           data-testid="japanese-table"
           columns={sampleColumns}
           rows={sampleJapaneseData}
           rowRenderer={renderRow}
           locale="ja-JP"
         />
-        <Table
+        <ClientSortableTable
           data-testid="english-table"
           columns={sampleColumns}
           rows={sampleJapaneseData}
@@ -184,7 +184,7 @@ describe("common > components > Table", () => {
 
   it("should sort on multiple columns", async () => {
     render(
-      <Table
+      <ClientSortableTable
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
@@ -212,11 +212,11 @@ describe("common > components > Table", () => {
 
   it("should present the empty component if no rows are given", async () => {
     render(
-      <Table
+      <ClientSortableTable
         columns={sampleColumns}
         rows={[]}
         rowRenderer={renderRow}
-        ifEmpty={
+        emptyBody={
           <tr>
             <td colSpan={3}>No Results</td>
           </tr>
@@ -231,7 +231,7 @@ describe("common > components > Table", () => {
 
   it("should allow you provide a format values when sorting", async () => {
     render(
-      <Table
+      <ClientSortableTable
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
@@ -264,7 +264,7 @@ describe("common > components > ControlledTable", () => {
     const onSort = jest.fn();
 
     render(
-      <ControlledTable
+      <Table
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
@@ -284,14 +284,16 @@ describe("common > components > ControlledTable", () => {
     const onPageChange = jest.fn();
 
     render(
-      <ControlledTable
+      <Table
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
-        onPageChange={onPageChange}
-        page={0}
-        totalItems={sampleData.length}
-        pageSize={2}
+        paginationProps={{
+          onPageChange,
+          page: 0,
+          total: sampleData.length,
+          pageSize: 3,
+        }}
       />,
     );
     expect(screen.getByText("Name")).toBeInTheDocument();

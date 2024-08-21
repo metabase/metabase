@@ -1,83 +1,152 @@
-import React, { useCallback, useMemo } from "react";
+import React from "react";
 
 import {
-  type BaseRow,
-  ControlledTable,
-  type ControlledTableProps,
-} from "./ControlledTable";
+  PaginationControls,
+  type PaginationControlsProps,
+} from "metabase/components/PaginationControls";
+import { Box, Flex, Icon } from "metabase/ui";
+import { SortDirection } from "metabase-types/api/sorting";
 
-const compareNumbers = (a: number, b: number) => a - b;
+import CS from "./Table.module.css";
 
-export type TableProps<T extends BaseRow> = ControlledTableProps<T> & {
-  locale?: string;
-  formatValueForSorting?: (row: T, columnName: string) => any;
+export type BaseRow = Record<string, unknown> & { id: number | string };
+
+type ColumnItem = {
+  name: string;
+  key: string;
+  sortable?: boolean;
+};
+
+type sortProps = { name: string; direction: SortDirection };
+
+export type TableProps<Row extends BaseRow> = {
+  columns: ColumnItem[];
+  rows: Row[];
+  rowRenderer: (row: Row) => React.ReactNode;
+  sortColumn?: sortProps;
+  onSort?: (props: sortProps) => void;
+  paginationProps?: Pick<
+    PaginationControlsProps,
+    "page" | "pageSize" | "total"
+  > & { onPageChange: (page: number) => void };
+  emptyBody?: React.ReactNode;
+  cols?: React.ReactNode;
 };
 
 /**
- * A basic reusable table component that supports client-side sorting by a column
+ * A basic reusable table component
  *
  * @param columns     - an array of objects with name and key properties
  * @param rows        - an array of objects with keys that match the column keys
  * @param rowRenderer - a function that takes a row object and returns a <tr> element
- * @param tableProps  - additional props to pass to the <table> element
  */
+
 export function Table<Row extends BaseRow>({
   columns,
   rows,
   rowRenderer,
-  tableProps,
-  formatValueForSorting = (row: Row, columnName: string) => row[columnName],
-  locale,
+  sortColumn,
+  onSort,
+  paginationProps,
+  emptyBody,
+  cols,
   ...rest
 }: TableProps<Row>) {
-  const [sortColumn, setSortColumn] = React.useState<string | null>(null);
-  const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">(
-    "asc",
-  );
-
-  const compareStrings = useCallback(
-    (a: string, b: string) =>
-      a.localeCompare(b, locale, { sensitivity: "base" }),
-    [locale],
-  );
-
-  const sortedRows = useMemo(() => {
-    if (sortColumn) {
-      return [...rows].sort((rowA, rowB) => {
-        const a = formatValueForSorting(rowA, sortColumn);
-        const b = formatValueForSorting(rowB, sortColumn);
-
-        if (!isSortableValue(a) || !isSortableValue(b)) {
-          return 0;
-        }
-
-        const result =
-          typeof a === "string"
-            ? compareStrings(a, b as string)
-            : compareNumbers(a, b as number);
-        return sortDirection === "asc" ? result : -result;
-      });
-    }
-    return rows;
-  }, [rows, sortColumn, sortDirection, compareStrings, formatValueForSorting]);
-
   return (
-    <ControlledTable
-      rows={sortedRows}
-      columns={columns}
-      rowRenderer={rowRenderer}
-      onSort={({ name, direction }) => {
-        setSortColumn(name);
-        setSortDirection(direction);
-      }}
-      sortColumn={
-        sortColumn ? { name: sortColumn, direction: sortDirection } : undefined
-      }
-      {...rest}
-    />
+    <>
+      <table {...rest} className={CS.Table}>
+        {cols && <colgroup>{cols}</colgroup>}
+        <thead>
+          <tr>
+            {columns.map(column => (
+              <th key={String(column.key)}>
+                {onSort && column.sortable !== false ? (
+                  <ColumnHeader
+                    column={column}
+                    sortColumn={sortColumn?.name}
+                    sortDirection={sortColumn?.direction}
+                    onSort={(columnKey: string, direction: SortDirection) => {
+                      onSort({ name: columnKey, direction });
+                    }}
+                  />
+                ) : (
+                  column.name
+                )}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length > 0
+            ? rows.map((row, index) => (
+                <React.Fragment key={String(row.id) || index}>
+                  {rowRenderer(row)}
+                </React.Fragment>
+              ))
+            : emptyBody}
+        </tbody>
+      </table>
+
+      {paginationProps && (
+        <Flex justify="end">
+          <PaginationControls
+            page={paginationProps.page}
+            pageSize={paginationProps.pageSize}
+            total={paginationProps.total}
+            itemsLength={rows.length}
+            onNextPage={() =>
+              paginationProps.onPageChange(paginationProps.page + 1)
+            }
+            onPreviousPage={() =>
+              paginationProps.onPageChange(paginationProps.page - 1)
+            }
+          />
+        </Flex>
+      )}
+    </>
   );
 }
 
-function isSortableValue(value: unknown): value is string | number {
-  return typeof value === "string" || typeof value === "number";
+function ColumnHeader({
+  column,
+  sortColumn,
+  sortDirection,
+  onSort,
+}: {
+  column: ColumnItem;
+  sortColumn?: string | null;
+  sortDirection?: SortDirection;
+  onSort: (column: string, direction: SortDirection) => void;
+}) {
+  return (
+    <Flex
+      gap="sm"
+      align="center"
+      style={{ cursor: "pointer" }}
+      onClick={() =>
+        onSort(
+          String(column.key),
+          sortColumn === column.key && sortDirection === SortDirection.Asc
+            ? SortDirection.Desc
+            : SortDirection.Asc,
+        )
+      }
+    >
+      {column.name}
+      {
+        column.name && column.key === sortColumn ? (
+          <Icon
+            name={
+              sortDirection === SortDirection.Desc ? "chevronup" : "chevrondown"
+            }
+            color="var(--mb-color-text-medium)"
+            style={{ flexShrink: 0 }}
+            size={8}
+          />
+        ) : (
+          <Box w="8px" />
+        ) // spacer to keep the header the same size regardless of sort status
+      }
+    </Flex>
+  );
 }
