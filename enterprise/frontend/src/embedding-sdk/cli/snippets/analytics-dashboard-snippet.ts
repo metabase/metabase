@@ -10,21 +10,21 @@ interface Options {
 export const getAnalyticsDashboardSnippet = (options: Options) => {
   const { instanceUrl, dashboards, userSwitcherEnabled } = options;
 
-  let leftHeaders = "";
   let imports = `import { ThemeSwitcher } from './theme-switcher'`;
 
   if (userSwitcherEnabled) {
     imports += `\nimport { UserSwitcher } from './user-switcher'`;
-    leftHeaders += "\n<UserSwitcher />\n";
   }
 
   return `
 import { useState } from 'react'
 import { InteractiveDashboard } from '${SDK_PACKAGE_NAME}'
+import { AnalyticsContext } from "./analytics-provider"
 
 ${imports}
 
 export const AnalyticsDashboard = () => {
+  const {email} = useContext(AnalyticsContext)
   const [dashboardId, setDashboardId] = useState(DASHBOARDS[0].id)
 
   const editLink = \`${instanceUrl}/dashboard/\${dashboardId}\`
@@ -42,7 +42,9 @@ export const AnalyticsDashboard = () => {
                 {dashboard.name}
               </option>
             ))}
-          </select>${leftHeaders}
+          </select>
+
+          ${userSwitcherEnabled ? "<UserSwitcher />" : ""}
         </div>
 
         <div className="analytics-header-right">
@@ -55,7 +57,8 @@ export const AnalyticsDashboard = () => {
         </div>
       </div>
 
-      <InteractiveDashboard dashboardId={dashboardId} withTitle withDownloads />
+      {/** Reload the dashboard when user changes with the key prop */}
+      <InteractiveDashboard dashboardId={dashboardId} withTitle withDownloads key={email} />
     </div>
   )
 }
