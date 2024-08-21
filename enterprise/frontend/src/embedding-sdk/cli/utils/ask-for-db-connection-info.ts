@@ -133,29 +133,25 @@ const askSectionChoice = async (field: EngineField) => {
 
   // Snowflake allows connecting with either hostname or account name.
   if (field.name === "use-hostname") {
-    const choice = await select({
+    return select({
       message: "Do you want to connect with hostname or account name?",
       choices: [
-        { name: "Hostname", value: "hostname" },
-        { name: "Account name", value: "account" },
+        { name: "Hostname", value: true },
+        { name: "Account name", value: false },
       ],
-      default: "hostname",
+      default: field.default,
     });
-
-    return choice === "hostname";
   }
 
   // MongoDB allows connecting with either hostname or connection string.
   if (field.name === "use-conn-uri") {
-    const choice = await select({
+    return select({
       message: "Do you want to connect with hostname or connection string?",
       choices: [
-        { name: "Hostname", value: "hostname" },
-        { name: "Connection String", value: "conn-uri" },
+        { name: "Hostname", value: false },
+        { name: "Connection String", value: true },
       ],
-      default: "hostname",
+      default: field.default,
     });
-
-    return choice === "conn-uri";
   }
 };

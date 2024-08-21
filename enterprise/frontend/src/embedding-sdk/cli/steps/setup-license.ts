@@ -1,4 +1,4 @@
-import { input } from "@inquirer/prompts";
+import { input, select } from "@inquirer/prompts";
 import chalk from "chalk";
 import toggle from "inquirer-toggle";
 import open from "open";
@@ -70,8 +70,19 @@ export const setupLicense: CliStepMethod = async state => {
       return [{ type: "success" }, { ...state, token }];
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      console.error(`Failed to activate license. Reason: ${reason}`);
-      printEmptyLines(1);
+      printWithPadding(`Failed to activate license. Reason: ${reason}`);
+
+      const shouldAbandon = await select({
+        message: `Do you want to try another license key?`,
+        choices: [
+          { name: "Try another license key.", value: false },
+          { name: "I'll activate the license later.", value: true },
+        ],
+      });
+
+      if (shouldAbandon) {
+        return [{ type: "success" }, state];
+      }
     }
   }
 };
