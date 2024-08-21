@@ -1,7 +1,7 @@
 import {
   ANALYTICS_PAGE_SNIPPET,
   ANALYTICS_PROVIDER_SNIPPET_MINIMAL,
-  ANALYTICS_PROVIDER_SNIPPET_WITH_TENANCY,
+  ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER,
   THEME_SWITCHER_SNIPPET,
   getAnalyticsDashboardSnippet,
   getEmbeddingProviderSnippet,
@@ -13,17 +13,17 @@ interface Options {
   instanceUrl: string;
   apiKey: string;
   dashboards: DashboardInfo[];
-  tenancyIsolationEnabled: boolean;
+  userSwitcherEnabled: boolean;
 }
 
 export function getComponentSnippets(options: Options) {
-  const { tenancyIsolationEnabled } = options;
+  const { userSwitcherEnabled } = options;
 
   const analyticsDashboardSnippet = getAnalyticsDashboardSnippet(options);
   const embeddingProviderSnippet = getEmbeddingProviderSnippet(options);
 
-  const analyticsProviderSnippet = tenancyIsolationEnabled
-    ? ANALYTICS_PROVIDER_SNIPPET_WITH_TENANCY
+  const analyticsProviderSnippet = userSwitcherEnabled
+    ? ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER
     : ANALYTICS_PROVIDER_SNIPPET_MINIMAL;
 
   const components = [
@@ -50,7 +50,7 @@ export function getComponentSnippets(options: Options) {
   ];
 
   // Only generate the user switcher when multi-tenancy is enabled.
-  if (tenancyIsolationEnabled) {
+  if (userSwitcherEnabled) {
     components.push({
       name: "user-switcher",
       content: getUserSwitcherSnippet().trim(),

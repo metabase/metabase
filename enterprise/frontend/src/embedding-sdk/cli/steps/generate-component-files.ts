@@ -10,12 +10,7 @@ import { getComponentSnippets } from "../utils/get-component-snippets";
 import { printError, printSuccess } from "../utils/print";
 
 export const generateReactComponentFiles: CliStepMethod = async state => {
-  const {
-    instanceUrl,
-    apiKey,
-    dashboards = [],
-    tenancyIsolationEnabled = false,
-  } = state;
+  const { instanceUrl, apiKey, dashboards = [], token } = state;
 
   if (!instanceUrl || !apiKey) {
     return [
@@ -48,7 +43,10 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     instanceUrl,
     apiKey,
     dashboards,
-    tenancyIsolationEnabled,
+
+    // Enable user switching only when a valid license is present,
+    // as they won't be able to use JWT.
+    userSwitcherEnabled: !!token,
   });
 
   // Generate sample components files in the specified directory.

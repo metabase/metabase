@@ -4,17 +4,16 @@ import type { DashboardInfo } from "../types/dashboard";
 interface Options {
   instanceUrl: string;
   dashboards: DashboardInfo[];
-  tenancyIsolationEnabled: boolean;
+  userSwitcherEnabled: boolean;
 }
 
 export const getAnalyticsDashboardSnippet = (options: Options) => {
-  const { instanceUrl, dashboards, tenancyIsolationEnabled } = options;
+  const { instanceUrl, dashboards, userSwitcherEnabled } = options;
 
   let leftHeaders = "";
   let imports = `import { ThemeSwitcher } from './theme-switcher'`;
 
-  // We cannot switch users if SSO is not enabled.
-  if (tenancyIsolationEnabled) {
+  if (userSwitcherEnabled) {
     imports += `\nimport { UserSwitcher } from './user-switcher'`;
     leftHeaders += "\n<UserSwitcher />\n";
   }

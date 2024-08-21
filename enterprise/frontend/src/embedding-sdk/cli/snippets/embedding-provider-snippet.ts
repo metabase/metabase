@@ -3,15 +3,16 @@ import { SDK_PACKAGE_NAME } from "../constants/config";
 interface Options {
   instanceUrl: string;
   apiKey: string;
-  tenancyIsolationEnabled: boolean;
+  userSwitcherEnabled: boolean;
 }
 
 export const getEmbeddingProviderSnippet = (options: Options) => {
-  const { instanceUrl, apiKey, tenancyIsolationEnabled } = options;
+  const { instanceUrl, apiKey, userSwitcherEnabled } = options;
 
   let apiKeyOrJwtConfig = "";
 
-  if (tenancyIsolationEnabled) {
+  // Fallback to API keys when user switching is not enabled.
+  if (userSwitcherEnabled) {
     apiKeyOrJwtConfig += `jwtProviderUri: \`\${BASE_SSO_API}/sso/metabase\`,`;
   } else {
     apiKeyOrJwtConfig += `apiKey: '${apiKey}'`;

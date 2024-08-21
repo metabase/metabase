@@ -15,7 +15,7 @@ export const AnalyticsProvider = ({children}) => {
 }
 `;
 
-export const ANALYTICS_PROVIDER_SNIPPET_WITH_TENANCY = `
+export const ANALYTICS_PROVIDER_SNIPPET_WITH_USER_SWITCHER = `
 import {createContext, useCallback, useEffect, useState} from 'react'
 
 export const BASE_SSO_API = 'http://localhost:4477'
