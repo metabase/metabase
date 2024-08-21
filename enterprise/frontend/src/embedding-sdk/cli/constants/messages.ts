@@ -1,5 +1,7 @@
 import chalk from "chalk";
 
+import { HARDCODED_USERS } from "../constants/hardcoded-users";
+
 import { CONTAINER_NAME } from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
@@ -75,3 +77,8 @@ export const getExpressServerGeneratedMessage = (filePath: string) => {
   Start the server with "node ${filePath}".
 `;
 };
+
+export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
+  At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
+  You can add your tenant's IDs to the "customer_id" user attribute in settings.
+`;

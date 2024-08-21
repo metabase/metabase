@@ -7,17 +7,21 @@ import {
   printHelperText,
 } from "embedding-sdk/cli/utils/print";
 
-import { NO_TENANCY_COLUMN_WARNING_MESSAGE } from "../constants/messages";
+import {
+  NOT_ENOUGH_TENANCY_COLUMN_ROWS,
+  NO_TENANCY_COLUMN_WARNING_MESSAGE,
+} from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { getPermissionsForGroups } from "../utils/get-permission-groups";
 import { getTenancyIsolationSandboxes } from "../utils/get-tenancy-isolation-sandboxes";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
+import { sampleTenancyColumnValuesFromTables } from "../utils/sample-tenancy-column-values";
 
 // Name of the permission groups and collections to create.
 const GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
 
 export const setupPermissions: CliStepMethod = async state => {
-  const { cookie = "", instanceUrl } = state;
+  const { cookie = "", instanceUrl = "" } = state;
 
   printHelperText(
     `e.g. does your table have a customer_id column to isolate tenants?`,
@@ -156,12 +160,29 @@ export const setupPermissions: CliStepMethod = async state => {
     });
 
     await propagateErrorResponse(res);
+
+    const tenancyColumnValues = await sampleTenancyColumnValuesFromTables({
+      chosenTables: state.chosenTables,
+      databaseId: state.databaseId ?? 0,
+      tenancyColumnNames,
+
+      cookie,
+      instanceUrl,
+    });
+
+    // The tables don't have enough tenancy column values.
+    // They have to set up the "customer_id" user attribute by themselves.
+    if (!tenancyColumnValues) {
+      console.log(chalk.yellow(NOT_ENOUGH_TENANCY_COLUMN_ROWS));
+
+      return [{ type: "success" }, state];
+    }
+
+    return [{ type: "success" }, { ...state, tenancyColumnValues }];
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const message = `Failed to update permissions. Reason: ${reason}`;
 
     return [{ type: "error", message }, state];
   }
-
-  return [{ type: "success" }, state];
 };
