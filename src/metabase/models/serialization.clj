@@ -1575,8 +1575,9 @@
                     ;; `nil? data` check is for `extract-one` case in tests; make sure to add empty vectors in
                     ;; `extract-query` implementations for nested collections
                     (try
-                      (->> (sort-by sorter data)
-                           (mapv #(extract-one model-name opts %)))
+                      (when (seq data)
+                        (->> (sort-by sorter data)
+                             (mapv #(extract-one model-name opts %))))
                       (catch Exception e
                         (throw (ex-info (format "Error exporting nested %s" model)
                                         {:model     model
