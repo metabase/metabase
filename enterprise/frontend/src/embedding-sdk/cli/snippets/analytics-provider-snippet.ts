@@ -39,7 +39,7 @@ export const AnalyticsProvider = ({children}) => {
         method: 'POST',
         body: JSON.stringify({email}),
         headers: {'content-type': 'application/json'},
-        credentials: 'include',
+        credentials: 'include'
       })
 
       if (!res.ok) {

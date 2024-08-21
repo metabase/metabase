@@ -9,20 +9,23 @@ interface Options {
 export const getEmbeddingProviderSnippet = (options: Options) => {
   const { instanceUrl, apiKey, userSwitcherEnabled } = options;
 
+  let imports = "";
   let apiKeyOrJwtConfig = "";
 
   // Fallback to API keys when user switching is not enabled.
   if (userSwitcherEnabled) {
     apiKeyOrJwtConfig += `jwtProviderUri: \`\${BASE_SSO_API}/sso/metabase\`,`;
+    imports = `import { AnalyticsContext, BASE_SSO_API } from './analytics-provider'`;
   } else {
     apiKeyOrJwtConfig += `apiKey: '${apiKey}'`;
+    imports = `import { AnalyticsContext } from './analytics-provider'`;
   }
 
   return `
 import {useContext, useMemo} from 'react'
 import {MetabaseProvider} from '${SDK_PACKAGE_NAME}'
 
-import {BASE_SSO_API, AnalyticsContext} from './analytics-provider'
+${imports}
 
 /** @type {import('@metabase/embedding-sdk-react').SDKConfig} */
 const config = {
