@@ -12,7 +12,6 @@
 (defn do-with-diagnostic-info
   "Execute `f` with diagnostic info capturing enabled. `f` is passed a single argument, a function that can be used to
   retrieve the current diagnostic info. Prefer to use the macro form instead: `capturing-diagnostic-info`."
-  {:style/indent 0}
   [f]
   (binding [*diagnostic-info* (atom {})]
     (f (partial deref *diagnostic-info*))))

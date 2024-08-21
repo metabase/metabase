@@ -1,14 +1,14 @@
 import {
-  restore,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  resetSnowplow,
-  enableTracking,
-  uploadFile,
   CSV_FILES,
+  describeWithSnowplow,
+  enableTracking,
   enableUploads,
+  expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   mockSessionPropertiesTokenFeatures,
+  resetSnowplow,
+  restore,
+  uploadFile,
 } from "e2e/support/helpers";
 
 describeWithSnowplow(

@@ -4,12 +4,12 @@ import _ from "underscore";
 
 import {
   COLLAPSED_ROWS_SETTING,
-  COLUMN_SPLIT_SETTING,
+  COLUMN_FORMATTING_SETTING,
+  COLUMN_SHOW_TOTALS,
   COLUMN_SORT_ORDER,
   COLUMN_SORT_ORDER_ASC,
   COLUMN_SORT_ORDER_DESC,
-  COLUMN_SHOW_TOTALS,
-  COLUMN_FORMATTING_SETTING,
+  COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
 } from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
@@ -21,8 +21,8 @@ import type {
   Card,
   DatasetColumn,
   DatasetData,
-  Series,
   RowValue,
+  Series,
   VisualizationSettings,
 } from "metabase-types/api";
 

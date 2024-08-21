@@ -12,7 +12,7 @@ import type {
 } from "metabase/querying/components/DatePicker";
 import { DatePicker } from "metabase/querying/components/DatePicker";
 import { useDateFilter } from "metabase/querying/hooks/use-date-filter";
-import { Button, Flex, Grid, Popover, Icon } from "metabase/ui";
+import { Button, Flex, Grid, Icon, Popover } from "metabase/ui";
 
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";

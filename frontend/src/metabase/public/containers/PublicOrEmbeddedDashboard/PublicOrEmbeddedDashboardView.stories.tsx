@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
-import { useEffect, type ComponentProps } from "react";
+import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
@@ -12,8 +12,11 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import { waitTimeContext } from "metabase/context/wait-time";
 import LegacyTooltip from "metabase/core/components/Tooltip";
 import { publicReducers } from "metabase/reducers-public";
-import { Box, Card, Text, Tooltip, Popover } from "metabase/ui";
+import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
+import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
+import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -94,6 +97,7 @@ const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
 const PARAMETER_ID = "param-hex";
 const initialState = createMockState({
+  currentUser: null,
   settings: createMockSettingsState({
     "hide-embed-branding?": false,
   }),
@@ -125,13 +129,14 @@ const store = getStore(publicReducers, initialState);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
+  dashcards?: DashboardCard[];
 }
-function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
+function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   return createMockDashboard({
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
-    dashcards: [
+    dashcards: dashcards ?? [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
         dashboard_tab_id: TAB_ID,
@@ -356,6 +361,37 @@ export function ComponentCompatibility() {
     </Box>
   );
 }
+
+// Card visualizations
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(ObjectDetail);
+
+export const CardVisualizationsLightTheme = Template.bind({});
+CardVisualizationsLightTheme.args = {
+  ...defaultArgs,
+  dashboard: createDashboard({
+    dashcards: [
+      createMockDashboardCard({
+        id: DASHCARD_TABLE_ID,
+        dashboard_tab_id: TAB_ID,
+        card: createMockCard({
+          id: CARD_TABLE_ID,
+          name: "Table detail",
+          display: "object",
+        }),
+        size_x: 12,
+        size_y: 8,
+      }),
+    ],
+  }),
+};
+
+export const CardVisualizationsDarkTheme = Template.bind({});
+CardVisualizationsDarkTheme.args = {
+  ...CardVisualizationsLightTheme.args,
+  theme: "night",
+};
 
 const EXPLICIT_SIZE_WAIT_TIME = 300;
 function ScrollDecorator(Story: Story) {

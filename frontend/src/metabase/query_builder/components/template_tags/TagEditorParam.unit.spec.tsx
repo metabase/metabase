@@ -17,10 +17,10 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   PEOPLE,
   REVIEWS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,

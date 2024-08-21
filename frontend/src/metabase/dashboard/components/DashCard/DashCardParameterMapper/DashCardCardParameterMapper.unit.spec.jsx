@@ -9,17 +9,17 @@ import * as parameterActions from "metabase/dashboard/actions/parameters";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import {
-  createMockCard,
-  createMockTemplateTag,
-  createMockDashboardCard,
   createMockActionDashboardCard,
+  createMockCard,
+  createMockDashboardCard,
   createMockHeadingDashboardCard,
-  createMockParameter,
-  createMockTextDashboardCard,
-  createMockStructuredDatasetQuery,
+  createMockLinkDashboardCard,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockLinkDashboardCard,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
+  createMockTemplateTag,
+  createMockTextDashboardCard,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";

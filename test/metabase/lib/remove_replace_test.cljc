@@ -275,6 +275,51 @@
         (is (=? {:stages [(complement :order-by) (complement :order-by)]}
                 (lib/remove-clause query 0 (last aggregations))))))))
 
+(deftest ^:parallel remove-clause-adjust-ref-names-test
+  (testing "Field identifiers of same name field refs are adjusted on field removal"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                    (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
+                    (lib/breakout (meta/field-metadata :orders :user-id))
+                    lib/append-stage)
+          [a0-column a1-column] (-> query
+                                    lib/visible-columns
+                                    (->> (filter #(= "sum" (:name %)))))
+          query (-> query
+                    (lib/expression "xix" (lib/ref a0-column))
+                    (lib/expression "yiy" (lib/ref a1-column)))
+          a0-ref (first (lib/aggregations query 0))]
+      (testing "Base: Second stage field refs are identified as sum and sum_2"
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+                           :aggregation [[:sum {} [:field {} (meta/id :orders :total)]]
+                                         [:sum {} [:field {} (meta/id :orders :subtotal)]]]
+                           :breakout [[:field {} (meta/id :orders :user-id)]]}
+                          {:lib/type :mbql.stage/mbql,
+                           :expressions
+                           [[:field
+                             {:base-type :type/Float
+                              :effective-type :type/Float
+                              :lib/expression-name "xix"}
+                             "sum"]
+                            [:field
+                             {:base-type :type/Float
+                              :effective-type :type/Float
+                              :lib/expression-name "yiy"}
+                             "sum_2"]]}]}
+                query)))
+      (testing "Second stage field ref indetifier is adjusted from sum_2 to sum."
+        (is (=? {:stages [{:lib/type :mbql.stage/mbql,
+                           :aggregation [[:sum {} [:field {} (meta/id :orders :subtotal)]]]
+                           :breakout [[:field {} (meta/id :orders :user-id)]]}
+                          {:lib/type :mbql.stage/mbql,
+                           :expressions
+                           [[:field
+                             {:base-type :type/Float
+                              :effective-type :type/Float
+                              :lib/expression-name "yiy"}
+                             "sum"]]}]}
+                (lib/remove-clause query 0 a0-ref)))))))
+
 (deftest ^:parallel remove-clause-expression-test
   (let [query (-> lib.tu/venues-query
                   (lib/expression "a" (meta/field-metadata :venues :id))

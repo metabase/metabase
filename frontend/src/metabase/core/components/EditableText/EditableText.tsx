@@ -1,13 +1,13 @@
 import type {
   ChangeEvent,
-  KeyboardEvent,
-  HTMLAttributes,
-  Ref,
-  MouseEvent,
-  FocusEventHandler,
   FocusEvent,
+  FocusEventHandler,
+  HTMLAttributes,
+  KeyboardEvent,
+  MouseEvent,
+  Ref,
 } from "react";
-import { forwardRef, useCallback, useEffect, useState, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
 import Markdown from "metabase/core/components/Markdown";

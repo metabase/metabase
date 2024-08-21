@@ -1,7 +1,6 @@
 import type { Location } from "history";
 import _ from "underscore";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
@@ -20,10 +19,10 @@ import type {
   CacheableDashboard,
   Card,
   CardId,
+  DashCardDataMap,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
-  DashCardDataMap,
   Database,
   Dataset,
   EmbedDataset,
@@ -207,7 +206,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   const isAccessRestricted = datasets.some(
     s =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      s.error?.status === 403,
+      (typeof s.error === "object" && s.error?.status === 403),
   );
 
   if (isAccessRestricted) {
@@ -217,14 +216,16 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     };
   }
 
-  const errors = datasets.map(s => s.error).filter(Boolean);
-  if (errors.length > 0) {
-    if (IS_EMBED_PREVIEW) {
-      const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" as const };
-    }
+  if (datasets.some(dataset => dataset.error)) {
+    const curatedErrorDataset = datasets.find(
+      dataset => dataset.error && dataset.error_is_curated,
+    );
+
     return {
-      message: getGenericErrorMessage(),
+      message:
+        typeof curatedErrorDataset?.error === "string"
+          ? curatedErrorDataset.error
+          : getGenericErrorMessage(),
       icon: "warning" as const,
     };
   }

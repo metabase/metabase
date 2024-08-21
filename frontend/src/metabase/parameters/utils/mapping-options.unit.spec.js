@@ -7,18 +7,18 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createAdHocCard,
-  createAdHocNativeCard,
-  SAMPLE_DB_ID,
-  ORDERS_ID,
   ORDERS,
-  REVIEWS_ID,
-  REVIEWS,
+  ORDERS_ID,
+  PEOPLE,
   PRODUCTS,
   PRODUCTS_ID,
-  PEOPLE,
+  REVIEWS,
+  REVIEWS_ID,
+  SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
   createOrdersTable,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { getParameterMappingOptions } from "./mapping-options";

@@ -2,17 +2,20 @@ import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Stack } from "metabase/ui";
+import { Box, Button, Flex, Input, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { TemporalUnit } from "metabase-types/api";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
 import {
+  BucketInput,
   ColumnPicker,
-  OffsetInput,
-  ReferenceAggregationPicker,
   ComparisonTypePicker,
-  CurrentPerionInput,
+  CurrentPeriodInput,
+  OffsetInput,
+  OffsetPresets,
+  ReferenceAggregationPicker,
 } from "./components";
 import type { ColumnType, ComparisonType } from "./types";
 import {
@@ -47,7 +50,7 @@ export const CompareAggregations = ({
   const [aggregation, setAggregation] = useState<
     Lib.AggregationClause | Lib.ExpressionClause | undefined
   >(hasManyAggregations ? undefined : aggregations[0]);
-  const columnAndBucket = useMemo(
+  const matchedBreakout = useMemo(
     () => getBreakout(query, stageIndex),
     [query, stageIndex],
   );
@@ -58,6 +61,10 @@ export const CompareAggregations = ({
     DEFAULT_COMPARISON_TYPE,
   );
   const [includeCurrentPeriod, setIncludeCurrentPeriod] = useState(false);
+  const [bucket, setBucket] = useState<TemporalUnit | null>(
+    matchedBreakout.bucket,
+  );
+  const [showPresets, setShowPresets] = useState(true);
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 
   const title = useMemo(
@@ -65,15 +72,28 @@ export const CompareAggregations = ({
     [query, stageIndex, aggregation],
   );
 
+  const handleHidePresets = useCallback(() => {
+    setShowPresets(false);
+  }, []);
+
+  const handleOffsetChange = useCallback((offset: number | "") => {
+    setOffset(offset);
+    setShowPresets(false);
+  }, []);
+
   const handleComparisonTypeChange = useCallback(
     (comparisonType: ComparisonType) => {
       setComparisonType(comparisonType);
       setColumns(convertColumnTypes(columns, comparisonType));
-      if (comparisonType === "moving-average" && offset !== "" && offset <= 1) {
+
+      if (comparisonType === "moving-average") {
         setOffset(2);
       }
+      if (comparisonType === "offset") {
+        setOffset(1);
+      }
     },
-    [offset, columns],
+    [columns],
   );
 
   const handleBack = () => {
@@ -87,7 +107,7 @@ export const CompareAggregations = ({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    if (!aggregation || !columnAndBucket) {
+    if (!aggregation) {
       return;
     }
 
@@ -97,7 +117,8 @@ export const CompareAggregations = ({
       aggregation,
       offset,
       columns,
-      columnAndBucket,
+      matchedBreakout,
+      bucket,
       includeCurrentPeriod,
     );
 
@@ -108,6 +129,9 @@ export const CompareAggregations = ({
     onSubmit(next.query, next.addedAggregations);
     onClose();
   };
+
+  const shouldShowPresets =
+    showPresets && comparisonType === "offset" && offset === 1;
 
   return (
     <Box miw={width} maw={width}>
@@ -130,18 +154,47 @@ export const CompareAggregations = ({
                 onChange={handleComparisonTypeChange}
               />
 
-              <OffsetInput
-                query={query}
-                stageIndex={stageIndex}
-                comparisonType={comparisonType}
-                value={offset}
-                onChange={setOffset}
-              />
+              <Stack spacing="sm">
+                <Input.Label>{t`Compare to`}</Input.Label>
+                {shouldShowPresets && (
+                  <OffsetPresets
+                    query={query}
+                    stageIndex={stageIndex}
+                    bucket={bucket}
+                    onBucketChange={setBucket}
+                    onShowOffsetInput={handleHidePresets}
+                    column={matchedBreakout.column}
+                  />
+                )}
+                {!shouldShowPresets && (
+                  <Flex align="center" gap="md">
+                    <OffsetInput
+                      comparisonType={comparisonType}
+                      value={offset}
+                      onChange={handleOffsetChange}
+                    />
+                    <BucketInput
+                      query={query}
+                      stageIndex={stageIndex}
+                      offset={offset || 0}
+                      column={matchedBreakout.column}
+                      value={bucket}
+                      onChange={setBucket}
+                      comparisonType={comparisonType}
+                    />
+                    <Text c="text-light">
+                      {comparisonType === "offset" && t`ago`}
+                      {comparisonType === "moving-average" && t`moving average`}
+                    </Text>
+                  </Flex>
+                )}
+              </Stack>
 
               {comparisonType === "moving-average" && (
-                <CurrentPerionInput
+                <CurrentPeriodInput
                   value={includeCurrentPeriod}
                   onChange={setIncludeCurrentPeriod}
+                  bucket={bucket}
                 />
               )}
 

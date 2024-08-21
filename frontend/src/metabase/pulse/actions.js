@@ -2,9 +2,9 @@ import { createAction } from "redux-actions";
 
 import Pulses from "metabase/entities/pulses";
 import {
-  getDefaultChannel,
-  createChannel,
   NEW_PULSE_TEMPLATE,
+  createChannel,
+  getDefaultChannel,
 } from "metabase/lib/pulse";
 import { createThunkAction } from "metabase/lib/redux";
 import { setErrorPage } from "metabase/redux/app";

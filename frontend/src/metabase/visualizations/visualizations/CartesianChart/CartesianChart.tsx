@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import { useCartesianChartSeriesColorsClasses } from "metabase/visualizations/echarts/tooltip";
+import {
+  useCartesianChartSeriesColorsClasses,
+  useCloseTooltipOnScroll,
+} from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -18,6 +21,7 @@ import { useModelsAndOption } from "./use-models-and-option";
 import { getGridSizeAdjustedSettings, validateChartModel } from "./utils";
 
 function _CartesianChart(props: VisualizationProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
@@ -48,12 +52,15 @@ function _CartesianChart(props: VisualizationProps) {
     [originalSettings, gridSize],
   );
 
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption({
-    ...props,
-    width: chartSize.width,
-    height: chartSize.height,
-    settings,
-  });
+  const { chartModel, timelineEventsModel, option } = useModelsAndOption(
+    {
+      ...props,
+      width: chartSize.width,
+      height: chartSize.height,
+      settings,
+    },
+    containerRef,
+  );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
@@ -91,6 +98,8 @@ function _CartesianChart(props: VisualizationProps) {
   const canSelectTitle = !!onChangeCardAndRun;
   const seriesColorsCss = useCartesianChartSeriesColorsClasses(chartModel);
 
+  useCloseTooltipOnScroll(chartRef);
+
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
@@ -121,10 +130,8 @@ function _CartesianChart(props: VisualizationProps) {
         width={outerWidth}
         height={outerHeight}
       >
-        {/**@ts-expect-error emotion does not properly provide prop types due */}
         <CartesianChartRenderer
-          // to it not working with the `WrappedComponent` class defined in
-          // ExplicitSize
+          ref={containerRef}
           option={option}
           eventHandlers={eventHandlers}
           onResize={handleResize}

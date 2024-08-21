@@ -642,7 +642,6 @@
 (defn transform-dataset-update-table
   "Create a function to transform a single table, for use with `transformed-dataset-definition`. Pass `:table`, `:rows`
   or both functions to transform the entire table definition, or just the rows, respectively."
-  {:style/indent 1}
   [table-name & {:keys [table rows], :or {table identity, rows identity}}]
   (transform-dataset-update-tabledefs
    (fn [tabledefs]

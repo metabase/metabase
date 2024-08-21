@@ -71,18 +71,18 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn, merge } from "icepick";
 import inflection from "inflection"; // NOTE: need to use inflection directly here due to circular dependency
-import { normalize, denormalize, schema } from "normalizr";
+import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import {
   combineReducers,
-  handleEntities,
   compose,
+  handleEntities,
   withAction,
-  withRequestState,
   withCachedDataAndRequestState,
+  withRequestState,
 } from "metabase/lib/redux";
 import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";

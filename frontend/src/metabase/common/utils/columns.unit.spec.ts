@@ -1,5 +1,5 @@
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
 import { getColumnIcon } from "./columns";
 

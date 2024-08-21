@@ -9,7 +9,7 @@ import { PLUGIN_ADMIN_TOOLS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import type { State } from "metabase-types/store";
 
-import { TabsContainer, ContentContainer } from "./Tools.styled";
+import { ContentContainer, TabsContainer } from "./Tools.styled";
 
 type ToolsOwnProps = {
   location: Location;

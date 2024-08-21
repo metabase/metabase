@@ -1,18 +1,18 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitDashboard,
-  saveDashboard,
   addOrUpdateDashboardCard,
-  modal,
-  cartesianChartCircle,
-  chartPathWithFillColor,
-  cartesianChartCircleWithColor,
-  echartsTriggerBlur,
-  echartsTooltip,
-  tooltipHeader,
-  assertTooltipRow,
   assertEChartsTooltip,
+  assertTooltipRow,
+  cartesianChartCircle,
+  cartesianChartCircleWithColor,
+  chartPathWithFillColor,
+  echartsTooltip,
+  echartsTriggerBlur,
+  modal,
+  restore,
+  saveDashboard,
+  tooltipHeader,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -403,6 +403,62 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testAvgTotalChange();
       testCumSumChange();
     });
+  });
+
+  it("tooltips should not fully cover small dashcards", () => {
+    setup({
+      question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
+      addedSeriesQuestion: AVG_DISCOUNT_SUM_DISCOUNT,
+      cardSize: {
+        x: 4,
+        y: 4,
+      },
+    }).then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
+    cartesianChartCircleWithColor("#A989C5")
+      .first()
+      .as("firstCircle")
+      .realHover();
+
+    // Ensure the tooltip is visible
+    assertEChartsTooltip({ header: "2022" });
+
+    // Ensuring the circle is not covered by the tooltip element
+    cy.get("@firstCircle").then($circle => {
+      const circleRect = $circle[0].getBoundingClientRect();
+
+      echartsTooltip().then($tooltip => {
+        const tooltipRect = $tooltip[0].getBoundingClientRect();
+        const isCovered =
+          circleRect.top < tooltipRect.bottom &&
+          circleRect.bottom > tooltipRect.top &&
+          circleRect.left < tooltipRect.right &&
+          circleRect.right > tooltipRect.left;
+
+        expect(isCovered).to.be.false;
+      });
+    });
+  });
+
+  it("tooltips should be hidden when click popover is visible", () => {
+    setup({
+      question: AVG_OF_TOTAL_CUM_SUM_QUANTITY,
+    }).then(dashboardId => {
+      visitDashboard(dashboardId);
+    });
+
+    cartesianChartCircleWithColor("#A989C5")
+      .first()
+      .as("firstCircle")
+      .realHover();
+
+    // Ensure the tooltip is visible
+    assertEChartsTooltip({ header: "2022" });
+
+    cy.get("@firstCircle").click();
+
+    echartsTooltip().should("not.be.visible");
   });
 
   describe("> multi series question on dashboard with added question", () => {
@@ -896,28 +952,32 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   });
 });
 
-function setup({ question, addedSeriesQuestion }) {
+function setup({ question, addedSeriesQuestion, cardSize }) {
   return cy.createQuestion(question).then(({ body: { id: card1Id } }) => {
     if (addedSeriesQuestion) {
       cy.createQuestion(addedSeriesQuestion).then(
         ({ body: { id: card2Id } }) => {
-          return setupDashboard(card1Id, card2Id);
+          return setupDashboard(card1Id, card2Id, cardSize);
         },
       );
     } else {
-      return setupDashboard(card1Id);
+      return setupDashboard(card1Id, null, cardSize);
     }
   });
 }
 
-function setupDashboard(cardId, addedSeriesCardId) {
+function setupDashboard(
+  cardId,
+  addedSeriesCardId,
+  cardSize = { x: 24, y: 12 },
+) {
   return cy.createDashboard().then(({ body: { id: dashboardId } }) => {
     return addOrUpdateDashboardCard({
       dashboard_id: dashboardId,
       card_id: cardId,
       card: {
-        size_x: 24,
-        size_y: 12,
+        size_x: cardSize.x,
+        size_y: cardSize.y,
         series: addedSeriesCardId ? [{ id: addedSeriesCardId }] : [],
       },
     }).then(() => {

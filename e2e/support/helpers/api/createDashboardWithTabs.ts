@@ -1,6 +1,6 @@
 import type { Dashboard } from "metabase-types/api";
 
-import { createDashboard, type DashboardDetails } from "./createDashboard";
+import { type DashboardDetails, createDashboard } from "./createDashboard";
 
 export function createDashboardWithTabs({
   dashcards = [],

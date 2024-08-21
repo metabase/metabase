@@ -1,13 +1,13 @@
 import {
-  onlyOnOSS,
+  appBar,
   describeEE,
-  restore,
-  setupMetabaseCloud,
-  setTokenFeatures,
+  main,
   modal,
   onlyOnEE,
-  main,
-  appBar,
+  onlyOnOSS,
+  restore,
+  setTokenFeatures,
+  setupMetabaseCloud,
 } from "e2e/support/helpers";
 
 describe("scenarios > admin > troubleshooting > help", () => {

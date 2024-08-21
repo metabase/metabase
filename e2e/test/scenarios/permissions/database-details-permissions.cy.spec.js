@@ -1,10 +1,10 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  restore,
-  modal,
-  describeEE,
   assertPermissionForItem,
+  describeEE,
+  modal,
   modifyPermission,
+  restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
 

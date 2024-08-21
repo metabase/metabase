@@ -5,8 +5,8 @@ import { getCollectionType } from "metabase/entities/collections/utils";
 import { color } from "metabase/lib/colors";
 import {
   createEntity,
-  undo,
   entityCompatibleQuery,
+  undo,
 } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";

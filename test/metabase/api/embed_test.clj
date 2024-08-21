@@ -47,12 +47,12 @@
 (defmacro with-new-secret-key! {:style/indent 0} [& body]
   `(do-with-new-secret-key! (fn [] ~@body)))
 
-(defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
+(defn card-token [card-or-id & [additional-token-params]]
   (sign (merge {:resource {:question (u/the-id card-or-id)}
                 :params   {}}
                additional-token-params)))
 
-(defn dash-token {:style/indent 1} [dash-or-id & [additional-token-params]]
+(defn dash-token [dash-or-id & [additional-token-params]]
   (sign (merge {:resource {:dashboard (u/the-id dash-or-id)}
                 :params   {}}
                additional-token-params)))
@@ -970,7 +970,7 @@
    (u/the-id field-or-id)
    "/values"))
 
-(defn- do-with-embedding-enabled-and-temp-card-referencing! {:style/indent 2} [table-kw field-kw f]
+(defn- do-with-embedding-enabled-and-temp-card-referencing! [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
     (t2.with-temp/with-temp [Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
                                         :enable_embedding true)]
@@ -1065,7 +1065,7 @@
 
 ;;; ----------------------------- GET /api/embed/dashboard/:token/field/:field/values nil -----------------------------
 
-(defn- do-with-embedding-enabled-and-temp-dashcard-referencing! {:style/indent 2} [table-kw field-kw f]
+(defn- do-with-embedding-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
     (mt/with-temp [Dashboard     dashboard {:enable_embedding true}
                    Card          card      (public-test/mbql-card-referencing table-kw field-kw)

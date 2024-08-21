@@ -5,10 +5,10 @@ import type * as tippy from "tippy.js";
 import { getEventTarget } from "metabase/lib/dom";
 import { performAction } from "metabase/visualizations/lib/action";
 import type {
-  RegularClickAction,
   ClickObject,
-  PopoverClickAction,
   OnChangeCardAndRun,
+  PopoverClickAction,
+  RegularClickAction,
 } from "metabase/visualizations/types";
 import { isPopoverClickAction } from "metabase/visualizations/types";
 import type { Series } from "metabase-types/api";
