@@ -195,8 +195,7 @@
   [a-ref   :- ::lib.schema.ref/ref
     columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
   (or (when-let [binning (lib.binning/binning a-ref)]
-        (let [matching-columns (filter (fn [col]
-                                         (lib.binning/binning= (lib.binning/binning col) binning))
+        (let [matching-columns (filter #(-> % lib.binning/binning (lib.binning/binning= binning))
                                        columns)]
           (when (= (count matching-columns) 1)
             (first matching-columns))))
