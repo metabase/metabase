@@ -40,7 +40,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Time", filter);
+      setFilter("Date picker", filter);
 
       cy.findByText("Select…").click();
       popover().contains("Created At").first().click();
@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > date", () => {
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
   it("should work when set as the default filter", () => {
-    setFilter("Time", "Month and Year");
+    setFilter("Date picker", "Month and Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
@@ -101,7 +101,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should support being required", () => {
-    setFilter("Time", "Month and Year", "Month and Year");
+    setFilter("Date picker", "Month and Year", "Month and Year");
 
     // Can't save without a default value
     toggleRequiredParameter();
@@ -145,7 +145,7 @@ describe("scenarios > dashboard > filters > date", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
@@ -180,7 +180,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
-    popover().findByText("Heure").click(); // "Time" -> "All Options"
+    popover().icon("calendar").click(); // "Time" -> "All Options"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sélectionner...").click(); // "Select…"

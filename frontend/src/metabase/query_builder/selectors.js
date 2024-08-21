@@ -48,7 +48,11 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
-import { isQuestionDirty, isQuestionRunnable } from "./utils/question";
+import {
+  isQuestionDirty,
+  isQuestionRunnable,
+  isSavedQuestionChanged,
+} from "./utils/question";
 
 export const getUiControls = state => state.qb.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
@@ -601,18 +605,7 @@ export const getIsDirty = createSelector(
 
 export const getIsSavedQuestionChanged = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) => {
-    const isSavedQuestion = originalQuestion != null;
-    const hasChanges = question != null;
-    const wereChangesSaved = question?.isSaved();
-    const hasUnsavedChanges = hasChanges && !wereChangesSaved;
-
-    return (
-      isSavedQuestion &&
-      hasUnsavedChanges &&
-      originalQuestion.type() === "question"
-    );
-  },
+  isSavedQuestionChanged,
 );
 
 export const getIsRunnable = createSelector(

@@ -78,12 +78,12 @@
               (get-bug-report-detail user 403)
               (get-db-connection-info user 403))
 
-           (testing "allowed if user's group has `monitoring` permission"
-             (perms/grant-application-permissions! group :monitoring)
-             (get-logs user 200)
-             (get-stats user 200)
-             (get-bug-report-detail user 200)
-             (get-db-connection-info user 200))))))))
+            (testing "allowed if user's group has `monitoring` permission"
+              (perms/grant-application-permissions! group :monitoring)
+              (get-logs user 200)
+              (get-stats user 200)
+              (get-bug-report-detail user 200)
+              (get-db-connection-info user 200))))))))
 
 (deftest persistence-test
   (testing "/api/persist"
