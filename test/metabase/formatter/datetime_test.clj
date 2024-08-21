@@ -32,7 +32,7 @@
              (datetime/format-temporal-str "UTC" nil :now))))
     (testing "Temporal Units are formatted"
       (testing :minute
-        (is (= "July, 2020, 6:04 PM"
+        (is (= "July 16, 2020, 6:04 PM"
                (datetime/format-temporal-str "UTC" now {:unit :minute}))))
       (testing :hour
         (is (= "July 16, 2020, 6 PM"
