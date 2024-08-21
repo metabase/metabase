@@ -15,10 +15,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (defn- no-labels [path]
   (mapv #(dissoc % :label) path))
@@ -621,7 +618,7 @@
                              [:collection_id               [:= (:entity_id @coll1s)]]
                              [:name                        [:= "Some events"]]
                              [:creator_id                  [:= "tom@bost.on"]]
-                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                             [:created_at                  :string]
                              [:entity_id                   [:= (:entity_id timeline1)]]
                              [:description                 [:maybe :string]]
                              [:events                      [:sequential
@@ -632,11 +629,9 @@
                                                              [:archived                    :boolean]
                                                              [:description                 [:maybe :string]]
                                                              [:creator_id                  :string]
-                                                             [:created_at                  (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:created_at                  :string]
                                                              [:timestamp                   :string]
-                                                             [:icon {:optional true}       [:maybe :string]]
-                                                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]]]]
-                             [:updated_at {:optional true} (ms/InstanceOfClass OffsetDateTime)]
+                                                             [:icon {:optional true}       [:maybe :string]]]]]
                              [:icon {:optional true}       [:maybe :string]]
                              [:default {:optional true}    :boolean]]
                             timeline1))
