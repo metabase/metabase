@@ -21,7 +21,6 @@ import {
   filterOutItemsFromInstanceAnalytics,
   getCollectionType,
   getIcon,
-  getInstanceAnalyticsCustomCollection,
   isRegularCollection,
 } from "./utils";
 

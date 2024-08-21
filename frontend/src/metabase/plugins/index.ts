@@ -38,6 +38,7 @@ import type {
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
+  CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
   Database as DatabaseType,
@@ -49,7 +50,6 @@ import type {
   SearchResult,
   User,
   UserListResult,
-  CollectionId,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
