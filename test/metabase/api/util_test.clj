@@ -80,3 +80,9 @@
                                :email    "happy_user@test.com"
                                :source   "Analytics Inc"})
         (is (true? (deref sent? 2000 ::timedout)))))))
+
+(deftest entity-id-translation-test
+  (mt/with-temp [:model/Card {card-id :id card-eid :entity_id} {}]
+    (is (= {card-eid card-id}
+           (-> (mt/user-http-request :crowberto :post 200 "util/entity_id" {:entity_ids {"report_card" [card-eid]}})
+               (update-keys name))))))
