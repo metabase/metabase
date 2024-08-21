@@ -3,46 +3,35 @@ import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getQuestionAlerts } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Alert } from "metabase-types/api";
 
-import { CreateAlertModalContent } from "../AlertModals";
-
 import { AlertListItem } from "./AlertListItem";
 
 type AlertListPopoverContentProps = {
-  setMenuFreeze: (freeze: boolean) => void;
-  closeMenu: () => void;
+  questionAlerts?: Alert[];
+  onCreate: () => void;
+  onEdit: (alert: Alert) => void;
+  onClose: () => void;
 };
 
 export const AlertListPopoverContent = ({
-  setMenuFreeze,
-  closeMenu,
+  questionAlerts,
+  onCreate,
+  onEdit,
+  onClose,
 }: AlertListPopoverContentProps) => {
-  const questionAlerts = useSelector(getQuestionAlerts);
   const user = useSelector(getUser);
 
-  const [adding, setAdding] = useState(false);
   const [hasJustUnsubscribedFromOwnAlert, setHasJustUnsubscribedFromOwnAlert] =
     useState(false);
 
-  const onAdd = () => {
-    setMenuFreeze(true);
-    setAdding(true);
-  };
-
-  const onEndAdding = (shouldCloseMenu = false) => {
-    setMenuFreeze(false);
-    setAdding(false);
-    if (shouldCloseMenu) {
-      closeMenu();
-    }
-  };
+  if (!questionAlerts) {
+    return null;
+  }
 
   const isCreatedByCurrentUser = (alert: Alert) => {
     return user ? alert.creator.id === user.id : false;
@@ -51,6 +40,13 @@ export const AlertListPopoverContent = ({
   const onUnsubscribe = (alert: Alert) => {
     if (isCreatedByCurrentUser(alert)) {
       setHasJustUnsubscribedFromOwnAlert(true);
+    }
+
+    const alertCount = Object.keys(questionAlerts).length;
+
+    // if we have just unsubscribed from the last alert, close the popover
+    if (alertCount <= 1) {
+      onClose();
     }
   };
 
@@ -67,14 +63,13 @@ export const AlertListPopoverContent = ({
   const hasOwnAndOthers = hasOwnAlerts && othersAlerts.length > 0;
 
   return (
-    <div style={{ minWidth: 410 }}>
+    <div style={{ minWidth: 410 }} data-testid="alert-list-popover">
       <ul>
         {Object.values(sortedQuestionAlerts).map(alert => (
           <AlertListItem
             key={alert.id}
             alert={alert}
-            setMenuFreeze={setMenuFreeze}
-            closeMenu={closeMenu}
+            onEdit={() => onEdit(alert)}
             highlight={
               isNonAdmin && hasOwnAndOthers && isCreatedByCurrentUser(alert)
             }
@@ -92,20 +87,12 @@ export const AlertListPopoverContent = ({
               CS.textBold,
               CS.textSmall,
             )}
-            onClick={onAdd}
+            onClick={onCreate}
           >
             <Icon name="add" style={{ marginLeft: 9, marginRight: 17 }} />{" "}
             {t`Set up your own alert`}
           </a>
         </div>
-      )}
-      {adding && (
-        <Modal full onClose={onEndAdding}>
-          <CreateAlertModalContent
-            onCancel={onEndAdding}
-            onAlertCreated={() => onEndAdding(true)}
-          />
-        </Modal>
       )}
     </div>
   );
