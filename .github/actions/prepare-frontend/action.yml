@@ -3,6 +3,10 @@ inputs:
   node-version:
     description: "The version of Node.js to use, overriding .nvmrc"
     required: false
+  ignore-optional-dependencies:
+    description: "Whether to ignore optional dependencies"
+    required: true
+    default: true
 runs:
   using: "composite"
   steps:
@@ -47,4 +51,8 @@ runs:
         restore-keys: ${{ runner.os }}-yarn-
 
     - run: yarn install --frozen-lockfile --prefer-offline
+      if: ${{ inputs.ignore-optional-dependencies == 'false' }}
+      shell: bash
+    - run: yarn install --frozen-lockfile --prefer-offline --ignore-optional
+      if: ${{ inputs.ignore-optional-dependencies == 'true' }}
       shell: bash

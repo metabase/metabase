@@ -119,6 +119,7 @@ const config = {
   externals: {
     canvg: "canvg",
     dompurify: "dompurify",
+    html2canvas: "html2canvas-pro",
   },
 
   // output to "dist"
