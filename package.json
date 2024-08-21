@@ -273,6 +273,7 @@
     "mysql2": "^3.9.8",
     "node-polyfill-webpack-plugin": "2.0.1",
     "null-loader": "^4.0.1",
+    "open": "^10.1.0",
     "open-cli": "^8.0.0",
     "patch-package": "^8.0.0",
     "pg": "^8.8.0",
