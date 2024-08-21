@@ -1,7 +1,5 @@
 (ns metabase.lib.metadata.jvm-test
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.test :refer :all]
    [malli.core :as mc]
    [malli.error :as me]
@@ -14,8 +12,10 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.test :as mt]
    [metabase.util :as u]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 

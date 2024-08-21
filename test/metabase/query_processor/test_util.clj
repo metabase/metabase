@@ -6,7 +6,6 @@
   you can test a given piece of middleware without having to worry about putting things in the QP Store
   yourself (since this is usually done by other middleware in the first place)."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -32,6 +31,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
