@@ -17,7 +17,7 @@
    [metabase.util.malli.registry :as mr])
   (:import
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
-                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field
+                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field Field$Mode
                               InsertAllRequest InsertAllRequest$RowToInsert InsertAllResponse LegacySQLTypeName Schema
                               StandardTableDefinition TableId TableInfo TableResult)))
 
@@ -147,15 +147,19 @@
 (defn- field-definitions->Fields [field-definitions]
   (into
     []
-    (map (fn [{:keys [field-name base-type nested-fields]}]
-           (let [field-type (or (base-type->bigquery-type base-type)
+    (map (fn [{:keys [field-name base-type nested-fields collection-type]}]
+           (let [field-type (or (some-> collection-type base-type->bigquery-type)
+                                (base-type->bigquery-type base-type)
                                 (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
                                   (log/error (u/format-color 'red message))
-                                  (throw (ex-info message {:metabase.util/no-auto-retry? true}))))]
-             (Field/of
-               (valid-field-name field-name)
-               (LegacySQLTypeName/valueOf (name field-type))
-               ^"[Lcom.google.cloud.bigquery.Field;" (into-array Field (field-definitions->Fields nested-fields))))))
+                                  (throw (ex-info message {:metabase.util/no-auto-retry? true}))))
+                 builder (Field/newBuilder
+                           (valid-field-name field-name)
+                           (LegacySQLTypeName/valueOf (name field-type))
+                           ^"[Lcom.google.cloud.bigquery.Field;" (into-array Field (field-definitions->Fields nested-fields)))]
+             (cond-> builder
+               (isa? :type/Collection base-type) (.setMode Field$Mode/REPEATED)
+               :always (.build)))))
     field-definitions))
 
 (mu/defn- create-table!

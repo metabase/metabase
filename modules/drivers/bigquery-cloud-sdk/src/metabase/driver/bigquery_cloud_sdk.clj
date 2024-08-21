@@ -566,6 +566,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone         true
+                              :nested-fields            true
                               :datetime-diff            true
                               :expressions              true
                               :now                      true
