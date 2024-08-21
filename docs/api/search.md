@@ -24,6 +24,7 @@ Search for items in Metabase.
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
+  - `ids`: search for items with those ids, works iff single value passed to `models`
 
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
@@ -46,6 +47,8 @@ Search for items in Metabase.
 -  **`archived`** nullable boolean.
 
 -  **`q`** nullable value must be a non-blank string.
+
+-  **`ids`** nullable vector of value must be an integer greater than zero.
 
 -  **`search_native_query`** nullable true.
 

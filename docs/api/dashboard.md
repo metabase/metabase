@@ -60,6 +60,8 @@ Get Dashboard with ID.
 
 -  **`id`** value must be an integer greater than zero.
 
+-  **`dashboard-load-id`**
+
 ## `GET /api/dashboard/:id/params/:param-key/search/:query`
 
 Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -104,6 +106,8 @@ Get all of the required query metadata for the cards on dashboard.
 ### PARAMS:
 
 -  **`id`** value must be an integer greater than zero.
+
+-  **`dashboard-load-id`**
 
 ## `GET /api/dashboard/:id/related`
 
@@ -191,6 +195,8 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 -  **`dashcard-id`** value must be an integer greater than zero.
 
 -  **`card-id`** value must be an integer greater than zero.
+
+-  **`dashboard_load_id`** nullable value must be a non-blank string.
 
 -  **`parameters`** nullable sequence of value must be a parameter map with an id key.
 

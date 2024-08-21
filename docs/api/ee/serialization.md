@@ -30,7 +30,7 @@ You must be a superuser to do this.
 
 -  **`all_collections`** nullable value must be a valid boolean string ('true' or 'false').
 
--  **`collection`** nullable vector of value must be an integer greater than zero.
+-  **`collection`** nullable vector of value must be an integer greater than zero., or regex pattern matching "^eid:.{21}$".
 
 -  **`settings`** nullable value must be a valid boolean string ('true' or 'false').
 
