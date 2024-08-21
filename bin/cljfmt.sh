@@ -1,5 +1,10 @@
 # Reformat files that have changed since the last commit. See also `cljfmt_staged.sh` which is meant to be used as a
 # commit hook
+#
+# By default, reformats uncommitted changes i.e. files that are different compared to HEAD. You can choose a different
+# target to diff against e.g. `master` as follows:
+#
+#    ./bin/cljfmt.sh master
 
 set -euo pipefail
 
@@ -7,7 +12,15 @@ set -euo pipefail
 script_dir=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_dir/.."
 
-UPDATED_FILES=$(git diff --name-only HEAD -- '*.clj' '*.cljc' '*.cljs')
+if [ -v 1 ]; then
+    diff_target="$1"
+else
+    diff_target="HEAD"
+fi
+
+echo "Formatting Clojure source files that have changes compared to $diff_target..."
+
+UPDATED_FILES=$(git diff --name-only "$diff_target" -- '*.clj' '*.cljc' '*.cljs')
 
 if [ -z "$UPDATED_FILES" ]; then
     echo 'No updated Clojure source files.'

@@ -421,7 +421,6 @@
   returned if falsy.
 
   The special value `::skip` can be returned to ignore a test case altogether."
-  {:style/ident 1}
   ([drill pred]
    (canned-test drill pred (canned-clicks)))
   ([drill pred clicks]
