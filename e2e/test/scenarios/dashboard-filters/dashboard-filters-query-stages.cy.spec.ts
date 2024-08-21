@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type StructuredQuestionDetails,
   createDashboardWithTabs,
   createQuestion,
   editDashboard,
@@ -8,9 +9,9 @@ import {
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
-import type { CardId } from "metabase-types/api";
+import type { Card, ConcreteFieldReference } from "metabase-types/api";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
 const TAB_QUESTIONS = { id: 1, name: "Questions" };
 const TAB_MODELS = { id: 2, name: "Models" };
@@ -45,26 +46,53 @@ const NUMBER_PARAMETER = {
   sectionId: "number",
 };
 
+const TOTAL_FIELD: ConcreteFieldReference = [
+  "field",
+  "TOTAL",
+  {
+    "base-type": "type/Float",
+  },
+];
+
+const TAX_FIELD: ConcreteFieldReference = [
+  "field",
+  "TAX",
+  {
+    "base-type": "type/Float",
+  },
+];
+
+const PRODUCT_ID_FIELD: ConcreteFieldReference = [
+  "field",
+  "PRODUCT_ID",
+  {
+    "base-type": "type/Float",
+  },
+];
+
 /**
  * "Questions" tab - dashcards are questions
  * "Models" tab - dashcards are models
  *
  * Left column (col = 0): data source is a question
  * Right column (col = 12): data source is a model
+ *
+ * q = question, m = model
+ * qb = question-based, mb = model-based
  */
 describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
-    createQ0();
+    createQ0("q0");
     cy.then(function () {
-      createQ1(this.q0.id);
-      createM1(this.q0.id);
+      createQ1("q1", this.q0);
+      createM1("m1", this.q0);
     });
   });
 
-  describe("base questions", () => {
+  describe("base queries", () => {
     beforeEach(() => {
       cy.then(function () {
         createDashboardWithTabs({
@@ -113,7 +141,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ["User", ["Birth Date", "Created At"]],
       ]);
       verifyDashcardMappingOptions(1, [
-        ["Model based on a question", ["Created At"]],
+        ["M1 Model based on a question", ["Created At"]],
         ["Product", ["Created At"]],
         ["User", ["Birth Date", "Created At"]],
       ]);
@@ -147,7 +175,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       ]);
       verifyDashcardMappingOptions(1, [
         [
-          "Model based on a question",
+          "M1 Model based on a question",
           ["Subtotal", "Tax", "Total", "Discount", "Quantity"],
         ],
         ["Product", ["Price", "Rating"]],
@@ -160,60 +188,124 @@ describe("scenarios > dashboard > filters > query stages", () => {
       ]);
     });
   });
+
+  describe("1-stage queries", () => {
+    beforeEach(() => {
+      cy.then(function () {
+        createQ2("q2qb", this.q1, {
+          type: "question",
+          name: "Q2 - Question-based question",
+        });
+        createQ2("q2mb", this.m1, {
+          type: "question",
+          name: "Q2 - Model-based question",
+        });
+        createQ2("m2qb", this.q1, {
+          type: "model",
+          name: "M2 - Question-based model",
+        });
+        createQ2("m2mb", this.m1, {
+          type: "model",
+          name: "M2 - Model-based model",
+        });
+      });
+
+      cy.then(function () {
+        createTestDashboard({
+          questions: {
+            questionBased: [this.q2qb],
+            modelBased: [this.q2mb],
+          },
+          models: {
+            questionBased: [this.m2qb],
+            modelBased: [this.m2mb],
+          },
+        }).then(dashboard => visitDashboard(dashboard.id));
+      });
+    });
+
+    it("allows to map to all relevant columns", () => {});
+  });
 });
 
-function createQ0() {
+function createQ0(alias: string) {
   return createQuestion({
     name: "Q0 Orders",
     description: "Plain Orders table",
     query: {
       "source-table": ORDERS_ID,
     },
-  }).then(response => {
-    cy.wrap(response.body).as("q0");
-  });
+  }).then(response => cy.wrap(response.body).as(alias));
 }
 
-function createQ1(q0Id: CardId) {
+function createQ1(alias: string, source: Card) {
   return createQuestion({
     name: "Q1 Orders question",
     description: "Question based on a question",
     query: {
-      "source-table": `card__${q0Id}`,
+      "source-table": `card__${source.id}`,
     },
-  }).then(response => {
-    cy.wrap(response.body).as("q1");
-  });
+  }).then(response => cy.wrap(response.body).as(alias));
 }
 
-function createM1(q0Id: CardId) {
+function createM1(alias: string, source: Card) {
   return createQuestion({
-    name: "Model based on a question",
+    name: "M1 Orders Model",
+    description: "Model based on a question",
     type: "model",
     query: {
-      "source-table": `card__${q0Id}`,
+      "source-table": `card__${source.id}`,
     },
-  }).then(response => {
-    cy.wrap(response.body).as("m1");
-  });
+  }).then(response => cy.wrap(response.body).as(alias));
 }
 
-// TODO: tests for base questions q0 q1 m1
-// TODO: create questions for 1 stage
-// TODO: create questions for 2 stages
-// TODO: create question for 3 stages
+function createQ2(
+  alias: string,
+  source: Card,
+  questionDetails?: Partial<StructuredQuestionDetails>,
+) {
+  return createQuestion({
+    query: {
+      "source-table": `card__${source.id}`,
+      expressions: {
+        Net: ["-", TOTAL_FIELD, TAX_FIELD],
+      },
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Reviews - Product",
+          condition: [
+            "=",
+            PRODUCT_ID_FIELD,
+            [
+              "field",
+              "PRODUCT_ID",
+              {
+                "base-type": "type/Integer",
+                "join-alias": "Reviews - Product",
+              },
+            ],
+          ],
+          "source-table": REVIEWS_ID,
+        },
+      ],
+    },
+    ...questionDetails,
+  }).then(response => cy.wrap(response.body).as(alias));
+}
 
 function createTestDashboard({
   questions,
   models,
 }: {
   questions: {
-    questionBased: CardId[];
-    modelBased: CardId[];
+    questionBased: Card[];
+    modelBased: Card[];
   };
   models: {
-    questionBased: CardId[];
-    modelBased: CardId[];
+    questionBased: Card[];
+    modelBased: Card[];
   };
 }) {
   let id = 0;
@@ -221,42 +313,47 @@ function createTestDashboard({
 
   return createDashboardWithTabs({
     tabs: [TAB_QUESTIONS, TAB_MODELS],
+    parameters: [DATE_PARAMETER, TEXT_PARAMETER, NUMBER_PARAMETER],
     dashcards: [
-      ...questions.questionBased.map((id, index) => ({
+      ...questions.questionBased.map((card, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_QUESTIONS.id,
         size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: QUESTION_BASED_COLUMN,
-        card_id: id,
+        card,
+        card_id: card.id,
       })),
-      ...questions.modelBased.map((id, index) => ({
+      ...questions.modelBased.map((card, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_QUESTIONS.id,
         size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: MODEL_BASED_COLUMN,
-        card_id: id,
+        card,
+        card_id: card.id,
       })),
-      ...models.questionBased.map((id, index) => ({
+      ...models.questionBased.map((card, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_MODELS.id,
         size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: QUESTION_BASED_COLUMN,
-        card_id: id,
+        card,
+        card_id: card.id,
       })),
-      ...models.modelBased.map((id, index) => ({
+      ...models.modelBased.map((card, index) => ({
         id: getNextId(),
         dashboard_tab_id: TAB_MODELS.id,
         size_x: CARD_WIDTH,
         size_y: CARD_HEIGHT,
         row: CARD_HEIGHT * index,
         col: MODEL_BASED_COLUMN,
-        card_id: id,
+        card,
+        card_id: card.id,
       })),
     ],
   });
