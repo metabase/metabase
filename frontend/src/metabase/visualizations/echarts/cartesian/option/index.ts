@@ -42,6 +42,7 @@ export const getSharedEChartsOptions = (isAnimated: boolean) => ({
 export const getCartesianChartOption = (
   chartModel: CartesianChartModel,
   chartMeasurements: ChartMeasurements,
+  hiddenSeries: string[],
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
@@ -61,6 +62,7 @@ export const getCartesianChartOption = (
   const dataSeriesOptions = buildEChartsSeries(
     chartModel,
     settings,
+    hiddenSeries,
     chartWidth,
     chartMeasurements,
     renderingContext,

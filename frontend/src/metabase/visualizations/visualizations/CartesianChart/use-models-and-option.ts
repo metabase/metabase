@@ -29,6 +29,7 @@ export function useModelsAndOption(
     fontFamily,
     width,
     height,
+    hiddenSeries = [],
     timelineEvents,
     selectedTimelineEventIds,
     onRender,
@@ -136,6 +137,7 @@ export function useModelsAndOption(
         baseOption = getScatterPlotOption(
           chartModel as ScatterPlotModel,
           chartMeasurements,
+          hiddenSeries,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
           settings,
@@ -148,6 +150,7 @@ export function useModelsAndOption(
         baseOption = getCartesianChartOption(
           chartModel as CartesianChartModel,
           chartMeasurements,
+          hiddenSeries,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
           settings,
@@ -169,6 +172,7 @@ export function useModelsAndOption(
     tooltipOption,
     chartModel,
     chartMeasurements,
+    hiddenSeries,
     timelineEventsModel,
     selectedOrHoveredTimelineEventIds,
     settings,

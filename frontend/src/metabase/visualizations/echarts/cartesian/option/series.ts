@@ -836,6 +836,7 @@ export const getStackTotalsSeries = (
 export const buildEChartsSeries = (
   chartModel: CartesianChartModel,
   settings: ComputedVisualizationSettings,
+  hiddenSeries: string[],
   chartWidth: number,
   chartMeasurements: ChartMeasurements,
   renderingContext: RenderingContext,
@@ -864,6 +865,7 @@ export const buildEChartsSeries = (
   const hasMultipleSeries = chartModel.seriesModels.length > 1;
 
   const series = chartModel.seriesModels
+    .filter(seriesModel => !hiddenSeries.includes(seriesModel.dataKey))
     .map(seriesModel => {
       const seriesSettings = seriesSettingsByDataKey[seriesModel.dataKey];
       const yAxisIndex = seriesYAxisIndexByDataKey[seriesModel.dataKey];

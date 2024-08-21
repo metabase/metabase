@@ -90,6 +90,7 @@ export interface VisualizationProps {
   metadata: Metadata;
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
+  hiddenSeries?: string[];
   headerIcon: IconProps;
   errorIcon: IconName;
   actionButtons: ReactNode;

@@ -1,5 +1,13 @@
 import type { EChartsType } from "echarts/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useSet } from "react-use";
 
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
@@ -25,6 +33,8 @@ function _CartesianChart(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
+
+  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
   const {
     showAllLegendItems,
@@ -57,6 +67,7 @@ function _CartesianChart(props: VisualizationProps) {
       ...props,
       width: chartSize.width,
       height: chartSize.height,
+      hiddenSeries: Array.from(hiddenSeries),
       settings,
     },
     containerRef,
@@ -70,8 +81,13 @@ function _CartesianChart(props: VisualizationProps) {
   const description = settings["card.description"];
 
   const legendItems = useMemo(
-    () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
-    [chartModel, showAllLegendItems],
+    () =>
+      getLegendItems(
+        chartModel.seriesModels,
+        showAllLegendItems,
+        Array.from(hiddenSeries),
+      ),
+    [chartModel, hiddenSeries, showAllLegendItems],
   );
   const hasLegend = legendItems.length > 0;
 
@@ -82,6 +98,14 @@ function _CartesianChart(props: VisualizationProps) {
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
   }, []);
+
+  const handleToggleSeriesVisibility = useCallback(
+    (event: MouseEvent, seriesIndex: number) => {
+      const seriesModel = chartModel.seriesModels[seriesIndex];
+      toggleSeriesVisibility(seriesModel.dataKey);
+    },
+    [chartModel, toggleSeriesVisibility],
+  );
 
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
     chartRef,
@@ -124,6 +148,7 @@ function _CartesianChart(props: VisualizationProps) {
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
         onSelectSeries={onSelectSeries}
+        onToggleSeriesVisibility={handleToggleSeriesVisibility}
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
