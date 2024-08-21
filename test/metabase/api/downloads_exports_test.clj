@@ -251,8 +251,7 @@
                   (is (set/subset? possible-vals-of-b header2))
                   (is (not (set/subset? possible-vals-of-a header2))))
                 (testing "The Headers also show the Row Totals header"
-                  (is (= ["Row totals"
-                          "Row totals"]
+                  (is (= ["Row totals" ""]
                          (map last (take 2 result))))))))
 
           (testing "The Columns Properly indicate the pivot row names."
@@ -283,7 +282,7 @@
                 (is (set/subset? possible-vals-of-d (set col2)))
                 (is (not (set/subset? possible-vals-of-c (set col2)))))
               (testing "The 1st Column also shows the Grand Total"
-                (is (= "Grand Totals"
+                (is (= "Grand totals"
                        (first (last result))))))))))))
 
 (deftest multi-measure-pivot-tables-headers-test
@@ -512,7 +511,7 @@
                    (take 6 data)))))))))
 
 (deftest ^:parallel pivot-table-exports-respect-dynamic-var-setting
-  (testing "Pivot tables will export the 'classic' way by default for."
+  (testing "Pivot tables will export the 'classic' way by default"
     (testing "for csv"
       (mt/dataset test-data
         (mt/with-temp [:model/Card {pivot-card-id :id}

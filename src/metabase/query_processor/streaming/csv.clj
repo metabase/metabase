@@ -49,11 +49,6 @@
 (defn update-set [m k v]
   (update m k conj v))
 
-(defn deep-merge [v & vs]
-  (if (map? v)
-    (apply merge-with deep-merge v vs)
-    (last vs)))
-
 (defn- add-wrapped-numbers
   [a b]
   (let [new-value (apply + (map :metabase.formatter.NumericWrapper/num-value [a b]))]
@@ -64,20 +59,35 @@
   (into {}
         (map
          (fn [[measure-key agg]]
-           (let [agg-fn (get agg-fns measure-key (fn [a b] b) #_add-wrapped-numbers)
+           (let [agg-fn (get agg-fns measure-key (fn [a b]
+                                                   (+ a b)) #_add-wrapped-numbers)
                  new-v  (get new-values measure-key)]
              [measure-key (agg-fn agg new-v)])))
         measure-aggregations))
 
 (defn add-row [pivot row]
-  (let [{:keys [pivot-rows pivot-cols pivot-measures measures]} (:config pivot)
-        row-path (mapv row pivot-rows)
-        col-path (mapv row pivot-cols)
-        measure-vals (select-keys row pivot-measures)]
+  (let [{:keys [pivot-rows
+                pivot-cols
+                pivot-measures
+                measures]} (:config pivot)
+        row-path           (mapv row pivot-rows)
+        col-path           (mapv row pivot-cols)
+        measure-vals       (select-keys row pivot-measures)
+        total-fn           (fn [m path]
+                             (update-in m path
+                                        #(update-aggregate (or % (zipmap pivot-measures (repeat 0))) measure-vals measures)))]
     (-> pivot
-        (update :count (fn [v] (if v (inc v) 0)))
+        (update :row-count (fn [v] (if v (inc v) 0)))
         (update :data update-in (concat row-path col-path)
                 #(update-aggregate (or % (zipmap pivot-measures (repeat 0))) measure-vals measures))
+        (update :totals (fn [totals]
+                          (-> totals
+                              (total-fn [:grand-total])
+                              (total-fn row-path)
+                              (total-fn col-path)
+                              (total-fn [:section-totals (first row-path)])
+                              (total-fn (concat [:column-totals (first row-path)] col-path)))))
+
         (update :row-values #(reduce-kv update-set % (select-keys row pivot-rows)))
         (update :column-values #(reduce-kv update-set % (select-keys row pivot-cols))))))
 
@@ -87,9 +97,10 @@
     (for [x (first colls)
           more (cartesian-product (rest colls))]
       (cons x more))))
-#_
-(defn build-pivot-output [pivot]
-  (let [{:keys [config data
+
+(defn build-pivot-output
+  [pivot]
+  (let [{:keys [config data totals
                 row-values
                 column-values]} pivot
         {:keys [pivot-rows
@@ -98,65 +109,57 @@
                 column-titles]} config
         row-combos              (cartesian-product (map row-values pivot-rows))
         col-combos              (cartesian-product (map column-values pivot-cols))
-
         ;; Build the multi-level column headers
-        column-headers (for [col-combo   col-combos
-                             measure-key pivot-measures]
-                         (conj (vec col-combo) (get column-titles measure-key)))
-
+        column-headers (concat
+                        (if (= 1 (count pivot-measures))
+                          col-combos
+                          (for [col-combo   col-combos
+                                measure-key pivot-measures]
+                            (conj (vec col-combo) (get column-titles measure-key))))
+                        (repeat (count pivot-measures)
+                                (concat
+                                 ["Row totals"]
+                                 (repeat (dec (count pivot-cols)) nil)
+                                 (when (< 1 (count pivot-measures)) [nil]))))
         ;; Combine row keys with the new column headers
         headers (map (fn [h]
                        (concat (map #(get column-titles %) pivot-rows) h))
                      (apply map vector column-headers))]
-
     (concat headers
-            (for [row-combo row-combos]
-              (let [row-path row-combo]
-              (concat row-combo
-                      (for [col-combo   col-combos
-                            measure-key pivot-measures]
-                        (get-in data (concat row-path col-combo [measure-key])))))))))
+            (apply concat
+                   (for [section-row-combos (vals (group-by first row-combos))]
+                     (concat
+                      (for [row-combo section-row-combos]
+                        (let [row-path row-combo]
+                          (concat row-combo
+                                  (concat
+                                   (for [col-combo   col-combos
+                                         measure-key pivot-measures]
+                                     (get-in data (concat row-path col-combo [measure-key])))
+                                   ;; row totals
+                                   (for [measure-key pivot-measures]
+                                     (get-in totals (concat row-path [measure-key])))))))
+                      [(let [section (ffirst section-row-combos)]
+                         (concat
+                          (cons (format "Totals for %s" section) (repeat (dec (count pivot-rows)) nil))
+                          ;; column totals
+                          (for [col-combo col-combos
+                                measure-key pivot-measures]
+                            (get-in totals (concat
+                                            [:column-totals section]
+                                            col-combo
+                                            [measure-key])))
+                          ;; section totals
+                          (for [measure-key pivot-measures]
+                            (get-in totals [:section-totals section measure-key]))))])))
+            [(concat
+              (cons "Grand totals" (repeat (dec (count pivot-rows)) nil))
+              (for [col-combo col-combos
+                    measure-key pivot-measures]
+                (get-in totals (concat col-combo [measure-key])))
+              (for [measure-key pivot-measures]
+                (get-in totals [:grand-total measure-key])))])))
 
-(defn build-pivot-output [pivot]
-  (let [{:keys [config data
-                row-values
-                column-values]} pivot
-        {:keys [pivot-rows
-                pivot-cols
-                pivot-measures
-                column-titles]} config
-        row-combos              (cartesian-product (map row-values pivot-rows))
-        col-combos              (cartesian-product (map column-values pivot-cols))
-        ;; Build the multi-level column headers
-        column-headers (for [col-combo   col-combos
-                             measure-key pivot-measures]
-                         (conj (vec col-combo) (get column-titles measure-key)))
-        ;; Add "Row Total" to column headers
-        column-headers-with-total (concat column-headers [(repeat (count pivot-measures) "Row Total")])
-        ;; Combine row keys with the new column headers
-        headers (map (fn [h]
-                       (concat (map #(get column-titles %) pivot-rows) h))
-                     (apply map vector column-headers-with-total))
-        ;; Function to calculate row total
-        calculate-row-total (fn [row-data]
-                              (let [groups (partition (count pivot-measures) (mapv (fn [v] (or v 0)) row-data))]
-                                (reduce (fn [a b]
-                                          (mapv + (or a 0) (or b 0))) (repeat (count pivot-measures) 0) groups))
-                              #_
-                              (reduce (fn [totals v]
-                                        (merge-with + totals v))
-                                      {}
-                                      (remove nil? row-data)))]
-    (concat headers
-            (for [row-combo row-combos]
-              (let [row-path row-combo
-                    row-data (for [col-combo   col-combos
-                                   measure-key pivot-measures]
-                               (get-in data (concat row-path col-combo [measure-key])))
-                    row-total (calculate-row-total row-data)]
-                (concat row-combo
-                        row-data
-                        row-total))))))
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
@@ -207,11 +210,9 @@
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
-        (def asdf @pivot-data)
         (when @pivot-data
-          (let [pivot-table-rows (build-pivot-output @pivot-data)]
-            (doseq [xf-row pivot-table-rows]
-              (csv/write-csv writer [xf-row]))))
+          (doseq [xf-row (build-pivot-output @pivot-data)]
+            (csv/write-csv writer [xf-row])))
         (.flush writer)
         (.flush os)
         (.close writer)))))
