@@ -42,6 +42,11 @@ export const CLI_STEPS = [
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
+  { id: "setupLicense", executeStep: setupLicense },
+
+  // The following steps require the license to be defined first.
+  { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
+  { id: "setupPermissions", executeStep: setupPermissions },
   {
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
@@ -50,9 +55,6 @@ export const CLI_STEPS = [
     id: "generateExpressServerFile",
     executeStep: generateExpressServerFile,
   },
-  { id: "setupLicense", executeStep: setupLicense },
-  { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
-  { id: "setupPermissions", executeStep: setupPermissions },
 ] as const;
 
 export async function runCli() {
