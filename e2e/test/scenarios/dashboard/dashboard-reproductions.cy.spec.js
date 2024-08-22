@@ -702,11 +702,7 @@ describeEE("issue 29076", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@cardQuery");
     // test that user is sandboxed - normal users has over 2000 rows
-    cy.findByTestId("dashcard-container")
-      .should("exist")
-      .within(() => {
-        cy.get("tbody > tr").should("have.length", 1);
-      });
+    getDashboardCards().find("tbody > tr").should("have.length", 1);
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();

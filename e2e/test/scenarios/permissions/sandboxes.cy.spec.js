@@ -13,6 +13,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   filter,
+  getDashboardCards,
   modal,
   openNotebook,
   openOrdersTable,
@@ -1001,11 +1002,7 @@ describeEE("formatting > sandboxes", () => {
       sidebar().findByText("Email this dashboard").should("exist");
 
       // test that user is sandboxed - normal users has over 2000 rows
-      cy.findByTestId("dashcard-container")
-        .should("exist")
-        .within(() => {
-          cy.findByText("Rows 1-6 of 11").should("exist");
-        });
+      getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
       assertDatasetIsSandboxed(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
     });
 
@@ -1104,11 +1101,7 @@ describeEE("formatting > sandboxes", () => {
         visitDashboard(ORDERS_DASHBOARD_ID);
 
         // test that user is sandboxed - normal users has over 2000 rows
-        cy.findByTestId("dashcard-container")
-          .should("exist")
-          .within(() => {
-            cy.findByText("Rows 1-6 of 11").should("exist");
-          });
+        getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
         assertDatasetIsSandboxed(
           `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         );
