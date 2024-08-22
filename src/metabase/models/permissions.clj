@@ -345,7 +345,9 @@
 
 (derive :model/Permissions :metabase/model)
 
-(defn- maybe-add-collection-id [permissions]
+(defn- maybe-break-out-permission-data
+  "Given a `Permissions` model, add `:collection_id`, `:perm_type`, and `:perm_value` iff we know how to break that out."
+  [permissions]
   (let [[match? coll-id-str read?] (re-matches #"^/collection/(\d+)/(read/)?" (:object permissions))]
     (cond-> permissions
       match? (assoc :collection_id (parse-long coll-id-str)
@@ -356,7 +358,7 @@
 
 (t2/define-before-insert :model/Permissions
   [permissions]
-  (u/prog1 (maybe-add-collection-id permissions)
+  (u/prog1 (maybe-break-out-permission-data permissions)
     (assert-valid permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
 

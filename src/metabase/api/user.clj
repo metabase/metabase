@@ -295,20 +295,17 @@
     (assoc user :sso_source (t2/select-one-fn :sso_source :model/User :id id))
     user))
 
-(defn- has-readable-model?
-  "An efficient check for whether a user has a readable model. Does not use `collection/honeysql-filter-clause` in case
-  the number of collections the user has access to is very large."
-  [model & additional-clauses]
-  (t2/exists? model {:where (into [:and (collection/honeysql-filter-clause)] additional-clauses)}))
-
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
   (-> user
-      (assoc :has_question_and_dashboard (and (has-readable-model? :model/Card)
-                                              (has-readable-model? :model/Dashboard)))
-      (assoc :has_model (has-readable-model? :model/Card [:= :type "model"]))))
+      (assoc :has_question_and_dashboard
+             (and (t2/exists? :model/Card {:where (collection/honeysql-filter-clause)})
+                  (t2/exists? :model/Dashboard {:where (collection/honeysql-filter-clause)})))
+      (assoc :has_model (t2/exists? :model/Card {:where [:and
+                                                         (collection/honeysql-filter-clause)
+                                                         [:= :type "model"]]}))))
 
 (defn- add-first-login
   "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."

@@ -520,7 +520,9 @@
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
 
-(defn- should-display-root-collection? [visibility-config]
+(defn- should-display-root-collection?
+  "Should this user be shown the root collection, given the `visibility-config` passed?"
+  [visibility-config]
   (and
    ;; we have permission for it.
    (can-access-root-collection? (:permission-level visibility-config))
@@ -543,18 +545,33 @@
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig]
    (let [visibility-config (merge default-visibility-config visibility-config)]
+     ;; This giant query looks scary, but it's actually only moderately terrifying! Let's walk through it step by
+     ;; step. What we're doing here is adding a filter clause to a surrounding query, to make sure that
+     ;; `collection-id-field` matches the criteria passed by the user. The criteria we use are:
+     ;;
+     ;; - your permissions (we don't show you something you don't have the right to see)
+     ;; - the desired permission level you need (if you're looking for stuff you can WRITE, we don't show you stuff you can READ)
+     ;; - trash (you can show/hide the trash)
+     ;; - archived (you can show/hide archived collections or select *only* archived collections)
+     ;; - archive operation id (when we archive a collection and subcollections together, we mark the whole archived
+     ;;   tree so you can look at it in isolation)
+     ;; - effective child (if you're only interested in things that are an effective child of another collection, we can do that)
+     ;;
+     ;; So first, we check to see if we should include the root collection. That decision is outsourced to
+     ;; `should-display-root-collection?` but it's pretty simple. We can't include the root collection along with the
+     ;; rest because it's not a Real collection.
      [:or
-      ;; the root collection is included when:
       (when (should-display-root-collection? visibility-config)
         [:= collection-id-field nil])
-      ;; the non-root collections
+      ;; the non-root collections are here. We're saying "let this row through if..."
       [:in collection-id-field
        {:select :id
+        ;; the `FROM` clause is where we limit the collections to the ones we have permissions on. For a superuser,
+        ;; that's all of them. For regular users, it's a) the collections they have permission in the DB for, and b)
+        ;; their personal collection and its descendants.
         :from [[{:union-all (if api/*is-superuser?*
                               [{:select [:c.*]
                                 :from [[:collection :c]]}]
-                              ;; for non-admins, we can access two groups of collections:
-                              ;; first, the collections the user has explicit permissions on
                               [{:select [:c.*]
                                 :from [[:collection :c]]
                                 :join [[:permissions :p]
@@ -574,32 +591,38 @@
                                   :from [[:collection :c]]
                                   :where [:in :id personal-collection-and-descendant-ids]})])}
                 :c]]
+        ;; The `WHERE` clause is where we apply the other criteria we were given:
         :where [:and
+                ;; hiding the trash collection when desired...
                 (when-not (:include-trash-collection? visibility-config)
                   [:not= (trash-collection-id) :id])
 
+                ;; hiding archived items when desired...
                 (when (= :exclude (:include-archived-items visibility-config))
                   [:= :archived false])
 
+                ;; (or showing them, if that's what you want)
                 (when (= :only (:include-archived-items visibility-config))
                   [:or
                    [:= :archived true]
                    ;; the trash collection is included when viewing archived-only
                    [:= :id (trash-collection-id)]])
 
+                ;; excluding things outside of the `archive_operation_id` you wanted...
                 (when-let [op-id (:archive-operation-id visibility-config)]
                   [:or
                    [:= :archive_operation_id op-id]
                    ;; the trash collection is part of every `archive_operation`
                    [:= :id (trash-collection-id)]])
 
+                ;; or finally, restricting the result set to effective children of the parent you passed in.
                 (when-let [parent-coll (:effective-child-of visibility-config)]
                   (if (is-trash? parent-coll)
                     [:= :archived_directly true]
                     [:and
                      ;; an effective child is a descendant of the parent collection
                      [:like :location (str (children-location parent-coll) "%")]
-                     ;; but NOT a child of any OTHER visible collection
+                     ;; but NOT a child of any OTHER visible collection.
                      [:not [:exists {:select 1
                                      :from [[:collection :c2]]
                                      :where [:and
@@ -610,7 +633,8 @@
 
 (mu/defn visible-collection-ids :- VisibleCollections
   "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
-  toggling permission level, trash/archive visibility, etc.)"
+  toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
+  probably try to use `honeysql-filter-clause` instead."
   [visibility-config]
   (cond-> (t2/select-pks-set :model/Collection {:where (honeysql-filter-clause :id visibility-config)})
     (should-display-root-collection? visibility-config)
@@ -698,10 +722,7 @@
   (ancestors* collection))
 
 (mu/defn- effective-ancestors*
-  "Given a collection, return the effective ancestors of that collection.
-  Note that the map `(collection-id->collection)` is cached for the lifetime
-  of the request, so this will make at most one DB query per request regardless
-  of how many times it is called."
+  "Given a collection, return the effective ancestors of that collection."
   [collection :- [:maybe CollectionWithLocationOrRoot]
    collection-id->collection :- :map]
   (if (or (nil? collection)
@@ -810,19 +831,12 @@
         :children)))
 
 (mu/defn- effective-children-where-clause
+  "Given a collection, return the `WHERE` clause appropriate to return all the collections we want to show as its
+  effective children."
   [collection & additional-honeysql-where-clauses]
-  ;; Collection B is an effective child of Collection A if...
   (into
    [:and
-    ;; it is a descendant of Collection A. For the Trash, this just means the collection is archived. Otherwise
-    ;; we check that Collection B's location contains A's location as a prefix
-    (if (is-trash? collection)
-      [:= :archived true]
-      [:like :location (h2x/literal (str (children-location collection) "%"))])
-    ;; when we're looking at a particular archived collection, we only see the subtree that was archived together.
-    (when (:archive_operation_id collection)
-      [:= :archive_operation_id (:archive_operation_id collection)])
-    ;; it is visible.
+    ;; it is a visible effective child of the collection.
     (honeysql-filter-clause :id
                             {:include-archived-items    (if (or (:archived collection)
                                                                 (is-trash? collection))
