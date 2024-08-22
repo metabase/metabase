@@ -111,8 +111,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     createQ0("q0");
     cy.then(function () {
-      createQ1("q1", this.q0);
-      createM1("m1", this.q0);
+      createQ1("q1", this.q0, {
+        type: "question",
+        name: "Q1 Orders Question",
+        description: "Question based on a question",
+      });
+      createQ1("m1", this.q0, {
+        type: "model",
+        name: "M1 Orders Model",
+        description: "Model based on a question",
+      });
     });
   });
 
@@ -396,24 +404,14 @@ function createQ0(alias: string) {
   }).then(response => cy.wrap(response.body).as(alias));
 }
 
-function createQ1(alias: string, source: Card) {
+function createQ1(
+  alias: string,
+  source: Card,
+  questionDetails?: Partial<StructuredQuestionDetails>,
+) {
   return createQuestion({
-    name: "Q1 Orders Question",
-    description: "Question based on a question",
-    query: {
-      "source-table": `card__${source.id}`,
-    },
-  }).then(response => cy.wrap(response.body).as(alias));
-}
-
-function createM1(alias: string, source: Card) {
-  return createQuestion({
-    name: "M1 Orders Model",
-    description: "Model based on a question",
-    type: "model",
-    query: {
-      "source-table": `card__${source.id}`,
-    },
+    query: createQ1uery(source),
+    ...questionDetails,
   }).then(response => cy.wrap(response.body).as(alias));
 }
 
@@ -439,6 +437,12 @@ function createQ3(
     query: createQ3Query(source),
     ...questionDetails,
   }).then(response => cy.wrap(response.body).as(alias));
+}
+
+function createQ1uery(source: Card): StructuredQuery {
+  return {
+    "source-table": `card__${source.id}`,
+  };
 }
 
 function createQ2Query(source: Card): StructuredQuery {
