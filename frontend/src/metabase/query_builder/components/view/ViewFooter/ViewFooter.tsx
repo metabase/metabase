@@ -13,30 +13,20 @@ import {
   CenterViewFooterButtonGroup,
   type CenterViewFooterButtonGroupProps,
 } from "./CenterViewFooterButtonGroup";
-import {
-  LeftViewFooterButtonGroup,
-  type LeftViewFooterButtonGroupProps,
-} from "./LeftViewFooterButtonGroup";
+import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";
 import {
   RightViewFooterButtonGroup,
   type RightViewFooterButtonGroupProps,
 } from "./RightViewFooterButtonGroup";
 
-type ViewFooterProps = LeftViewFooterButtonGroupProps &
-  CenterViewFooterButtonGroupProps &
+type ViewFooterProps = CenterViewFooterButtonGroupProps &
   RightViewFooterButtonGroupProps;
 
 export const ViewFooter = ({
   question,
   result,
   className,
-  isShowingChartTypeSidebar,
-  isShowingChartSettingsSidebar,
   isShowingRawTable,
-  onOpenChartType,
-  onCloseChartType,
-  onOpenChartSettings,
-  onCloseChartSettings,
   setUIControls,
   isObjectDetail,
 }: ViewFooterProps) => {
@@ -57,16 +47,7 @@ export const ViewFooter = ({
     >
       <Group position="apart" pos="relative" noWrap w="100%">
         <Group className={CS.flex1}>
-          {!hideChartSettings && (
-            <LeftViewFooterButtonGroup
-              isShowingChartTypeSidebar={isShowingChartTypeSidebar}
-              isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
-              onCloseChartType={onCloseChartType}
-              onOpenChartType={onOpenChartType}
-              onCloseChartSettings={onCloseChartSettings}
-              onOpenChartSettings={onOpenChartSettings}
-            />
-          )}
+          {!hideChartSettings && <LeftViewFooterButtonGroup />}
         </Group>
         {isVisualized && (
           <Group>
