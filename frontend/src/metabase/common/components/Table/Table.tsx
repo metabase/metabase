@@ -4,7 +4,7 @@ import {
   PaginationControls,
   type PaginationControlsProps,
 } from "metabase/components/PaginationControls";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Flex, FlexProps, Icon } from "metabase/ui";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import CS from "./Table.module.css";
@@ -16,7 +16,6 @@ export type TableProps<Row extends BaseRow> = {
   columns: ColumnItem[];
   rows: Row[];
   rowRenderer: (row: Row) => React.ReactNode;
-  tableProps?: React.HTMLAttributes<HTMLTableElement>;
   sortColumnName?: string | null;
   sortDirection?: SortDirection;
   onSort?: (columnName: string, direction: SortDirection) => void;
@@ -120,7 +119,7 @@ function ColumnHeader({
   sortColumn?: string | null;
   sortDirection?: SortDirection;
   onSort: (column: string, direction: SortDirection) => void;
-}) {
+} & FlexProps) {
   return (
     <Flex
       gap="sm"
