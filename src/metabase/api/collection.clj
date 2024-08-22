@@ -434,10 +434,10 @@
        :where     [:and
                    (collection/honeysql-filter-clause :collection_id
                                                       {:include-archived-items :all
-                                                                         :permission-level (if archived?
-                                                                                             :write
-                                                                                             :read)
-                                                                         :archive-operation-id nil})
+                                                       :permission-level (if archived?
+                                                                           :write
+                                                                           :read)
+                                                       :archive-operation-id nil})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and

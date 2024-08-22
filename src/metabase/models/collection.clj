@@ -312,7 +312,6 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (t2/select-pks-set Collection :location [:like (str (children-location collection) \%)]))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -340,7 +339,7 @@
   (let [{first-name :first_name
          last-name  :last_name
          email      :email} (t2/select-one ['User :first_name :last_name :email]
-                              :id (u/the-id user-or-id))]
+                                           :id (u/the-id user-or-id))]
     (format-personal-collection-name first-name last-name email user-or-site)))
 
 (defn personal-collection-with-ui-details
@@ -424,7 +423,6 @@
           ;; in Root, so we can pass it what it needs without actually having to fetch an entire CollectionInstance
           (descendant-ids {:location "/", :id personal-collection-id}))))
 
-
 (mi/define-batched-hydration-method include-personal-collection-ids
   :personal_collection_id
   "Efficiently hydrate the `:personal_collection_id` property of a sequence of Users. (This is, predictably, the ID of
@@ -433,7 +431,7 @@
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (t2/select-fn->pk :personal_owner_id Collection
-                                   :personal_owner_id [:in (set (map u/the-id users))])]
+                                                   :personal_owner_id [:in (set (map u/the-id users))])]
       (assert (map? user-id->collection-id))
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
       ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
@@ -481,7 +479,6 @@
   collection."
   [:set
    [:or [:= "root"] ms/PositiveInt]])
-
 
 (def ^:private CollectionVisibilityConfig
   [:map
