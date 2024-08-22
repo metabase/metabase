@@ -439,7 +439,7 @@
    :skip      []
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
-               :details             {:export #(when include-database-secrets %) :import identity}
+               :details             {:export #(if include-database-secrets % ::serdes/skip) :import identity}
                :creator_id          (serdes/fk :model/User)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
