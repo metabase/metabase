@@ -53,6 +53,7 @@ export function FilterHeaderButton({
           onClick={isExpanded ? onCollapse : onExpand}
           data-testid="filters-visibility-control"
           data-expanded={isExpanded}
+          style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
         >
           <div color="white" className={ViewTitleHeaderS.FilterCountChip}>
             {items?.length}
