@@ -546,7 +546,7 @@
 (defn table->entity-ids->ids
   "Given a map of table names to a sequence of entity-ids for each, return a map from entity-id -> id."
   [tables->entity-ids]
-  (when-not (mc/validate TableToEntityIds #p tables->entity-ids)
+  (when-not (mc/validate TableToEntityIds tables->entity-ids)
     (throw (ex-info "Invalid format." {:explaination (mu/explain TableToEntityIds tables->entity-ids)})))
   (into {}
         (mapcat

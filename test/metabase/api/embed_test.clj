@@ -1757,16 +1757,21 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid id eid-0 id-0 eid-1 id-1 eid-2 id-2 eid-3 id-3 eid-4 id-4 eid-5 id-5}
-           (api.embed.common/table->entity-ids->ids {"report_card" [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
+    (is (= {eid   id
+            eid-0 id-0
+            eid-1 id-1
+            eid-2 id-2
+            eid-3 id-3
+            eid-4 id-4
+            eid-5 id-5}
+           (api.embed.common/table->entity-ids->ids {:report_card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
 (deftest entity-id-mixed-translations-test
   (mt/with-temp
     [;; prereqs to create the eid-able entities:
-     :model/Card               {model-id :id} {:type :model}
-     :model/Card {card-id :id} {}
-     :model/Field  {field-id :id} {}
-     :model/Table {table-id :id} {}
+     :model/Card  {model-id :id} {:type :model}
+     :model/Card  {card-id :id}  {}
+     :model/Field {field-id :id} {}
 
      ;; eid models:
      :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :http}
@@ -1775,7 +1780,6 @@
      ;; filling entity id here doesn't work: do it manually below.
 
      :model/Dimension          {dimension_id            :id dimension_eid            :entity_id} {:field_id field-id}
-     :model/LegacyMetric       {metric_id               :id metric_eid               :entity_id} {:table_id table-id :entity_id (u/generate-nano-id)}
      :model/NativeQuerySnippet {native_query_snippet_id :id native_query_snippet_eid :entity_id} {:creator_id core_user_id}
      :model/PermissionsGroup   {permissions_group_id    :id permissions_group_eid    :entity_id} {}
      :model/Pulse              {pulse_id                :id pulse_eid                :entity_id} {}
@@ -1794,7 +1798,6 @@
               core_user_eid core_user_id
               dashboard_tab_eid dashboard_tab_id
               dimension_eid dimension_id
-              metric_eid metric_id
               native_query_snippet_eid native_query_snippet_id
               permissions_group_eid permissions_group_id
               pulse_eid pulse_id
@@ -1806,19 +1809,18 @@
               segment_eid segment_id
               timeline_eid timeline_id}
            (api.embed.common/table->entity-ids->ids
-            {"action" [action_eid]
-             "collection" [collection_eid]
-             "core_user" [core_user_eid]
-             "dashboard_tab" [dashboard_tab_eid]
-             "dimension" [dimension_eid]
-             "metric" [metric_eid]
-             "native_query_snippet" [native_query_snippet_eid]
-             "permissions_group" [permissions_group_eid]
-             "pulse" [pulse_eid]
-             "pulse_card" [pulse_card_eid]
-             "pulse_channel" [pulse_channel_eid]
-             "report_card" [report_card_eid]
-             "report_dashboard" [report_dashboard_eid]
-             "report_dashboardcard" [report_dashboardcard_eid]
-             "segment" [segment_eid]
-             "timeline" [timeline_eid]}))))))
+            {:action [action_eid]
+             :collection [collection_eid]
+             :core_user [core_user_eid]
+             :dashboard_tab [dashboard_tab_eid]
+             :dimension [dimension_eid]
+             :native_query_snippet [native_query_snippet_eid]
+             :permissions_group [permissions_group_eid]
+             :pulse [pulse_eid]
+             :pulse_card [pulse_card_eid]
+             :pulse_channel [pulse_channel_eid]
+             :report_card [report_card_eid]
+             :report_dashboard [report_dashboard_eid]
+             :report_dashboardcard [report_dashboardcard_eid]
+             :segment [segment_eid]
+             :timeline [timeline_eid]}))))))
