@@ -43,10 +43,10 @@
         ;; Async messages are given higher priority, as sync messages will never be dropped.
         (or (u/prog1 (.poll async-queue)
               (when <>
-                (log/debugf "[query-analysis] took %s off the async queue" <>)))
+                (log/debugf "[query-analysis] took %s off the async queue" (u/the-id <>))))
             (u/prog1 (.poll sync-queue block-ms TimeUnit/MILLISECONDS)
               (when <>
-                (log/debugf "[query-analysis] took %s off the sync queue" <>)))
+                (log/debugf "[query-analysis] took %s off the sync queue" (u/the-id <>))))
             (do (Thread/sleep ^long sleep-ms)
                 ;; This is an underestimate, as the thread may have taken a while to wake up. That's OK.
                 (recur (- time-remaining block-ms sleep-ms)))))))
