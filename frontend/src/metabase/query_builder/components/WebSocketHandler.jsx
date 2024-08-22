@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
 import { useDispatch } from "metabase/lib/redux";
-import { Box, Button, Icon } from "metabase/ui";
+import { Box, Button, Icon, Textarea } from "metabase/ui";
 import Input from "metabase/core/components/Input";
+import TextArea from "metabase/core/components/TextArea";
 import useWebSocket from "metabase/hooks/useWebSocket";
 import ChatMessageList from "metabase/components/ChatMessageList/ChatMessageList";
 import FeedbackDialog from "metabase/components/FeedbackDialog/FeedbackDialog";
@@ -18,7 +19,9 @@ import { generateRandomId } from "metabase/lib/utils";
 import {
     adhocQuestionHash
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
+
 const WebSocketHandler = () => {
+    const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
     const [inputValue, setInputValue] = useState("");
@@ -39,6 +42,40 @@ const WebSocketHandler = () => {
     const [insightsList, setInsightsList] = useState([]);
     const [cardHash, setCardHash] = useState(null);
     const [id, setId] = useState(0);
+    const [useTextArea, setUseTextArea] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        if (testData) {
+            createCard(testData.data[1]?.id, testData.data[1]?.tables[0].id);
+        }
+    }, [testData]);
+
+    useLayoutEffect(() => {
+        if (inputRef.current) {
+            const element =
+                inputRef.current.querySelector("input") ||
+                inputRef.current.querySelector("textarea");
+
+            if (element) {
+                element.focus();
+                element.setSelectionRange(inputValue.length, inputValue.length);
+            }
+        }
+    }, [useTextArea]);
+
+    const handleInputChange = (e) => {
+        const value = e.target.value;
+        setInputValue(value);
+
+        // Check if the input content overflows and toggle between Input and TextArea
+        if (e.target.scrollWidth > e.target.clientWidth) {
+            setUseTextArea(true);
+        } else if (e.target.scrollHeight <= e.target.clientHeight) {
+            setUseTextArea(false);
+        }
+    };
+
     const { ws, isConnected } = useWebSocket(
         assistant_url,
         async e => {
@@ -124,6 +161,7 @@ const WebSocketHandler = () => {
             setCardHash(hash1)
         } catch (error) {
             console.error("Error fetching card content:", error);
+            setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
             removeLoadingMessage();
@@ -163,6 +201,7 @@ const WebSocketHandler = () => {
 
         } catch (error) {
             console.error("Error fetching card content:", error);
+            setError("There was an error fetching the insights. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
             removeLoadingMessage();
@@ -177,10 +216,16 @@ const WebSocketHandler = () => {
     };
 
     const handleResultMessage = data => {
+        const hasError =
+            data.message.toLowerCase().includes("error") ||
+            data.message.toLowerCase().includes("failed");
         addServerMessage(
             data.message || "Received a message from the server.",
             "text",
         );
+        if (hasError) {
+            setError(data.message);
+        }
         setIsLoading(false);
         removeLoadingMessage();
     };
@@ -209,7 +254,7 @@ const WebSocketHandler = () => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 9],
+                    configData: [dbInputValue || 2],
                 }),
             );
         }
@@ -266,7 +311,7 @@ const WebSocketHandler = () => {
                 style={{
                     display: "flex",
                     flexDirection: "column",
-                    height: "80vh",
+                    height: "85vh",
                     width: "100%",
                 }}
             >
@@ -389,6 +434,39 @@ const WebSocketHandler = () => {
                             </div>
                         </div>
                     ))}
+
+                    {error && (
+                        <div style={{ marginTop: "16px" }}>
+                            <Button
+                                variant="outlined"
+                                style={{
+                                    width: "auto",
+                                    cursor: "pointer",
+                                    border: "1px solid #E0E0E0",
+                                    borderRadius: "8px",
+                                    marginBottom: "1rem",
+                                    color: "#FFF",
+                                    marginLeft: "auto",
+                                    marginRight: 0,
+                                    backgroundColor: "#FF6347", // Red color to indicate an error state
+                                    display: "flex",
+                                    alignItems: "center",
+                                    padding: "0.5rem 1rem",
+                                    lineHeight: "1",
+                                }}
+                                onClick={handleFeedbackDialogOpen}
+                            >
+                                <Icon
+                                    size={18}
+                                    name="alert"
+                                    style={{
+                                        marginRight: "0.5rem",
+                                    }}
+                                />
+                                <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Provide Feedback</span>
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 <div
@@ -401,17 +479,34 @@ const WebSocketHandler = () => {
                         alignItems: "center",
                     }}
                 >
-                    <Input
-                        id="1"
-                        type="text"
-                        fullWidth
-                        size="large"
-                        placeholder="Enter a prompt here..."
-                        value={inputValue}
-                        onChange={e => setInputValue(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        style={{ marginRight: "8px" }}
-                    />
+                    {
+                        useTextArea ? (
+                            <TextArea
+                                id="1"
+                                fullWidth
+                                size="large"
+                                placeholder="Enter a prompt here..."
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyPress={handleKeyPress}
+                                style={{ marginRight: "8px" }}
+                                ref={inputRef}
+                            />
+                        ) : (
+                            <Input
+                                id="1"
+                                type="text"
+                                fullWidth
+                                size="large"
+                                placeholder="Enter a prompt here..."
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyPress={handleKeyPress}
+                                style={{ marginRight: "8px" }}
+                                ref={inputRef}
+                            />
+                        )
+                    }
                     <Button
                         variant="filled"
                         disabled={!isConnected}
@@ -605,6 +700,11 @@ const WebSocketHandler = () => {
             <FeedbackDialog
                 isOpen={isFeedbackDialogOpen}
                 onClose={handleFeedbackDialogOpen}
+                emailBody={
+                    error
+                        ? `Error: ${error}\n\n` + messages.map(message => message.text).join("\n")
+                        : messages.map(message => message.text).join("\n")
+                }
             />
         </>
     );
