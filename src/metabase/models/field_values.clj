@@ -394,28 +394,44 @@
       nil)))
 
 (defn- delete-duplicates-and-return-latest!
-  "This is a workaround for the issue of stale FieldValues rows (metabase#668)
-  In order to mitigate the impact of duplicates, we return the most recently updated row, and delete the older rows."
-  [rows]
-  (if (<= (count rows) 1)
-    (first rows)
-    (let [[latest & duplicates] (sort-by :updated_at u/reverse-compare rows)]
-      (t2/delete! FieldValues :id [:in (map :id duplicates)])
-      latest)))
+  "Takes a list of field values, return a map of field-id -> latest FieldValues.
 
-(defn get-latest-field-values
+  If a field has more than one Field Values, delete the old ones. This is a workaround for the issue of stale FieldValues rows (metabase#668)
+  In order to mitigate the impact of duplicates, we return the most recently updated row, and delete the older rows.
+
+  It assumes that all rows are of the same type. Rows could be from multiple field-ids."
+  [fvs]
+  (let [fvs-grouped-by-field-id (update-vals (group-by :field_id fvs)
+                                             #(sort-by :updated_at u/reverse-compare %))
+        to-delete-fv-ids        (->> (vals fvs-grouped-by-field-id)
+                                     (mapcat rest)
+                                     (map :id))]
+    (when (seq to-delete-fv-ids)
+      (t2/delete! :model/FieldValues :id [:in to-delete-fv-ids]))
+    (update-vals fvs-grouped-by-field-id first)))
+
+(defn- get-latest-field-values
   "This returns the FieldValues with the given :type and :hash_key for the given Field.
-   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id type hash]
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
-  (delete-duplicates-and-return-latest!
-   (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
+  (-> (t2/select :model/FieldValues :field_id field-id :type type :hash_key hash)
+      delete-duplicates-and-return-latest!
+      (get field-id)))
 
 (defn get-latest-full-field-values
   "This returns the full FieldValues for the given Field.
    This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
   [field-id]
   (get-latest-field-values field-id :full nil))
+
+(defn batched-get-latest-full-field-values
+  "Batched version of [[get-latest-full-field-values]] .
+  Takes a list of field-ids and returns a map of field-id -> full FieldValues.
+  This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  [field-ids]
+  (delete-duplicates-and-return-latest!
+   (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil)))
 
 (defn create-or-update-full-field-values!
   "Create or update the full FieldValues object for `field`. If the FieldValues object already exists, then update values for
@@ -579,7 +595,7 @@
                :last_used_at (serdes/date)
                :type         (serdes/kw)
                :field_id     {::serdes/fk true
-                              :export     (constantly nil)
+                              :export     (constantly ::serdes/skip)
                               :import     (fn [_]
                                             (let [field-ref (field-path->field-ref (serdes/path serdes/*current*))]
                                               (serdes/*import-field-fk* field-ref)))}}})

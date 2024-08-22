@@ -259,11 +259,13 @@ export const getDatabaseId = createSelector(
 export const getTableForeignKeyReferences = state =>
   state.qb.tableForeignKeyReferences;
 
+const getDatabasesListDefaultValue = [];
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
     entityQuery: { include: "tables", saved: true },
-  }) || [];
+  }) || getDatabasesListDefaultValue;
 
+const getTablesDefaultValue = [];
 export const getTables = createSelector(
   [getDatabaseId, getDatabasesList],
   (databaseId, databases) => {
@@ -274,7 +276,7 @@ export const getTables = createSelector(
       }
     }
 
-    return [];
+    return getTablesDefaultValue;
   },
 );
 
