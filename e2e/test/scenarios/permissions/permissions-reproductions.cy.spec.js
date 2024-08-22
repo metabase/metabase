@@ -6,7 +6,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  assertDatasetIsSandboxed,
+  assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
   commandPaletteSearch,
   describeEE,
@@ -163,7 +163,7 @@ describeEE("postgres > user > query", { tags: "@external" }, () => {
         cy.findByText(CC_NAME);
         cy.findByText(/^Hudson$/);
         assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
-        assertDatasetIsSandboxed(`@cardquery${QUESTION_ID}`);
+        assertDatasetReqIsSandboxed(`@cardquery${QUESTION_ID}`);
       });
     });
   });
@@ -675,7 +675,7 @@ describeEE("issue 24966", () => {
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");
     cy.get("@dashcardId").then(id => {
-      assertDatasetIsSandboxed(`@dashcardQuery${id}`);
+      assertDatasetReqIsSandboxed(`@dashcardQuery${id}`);
     });
   });
 });

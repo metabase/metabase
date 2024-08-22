@@ -10,7 +10,7 @@ import {
 import {
   addTextBox,
   appBar,
-  assertDatasetIsSandboxed,
+  assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
   cartesianChartCircle,
   closeDashboardInfoSidebar,
@@ -709,7 +709,7 @@ describeEE("issue 29076", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
     assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
-    assertDatasetIsSandboxed("@cardQuery");
+    assertDatasetReqIsSandboxed("@cardQuery");
   });
 });
 

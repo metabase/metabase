@@ -6,7 +6,7 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  assertDatasetIsSandboxed,
+  assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
   chartPathWithFillColor,
   describeEE,
@@ -147,9 +147,9 @@ describeEE("formatting > sandboxes", () => {
     describe("table sandboxed on a user attribute", () => {
       it("should display correct number of orders", () => {
         openOrdersTable();
-        assertDatasetIsSandboxed();
         // 10 rows filtered on User ID
         cy.findAllByText(ATTRIBUTE_VALUE).should("have.length", 10);
+        assertDatasetReqIsSandboxed();
       });
     });
 
@@ -176,7 +176,7 @@ describeEE("formatting > sandboxes", () => {
 
         visualize();
         cy.log("Make sure user is still sandboxed");
-        assertDatasetIsSandboxed();
+        assertDatasetReqIsSandboxed();
         cy.get(".test-TableInteractive-cellWrapper--firstColumn").should(
           "have.length",
           7,
@@ -187,7 +187,7 @@ describeEE("formatting > sandboxes", () => {
     describe("table sandboxed on a saved parameterized SQL question", () => {
       it("should show filtered categories", () => {
         openPeopleTable();
-        assertDatasetIsSandboxed();
+        assertDatasetReqIsSandboxed();
         cy.get(".test-TableInteractive-headerCellData").should(
           "have.length",
           4,
@@ -264,7 +264,7 @@ describeEE("formatting > sandboxes", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("11"); // Sum of orders for user with ID #1
       assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
-      assertDatasetIsSandboxed();
+      assertDatasetReqIsSandboxed();
     });
 
     // Note: This issue was ported from EE repo - it was previously known as (metabase-enterprise#548)
@@ -308,7 +308,7 @@ describeEE("formatting > sandboxes", () => {
         cy.log("Reported failing since v1.36.4");
         cy.contains(CC_NAME);
         assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-        assertDatasetIsSandboxed(`@cardQuery${QUESTION_ID}`);
+        assertDatasetReqIsSandboxed(`@cardQuery${QUESTION_ID}`);
       });
     });
 
@@ -397,8 +397,8 @@ describeEE("formatting > sandboxes", () => {
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("97.44"); // Subtotal for order #10
         assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
-        assertDatasetIsSandboxed("@dataset");
-        assertDatasetIsSandboxed("@cardQuery");
+        assertDatasetReqIsSandboxed("@dataset");
+        assertDatasetReqIsSandboxed("@cardQuery");
       });
     });
 
@@ -480,8 +480,8 @@ describeEE("formatting > sandboxes", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("97.44"); // Subtotal for order #10
       assertQueryBuilderRowCount(2); // test that user is sandboxed - normal users has over 2000 rows
-      assertDatasetIsSandboxed("@dataset");
-      assertDatasetIsSandboxed("@cardQuery");
+      assertDatasetReqIsSandboxed("@dataset");
+      assertDatasetReqIsSandboxed("@cardQuery");
     });
 
     describe(
@@ -547,7 +547,7 @@ describeEE("formatting > sandboxes", () => {
           cy.wait("@datasetQuery");
 
           assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-          assertDatasetIsSandboxed("@datasetQuery");
+          assertDatasetReqIsSandboxed("@datasetQuery");
 
           cy.findByTestId("TableInteractive-root")
             .findByText("Awesome Concrete Shoes")
@@ -714,7 +714,7 @@ describeEE("formatting > sandboxes", () => {
             callback: xhr => expect(xhr.response.body.error).not.to.exist,
           });
           assertQueryBuilderRowCount(11); // test that user is sandboxed - normal users has over 2000 rows
-          assertDatasetIsSandboxed();
+          assertDatasetReqIsSandboxed();
 
           // Title of the first order for User ID = 1
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -974,7 +974,7 @@ describeEE("formatting > sandboxes", () => {
         cy.signInAsSandboxedUser();
 
         visitQuestion(QUESTION_ID);
-        assertDatasetIsSandboxed(`@cardQuery${QUESTION_ID}`);
+        assertDatasetReqIsSandboxed(`@cardQuery${QUESTION_ID}`);
       });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -1003,7 +1003,9 @@ describeEE("formatting > sandboxes", () => {
 
       // test that user is sandboxed - normal users has over 2000 rows
       getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
-      assertDatasetIsSandboxed(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+      assertDatasetReqIsSandboxed(
+        `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
+      );
     });
 
     it.skip("should be able to visit ad-hoc/dirty question when permission is granted to the linked table column, but not to the linked table itself (metabase#15105)", () => {
@@ -1079,7 +1081,7 @@ describeEE("formatting > sandboxes", () => {
       });
 
       assertQueryBuilderRowCount(57); // test that user is sandboxed - normal users has 1,112 rows
-      assertDatasetIsSandboxed();
+      assertDatasetReqIsSandboxed();
 
       // Add positive assertion once this issue is fixed
     });
@@ -1102,7 +1104,7 @@ describeEE("formatting > sandboxes", () => {
 
         // test that user is sandboxed - normal users has over 2000 rows
         getDashboardCards().findByText("Rows 1-6 of 11").should("exist");
-        assertDatasetIsSandboxed(
+        assertDatasetReqIsSandboxed(
           `@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`,
         );
 

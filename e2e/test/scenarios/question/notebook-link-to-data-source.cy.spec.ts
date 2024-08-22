@@ -8,7 +8,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type NativeQuestionDetails,
-  assertDatasetIsSandboxed,
+  assertDatasetReqIsSandboxed,
   createNativeQuestion,
   createQuestion,
   describeEE,
@@ -525,7 +525,7 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
-        assertDatasetIsSandboxed(`@modelQuery${ORDERS_MODEL_ID}`);
+        assertDatasetReqIsSandboxed(`@modelQuery${ORDERS_MODEL_ID}`);
       });
 
       it("should work for sandboxed users when joined table is sandboxed", () => {
@@ -547,7 +547,7 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
-        assertDatasetIsSandboxed();
+        assertDatasetReqIsSandboxed();
       });
     });
   });
