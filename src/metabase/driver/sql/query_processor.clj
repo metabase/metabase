@@ -1362,6 +1362,14 @@
   (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
                (generate-pattern driver "%" arg nil options) options))
 
+(defn- parent-honeysql-col-base-type-map
+  [field]
+  (when (and (vector? field)
+             (= 3 (count field))
+             (= :field (first field))
+             (map? (field 2)))
+    (select-keys (field 2) [:base-type])))
+
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
   `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
@@ -1374,7 +1382,7 @@
   (let [field-honeysql (->honeysql driver field)]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
-                                                     (select-keys (field 2) [:base-type]))]
+                                                     (parent-honeysql-col-base-type-map field))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
 (doseq [operator [:> :>= :< :<=]]
@@ -1383,7 +1391,7 @@
     (let [field-honeysql (->honeysql driver field)]
       (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                          {:database-type database-type})
-                                                       (select-keys (field 2) [:base-type]))]
+                                                       (parent-honeysql-col-base-type-map field))]
         [operator field-honeysql (->honeysql driver value)]))))
 
 (defmethod ->honeysql [:sql :=]
@@ -1392,7 +1400,7 @@
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
     (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
                                                        {:database-type database-type})
-                                                     (select-keys (field 2) [:base-type]))]
+                                                     (parent-honeysql-col-base-type-map field))]
       [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour
