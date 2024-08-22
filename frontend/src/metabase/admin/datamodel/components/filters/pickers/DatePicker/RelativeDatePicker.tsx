@@ -18,13 +18,13 @@ import {
 } from "metabase-lib/v1/queries/utils/query-time";
 
 import {
+  DateUnitSelector,
   GridContainer,
   GridText,
   MoreButton,
+  NumericInput,
   OptionButton,
   OptionsContainer,
-  DateUnitSelector,
-  NumericInput,
 } from "./RelativeDatePicker.styled";
 
 type RelativeDatePickerProps = {
@@ -127,7 +127,7 @@ const OptionsContent = ({
   };
 
   return (
-    <OptionsContainer>
+    <OptionsContainer data-testid="relative-date-picker-options">
       {supportsExpressions && (
         <OptionButton
           icon="arrow_left_to_line"

@@ -16,7 +16,7 @@ For example, if you frequently perform queries that involve multiple tables, you
 
 Here's a simple query with a join using the **Sample Database** included with Metabase.
 
-```
+```sql
 SELECT *
 FROM orders AS o
 LEFT JOIN products AS p
@@ -29,11 +29,11 @@ In the **SQL editor**:
 
 1. **Highlight a section of SQL** that you want to save. In this case, we'll select the following SQL code:
 
-    ```
-    orders AS o
-    LEFT JOIN products AS p
-    ON o.product_id = p.id
-    ```
+   ```sql
+   orders AS o
+   LEFT JOIN products AS p
+   ON o.product_id = p.id
+   ```
 
 2. **Right-click on the highlighted section.**
 3. **Select Save as snippet** to create a snippet. A modal will pop up with the SQL statement you highlighted.
@@ -41,7 +41,7 @@ In the **SQL editor**:
 
 In this case, we named the snippet "Orders and Products". The snippet will now be available for anyone to use. Here's what the snippet looks like in the SQL editor:
 
-```
+```sql
 SELECT *
 FROM {% raw %}{{snippet: Orders and Products}}{% endraw %}
 ```

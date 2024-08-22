@@ -2,25 +2,19 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
-import { match } from "ts-pattern";
-import { t } from "ttag";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
 import {
-  trackExportDashboardToPDF,
-  type DashboardAccessedVia,
-} from "metabase/dashboard/analytics";
-import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import { getDashboardType } from "metabase/dashboard/utils";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -28,12 +22,8 @@ import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
-import { Box, Button, Icon } from "metabase/ui";
+import { Box } from "metabase/ui";
 import { SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS } from "metabase/visualizations/lib/save-chart-image";
-import {
-  getExportTabAsPdfButtonText,
-  saveDashboardPdf,
-} from "metabase/visualizations/lib/save-dashboard-pdf";
 import type Question from "metabase-lib/v1/Question";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -116,6 +106,10 @@ export const EmbedFrame = ({
     state => !getSetting(state, "hide-embed-branding?"),
   );
 
+  const isPublicDashboard = Boolean(
+    dashboard && getDashboardType(dashboard.id) === "public",
+  );
+
   const ParametersListComponent = getParametersListComponent({
     isEmbeddingSdk,
     isDashboard: !!dashboard,
@@ -147,25 +141,11 @@ export const EmbedFrame = ({
   const canParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
 
-  const saveAsPDF = () => {
-    const dashboardAccessedVia = match(dashboard?.id)
-      .returnType<DashboardAccessedVia>()
-      .when(isJWT, () => "static-embed")
-      .when(isUuid, () => "public-link")
-      .otherwise(() => "sdk-embed");
-
-    trackExportDashboardToPDF({
-      dashboardAccessedVia,
-    });
-
-    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    saveDashboardPdf(cardNodeSelector, name ?? t`Exported dashboard`);
-  };
-
   return (
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
+      hasVisibleOverflowWhenPriting={isPublicDashboard}
       className={cx(EmbedFrameS.EmbedFrame, className, {
         [EmbedFrameS.NoBackground]: !background,
       })}
@@ -199,14 +179,7 @@ export const EmbedFrame = ({
                   )}
                   <Box style={{ flex: 1 }} />
                   {dashboard && downloadsEnabled && (
-                    <Button
-                      variant="subtle"
-                      leftIcon={<Icon name="document" />}
-                      color="brand"
-                      onClick={saveAsPDF}
-                    >
-                      {getExportTabAsPdfButtonText(dashboard.tabs)}
-                    </Button>
+                    <ExportAsPdfButton dashboard={dashboard} color="brand" />
                   )}
                 </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>

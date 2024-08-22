@@ -1,8 +1,8 @@
-import cx from "classnames";
 import type { JSX } from "react";
-import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/components/EditBar";
 import CS from "metabase/css/core/index.css";
@@ -22,8 +22,8 @@ import {
 } from "metabase/dashboard/selectors";
 import type {
   DashboardFullscreenControls,
-  DashboardRefreshPeriodControls,
   DashboardNightModeControls,
+  DashboardRefreshPeriodControls,
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -33,21 +33,20 @@ import type { Collection, Dashboard } from "metabase-types/api";
 
 import {
   EditWarning,
-  HeaderRow,
   HeaderBadges,
-  HeaderContent,
-  HeaderButtonsContainer,
   HeaderButtonSection,
-  HeaderLastEditInfoLabel,
+  HeaderButtonsContainer,
   HeaderCaption,
   HeaderCaptionContainer,
-  HeaderFixedWidthContainer,
   HeaderContainer,
+  HeaderContent,
+  HeaderFixedWidthContainer,
+  HeaderLastEditInfoLabel,
+  HeaderRow,
 } from "../../components/DashboardHeaderView.styled";
 
 type DashboardHeaderViewProps = {
   editingTitle?: string;
-  editingSubtitle?: string;
   editingButtons?: JSX.Element[];
   editWarning?: string;
   dashboard: Dashboard;
@@ -61,7 +60,6 @@ type DashboardHeaderViewProps = {
 
 export function DashboardHeaderView({
   editingTitle = "",
-  editingSubtitle = "",
   editingButtons = [],
   editWarning,
   dashboard,
@@ -95,6 +93,8 @@ export function DashboardHeaderView({
     await dispatch(applyDraftParameterValues());
   }, [dispatch]);
 
+  const { dashboardActions } = useInteractiveDashboardContext();
+
   const _headerButtons = useMemo(
     () => (
       <HeaderButtonSection
@@ -104,6 +104,7 @@ export function DashboardHeaderView({
         <DashboardHeaderButtonRow
           canResetFilters={canResetFilters}
           onResetFilters={handleResetFilters}
+          dashboardActionKeys={dashboardActions}
           refreshPeriod={refreshPeriod}
           onRefreshPeriodChange={onRefreshPeriodChange}
           setRefreshElapsedHook={setRefreshElapsedHook}
@@ -119,6 +120,7 @@ export function DashboardHeaderView({
     [
       canResetFilters,
       handleResetFilters,
+      dashboardActions,
       hasNightModeToggle,
       isAnalyticsDashboard,
       isFullscreen,
@@ -153,13 +155,7 @@ export function DashboardHeaderView({
 
   return (
     <div>
-      {isEditing && (
-        <EditBar
-          title={editingTitle}
-          subtitle={editingSubtitle}
-          buttons={editingButtons}
-        />
-      )}
+      {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
       {editWarning && (
         <EditWarning className={CS.wrapper}>
           <span>{editWarning}</span>
@@ -171,7 +167,7 @@ export function DashboardHeaderView({
       >
         {isDashboardHeaderVisible && (
           <HeaderRow
-            className={cx("QueryBuilder-section", CS.wrapper)}
+            className={CS.wrapper}
             data-testid="dashboard-header"
             ref={header}
           >

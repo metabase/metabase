@@ -5,14 +5,15 @@ import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Das
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
-  breakpointMinSmall,
-  breakpointMinLarge,
-  space,
   breakpointMaxSmall,
+  breakpointMinLarge,
+  breakpointMinSmall,
+  space,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{
   hasScroll: boolean;
+  hasVisibleOverflowWhenPriting?: boolean;
   isBordered?: boolean;
 }>`
   display: flex;
@@ -35,6 +36,16 @@ export const Root = styled.div<{
       border: 1px solid var(--mb-color-border);
       border-radius: 8px;
       box-shadow: 0 2px 2px var(--mb-color-shadow);
+    `}
+
+  ${props =>
+    // Prevents https://github.com/metabase/metabase/issues/40660
+    // when printing an embedded dashboard
+    props.hasVisibleOverflowWhenPriting &&
+    css`
+      @media print {
+        overflow: visible;
+      }
     `}
 `;
 

@@ -15,11 +15,12 @@ import {
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
-  screen,
   renderWithProviders,
+  screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
@@ -62,8 +63,7 @@ async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
-  const channelData = { channels: {} };
-  fetchMock.get("path:/api/pulse/form_input", channelData);
+  setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);

@@ -13,7 +13,10 @@ import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getQueryType } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  isDateParameter,
+  isStringParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
   parameterHasNoDisplayValue,
@@ -261,11 +264,17 @@ export const ParameterValueWidget = ({
                   size={16}
                 />
               )}
-              <div className={cx(CS.mr1, CS.textNoWrap)}>
+              <div
+                className={cx(CS.mr1)}
+                style={
+                  isStringParameter(parameter) ? { maxWidth: "190px" } : {}
+                }
+              >
                 <FormattedParameterValue
                   parameter={parameter}
                   value={value}
                   placeholder={placeholderText}
+                  isPopoverOpen={isOpen}
                 />
               </div>
               {getActionIcon()}

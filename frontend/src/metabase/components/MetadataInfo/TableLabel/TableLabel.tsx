@@ -1,6 +1,6 @@
 import type Table from "metabase-lib/v1/metadata/Table";
 
-import { LabelContainer, Label } from "../MetadataInfo.styled";
+import { Label, LabelContainer } from "../MetadataInfo.styled";
 
 import { TableIcon } from "./TableLabel.styled";
 

@@ -15,6 +15,7 @@ const {
 } = require("@esbuild-plugins/node-modules-polyfill");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
+const isCI = process.env["CYPRESS_CI"] === "true";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
@@ -50,7 +51,11 @@ const defaultConfig = {
     // `config` is the resolved Cypress config
 
     // cypress-terminal-report
-    installLogsPrinter(on);
+    if (isCI) {
+      installLogsPrinter(on, {
+        printLogsToConsole: "never",
+      });
+    }
 
     /********************************************************************
      **                        PREPROCESSOR                            **

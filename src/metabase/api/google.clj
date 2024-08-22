@@ -16,8 +16,8 @@
   (api/check-superuser)
   ;; Set google-auth-enabled in a separate step because it requires the client ID to be set first
   (t2/with-transaction [_conn]
-   (setting/set-many! {:google-auth-client-id                   google-auth-client-id
-                       :google-auth-auto-create-accounts-domain google-auth-auto-create-accounts-domain})
-   (google/google-auth-enabled! google-auth-enabled)))
+    (setting/set-many! {:google-auth-client-id                   google-auth-client-id
+                        :google-auth-auto-create-accounts-domain google-auth-auto-create-accounts-domain})
+    (google/google-auth-enabled! google-auth-enabled)))
 
 (api/define-routes)

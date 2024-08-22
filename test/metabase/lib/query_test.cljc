@@ -7,7 +7,6 @@
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   #_{:clj-kondo/ignore [:unused-namespace]}
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.query :as lib.query]
@@ -21,7 +20,8 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(comment lib/keep-me)
+(comment lib/keep-me
+         lib.metadata.calculation/keep-me)
 
 (deftest ^:parallel describe-query-test
   (let [query (-> lib.tu/venues-query
@@ -29,7 +29,7 @@
         ;; wrong arity: there's a bug in our Kondo config, see
         ;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1679022185079739?thread_ts=1679022025.317059&cid=C04DN5VRQM6
         query (-> #_{:clj-kondo/ignore [:invalid-arity]}
-                  (lib/filter query (lib/= (meta/field-metadata :venues :name) "Toucannery"))
+               (lib/filter query (lib/= (meta/field-metadata :venues :name) "Toucannery"))
                   (lib/breakout (meta/field-metadata :venues :category-id))
                   (lib/order-by (meta/field-metadata :venues :id))
                   (lib/limit 100))]
@@ -73,12 +73,12 @@
                      :filters [[:= {} [:expression {:base-type :type/Integer :effective-type :type/Integer} "math"] 2]]}]}
           (lib/query
            meta/metadata-provider
-            (lib.convert/->pMBQL {:type :query
-                                  :database (meta/id)
-                                  :query {:source-table (meta/id :venues)
-                                          :expressions {"math" [:+ 1 1]}
-                                          :fields [[:field (meta/id :venues :id) nil]]
-                                          :filters [[:= [:expression "math"] 2]]}}))))
+           (lib.convert/->pMBQL {:type :query
+                                 :database (meta/id)
+                                 :query {:source-table (meta/id :venues)
+                                         :expressions {"math" [:+ 1 1]}
+                                         :fields [[:field (meta/id :venues :id) nil]]
+                                         :filters [[:= [:expression "math"] 2]]}}))))
   (testing "filling in works for nested join queries"
     (let [clause (as-> (lib/expression lib.tu/venues-query "CC" (lib/+ 1 1)) $q
                    (lib/join-clause $q [(lib/= (meta/field-metadata :venues :id)
@@ -86,12 +86,12 @@
           query (lib/join lib.tu/venues-query clause)
           ;; Make a legacy query but don't put types in :field and :expression
           converted-query (lib.convert/->pMBQL
-                            (walk/postwalk
-                              (fn [node]
-                                (if (map? node)
-                                  (dissoc node :base-type :effective-type)
-                                  node))
-                              (lib.convert/->legacy-MBQL query)))]
+                           (walk/postwalk
+                            (fn [node]
+                              (if (map? node)
+                                (dissoc node :base-type :effective-type)
+                                node))
+                            (lib.convert/->legacy-MBQL query)))]
       (is (=? {:stages [{:joins [{:conditions [[:= {}
                                                 [:field {:base-type :type/BigInteger} (meta/id :venues :id)]
                                                 [:expression
@@ -111,22 +111,22 @@
                   (lib/append-stage)
                   (lib/aggregate (lib/count)))]
     (is (=? {:stages [{:lib/stage-metadata {:columns [{:field-ref [:expression "BirthMonth" {:base-type :type/Integer}]} {}]}} {}]}
-          (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
-                                                      [:stages 0 :lib/stage-metadata]
-                                                      {:columns [{:base-type :type/Float,
-                                                                  :display-name "BirthMonth",
-                                                                  :field-ref [:expression
-                                                                              "BirthMonth"
-                                                                              {:base-type :type/Integer}],
-                                                                  :name "BirthMonth",
-                                                                  :lib/type :metadata/column}
-                                                                 {:base-type :type/Integer,
-                                                                  :display-name "Count",
-                                                                  :field-ref [:aggregation 0],
-                                                                  :name "count",
-                                                                  :semantic-type :type/Quantity,
-                                                                  :lib/type :metadata/column}],
-                                                       :lib/type :metadata/results}))))))
+            (lib/query meta/metadata-provider (assoc-in (lib.convert/->pMBQL (lib.convert/->legacy-MBQL query))
+                                                        [:stages 0 :lib/stage-metadata]
+                                                        {:columns [{:base-type :type/Float,
+                                                                    :display-name "BirthMonth",
+                                                                    :field-ref [:expression
+                                                                                "BirthMonth"
+                                                                                {:base-type :type/Integer}],
+                                                                    :name "BirthMonth",
+                                                                    :lib/type :metadata/column}
+                                                                   {:base-type :type/Integer,
+                                                                    :display-name "Count",
+                                                                    :field-ref [:aggregation 0],
+                                                                    :name "count",
+                                                                    :semantic-type :type/Quantity,
+                                                                    :lib/type :metadata/column}],
+                                                         :lib/type :metadata/results}))))))
 
 (deftest ^:parallel stage-count-test
   (is (= 1 (lib/stage-count lib.tu/venues-query)))
@@ -151,11 +151,11 @@
           false (assoc editable :database 999999999)                       ; database unknown - no permissions
           false (assoc-in editable [:stages 0 :source-table] 999999999)    ; source-table not visible
           false (lib.util/update-query-stage
-                  editable 0
-                  #(-> %
+                 editable 0
+                 #(-> %
                        ; source-card not visible
-                       (assoc :source-card 999999999)
-                       (dissoc :source-table))))))
+                      (assoc :source-card 999999999)
+                      (dissoc :source-table))))))
     (testing "on native queries (#37765)"
       (let [editable              (lib/native-query meta/metadata-provider "SELECT * FROM Venues;")
             ;; Logic for the native-query mock borrowed from metabase.lib.native/has-write-permission-test
@@ -166,7 +166,7 @@
         (are [editable? query] (= {:is-native   true
                                    :is-editable editable?}
                                   (mu/disable-enforcement
-                                   (lib/display-info query -1 query)))
+                                    (lib/display-info query -1 query)))
           true  editable
           false (assoc editable :database 999999999) ; database unknown - no permissions
           false (mock-db-native-perms :none)         ; native-permissions explicitly set to :none
@@ -191,7 +191,7 @@
             :stages                 [{:lib/type :mbql.stage/mbql, :source-table 74040}]
             :lib.convert/converted? true}
            (lib.query/query meta/metadata-provider
-             {:database 74001, :type :query, :query {:source-table 74040}})))))
+                            {:database 74001, :type :query, :query {:source-table 74040}})))))
 
 (deftest ^:parallel can-run-test
   (mu/disable-enforcement
@@ -211,9 +211,9 @@
                           (lib/aggregate (lib/count))
                           (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query))))
       false  :metric   (-> lib.tu/venues-query
-                          (lib/aggregate (lib/count))
-                          (lib/append-stage)
-                          (lib/aggregate (lib/count))))))
+                           (lib/aggregate (lib/count))
+                           (lib/append-stage)
+                           (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel can-save-test
   (mu/disable-enforcement
@@ -233,9 +233,9 @@
                           (lib/aggregate (lib/count))
                           (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query))))
       false  :metric   (-> lib.tu/venues-query
-                          (lib/aggregate (lib/count))
-                          (lib/append-stage)
-                          (lib/aggregate (lib/count))))))
+                           (lib/aggregate (lib/count))
+                           (lib/append-stage)
+                           (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel can-preview-test
   (mu/disable-enforcement
@@ -568,3 +568,54 @@
                  (is (= exp-fields
                         (into #{} (map :id) (lib/visible-columns query2))))
                  (is (= 1 @calls))))))))))
+
+(deftest ^:parallel metric-based-question-test
+  (let [question-id 100
+        model-id 101
+        table-based-metric-id 102
+        model-based-metric-id 103
+        base-card {:name        "Sum of Cans"
+                   :database-id (meta/id)
+                   :table-id    (meta/id :venues)
+                   :dataset-query
+                   (-> lib.tu/venues-query
+                       (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                       (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+                       (lib/breakout (meta/field-metadata :venues :category-id))
+                       (lib/breakout (meta/field-metadata :venues :latitude))
+                       (lib/breakout (meta/field-metadata :venues :longitude))
+                       lib.convert/->legacy-MBQL)}
+        base-mp (lib.tu/mock-metadata-provider
+                 meta/metadata-provider
+                 {:cards [(assoc base-card :id question-id           :type :question)
+                          (assoc base-card :id model-id              :type :model)
+                          (assoc base-card :id table-based-metric-id :type :metric)]})
+        mp (lib.tu/mock-metadata-provider
+            base-mp
+            {:cards [{:id          model-based-metric-id
+                      :name        "Model based metric"
+                      :database-id (meta/id)
+                      :table-id    (meta/id :venues)
+                      :source-card-id model-id
+                      :dataset-query
+                      (-> (lib/query base-mp (lib.metadata/card base-mp model-id))
+                          (lib/aggregate (lib/count))
+                          lib.convert/->legacy-MBQL)
+                      :type :metric}]})]
+    (is (=? {:lib/type :mbql/query
+             :database (meta/id)
+             :stages
+             [{:lib/type :mbql.stage/mbql
+               :source-table (meta/id :venues)
+               :aggregation [[:metric {} table-based-metric-id]]
+               :breakout [[:field {} (meta/id :venues :category-id)]
+                          [:field {} (meta/id :venues :latitude)]
+                          [:field {} (meta/id :venues :longitude)]]}]}
+            (lib/query base-mp (lib.metadata/card base-mp table-based-metric-id))))
+    (is (=? {:lib/type :mbql/query
+             :database (meta/id)
+             :stages
+             [{:lib/type :mbql.stage/mbql
+               :source-card model-id
+               :aggregation [[:metric {} model-based-metric-id]]}]}
+            (lib/query base-mp (lib.metadata/card mp model-based-metric-id))))))

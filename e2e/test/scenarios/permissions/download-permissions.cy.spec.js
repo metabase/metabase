@@ -5,18 +5,18 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  describeEE,
   assertPermissionForItem,
-  modifyPermission,
-  downloadAndAssert,
   assertSheetRowsCount,
-  sidebar,
-  visitQuestion,
-  visitDashboard,
+  describeEE,
+  downloadAndAssert,
+  modal,
+  modifyPermission,
   popover,
+  restore,
   setTokenFeatures,
+  sidebar,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -207,7 +207,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
         visitQuestion(id);
 
         downloadAndAssert(
-          { fileType: "xlsx", questionId: id, dismissStatus: false },
+          { fileType: "xlsx", questionId: id },
           assertSheetRowsCount(18760),
         );
       });

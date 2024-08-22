@@ -2,12 +2,14 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_USER_ID,
+  FIRST_COLLECTION_ID,
   NORMAL_USER_ID,
   ORDERS_COUNT_QUESTION_ID,
-  FIRST_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPaletteSearch,
   createAction,
+  createModerationReview,
   describeEE,
   expectSearchResultContent,
   popover,
@@ -15,7 +17,6 @@ import {
   setActionsEnabledForDB,
   setTokenFeatures,
   summarize,
-  commandPaletteSearch,
 } from "e2e/support/helpers";
 import { createModelIndex } from "e2e/support/helpers/e2e-model-index-helper";
 
@@ -871,7 +872,7 @@ describe("scenarios > search", () => {
     describeEE("verified filter", () => {
       beforeEach(() => {
         setTokenFeatures("all");
-        cy.createModerationReview({
+        createModerationReview({
           status: "verified",
           moderated_item_type: "card",
           moderated_item_id: ORDERS_COUNT_QUESTION_ID,

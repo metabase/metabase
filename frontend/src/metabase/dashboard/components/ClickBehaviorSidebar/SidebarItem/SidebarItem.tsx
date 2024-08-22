@@ -4,11 +4,11 @@ import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
 import {
-  Name,
+  BaseSidebarItemRoot,
+  CloseIconContainer,
   Content,
   IconContainer,
-  CloseIconContainer,
-  BaseSidebarItemRoot,
+  Name,
   SelectableSidebarItemRoot,
 } from "./SidebarItem.styled";
 

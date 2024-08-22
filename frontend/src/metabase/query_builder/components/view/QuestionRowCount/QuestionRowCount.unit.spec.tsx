@@ -22,13 +22,13 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createAdHocCard,
-  createSavedStructuredCard,
-  createAdHocNativeCard,
-  createSavedNativeCard,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
+  createSampleDatabase,
+  createSavedNativeCard,
+  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 import { createMockQueryBuilderState } from "metabase-types/store/mocks";
 

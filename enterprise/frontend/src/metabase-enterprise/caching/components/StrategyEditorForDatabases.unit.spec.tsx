@@ -4,16 +4,16 @@ import fetchMock from "fetch-mock";
 import { act, screen } from "__support__/ui";
 import type { SetupOpts } from "metabase/admin/performance/components/test-utils";
 import {
+  setupStrategyEditorForDatabases as baseSetup,
   changeInput,
   getSaveButton,
-  setupStrategyEditorForDatabases as baseSetup,
 } from "metabase/admin/performance/components/test-utils";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import {
-  type ScheduleStrategy,
-  type DurationStrategy,
   CacheDurationUnit,
+  type DurationStrategy,
+  type ScheduleStrategy,
 } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 

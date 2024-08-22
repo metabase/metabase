@@ -60,10 +60,10 @@
       (testing "Test that `record-event!` succesfully records basic card events with the user, model, and model ID specified"
         (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:name "Test card"}]
           (audit-log/record-event! :event/card-create
-                                     {:object card
-                                      :user-id (mt/user->id :rasta)
-                                      :model :model/Card
-                                      :model-id card-id})
+                                   {:object card
+                                    :user-id (mt/user->id :rasta)
+                                    :model :model/Card
+                                    :model-id card-id})
           (is (partial=
                {:topic    :card-create
                 :user_id  (mt/user->id :rasta)

@@ -2,6 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -18,8 +19,11 @@
 
 (sql-jdbc.tx/add-test-extensions! :sparksql)
 
-(defmethod tx/supports-time-type? :sparksql [_driver] false)
-(defmethod tx/supports-timestamptz-type? :sparksql [_driver] false)
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:sparksql feature]
+    [_driver _feature _database]
+    false))
 
 (doseq [[base-type database-type] {:type/BigInteger "BIGINT"
                                    :type/Boolean    "BOOLEAN"

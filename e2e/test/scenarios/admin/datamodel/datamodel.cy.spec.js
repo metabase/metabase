@@ -6,25 +6,25 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitAlias,
-  popover,
-  withDatabase,
-  resetTestTable,
-  openTable,
-  resyncDatabase,
-  startNewQuestion,
   entityPickerModal,
   entityPickerModalTab,
-  visitQuestionAdhoc,
+  filter,
   getNotebookStep,
+  modal,
   openOrdersTable,
   openReviewsTable,
-  summarize,
-  modal,
-  filter,
+  openTable,
+  popover,
+  resetTestTable,
+  restore,
+  resyncDatabase,
   saveQuestion,
+  startNewQuestion,
+  summarize,
+  visitAlias,
   visitQuestion,
+  visitQuestionAdhoc,
+  withDatabase,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -822,35 +822,34 @@ describe("scenarios > admin > datamodel > segments", () => {
 
     it("should update that segment", () => {
       cy.visit("/admin");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Table Metadata").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Segments").click();
+      cy.findByTestId("admin-navbar-items").contains("Table Metadata").click();
+      cy.get("label").contains("Segments").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(SEGMENT_NAME)
+      cy.findByTestId("segment-list-app")
+        .contains(SEGMENT_NAME)
         .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
         .click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Edit Segment").click();
+      popover().contains("Edit Segment").click();
 
       // update the filter from "< 100" to "> 10"
       cy.url().should("match", /segment\/1$/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Edit Your Segment");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains(/Total\s+is less than/).click();
-      popover().contains("Less than").click();
+      cy.get("label").contains("Edit Your Segment");
+      cy.findByTestId("filter-widget-target")
+        .contains(/Total\s+is less than/)
+        .click();
+      popover().findByTestId("operator-select").click();
       popover().contains("Greater than").click();
-      popover().find("input").type("{SelectAll}10");
+      popover()
+        .findByTestId("field-values-widget")
+        .find("input")
+        .type("{SelectAll}10");
       popover().contains("Update filter").click();
 
       // confirm that the preview updated
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("18758 rows");
+      cy.findByTestId("gui-builder").contains("18758 rows");
 
       // update name and description, set a revision note, and save the update
       cy.get('[name="name"]').clear().type("Orders > 10");
@@ -858,24 +857,22 @@ describe("scenarios > admin > datamodel > segments", () => {
         .clear()
         .type("All orders with a total over $10.");
       cy.get('[name="revision_message"]').type("time for a change");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Save changes").click();
+      cy.findByTestId("field-set-content").findByText("Save changes").click();
 
       // get redirected to previous page and see the new segment name
       cy.url().should("match", /datamodel\/segments$/);
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Orders > 10");
+
+      cy.findByTestId("segment-list-app").findByText("Orders > 10");
 
       // clean up
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Orders > 10")
+      cy.findByTestId("segment-list-app")
+        .contains("Orders > 10")
         .parent()
         .parent()
         .parent()
         .find(".Icon-ellipsis")
         .click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Retire Segment").click();
+      popover().findByText("Retire Segment").click();
       modal().find("textarea").type("delete it");
       modal().contains("button", "Retire").click();
     });

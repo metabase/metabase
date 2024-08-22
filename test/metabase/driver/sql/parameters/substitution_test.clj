@@ -97,8 +97,8 @@
     (mt/with-metadata-provider meta/metadata-provider
       (testing "date"
         (let [field-filter (params/map->FieldFilter
-                             {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
-                              :value {:type :date/all-options, :value "next3days"}})
+                            {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+                             :value {:type :date/all-options, :value "next3days"}})
               expected-args [(t/zoned-date-time 2018 7 2 0 0 0 0 (t/zone-id "UTC"))
                              (t/zoned-date-time 2018 7 5 0 0 0 0 (t/zone-id "UTC"))]]
           (testing "default implementation"
@@ -115,8 +115,8 @@
                      (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter)))))))
       (testing "datetime"
         (let [field-filter (params/map->FieldFilter
-                             {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
-                              :value {:type :date/all-options, :value "past30minutes"}})
+                            {:field (lib.metadata/field (qp.store/metadata-provider) (meta/id :orders :created-at))
+                             :value {:type :date/all-options, :value "past30minutes"}})
               expected-args [(t/zoned-date-time 2018 7 1 12 0 0 0 (t/zone-id "UTC"))
                              (t/zoned-date-time 2018 7 1 12 30 0 0 (t/zone-id "UTC"))]]
           (testing "default implementation"

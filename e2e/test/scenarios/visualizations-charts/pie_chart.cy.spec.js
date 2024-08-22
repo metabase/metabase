@@ -1,13 +1,13 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  popover,
-  tableHeaderClick,
-  pieSlices,
-  leftSidebar,
   chartPathWithFillColor,
+  leftSidebar,
+  pieSlices,
+  popover,
+  restore,
+  tableHeaderClick,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -107,11 +107,6 @@ describe("scenarios > visualizations > pie chart", () => {
       },
       display: "pie",
     });
-
-    // Ensure chart renders before hovering the legend item
-    cy.findByTestId("query-visualization-root")
-      .findByText("TOTAL")
-      .should("be.visible");
 
     chartPathWithFillColor("#F9D45C").trigger("mousemove");
 

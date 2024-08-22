@@ -25,14 +25,14 @@ import {
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
+  PRODUCTS,
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
   createOrdersCreatedAtField,
   createOrdersQuantityField,
   createOrdersTable,
   createProductsCreatedAtField,
   createSampleDatabase,
-  PRODUCTS,
-  PRODUCTS_ID,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
 
@@ -466,7 +466,7 @@ describe("parameters/utils/targets", () => {
 
 function createUnitOfTimeParameter() {
   return createMockParameter({
-    name: "Unit of Time",
+    name: "Time grouping",
     slug: "unit_of_time",
     id: "49358513",
     type: "temporal-unit",

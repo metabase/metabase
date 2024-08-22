@@ -15,19 +15,37 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse :as pulse]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt])
   (:import
+   (org.apache.poi.ss.usermodel DataFormatter)
    (org.apache.poi.xssf.usermodel XSSFSheet)))
+
+(def ^:private cell-formatter (DataFormatter.))
+(defn- read-cell-with-formatting
+  [c]
+  (.formatCellValue cell-formatter c))
+
+(defn- read-xlsx
+  [result]
+  (with-open [in (io/input-stream result)]
+    (->> (spreadsheet/load-workbook in)
+         (spreadsheet/select-sheet "Query result")
+         (spreadsheet/row-seq)
+         (mapv (fn [r]
+                 (->>  (spreadsheet/cell-seq r)
+                       (mapv read-cell-with-formatting)))))))
 
 (defn- process-results
   [export-format results]
   (when (seq results)
     (case export-format
-      :csv (csv/read-csv results))))
+      :csv  (csv/read-csv results)
+      :xlsx (read-xlsx results))))
 
 (defn- card-download
   [{:keys [id] :as _card} export-format format-rows?]
@@ -43,12 +61,12 @@
             (->> (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=%s" dashboard-id dashcard-id card-id (name export-format) format-rows?)
                  (mt/user-http-request :crowberto :post 200)
                  (process-results export-format)))]
-      (if (contains? card-or-dashcard :dashboard_id)
-        (dashcard-download* card-or-dashcard)
-        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
-                                                      :card_id      (:id card-or-dashcard)}]
-          (dashcard-download* dashcard)))))
+    (if (contains? card-or-dashcard :dashboard_id)
+      (dashcard-download* card-or-dashcard)
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                    :card_id      (:id card-or-dashcard)}]
+        (dashcard-download* dashcard)))))
 
 (defn- run-pulse-and-return-attached-csv-data!
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
@@ -62,11 +80,11 @@
         msgs (get-in m [:channel/email 0 :message])]
     (first (keep
             (fn [{:keys [type content-type content]}]
-             (when (and
-                    (= :attachment type)
-                    (= (format "text/%s" (name export-format)) content-type))
-               (slurp content)))
-           msgs))))
+              (when (and
+                     (= :attachment type)
+                     (= (format "text/%s" (name export-format)) content-type))
+                (slurp content)))
+            msgs))))
 
 (defn- alert-attachment!
   [card export-format _format-rows?]
@@ -98,7 +116,7 @@
       ;; dashcard
       (mt/with-temp [:model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
-                                   :dashboard_id (:dashboard_id card-or-dashcard)}
+                                                    :dashboard_id (:dashboard_id card-or-dashcard)}
                      :model/PulseCard _ (merge
                                          (case export-format
                                            :csv  {:include_csv true}
@@ -119,7 +137,7 @@
                                                              :card_id      (:id card-or-dashcard)}
                      :model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
-                                   :dashboard_id dashboard-id}
+                                                    :dashboard_id dashboard-id}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
                                          (when (= :json export-format) {:include_json true})
@@ -133,6 +151,15 @@
                      :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                      :user_id          (mt/user->id :rasta)}]
         (subscription-attachment* pulse)))))
+
+(defn all-outputs!
+  [card-or-dashcard export-format format-rows?]
+  (merge
+   (when-not (contains? card-or-dashcard :dashboard_id)
+     {:card-download    (card-download card-or-dashcard export-format format-rows?)
+      :alert-attachment (alert-attachment! card-or-dashcard export-format format-rows?)})
+   {:dashcard-download       (card-download card-or-dashcard export-format format-rows?)
+    :subscription-attachment (subscription-attachment! card-or-dashcard export-format format-rows?)}))
 
 (set! *warn-on-reflection* true)
 
@@ -539,7 +566,7 @@
                     ["Gizmo" 0.0 2834.88]
                     ["Widget" 0.0 3109.31]
                     [nil 1.0 11149.28]]
-                 (take 6 data)))))))))
+                   (take 6 data)))))))))
 
 (deftest ^:parallel dashcard-viz-settings-downloads-test
   (testing "Dashcard visualization settings are respected in downloads."
@@ -600,3 +627,118 @@
                     :subscription-attachment subscription-header}
                    {:alert-attachment        (first alert-result)
                     :subscription-attachment (first subscription-result)}))))))))
+
+(deftest downloads-row-limit-test
+  (testing "Downloads row limit works."
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 1050000]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
+          (let [results (all-outputs! card :csv true)]
+            (is (= {:card-download           1050001
+                    :alert-attachment        1050001
+                    :dashcard-download       1050001
+                    :subscription-attachment 1050001}
+                   (update-vals results count))))))))
+  (testing "Downloads row limit default works."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
+        (let [results (all-outputs! card :csv true)]
+          (is (= {:card-download           1048576
+                  :alert-attachment        1048576
+                  :dashcard-download       1048576
+                  :subscription-attachment 1048576}
+                 (update-vals results count))))))))
+
+(deftest ^:parallel model-viz-settings-downloads-test
+  (testing "A model's visualization settings are respected in downloads."
+    (testing "for csv"
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card card  {:display                :table
+                                          :type                   :model
+                                          :dataset_query          {:database (mt/id)
+                                                                   :type     :query
+                                                                   :query    {:source-table (mt/id :orders)
+                                                                              :limit        10}}
+                                          :visualization_settings {:table.cell_column "SUBTOTAL"}
+                                          :result_metadata        [{:description
+                                                                    "The raw, pre-tax cost of the order."
+                                                                    :semantic_type      :type/Currency
+                                                                    :coercion_strategy  nil
+                                                                    :name               "SUBTOTAL"
+                                                                    :settings           {:currency_style "code"
+                                                                                         :currency       "CAD"
+                                                                                         :scale          0.01}
+                                                                    :fk_target_field_id nil
+                                                                    :field_ref          [:field (mt/id :orders :subtotal) nil]
+                                                                    :effective_type     :type/Float
+                                                                    :id                 (mt/id :orders :subtotal)
+                                                                    :visibility_type    :normal
+                                                                    :display_name       "Subtotal"
+                                                                    :base_type          :type/Float}]}]
+          (let [card-result     (card-download card :csv true)
+                dashcard-result (dashcard-download card :csv true)]
+            (is (= {:card-download     ["Subtotal (CAD)" "0.38"]
+                    :dashcard-download ["Subtotal (CAD)" "0.38"]}
+                   {:card-download     (mapv #(nth % 3) (take 2 card-result))
+                    :dashcard-download (mapv #(nth % 3) (take 2 dashcard-result))}))))))))
+
+(deftest column-settings-on-aggregated-columns-test
+  (testing "Column settings on aggregated columns are applied"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card  {:display                :table
+                                        :type                   :model
+                                        :dataset_query          {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :products)
+                                                                            :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                                            :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                            :limit        10}}
+                                        :visualization_settings {:column_settings
+                                                                 {"[\"name\",\"sum\"]"
+                                                                  {:number_style       "currency"
+                                                                   :currency           "CAD"
+                                                                   :currency_style     "name"
+                                                                   :currency_in_header false}}}}]
+        (testing "for csv"
+          (is (= "2,185.89 Canadian dollars"
+                 (-> (card-download card :csv true) second second))))
+        (testing "for xlsx (#43039)"
+          (is (= "2,185.89 Canadian dollars"
+                 (-> (card-download card :xlsx true) second second))))))))
+
+(deftest table-metadata-affects-column-formatting-properly
+  (testing "A Table's configured metadata (eg. Semantic Type of currency) can affect column formatting"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card  {:display                :table
+                                        :type                   :model
+                                        :dataset_query          {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :orders)
+                                                                            :filter       [:not-null [:field (mt/id :orders :discount) {:base-type :type/Float}]]
+                                                                            :limit        1}}
+                                        :visualization_settings {:table.columns
+                                                                 [{:name "ID" :enabled false}
+                                                                  {:name "USER_ID" :enabled false}
+                                                                  {:name "PRODUCT_ID" :enabled false}
+                                                                  {:name "SUBTOTAL" :enabled false}
+                                                                  {:name "TAX" :enabled false}
+                                                                  {:name "TOTAL" :enabled false}
+                                                                  {:name "DISCOUNT" :enabled true}
+                                                                  {:name "CREATED_AT" :enabled false}
+                                                                  {:name "QUANTITY" :enabled false}]
+                                                                 :table.cell_column "SUBTOTAL"
+                                                                 :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                     {:currency_in_header false}}}}]
+        (testing "for csv"
+          (is (= [["Discount"] ["$6.42"]]
+                 (-> (card-download card :csv true)))))
+        (testing "for xlsx"
+          ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
+          (is (= [["Discount"] ["[$$]6.42"]]
+                 (-> (card-download card :xlsx true)))))))))

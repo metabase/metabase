@@ -104,7 +104,6 @@ export function getScatterPlotOption(
       chartMeasurements,
       settings,
       hasTimelineEvents,
-      null,
       renderingContext,
     ),
   };

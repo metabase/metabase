@@ -1,15 +1,15 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  restore,
-  modal,
-  popover,
+  collectionOnTheGoModal,
   describeEE,
+  entityPickerModal,
+  modal,
+  onlyOnOSS,
   openNativeEditor,
+  popover,
+  restore,
   rightSidebar,
   setTokenFeatures,
-  onlyOnOSS,
-  entityPickerModal,
-  collectionOnTheGoModal,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;

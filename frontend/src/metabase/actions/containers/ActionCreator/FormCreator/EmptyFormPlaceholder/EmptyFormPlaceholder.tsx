@@ -7,10 +7,10 @@ import { Icon } from "metabase/ui";
 
 import {
   EmptyFormPlaceholderWrapper,
-  ExplainerTitle,
-  ExplainerText,
-  ExplainerList,
   ExplainerLink,
+  ExplainerList,
+  ExplainerText,
+  ExplainerTitle,
   IconContainer,
   TopRightIcon,
 } from "./EmptyFormPlaceholder.styled";

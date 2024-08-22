@@ -34,9 +34,9 @@
         (testing "Instance Analytics Collection should not show up when audit-app isn't enabled."
           (testing "GET /api/collection"
             (is (nil?
-                   (->> (mt/user-http-request :crowberto :get 200 "collection")
-                        last
-                        :type))))
+                 (->> (mt/user-http-request :crowberto :get 200 "collection")
+                      last
+                      :type))))
           (testing "GET /api/collection/test"
             (is (= collection/trash-collection-type
                    (->> (mt/user-http-request :crowberto :get 200 "collection/tree")

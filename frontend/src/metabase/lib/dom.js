@@ -1,7 +1,7 @@
 import querystring from "querystring";
 import _ from "underscore";
 
-import { isCypressActive } from "metabase/env";
+import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
 // IE doesn't support scrollX/scrollY:
@@ -11,10 +11,11 @@ export const getScrollY = () =>
   typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
 
 // denotes whether the current page is loaded in an iframe or not
-// Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
+// Cypress renders the whole app within an iframe, but we want to exclude it from this check to avoid certain components (like Nav bar) not rendering
+// Storybook also uses an iframe to display story content, so we want to ignore it
 export const isWithinIframe = function () {
   try {
-    if (isCypressActive) {
+    if (isCypressActive || isStorybookActive) {
       return false;
     }
 
@@ -494,23 +495,10 @@ export function initializeIframeResizer(onReady = () => {}) {
       onReady,
     };
 
-    // FIXME: Crimes
-    // This is needed so the FE test framework which runs in node
-    // without the avaliability of require.ensure skips over this part
-    // which is for external purposes only.
-    //
-    // Ideally that should happen in the test config, but it doesn't
-    // seem to want to play nice when messing with require
-    if (typeof require.ensure !== "function") {
-      return false;
-    }
-
     // Make iframe-resizer avaliable to the embed
     // We only care about contentWindow so require that minified file
 
-    require.ensure([], require => {
-      require("iframe-resizer/js/iframeResizer.contentWindow.js");
-    });
+    import("iframe-resizer/js/iframeResizer.contentWindow.js");
   }
 }
 
@@ -526,6 +514,9 @@ export function isReducedMotionPreferred() {
   return mediaQuery && mediaQuery.matches;
 }
 
+/**
+ * @returns {HTMLElement | undefined}
+ */
 export function getMainElement() {
   const [main] = document.getElementsByTagName("main");
   return main;

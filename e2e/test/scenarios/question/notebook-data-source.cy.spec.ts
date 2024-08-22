@@ -6,6 +6,7 @@ import {
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type StructuredQuestionDetails,
   createCollection,
   createQuestion,
   entityPickerModal,
@@ -32,7 +33,6 @@ import {
   visitModel,
   visitQuestion,
   visualize,
-  type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 

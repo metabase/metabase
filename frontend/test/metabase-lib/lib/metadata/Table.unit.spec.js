@@ -2,8 +2,8 @@ import { createMockMetadata } from "__support__/metadata";
 import Database from "metabase-lib/v1/metadata/Database";
 import Table from "metabase-lib/v1/metadata/Table";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 describe("Table", () => {

@@ -1,26 +1,19 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  checkFilterListSourceHasValue,
+  createQuestionAndDashboard,
   editDashboard,
+  modal,
   popover,
   restore,
   saveDashboard,
   setFilter,
-  visitDashboard,
   setFilterListSource,
   sidebar,
-  checkFilterListSourceHasValue,
-  modal,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
-
-const targetQuestion = {
-  display: "scalar",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-  },
-};
 
 describe("dashboard filters values source config clearing and restoring", () => {
   beforeEach(() => {
@@ -30,10 +23,14 @@ describe("dashboard filters values source config clearing and restoring", () => 
   });
 
   it("should clear and restore parameter static-list values when the type changes", () => {
-    // @ts-expect-error: ts does not know about this function
-    cy.createQuestionAndDashboard({
-      questionDetails: targetQuestion,
-      // @ts-expect-error: see above
+    createQuestionAndDashboard({
+      questionDetails: {
+        display: "scalar",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+        },
+      },
     }).then(({ body: { dashboard_id } }) => {
       visitDashboard(dashboard_id);
 
@@ -82,7 +79,7 @@ function editFilter(name: string) {
 }
 
 function editFilterType(type: string, subType: string) {
-  sidebar().findByText("Filter type").next().click();
+  sidebar().findByText("Filter or parameter type").next().click();
   popover().findByText(type).click();
 
   sidebar().findByText("Filter operator").next().click();

@@ -31,7 +31,7 @@
        (let [path (u.files/get-path filename)]
          (u.files/create-dir-if-not-exists! path)
          (assert (Files/isWritable path)
-           (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
+                 (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
          {:path  path, :temp false})
        ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
        ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
@@ -47,7 +47,7 @@
          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
          (let [path (u.files/get-path (System/getProperty "java.io.tmpdir"))]
            (assert (Files/isWritable path)
-             (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
+                   (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
            {:path path, :temp true}))))))
 
 (defn plugins-dir-info
@@ -70,7 +70,6 @@
     (let [plugins-path (plugins-dir)]
       (u.files/with-open-path-to-resource [modules-path "modules"]
         (u.files/copy-files! modules-path plugins-path)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          loading/initializing plugins                                          |
@@ -97,7 +96,6 @@
     (init-plugin-with-info! (assoc info :add-to-classpath! #(add-to-classpath! jar-path)))
     ;; for all other JARs just add to classpath and call it a day
     (add-to-classpath! jar-path)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 load-plugins!                                                  |

@@ -28,6 +28,7 @@ import {
   createMockFieldValues,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS_ID,
   createOrdersDiscountField,
   createOrdersIdField,
   createOrdersProductIdField,
@@ -39,7 +40,6 @@ import {
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
-  ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 
 import { getMetadataRoutes } from "../../routes";
@@ -235,7 +235,7 @@ describe("MetadataFieldSettings", () => {
       await userEvent.click(screen.getByText("Don't cast"));
       await userEvent.type(screen.getByPlaceholderText("Find..."), "Micro");
       expect(
-        screen.getByText("Coercion/UNIXMicroSeconds->DateTime"),
+        screen.getByText("UNIX microseconds → Datetime"),
       ).toBeInTheDocument();
     });
 

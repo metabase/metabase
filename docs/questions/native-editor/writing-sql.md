@@ -24,7 +24,7 @@ After clicking **SQL query**, you'll see an editor where you can write and run q
 
 To try it out, make sure you've selected the [Sample Database][sample-database-gloss], then paste in this short SQL query:
 
-```
+```sql
 SELECT
     sum(subtotal),
     created_at
@@ -81,17 +81,6 @@ When you run a query from the SQL editor, Metabase sends the query to your datab
 For questions, [dashboards](../../dashboards/start.md), and [models](../../data-modeling/models.md), Metabase keeps a version history for the previous fifteen versions of that item.
 
 See [History](../../exploration-and-organization/history.md).
-
-## Your SQL syntax must match the dialect used by the database
-
-Make sure your SQL dialect matches the database you've selected. Common errors:
-
-| Database | Do this                    | Avoid                |
-| -------- | -------------------------- | -------------------- |
-| BigQuery | `` FROM `dataset.table` `` | `FROM dataset.table` |
-| Oracle   | `FROM "schema"."table"`    | `FROM schema.table`  |
-
-For more help, see [Troubleshooting SQL error messages](../../troubleshooting-guide/error-message.md#sql-editor).
 
 ## Explore SQL question results using the Query Builder
 

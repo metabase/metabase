@@ -10,7 +10,6 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/alert";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { updateUrl } from "metabase/query_builder/actions";
 import {
   getQuestion,
@@ -40,12 +39,6 @@ class UpdateAlertModalContentInner extends Component {
     await updateAlert(modifiedAlert);
     await updateUrl(question, { dirty: false });
     onAlertUpdated();
-
-    MetabaseAnalytics.trackStructEvent(
-      "Alert",
-      "Update",
-      modifiedAlert.alert_condition,
-    );
   };
 
   onDeleteAlert = async () => {

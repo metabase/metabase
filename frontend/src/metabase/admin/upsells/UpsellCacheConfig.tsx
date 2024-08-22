@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { Box } from "metabase/ui";

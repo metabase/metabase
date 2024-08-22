@@ -7,8 +7,8 @@ import {
   Divider,
   Icon,
   Popover,
-  rem,
   Text,
+  rem,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
@@ -118,7 +118,9 @@ function TemporalUnitDropdown({
               disabled={isDisabled}
               onChange={() => handleUnitToggle(unit)}
             />
-            <Text ml="sm">{Lib.describeTemporalUnit(unit)}</Text>
+            <Text ml="sm" c="inherit">
+              {Lib.describeTemporalUnit(unit)}
+            </Text>
           </label>
         );
       })}

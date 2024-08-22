@@ -16,8 +16,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.util.jar JarEntry JarFile)
-   (java.nio.file Path)))
+   (java.nio.file Path)
+   (java.util.jar JarEntry JarFile)))
 
 (set! *warn-on-reflection* true)
 
@@ -54,17 +54,17 @@
   [jar-path resource-path out-dir]
   (let [jar-file (JarFile. (str jar-path))
         entries (.entries jar-file)]
-     (doseq [^JarEntry entry (iterator-seq entries)
-             :let [entry-name (.getName entry)]
-             :when (str/starts-with? entry-name resource-path)
-             :let [out-file (fs/path out-dir entry-name)]]
-       (if (.isDirectory entry)
-         (fs/create-dirs out-file)
-         (do
-           (-> out-file fs/parent fs/create-dirs)
-           (with-open [in (.getInputStream jar-file entry)
-                       out (io/output-stream (str out-file))]
-             (io/copy in out)))))))
+    (doseq [^JarEntry entry (iterator-seq entries)
+            :let [entry-name (.getName entry)]
+            :when (str/starts-with? entry-name resource-path)
+            :let [out-file (fs/path out-dir entry-name)]]
+      (if (.isDirectory entry)
+        (fs/create-dirs out-file)
+        (do
+          (-> out-file fs/parent fs/create-dirs)
+          (with-open [in (.getInputStream jar-file entry)
+                      out (io/output-stream (str out-file))]
+            (io/copy in out)))))))
 
 (def default-question-overview-entity-id
   "Default Question Overview (this is a dashboard) entity id."
@@ -230,13 +230,13 @@
     (cond
       (nil? audit-db)
       (u/prog1 ::installed
-       (log/info "Installing Audit DB...")
-       (install-database! (mdb/db-type) audit/audit-db-id))
+        (log/info "Installing Audit DB...")
+        (install-database! (mdb/db-type) audit/audit-db-id))
 
       (not= (mdb/db-type) (:engine audit-db))
       (u/prog1 ::updated
-       (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name (mdb/db-type)))
-       (adjust-audit-db-to-host! audit-db))
+        (log/infof "App DB change detected. Changing Audit DB source to match: %s." (name (mdb/db-type)))
+        (adjust-audit-db-to-host! audit-db))
 
       :else
       ::no-op)))
@@ -247,8 +247,9 @@
   :feature :none
   []
   (u/prog1 (maybe-install-audit-db)
-   (let [audit-db (t2/select-one :model/Database :is_audit true)]
-       ;; prevent sync while loading
-     ((sync-util/with-duplicate-ops-prevented :sync-database audit-db
+    (let [audit-db (t2/select-one :model/Database :is_audit true)]
+      ;; prevent sync while loading
+      ((sync-util/with-duplicate-ops-prevented
+        :sync-database audit-db
         (fn []
           (maybe-load-analytics-content! audit-db)))))))

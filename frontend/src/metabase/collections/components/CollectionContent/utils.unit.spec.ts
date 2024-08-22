@@ -1,7 +1,7 @@
 import type { DragEvent } from "react";
 import type { DropzoneRootProps } from "react-dropzone";
 
-import { getComposedDragProps, composeFileEventHandler } from "./utils";
+import { composeFileEventHandler, getComposedDragProps } from "./utils";
 describe("Collections > containers > utils", () => {
   const testNonFileEvent = {
     dataTransfer: {

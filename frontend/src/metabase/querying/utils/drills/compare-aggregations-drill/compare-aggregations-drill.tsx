@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
-  canAddTemporalCompareAggregation,
   CompareAggregations,
+  canAddTemporalCompareAggregation,
 } from "metabase/query_builder/components/CompareAggregations";
 import { trackColumnCompareViaColumnHeader } from "metabase/querying/analytics";
 import type {
@@ -34,13 +34,7 @@ export const compareAggregationsDrill: Drill<
         query={query}
         stageIndex={stageIndex}
         onClose={onClose}
-        onSubmit={aggregations => {
-          const nextQuery = aggregations.reduce(
-            (query, aggregation) =>
-              Lib.aggregate(query, stageIndex, aggregation),
-            query,
-          );
-
+        onSubmit={(nextQuery, aggregations) => {
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();
 

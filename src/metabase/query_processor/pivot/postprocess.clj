@@ -17,7 +17,6 @@
 ;;  - pivot-measures -> vector of indices into raw pivot rows where the aggregated value comes from. This
 ;;    the values from these indices (often just 1 idx) are what end up in the table's 'cells' (the stuff making up the bulk of the table)
 
-
 ;; an example of what a raw pivot row might look like, with header shown for clarity:
 ;; {:Cat A "AA", :Cat B "BA", :Cat C "CA", :Cat D "DA", :pivot-grouping 0, :Sum of Measure 1}
 ;; [Cat A Cat B Cat C Cat D pivot-grouping Sum of Measure]

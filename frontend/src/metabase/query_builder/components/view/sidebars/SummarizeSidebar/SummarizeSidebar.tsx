@@ -6,9 +6,9 @@ import { Divider } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import {
-  useSummarizeQuery,
-  SummarizeBreakoutColumnList,
   SummarizeAggregationItemList,
+  SummarizeBreakoutColumnList,
+  useSummarizeQuery,
 } from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 
@@ -30,9 +30,7 @@ export function SummarizeSidebar({
     stageIndex,
     aggregations,
     hasAggregations,
-    handleAddAggregations,
-    handleUpdateAggregation,
-    handleRemoveAggregation,
+    handleQueryChange,
     handleAddBreakout,
     handleUpdateBreakout,
     handleRemoveBreakout,
@@ -59,9 +57,7 @@ export function SummarizeSidebar({
         query={query}
         stageIndex={stageIndex}
         aggregations={aggregations}
-        onAddAggregations={handleAddAggregations}
-        onUpdateAggregation={handleUpdateAggregation}
-        onRemoveAggregation={handleRemoveAggregation}
+        onQueryChange={handleQueryChange}
       />
       <Divider my="lg" />
       {hasAggregations && (

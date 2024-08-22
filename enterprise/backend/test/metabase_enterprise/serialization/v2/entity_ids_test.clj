@@ -10,8 +10,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.time LocalDateTime)
-   (java.sql DatabaseMetaData)))
+   (java.sql DatabaseMetaData)
+   (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -53,10 +53,11 @@
                                           :entity_id nil}]
               ;; update table directly so checks for collection existence don't trigger
               (t2/update! :collection (:id c3) {:location "/13371338/"})
-              (is (=? [[:error Throwable #"Error updating entity ID for \w+ \d+:.*is an orphan.*\{:parent-id \d+\}"]]
-                      (mt/with-log-messages-for-level ['metabase-enterprise :error]
-                        (is (= false
-                               (v2.entity-ids/seed-entity-ids!)))))))))))))
+              (mt/with-log-messages-for-level [messages [metabase-enterprise :error]]
+                (is (= false
+                       (v2.entity-ids/seed-entity-ids!)))
+                (is (=? [{:level :error, :e Throwable, :message #"Error updating entity ID for \w+ \d+:.*is an orphan.*\{:parent-id \d+\}"}]
+                        (messages)))))))))))
 
 (deftest drop-entity-ids-test
   (mt/with-empty-h2-app-db
@@ -99,5 +100,5 @@
         (testing m
           (if (.next rs)
             (is (= DatabaseMetaData/columnNullable
-                   ( .getInt rs "NULLABLE")))
+                   (.getInt rs "NULLABLE")))
             (is false "cannot get column information")))))))

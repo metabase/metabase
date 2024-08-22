@@ -139,9 +139,9 @@
 
 (defn- field-defaults-with-fingerprint []
   (assoc (field-defaults)
-    :last_analyzed       true
-    :fingerprint_version true
-    :fingerprint         true))
+         :last_analyzed       true
+         :fingerprint_version true
+         :fingerprint         true))
 
 (defn- field:movie-id []
   (merge
@@ -259,8 +259,8 @@
           (sync/sync-table! movie)
           (let [[movie studio] (mapv table-details (t2/select Table :db_id (u/the-id db) {:order-by [:name]}))]
             (testing "Tables and Fields are synced"
-                (is (= (expected-movie-table) movie))
-                (is (= (expected-studio-table) studio)))))))))
+              (is (= (expected-movie-table) movie))
+              (is (= (expected-studio-table) studio)))))))))
 
 (driver/register! ::sync-database-error-test)
 
