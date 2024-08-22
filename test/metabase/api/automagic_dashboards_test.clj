@@ -102,7 +102,6 @@
     (testing "GET /api/automagic-dashboards/segment/:id/rule/example/indepth"
       (is (some? (api-call! "segment/%s/rule/example/indepth" [segment-id]))))))
 
-
 (deftest field-xray-test
   (testing "GET /api/automagic-dashboards/field/:id"
     (is (some? (api-call! "field/%s" [(mt/id :venues :price)])))))
@@ -137,7 +136,6 @@
                                                                                   {:filter [:> $price 10]})}]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-fn collection-id card-id))))))
-
 
 (deftest model-xray-test
   (testing "The API surface of a model (dataset = true) is very much like that of a question,
@@ -184,7 +182,6 @@
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call! "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 
-
 ;;; ------------------- Comparisons -------------------
 
 (def ^:private segment
@@ -208,7 +205,7 @@
       (is (some?
            (api-call! "adhoc/%s/cell/%s/compare/segment/%s"
                       [(->> (mt/mbql-query venues
-                                           {:filter [:> $price 10]})
+                              {:filter [:> $price 10]})
                             (magic.util/encode-base64-json))
                        (->> [:= [:field (mt/id :venues :price) nil] 15]
                             (magic.util/encode-base64-json))
@@ -241,7 +238,6 @@
                                             [(format "card__%d" card-id)])
                                     #(revoke-collection-permissions! collection-id)))))))))))
 
-
 ;;; ------------------- Transforms -------------------
 
 (deftest transforms-test
@@ -255,17 +251,17 @@
                     [2 "Stout Burgers & Beers" 11 34.1 -118.329 2 1.1 11 2 1 1]
                     [3 "The Apple Pan" 11 34.041 -118.428 2 1.1 11 2 1 1]]
                    (mt/formatted-rows [int str int 3.0 3.0 int 1.0 int int int int]
-                     (api-call! "transform/%s" ["Test transform"]
-                                #(revoke-collection-permissions!
-                                  (tf.materialize/get-collection "Test transform"))
-                                (fn [dashboard]
-                                  (->> dashboard
-                                       :dashcards
-                                       (sort-by (juxt :row :col))
-                                       last
-                                       :card
-                                       :dataset_query
-                                       qp/process-query))))))))))))
+                                      (api-call! "transform/%s" ["Test transform"]
+                                                 #(revoke-collection-permissions!
+                                                   (tf.materialize/get-collection "Test transform"))
+                                                 (fn [dashboard]
+                                                   (->> dashboard
+                                                        :dashcards
+                                                        (sort-by (juxt :row :col))
+                                                        last
+                                                        :card
+                                                        :dataset_query
+                                                        qp/process-query))))))))))))
 
 (deftest cards-have-can-run-adhoc-query-test
   (api-call! "table/%s" [(mt/id :venues)]
@@ -559,24 +555,23 @@
     (t2.with-temp/with-temp [Segment {segment-id :id} @segment]
       (let [show-limit 1
             {:keys [base-count show-count]} (card-count-check! show-limit
-                                                              "adhoc/%s/cell/%s/compare/segment/%s"
-                                                              [(->> (mt/mbql-query venues
-                                                                      {:filter [:> $price 10]})
-                                                                    (magic.util/encode-base64-json))
-                                                               (->> [:= [:field (mt/id :venues :price) nil] 15]
-                                                                    (magic.util/encode-base64-json))
-                                                               segment-id])]
+                                                               "adhoc/%s/cell/%s/compare/segment/%s"
+                                                               [(->> (mt/mbql-query venues
+                                                                       {:filter [:> $price 10]})
+                                                                     (magic.util/encode-base64-json))
+                                                                (->> [:= [:field (mt/id :venues :price) nil] 15]
+                                                                     (magic.util/encode-base64-json))
+                                                                segment-id])]
         (testing "The slimmed dashboard produces less than the base dashboard"
           ;;NOTE - Comparisons produce multiple dashboards and merge the results, so you don't get exactly `show-limit` cards
           (is (< show-count base-count)))))))
 
 (deftest query-metadata-test
   (is (=?
-        {:tables (sort-by :id [{:id (mt/id :venues)}
-                               {:id (mt/id :categories)}])}
-        (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
+       {:tables (sort-by :id [{:id (mt/id :venues)}
+                              {:id (mt/id :categories)}])}
+       (-> (mt/user-http-request :crowberto :get 200 (str "automagic-dashboards/table/" (mt/id :venues) "/query_metadata"))
             ;; The output is so large, these help debugging
-            #_#_#_
-            (update :fields #(map (fn [x] (select-keys x [:id])) %))
-            (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-            (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+           #_#_#_(update :fields #(map (fn [x] (select-keys x [:id])) %))
+               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+             (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))

@@ -110,9 +110,9 @@
                              :let [matches (-> body first email-body->regex-boolean)]
                              :when (some true? (vals matches))]
                          (cond-> email
-                             (:to email)  (update :to set)
-                             (:bcc email) (update :bcc set)
-                             true         (assoc :body matches)))))
+                           (:to email)  (update :to set)
+                           (:bcc email) (update :bcc set)
+                           true         (assoc :body matches)))))
          (m/filter-vals seq))))
 
 (defn regex-email-bodies
@@ -194,11 +194,11 @@
   [email & regexes]
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)
         body-or-content           (fn [email-body-seq]
-                                      (doall
-                                       (for [{email-type :type :as email-part} email-body-seq]
-                                         (if (string? email-type)
-                                           (email-body->regex-boolean email-part)
-                                           (summarize-attachment email-part)))))]
+                                    (doall
+                                     (for [{email-type :type :as email-part} email-body-seq]
+                                       (if (string? email-type)
+                                         (email-body->regex-boolean email-part)
+                                         (summarize-attachment email-part)))))]
     (cond-> email
       (:recipients email) (update :recipients set)
       (:to email)         (update :to set)
@@ -241,8 +241,8 @@
 (defn temp-csv
   [file-basename content]
   (prog1 (File/createTempFile file-basename ".csv")
-    (with-open [file (io/writer <>)]
-      (.write ^java.io.Writer file ^String content))))
+         (with-open [file (io/writer <>)]
+           (.write ^java.io.Writer file ^String content))))
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"
@@ -288,20 +288,20 @@
         (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "error metrics collection"
       (let [calls (atom nil)]
-           (let [retry-config (assoc (#'retry/retry-configuration)
-                                 :max-attempts 1
-                                 :initial-interval-millis 1)
-                 test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
-            (with-redefs [prometheus/inc    #(swap! calls conj %)
-                          retry/decorate    (rt/test-retry-decorate-fn test-retry)
-                          email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
-              (email/send-message!
-               :subject      "101 Reasons to use Metabase"
-               :recipients   ["test@test.com"]
-               :message-type :html
-               :message      "101. Metabase will make you a better person"))
-            (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-            (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
+        (let [retry-config (assoc (#'retry/retry-configuration)
+                                  :max-attempts 1
+                                  :initial-interval-millis 1)
+              test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+          (with-redefs [prometheus/inc    #(swap! calls conj %)
+                        retry/decorate    (rt/test-retry-decorate-fn test-retry)
+                        email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+            (email/send-message!
+             :subject      "101 Reasons to use Metabase"
+             :recipients   ["test@test.com"]
+             :message-type :html
+             :message      "101. Metabase will make you a better person"))
+          (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
+          (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

@@ -82,10 +82,10 @@
    (let [[op options & args] (maybe-expand-temporal-expression expression-clause)
          ->maybe-col #(when (lib.util/ref-clause? %)
                         (lib.filter/add-column-operators
-                          (lib.field/extend-column-metadata-from-ref
-                            query stage-number
-                            (lib.metadata.calculation/metadata query stage-number %)
-                            %)))]
+                         (lib.field/extend-column-metadata-from-ref
+                          query stage-number
+                          (lib.metadata.calculation/metadata query stage-number %)
+                          %)))]
      {:lib/type :mbql/expression-parts
       :operator op
       :options  options
@@ -122,9 +122,9 @@
                   (let [units (set (u/one-or-many unit-or-units))]
                     (fn [maybe-clause]
                       (clojure.core/and
-                        (temporal? maybe-clause)
-                        (lib.util/clause? maybe-clause)
-                        (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
+                       (temporal? maybe-clause)
+                       (lib.util/clause? maybe-clause)
+                       (clojure.core/contains? units (:temporal-unit (second maybe-clause)))))))]
     (lib.util.match/match-one filter-clause
       [:= _ (x :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (y :guard string?)]
       (shared.ut/format-relative-date-range y 0 (:temporal-unit (second x)) nil nil {:include-current true})

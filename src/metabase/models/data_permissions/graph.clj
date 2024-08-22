@@ -123,11 +123,11 @@
                  (update-vals db-id->perms rename-perm))))
 
 (def ^:private admin-perms
-   {:view-data      :unrestricted
-    :create-queries :query-builder-and-native
-    :download       {:schemas :full}
-    :data-model     {:schemas :all}
-    :details        :yes})
+  {:view-data      :unrestricted
+   :create-queries :query-builder-and-native
+   :download       {:schemas :full}
+   :data-model     {:schemas :all}
+   :details        :yes})
 
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
@@ -204,9 +204,9 @@
    token with the advanced-permissions feature."
   [perm-type]
   (ex-info
-    (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
-         (str/replace (name perm-type) "-" " "))
-    {:status-code 402}))
+   (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+        (str/replace (name perm-type) "-" " "))
+   {:status-code 402}))
 
 (defn- update-table-level-metadata-permissions!
   [group-id db-id schema new-table-perms]

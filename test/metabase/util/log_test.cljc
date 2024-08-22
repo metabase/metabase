@@ -1,8 +1,8 @@
 (ns metabase.util.log-test
   (:require
-    [clojure.test :refer [are deftest is]]
-    [metabase.test.util.log :as tlog]
-    [metabase.util.log :as log]))
+   [clojure.test :refer [are deftest is]]
+   [metabase.test.util.log :as tlog]
+   [metabase.util.log :as log]))
 
 (deftest basic-logp-test
   (is (= [[:warn nil "a message"]]
@@ -38,12 +38,12 @@
                                 (take prefix))
                            (tlog/with-log-messages-for-level level (spam)))
          ;0 :off - this doesn't work in CLJ and perhaps should?
-         1 :fatal
-         2 :error
-         3 :warn
-         4 :info
-         5 :debug
-         6 :trace)))
+      1 :fatal
+      2 :error
+      3 :warn
+      4 :info
+      5 :debug
+      6 :trace)))
 
 (deftest logf-formatting-test
   (is (= [[:info nil "input: 8, 3; output: ignored"]]

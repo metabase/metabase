@@ -67,7 +67,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-
 (defn boolean-ids-and-timestamps
   "Useful for unit test comparisons. Converts map keys found in `data` satisfying `pred` with booleans when not nil."
   ([data]
@@ -91,7 +90,6 @@
                      maybe-map))
                  data)))
 
-
 (defn- user-id [username]
   (classloader/require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
@@ -112,12 +110,12 @@
 (def ^:private with-temp-defaults-fns
   {:model/Card
    (fn [_] (default-timestamped
-             {:creator_id             (rasta-id)
-              :database_id            (data/id)
-              :dataset_query          {}
-              :display                :table
-              :name                   (u.random/random-name)
-              :visualization_settings {}}))
+            {:creator_id             (rasta-id)
+             :database_id            (data/id)
+             :dataset_query          {}
+             :display                :table
+             :name                   (u.random/random-name)
+             :visualization_settings {}}))
 
    :model/Collection
    (fn [_] (default-created-at-timestamped {:name (u.random/random-name)}))
@@ -127,15 +125,15 @@
 
    :model/Dashboard
    (fn [_] (default-timestamped
-             {:creator_id (rasta-id)
-              :name       (u.random/random-name)}))
+            {:creator_id (rasta-id)
+             :name       (u.random/random-name)}))
 
    :model/DashboardCard
    (fn [_] (default-timestamped
-             {:row    0
-               :col    0
-               :size_x 4
-               :size_y 4}))
+            {:row    0
+             :col    0
+             :size_x 4
+             :size_y 4}))
 
    :model/DashboardCardSeries
    (constantly {:position 0})
@@ -143,30 +141,30 @@
    :model/DashboardTab
    (fn [_]
      (default-timestamped
-       {:name     (u.random/random-name)
-        :position 0}))
+      {:name     (u.random/random-name)
+       :position 0}))
 
    :model/Database
    (fn [_] (default-timestamped
-             {:details                     {}
-              :engine                      :h2
-              :is_sample                   false
-              :name                        (u.random/random-name)
-              :metadata_sync_schedule      "0 50 * * * ? *"
-              :cache_field_values_schedule "0 50 0 * * ? *"}))
+            {:details                     {}
+             :engine                      :h2
+             :is_sample                   false
+             :name                        (u.random/random-name)
+             :metadata_sync_schedule      "0 50 * * * ? *"
+             :cache_field_values_schedule "0 50 0 * * ? *"}))
 
    :model/Dimension
    (fn [_] (default-timestamped
-             {:name (u.random/random-name)
-              :type "internal"}))
+            {:name (u.random/random-name)
+             :type "internal"}))
 
    :model/Field
    (fn [_] (default-timestamped
-             {:database_type "VARCHAR"
-              :base_type     :type/Text
-              :name          (u.random/random-name)
-              :position      1
-              :table_id      (data/id :checkins)}))
+            {:database_type "VARCHAR"
+             :base_type     :type/Text
+             :name          (u.random/random-name)
+             :position      1
+             :table_id      (data/id :checkins)}))
 
    :model/LoginHistory
    (fn [_] {:device_id          "129d39d1-6758-4d2c-a751-35b860007002"
@@ -176,16 +174,16 @@
 
    :model/LegacyMetric
    (fn [_] (default-timestamped
-             {:creator_id  (rasta-id)
-              :definition  {}
-              :description "Lookin' for a blueberry"
-              :name        "Toucans in the rainforest"}))
+            {:creator_id  (rasta-id)
+             :definition  {}
+             :description "Lookin' for a blueberry"
+             :name        "Toucans in the rainforest"}))
 
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
-             {:creator_id (user-id :crowberto)
-              :name       (u.random/random-name)
-              :content    "1 = 1"}))
+            {:creator_id (user-id :crowberto)
+             :name       (u.random/random-name)
+             :content    "1 = 1"}))
 
    :model/QueryExecution
    (fn [_] {:hash         (qp.util/query-hash {})
@@ -201,8 +199,8 @@
             :query_hash    (u.random/random-hash)
             :definition    {:table-name        (u.random/random-name)
                             :field-definitions (repeatedly
-                                                 4
-                                                 #(do {:field-name (u.random/random-name) :base-type "type/Text"}))}
+                                                4
+                                                #(do {:field-name (u.random/random-name) :base-type "type/Text"}))}
             :table_name    (u.random/random-name)
             :active        true
             :state         "persisted"
@@ -215,8 +213,8 @@
 
    :model/Pulse
    (fn [_] (default-timestamped
-             {:creator_id (rasta-id)
-              :name       (u.random/random-name)}))
+            {:creator_id (rasta-id)
+             :name       (u.random/random-name)}))
 
    :model/PulseCard
    (fn [_] {:position    0
@@ -225,10 +223,10 @@
 
    :model/PulseChannel
    (fn [_] (default-timestamped
-             {:channel_type  :email
-              :details       {}
-              :schedule_type :daily
-              :schedule_hour 15}))
+            {:channel_type  :email
+             :details       {}
+             :schedule_type :daily
+             :schedule_hour 15}))
 
    :model/Revision
    (fn [_] {:user_id      (rasta-id)
@@ -238,20 +236,20 @@
 
    :model/Segment
    (fn [_] (default-timestamped
-             {:creator_id  (rasta-id)
-              :definition  {}
-              :description "Lookin' for a blueberry"
-              :name        "Toucans in the rainforest"
-              :table_id    (data/id :checkins)}))
+            {:creator_id  (rasta-id)
+             :definition  {}
+             :description "Lookin' for a blueberry"
+             :name        "Toucans in the rainforest"
+             :table_id    (data/id :checkins)}))
 
    ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
    ;; Tech debt issue: #39329
 
    :model/Table
    (fn [_] (default-timestamped
-             {:db_id  (data/id)
-              :active true
-              :name   (u.random/random-name)}))
+            {:db_id  (data/id)
+             :active true
+             :name   (u.random/random-name)}))
 
    :model/TaskHistory
    (fn [_]
@@ -267,20 +265,20 @@
    :model/Timeline
    (fn [_]
      (default-timestamped
-       {:name       "Timeline of bird squawks"
-        :default    false
-        :icon       timeline-event/default-icon
-        :creator_id (rasta-id)}))
+      {:name       "Timeline of bird squawks"
+       :default    false
+       :icon       timeline-event/default-icon
+       :creator_id (rasta-id)}))
 
    :model/TimelineEvent
    (fn [_]
      (default-timestamped
-       {:name         "default timeline event"
-        :icon         timeline-event/default-icon
-        :timestamp    (t/zoned-date-time)
-        :timezone     "US/Pacific"
-        :time_matters true
-        :creator_id   (rasta-id)}))
+      {:name         "default timeline event"
+       :icon         timeline-event/default-icon
+       :timestamp    (t/zoned-date-time)
+       :timezone     "US/Pacific"
+       :time_matters true
+       :creator_id   (rasta-id)}))
 
    :model/User
    (fn [_] {:first_name  (u.random/random-name)
@@ -475,9 +473,9 @@
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-setting-values ~more
-           ~@body)))))
+                                      (fn []
+                                        (with-temporary-setting-values ~more
+                                          ~@body)))))
 
 (defmacro with-temporary-raw-setting-values
   "Like [[with-temporary-setting-values]] but works with raw value and it allows settings that are not defined
@@ -487,10 +485,10 @@
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
-       (fn []
-         (with-temporary-raw-setting-values ~more
-           ~@body))
-       :raw-setting? true)))
+                                      (fn []
+                                        (with-temporary-raw-setting-values ~more
+                                          ~@body))
+                                      :raw-setting? true)))
 
 (defn do-with-discarded-setting-changes [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)
@@ -579,9 +577,6 @@
      (testing (str "\nGET /api/" url# "\n")
        ~@body)))
 
-
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   SCHEDULER                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -625,8 +620,8 @@
   (initialize/initialize-if-needed! :db)
   (do-with-unstarted-temp-scheduler
    (^:once fn* []
-    (qs/start @task/*quartz-scheduler*)
-    (thunk))))
+     (qs/start @task/*quartz-scheduler*)
+     (thunk))))
 
 (defmacro with-temp-scheduler
   "Execute `body` with a temporary scheduler in place.
@@ -897,21 +892,21 @@
   [models thunk]
   (mb.hawk.parallel/assert-test-is-not-parallel "with-discard-model-changes")
   (if (= (count models) 1)
-   (let [model             (first models)
-         pk->original      (atom {})
-         method-unique-key (str (random-uuid))
-         before-method-fn  (fn [_model row]
-                             (swap! pk->original assoc (u/the-id row) (t2/original row))
-                             row)]
-     (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
-     (try
-      (thunk)
-      (finally
-       (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
-       (doseq [[id original-val] @pk->original]
-         (t2/update! model id original-val)))))
-   (with-discard-model-updates (rest models)
-     (thunk))))
+    (let [model             (first models)
+          pk->original      (atom {})
+          method-unique-key (str (random-uuid))
+          before-method-fn  (fn [_model row]
+                              (swap! pk->original assoc (u/the-id row) (t2/original row))
+                              row)]
+      (methodical/add-aux-method-with-unique-key! #'t2.before-update/before-update :before model before-method-fn method-unique-key)
+      (try
+        (thunk)
+        (finally
+          (methodical/remove-aux-method-with-unique-key! #'t2.before-update/before-update :before model method-unique-key)
+          (doseq [[id original-val] @pk->original]
+            (t2/update! model id original-val)))))
+    (with-discard-model-updates (rest models)
+      (thunk))))
 
 (defmacro with-discard-model-updates
   "Exceute `body` and makes sure that every updates operation on `models` will be reverted."
@@ -964,8 +959,8 @@
      collection
      (fn []
        (t2/delete! Permissions
-         :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-         :group_id [:not= (u/the-id (perms-group/admin))])
+                   :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
+                   :group_id [:not= (u/the-id (perms-group/admin))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
@@ -1289,11 +1284,11 @@
   (do-with-temp-file
    temp-dir-name
    (^:once fn* [path]
-    (let [file (io/file path)]
-      (when (.exists file)
-        (org.apache.commons.io.FileUtils/deleteDirectory file)))
-    (u.files/create-dir-if-not-exists! (u.files/get-path path))
-    (f path))))
+     (let [file (io/file path)]
+       (when (.exists file)
+         (org.apache.commons.io.FileUtils/deleteDirectory file)))
+     (u.files/create-dir-if-not-exists! (u.files/get-path path))
+     (f path))))
 
 (defmacro with-temp-dir
   "Like [[with-temp-file]], but creates a new temporary directory in the system temp dir. Deletes existing directory if
@@ -1363,21 +1358,21 @@
   `connection-properties` vector match against some expected data."
   [expected actual]
   (cond (vector? expected)
-    (map-indexed (fn [idx prop]
-                   (reduce-kv (fn [acc k v]
-                                (assoc acc k (if (map? v)
-                                               (select-keys-sequentially (get (nth expected idx) k) v)
-                                               v)))
-                              {}
-                              (select-keys prop (keys (nth expected idx)))))
-                 actual)
+        (map-indexed (fn [idx prop]
+                       (reduce-kv (fn [acc k v]
+                                    (assoc acc k (if (map? v)
+                                                   (select-keys-sequentially (get (nth expected idx) k) v)
+                                                   v)))
+                                  {}
+                                  (select-keys prop (keys (nth expected idx)))))
+                     actual)
 
-    (map? expected)
+        (map? expected)
     ;; recursive case (ex: to turn value that might be a flatland.ordered.map into a regular Clojure map)
-    (select-keys actual (keys expected))
+        (select-keys actual (keys expected))
 
-    :else
-    actual))
+        :else
+        actual))
 
 (defn file->bytes
   "Reads a file at `file-path` completely into a byte array, returning that array."
@@ -1410,7 +1405,7 @@
    (t2/select-one [:model/AuditLog :topic :user_id :model :model_id :details]
                   {:order-by [[:id :desc]]
                    :where [:and (when topic [:= :topic (name topic)])
-                                (when model-id [:= :model_id model-id])]})))
+                           (when model-id [:= :model_id model-id])]})))
 
 (defn repeat-concurrently
   "Run `f` `n` times concurrently. Returns a vector of the results of each invocation of `f`."

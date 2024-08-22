@@ -5,10 +5,10 @@
   This file makes it impossible to forget to add entity_id to new entities. It tests that every entity is either
   explicitly excluded, or has the :entity_id property."
   (:require
+   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.models]
    [metabase.models.revision-test]
    [metabase.models.serialization :as serdes]))

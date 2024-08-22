@@ -53,7 +53,6 @@
                                   (for [cause causes]
                                     (update cause :stacktrace sequential?)))))))))))
 
-
 (defn catch-exceptions
   ([run]
    (catch-exceptions run {}))

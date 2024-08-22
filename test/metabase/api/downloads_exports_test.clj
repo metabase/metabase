@@ -21,8 +21,8 @@
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt])
   (:import
-   (org.apache.poi.xssf.usermodel XSSFSheet)
-   (org.apache.poi.ss.usermodel DataFormatter)))
+   (org.apache.poi.ss.usermodel DataFormatter)
+   (org.apache.poi.xssf.usermodel XSSFSheet)))
 
 (def ^:private cell-formatter (DataFormatter.))
 (defn- read-cell-with-formatting
@@ -60,12 +60,12 @@
             (->> (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=%s" dashboard-id dashcard-id card-id (name export-format) format-rows?)
                  (mt/user-http-request :crowberto :post 200)
                  (process-results export-format)))]
-      (if (contains? card-or-dashcard :dashboard_id)
-        (dashcard-download* card-or-dashcard)
-        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
-                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
-                                                      :card_id      (:id card-or-dashcard)}]
-          (dashcard-download* dashcard)))))
+    (if (contains? card-or-dashcard :dashboard_id)
+      (dashcard-download* card-or-dashcard)
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                    :card_id      (:id card-or-dashcard)}]
+        (dashcard-download* dashcard)))))
 
 (defn- run-pulse-and-return-attached-csv-data!
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
@@ -78,10 +78,10 @@
      (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
      (keep
       (fn [{:keys [type content-type content]}]
-              (when (and
-                     (= :attachment type)
-                     (= (format "text/%s" (name export-format)) content-type))
-                (slurp content))))
+        (when (and
+               (= :attachment type)
+               (= (format "text/%s" (name export-format)) content-type))
+          (slurp content))))
      first)))
 
 (defn- alert-attachment!
@@ -114,7 +114,7 @@
       ;; dashcard
       (mt/with-temp [:model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
-                                   :dashboard_id (:dashboard_id card-or-dashcard)}
+                                                    :dashboard_id (:dashboard_id card-or-dashcard)}
                      :model/PulseCard _ (merge
                                          (case export-format
                                            :csv  {:include_csv true}
@@ -135,7 +135,7 @@
                                                              :card_id      (:id card-or-dashcard)}
                      :model/Pulse {pulse-id :id
                                    :as      pulse} {:name         "Test Pulse"
-                                   :dashboard_id dashboard-id}
+                                                    :dashboard_id dashboard-id}
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
                                          (when (= :json export-format) {:include_json true})
@@ -564,7 +564,7 @@
                     ["Gizmo" 0.0 2834.88]
                     ["Widget" 0.0 3109.31]
                     [nil 1.0 11149.28]]
-                 (take 6 data)))))))))
+                   (take 6 data)))))))))
 
 (deftest ^:parallel dashcard-viz-settings-downloads-test
   (testing "Dashcard visualization settings are respected in downloads."
@@ -639,7 +639,7 @@
                     :alert-attachment        1050001
                     :dashcard-download       1050001
                     :subscription-attachment 1050001}
-                     (update-vals results count))))))))
+                   (update-vals results count))))))))
   (testing "Downloads row limit default works."
     (mt/dataset test-data
       (mt/with-temp [:model/Card card {:display       :table

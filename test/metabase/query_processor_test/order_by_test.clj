@@ -18,12 +18,12 @@
             [2  8 380]
             [2  5 719]]
            (mt/formatted-rows [int int int]
-             (mt/run-mbql-query checkins
-               {:fields   [$venue_id $user_id $id]
-                :order-by [[:asc $venue_id]
-                           [:desc $user_id]
-                           [:asc $id]]
-                :limit    10}))))))
+                              (mt/run-mbql-query checkins
+                                {:fields   [$venue_id $user_id $id]
+                                 :order-by [[:asc $venue_id]
+                                            [:desc $user_id]
+                                            [:asc $id]]
+                                 :limit    10}))))))
 
 (deftest ^:parallel order-by-aggregate-fields-test
   (mt/test-drivers (mt/normal-drivers)
@@ -33,10 +33,10 @@
               [1 22]
               [2 59]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:count]]
-                  :breakout    [$price]
-                  :order-by    [[:asc [:aggregation 0]]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:count]]
+                                   :breakout    [$price]
+                                   :order-by    [[:asc [:aggregation 0]]]})))))))
 
 (deftest ^:parallel order-by-aggregate-fields-test-2
   (mt/test-drivers (mt/normal-drivers)
@@ -46,10 +46,10 @@
               [3  615]
               [4  369]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:sum $id]]
-                  :breakout    [$price]
-                  :order-by    [[:desc [:aggregation 0]]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:sum $id]]
+                                   :breakout    [$price]
+                                   :order-by    [[:desc [:aggregation 0]]]})))))))
 
 (deftest ^:parallel order-by-aggregate-fields-test-3
   (mt/test-drivers (mt/normal-drivers)
@@ -59,10 +59,10 @@
               [1 22]
               [2 59]]
              (mt/formatted-rows [int int]
-               (mt/run-mbql-query venues
-                 {:aggregation [[:distinct $id]]
-                  :breakout    [$price]
-                  :order-by    [[:asc [:aggregation 0]]]})))))))
+                                (mt/run-mbql-query venues
+                                  {:aggregation [[:distinct $id]]
+                                   :breakout    [$price]
+                                   :order-by    [[:asc [:aggregation 0]]]})))))))
 
 (deftest ^:parallel order-by-aggregate-fields-test-4
   (mt/test-drivers (mt/normal-drivers)
@@ -73,10 +73,10 @@
                 [1 (if driver-floors-average? 32.0 32.8)]
                 [4 (if driver-floors-average? 53.0 53.5)]]
                (mt/formatted-rows [int 1.0]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:avg $category_id]]
-                    :breakout    [$price]
-                    :order-by    [[:asc [:aggregation 0]]]}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:avg $category_id]]
+                                     :breakout    [$price]
+                                     :order-by    [[:asc [:aggregation 0]]]}))))))))
 
 (deftest ^:parallel order-by-aggregate-fields-test-5
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
@@ -95,7 +95,7 @@
                      (row-schema 2 19.0 23.0)
                      (row-schema 4 12.0 16.0)]
                     (mt/formatted-rows [int 1.0]
-                      (mt/run-mbql-query venues
-                        {:aggregation [[:stddev $category_id]]
-                         :breakout    [$price]
-                         :order-by    [[:desc [:aggregation 0]]]}))))))))
+                                       (mt/run-mbql-query venues
+                                         {:aggregation [[:stddev $category_id]]
+                                          :breakout    [$price]
+                                          :order-by    [[:desc [:aggregation 0]]]}))))))))

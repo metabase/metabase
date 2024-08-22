@@ -128,11 +128,11 @@
             :sslmode                       "disable"
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:ssl    false
-              :host   "localhost"
-              :port   5432
-              :dbname "bird_sightings"
-              :user   "camsaul"}))))
+                                                   {:ssl    false
+                                                    :host   "localhost"
+                                                    :port   5432
+                                                    :dbname "bird_sightings"
+                                                    :user   "camsaul"}))))
   (testing "ssl - check that expected params get added"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -144,11 +144,11 @@
             :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:ssl    true
-              :host   "localhost"
-              :port   5432
-              :dbname "bird_sightings"
-              :user   "camsaul"}))))
+                                                   {:ssl    true
+                                                    :host   "localhost"
+                                                    :port   5432
+                                                    :dbname "bird_sightings"
+                                                    :user   "camsaul"}))))
   (testing "make sure connection details w/ extra params work as expected"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -157,10 +157,10 @@
             :sslmode                       "disable"
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:host               "localhost"
-              :port               "5432"
-              :dbname             "cool"
-              :additional-options "prepareThreshold=0"}))))
+                                                   {:host               "localhost"
+                                                    :port               "5432"
+                                                    :dbname             "cool"
+                                                    :additional-options "prepareThreshold=0"}))))
   (testing "user-specified SSL options should always take precendence over defaults"
     (is (= {:classname                     "org.postgresql.Driver"
             :subprotocol                   "postgresql"
@@ -176,17 +176,16 @@
             :sslpassword                   ""
             :ApplicationName               config/mb-version-and-process-identifier}
            (sql-jdbc.conn/connection-details->spec :postgres
-             {:ssl         true
-              :host        "localhost"
-              :port        5432
-              :dbname      "bird_sightings"
-              :user        "camsaul"
-              :sslmode     "verify-ca"
-              :sslcert     "my-cert"
-              :sslkey      "my-key"
-              :sslfactory  "myfactoryoverride"
-              :sslrootcert "myrootcert"})))))
-
+                                                   {:ssl         true
+                                                    :host        "localhost"
+                                                    :port        5432
+                                                    :dbname      "bird_sightings"
+                                                    :user        "camsaul"
+                                                    :sslmode     "verify-ca"
+                                                    :sslcert     "my-cert"
+                                                    :sslkey      "my-key"
+                                                    :sslfactory  "myfactoryoverride"
+                                                    :sslrootcert "myrootcert"})))))
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
@@ -248,8 +247,8 @@
         (is (= {:columns ["name" "name_2"]
                 :rows    [["Cam" "Rasta"]]}
                (mt/rows+column-names
-                 (mt/run-mbql-query people
-                   {:fields [$name $bird_id->birds.name]}))))))))
+                (mt/run-mbql-query people
+                  {:fields [$name $bird_id->birds.name]}))))))))
 
 (defn- default-table-result
   ([table-name]
@@ -266,8 +265,8 @@
   "Returns a seq of tables sorted by name from calling [[driver/describe-database]]."
   [& args]
   (->> (apply driver/describe-database args)
-      :tables
-      (sort-by :name)))
+       :tables
+       (sort-by :name)))
 
 (deftest materialized-views-test
   (mt/test-driver :postgres
@@ -511,24 +510,24 @@
 
 (def ^:private json-alias-in-model-mock-metadata-provider
   (providers.mock/mock-metadata-provider
-    json-alias-mock-metadata-provider
-    {:cards [{:name          "Model with JSON"
-              :id            123
-              :database-id   1
-              :dataset-query {:database 1
-                              :type     :query
-                              :query    {:source-table 1
-                                         :aggregation  [[:count]]
-                                         :breakout     [[:field 1 nil]]}}}]}))
+   json-alias-mock-metadata-provider
+   {:cards [{:name          "Model with JSON"
+             :id            123
+             :database-id   1
+             :dataset-query {:database 1
+                             :type     :query
+                             :query    {:source-table 1
+                                        :aggregation  [[:count]]
+                                        :breakout     [[:field 1 nil]]}}}]}))
 
 (deftest ^:parallel json-breakout-in-model-test
   (mt/test-driver :postgres
     (testing "JSON columns in inner queries are referenced properly in outer queries #34930"
       (qp.store/with-metadata-provider json-alias-in-model-mock-metadata-provider
         (let [nested (qp.compile/compile
-                       {:database (meta/id)
-                        :type     :query
-                        :query    {:source-table "card__123"}})]
+                      {:database (meta/id)
+                       :type     :query
+                       :query    {:source-table "card__123"}})]
           (is (= ["SELECT"
                   "  \"json_alias_test\" AS \"json_alias_test\","
                   "  \"source\".\"count\" AS \"count\""
@@ -829,64 +828,64 @@
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
 
     (do-with-enums-db
-      (fn [db]
-        (testing "check that we can actually fetch the enum types from a DB"
-          (is (= #{(keyword "bird type") :bird_status}
-                 (#'postgres/enum-types :postgres db))))
+     (fn [db]
+       (testing "check that we can actually fetch the enum types from a DB"
+         (is (= #{(keyword "bird type") :bird_status}
+                (#'postgres/enum-types :postgres db))))
 
-        (testing "check that describe-table properly describes the database & base types of the enum fields"
-          (is (= {:name   "birds"
-                  :fields #{{:name                       "name"
-                             :database-type              "varchar"
-                             :base-type                  :type/Text
-                             :pk?                        true
-                             :database-position          0
-                             :database-required          true
-                             :database-is-auto-increment false
-                             :json-unfolding             false}
-                            {:name                       "status"
-                             :database-type              "bird_status"
-                             :base-type                  :type/PostgresEnum
-                             :database-position          1
-                             :database-required          true
-                             :database-is-auto-increment false
-                             :json-unfolding             false}
-                            {:name                       "type"
-                             :database-type              "bird type"
-                             :base-type                  :type/PostgresEnum
-                             :database-position          2
-                             :database-required          true
-                             :database-is-auto-increment false
-                             :json-unfolding             false}}}
-                 (driver/describe-table :postgres db {:name "birds"}))))
+       (testing "check that describe-table properly describes the database & base types of the enum fields"
+         (is (= {:name   "birds"
+                 :fields #{{:name                       "name"
+                            :database-type              "varchar"
+                            :base-type                  :type/Text
+                            :pk?                        true
+                            :database-position          0
+                            :database-required          true
+                            :database-is-auto-increment false
+                            :json-unfolding             false}
+                           {:name                       "status"
+                            :database-type              "bird_status"
+                            :base-type                  :type/PostgresEnum
+                            :database-position          1
+                            :database-required          true
+                            :database-is-auto-increment false
+                            :json-unfolding             false}
+                           {:name                       "type"
+                            :database-type              "bird type"
+                            :base-type                  :type/PostgresEnum
+                            :database-position          2
+                            :database-required          true
+                            :database-is-auto-increment false
+                            :json-unfolding             false}}}
+                (driver/describe-table :postgres db {:name "birds"}))))
 
-        (testing "check that when syncing the DB the enum types get recorded appropriately"
-          (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
-            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
-                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
-                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
-                   (set (map (partial into {})
-                             (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
+       (testing "check that when syncing the DB the enum types get recorded appropriately"
+         (let [table-id (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")]
+           (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
+                    {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                  (set (map (partial into {})
+                            (t2/select [Field :name :database_type :base_type] :table_id table-id)))))))
 
-        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-          (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
-                bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
-            (is (= {:rows        [["Rasta" "good bird" "toucan"]]
-                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
-                                               " \"public\".\"birds\".\"status\" AS \"status\","
-                                               " \"public\".\"birds\".\"type\" AS \"type\" "
-                                               "FROM \"public\".\"birds\" "
-                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
-                                               "LIMIT 10")
-                                  :params nil}}
-                   (-> (qp/process-query
-                        {:database (u/the-id db)
-                         :type     :query
-                         :query    {:source-table table-id
-                                    :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
-                                    :limit        10}})
-                       :data
-                       (select-keys [:rows :native_form]))))))))))
+       (testing "End-to-end check: make sure everything works as expected when we run an actual query"
+         (let [table-id           (t2/select-one-pk Table :db_id (u/the-id db), :name "birds")
+               bird-type-field-id (t2/select-one-pk Field :table_id table-id, :name "type")]
+           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+                   :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
+                                              " \"public\".\"birds\".\"status\" AS \"status\","
+                                              " \"public\".\"birds\".\"type\" AS \"type\" "
+                                              "FROM \"public\".\"birds\" "
+                                              "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                                              "LIMIT 10")
+                                 :params nil}}
+                  (-> (qp/process-query
+                       {:database (u/the-id db)
+                        :type     :query
+                        :query    {:source-table table-id
+                                   :filter       [:= [:field (u/the-id bird-type-field-id) nil] "toucan"]
+                                   :limit        10}})
+                      :data
+                      (select-keys [:rows :native_form]))))))))))
 
 (deftest enums-actions-test
   (mt/test-driver :postgres
@@ -972,7 +971,6 @@
            (sql-jdbc.actions/maybe-parse-sql-error
             :postgres actions.error/violate-foreign-key-constraint nil :row/delete
             "ERROR: update or delete on table \"group\" violates foreign key constraint \"user_group-id_group_-159406530\" on table \"user\"\n  Detail: Key (id)=(1) is still referenced from table \"user\".")))))
-
 
 ;; this contains specical tests case for postgres
 ;; for generic tests, check [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]
@@ -1121,8 +1119,8 @@
     (testing "We should be able to filter a PK column with a String value -- should get parsed automatically (#13263)"
       (is (= [[2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]
              (mt/rows
-               (mt/run-mbql-query venues
-                 {:filter [:= $id "2"]})))))))
+              (mt/run-mbql-query venues
+                {:filter [:= $id "2"]})))))))
 
 (deftest dont-sync-tables-with-no-select-permissions-test
   (testing "Make sure we only sync databases for which the current user has SELECT permissions"
@@ -1354,73 +1352,73 @@
         (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
+                                [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
                                  (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
-           (jdbc/execute! conn-spec (str
-                                     "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"
-                                     "DROP SCHEMA IF EXISTS \"doublequote\"\"schema\" CASCADE;"
-                                     "CREATE SCHEMA \"doublequote\"\"schema\";"
-                                     "CREATE TABLE \"doublequote\"\"schema\".\"doublequote\"\"table\" (id INTEGER);"
-                                     "CREATE SCHEMA \"dotted.schema\";"
-                                     "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
-                                     "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
-                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_select\" (id INTEGER);"
-                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_update\" (id INTEGER);"
-                                     "CREATE TABLE \"dotted.schema\".\"dotted.partial_insert\" (id INTEGER, text TEXT);"
-                                     "CREATE VIEW \"dotted.schema\".\"dotted.view\" AS SELECT 'hello world';"
-                                     "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
-                                     "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
-                                     "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
-                                     "GRANT SELECT ON \"doublequote\"\"schema\".\"doublequote\"\"table\" TO privilege_rows_test_example_role;"
-                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
-                                     "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
-                                     "GRANT SELECT (id) ON \"dotted.schema\".\"dotted.partial_select\" TO privilege_rows_test_example_role;"
-                                     "GRANT UPDATE (id) ON \"dotted.schema\".\"dotted.partial_update\" TO privilege_rows_test_example_role;"
-                                     "GRANT INSERT (text) ON \"dotted.schema\".\"dotted.partial_insert\" TO privilege_rows_test_example_role;"
-                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
-                                     "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
-           (testing "check that without USAGE privileges on the schema, nothing is returned"
-             (is (= #{}
-                    (get-privileges))))
-           (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-             (jdbc/execute! conn-spec (str "GRANT USAGE ON SCHEMA \"doublequote\"\"schema\" TO privilege_rows_test_example_role;"
-                                           "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;"))
-             (is (= (-> #{{:role   nil,
-                           :schema "doublequote\"schema",
-                           :table  "doublequote\"table",
-                           :update false,
-                           :select true,
-                           :insert false,
-                           :delete false}}
-                          (into (map #(merge {:role   nil
-                                              :schema "dotted.schema"
-                                              :update false
-                                              :select false
-                                              :insert false
-                                              :delete false} %)
-                                     [{:table  "dotted.materialized_view"
-                                       :select true}
-                                      {:table "dotted.view"
-                                       :select true}
-                                      {:table "dotted.table"
-                                       :select true
-                                       :update true}
-                                      {:table "dotted.partial_select"
-                                       :select true}
-                                      {:table "dotted.partial_update"
-                                       :update true}
-                                      {:table "dotted.partial_insert"
-                                       :insert true}])))
-                    (get-privileges))))
-           (finally
-            (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"doublequote\"\"schema\" FROM privilege_rows_test_example_role;"
-                          "REVOKE ALL PRIVILEGES ON SCHEMA \"doublequote\"\"schema\" FROM privilege_rows_test_example_role;"
-                          "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
-                          "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
-                          "DROP ROLE privilege_rows_test_example_role;"]]
-              (jdbc/execute! conn-spec stmt)))))))))
+            (jdbc/execute! conn-spec (str
+                                      "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"
+                                      "DROP SCHEMA IF EXISTS \"doublequote\"\"schema\" CASCADE;"
+                                      "CREATE SCHEMA \"doublequote\"\"schema\";"
+                                      "CREATE TABLE \"doublequote\"\"schema\".\"doublequote\"\"table\" (id INTEGER);"
+                                      "CREATE SCHEMA \"dotted.schema\";"
+                                      "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
+                                      "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
+                                      "CREATE TABLE \"dotted.schema\".\"dotted.partial_select\" (id INTEGER);"
+                                      "CREATE TABLE \"dotted.schema\".\"dotted.partial_update\" (id INTEGER);"
+                                      "CREATE TABLE \"dotted.schema\".\"dotted.partial_insert\" (id INTEGER, text TEXT);"
+                                      "CREATE VIEW \"dotted.schema\".\"dotted.view\" AS SELECT 'hello world';"
+                                      "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
+                                      "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
+                                      "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
+                                      "GRANT SELECT ON \"doublequote\"\"schema\".\"doublequote\"\"table\" TO privilege_rows_test_example_role;"
+                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                      "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
+                                      "GRANT SELECT (id) ON \"dotted.schema\".\"dotted.partial_select\" TO privilege_rows_test_example_role;"
+                                      "GRANT UPDATE (id) ON \"dotted.schema\".\"dotted.partial_update\" TO privilege_rows_test_example_role;"
+                                      "GRANT INSERT (text) ON \"dotted.schema\".\"dotted.partial_insert\" TO privilege_rows_test_example_role;"
+                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.view\" TO privilege_rows_test_example_role;"
+                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.materialized_view\" TO privilege_rows_test_example_role;"))
+            (testing "check that without USAGE privileges on the schema, nothing is returned"
+              (is (= #{}
+                     (get-privileges))))
+            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
+              (jdbc/execute! conn-spec (str "GRANT USAGE ON SCHEMA \"doublequote\"\"schema\" TO privilege_rows_test_example_role;"
+                                            "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;"))
+              (is (= (-> #{{:role   nil,
+                            :schema "doublequote\"schema",
+                            :table  "doublequote\"table",
+                            :update false,
+                            :select true,
+                            :insert false,
+                            :delete false}}
+                         (into (map #(merge {:role   nil
+                                             :schema "dotted.schema"
+                                             :update false
+                                             :select false
+                                             :insert false
+                                             :delete false} %)
+                                    [{:table  "dotted.materialized_view"
+                                      :select true}
+                                     {:table "dotted.view"
+                                      :select true}
+                                     {:table "dotted.table"
+                                      :select true
+                                      :update true}
+                                     {:table "dotted.partial_select"
+                                      :select true}
+                                     {:table "dotted.partial_update"
+                                      :update true}
+                                     {:table "dotted.partial_insert"
+                                      :insert true}])))
+                     (get-privileges))))
+            (finally
+              (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"doublequote\"\"schema\" FROM privilege_rows_test_example_role;"
+                            "REVOKE ALL PRIVILEGES ON SCHEMA \"doublequote\"\"schema\" FROM privilege_rows_test_example_role;"
+                            "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
+                            "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
+                            "DROP ROLE privilege_rows_test_example_role;"]]
+                (jdbc/execute! conn-spec stmt)))))))))
 
 (deftest ^:parallel set-role-statement-test
   (testing "set-role-statement should return a SET ROLE command, with the role quoted if it contains special characters"

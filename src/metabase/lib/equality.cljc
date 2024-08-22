@@ -2,6 +2,7 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
+   #?@(:clj ([metabase.util.log :as log]))
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
@@ -16,8 +17,7 @@
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   #?@(:clj ([metabase.util.log :as log]))))
+   [metabase.util.malli :as mu]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -239,8 +239,8 @@
            {:ref     a-ref
             :matches matches})
           #_(throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
-                          {:ref     a-ref
-                           :matches matches}))))
+                            {:ref     a-ref
+                             :matches matches}))))
       (disambiguate-matches-no-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
@@ -283,13 +283,13 @@
                                  columns)
      ;; Expressions are referenced by name; fields by ID or name.
      (:expression
-       :field)     (let [plausible (if (string? ref-id)
-                                     (plausible-matches-for-name a-ref columns)
-                                     (plausible-matches-for-id   a-ref columns generous?))]
-                     (case (count plausible)
-                       0 nil
-                       1 (first plausible)
-                       (disambiguate-matches a-ref plausible)))
+      :field)     (let [plausible (if (string? ref-id)
+                                    (plausible-matches-for-name a-ref columns)
+                                    (plausible-matches-for-id   a-ref columns generous?))]
+                    (case (count plausible)
+                      0 nil
+                      1 (first plausible)
+                      (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
   ([query stage-number a-ref-or-column columns]

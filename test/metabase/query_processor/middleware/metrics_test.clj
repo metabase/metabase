@@ -31,9 +31,9 @@
                  :type :model
                  :dataset-query query}]
      [metric (lib/composed-metadata-provider
-               metadata-provider
-               (lib.tu/mock-metadata-provider
-                 {:cards [metric]}))])))
+              metadata-provider
+              (lib.tu/mock-metadata-provider
+               {:cards [metric]}))])))
 
 (defn- add-metric-source [query source-metric]
   (-> query
@@ -49,22 +49,22 @@
                   (add-metric-source source-metric)
                   (lib/aggregate (lib/+ (lib.options/ensure-uuid [:metric {} (:id source-metric)]) 1)))]
     (is (=?
-          {:stages [{:source-table (meta/id :products)
-                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]
-                                   [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
-          (metrics/expand query)))))
+         {:stages [{:source-table (meta/id :products)
+                    :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]
+                                  [:+ {} [:avg {} [:field {} (meta/id :products :rating)]] 1]]}]}
+         (metrics/expand query)))))
 
 (deftest ^:parallel expand-basic-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp source-metric)
                   (add-metric-source source-metric))]
     (is (=?
-          {:stages [{:source-table (meta/id :products)
-                     :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
-          (metrics/expand query)))
+         {:stages [{:source-table (meta/id :products)
+                    :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
+         (metrics/expand query)))
     (is (lib.equality/=
-          (lib/query mp (:dataset-query source-metric))
-          (metrics/expand query)))))
+         (lib/query mp (:dataset-query source-metric))
+         (metrics/expand query)))))
 
 (deftest ^:parallel expand-expression-test
   (let [[source-metric mp] (mock-metric #(lib/expression % "source" (lib/+ 1 1)))
@@ -72,9 +72,9 @@
                   (lib/expression "target" (lib/- 2 2))
                   (add-metric-source source-metric))]
     (is (=?
-          {:stages [{:expressions [[:+ {} 1 1]
-                                   [:- {} 2 2]]}]}
-          (metrics/expand query)))))
+         {:stages [{:expressions [[:+ {} 1 1]
+                                  [:- {} 2 2]]}]}
+         (metrics/expand query)))))
 
 (deftest ^:parallel expand-filter-test
   (let [[source-metric mp] (mock-metric #(lib/filter % (lib/> (meta/field-metadata :products :price) 1)))
@@ -82,9 +82,9 @@
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget"))
                   (add-metric-source source-metric))]
     (is (=?
-          {:stages [{:filters [[:> {} [:field {} (meta/id :products :price)] 1]
-                               [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
-          (metrics/expand query)))))
+         {:stages [{:filters [[:> {} [:field {} (meta/id :products :price)] 1]
+                              [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
+         (metrics/expand query)))))
 
 (deftest ^:parallel expand-multi-metric-test
   (let [[first-metric mp] (mock-metric #(lib/filter % (lib/> (meta/field-metadata :products :price) 1)))
@@ -95,11 +95,11 @@
                   (lib/filter (lib/= (meta/field-metadata :products :category) "Widget"))
                   (add-metric-source second-metric))]
     (is (=?
-          {:stages [{:source-table (meta/id :products)
-                     :filters [[:> {} [:field {} (meta/id :products :price)] 1]
-                               [:< {} [:field {} (meta/id :products :price)] 100]
-                               [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
-          (metrics/expand query)))))
+         {:stages [{:source-table (meta/id :products)
+                    :filters [[:> {} [:field {} (meta/id :products :price)] 1]
+                              [:< {} [:field {} (meta/id :products :price)] 100]
+                              [:= {} [:field {} (meta/id :products :category)] "Widget"]]}]}
+         (metrics/expand query)))))
 
 (deftest ^:parallel e2e-results-test
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))

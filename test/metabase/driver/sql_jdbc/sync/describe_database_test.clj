@@ -114,8 +114,8 @@
 (defn- count-active-tables-in-db
   [db-id]
   (t2/count Table
-    :db_id  db-id
-    :active true))
+            :db_id  db-id
+            :active true))
 
 (deftest sync-only-accessable
   (one-off-dbs/with-blank-db

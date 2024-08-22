@@ -164,8 +164,8 @@
   (let [things [{:id 2} nil {:id 1}]]
     (is (= [{:id 2 :even-id? true} nil {:id 1 :even-id? false}]
            (mi/instances-with-hydrated-data
-             things :even-id?
-             #(into {} (comp (remove nil?)
-                             (map (juxt :id (comp even? :id))))
-                    things)
-             :id)))))
+            things :even-id?
+            #(into {} (comp (remove nil?)
+                            (map (juxt :id (comp even? :id))))
+                   things)
+            :id)))))

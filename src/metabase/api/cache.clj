@@ -44,7 +44,6 @@
   []
   (drop-internal-fields (CacheStrategy)))
 
-
 (defn- assert-valid-models [model ids premium?]
   (cond
     (= model "root")
@@ -73,7 +72,7 @@
                        "database" :model/Database
                        "dashboard" :model/Dashboard
                        "question" :model/Card)
-        id)))
+                     id)))
 
 (api/defendpoint GET "/"
   "Return cache configuration."
@@ -110,7 +109,6 @@
   (check-cache-access model model_id)
   (cache-config/delete! api/*current-user-id* model model_id)
   nil)
-
 
 (api/defendpoint POST "/invalidate"
   "Invalidate cache entries.

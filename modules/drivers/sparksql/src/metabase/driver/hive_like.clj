@@ -155,7 +155,6 @@
                               (h2x/with-database-type-info "timestamp")))]
     (sql.qp/adjust-start-of-week driver week-extract-fn expr)))
 
-
 (defmethod sql.qp/date [:hive-like :week-of-year-iso]
   [_driver _unit expr]
   [:weekofyear (h2x/->timestamp expr)])

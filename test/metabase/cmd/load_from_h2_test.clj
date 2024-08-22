@@ -56,7 +56,7 @@
      (fn []
        (testing "H2 connection details SHOULD have been copied"
          (is (=? {:db string?}
-                (t2/select-one-fn :details :model/Database :engine :h2))))))))
+                 (t2/select-one-fn :details :model/Database :engine :h2))))))))
 
 (defn get-data-source [db-type db-def]
   (let [connection-details (tx/dbdef->connection-details db-type :db db-def)
@@ -132,14 +132,14 @@
     (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
       (mt/dataset sad-toucan-incidents
         (is (= 200 (ffirst (mt/formatted-rows [int]
-                             (mt/run-mbql-query incidents
-                               {:aggregation [[:count]]})))))
+                                              (mt/run-mbql-query incidents
+                                                {:aggregation [[:count]]})))))
         (log/info "loading dump" h2-filename "version" version)
         (load-from-h2/load-from-h2! (dump-filename h2-filename version))
         ;; check that we can run the query using data from the dump
         (is (= 18 (ffirst (mt/formatted-rows [int]
-                            (mt/run-mbql-query bird
-                              {:aggregation [[:count]]})))))))))
+                                             (mt/run-mbql-query bird
+                                               {:aggregation [[:count]]})))))))))
 
 (deftest down-migrate-and-load-dump-test
   (mt/test-drivers #{:mysql :postgres}

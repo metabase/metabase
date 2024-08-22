@@ -361,7 +361,7 @@
                                             :semantic_type)))))
         (testing "When result_metadata is passed into the query processor context, it is preserved in the result."
           (let [results (qp/process-query
-                          (assoc-in dataset_query [:info :metadata/model-metadata] result_metadata))]
+                         (assoc-in dataset_query [:info :metadata/model-metadata] result_metadata))]
             (is (= :type/Percentage (->> (get-in results [:data :results_metadata :columns])
                                          (some (fn [{field-name :name :as field-metadata}]
                                                  (when (= field-name "Tax Rate")

@@ -49,7 +49,6 @@
                               :model    :model/Dashboard
                               :model-id (u/id object)})))
 
-
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 

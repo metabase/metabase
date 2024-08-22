@@ -68,12 +68,12 @@
   [id {:keys [revision_message] :as body}]
   (let [existing   (api/write-check LegacyMetric id)
         clean-body (u/select-keys-when body
-                     :present #{:description :caveats :how_is_this_calculated :points_of_interest}
-                     :non-nil #{:archived :definition :name :show_in_getting_started})
+                                       :present #{:description :caveats :how_is_this_calculated :points_of_interest}
+                                       :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
-                     (dissoc clean-body :revision_message)
-                     (when new-def {:definition new-def}))
+                    (dissoc clean-body :revision_message)
+                    (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)
         archive?   (:archived changes)]
@@ -82,7 +82,6 @@
     (u/prog1 (hydrated-metric id)
       (events/publish-event! (if archive? :event/metric-delete :event/metric-update)
                              {:object <>  :user-id api/*current-user-id* :revision-message revision_message}))))
-
 
 (api/defendpoint PUT "/:id"
   "Update a `LegacyMetric` with ID."
@@ -110,7 +109,7 @@
   (api/check-superuser)
   (api/write-check LegacyMetric id)
   (api/check (<= (count important_field_ids) 3)
-    [400 "A Metric can have a maximum of 3 important fields."])
+             [400 "A Metric can have a maximum of 3 important fields."])
   (let [[fields-to-remove fields-to-add] (data/diff (set (t2/select-fn-set :field_id 'LegacyMetricImportantField :metric_id id))
                                                     (set important_field_ids))]
 

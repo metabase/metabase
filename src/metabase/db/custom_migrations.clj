@@ -1101,7 +1101,7 @@
 
     :mysql
     (do
-     (t2/query ["UPDATE revision
+      (t2/query ["UPDATE revision
                  SET object = JSON_SET(
                      object,
                      '$.dataset',
@@ -1110,7 +1110,7 @@
                          THEN true ELSE false
                      END)
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
-     (t2/query ["UPDATE revision
+      (t2/query ["UPDATE revision
                  SET object = JSON_REMOVE(object, '$.type')
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
 
@@ -1307,7 +1307,6 @@
   ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
 
-
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
   (classloader/the-classloader)
@@ -1334,12 +1333,12 @@
 (define-reversible-migration DeleteSendPulseTaskOnDowngrade
   (log/info "No forward migration for DeleteSendPulseTaskOnDowngrade")
   (do
-   (classloader/the-classloader)
-   (set-jdbc-backend-properties!)
-   (let [scheduler (qs/initialize)]
-     (qs/start scheduler)
-     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
-     (qs/shutdown scheduler))))
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
+      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+      (qs/shutdown scheduler))))
 
 ;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
 ;; To make sure when someone migrate up -> migrate down -> migrate up again, this job is re-run
@@ -1347,13 +1346,13 @@
 (define-reversible-migration DeleteInitSendPulseTriggersOnDowngrade
   (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
   (do
-   (classloader/the-classloader)
-   (set-jdbc-backend-properties!)
-   (let [scheduler (qs/initialize)]
-     (qs/start scheduler)
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
      ;; delete the job will also delete all of its triggers
-     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
-     (qs/shutdown scheduler))))
+      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+      (qs/shutdown scheduler))))
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same

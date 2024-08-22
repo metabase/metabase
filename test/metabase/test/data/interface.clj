@@ -103,7 +103,6 @@
   [this]
   this)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Registering Test Extensions                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -118,7 +117,6 @@
   (when-not *compile-files*
     (driver/add-parent! driver ::test-extensions)
     (log/infof "Added test extensions for %s 💯" driver)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Loading Test Extensions                                             |
@@ -188,7 +186,6 @@
   [driver & _]
   (driver/dispatch-on-initialized-driver (the-driver-with-test-extensions driver)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Super-Helpful Util Fns                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -257,7 +254,6 @@
   ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
   ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
 
-
 (defmulti metabase-instance
   "Return the Metabase object associated with this definition, if applicable. `context` should be the parent object (the
   actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
@@ -303,7 +299,6 @@
           :when  (isa? driver/hierarchy driver ::test-extensions)]
     (log/infof "Running after-run hooks for %s..." driver)
     (after-run driver)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -390,7 +385,6 @@
 
 (defmethod id-field-type ::test-extensions [_] :type/Integer)
 
-
 (defmulti sorts-nil-first?
   "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.
   Of course, in real queries, multiple sort columns can be specified, so considering only one `base-type` isn't 100%
@@ -450,7 +444,6 @@
       {:base_type     :type/Decimal
        :semantic_type :type/Quantity}))))
 
-
 (defmulti count-with-template-tag-query
   "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
   a param `value`."
@@ -464,7 +457,6 @@
   {:arglists '([driver table-name field-name])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Helper Functions for Creating New Definitions                                  |
@@ -541,8 +533,7 @@
   ([dataset-name docstring definition]
    {:pre [(symbol? dataset-name)]}
    `(~(if config/is-dev? 'def 'defonce) ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
-      (apply dataset-definition ~(name dataset-name) ~definition))))
-
+                                        (apply dataset-definition ~(name dataset-name) ~definition))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            EDN Dataset Definitions                                             |
@@ -577,7 +568,6 @@
   `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `EDNDatasetDefinition)
      (edn-dataset-definition ~(name dataset-name))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Transformed Dataset Definitions                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -593,9 +583,9 @@
   [new-name :- ms/NonBlankString wrapped-definition & transform-fns]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
-                      (transform-fn
-                       (assoc (get-dataset-definition wrapped-definition)
-                         :database-name new-name)))]
+                       (transform-fn
+                        (assoc (get-dataset-definition wrapped-definition)
+                               :database-name new-name)))]
     (TransformedDatasetDefinition. new-name wrapped-definition get-def)))
 
 (defmethod get-dataset-definition TransformedDatasetDefinition
@@ -629,7 +619,6 @@
        (if (= this-name table-name)
          (update (table tabledef) :rows rows)
          tabledef)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      Flattening Dataset Definitions (i.e. for timeseries DBs like Druid)                       |
@@ -707,15 +696,14 @@
   [dataset-definition
    table-name :- ms/NonBlankString]
   (transformed-dataset-definition table-name dataset-definition
-    (fn [dbdef]
-      (assoc dbdef
-             :table-definitions
-             [(map->TableDefinition
-               {:table-name        table-name
-                :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
-                                     (update fielddef :field-name flatten-field-name))
-                :rows              (flatten-rows dbdef table-name)})]))))
-
+                                  (fn [dbdef]
+                                    (assoc dbdef
+                                           :table-definitions
+                                           [(map->TableDefinition
+                                             {:table-name        table-name
+                                              :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
+                                                                   (update fielddef :field-name flatten-field-name))
+                                              :rows              (flatten-rows dbdef table-name)})]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Test Env Vars                                                  |

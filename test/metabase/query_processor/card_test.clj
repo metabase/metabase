@@ -22,10 +22,10 @@
   ;; stuff doesn't belong in the Dashboard QP namespace
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
     (qp.card/process-query-for-card
-      card-id :api
-      :make-run (constantly
-                  (fn [query info]
-                    (qp/process-query (assoc query :info info)))))))
+     card-id :api
+     :make-run (constantly
+                (fn [query info]
+                  (qp/process-query (assoc query :info info)))))))
 
 (defn field-filter-query
   "A query with a Field Filter parameter"
@@ -176,7 +176,7 @@
   (testing "Pivot tables should not override the run function (#44160)"
     (t2.with-temp/with-temp [:model/Card {card-id :id} {:dataset_query
                                                         (mt/mbql-query venues
-                                                                       {:aggregation [[:count]]})
+                                                          {:aggregation [[:count]]})
                                                         :display :pivot}]
       (let [result (run-query-for-card card-id)]
         (is (=? {:status :completed}
@@ -206,9 +206,9 @@
                       (qp.card/process-query-for-card
                        (u/the-id card) :api
                        :make-run (constantly
-                                   (fn [query info]
-                                     (let [info (assoc info :query-hash (byte-array 0))]
-                                       (qp/process-query (assoc query :info info)))))))]
+                                  (fn [query info]
+                                    (let [info (assoc info :query-hash (byte-array 0))]
+                                      (qp/process-query (assoc query :info info)))))))]
               (testing "Should not be able to run the parent Card"
                 (is (not (mi/can-read? disallowed-collection)))
                 (is (not (mi/can-read? parent-card)))

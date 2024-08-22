@@ -253,8 +253,8 @@
   {:style/indent 2}
   [model column & [additonal-honeysql]]
   (into {} (for [{:keys [k count]} (t2/select [model [column :k] [:%count.* :count]]
-                                     (merge {:group-by [column]}
-                                            additonal-honeysql))]
+                                              (merge {:group-by [column]}
+                                                     additonal-honeysql))]
              [k count])))
 
 (defn- num-notifications-with-xls-or-csv-cards
@@ -359,7 +359,6 @@
   []
   {:metrics (t2/count LegacyMetric)})
 
-
 ;;; Execution Metrics
 
 (def ^:private query-execution-window-days 30)
@@ -368,8 +367,8 @@
   "Summarize `executions`, by incrementing approriate counts in a summary map."
   ([]
    (summarize-executions (t2/reducible-query {:select [:executor_id :running_time [[:case
-                                                                                    [:= :error nil ] false
-                                                                                    [:= :error "" ] false
+                                                                                    [:= :error nil] false
+                                                                                    [:= :error ""] false
                                                                                     :else true] :has_error]]
                                               :from   [:query_execution]
                                               :where  [:> :started_at (t/minus (t/offset-date-time) (t/days query-execution-window-days))]})))
@@ -396,7 +395,6 @@
   (-> (summarize-executions)
       (update :num_per_user summarize-executions-per-user)))
 
-
 ;;; Cache Metrics
 
 (defn- cache-metrics
@@ -405,7 +403,6 @@
   (let [{:keys [length count]} (t2/select-one [QueryCache [[:avg [:length :results]] :length] [:%count.* :count]])]
     {:average_entry_size (int (or length 0))
      :num_queries_cached (bin-small-number count)}))
-
 
 ;;; System Metrics
 
@@ -451,15 +448,13 @@
                       :table      (table-metrics)
                       :user       (user-metrics)}}))
 
-
 (defn- send-stats!
   "send stats to Metabase tracking server"
   [stats]
   (try
-     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
-     (catch Throwable e
-       (log/error e "Sending usage stats FAILED"))))
-
+    (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
+    (catch Throwable e
+      (log/error e "Sending usage stats FAILED"))))
 
 (defn phone-home-stats!
   "Collect usage stats and phone them home"

@@ -322,9 +322,9 @@
   ;; TODO -- what about the `weekofyear()` or `week()` functions in Snowflake? Would that do what we want?
   ;; https://docs.snowflake.com/en/sql-reference/functions/year
   (throw (ex-info (tru "Snowflake doesn''t support extract us week")
-          {:driver driver
-           :form   expr
-           :type   qp.error-type/invalid-query})))
+                  {:driver driver
+                   :form   expr
+                   :type   qp.error-type/invalid-query})))
 
 (defmethod sql.qp/date [:snowflake :day-of-week]
   [_driver _unit expr]
@@ -496,9 +496,9 @@
   (sql.qp/->honeysql driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 (defmethod sql.qp/->honeysql [:snowflake LocalDateTime]
- [_driver t]
- (-> [:raw (format "'%s'::timestamp_ntz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))]
-     (h2x/with-database-type-info "timestampntz")))
+  [_driver t]
+  (-> [:raw (format "'%s'::timestamp_ntz" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "timestampntz")))
 
 (defmethod sql.qp/->honeysql [:snowflake OffsetDateTime]
   [_driver t]
@@ -586,8 +586,8 @@
          {:connection conn}
          [(format "SHOW DYNAMIC TABLES LIKE '%s' IN SCHEMA \"%s\".\"%s\";"
                   table-name db-name schema-name)])
-     first
-     some?)
+        first
+        some?)
     (catch SnowflakeSQLException e
       (log/warn e "Failed to check if table is dynamic")
       ;; query will fail if schema doesn't exist
@@ -693,7 +693,7 @@
   [_ database]
   (if-not (str/blank? (-> database :details :regionid))
     (-> (update-in database [:details :account] #(str/join "." [% (-> database :details :regionid)]))
-      (m/dissoc-in [:details :regionid]))
+        (m/dissoc-in [:details :regionid]))
     database))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in

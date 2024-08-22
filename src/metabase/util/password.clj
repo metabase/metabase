@@ -49,8 +49,8 @@
   (let [occurences (count-occurrences password)]
     (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
                (if-not char-type true
-                 (when (>= (occurences char-type) min-count)
-                   (recur more)))))))
+                       (when (>= (occurences char-type) min-count)
+                         (recur more)))))))
 
 (defn active-password-complexity
   "The currently configured description of the password complexity rules being enforced"
@@ -77,8 +77,8 @@
   (with-open [is (.openStream common-passwords-url)
               reader (java.io.BufferedReader. (java.io.InputStreamReader. is))]
     (not-any?
-      (partial = (u/lower-case-en password))
-      (iterator-seq (.. reader lines iterator)))))
+     (partial = (u/lower-case-en password))
+     (iterator-seq (.. reader lines iterator)))))
 
 (defn is-valid?
   "Check that a password both meets complexity standards, and is not present in the common passwords list.

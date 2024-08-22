@@ -72,16 +72,16 @@
                (fn [fingerprints]
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
-                            (instance? Throwable fingerprint)
-                            (update count-info :failed-fingerprints inc)
+                             (instance? Throwable fingerprint)
+                             (update count-info :failed-fingerprints inc)
 
-                            (some-> fingerprint :global :distinct-count zero?)
-                            (update count-info :no-data-fingerprints inc)
+                             (some-> fingerprint :global :distinct-count zero?)
+                             (update count-info :no-data-fingerprints inc)
 
-                            :else
-                            (do
-                             (save-fingerprint! field fingerprint)
-                             (update count-info :updated-fingerprints inc))))
+                             :else
+                             (do
+                               (save-fingerprint! field fingerprint)
+                               (update count-info :updated-fingerprints inc))))
                          (empty-stats-map (count fingerprints))
                          (map vector fields fingerprints)))))
         driver (driver.u/database->driver (table/database table))
@@ -203,7 +203,7 @@
     (do
       (log/infof "Fingerprinting %s fields in table %s" (count fields) (sync-util/name-for-logging table))
       (let [stats (sync-util/with-error-handling
-                    (format "Error fingerprinting %s" (sync-util/name-for-logging table))
+                   (format "Error fingerprinting %s" (sync-util/name-for-logging table))
                     (fingerprint-table! table fields))]
         (if (instance? Exception stats)
           (empty-stats-map 0)

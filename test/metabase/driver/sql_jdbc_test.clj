@@ -46,8 +46,8 @@
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
            (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                  [(t2/select-one Field :id (mt/id :venues :name))]
-                  (constantly conj))
+                                                    [(t2/select-one Field :id (mt/id :venues :name))]
+                                                    (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
                 (take 5))))))
@@ -108,16 +108,16 @@
       (is (=  {:query  "SELECT * FROM birds WHERE name = 'Reggae'"
                :params nil}
               (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ?"
-                 :params ["Reggae"]}))))
+                                                          {:query  "SELECT * FROM birds WHERE name = ?"
+                                                           :params ["Reggae"]}))))
 
     (testing "test splicing multiple params"
       (is (=  {:query
                "SELECT * FROM birds WHERE name = 'Reggae' AND type = 'toucan' AND favorite_food = 'blueberries';",
                :params nil}
               (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ? AND type = ? AND favorite_food = ?;"
-                 :params ["Reggae" "toucan" "blueberries"]}))))
+                                                          {:query  "SELECT * FROM birds WHERE name = ? AND type = ? AND favorite_food = ?;"
+                                                           :params ["Reggae" "toucan" "blueberries"]}))))
 
     (testing (str "I think we're supposed to ignore multiple question narks, only single ones should get substituted "
                   "(`??` becomes `?` in JDBC, which is used for Postgres as a \")key exists?\" JSON operator amongst "
@@ -126,14 +126,14 @@
               "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = 'Reggae'",
               :params nil}
              (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = ?"
-                :params ["Reggae"]}))))
+                                                         {:query  "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = ?"
+                                                          :params ["Reggae"]}))))
 
     (testing "splicing with no params should no-op"
       (is (= {:query "SELECT * FROM birds;", :params []}
              (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds;"
-                :params []}))))))
+                                                         {:query  "SELECT * FROM birds;"
+                                                          :params []}))))))
 
 (defn- spliced-count-of [table filter-clause]
   (let [query        {:database (mt/id)
@@ -145,10 +145,10 @@
         spliced      (driver/splice-parameters-into-native-query driver/*driver* native-query)]
     (ffirst
      (mt/formatted-rows [int]
-       (qp/process-query
-        {:database (mt/id)
-         :type     :native
-         :native   spliced})))))
+                        (qp/process-query
+                         {:database (mt/id)
+                          :type     :native
+                          :native   spliced})))))
 
 (deftest ^:parallel splice-parameters-mbql-test
   (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
@@ -230,8 +230,8 @@
 
 (deftest ^:parallel uuid-filtering-test
   (mt/test-drivers (set/intersection
-                     (mt/sql-jdbc-drivers)
-                     (mt/normal-drivers-with-feature :uuid-type))
+                    (mt/sql-jdbc-drivers)
+                    (mt/normal-drivers-with-feature :uuid-type))
     (let [uuid (random-uuid)
           uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as x" uuid)})
           results (qp/process-query uuid-query)
@@ -245,8 +245,8 @@
                            :type :query
                            :query {:source-table (str "card__" (:id card))}}]
           (are [expected filt]
-            (= expected
-               (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
+               (= expected
+                  (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
             [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
             [[uuid]] [:= (:field_ref col-metadata) (:field_ref col-metadata)]
             [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
@@ -284,8 +284,8 @@
                                    {:database-type "uuid"}]
                                   %))]
                     (sql.qp/->honeysql
-                      driver/*driver*
-                      [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
+                     driver/*driver*
+                     [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
             (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
                      (some-fn #(= uuid %)
                               #(= [:metabase.util.honey-sql-2/typed
@@ -293,5 +293,5 @@
                                    {:database-type "uuid"}]
                                   %))]
                     (sql.qp/->honeysql
-                      driver/*driver*
-                      [:= (:field_ref col-metadata) uuid])))))))))
+                     driver/*driver*
+                     [:= (:field_ref col-metadata) uuid])))))))))

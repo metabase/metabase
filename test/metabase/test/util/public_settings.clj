@@ -13,8 +13,8 @@
       ;; happened already then the binding it establishes will shadow the value set by [[with-redefs]].
       ;; See [[with-premium-features-test]] below.
       (let [thunk (^:once fn* []
-                          (binding [premium-features/*token-features* (constantly features)]
-                            (thunk)))]
+                    (binding [premium-features/*token-features* (constantly features)]
+                      (thunk)))]
         (if tu.thread-local/*thread-local*
           (thunk)
           (with-redefs [premium-features/*token-features* (constantly features)]

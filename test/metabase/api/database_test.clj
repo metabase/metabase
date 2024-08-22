@@ -53,8 +53,8 @@
 ;; HELPER FNS
 
 (driver/register! ::test-driver
-  :parent :sql-jdbc
-  :abstract? true)
+                  :parent :sql-jdbc
+                  :abstract? true)
 
 (defmethod driver/connection-properties ::test-driver
   [_]
@@ -97,8 +97,8 @@
 
 (defn- expected-tables [db-or-id]
   (map table-details (t2/select Table
-                       :db_id (u/the-id db-or-id), :active true, :visibility_type nil
-                       {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
+                                :db_id (u/the-id db-or-id), :active true, :visibility_type nil
+                                {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
 
 (defn- field-details [field]
   (mt/derecordize
@@ -197,18 +197,18 @@
 (deftest get-database-legacy-no-self-service-test
   (testing "GET /api/database/:id"
     (testing "A database can be fetched even if one table has legacy-no-self-service permissions"
-        (mt/with-user-in-groups [group {:name "Legacy no-self-service group"}
-                                 user  [group]]
-          (mt/with-temp [:model/Database         {db-id :id}      {}
-                         :model/Table            {table-id-1 :id} {:db_id  db-id}
-                         :model/Table            {table-id-2 :id} {:db_id  db-id}]
-            (mt/with-no-data-perms-for-all-users!
+      (mt/with-user-in-groups [group {:name "Legacy no-self-service group"}
+                               user  [group]]
+        (mt/with-temp [:model/Database         {db-id :id}      {}
+                       :model/Table            {table-id-1 :id} {:db_id  db-id}
+                       :model/Table            {table-id-2 :id} {:db_id  db-id}]
+          (mt/with-no-data-perms-for-all-users!
               ;; Query permissions for a single table is enough to fetch the DB
-              (data-perms/set-table-permission! group table-id-1 :perms/view-data :legacy-no-self-service)
-              (data-perms/set-table-permission! group table-id-1 :perms/create-queries :no)
-              (data-perms/set-table-permission! group table-id-2 :perms/view-data :unrestricted)
-              (data-perms/set-table-permission! group table-id-2 :perms/create-queries :query-builder)
-              (mt/user-http-request user :get 200 (format "database/%d" db-id))))))))
+            (data-perms/set-table-permission! group table-id-1 :perms/view-data :legacy-no-self-service)
+            (data-perms/set-table-permission! group table-id-1 :perms/create-queries :no)
+            (data-perms/set-table-permission! group table-id-2 :perms/view-data :unrestricted)
+            (data-perms/set-table-permission! group table-id-2 :perms/create-queries :query-builder)
+            (mt/user-http-request user :get 200 (format "database/%d" db-id))))))))
 
 (deftest get-database-can-upload-test
   (testing "GET /api/database"
@@ -716,9 +716,9 @@
                  Field    _           {:table_id (u/the-id table)}]
     (testing "GET /api/database/:id/metadata?skip_fields=true"
       (let [fields (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?skip_fields=true" db-id))
-                      :tables
-                      first
-                      :fields)]
+                        :tables
+                        first
+                        :fields)]
         (is (= () fields))))))
 
 (deftest autocomplete-suggestions-test
@@ -751,9 +751,9 @@
         (is (=? {"Cache-Control" "public, max-age=60"
                  "Vary"          "Cookie"}
                 (-> (client/client-full-response (test.users/username->token :rasta) :get 200
-                                                (format "database/%s/autocomplete_suggestions" (mt/id))
-                                                :prefix "u")
-                   :headers))))
+                                                 (format "database/%s/autocomplete_suggestions" (mt/id))
+                                                 :prefix "u")
+                    :headers))))
       (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Database]
           (mt/with-temp [Database tmp-db {:name "Temp Autocomplete Pagination DB" :engine "h2"}]
@@ -1058,9 +1058,9 @@
                      Card bad-card (merge
                                     (mt/$ids checkins
                                       (card-with-mbql-query "Cum Count Card"
-                                        :source-table $$checkins
-                                        :aggregation  [[:cum-count]]
-                                        :breakout     [!month.date]))
+                                                            :source-table $$checkins
+                                                            :aggregation  [[:cum-count]]
+                                                            :breakout     [!month.date]))
                                     {:result_metadata [{:name "num_toucans"}]})]
         (let [response (fetch-virtual-database)]
           (is (malli= SavedQuestionsDB
@@ -1098,7 +1098,6 @@
                 :tables             []}
                (mt/user-http-request :crowberto :get 200
                                      (format "database/%d/metadata" lib.schema.id/saved-questions-virtual-database-id))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                CRON SCHEDULES!                                                 |
@@ -1215,35 +1214,35 @@
             (is (= (u.cron/schedule-map->cron-string schedule-map-for-last-friday-at-11pm)
                    (:cache_field_values_schedule db)))))
 
-       (testing "update db setting to never scan should remove scan field values trigger"
-         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
-                               {:details     {:let-user-control-scheduling true}
-                                :schedules   {:metadata_sync      schedule-map-for-weekly
-                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
-                                :is_full_sync false
-                                :is_on_demand false})
-         (is (= #{(sync-and-analyze-trigger-name db)}
-                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-         (let [db (t2/select-one :model/Database (:id db))]
-           (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
-                  (:metadata_sync_schedule db)))
-           (is (nil? (:cache_field_values_schedule db)))))
+        (testing "update db setting to never scan should remove scan field values trigger"
+          (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                {:details     {:let-user-control-scheduling true}
+                                 :schedules   {:metadata_sync      schedule-map-for-weekly
+                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                 :is_full_sync false
+                                 :is_on_demand false})
+          (is (= #{(sync-and-analyze-trigger-name db)}
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
+          (let [db (t2/select-one :model/Database (:id db))]
+            (is (= (u.cron/schedule-map->cron-string schedule-map-for-weekly)
+                   (:metadata_sync_schedule db)))
+            (is (nil? (:cache_field_values_schedule db)))))
 
-       (testing "turn back to default settings should recreate all tasks with randomized schedule"
-         (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
-                               {:details     {:let-user-control-scheduling false}
-                                :schedules   {:metadata_sync      schedule-map-for-weekly
-                                              :cache_field_values schedule-map-for-last-friday-at-11pm}
-                                :is_full_sync true
-                                :is_on_demand false})
-         (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
-                (task.sync-databases-test/query-all-db-sync-triggers-name db)))
-         (let [db (t2/select-one :model/Database (:id db))]
+        (testing "turn back to default settings should recreate all tasks with randomized schedule"
+          (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
+                                {:details     {:let-user-control-scheduling false}
+                                 :schedules   {:metadata_sync      schedule-map-for-weekly
+                                               :cache_field_values schedule-map-for-last-friday-at-11pm}
+                                 :is_full_sync true
+                                 :is_on_demand false})
+          (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                 (task.sync-databases-test/query-all-db-sync-triggers-name db)))
+          (let [db (t2/select-one :model/Database (:id db))]
            ;; make sure the new schedule is randomized, not from the payload
-           (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
-                     (:metadata_sync_schedule db)))
-           (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
-                     (:cache_field_values_schedule db)))))))))
+            (is (not= (-> schedule-map-for-weekly u.cron/schedule-map->cron-string)
+                      (:metadata_sync_schedule db)))
+            (is (not= (-> schedule-map-for-last-friday-at-11pm u.cron/schedule-map->cron-string)
+                      (:cache_field_values_schedule db)))))))))
 
 (deftest update-db-to-never-scan-values-on-demand-test
   (with-db-scheduler-setup
@@ -1482,7 +1481,6 @@
           (is (= 1 @call-count))
           (is (= [true] @ssl-values)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                      GET /api/database/:id/schemas & GET /api/database/:id/schema/:schema                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1580,7 +1578,7 @@
       (testing "should return a 403 for a user that doesn't have read permissions for the database"
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
+                 (mt/user-http-request :rasta :get 403 (format "database/%s/schemas" db-id))))))
 
       (testing "should return a 403 if there are no perms for any schema"
         (mt/with-full-data-perms-for-all-users!
@@ -1756,7 +1754,7 @@
       (testing "if we have full data perms for the DB"
         (mt/with-full-data-perms-for-all-users!
           (is (= ["t1" "t3"]
-               (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
+                 (map :name (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "schema1")))))))
 
       (testing "if we have query perms for all tables in the schema"
         (mt/with-no-data-perms-for-all-users!
@@ -1930,7 +1928,6 @@
                                                     :tunnel-private-key-passphrase protected-password
                                                     :access-token                  protected-password
                                                     :refresh-token                 protected-password})))))
-
 
 (deftest secret-file-paths-returned-by-api-test
   (mt/with-driver :secret-test-driver

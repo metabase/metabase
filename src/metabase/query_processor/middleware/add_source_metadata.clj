@@ -67,8 +67,8 @@
                                             [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query} :- :map]
   (let [metadata ((if native-source-query?
-                     native-source-query->metadata
-                     mbql-source-query->metadata) source-query)]
+                    native-source-query->metadata
+                    mbql-source-query->metadata) source-query)]
     (cond-> inner-query
       (seq metadata) (assoc :source-metadata metadata))))
 

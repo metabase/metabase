@@ -26,8 +26,8 @@
       (testing "The same function will refresh an existing SCIM API key"
         (let [key2 (#'scim/refresh-scim-api-key! (mt/user->id :rasta))]
           (is (=? (scim-api-key-shape :rasta) key2))
-         (is (not= (:key key1) (:key key2)))
-         (is (= 1 (t2/count :model/ApiKey :scope :scim))))))))
+          (is (not= (:key key1) (:key key2)))
+          (is (= 1 (t2/count :model/ApiKey :scope :scim))))))))
 
 (deftest post-api-key-test
   (testing "POST /api/ee/scim/api_key"

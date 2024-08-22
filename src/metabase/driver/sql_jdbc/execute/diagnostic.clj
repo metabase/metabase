@@ -44,7 +44,7 @@
   [driver database-id ^PoolBackedDataSource datasource]
   (when *diagnostic-info*
     (swap! *diagnostic-info* #(assoc % ::database-id        database-id
-                                       ::driver             driver
-                                       ::active-connections (.getNumBusyConnectionsAllUsers datasource)
-                                       ::total-connections  (.getNumConnectionsAllUsers datasource)
-                                       ::threads-waiting    (.getNumThreadsAwaitingCheckoutDefaultUser datasource)))))
+                                     ::driver             driver
+                                     ::active-connections (.getNumBusyConnectionsAllUsers datasource)
+                                     ::total-connections  (.getNumConnectionsAllUsers datasource)
+                                     ::threads-waiting    (.getNumThreadsAwaitingCheckoutDefaultUser datasource)))))

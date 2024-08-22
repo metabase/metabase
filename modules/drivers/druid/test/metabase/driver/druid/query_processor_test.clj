@@ -238,10 +238,10 @@
 
 (defn- table-rows-sample []
   (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :checkins))
-         [(t2/select-one Field :id (mt/id :checkins :id))
-          (t2/select-one Field :id (mt/id :checkins :venue_name))
-          (t2/select-one Field :id (mt/id :checkins :timestamp))]
-         (constantly conj))
+                                           [(t2/select-one Field :id (mt/id :checkins :id))
+                                            (t2/select-one Field :id (mt/id :checkins :venue_name))
+                                            (t2/select-one Field :id (mt/id :checkins :timestamp))]
+                                           (constantly conj))
        (sort-by first)
        (take 5)))
 
@@ -518,9 +518,9 @@
               ["3"  460.0]
               ["4"  245.0]]
              (mt/rows
-               (druid-query
-                 {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
-                  :breakout    [$venue_price]})))))))
+              (druid-query
+                {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
+                 :breakout    [$venue_price]})))))))
 
 (deftest named-expression-aggregations-test
   (mt/test-driver :druid
@@ -548,9 +548,9 @@
     (testing "check that we can handle METRICS inside expression aggregation clauses"
       (tqpt/with-flattened-dbdef
         (t2.with-temp/with-temp [LegacyMetric metric {:definition (mt/$ids checkins
-                                                              {:aggregation [:sum $venue_price]
-                                                               :filter      [:> $venue_price 1]})
-                                                :table_id (mt/id :checkins)}]
+                                                                    {:aggregation [:sum $venue_price]
+                                                                     :filter      [:> $venue_price 1]})
+                                                      :table_id (mt/id :checkins)}]
           (is (= [["2" 1231.0]
                   ["3"  346.0]
                   ["4" 197.0]]

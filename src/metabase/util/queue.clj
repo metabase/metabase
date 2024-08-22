@@ -16,10 +16,10 @@
 
 ;; Similar to java.util.concurrent.LinkedTransferQueue, but bounded.
 (deftype ^:private ArrayTransferQueue
-  [^ArrayBlockingQueue async-queue
-   ^SynchronousQueue sync-queue
-   ^long block-ms
-   ^long sleep-ms]
+         [^ArrayBlockingQueue async-queue
+          ^SynchronousQueue sync-queue
+          ^long block-ms
+          ^long sleep-ms]
   BoundedTransferQueue
   (maybePut! [_ msg]
     (.offer async-queue msg))
@@ -34,11 +34,11 @@
 
 ;; Similar to ArrayTransferQueue, but drops events that are already in the queue.
 (deftype ^:private DeduplicatingArrayTransferQueue
-  [^Queue async-queue
-   ^BlockingQueue sync-queue
-   ^Set queued-set
-   ^long block-ms
-   ^long sleep-ms]
+         [^Queue async-queue
+          ^BlockingQueue sync-queue
+          ^Set queued-set
+          ^long block-ms
+          ^long sleep-ms]
   BoundedTransferQueue
   (maybePut!
     [_ msg]

@@ -40,7 +40,6 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Loading Data                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -53,7 +52,6 @@
 ;; (ex. SQL Server has a low limit on how many ? args we can have in a prepared statement, so it needs to be broken
 ;;  out into chunks; Oracle doesn't understand the normal syntax for inserting multiple rows at a time so we'll insert
 ;;  them one-at-a-time instead)
-
 
 ;;; ------------------------------------ make-load-data-fn! middleware functions -------------------------------------
 
@@ -92,7 +90,6 @@
   ([map-fn chunk-size insert!] (fn [rows]
                                  (dorun (map-fn insert! (partition-all chunk-size rows))))))
 
-
 ;;; -------------------------------- Making a load-data! impl with make-load-data-fn ---------------------------------
 
 (defn load-data-get-rows
@@ -130,7 +127,6 @@
            (log/tracef "Inserting rows like: %s" (first rows))
            (insert! rows)))))))
 
-
 ;;; ------------------------------------------ Predefinied load-data! impls ------------------------------------------
 
 ;; You can use one of these alternative implementations instead of `load-data-chunked!` if that doesn't work with your
@@ -149,8 +145,8 @@
   Add IDs if tabledef does not contains PK."
   [driver dbdef tabledef]
   (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
-                    (make-load-data-fn load-data-add-ids)
-                    (make-load-data-fn load-data-chunked))]
+                     (make-load-data-fn load-data-add-ids)
+                     (make-load-data-fn load-data-chunked))]
     (load-data! driver dbdef tabledef)))
 
 (defn load-data-maybe-add-ids-chunked!
@@ -158,15 +154,14 @@
   Add IDs if tabledef does not contains PK."
   [driver dbdef tabledef]
   (let [load-data! (if-not (some :pk? (:field-definitions tabledef))
-                    (make-load-data-fn load-data-add-ids load-data-chunked)
-                    (make-load-data-fn load-data-chunked))]
+                     (make-load-data-fn load-data-add-ids load-data-chunked)
+                     (make-load-data-fn load-data-chunked))]
     (load-data! driver dbdef tabledef)))
 
 ;; Default impl
 
 (defmethod load-data! :sql-jdbc/test-extensions [driver dbdef tabledef]
   (load-data-chunked! driver dbdef tabledef))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              CREATING DBS/TABLES                                               |
@@ -227,13 +222,13 @@
                                            "NONE")]]
     (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
                        (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-               (try
-                (load-data! driver dbdef tabledef)
-                (catch Throwable e
-                  (throw (ex-info (format "Error loading data: %s" (ex-message e))
-                                  {:driver driver, :tabledef (update tabledef :rows (fn [rows]
-                                                                                      (concat (take 10 rows) ['...])))}
-                                  e)))))))
+      (try
+        (load-data! driver dbdef tabledef)
+        (catch Throwable e
+          (throw (ex-info (format "Error loading data: %s" (ex-message e))
+                          {:driver driver, :tabledef (update tabledef :rows (fn [rows]
+                                                                              (concat (take 10 rows) ['...])))}
+                          e)))))))
 
 (defn destroy-db!
   "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."

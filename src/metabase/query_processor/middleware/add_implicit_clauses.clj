@@ -112,7 +112,6 @@
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -160,7 +159,6 @@
   (let [{breakouts :breakout, :as inner-query} (fix-order-by-field-refs inner-query)]
     (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
                                                      [:asc breakout]))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

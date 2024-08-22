@@ -114,7 +114,6 @@
     :implicit :model/ImplicitAction
     :query    :model/QueryAction))
 
-
 ;;; ------------------------------------------------ CRUD fns -----------------------------------------------------
 
 (defn insert!
@@ -127,7 +126,7 @@
                      :values [(-> (apply dissoc action-data action-columns)
                                   (assoc :action_id (:id action))
                                   (cond->
-                                    (= (:type action) :implicit)
+                                   (= (:type action) :implicit)
                                     (dissoc :database_id)
                                     (= (:type action) :http)
                                     (update :template json/encode)
@@ -142,9 +141,9 @@
   (when-let [action-row (not-empty (select-keys action action-columns))]
     (t2/update! Action id action-row))
   (when-let [type-row (not-empty (cond-> (apply dissoc action :id action-columns)
-                                         (= (or (:type action) (:type existing-action))
-                                            :implicit)
-                                         (dissoc :database_id)))]
+                                   (= (or (:type action) (:type existing-action))
+                                      :implicit)
+                                   (dissoc :database_id)))]
     (let [type-row (assoc type-row :action_id id)
           existing-model (type->model (:type existing-action))]
       (if (and (:type action) (not= (:type action) (:type existing-action)))
@@ -174,9 +173,9 @@
              (let [http-action (get http-actions-by-action-id (:id action))]
                (-> action
                    (merge
-                     {:disabled false}
-                     (select-keys http-action [:template :response_handle :error_handle])
-                     (select-keys (:template http-action) [:parameters :parameter_mappings])))))
+                    {:disabled false}
+                    (select-keys http-action [:template :response_handle :error_handle])
+                    (select-keys (:template http-action) [:parameters :parameter_mappings])))))
            actions))))
 
 (defn- normalize-implicit-actions [actions]
@@ -186,7 +185,7 @@
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
                (merge action
-                     (select-keys implicit-action [:kind]))))
+                      (select-keys implicit-action [:kind]))))
            actions))))
 
 (defn- select-actions-without-implicit-params
@@ -390,8 +389,8 @@
 
 (defmethod serdes/dependencies "Action" [action]
   (concat [[{:model "Card" :id (:model_id action)}]]
-    (when (= (:type action) "query")
-      [[{:model "Database" :id (:database_id action)}]])))
+          (when (= (:type action) "query")
+            [[{:model "Database" :id (:database_id action)}]])))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]

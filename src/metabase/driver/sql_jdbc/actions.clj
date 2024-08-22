@@ -44,7 +44,7 @@
   Or return `nil` if the parser doesn't match."
   {:changelog-test/ignore true, :arglists '([driver error-type database action-type error-message]), :added "0.48.0"}
   (fn [driver error-type _database _action-type _error-message]
-   [(driver/dispatch-on-initialized-driver driver) error-type])
+    [(driver/dispatch-on-initialized-driver driver) error-type])
   :hierarchy #'driver/hierarchy)
 
 (defmethod maybe-parse-sql-error :default
@@ -58,26 +58,26 @@
                                      (partial method driver error-type)))
                                  (dissoc (methods maybe-parse-sql-error) :default))]
     (try
-     (some #(% database action-type (ex-message e)) parsers-for-driver)
+      (some #(% database action-type (ex-message e)) parsers-for-driver)
      ;; Catch errors in parse-sql-error and log them so more errors in the future don't break the entire action.
      ;; We'll still get the original unparsed error message.
-     (catch Throwable new-e
-       (log/errorf new-e "Error parsing SQL error message %s: %s" (pr-str (ex-message e)) (ex-message new-e))
-       nil))))
+      (catch Throwable new-e
+        (log/errorf new-e "Error parsing SQL error message %s: %s" (pr-str (ex-message e)) (ex-message new-e))
+        nil))))
 
 (defn- do-with-auto-parse-sql-error
   [driver database action thunk]
   (try
-   (thunk)
-   (catch SQLException e
-     (throw (ex-info (or (ex-message e) "Error executing action.")
-                     (merge (or (some-> (parse-sql-error driver database action e)
+    (thunk)
+    (catch SQLException e
+      (throw (ex-info (or (ex-message e) "Error executing action.")
+                      (merge (or (some-> (parse-sql-error driver database action e)
                                         ;; the columns in error message should match with columns
                                         ;; in the parameter. It's usually got from calling
                                         ;; GET /api/action/:id/execute, and in there all column names are slugified
-                                        (m/update-existing :errors update-keys u/slugify))
-                                (assoc (ex-data e) :message (ex-message e)))
-                            {:status-code 400}))))))
+                                         (m/update-existing :errors update-keys u/slugify))
+                                 (assoc (ex-data e) :message (ex-message e)))
+                             {:status-code 400}))))))
 
 (defmacro ^:private with-auto-parse-sql-exception
   "Execute body and if there is an exception, try to parse the error message to search for known sql errors then throw a regular (and easier to understand/process) exception."
@@ -94,7 +94,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Action Execution                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 
 (defmulti base-type->sql-type-map
   "Return a map of [[metabase.types]] type to SQL string type name. Used for casting. Looks like we're just copypasting

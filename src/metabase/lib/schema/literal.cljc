@@ -1,14 +1,14 @@
 (ns metabase.lib.schema.literal
   "Malli schemas for string, temporal, number, and boolean literals."
   (:require
+   #?@(:clj
+       ([java-time.api :as t]))
    #?@(:clj ([metabase.lib.schema.literal.jvm]))
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.shared.util.internal.time-common :as shared.ut.common]
-   [metabase.util.malli.registry :as mr]
-   #?@(:clj
-       ([java-time.api :as t]))))
+   [metabase.util.malli.registry :as mr]))
 
 (defmethod expression/type-of-method :dispatch-type/nil
   [_nil]

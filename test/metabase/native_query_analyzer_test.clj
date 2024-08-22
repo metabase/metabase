@@ -39,7 +39,7 @@
                (q "select id from venues"))))
       (testing "quotes stop case matching"
         (is (= {:direct nil :indirect nil}
-                 (q "select \"id\" from venues")))
+               (q "select \"id\" from venues")))
         (is (= {:direct #{(mt/id :venues :id)} :indirect nil}
                (q "select \"ID\" from venues"))))
       (testing "you can mix quoted and unquoted names"

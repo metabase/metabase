@@ -58,9 +58,9 @@
 (defn- parse-tree->clean-query
   [raw-query tokens param->value]
   (loop
-      [[token & rest] tokens
-       query-so-far   ""
-       substitutions  {}]
+   [[token & rest] tokens
+    query-so-far   ""
+    substitutions  {}]
     (cond
       (nil? token)
       {:query         query-so-far

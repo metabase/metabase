@@ -587,8 +587,8 @@
    (join query -1 a-join))
 
   ([query        :- ::lib.schema/query
-     stage-number :- :int
-     a-join       :- [:or lib.join.util/PartialJoin Joinable]]
+    stage-number :- :int
+    a-join       :- [:or lib.join.util/PartialJoin Joinable]]
    (let [a-join              (join-clause a-join)
          suggested-conditions (when (empty? (join-conditions a-join))
                                 (suggested-join-conditions query stage-number (joined-thing query a-join)))

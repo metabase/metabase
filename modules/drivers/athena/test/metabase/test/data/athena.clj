@@ -148,7 +148,7 @@
     ;;
     ;; -- Cam
     (format #_"CREATE TABLE `%s`.`%s` (%s) LOCATION '%s' TBLPROPERTIES ('table_type'='ICEBERG');"
-            "CREATE EXTERNAL TABLE `%s`.`%s` (%s) LOCATION '%s';"
+     "CREATE EXTERNAL TABLE `%s`.`%s` (%s) LOCATION '%s';"
             (ddl.i/format-name driver database-name)
             (ddl.i/format-name driver table-name)
             fields

@@ -107,7 +107,6 @@
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
 
-
 (deftest anonymous-usage-stats-test-ee-with-values-changed
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
@@ -195,7 +194,6 @@
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
         "the new lazy-seq version of the executions metrics works the same way the old one did")))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Pulses & Alerts                                                 |

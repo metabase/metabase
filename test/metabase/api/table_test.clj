@@ -167,14 +167,14 @@
                                                  :entity_type  "entity/GenericTable"
                                                  :schema       nil}]
         (is (= (merge
-                 (dissoc (table-defaults) :segments :field_values :metrics :db)
-                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
-                                            :id table-id)
-                             :pk_field)
-                 {:schema       ""
-                  :name         "schemaless_table"
-                  :display_name "Schemaless"
-                  :db_id        database-id})
+                (dissoc (table-defaults) :segments :field_values :metrics :db)
+                (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                           :id table-id)
+                            :pk_field)
+                {:schema       ""
+                 :name         "schemaless_table"
+                 :display_name "Schemaless"
+                 :db_id        database-id})
                (dissoc (mt/user-http-request :rasta :get 200 (str "table/" table-id))
                        :db)))))
 
@@ -504,7 +504,7 @@
                                                             (t2/select-one [Table
                                                                             :id :created_at :updated_at
                                                                             :initial_sync_status :view_count]
-                                                              :id (mt/id :checkins))
+                                                                           :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
                                                              :display_name "Checkins"
@@ -524,7 +524,7 @@
                                                                (t2/select-one [Table
                                                                                :id :created_at :updated_at
                                                                                :initial_sync_status :view_count]
-                                                                 :id (mt/id :users))
+                                                                              :id (mt/id :users))
                                                                {:schema       "PUBLIC"
                                                                 :name         "USERS"
                                                                 :display_name "Users"
@@ -594,13 +594,13 @@
 
 (defn- with-numeric-dimension-options [field]
   (assoc field
-    :default_dimension_option (var-get #'api.table/numeric-default-index)
-    :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
+         :default_dimension_option (var-get #'api.table/numeric-default-index)
+         :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
 
 (defn- with-coordinate-dimension-options [field]
   (assoc field
-    :default_dimension_option (var-get #'api.table/coordinate-default-index)
-    :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
+         :default_dimension_option (var-get #'api.table/coordinate-default-index)
+         :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
 
 ;; Make sure metadata for 'virtual' tables comes back as expected
 (deftest virtual-table-metadata-test
@@ -1049,26 +1049,26 @@
 (deftest replace-csv-test
   (mt/test-driver :h2
     (mt/with-empty-db
-     (testing "Happy path"
-       (upload-test/with-uploads-enabled
-         (is (= {:status 200, :body nil}
-                (update-csv-via-api! :metabase.upload/replace)))))
-     (testing "Failure paths return an appropriate status code and a message in the body"
-       (upload-test/with-uploads-disabled
-         (is (= {:status 422, :body {:message "Uploads are not enabled."}}
-                (update-csv-via-api! :metabase.upload/replace))))))))
+      (testing "Happy path"
+        (upload-test/with-uploads-enabled
+          (is (= {:status 200, :body nil}
+                 (update-csv-via-api! :metabase.upload/replace)))))
+      (testing "Failure paths return an appropriate status code and a message in the body"
+        (upload-test/with-uploads-disabled
+          (is (= {:status 422, :body {:message "Uploads are not enabled."}}
+                 (update-csv-via-api! :metabase.upload/replace))))))))
 
 (deftest replace-csv-deletes-file-test
   (testing "File gets deleted after replacing"
     (mt/test-driver :h2
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-empty-db
-         (let [filename (mt/random-name)
-               file     (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] filename)
-               table    (upload-test/create-upload-table!)]
-           (is (.exists file) "File should exist before replace-csv!")
-           (mt/with-current-user (mt/user->id :crowberto)
-             (update-csv! {:action   :metabase.upload/replace
-                           :table-id (:id table)
-                           :file     file}))
-           (is (not (.exists file)) "File should be deleted after replace-csv!")))))))
+          (let [filename (mt/random-name)
+                file     (upload-test/csv-file-with ["name" "Luke Skywalker" "Darth Vader"] filename)
+                table    (upload-test/create-upload-table!)]
+            (is (.exists file) "File should exist before replace-csv!")
+            (mt/with-current-user (mt/user->id :crowberto)
+              (update-csv! {:action   :metabase.upload/replace
+                            :table-id (:id table)
+                            :file     file}))
+            (is (not (.exists file)) "File should be deleted after replace-csv!")))))))

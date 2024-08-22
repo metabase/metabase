@@ -22,8 +22,8 @@
                :cols [(mt/col :venues :name)
                       (mt/col :venues :id)]}
               (mt/format-rows-by [str int]
-                (qp.test-util/rows-and-cols
-                 (mt/run-mbql-query venues
-                   {:fields   [$name $id]
-                    :limit    10
-                    :order-by [[:asc $id]]}))))))))
+                                 (qp.test-util/rows-and-cols
+                                  (mt/run-mbql-query venues
+                                    {:fields   [$name $id]
+                                     :limit    10
+                                     :order-by [[:asc $id]]}))))))))

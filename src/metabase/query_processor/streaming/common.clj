@@ -139,13 +139,13 @@
 
 (defmethod global-type-settings :type/Date [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    (:type/Temporal global-column-settings {})
-    {::mb.viz/time-enabled nil}))
+   (:type/Temporal global-column-settings {})
+   {::mb.viz/time-enabled nil}))
 
 (defmethod global-type-settings :type/Time [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
-    {::mb.viz/date-style ""}))
+   (:type/Temporal global-column-settings {::mb.viz/time-style "h:mm A"})
+   {::mb.viz/date-style ""}))
 
 (defmethod global-type-settings :type/DateTime [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (:type/Temporal global-column-settings {}))
@@ -155,8 +155,8 @@
 
 (defmethod global-type-settings :type/Currency [_ {::mb.viz/keys [global-column-settings] :as _viz-settings}]
   (merge
-    {::mb.viz/number-style "currency"}
-    (:type/Currency global-column-settings)))
+   {::mb.viz/number-style "currency"}
+   (:type/Currency global-column-settings)))
 
 (defmethod global-type-settings :default [_ _viz-settings]
   {})

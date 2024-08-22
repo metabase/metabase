@@ -44,7 +44,6 @@
 ;; `db-qualified-table-name` like everyone else.
 (def ^:private test-catalog-name "test_data")
 
-
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOLEAN"
                              :type/Date                   "DATE"
@@ -109,7 +108,7 @@
                      "airport" 50
                      100)
         load-fn    (load-data/make-load-data-fn load-data/load-data-add-ids
-                     (partial load-data/load-data-chunked pmap chunk-size))]
+                                                (partial load-data/load-data-chunked pmap chunk-size))]
     (load-fn :presto-jdbc dbdef tabledef)))
 
 (defmethod load-data/load-data! :presto-jdbc

@@ -94,9 +94,9 @@
         ;; for unknown reasons. See #8917
         (if field-form
           (try
-           (mbql.u/unwrap-field-or-expression-clause field-form)
-           (catch Exception e
-             (log/error e "Failed unwrap field form" field-form)))
+            (mbql.u/unwrap-field-or-expression-clause field-form)
+            (catch Exception e
+              (log/error e "Failed unwrap field form" field-form)))
           (log/error "Could not find matching field clause for target:" target))))))
 
 (defn- pk-fields
@@ -119,8 +119,8 @@
   [fields]
   (when-let [table-ids (seq (map :table_id fields))]
     (m/index-by :table_id (-> (t2/select Field:params-columns-only
-                                :table_id      [:in table-ids]
-                                :semantic_type (mdb.query/isa :type/Name))
+                                         :table_id      [:in table-ids]
+                                         :semantic_type (mdb.query/isa :type/Name))
                               ;; run [[metabase.lib.field/infer-has-field-values]] on these Fields so their values of
                               ;; `has_field_values` will be consistent with what the FE expects. (e.g. we'll return
                               ;; `:list` instead of `:auto-list`.)
@@ -157,7 +157,6 @@
   (for [field fields]
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
-
 (mu/defn ^:private param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that should be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
@@ -192,7 +191,6 @@
   [instance]
   (param-fields instance))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -211,21 +209,21 @@
   `dashcards` must be hydrated with :card."
   [dashcards]
   (set/union
-    (set (for [{:keys [card] :as dashcard} dashcards
-               param    (:parameter_mappings dashcard)
-               :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
-               :when    field-clause
-               :let     [field-id (or
+   (set (for [{:keys [card] :as dashcard} dashcards
+              param    (:parameter_mappings dashcard)
+              :let     [field-clause (param-target->field-clause (:target param) (:card dashcard))]
+              :when    field-clause
+              :let     [field-id (or
                                     ;; Get the field id from the field-clause if it contains it. This is the common case
                                     ;; for mbql queries.
-                                    (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)
+                                  (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)
                                     ;; Attempt to get the field clause from the model metadata corresponding to the field.
                                     ;; This is the common case for native queries in which mappings from original columns
                                     ;; have been performed using model metadata.
-                                    (:id (qp.util/field->field-info field-clause (:result_metadata card))))]
-               :when field-id]
-           field-id))
-    (cards->card-param-field-ids (map :card dashcards))))
+                                  (:id (qp.util/field->field-info field-clause (:result_metadata card))))]
+              :when field-id]
+          field-id))
+   (cards->card-param-field-ids (map :card dashcards))))
 
 (defn get-linked-field-ids
   "Retrieve a map relating paramater ids to field ids."

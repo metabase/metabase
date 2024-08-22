@@ -109,12 +109,12 @@
             :subprotocol        "sqlserver"
             :user               "cam"}
            (sql-jdbc.conn/connection-details->spec :sqlserver
-             {:user               "cam"
-              :password           "toucans"
-              :db                 "birddb"
-              :host               "localhost"
-              :port               1433
-              :additional-options "trustServerCertificate=false"})))))
+                                                   {:user               "cam"
+                                                    :password           "toucans"
+                                                    :db                 "birddb"
+                                                    :host               "localhost"
+                                                    :port               1433
+                                                    :additional-options "trustServerCertificate=false"})))))
 
 (deftest ^:parallel add-max-results-limit-test
   (mt/test-driver :sqlserver
@@ -203,13 +203,13 @@
               ["Stout Burgers & Beers"]
               ["The Apple Pan"]]
              (mt/rows
-               (qp/process-query
-                (mt/mbql-query venues
-                  {:source-query {:source-table $$venues
-                                  :fields       [$name]
-                                  :order-by     [[:asc $id]]
-                                  :limit        5}
-                   :limit        3}))))))))
+              (qp/process-query
+               (mt/mbql-query venues
+                 {:source-query {:source-table $$venues
+                                 :fields       [$name]
+                                 :order-by     [[:asc $id]]
+                                 :limit        5}
+                  :limit        3}))))))))
 
 (deftest ^:parallel locale-bucketing-test
   (mt/test-driver :sqlserver

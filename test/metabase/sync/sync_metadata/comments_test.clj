@@ -117,16 +117,16 @@
       (let [table-name (apply str (take 10 (mt/random-name)))
             added-comment (mt/random-name)
             dbdef (basic-table table-name nil)]
-       (mt/dataset dbdef
+        (mt/dataset dbdef
          ;; modify the source DB to add the comment and resync
-         (driver/notify-database-updated driver/*driver* (mt/db))
-         (tx/create-db! driver/*driver* dbdef)
+          (driver/notify-database-updated driver/*driver* (mt/db))
+          (tx/create-db! driver/*driver* dbdef)
          ;; create the comment
-         (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                        [(sql.tx/standalone-table-comment-sql
-                          driver/*driver*
-                          dbdef
-                          (tx/map->TableDefinition {:table-name table-name
-                                                    :table-comment added-comment}))])
-         (sync-tables/sync-tables-and-database! (mt/db))
-         (is (true? (t2/exists? :model/Table :db_id (u/the-id (mt/db)) :description added-comment))))))))
+          (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                         [(sql.tx/standalone-table-comment-sql
+                           driver/*driver*
+                           dbdef
+                           (tx/map->TableDefinition {:table-name table-name
+                                                     :table-comment added-comment}))])
+          (sync-tables/sync-tables-and-database! (mt/db))
+          (is (true? (t2/exists? :model/Table :db_id (u/the-id (mt/db)) :description added-comment))))))))

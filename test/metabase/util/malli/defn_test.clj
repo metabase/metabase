@@ -18,7 +18,6 @@
     (str "Inputs: [x :- [:map [:x int?] [:y int?]]]\n"
          "  Return: :any")
 
-
     '(bar
       :- :int
       ([x :- :int]
@@ -49,7 +48,6 @@
         "when baz returns an invalid form um/defn throws")
     (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]"
            (:doc (meta #'baz))))))
-
 
 (mu/defn ^:private boo :- :int "something very important to remember goes here" [_x])
 
@@ -82,7 +80,7 @@
     (is (= "Inputs: []\n  Return: :any"
            (:doc (meta #'qux-1))))
     (is (= (str/join "\n"
-                     [  "Inputs: []"
+                     ["Inputs: []"
                       "  Return: :any"
                       "          "
                       ""
@@ -93,7 +91,7 @@
     (is (= "Inputs: [x :- :int]\n  Return: :any"
            (:doc (meta #'qux-3))))
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     ["Inputs: [x :- :int]"
                       "  Return: :any"
                       "          "
                       ""
@@ -104,7 +102,7 @@
     (is (= "Inputs: []\n  Return: :int"
            (:doc (meta #'qux-5))))
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     ["Inputs: [x :- :int]"
                       "  Return: :int"
                       "          "
                       ""
@@ -114,7 +112,7 @@
   (testing "multi-arity, and varargs doc strings should work"
     (is (= (str/join "\n"
                      ;;v---doc inserts 2 spaces here, it's not misaligned!
-                     [  "Inputs: ([]"
+                     ["Inputs: ([]"
                       "           [a :- :int]"
                       "           [a :- :int b :- :int]"
                       "           [a b & c :- [:* :int]])"
@@ -176,7 +174,7 @@
           (is (= '(def f
                     "Inputs: []\n  Return: :int"
                     (clojure.core/let
-                        [&f (clojure.core/fn [] "foo")]
+                     [&f (clojure.core/fn [] "foo")]
                       (clojure.core/fn
                         ([]
                          (try

@@ -192,13 +192,13 @@
       (binding [mdb.connection/*application-db* {:status (atom @#'mdb.connection/initial-db-status)}]
         (is (= false (mdb/db-is-set-up?)))
         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Cannot initialize setting before the db is set up"
-              (test-setting-custom-init)))
+             clojure.lang.ExceptionInfo
+             #"Cannot initialize setting before the db is set up"
+             (test-setting-custom-init)))
         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"Cannot initialize setting before the db is set up"
-              (setting/get :test-setting-custom-init)))))))
+             clojure.lang.ExceptionInfo
+             #"Cannot initialize setting before the db is set up"
+             (setting/get :test-setting-custom-init)))))))
 
 (def ^:private base-options
   {:setter   :none
@@ -311,7 +311,6 @@
              (setting-exists-in-db? :test-setting-2))
           "setting still shouldn't exist in the DB"))))
 
-
 ;;; --------------------------------------------- all & user-facing-info ---------------------------------------------
 
 ;; these tests are to check that settings get returned with the correct information; these functions are what feed
@@ -319,13 +318,13 @@
 
 (defn- user-facing-info-with-db-and-env-var-values [setting db-value env-var-value]
   (tu/do-with-temporary-setting-value setting db-value
-    (fn []
-      (tu/do-with-temp-env-var-value!
-       (setting/setting-env-map-name (keyword setting))
-       env-var-value
-       (fn []
-         (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
-                 :key :description))))))
+                                      (fn []
+                                        (tu/do-with-temp-env-var-value!
+                                         (setting/setting-env-map-name (keyword setting))
+                                         env-var-value
+                                         (fn []
+                                           (dissoc (#'setting/user-facing-info (#'setting/resolve-setting setting))
+                                                   :key :description))))))
 
 (deftest user-facing-info-test
   (testing "user-facing info w/ no db value, no env var value, no default value"
@@ -448,7 +447,6 @@
                    (description))))
           (test-i18n-setting! nil))))))
 
-
 ;;; ------------------------------------------------ BOOLEAN SETTINGS ------------------------------------------------
 
 (deftest boolean-settings-tag-test
@@ -499,7 +497,6 @@
       (is (= false
              (test-boolean-setting))))))
 
-
 ;;; ------------------------------------------------- JSON SETTINGS --------------------------------------------------
 
 (deftest set-json-setting-test
@@ -507,7 +504,6 @@
          (test-json-setting! {:a 100, :b 200})))
   (is (= {:a 100, :b 200}
          (test-json-setting))))
-
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 
@@ -561,7 +557,6 @@
     (is (= nil
            (setting/user-facing-value :test-csv-setting-with-default)))))
 
-
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------
 
 (defn- actual-value-in-db [setting-key]
@@ -604,7 +599,6 @@
                   :default        nil}
                  (#'setting/user-facing-info (setting/resolve-setting :test-json-setting)))))))))
 
-
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
 
 (defsetting test-timestamp-setting
@@ -619,7 +613,6 @@
     (test-timestamp-setting! #t "2018-07-11T09:32:00.000Z")
     (is (= #t "2018-07-11T09:32:00.000Z"
            (test-timestamp-setting)))))
-
 
 ;;; ----------------------------------------------- Uncached Settings ------------------------------------------------
 
@@ -658,7 +651,6 @@
       (is (= nil
              (settings-last-updated-value-in-db))))))
 
-
 ;;; ---------------------------------------------- Runtime Setting Options ----------------------------------------------
 
 (def my-setter :none)
@@ -678,7 +670,6 @@
     (testing "The defsetting macro allows arbitrary code forms for values"
       (is (= :internal (:visibility setting-definition))))))
 
-
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
 
 (defsetting test-sensitive-setting
@@ -697,7 +688,6 @@
     (is (= "123456"
            (test-sensitive-setting)))))
 
-
 ;;; ------------------------------------------------- CACHE SYNCING --------------------------------------------------
 
 (deftest cache-sync-test
@@ -713,7 +703,6 @@
     ;; ok, make sure the setting was set
     (is (= "Banana Beak"
            (toucan-name)))))
-
 
 ;;; ------------------------------------------------- Setting Visibility ------------------------------------------------
 
@@ -916,7 +905,6 @@
           (is (= ::not-present
                  (f :test-database-local-only-setting-with-default))))))))
 
-
 ;;; ------------------------------------------------- User-local Settings ----------------------------------------------
 
 (defsetting test-user-local-only-setting
@@ -1043,7 +1031,6 @@
            :enabled?   (fn [] false)
            :feature    :test-feature)))))
 
-
 ;;; ------------------------------------------------- Misc tests -------------------------------------------------------
 
 (defsetting ^:private test-no-default-setting
@@ -1153,7 +1140,7 @@
       "Test setting - this only shows up in dev (6)"
       :visibility :internal)
     (is (= {:new-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1},
-             :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
+            :existing-setting {:munged-name "test-setting-normal-1", :name :test-setting-normal-1??}}
            (m/map-vals #(select-keys % [:name :munged-name])
                        (try (defsetting test-setting-normal-1
                               "Test setting - this only shows up in dev (6)"
@@ -1213,7 +1200,7 @@
                           (:cause (Throwable->map e)))))))))
 
 (defsetting test-setting-audit-never
- "Test setting with no auditing"
+  "Test setting with no auditing"
   :audit :never)
 
 (defsetting test-setting-audit-raw-value
@@ -1341,9 +1328,9 @@
       (is (= '(1 (2)) (#'setting/realize ok-deep)))
       (doseq [x [shallow deep]]
         (is (thrown-with-msg?
-              clojure.lang.ExceptionInfo
-              #"^Surprise!$"
-              (#'setting/realize x)))))))
+             clojure.lang.ExceptionInfo
+             #"^Surprise!$"
+             (#'setting/realize x)))))))
 
 (defn- validation-setting-symbol [format]
   (symbol (str "test-" (name format) "-validation-setting")))
@@ -1377,11 +1364,11 @@
   (testing "Validation will throw an exception if a setting has invalid JSON via an environment variable"
     (let [ex (get-parse-exception :json "[1, 2,")]
       (assert-parser-exception!
-        :json ex
+       :json ex
         ;; TODO it would be safe to expose the raw Jackson exception here, we could improve redaction logic
-        #_(str "Unexpected end-of-input within/between Array entries\n"
-               " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
-        "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+       #_(str "Unexpected end-of-input within/between Array entries\n"
+              " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 7]")
+       "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest sensitive-data-redacted-test
   (testing "The exception thrown by validation will not contain sensitive info from the config"
@@ -1389,7 +1376,7 @@
           ex (get-parse-exception :json (str "[" password))]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
+       :json ex "Error of type class com.fasterxml.jackson.core.JsonParseException thrown while parsing a setting"))))
 
 (deftest safe-exceptions-not-redacted-test
   (testing "An exception known not to contain sensitive info will not be redacted"
@@ -1397,10 +1384,10 @@
           ex (get-parse-exception :json "{\"a\": \"123abc\", \"b\": 2")]
       (is (not (str/includes? (pr-str ex) password)))
       (assert-parser-exception!
-        :json ex
-        (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
-             " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
-             " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
+       :json ex
+       (str "Unexpected end-of-input: expected close marker for Object (start marker at [Source: REDACTED"
+            " (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1])\n"
+            " at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 23]")))))
 
 (define-setting-for-type :csv)
 
@@ -1412,16 +1399,16 @@
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
     (let [ex (get-parse-exception :csv "1,2,2,\",,")]
       (assert-parser-exception!
-        :csv ex "CSV error (unexpected end of file)"))))
+       :csv ex "CSV error (unexpected end of file)"))))
 
 (deftest invalid-csv-setting-char-test
   (testing "Validation will throw an exception if a setting has invalid CSV via an environment variable"
     (let [ex (get-parse-exception :csv "\"1\"$ekr3t")]
       (assert-parser-exception!
-        :csv ex
+       :csv ex
         ;; we don't expose the raw exception here, as it would give away the first character of the secret
-        #_"CSV error (unexpected character: $)"
-        "Error of type class java.lang.Exception thrown while parsing a setting"))))
+       #_"CSV error (unexpected character: $)"
+       "Error of type class java.lang.Exception thrown while parsing a setting"))))
 
 (define-setting-for-type :boolean)
 
@@ -1436,7 +1423,7 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a boolean" raw-value)
       (let [ex (get-parse-exception :boolean raw-value)]
         (assert-parser-exception!
-          :boolean ex "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
+         :boolean ex "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))
 
 (define-setting-for-type :double)
 
@@ -1452,8 +1439,8 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a double" raw-value)
       (let [ex (get-parse-exception :double raw-value)]
         (assert-parser-exception!
-          #_"For input string: \"{raw-value}\""
-          :double ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+         #_"For input string: \"{raw-value}\""
+         :double ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (define-setting-for-type :keyword)
 
@@ -1479,8 +1466,8 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a integer" raw-value)
       (let [ex (get-parse-exception :integer raw-value)]
         (assert-parser-exception!
-          #_"For input string: \"{raw-value}\""
-          :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+         #_"For input string: \"{raw-value}\""
+         :integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (define-setting-for-type :positive-integer)
 
@@ -1495,8 +1482,8 @@
     (testing (format "Validation will throw an exception when trying to parse %s as a positive-integer" raw-value)
       (let [ex (get-parse-exception :positive-integer raw-value)]
         (assert-parser-exception!
-          #_"For input string: \"{raw-value}\""
-          :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
+         #_"For input string: \"{raw-value}\""
+         :positive-integer ex "Error of type class java.lang.NumberFormatException thrown while parsing a setting")))))
 
 (define-setting-for-type :timestamp)
 
@@ -1508,8 +1495,8 @@
   (testing "Validation will throw an exception when trying to parse an invalid timestamp"
     (let [ex (get-parse-exception :timestamp "2024-01-48")]
       (assert-parser-exception!
-        #_"Text '{raw-value}' could not be parsed, unparsed text found at index 0"
-        :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
+       #_"Text '{raw-value}' could not be parsed, unparsed text found at index 0"
+       :timestamp ex "Error of type class java.time.format.DateTimeParseException thrown while parsing a setting"))))
 
 (defn ns-validation-setting-symbol [format]
   (symbol "metabase.models.setting-test" (name (validation-setting-symbol format))))

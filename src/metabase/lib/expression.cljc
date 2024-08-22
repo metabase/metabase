@@ -235,10 +235,10 @@
          (throw (ex-info "Expression name conflicts with a column in the same query stage"
                          {:expression-name expression-name})))
      (lib.util/update-query-stage
-       query stage-number
-       add-expression-to-stage
-       (lib.util/top-level-expression-clause expressionable expression-name)
-       options))))
+      query stage-number
+      add-expression-to-stage
+      (lib.util/top-level-expression-clause expressionable expression-name)
+      options))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])

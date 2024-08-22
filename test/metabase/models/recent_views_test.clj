@@ -144,7 +144,6 @@
              (mapv fixup
                    (recent-views/get-list (mt/user->id :rasta))))))))
 
-
 (deftest update-users-recent-views!-duplicates-test
   (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
     (mt/with-temp [:model/Card {card-id :id} {:type "question"}]

@@ -155,17 +155,17 @@
     (case (:strategy binning-options)
       :num-bins
       (or ;; If the column is already binned, compute the width of this single bin based on its bounds and width.
-          (when-let [bin-width (:bin-width binning-options)]
-            {:bin-width bin-width
-             :min-value value
-             :max-value (+ value bin-width)})
+       (when-let [bin-width (:bin-width binning-options)]
+         {:bin-width bin-width
+          :min-value value
+          :max-value (+ value bin-width)})
           ;; Otherwise use the fingerprint.
-          (when-let [{min-value :min, max-value :max, :as _number-fingerprint} (get-in column-metadata [:fingerprint :type :type/Number])]
-            (let [{:keys [num-bins]} binning-options
-                  bin-width          (lib.binning.util/nicer-bin-width min-value max-value num-bins)]
-              {:bin-width bin-width
-               :min-value value
-               :max-value (+ value bin-width)})))
+       (when-let [{min-value :min, max-value :max, :as _number-fingerprint} (get-in column-metadata [:fingerprint :type :type/Number])]
+         (let [{:keys [num-bins]} binning-options
+               bin-width          (lib.binning.util/nicer-bin-width min-value max-value num-bins)]
+           {:bin-width bin-width
+            :min-value value
+            :max-value (+ value bin-width)})))
 
       :bin-width
       (let [{:keys [bin-width]} binning-options]

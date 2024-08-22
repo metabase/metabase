@@ -31,7 +31,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -206,14 +206,14 @@
      (first
       (cols
        (qp/process-query
-         {:database db-id
-          :type     :native
-          :native   (qp.compile/compile
-                      {:database db-id
-                       :type     :query
-                       :query    {:source-table table-id
-                                  :fields       [[:field field-id nil]]
-                                  :limit        1}})}))))))
+        {:database db-id
+         :type     :native
+         :native   (qp.compile/compile
+                    {:database db-id
+                     :type     :query
+                     :query    {:source-table table-id
+                                :fields       [[:field field-id nil]]
+                                :limit        1}})}))))))
 
 (defn native-query-col
   "Return expected `:cols` info for a Field from a native query or native source query."
@@ -317,8 +317,8 @@
                                                   (.getName (class v))
                                                   (pr-str v)
                                                   (.getMessage e))
-                                   {:f f, :v v, :format-nil-values? format-nil-values?}
-                                   e)))))))))
+                                          {:f f, :v v, :format-nil-values? format-nil-values?}
+                                          e)))))))))
 
               :else
               (throw (ex-info "Unexpected response: rows are not sequential!" {:response response})))))))))
@@ -582,7 +582,6 @@
     (for [row (:rows table-def)]
       (nth row i))))
 
-
 ;;; ------------------------------------------------- Timezone Stuff -------------------------------------------------
 
 (defn do-with-report-timezone-id!
@@ -590,9 +589,9 @@
   [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
   (driver.tu/wrap-notify-all-databases-updated!
-    (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
-      (testing (format "\nreport timezone id = %s" (pr-str timezone-id))
-        (thunk)))))
+   (binding [qp.timezone/*report-timezone-id-override* (or timezone-id ::nil)]
+     (testing (format "\nreport timezone id = %s" (pr-str timezone-id))
+       (thunk)))))
 
 (defmacro with-report-timezone-id!
   "Override the `report-timezone` Setting and execute `body`. Intended primarily for REPL and test usage."

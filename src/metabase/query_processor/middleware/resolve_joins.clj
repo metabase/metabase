@@ -61,7 +61,6 @@
                                        (remove nil? (map :source-table joins)))
   nil)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             :Joins Transformations                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -114,7 +113,6 @@
   (for [{:keys [source-query], :as join} joins]
     (cond-> join
       source-query resolve-joins-in-mbql-query-all-levels)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           MBQL-Query Transformations                                           |
@@ -179,7 +177,6 @@
   (-> query
       (update :joins (comp resolve-join-source-queries resolve-references))
       merge-joins-fields))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |

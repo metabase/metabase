@@ -88,8 +88,8 @@
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
-                 0
-                 (cached-active-users-count))))
+                  0
+                  (cached-active-users-count))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -255,7 +255,6 @@
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -363,10 +362,10 @@
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
     `(do
-      (swap! premium-features conj ~feature)
-      (defsetting ~setting-name
-        ~docstring
-        ~@(mapcat identity options)))))
+       (swap! premium-features conj ~feature)
+       (defsetting ~setting-name
+         ~docstring
+         ~@(mapcat identity options)))))
 
 (define-premium-feature hide-embed-branding?
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
@@ -625,7 +624,7 @@
 
 (s/def ::defenterprise-schema-args
   (s/cat :return-schema      (s/? (s/cat :- #{:-}
-                                             :schema any?))
+                                         :schema any?))
          :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise

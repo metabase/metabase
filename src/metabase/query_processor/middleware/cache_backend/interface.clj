@@ -42,7 +42,7 @@
   {:style/indent 4}
   [backend query-hash strategy [is-binding] & body]
   `(cached-results ~backend ~query-hash ~strategy (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
-                                                           ~@body)))
+                                                    ~@body)))
 
 (defmulti cache-backend
   "Return an instance of a cache backend, which is any object that implements `QueryProcessorCacheBackend`.

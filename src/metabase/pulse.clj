@@ -49,7 +49,6 @@
        {:value default-value})
      (dissoc parameter :default))))
 
-
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 
@@ -72,9 +71,9 @@
   [{:keys [entity url] :as _link-card}]
   (let [url-link-card? (some? url)]
     {:text (str (format
-                  "### [%s](%s)"
-                  (if url-link-card? url (:name entity))
-                  (if url-link-card? url (link-card-entity->url entity)))
+                 "### [%s](%s)"
+                 (if url-link-card? url (:name entity))
+                 (if url-link-card? url (link-card-entity->url entity)))
                 (when-let [description (if url-link-card? nil (:description entity))]
                   (format "\n%s" description)))
      :type :text}))
@@ -95,8 +94,8 @@
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
             instance           (t2/select-one
-                                 (serdes/link-card-model->toucan-model model)
-                                 (dashboard-card/link-card-info-query-for-model model id))]
+                                (serdes/link-card-model->toucan-model model)
+                                (dashboard-card/link-card-info-query-for-model model id))]
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
@@ -182,8 +181,8 @@
           ;; Remove cards that have no results when empty results aren't wanted
           (remove (fn [{part-type :type :as part}]
                     (and
-                      (= part-type :card)
-                      (zero? (get-in part [:result :row_count] 0))))
+                     (= part-type :card)
+                     (zero? (get-in part [:result :row_count] 0))))
                   parts)
           parts)))))
 
@@ -337,7 +336,7 @@
   (let [goal-comparison      (if alert_above_goal >= <)
         goal-val             (ui-logic/find-goal-value first-result)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card first-result)
-                                                            (get-in first-result [:result :data]))]
+                                                                  (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info (tru "Unable to compare results to goal for alert.")
@@ -347,7 +346,6 @@
      (some (fn [row]
              (goal-comparison (comparison-col-rowfn row) goal-val))
            (get-in first-result [:result :data :rows])))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Creating Notifications To Send                                         |
@@ -448,9 +446,9 @@
                               (construct-pulse-email email-subject (mapv :email user-recipients) (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) nil)))
         email-to-nonusers   (for [non-user (map :email non-user-recipients)]
                               (construct-pulse-email email-subject [non-user] (messages/render-alert-email timezone pulse channel parts (ui-logic/find-goal-value first-part) non-user)))]
-       (if email-to-users
-         (conj email-to-nonusers email-to-users)
-         email-to-nonusers)))
+    (if email-to-users
+      (conj email-to-nonusers email-to-users)
+      email-to-nonusers)))
 
 (defmethod notification [:alert :slack]
   [pulse parts {{channel-id :channel} :details}]
@@ -488,17 +486,17 @@
   "Execute the underlying queries for a sequence of Pulses and return the parts as 'notification' maps."
   [{:keys [cards] pulse-id :id :as pulse} dashboard]
   (parts->notifications
-    pulse
-    (if dashboard
+   pulse
+   (if dashboard
       ;; send the dashboard
-      (execute-dashboard pulse dashboard)
+     (execute-dashboard pulse dashboard)
       ;; send the cards instead
-      (for [card cards
+     (for [card cards
             ;; Pulse ID may be `nil` if the Pulse isn't saved yet
-            :let [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
+           :let [part (assoc (pu/execute-card pulse (u/the-id card) :pulse-id pulse-id) :type :card)]
             ;; some cards may return empty part, e.g. if the card has been archived
-            :when part]
-        part))))
+           :when part]
+       part))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Sending Notifications                                              |

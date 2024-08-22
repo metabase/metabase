@@ -44,8 +44,8 @@
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]
   (and
-    (driver/database-supports? driver :persist-models db)
-    (-> db :settings :persist-models-enabled)))
+   (driver/database-supports? driver :persist-models db)
+   (-> db :settings :persist-models-enabled)))
 
 (defmethod driver/mbql->native :sql
   [driver query]
@@ -113,7 +113,6 @@
 (defmethod default-database-role :default
   [_ _database]
   nil)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |

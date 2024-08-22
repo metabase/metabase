@@ -367,7 +367,6 @@
                             {:model model}
                             e))))))))
 
-
 (defmethod update-sequence-values! :h2
   [_db-type data-source]
   #_{:clj-kondo/ignore [:discouraged-var]}
