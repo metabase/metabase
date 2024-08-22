@@ -242,9 +242,9 @@
           "`describe-database` should see the view")
       (is (= {:schema test-db-name
               :name   view-name
-              :fields #{{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false}
-                        {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false}
-                        {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false}}}
+              :fields #{{:name "id", :database-type "INTEGER" :base-type :type/Integer :database-position 0 :database-partitioned false :nfc-path nil :nested-fields #{}}
+                        {:name "venue_name", :database-type "STRING" :base-type :type/Text :database-position 1 :database-partitioned false :nfc-path nil :nested-fields #{}}
+                        {:name "category_name", :database-type "STRING" :base-type :type/Text :database-position 2 :database-partitioned false :nfc-path nil :nested-fields #{}}}}
              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name view-name, :schema test-db-name}))
           "`describe-tables` should see the fields in the view")
       (sync/sync-database! (mt/db) {:scan :schema})

@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
@@ -25,8 +26,18 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.google.cloud.bigquery Field Field$Mode FieldValue FieldValueList)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (com.google.cloud.bigquery
+    Field
+    Field$Mode
+    FieldValue
+    FieldValueList)
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
    (metabase.driver.common.parameters FieldFilter)))
 
 (set! *warn-on-reflection* true)
@@ -77,21 +88,24 @@
   {:added "0.41.0" :arglists '([column-type column-mode timezone-id field v])}
   (fn [column-type _ _ _ _] column-type))
 
-(defn- parse-value
-  [column-mode v parse-fn]
-  ;; For results from a query like `SELECT [1,2]`, BigQuery sets the column-mode to `REPEATED` and wraps the column in an ArrayList,
-  ;; with ArrayMap entries, like: `ArrayList(ArrayMap("v", 1), ArrayMap("v", 2))`
+(defn- repeated-values [column-mode v]
   (cond
     (= "REPEATED" column-mode) ; legacy API
     (for [result v
           ^java.util.Map$Entry entry result]
-      (parse-fn (.getValue entry)))
+      (.getValue entry))
 
     (= Field$Mode/REPEATED column-mode) ; newer API
     (for [^FieldValue arr-v v]
-      (parse-fn (.getValue arr-v)))
+      (.getValue arr-v))))
 
-    :else
+(defn- parse-value
+  [column-mode v parse-fn]
+  ;; For results from a query like `SELECT [1,2]`, BigQuery sets the column-mode to `REPEATED` and wraps the column in an ArrayList,
+  ;; with ArrayMap entries, like: `ArrayList(ArrayMap("v", 1), ArrayMap("v", 2))`
+  (if-let [values (repeated-values column-mode v)]
+    (for [v values]
+      (parse-fn v))
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
@@ -99,26 +113,32 @@
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "RECORD"
-  [_column-type _column-mode timezone-id ^Field field ^FieldValueList v]
-  (let [subfields (.getSubFields field)]
-    (into
-     {}
-     (keep (fn [^Field subfield]
-             (let [subname (.getName subfield)
-                   subvalue (some-> v (.get subname) .getValue)
-                   column-mode (.getMode subfield)
-                   parsed-value (when subvalue
-                                  (parse-result-of-type
-                                   (.. subfield getType name)
-                                   column-mode
-                                   timezone-id
-                                   subfield
-                                   subvalue))
-                   result (cond-> parsed-value
-                            (seq? parsed-value) not-empty)]
-               (when result
-                 [(keyword subname) result]))))
-     subfields)))
+  [column-type column-mode timezone-id ^Field field ^FieldValueList v]
+  (if-let [values (repeated-values column-mode v)]
+    (for [v values]
+      (parse-result-of-type
+        column-type
+        nil
+        timezone-id
+        field
+        v))
+    (let [subfields (.getSubFields field)]
+      (into
+        {}
+        (keep (fn [[^Long idx ^Field subfield]]
+                (let [subname (.getName subfield)
+                      result (let [parsed-value (when-let [subvalue (some-> v (.get idx) .getValue)]
+                                                  (parse-result-of-type
+                                                    (.. subfield getType name)
+                                                    (.getMode subfield)
+                                                    timezone-id
+                                                    subfield
+                                                    subvalue))]
+                               (cond-> parsed-value
+                                 (seq? parsed-value) not-empty))]
+                  (when result
+                    [(keyword subname) result]))))
+        (m/indexed subfields)))))
 
 (defmethod parse-result-of-type "STRING"
   [_a column-mode _b _ v]
