@@ -1,6 +1,14 @@
-const FeedbackDialog = ({ isOpen, onClose }) => {
+const FeedbackDialog = ({ isOpen, onClose, emailBody = "" }) => {
     const handleSendEmail = () => {
-        window.location.href = "mailto:info@omniloy.com";
+        const email = "mar.pujadas@omniloy.com";
+        const subject = "Feedback for Your Application";
+        const body = encodeURIComponent(
+            `Here is a transcript of your conversation with the assistant:\n\n${emailBody || "Please provide more details here..."}`
+        );
+
+        window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${body}`, "_blank");
+
+        // Close the modal
         onClose();
     };
 
