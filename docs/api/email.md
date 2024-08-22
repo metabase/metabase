@@ -23,7 +23,7 @@ Update multiple email Settings. You must be a superuser or have `setting` permis
 
 ### PARAMS:
 
-*  **`settings`** map
+-  **`settings`** map.
 
 ---
 
