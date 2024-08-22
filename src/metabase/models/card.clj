@@ -1002,7 +1002,8 @@ saved later when it is ready."
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
           (m/update-existing :id        serdes/*export-field-fk*)
-          (m/update-existing :field_ref serdes/export-mbql)))))
+          (m/update-existing :field_ref serdes/export-mbql)
+          (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))))
 
 (defn- import-result-metadata [metadata]
   (when metadata
@@ -1010,7 +1011,9 @@ saved later when it is ready."
       (-> m
           (m/update-existing :table_id  serdes/*import-table-fk*)
           (m/update-existing :id        serdes/*import-field-fk*)
-          (m/update-existing :field_ref serdes/import-mbql)))))
+          (m/update-existing :field_ref serdes/import-mbql)
+          ;; NOTE: temporary until `instance_analytics` is updated
+          (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
 
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
