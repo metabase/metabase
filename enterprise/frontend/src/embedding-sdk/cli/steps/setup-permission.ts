@@ -11,7 +11,7 @@ import { getPermissionsForGroups } from "../utils/get-permission-groups";
 import { getTenancyIsolationSandboxes } from "../utils/get-tenancy-isolation-sandboxes";
 import { printEmptyLines, printHelperText } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
-import { sampleTenancyColumnValuesFromTables } from "../utils/sample-tenancy-column-values";
+import { sampleTenantIdsFromTables } from "../utils/sample-tenancy-column-values";
 
 // Name of the permission groups and collections to create.
 const GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
@@ -164,7 +164,7 @@ export const setupPermissions: CliStepMethod = async state => {
   }
 
   try {
-    const tenancyColumnValues = await sampleTenancyColumnValuesFromTables({
+    const tenantIds = await sampleTenantIdsFromTables({
       chosenTables: state.chosenTables,
       databaseId: state.databaseId ?? 0,
       tenancyColumnNames,
@@ -175,13 +175,13 @@ export const setupPermissions: CliStepMethod = async state => {
 
     // The tables don't have enough tenancy column values.
     // They have to set up the "customer_id" user attribute by themselves.
-    if (!tenancyColumnValues) {
+    if (!tenantIds) {
       console.log(chalk.yellow(NOT_ENOUGH_TENANCY_COLUMN_ROWS));
 
       return [{ type: "success" }, state];
     }
 
-    return [{ type: "success" }, { ...state, tenancyColumnValues }];
+    return [{ type: "success" }, { ...state, tenantIds }];
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     const message = `Failed to query tenancy column values (e.g. customer_id). Reason: ${reason}`;

@@ -24,10 +24,10 @@ interface SampleFromTableOptions {
 }
 
 /**
- * Sample tenancy column values from multiple chosen tables.
+ * Sample tenant IDs from multiple chosen tables.
  * If a table doesn't have enough rows, we look up from the next one.
  */
-export async function sampleTenancyColumnValuesFromTables(
+export async function sampleTenantIdsFromTables(
   options: SampleFromTableOptions,
 ) {
   const { chosenTables, databaseId, cookie, instanceUrl, tenancyColumnNames } =
@@ -35,7 +35,7 @@ export async function sampleTenancyColumnValuesFromTables(
 
   // Get sample values for the tenancy column.
   for (const table of chosenTables) {
-    const values = await sampleTenancyColumnValues({
+    const values = await sampleTenantIds({
       table,
       limit: 15,
       databaseId,
@@ -58,7 +58,7 @@ export async function sampleTenancyColumnValuesFromTables(
  * Sample a random tenancy column.
  * This is used to assign the user attribute of `customer_id`
  */
-export async function sampleTenancyColumnValues(options: Options) {
+export async function sampleTenantIds(options: Options) {
   const { limit, table, columnName, databaseId, instanceUrl, cookie } = options;
 
   const field = table.fields?.find(f => f.name === columnName);
