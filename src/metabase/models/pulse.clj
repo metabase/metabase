@@ -460,20 +460,30 @@
 
     * All previously existing channels will be updated with their most recent information."
   [notification-or-id channels :- [:sequential :map]]
-  (let [channels            (map (fn [channel]
-                                  (assoc channel
-                                         :channel_type   (keyword (:channel_type channel))
-                                         :schedule_type  (keyword (:schedule_type channel))
-                                         :schedule_frame (keyword (:schedule_frame channel))
-                                         :pulse_id       (u/the-id notification-or-id)))
-                                 channels)
+  (let [existing-channels                 (t2/select :model/PulseChannel :pulse_id (u/the-id notification-or-id))
+        channel-type+id->existing-channel (update-vals (group-by (juxt :channel_type :channel_id) channels) first)
+        channels                          (map-indexed
+                                           (fn [idx channel]
+                                             (assoc channel
+                                                    :channel_type   (keyword (:channel_type channel))
+                                                    :schedule_type  (keyword (:schedule_type channel))
+                                                    :schedule_frame (keyword (:schedule_frame channel))
+                                                    :pulse_id       (u/the-id notification-or-id)
+                                                    ;; channel from FE might not have an id, so we need to find the id
+                                                    ;; from the existing channels using channel_type + channel_id
+                                                    ;; for "new channels" we assign it with an negative id so that
+                                                    ;; row-diff will treat it as :to-create
+                                                    :id             (or
+                                                                     (:id channel)
+                                                                     (:id (get channel-type+id->existing-channel ((juxt :channel_type :channel_id) channel)))
+                                                                     ;; new channel
+                                                                     (- (inc idx)))))
+                                           channels)
         {:keys [to-create
                 to-update
-                to-delete]} (u/row-diff (t2/select :model/PulseChannel :pulse_id (u/the-id notification-or-id))
-                                        channels
-                                        {:to-compare #(dissoc % :created_at :updated_at)
-                                         ;; (channel_type, channel_id) should be unique per pulse channel
-                                         :id-fn      (juxt :channel_type :channel_id)})]
+                to-delete]}               (u/row-diff existing-channels
+                                                      channels
+                                                      {:to-compare #(dissoc % :created_at :updated_at)})]
     (doseq [channel to-create]
       (pulse-channel/create-pulse-channel! channel))
     (doseq [channel to-update]
@@ -481,7 +491,7 @@
       (pulse-channel/update-pulse-channel! channel))
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
       (doseq [channel to-delete]
-        (assert (:id channel) "Cannot update a PulseChannel without an :id")
+        (assert (:id channel) "Cannot delete a PulseChannel without an :id")
         (t2/delete! PulseChannel :id (:id channel))))))
 
 (mu/defn- create-notification-and-add-cards-and-channels!
