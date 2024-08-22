@@ -229,7 +229,7 @@
       (testing "When we have multiple FieldValues rows in the database, we always return the most recently updated row"
         (is (=? {field-id-1 {:values ["c" "d"]}
                  field-id-2 {:values ["e" "f"]}}
-               (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
+                (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
         (testing "and older values are implicitly deleted"
           (is (= 1 (count (t2/select FieldValues :field_id field-id-1 :type :full)))))))))
 
