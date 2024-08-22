@@ -53,8 +53,8 @@
         (is (= 5 (t2/count :model/Card :id [:in (mapv :id [c1 c2 c3 c4 arch])])))))))
 
 (comment
- (set! *warn-on-reflection* true)
- (queue/clear! @#'query-analysis/worker-queue)
- (.-queued-set @#'query-analysis/worker-queue)
- (.peek (.-async-queue @#'query-analysis/worker-queue))
- (.peek (.-sync-queue @#'query-analysis/worker-queue)))
+  (set! *warn-on-reflection* true)
+  (queue/clear! @#'query-analysis/worker-queue)
+  (.-queued-set @#'query-analysis/worker-queue)
+  (.peek (.-async-queue @#'query-analysis/worker-queue))
+  (.peek (.-sync-queue @#'query-analysis/worker-queue)))

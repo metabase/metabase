@@ -86,12 +86,12 @@
       (let [svg-bytes (js-svg/progress value goal settings)]
         (is (bytes? svg-bytes))))
     (let [svg-string (.asString ^Value
-                                (js/execute-fn-name
-                                  context
-                                  "progress"
-                                  (json/generate-string {:value value :goal goal})
-                                  (json/generate-string settings)
-                                  (json/generate-string {})))]
+                      (js/execute-fn-name
+                       context
+                       "progress"
+                       (json/generate-string {:value value :goal goal})
+                       (json/generate-string settings)
+                       (json/generate-string {})))]
       (validate-svg-string :progress svg-string))))
 
 (deftest parse-svg-sanitizes-characters-test

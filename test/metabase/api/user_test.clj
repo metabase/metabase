@@ -47,7 +47,6 @@
 ;;; |        Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id, GET /api/user/recipients     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
 ;; ## /api/user/* AUTHENTICATION Tests
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
@@ -93,15 +92,15 @@
   (testing "Group Managers"
     (mt/with-premium-features #{:advanced-permissions}
       (t2.with-temp/with-temp
-          [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
-           :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
-           :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager true}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
-           :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
+        [:model/PermissionsGroup           {group-id1 :id} {:name "Cool Friends"}
+         :model/PermissionsGroup           {group-id2 :id} {:name "Rad Pals"}
+         :model/PermissionsGroup           {group-id3 :id} {:name "Good Folks"}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id1 :is_group_manager true}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id1 :is_group_manager false}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id group-id2 :is_group_manager true}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id2 :is_group_manager true}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id3 :is_group_manager false}
+         :model/PermissionsGroupMembership _ {:user_id (mt/user->id :lucky) :group_id group-id3 :is_group_manager true}]
         (testing "admin can get users from any group, even when they are also marked as a group manager"
           (is (= #{"lucky@metabase.com"
                    "rasta@metabase.com"}
@@ -230,11 +229,11 @@
                        (->> (:data (mt/user-http-request :rasta :get 200 "user/recipients"))
                             (map :email))))
 
-               (testing "But returns self if the user is sandboxed"
-                 (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
-                   (is (= [rasta]
-                          (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
-                               (map :email)))))))))
+                (testing "But returns self if the user is sandboxed"
+                  (with-redefs [premium-features/sandboxed-or-impersonated-user? (constantly true)]
+                    (is (= [rasta]
+                           (->> ((mt/user-http-request :rasta :get 200 "user/recipients") :data)
+                                (map :email)))))))))
 
           (testing "Returns only self when user-visibility is none"
             (mt/with-temporary-setting-values [user-visibility :none]
@@ -521,7 +520,6 @@
                      mt/boolean-ids-and-timestamps
                      (dissoc :is_qbnewb :last_login :user_group_memberships)))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Creating a new User -- POST /api/user                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -622,8 +620,8 @@
 (defn- superuser-and-admin-pgm-info [email]
   {:is-superuser? (t2/select-one-fn :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (t2/exists? PermissionsGroupMembership
-                    :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
-                    :group_id (u/the-id (perms-group/admin)))})
+                              :user_id  (t2/select-one-pk User :%lower.email (u/lower-case-en email))
+                              :group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test
   (testing "POST /api/user"
@@ -674,7 +672,6 @@
                                     {:first_name "Something"
                                      :last_name  "Random"
                                      :email      (u/upper-case-en (:email (mt/fetch-user :rasta)))}))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
@@ -1073,7 +1070,6 @@
                     (is (= "en_US"
                            (locale-from-db)))))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1111,7 +1107,6 @@
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
             (is (= {:is_active true, :sso_source nil}
                    (mt/derecordize (t2/select-one [User :is_active :sso_source] :id (u/the-id user)))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                               Updating a Password -- PUT /api/user/:id/password                                |
@@ -1201,7 +1196,6 @@
     (testing "Check that a non-superuser CANNOT deactivate themselves"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :delete 403 (format "user/%d" (mt/user->id :rasta)) {}))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                  Other Endpoints -- PUT /api/user/:id/qpnewb, POST /api/user/:id/send_invite                   |

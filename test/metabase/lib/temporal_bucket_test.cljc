@@ -1,12 +1,12 @@
 (ns metabase.lib.temporal-bucket-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -114,10 +114,10 @@
     (testing "missing fingerprint"
       (let [column (dissoc column :fingerprint)
             options (lib.temporal-bucket/available-temporal-buckets-method nil -1 column)]
-          (is (= expected-units
-                 (into #{} (map :unit) options)))
-          (is (= expected-defaults
-                 (filter :default options)))))
+        (is (= expected-units
+               (into #{} (map :unit) options)))
+        (is (= expected-defaults
+               (filter :default options)))))
     (testing "existing fingerprint"
       (doseq [[latest unit] {"2019-04-15T13:34:19.931Z" :month
                              "2017-04-15T13:34:19.931Z" :week

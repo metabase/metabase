@@ -9,18 +9,18 @@
 (deftest ^:parallel top-level-query-test
   (testing `lib.underlying/top-level-query
     (testing "returns the same query"
-     (testing "if the last stage has aggregations"
-       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                       (lib/aggregate (lib/count)))]
-         (is (identical? query
-                         (lib.underlying/top-level-query query)))))
-     (testing "if there are no aggregations in any stage"
-       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                       (lib/append-stage)
-                       (lib/filter (lib/= (meta/field-metadata :orders :product-id)
-                                          100)))]
-         (is (identical? query
-                         (lib.underlying/top-level-query query))))))
+      (testing "if the last stage has aggregations"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/aggregate (lib/count)))]
+          (is (identical? query
+                          (lib.underlying/top-level-query query)))))
+      (testing "if there are no aggregations in any stage"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                        (lib/append-stage)
+                        (lib/filter (lib/= (meta/field-metadata :orders :product-id)
+                                           100)))]
+          (is (identical? query
+                          (lib.underlying/top-level-query query))))))
 
     (testing "returns the last stage with an aggregation"
       (let [agg-0 (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
