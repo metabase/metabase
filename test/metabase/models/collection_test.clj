@@ -624,8 +624,6 @@
                                     (map :name)
                                     set))]
 
-
-
       (testing "If we *have* perms for everything we should just see B and C."
         (with-current-user-perms-for-collections! [a b c d e f g]
           (is (= #{"B" "C"}
@@ -657,7 +655,6 @@
         (with-current-user-perms-for-collections! [a b e f g]
           (is (= #{"B" "E" "F"}
                  (effective-children a)))))
-
 
       (testing "If we remove C and both its children, both grandchildren should get get moved up"
         ;;
