@@ -672,7 +672,10 @@
   (sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "show parameters like 'TIMEZONE' in user;")
+     (with-open [stmt (.prepareStatement conn (str "show parameters like 'TIMEZONE' in user"
+                                                   (when-let [user (get-in database [:details :user])]
+                                                     (str " \"" user "\""))
+                                                   ";"))
                  rset (.executeQuery stmt)]
        (when (.next rset)
          (.getString rset "value"))))))
