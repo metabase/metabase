@@ -1,10 +1,10 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 
-import ButtonBar from "metabase/components/ButtonBar";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getIsVisualized } from "metabase/query_builder/selectors";
+import { Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ViewFooterRoot } from "../ViewFooter.styled";
@@ -52,13 +52,12 @@ export const ViewFooter = ({
 
   return (
     <ViewFooterRoot
-      className={cx(className, CS.textMedium, CS.borderTop)}
+      className={cx(className, CS.textMedium, CS.borderTop, CS.fullWidth)}
       data-testid="view-footer"
     >
-      <ButtonBar
-        className={CS.flexFull}
-        left={
-          !hideChartSettings && (
+      <Group position="apart" pos="relative" noWrap w="100%">
+        <Group className={CS.flex1}>
+          {!hideChartSettings && (
             <LeftViewFooterButtonGroup
               isShowingChartTypeSidebar={isShowingChartTypeSidebar}
               isShowingChartSettingsSidebar={isShowingChartSettingsSidebar}
@@ -67,25 +66,25 @@ export const ViewFooter = ({
               onCloseChartSettings={onCloseChartSettings}
               onOpenChartSettings={onOpenChartSettings}
             />
-          )
-        }
-        center={
-          isVisualized && (
+          )}
+        </Group>
+        {isVisualized && (
+          <Group>
             <CenterViewFooterButtonGroup
               setUIControls={setUIControls}
               question={question}
               isShowingRawTable={isShowingRawTable}
             />
-          )
-        }
-        right={
+          </Group>
+        )}
+        <Group noWrap>
           <RightViewFooterButtonGroup
             question={question}
             result={result}
             isObjectDetail={isObjectDetail}
           />
-        }
-      />
+        </Group>
+      </Group>
     </ViewFooterRoot>
   );
 };
