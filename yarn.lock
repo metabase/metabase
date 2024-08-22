@@ -17812,7 +17812,7 @@ open-cli@^8.0.0:
     open "^10.0.0"
     tempy "^3.1.0"
 
-open@^10.0.0:
+open@^10.0.0, open@^10.1.0:
   version "10.1.0"
   resolved "https://registry.yarnpkg.com/open/-/open-10.1.0.tgz#a7795e6e5d519abe4286d9937bb24b51122598e1"
   integrity sha512-mnkeQ1qP5Ue2wd+aivTD3NHd/lZ96Lu0jgf0pwktLPtx6cTZiH7tyeGRRHs0zX0rbrahXPnXlUnbeXyaBBuIaw==

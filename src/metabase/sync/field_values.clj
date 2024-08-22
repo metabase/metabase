@@ -67,7 +67,7 @@
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors"
-       updated created deleted errors))
+          updated created deleted errors))
 
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
   (format "Deleted %d expired advanced fieldvalues" deleted))

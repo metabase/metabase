@@ -662,7 +662,7 @@ function ordersJoinReviewsOnProductId() {
 
 function createUnitOfTimeParameter() {
   return createMockParameter({
-    name: "Unit of Time",
+    name: "Time grouping",
     slug: "unit_of_time",
     id: "49358513",
     type: "temporal-unit",

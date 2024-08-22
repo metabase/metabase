@@ -198,9 +198,9 @@
                {:id     card-5
                 :name   "E"
                 :errors [{:type "unknown-table", :table "T5"}]}]}
-               (-> (get!)
-                   (select-keys [:data :total])
-                   (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
+             (-> (get!)
+                 (select-keys [:data :total])
+                 (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
 
 (deftest pagination-test
   (testing "Lets you page results"
@@ -216,9 +216,9 @@
                {:id     card-2
                 :name   "B"
                 :errors [{:type "inactive-table", :table "T2"}]}]}
-               (-> (get! {:limit 2})
-                   (select-keys [:total :limit :offset :data])
-                   (with-data-keys [:id :name :errors]))))
+             (-> (get! {:limit 2})
+                 (select-keys [:total :limit :offset :data])
+                 (with-data-keys [:id :name :errors]))))
       (is (= {:total  4
               :limit  3
               :offset 2

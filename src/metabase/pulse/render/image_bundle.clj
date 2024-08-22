@@ -84,11 +84,11 @@
 
 (def ^:private external-link-image
   (delay
-   (make-image-bundle :attachment external-link-url)))
+    (make-image-bundle :attachment external-link-url)))
 
 (def ^:private no-results-image
   (delay
-   (make-image-bundle :attachment no-results-url)))
+    (make-image-bundle :attachment no-results-url)))
 
 (def ^:private attached-image
   (delay

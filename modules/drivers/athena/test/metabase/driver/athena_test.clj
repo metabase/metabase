@@ -138,22 +138,22 @@
     (with-redefs [premium-features/is-hosted? (constantly false)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
-                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                  (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
+                  :AwsCredentialsProviderClass))))
       (testing "Not specifying access-key will use credential chain"
         (is (contains?
-              (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-              :AwsCredentialsProviderClass)))))
+             (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
+             :AwsCredentialsProviderClass)))))
   (testing "When hosted"
     (with-redefs [premium-features/is-hosted? (constantly true)]
       (testing "Specifying access-key will not use credential chain"
         (is (not (contains?
-                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
-                   :AwsCredentialsProviderClass))))
+                  (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2" :access_key "abc123"})
+                  :AwsCredentialsProviderClass))))
       (testing "Not specifying access-key will still not use credential chain"
         (is (not (contains?
-                   (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
-                   :AwsCredentialsProviderClass)))))))
+                  (sql-jdbc.conn/connection-details->spec :athena {:region "us-west-2"})
+                  :AwsCredentialsProviderClass)))))))
 
 (deftest ^:parallel page-test
   (testing ":page clause places OFFSET *before* LIMIT"
@@ -167,11 +167,11 @@
              "  5"]]
            (-> (sql.qp/format-honeysql :athena
                                        (sql.qp/apply-top-level-clause :athena :page
-                                         {:select   [[:default.categories.id "id"]]
-                                          :from     [:default.categories]
-                                          :order-by [[:default.categories.id :asc]]}
-                                         {:page {:page  3
-                                                 :items 5}}))
+                                                                      {:select   [[:default.categories.id "id"]]
+                                                                       :from     [:default.categories]
+                                                                       :order-by [[:default.categories.id :asc]]}
+                                                                      {:page {:page  3
+                                                                              :items 5}}))
                (update 0 #(str/split-lines (driver/prettify-native-form :athena %))))))))
 
 (defn- query->native! [query]
@@ -235,30 +235,30 @@
 
 (deftest describe-table-works-without-get-table-metadata-permission-test
   (testing "`describe-table` works if the AWS user's IAM policy doesn't include athena:GetTableMetadata permissions")
-    (mt/test-driver :athena
-      (mt/dataset airports
-        (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
-              details (assoc (:details (mt/db))
+  (mt/test-driver :athena
+    (mt/dataset airports
+      (let [catalog "AwsDataCatalog" ; The bug only happens when :catalog is not nil
+            details (assoc (:details (mt/db))
                              ;; these credentials are for a user that doesn't have athena:GetTableMetadata permissions
-                             :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
-                             :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
-                             :catalog catalog)]
-          (mt/with-temp [:model/Database db {:engine :athena, :details details}]
-            (sync/sync-database! db {:scan :schema})
-            (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
-              (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
+                           :access_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-access-key)
+                           :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
+                           :catalog catalog)]
+        (mt/with-temp [:model/Database db {:engine :athena, :details details}]
+          (sync/sync-database! db {:scan :schema})
+          (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
+            (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
                 ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
                 ;; undo the changes in https://github.com/metabase/metabase/pull/44032
-                (is (empty? (sql-jdbc.execute/do-with-connection-with-options
-                             :athena
-                             db
-                             nil
-                             (fn [^Connection conn]
-                               (let [metadata (.getMetaData conn)]
-                                 (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
-                                   (jdbc/metadata-result rs))))))))
-              (testing "`describe-table` returns the fields anyway"
-                (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+              (is (empty? (sql-jdbc.execute/do-with-connection-with-options
+                           :athena
+                           db
+                           nil
+                           (fn [^Connection conn]
+                             (let [metadata (.getMetaData conn)]
+                               (with-open [rs (.getColumns metadata catalog (:schema table) (:name table) nil)]
+                                 (jdbc/metadata-result rs))))))))
+            (testing "`describe-table` returns the fields anyway"
+              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"

@@ -2,15 +2,8 @@ import type { MouseEvent } from "react";
 import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
-import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-import { isWithinIframe } from "metabase/lib/dom";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
-import {
-  getExportTabAsPdfButtonText,
-  saveDashboardPdf,
-} from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard } from "metabase-types/api";
 
 export const DashboardActionMenu = (props: { items: any[] }) => (
@@ -54,23 +47,6 @@ export const getExtraButtons = ({
     title: t`Enter fullscreen`,
     icon: "expand",
     action: (e: MouseEvent) => onFullscreenChange(!isFullscreen, !e.altKey),
-  });
-
-  extraButtons.push({
-    title: getExportTabAsPdfButtonText(dashboard.tabs),
-    icon: "document",
-    testId: "dashboard-export-pdf-button",
-    action: async () => {
-      const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-      await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
-        trackExportDashboardToPDF({
-          dashboardId: dashboard.id,
-          dashboardAccessedVia: isWithinIframe()
-            ? "interactive-iframe-embed"
-            : "internal",
-        });
-      });
-    },
   });
 
   if (canEdit) {

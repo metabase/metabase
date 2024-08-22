@@ -126,7 +126,6 @@
           :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id segment))]]
       (assoc segment :definition_description (definition-description metadata-provider segment)))))
 
-
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (defmethod revision/serialize-instance Segment
@@ -149,7 +148,6 @@
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get segment1 :definition)
                                                                           :after  (get segment2 :definition)})))))
-
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

@@ -476,7 +476,7 @@ describe.skip("issue 19744", () => {
   it("custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)", () => {
     editDashboard();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     cy.findByTestId("dashcard-container").contains("Select…").click();
     popover().contains("Created At");

@@ -123,8 +123,8 @@
 (defn- can-get-card-values?
   [card value-field]
   (boolean
-    (and (not (:archived card))
-         (some? (qp.util/field->field-info value-field (:result_metadata card))))))
+   (and (not (:archived card))
+        (some? (qp.util/field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 
