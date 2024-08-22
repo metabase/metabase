@@ -1,15 +1,29 @@
 import { HARDCODED_USERS } from "embedding-sdk/cli/constants/hardcoded-users";
 
-import { HARDCODED_JWT_SHARED_SECRET } from "../constants/config";
+import {
+  HARDCODED_JWT_SHARED_SECRET,
+  USER_ATTRIBUTE_CUSTOMER_ID,
+} from "../constants/config";
 
 interface Options {
   instanceUrl: string;
+  tenantIds: number[];
 }
 
 const DEFAULT_EXPRESS_SERVER_PORT = 4477;
 
-// TODO: inject customerId into the users
-export const getExpressServerSnippet = (options: Options) => `
+export const getExpressServerSnippet = (options: Options) => {
+  const users = HARDCODED_USERS.map((user, i) => ({
+    ...user,
+
+    // Assign one of the tenant id in the user's database to their Metabase user attributes.
+    // This is hard-coded for demonstration purposes.
+    ...(options.tenantIds[i] && {
+      [USER_ATTRIBUTE_CUSTOMER_ID]: options.tenantIds[i],
+    }),
+  }));
+
+  return `
 const express = require('express')
 const jwt = require('jsonwebtoken')
 const cors = require('cors')
@@ -22,7 +36,7 @@ const METABASE_INSTANCE_URL = '${options.instanceUrl}'
 const METABASE_JWT_SHARED_SECRET =
   '${HARDCODED_JWT_SHARED_SECRET}'
 
-const USERS = ${JSON.stringify(HARDCODED_USERS, null, 2)}
+const USERS = ${JSON.stringify(users, null, 2)}
 
 const getUser = (email) => USERS.find((user) => user.email === email)
 
@@ -130,3 +144,4 @@ app.listen(PORT, async () => {
   console.log(\`[mock sso api] running at http://localhost:\${PORT}\`)
 })
 `;
+};
