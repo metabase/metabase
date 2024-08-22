@@ -579,7 +579,7 @@
                :last_used_at (serdes/date)
                :type         (serdes/kw)
                :field_id     {::serdes/fk true
-                              :export     (constantly nil)
+                              :export     (constantly ::serdes/skip)
                               :import     (fn [_]
                                             (let [field-ref (field-path->field-ref (serdes/path serdes/*current*))]
                                               (serdes/*import-field-fk* field-ref)))}}})
