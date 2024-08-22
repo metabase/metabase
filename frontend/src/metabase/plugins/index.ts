@@ -207,11 +207,13 @@ const defaultLoginPageIllustration = {
   isDefault: true,
 };
 
+const getLoadingMessage = (isSlow: boolean) =>
+  isSlow ? t`Waiting for results...` : t`Doing science...`;
+
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
-    isSlow ? t`Waiting for results...` : t`Doing science...`,
+  getLoadingMessageFactory: (_state: State) => getLoadingMessage,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",

@@ -259,11 +259,13 @@ export const getDatabaseId = createSelector(
 export const getTableForeignKeyReferences = state =>
   state.qb.tableForeignKeyReferences;
 
+const getDatabasesListDefaultValue = [];
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
     entityQuery: { include: "tables", saved: true },
-  }) || [];
+  }) || getDatabasesListDefaultValue;
 
+const getTablesDefaultValue = [];
 export const getTables = createSelector(
   [getDatabaseId, getDatabasesList],
   (databaseId, databases) => {
@@ -274,9 +276,8 @@ export const getTables = createSelector(
       }
     }
 
-    return [];
+    return getTablesDefaultValue;
   },
-  { devModeChecks: { inputStabilityCheck: "never" } },
 );
 
 export const getTableMetadata = createSelector(
@@ -299,7 +300,6 @@ export const getSampleDatabaseId = createSelector(
     const sampleDatabase = _.findWhere(databases, { is_sample: true });
     return sampleDatabase && sampleDatabase.id;
   },
-  { devModeChecks: { inputStabilityCheck: "never" } },
 );
 
 export const getDatabaseFields = createSelector(
