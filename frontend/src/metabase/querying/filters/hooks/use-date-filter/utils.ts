@@ -1,14 +1,12 @@
 import * as Lib from "metabase-lib";
 
-import type {
+import {
   type DatePickerExtractionUnit,
   type DatePickerOperator,
   type DatePickerValue,
   type ExcludeDatePickerValue,
   type RelativeDatePickerValue,
   type SpecificDatePickerValue,
-} from "../../components/DatePicker";
-import {
   isDatePickerExtractionUnit,
   isDatePickerOperator,
 } from "../../components/DatePicker";
