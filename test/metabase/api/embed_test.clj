@@ -1807,19 +1807,19 @@
               report_dashboardcard_eid report_dashboardcard_id
               segment_eid segment_id
               timeline_eid timeline_id}
-           (api.embed.common/table->entity-ids->ids
-            {:action [action_eid]
-             :collection [collection_eid]
-             :core_user [core_user_eid]
-             :dashboard_tab [dashboard_tab_eid]
-             :dimension [dimension_eid]
-             :native_query_snippet [native_query_snippet_eid]
-             :permissions_group [permissions_group_eid]
-             :pulse [pulse_eid]
-             :pulse_card [pulse_card_eid]
-             :pulse_channel [pulse_channel_eid]
-             :report_card [report_card_eid]
-             :report_dashboard [report_dashboard_eid]
-             :report_dashboardcard [report_dashboardcard_eid]
-             :segment [segment_eid]
-             :timeline [timeline_eid]}))))))
+             (api.embed.common/table->entity-ids->ids
+              {:action [action_eid]
+               :collection [collection_eid]
+               :core_user [core_user_eid]
+               :dashboard_tab [dashboard_tab_eid]
+               :dimension [dimension_eid]
+               :native_query_snippet [native_query_snippet_eid]
+               :permissions_group [permissions_group_eid]
+               :pulse [pulse_eid]
+               :pulse_card [pulse_card_eid]
+               :pulse_channel [pulse_channel_eid]
+               :report_card [report_card_eid]
+               :report_dashboard [report_dashboard_eid]
+               :report_dashboardcard [report_dashboardcard_eid]
+               :segment [segment_eid]
+               :timeline [timeline_eid]}))))))
