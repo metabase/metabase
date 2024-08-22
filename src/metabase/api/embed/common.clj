@@ -5,6 +5,8 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
+   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -492,28 +494,16 @@
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
 
-
 ;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
 
 (def ^{:private true
        :arglists '([])} eid-table->model
-  "Map of table names to their corresponding model. This is a memozied function because the db connection used to
-  fetch the model information is not avaliable when this namespace gets loaded."
-  {:permissions_group :model/PermissionsGroup,
-   :report_dashboard :model/Dashboard,
-   :pulse_channel :model/PulseChannel,
-   :pulse_card :model/PulseCard,
-   :native_query_snippet :model/NativeQuerySnippet,
-   :report_dashboardcard :model/DashboardCard,
-   :core_user :model/User,
-   :segment :model/Segment,
-   :pulse :model/Pulse,
-   :dimension :model/Dimension,
-   :action :model/Action,
-   :dashboard_tab :model/DashboardTab,
-   :timeline :model/Timeline,
-   :report_card :model/Card,
-   :collection :model/Collection})
+  "Map of table names to their corresponding model."
+  (->> (v2.entity-ids/toucan-models)
+       (filter serdes.backfill/has-entity-id?)
+       (map (fn model->table-name+model [model]
+              [(t2/table-name model) model]))
+       (into {})))
 
 (def ^{:private true
        :arglists '([])} eid-tables
@@ -524,7 +514,7 @@
   "A Malli schema for an entity id, this is a little looser because it needs to be fast."
   [:and {:description "entity id"}
    :string
-   [:fn (fn [eid] (= 21 (count eid)))]])
+   [:fn (fn eid-length-good? [eid] (= 21 (count eid)))]])
 
 (def ^:private TableToEntityIds
   "A Malli schema for a map of table names to a sequence of entity ids."
