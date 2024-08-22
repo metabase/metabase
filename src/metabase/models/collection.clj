@@ -520,6 +520,20 @@
    ;; cache the results for 10 seconds. This is a bit arbitrary but should be long enough to cover ~all requests.
    :ttl/threshold (* 10 1000)))
 
+(defn- should-display-root-collection? [visibility-config]
+  (and
+   ;; we have permission for it.
+   (can-access-root-collection? (:permission-level visibility-config))
+
+   ;; we're not *only* looking for archived items
+   (not= :only (:include-archived-items visibility-config))
+
+   ;; we're not looking for a particular `archive_operation_id`
+   (not (:archive-operation-id visibility-config))
+
+   ;; we're not looking for the children of a collection (root definitely isn't a child!)
+   (not (:effective-child-of visibility-config))))
+
 (mu/defn honeysql-filter-clause
   "Given a permissions-set and a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
   ([]
@@ -531,20 +545,8 @@
    (let [visibility-config (merge default-visibility-config visibility-config)]
      [:or
       ;; the root collection is included when:
-      (when (and
-             ;; we have permission for it.
-             (can-access-root-collection? (:permission-level visibility-config))
-
-             ;; we're not *only* looking for archived items
-             (not= :only (:include-archived-items visibility-config))
-
-             ;; we're not looking for a particular `archive_operation_id`
-             (not (:archive-operation-id visibility-config))
-
-             ;; we're not looking for the children of a collection (root definitely isn't a child!)
-             (not (:effective-child-of visibility-config)))
-        (when-not (= :only (:include-archived-items visibility-config))
-          [:= collection-id-field nil]))
+      (when (should-display-root-collection? visibility-config)
+        [:= collection-id-field nil])
       ;; the non-root collections
       [:in collection-id-field
        {:select :id
@@ -611,7 +613,7 @@
   toggling permission level, trash/archive visibility, etc.)"
   [visibility-config]
   (cond-> (t2/select-pks-set :model/Collection {:where (honeysql-filter-clause :id visibility-config)})
-    (can-access-root-collection? (:permission-level visibility-config))
+    (should-display-root-collection? visibility-config)
     (conj "root")))
 
 (mu/defn- effective-location-path* :- [:maybe LocationPath]
