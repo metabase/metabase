@@ -102,9 +102,14 @@ function _CartesianChart(props: VisualizationProps) {
   const handleToggleSeriesVisibility = useCallback(
     (event: MouseEvent, seriesIndex: number) => {
       const seriesModel = chartModel.seriesModels[seriesIndex];
-      toggleSeriesVisibility(seriesModel.dataKey);
+      const willShowSeries = hiddenSeries.has(seriesModel.dataKey);
+      const hasMoreVisibleSeries =
+        chartModel.seriesModels.length - hiddenSeries.size > 1;
+      if (hasMoreVisibleSeries || willShowSeries) {
+        toggleSeriesVisibility(seriesModel.dataKey);
+      }
     },
-    [chartModel, toggleSeriesVisibility],
+    [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
   const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
