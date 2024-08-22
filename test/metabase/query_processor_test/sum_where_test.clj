@@ -97,7 +97,6 @@
                   ffirst
                   double))))))
 
-
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
