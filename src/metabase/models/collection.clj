@@ -580,10 +580,16 @@
                   [:= :archived false])
 
                 (when (= :only (:include-archived-items visibility-config))
-                  [:= :archived true])
+                  [:or
+                   [:= :archived true]
+                   ;; the trash collection is included when viewing archived-only
+                   [:= :id (trash-collection-id)]])
 
                 (when-let [op-id (:archive-operation-id visibility-config)]
-                  [:= :archive_operation_id op-id])
+                  [:or
+                   [:= :archive_operation_id op-id]
+                   ;; the trash collection is part of every `archive_operation`
+                   [:= :id (trash-collection-id)]])
 
                 (when-let [parent-coll (:effective-child-of visibility-config)]
                   (if (is-trash? parent-coll)
