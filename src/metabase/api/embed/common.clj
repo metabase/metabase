@@ -5,8 +5,6 @@
    [clojure.string :as str]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
-   [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -499,8 +497,13 @@
 (def ^{:private true
        :arglists '([])} eid-table->model
   "Map of table names to their corresponding model."
-  (->> (v2.entity-ids/toucan-models)
-       (filter serdes.backfill/has-entity-id?)
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))
+       (filter (fn has-entity-id?
+                 [model] (or ;; toucan1 models
+                          (isa? model :metabase.models.interface/entity-id)
+                          ;; toucan2 models
+                          (isa? model :hook/entity-id))))
        (map (fn model->table-name+model [model]
               [(t2/table-name model) model]))
        (into {})))
