@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
-import { useListRecentItemsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
@@ -57,7 +57,7 @@ export const BrowseModels = () => {
     return { filteredModels };
   }, [actualModelFilters, models, doVerifiedModelsExist]);
 
-  const recentModelsResult = useListRecentItemsQuery(undefined, {
+  const recentModelsResult = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
 

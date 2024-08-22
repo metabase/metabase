@@ -122,12 +122,14 @@
                                  [:event/card-query     {:card-id (:id archived)}]]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
-            (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
-              (is (= [{:model "table" :id (u/the-id table1) :name "rand-name"}
-                      {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
-                      {:model "card" :id (u/the-id card1) :name "rand-name"}
-                      {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
-                     (map #(select-keys % [:model :id :name]) recent-views))))))
+            (let [expected [{:model "table" :id (u/the-id table1) :name "rand-name"}
+                            {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
+                            {:model "card" :id (u/the-id card1) :name "rand-name"}
+                            {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
+                  recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))
+                  recent-views-2 (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+              (is (= expected (map #(select-keys % [:model :id :name]) recent-views)))
+              (is (= expected (map #(select-keys % [:model :id :name]) recent-views-2))))))
         (mt/with-test-user :rasta
           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
@@ -136,6 +138,109 @@
               (is (partial=
                    [{:model "dataset" :id (u/the-id dataset)}]
                    (reverse recent-views))))))))))
+
+(deftest recent-card-read-views-test
+  (clear-recent-views-for-user :crowberto)
+  (mt/with-test-user :crowberto
+    (mt/with-model-cleanup [:model/ViewLog :model/RecentViews]
+      (mt/with-temp [:model/Database  {db-id :id} {}
+                     :model/Card      card1     {:name                   "rand-name"
+                                                 :creator_id             (mt/user->id :crowberto)
+                                                 :display                "table"
+                                                 :visualization_settings {}
+                                                 :database_id            db-id}
+                     :model/Card      archived  {:name                   "archived-card"
+                                                 :creator_id             (mt/user->id :crowberto)
+                                                 :display                "table"
+                                                 :archived               true
+                                                 :visualization_settings {}
+                                                 :database_id            db-id}
+                     :model/Dashboard dash {:name        "rand-name2"
+                                            :description "rand-name2"
+                                            :creator_id  (mt/user->id :crowberto)}
+                     :model/Table     table1 {:name "rand-name"}
+                     :model/Table     hidden-table {:name            "hidden table"
+                                                    :visibility_type "hidden"}
+                     :model/Card      dataset {:name                   "rand-name"
+                                               :type                   :model
+                                               :creator_id             (mt/user->id :crowberto)
+                                               :display                "table"
+                                               :visualization_settings {}
+                                               :database_id            db-id}
+                     ]
+        (testing "recent_views endpoint shows the current user's recently viewed items."
+          (clear-recent-views-for-user :crowberto)
+          (testing (str "> EVENT: " :event/card-read " does create recent views.")
+            (doseq [[topic event] [[:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id dataset) :context :question}]
+                                   [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id dataset) :context :question}]
+                                   [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id card1) :context :question}]
+                                   [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id card1) :context :question}]
+                                   [:event/dashboard-read {:user-id (mt/user->id :crowberto) :object-id (u/the-id dash)}]
+                                   [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id card1) :context :question}]
+                                   [:event/dashboard-read {:user-id (mt/user->id :crowberto) :object-id (u/the-id dash)}]
+                                   [:event/table-read     {:user-id (mt/user->id :crowberto) :object table1}]
+                                   [:event/card-read      {:user-id (mt/user->id :crowberto) :object-id (u/the-id archived) :context :question}]
+                                   [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]
+                                   ]]
+              (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
+            (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+              (is (= [
+                      {:model "table" :id (u/the-id table1) :name "rand-name"}
+                      {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
+                      {:model "card" :id (u/the-id card1) :name "rand-name"}
+                      {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
+                     (map #(select-keys % [:model :id :name]) recent-views))))))))))
+
+(deftest recent-card-query-views-test
+  (clear-recent-views-for-user :crowberto)
+  (mt/with-test-user :crowberto
+    (mt/with-model-cleanup [:model/ViewLog :model/RecentViews]
+      (mt/with-temp [:model/Database  {db-id :id} {}
+                     :model/Card      card1     {:name                   "card1"
+                                                 :creator_id             (mt/user->id :crowberto)
+                                                 :display                "table"
+                                                 :visualization_settings {}
+                                                 :database_id            db-id}
+                     :model/Card      archived  {:name                   "archived-card"
+                                                 :creator_id             (mt/user->id :crowberto)
+                                                 :display                "table"
+                                                 :archived               true
+                                                 :visualization_settings {}
+                                                 :database_id            db-id}
+                     :model/Dashboard dash {:name        "dash-name"
+                                            :description "dash-description"
+                                            :creator_id  (mt/user->id :crowberto)}
+                     :model/Table     table1 {:name "table1"}
+                     :model/Table     hidden-table {:name            "hidden_table"
+                                                    :visibility_type "hidden"}
+                     :model/Card      dataset {:name                   "dataset-card"
+                                               :type                   :model
+                                               :creator_id             (mt/user->id :crowberto)
+                                               :display                "table"
+                                               :visualization_settings {}
+                                               :database_id            db-id}]
+        (testing "recent_views endpoint shows the current user's recently viewed items."
+          (clear-recent-views-for-user :crowberto)
+          (testing (str "> EVENT: " :event/card-query " does create recent views.")
+            (doseq [[topic event] [[:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id dataset)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id dataset)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
+                                   [:event/dashboard-read {:user-id (mt/user->id :crowberto) :object-id (u/the-id dash)}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id card1)}]
+                                   [:event/dashboard-read {:user-id (mt/user->id :crowberto) :object-id (u/the-id dash)}]
+                                   [:event/table-read     {:user-id (mt/user->id :crowberto) :object table1}]
+                                   [:event/card-query     {:user-id (mt/user->id :crowberto) :card-id (u/the-id archived)}]
+                                   [:event/table-read     {:user-id (mt/user->id :crowberto) :object hidden-table}]]]
+              (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
+            (let [recent-views (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
+              (is (= ["table1"
+                      "dash-name"
+                      "card1"
+                      "dataset-card"]
+                     (map ;; #(select-keys % [:model :id :name])
+                       :name
+                          recent-views))))))))))
 
 (defn- create-views!
   "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
@@ -235,3 +340,17 @@
                       :popular_items
                       (filter #(test-ids (:id %)))
                       (map (juxt :model :id))))))))))
+
+(deftest recents-endpoint-context-test
+  (testing "Context query param is required"
+    (is (= {:context "vector of enum of :selections, :views"}
+           (:errors (mt/user-http-request :crowberto :get 400 "activity/recents")))))
+  (testing "recent_views endpoint remains unchanged"
+    (is (= {:recent_views []}
+           (mt/user-http-request :crowberto :get 200 "activity/recent_views"))))
+  (testing "Context query param controls return values: views"
+    (is (= {:recents []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))
+  (testing "Context query param controls return values: selections"
+    (is (= {:recents []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=selections")))))

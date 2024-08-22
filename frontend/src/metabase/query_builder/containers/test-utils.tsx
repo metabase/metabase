@@ -17,6 +17,7 @@ import {
   setupFieldValuesEndpoints,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
@@ -246,6 +247,7 @@ export const setup = async ({
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
   setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
   setupAdhocQueryMetadataEndpoint(metadata);
