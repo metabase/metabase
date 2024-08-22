@@ -17,10 +17,10 @@ import {
   setupFieldValuesEndpoints,
   setupModelIndexEndpoints,
   setupPropertiesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,

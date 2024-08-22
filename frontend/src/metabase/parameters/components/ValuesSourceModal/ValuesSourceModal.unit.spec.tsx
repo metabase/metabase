@@ -9,11 +9,11 @@ import {
   setupDatabasesEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
+  setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
   setupUnauthorizedCollectionsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,

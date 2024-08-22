@@ -3,17 +3,17 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useLogRecentItemMutation, useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery, useLogRecentItemMutation } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
 import {
-  isLoggableActivityModel,
   type RecentItem,
   type SearchModel,
   type SearchRequest,
   type SearchResult,
   type SearchResultId,
+  isLoggableActivityModel,
 } from "metabase-types/api";
 
 import type {
