@@ -102,23 +102,23 @@
   [_column-type _column-mode timezone-id ^Field field ^FieldValueList v]
   (let [subfields (.getSubFields field)]
     (into
-      {}
-      (keep (fn [^Field subfield]
-              (let [subname (.getName subfield)
-                    subvalue (some-> v (.get subname) .getValue)
-                    column-mode (.getMode subfield)
-                    parsed-value (when subvalue
-                                   (parse-result-of-type
-                                     (.. subfield getType name)
-                                     column-mode
-                                     timezone-id
-                                     subfield
-                                     subvalue))
-                    result (cond-> parsed-value
-                             (seq? parsed-value) not-empty)]
-                (when result
-                  [(keyword subname) result]))))
-      subfields)))
+     {}
+     (keep (fn [^Field subfield]
+             (let [subname (.getName subfield)
+                   subvalue (some-> v (.get subname) .getValue)
+                   column-mode (.getMode subfield)
+                   parsed-value (when subvalue
+                                  (parse-result-of-type
+                                   (.. subfield getType name)
+                                   column-mode
+                                   timezone-id
+                                   subfield
+                                   subvalue))
+                   result (cond-> parsed-value
+                            (seq? parsed-value) not-empty)]
+               (when result
+                 [(keyword subname) result]))))
+     subfields)))
 
 (defmethod parse-result-of-type "STRING"
   [_a column-mode _b _ v]

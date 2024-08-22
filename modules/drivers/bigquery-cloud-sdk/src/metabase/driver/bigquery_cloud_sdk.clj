@@ -259,24 +259,24 @@
    (fields->metabase-field-info nil nil fields))
   ([database-position nfc-path fields]
    (into
-     []
-     (map
-       (fn [[idx ^Field field]]
-         (let [type-name (.. field getType name)
-               f-mode    (.getMode field)
-               database-position (or database-position idx)
-               field-name (.getName field)]
-           (into
-             {:name              field-name
-              :database-type     type-name
-              :base-type         (bigquery-type->base-type f-mode type-name)
-              :database-position database-position
-              :nfc-path          nfc-path
-              :nested-fields     (set (fields->metabase-field-info
-                                        database-position
-                                        (conj (or nfc-path []) field-name)
-                                        (.getSubFields field)))}))))
-     (m/indexed fields))))
+    []
+    (map
+     (fn [[idx ^Field field]]
+       (let [type-name (.. field getType name)
+             f-mode    (.getMode field)
+             database-position (or database-position idx)
+             field-name (.getName field)]
+         (into
+          {:name              field-name
+           :database-type     type-name
+           :base-type         (bigquery-type->base-type f-mode type-name)
+           :database-position database-position
+           :nfc-path          nfc-path
+           :nested-fields     (set (fields->metabase-field-info
+                                    database-position
+                                    (conj (or nfc-path []) field-name)
+                                    (.getSubFields field)))}))))
+    (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name
   "The name of pseudo-column for tables that are partitioned by ingestion time.

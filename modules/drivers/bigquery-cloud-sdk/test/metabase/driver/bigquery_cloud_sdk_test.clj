@@ -305,10 +305,10 @@
       (is (= {:columns ["r.a" "r.b" "r.rr.aa"]
               :rows [[1 "a" 10] [2 "b" nil] [3 "c" nil]]}
              (mt/rows+column-names
-               (mt/run-mbql-query records
-                 {:fields [(mt/id :records :r :a)
-                           (mt/id :records :r :b)
-                           (mt/id :records :r :rr :aa)]})))))))
+              (mt/run-mbql-query records
+                {:fields [(mt/id :records :r :a)
+                          (mt/id :records :r :b)
+                          (mt/id :records :r :rr :aa)]})))))))
 
 (deftest query-nested-fields-test
   (mt/test-driver
@@ -318,11 +318,11 @@
       (is (= {:columns ["r.a" "r.b" "r.rr.aa" "r.rr"]
               :rows [[1 "a" 10 {:aa 10}] [2 "b" nil nil] [3 "c" nil nil]]}
              (mt/rows+column-names
-               (mt/run-mbql-query records
-                 {:fields [(mt/id :records :r :a)
-                           (mt/id :records :r :b)
-                           (mt/id :records :r :rr :aa)
-                           (mt/id :records :r :rr)]})))))))
+              (mt/run-mbql-query records
+                {:fields [(mt/id :records :r :a)
+                          (mt/id :records :r :b)
+                          (mt/id :records :r :rr :aa)
+                          (mt/id :records :r :rr)]})))))))
 
 (deftest sync-table-with-required-filter-test
   (mt/test-driver :bigquery-cloud-sdk

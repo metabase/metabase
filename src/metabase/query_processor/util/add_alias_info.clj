@@ -355,13 +355,13 @@
   it around instead of recalculating it a bunch of times."
   [inner-query field-clause]
   (merge
-    {:field-name              (field-name inner-query field-clause)
-     :override-alias?         (field-requires-original-field-name field-clause)
-     :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
-     :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
-     :alias-from-source-query (field-alias-in-source-query inner-query field-clause)}
-    (when-let [nfc-path (field-nfc-path field-clause)]
-      {:nfc-path nfc-path})))
+   {:field-name              (field-name inner-query field-clause)
+    :override-alias?         (field-requires-original-field-name field-clause)
+    :join-is-this-level?     (field-is-from-join-in-this-level? inner-query field-clause)
+    :alias-from-join         (field-alias-in-join-at-this-level inner-query field-clause)
+    :alias-from-source-query (field-alias-in-source-query inner-query field-clause)}
+   (when-let [nfc-path (field-nfc-path field-clause)]
+     {:nfc-path nfc-path})))
 
 (defn- field-source-alias
   "Determine the appropriate `::source-alias` for a `field-clause`."
