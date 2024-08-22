@@ -18,7 +18,8 @@ import type { State } from "metabase-types/store";
 import { getSetting } from "./settings";
 
 interface CubeName {
-  cubeName: string
+  cubeName: string,
+  slug?:string
 }
 
 export interface RouterProps {
@@ -261,4 +262,19 @@ export const getIsDataMapBreadcrumbsVisible = createSelector(
 
 export const getCubeName = (state: State, props:RouterProps) => {
   return props.params?.cubeName
+}
+
+export const getSemanticName = (state: State, props:RouterProps) => {
+  const slug = props.params?.slug
+  if(slug) {
+    const indexOfDash = slug.indexOf('-');
+    if (indexOfDash === -1) {
+        return ''; // Return an empty string if no dash is found
+    }
+    return slug.substring(indexOfDash + 1);
+  }
+}
+
+export const getSemanticSlug = (state: State, props:RouterProps) => {
+  return props.params?.slug
 }

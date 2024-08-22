@@ -17,7 +17,9 @@ import {
   getIsSearchVisible,
   getIsSemanticLayerBreadcrumbsVisible,
   getIsDataMapBreadcrumbsVisible,
-  getCubeName
+  getCubeName,
+  getSemanticName,
+  getSemanticSlug
 } from "metabase/selectors/app";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
@@ -29,6 +31,8 @@ const mapStateToProps = (state: State, props: RouterProps) => ({
   currentUser: getUser(state),
   collectionId: Collections.selectors.getInitialCollectionId(state, props),
   cubeName: getCubeName(state, props),
+  semanticName: getSemanticName(state, props),
+  semanticSlug: getSemanticSlug(state, props),
   isNavBarOpen: getIsNavbarOpen(state),
   isNavBarEnabled: getIsNavBarEnabled(state, props),
   isLogoVisible: getIsLogoVisible(state),

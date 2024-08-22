@@ -36,6 +36,7 @@ export const CubePreviewTable = ({
   cubeData,
   skeleton = false,
 }: CubeTableProps) => {
+  const [dbId, setDbId] = useState<number | null>(null)
   const [card, setCard] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
   const [defaultQuestion, setDefaultQuestion] = useState<any>(null);
@@ -89,7 +90,7 @@ export const CubePreviewTable = ({
     })
 
       const defaultQuestionTest = Question.create({
-        databaseId: 1,
+        databaseId: db,
         name: card.name,
         type: "query",
         display: card.display,
@@ -116,15 +117,39 @@ export const CubePreviewTable = ({
   
   
   const dbFinder = (databases:any) => {
-    const filteredDb = databases.filter((db:any) => db.name.toLowerCase().includes("cube"));
-    if (filteredDb.length > 0) {
-      tableFinder(filteredDb)
+    if(databases) {
+      const filteredDb = databases.filter((db:any) => db.id === dbId);
+      if (filteredDb.length > 0) {
+        tableFinder(filteredDb)
+      }
     }
   };
   
   useEffect(() => {
+    let dbId = setCubeFromUrl()
+    if(dbId !== undefined) {
+      setDbId(dbId)
+    }
+  },[])
+
+  useEffect(() => {
     dbFinder(databases)
   },[databases])
+
+  const setCubeFromUrl = () => {
+    const pathSegments = window.location.pathname.split('/');
+    const cubesIndex = pathSegments.indexOf('cubes');
+    if (cubesIndex === -1 || cubesIndex === 0) return;
+    
+    const slug = pathSegments[cubesIndex - 1];
+  
+    if (!slug) return;
+      const indexOfDash = slug.indexOf('-');
+      if (indexOfDash === -1) {
+          return 0; 
+      }
+    return Number(slug.substring(0, indexOfDash))
+  };
 
   // Function to update the visibility type of a field using fetch
 async function updateFieldVisibility(id: string, visibilityType: 'retired' | 'sensitive' | 'normal' | 'hidden' | 'details-only') {
