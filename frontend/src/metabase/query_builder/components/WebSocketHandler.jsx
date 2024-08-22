@@ -45,12 +45,6 @@ const WebSocketHandler = () => {
     const [useTextArea, setUseTextArea] = useState(false);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        if (testData) {
-            createCard(testData.data[1]?.id, testData.data[1]?.tables[0].id);
-        }
-    }, [testData]);
-
     useLayoutEffect(() => {
         if (inputRef.current) {
             const element =
