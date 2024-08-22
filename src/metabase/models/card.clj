@@ -1010,15 +1010,22 @@ saved later when it is ready."
           (m/update-existing :table_id  serdes/*import-table-fk*)
           (m/update-existing :id        serdes/*import-field-fk*)
           (m/update-existing :field_ref serdes/import-mbql)
-          ;; NOTE: temporary until `instance_analytics` is updated
+          ;; FIXME: remove that `if` after v52
           (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
 
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
-    (reduce set/union #{} (for [m (seq metadata)]
-                            (reduce set/union (serdes/mbql-deps (:field_ref m))
-                                    [(when (:table_id m) #{(serdes/table->path (:table_id m))})
-                                     (when (:id m)       #{(serdes/field->path (:id m))})])))))
+    (-> (reduce into #{} (for [m metadata]
+                           (conj (serdes/mbql-deps (:field_ref m))
+                                 (when (:table_id m)
+                                   (serdes/table->path (:table_id m)))
+                                 (when (:id m)
+                                   (serdes/field->path (:id m)))
+                                 (when (and (:fk_target_field_id m)
+                                            ;; FIXME: remove that check after v52
+                                            (not (number? (:fk_target_field_id m))))
+                                   (serdes/field->path (:fk_target_field_id m))))))
+        (disj nil))))
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]

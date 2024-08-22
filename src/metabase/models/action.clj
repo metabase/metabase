@@ -388,9 +388,14 @@
   (insert! ingested))
 
 (defmethod serdes/dependencies "Action" [action]
-  (concat [[{:model "Card" :id (:model_id action)}]]
-          (when (= (:type action) "query")
-            [[{:model "Database" :id (:database_id action)}]])))
+  (set
+   (concat
+    ;; other stuff is implicitly referenced through a Card
+    [[{:model "Card" :id (:model_id action)}]]
+    (when (= (:type action) :query)
+      (concat
+       [[{:model "Database" :id (-> action :query first :database_id)}]]
+       (serdes/mbql-deps (:dataset_query action)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]
