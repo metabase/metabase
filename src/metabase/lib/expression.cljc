@@ -297,6 +297,8 @@
    expression-definition :- ::lib.schema.expression/expression]
   (let [expression-name (lib.util/expression-name expression-definition)]
     (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
+        (select-keys [:base-type :effective-type :lib/desired-column-alias
+                      :lib/source-column-alias :lib/source-uuid :lib/type])
         (assoc :lib/source   :source/expressions
                :name         expression-name
                :display-name expression-name))))

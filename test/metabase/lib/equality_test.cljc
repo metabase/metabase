@@ -610,8 +610,8 @@
           ca-expr    (m/find-first #(= (:name %) "CA") columns)]
       (testing "different columns"
         (is (not= created-at ca-expr))
-        (testing "but both have the ID"
-          (is (= (:id created-at) (:id ca-expr)))))
+        #_(testing "but both have the ID"
+            (is (= (:id created-at) (:id ca-expr)))))
 
       (testing "both refs should match correctly"
         (is (= created-at
