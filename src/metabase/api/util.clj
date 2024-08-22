@@ -97,6 +97,7 @@
   "Translate entity IDs to model IDs."
   [:as {{:keys [entity_ids]} :body}]
   {}
-  (api.embed.common/table->entity-ids->ids entity_ids))
+  {:entity_ids
+   (api.embed.common/table->entity-ids->ids entity_ids)})
 
 (api/define-routes)
