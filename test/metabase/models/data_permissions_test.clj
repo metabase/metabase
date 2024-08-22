@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -639,3 +640,63 @@
           (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
           (data-perms/with-additional-table-permission :perms/view-data db-id table-id :unrestricted
             (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))))))))
+
+(deftest blocked-tables-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+    (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+          db-id    (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                :engine     "h2"
+                                                                :created_at :%now
+                                                                :updated_at :%now
+                                                                :details    "{}"})
+          table-id (t2/insert-returning-pk! :metabase_table {:name       "orders"
+                                                             :active     true
+                                                             :db_id      db-id
+                                                             :created_at #t "2020"
+                                                             :updated_at #t "2020"})
+          group-id (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
+      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))
+
+(deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+    (let [user-id      (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                            :last_name   "Hughes"
+                                                            :email       "howard@aircraft.com"
+                                                            :password    "superstrong"
+                                                            :date_joined :%now})
+          db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                    :engine     "h2"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now
+                                                                    :details    "{}"})
+          table-id     (t2/insert-returning-pk! :metabase_table {:name       "orders"
+                                                                 :active     true
+                                                                 :db_id      db-id
+                                                                 :created_at #t "2020"
+                                                                 :updated_at #t "2020"})
+          _other-table (t2/insert-returning-pk! :metabase_table {:name       "other"
+                                                                 :active     true
+                                                                 :db_id      db-id
+                                                                 :created_at #t "2020"
+                                                                 :updated_at #t "2020"})
+          group-id     (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
+      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))
