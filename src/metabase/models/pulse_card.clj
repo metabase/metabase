@@ -1,6 +1,5 @@
 (ns metabase.models.pulse-card
   (:require
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -17,12 +16,6 @@
 (doto :model/PulseCard
   (derive :metabase/model)
   (derive :hook/entity-id))
-
-(defmethod serdes/hash-fields PulseCard
-  [_pulse-card]
-  [(serdes/hydrated-hash :pulse)
-   (serdes/hydrated-hash :card)
-   :position])
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"
@@ -57,31 +50,3 @@
                  :include_xls       (boolean include_xls)
                  :format_rows       (boolean format_rows)})))
 
-; ----------------------------------------------------- Serialization -------------------------------------------------
-
-(defmethod serdes/generate-path "PulseCard"
-  [_ {:keys [pulse_id] :as card}]
-  [(serdes/infer-self-path "Pulse" (t2/select-one 'Pulse :id pulse_id))
-   (serdes/infer-self-path "PulseCard" card)])
-
-(defmethod serdes/extract-one "PulseCard"
-  [_model-name _opts card]
-  (cond-> (serdes/extract-one-basics "PulseCard" card)
-    true                      (update :card_id            serdes/*export-fk* 'Card)
-    true                      (update :pulse_id           serdes/*export-fk* 'Pulse)
-    (:dashboard_card_id card) (update :dashboard_card_id  serdes/*export-fk* 'DashboardCard)))
-
-(defmethod serdes/load-xform "PulseCard" [card]
-  (cond-> (serdes/load-xform-basics card)
-    true                      (update :card_id            serdes/*import-fk* 'Card)
-    true                      (update :pulse_id           serdes/*import-fk* 'Pulse)
-    true                      (dissoc :dashboard_id)
-    (:dashboard_card_id card) (update :dashboard_card_id  serdes/*import-fk* 'DashboardCard)))
-
-;; Depends on the Pulse, Card and (optional) dashboard card.
-(defmethod serdes/dependencies "PulseCard" [{:keys [card_id dashboard_card_id pulse_id]}]
-  (let [base [[{:model "Card" :id card_id}]
-              [{:model "Pulse" :id pulse_id}]]]
-    (if-let [[dash-id _] dashboard_card_id]
-      (conj base [{:model "Dashboard" :id dash-id}])
-      base)))

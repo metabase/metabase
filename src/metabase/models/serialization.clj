@@ -73,7 +73,7 @@
 ;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
 ;;;      hashing).
 
-(def ^:private ^:dynamic *current* "Instance/map being exported/imported currently" nil)
+(def ^:dynamic *current* "Instance/map being exported/imported currently" nil)
 
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
@@ -733,13 +733,14 @@
 (defn- xform-by-spec [model-name ingested]
   (let [spec (make-spec model-name nil)]
     (when spec
-      (-> (select-keys ingested (:copy spec))
-          (into (for [[k transform] (:transform spec)
-                      :when         (not (::nested transform))
-                      :let          [res ((:import transform) (get ingested k))]
-                      ;; do not try to insert nil values if transformer returns nothing
-                      :when         res]
-                  [k res]))))))
+      (binding [*current* ingested]
+        (-> (select-keys ingested (:copy spec))
+            (into (for [[k transform] (:transform spec)
+                        :when         (not (::nested transform))
+                        :let          [res ((:import transform) (get ingested k))]
+                        ;; do not try to insert nil values if transformer returns nothing
+                        :when         res]
+                    [k res])))))))
 
 (defn- spec-nested! [model-name ingested instance]
   (binding [*current* instance]
@@ -1610,11 +1611,19 @@
                           (doseq [ingested lst]
                             (load-one! (enrich ingested) (get local (entity-id model-name ingested))))))))}))
 
-(defn parent-ref "Transformer for parent id for nested entities" []
-  {::fk true :export (constantly nil) :import identity})
+(def parent-ref "Transformer for parent id for nested entities."
+  (constantly
+   {::fk true :export (constantly nil) :import identity}))
 
-(defn date "Transformer to parse the dates" []
-  {:export identity :import #(if (string? %) (u.date/parse %) %)})
+(def date "Transformer to parse the dates."
+  (constantly
+   {:export u.date/format :import #(if (string? %) (u.date/parse %) %)}))
+
+(def kw "Transformer for keywordized values.
+
+  Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
+  (constantly
+   {:export name :import keyword}))
 
 ;;; ## Memoizing appdb lookups
 

@@ -2,20 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.collection :refer [Collection]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [metabase.models.serialization :as serdes]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -386,20 +382,6 @@
            #"Wrong email address for User [\d,]+"
            (pulse-channel/validate-email-domains {:recipients [{:email "rasta@example.com"
                                                                 :id    (mt/user->id :rasta)}]}))))))
-
-(deftest identity-hash-test
-  (testing "Pulse channel hashes are composed of the pulse's hash, the channel type, and the details and the collection hash"
-    (mt/with-premium-features #{}
-      (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-        (mt/with-temp [Collection   coll  {:name "field-db" :location "/" :created_at now}
-                       Pulse        pulse {:name "my pulse" :collection_id (:id coll) :created_at now}
-                       PulseChannel chan  {:pulse_id     (:id pulse)
-                                           :channel_type :email
-                                           :details      {:emails ["cam@test.com"]}
-                                           :created_at   now}]
-          (is (= "2f5f0269"
-                 (serdes/raw-hash [(serdes/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
-                 (serdes/identity-hash chan))))))))
 
 (defn pulse->trigger-info
   [pulse-id schedule-map pc-ids]
