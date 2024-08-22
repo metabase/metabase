@@ -61,7 +61,6 @@ export const LookAndFeelSettings = ({
   const availableFonts = useSelector(state =>
     getSetting(state, "available-fonts"),
   );
-  const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
 
   return (
     <>
@@ -72,7 +71,13 @@ export const LookAndFeelSettings = ({
           <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
             <ExternalLink
               key="doc"
-              href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
+              href={`${docsUrl}?${new URLSearchParams({
+                utm_source: "product",
+                utm_medium: "docs",
+                utm_campaign: "embedding-static",
+                utm_content: "static-embed-settings-look-and-feel",
+                source_plan: plan,
+              })}#customizing-the-appearance-of-static-embeds`}
             >{t`documentation`}</ExternalLink>
           )} for more.`}</Text>
 
