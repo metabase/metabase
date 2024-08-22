@@ -12,6 +12,7 @@ import {
   describeWithSnowplow,
   enableTracking,
   entityPickerModal,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   main,
@@ -25,8 +26,6 @@ import {
   undoToast,
   visitDashboard,
   visitQuestion,
-  createDashboard,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;

@@ -22,6 +22,7 @@ import {
   restore,
   saveQuestion,
   startNewQuestion,
+  tabsShouldBe,
   visitCollection,
   visitQuestion,
   visitQuestionAdhoc,
