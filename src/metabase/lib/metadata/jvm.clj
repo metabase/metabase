@@ -19,8 +19,8 @@
    [methodical.core :as methodical]
    [potemkin :as p]
    [pretty.core :as pretty]
-   [toucan2.core :as t2]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
+   [toucan2.core :as t2]
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.query :as t2.query]))

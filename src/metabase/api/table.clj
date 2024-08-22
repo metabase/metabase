@@ -1,7 +1,6 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
-   #_{:clj-kondo/ignore [:consistent-alias]}
    [clojure.java.io :as io]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
@@ -21,6 +20,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
+   ^{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
    [metabase.upload :as upload]

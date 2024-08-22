@@ -1,7 +1,6 @@
 (ns metabase.lib.query-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   #_{:clj-kondo/ignore [:unused-namespace]}
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [medley.core :as m]
@@ -21,7 +20,8 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(comment lib/keep-me)
+(comment lib/keep-me
+         lib.metadata.calculation/keep-me)
 
 (deftest ^:parallel describe-query-test
   (let [query (-> lib.tu/venues-query
