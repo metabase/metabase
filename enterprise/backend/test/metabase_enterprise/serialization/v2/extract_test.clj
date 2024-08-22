@@ -27,6 +27,7 @@
             User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -1543,3 +1544,19 @@
           ;; - 1 for dashcards, there are 7
           ;; - 2 for series (7 dashcards / 5 -> 2 batches)
           (is (= 5 (qc))))))))
+
+(deftest result-metadata-test
+  (mt/with-temp [:model/Card c {:dataset_query (mt/query venues)}]
+    (let [res (qp/process-query
+               (qp/userland-query
+                (:dataset_query c)
+                {:card-id (:id c)}))]
+      (when-not (= (:status res) :completed)
+        (throw (ex-info "Query failed" res)))
+      (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+        (is (=? {:base_type          :type/Integer
+                 :id                 [string? "PUBLIC" "VENUES" "CATEGORY_ID"]
+                 :fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]
+                 :field_ref          [:field [string? "PUBLIC" "VENUES" "CATEGORY_ID"] nil]}
+                (->> (:result_metadata ser)
+                     (u/seek #(= (:display_name %) "Category ID")))))))))
