@@ -271,8 +271,8 @@
           (cond-> {:name              field-name
                    :database-type     type-name
                    :base-type         base-type
-                   :database-position database-position
-                   :nfc-path          nfc-path}
+                   :database-position database-position}
+            nfc-path (assoc :nfc-path nfc-path)
             (= :type/Dictionary base-type) (assoc :nested-fields (set (fields->metabase-field-info
                                                                        database-position
                                                                        (conj (or nfc-path []) field-name)
