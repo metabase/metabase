@@ -454,11 +454,11 @@
   "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
   the channels for the Notification.
 
-  * If a channel in the list has no existing `PulseChannel` object, one will be created.
+    * If a channel in the list has no existing `PulseChannel` object, one will be created.
 
-  * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
+    * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
-  * All previously existing channels will be updated with their most recent information."
+    * All previously existing channels will be updated with their most recent information."
   [notification-or-id channels :- [:sequential :map]]
   (let [channels            (map (fn [channel]
                                   (assoc channel
