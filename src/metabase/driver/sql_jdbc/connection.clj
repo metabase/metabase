@@ -2,7 +2,6 @@
   "Logic for creating and managing connection pools for SQL JDBC drivers. Implementations for connection-related driver
   multimethods for SQL JDBC drivers."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.java.jdbc :as jdbc]
    [metabase.connection-pool :as connection-pool]
    [metabase.db :as mdb]
@@ -19,6 +18,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ssh :as ssh]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 DataSources)

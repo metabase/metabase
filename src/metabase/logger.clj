@@ -3,10 +3,10 @@
   logging options are set in [[metabase.bootstrap]]: the context locator for log4j2 and ensuring log4j2 is the logger
   that clojure.tools.logging uses."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [amalloy.ring-buffer :refer [ring-buffer]]
    [clj-time.coerce :as time.coerce]
    [clj-time.format :as time.format]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [metabase.config :as config]

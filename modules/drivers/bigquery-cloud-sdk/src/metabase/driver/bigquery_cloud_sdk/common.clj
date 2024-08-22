@@ -1,10 +1,10 @@
 (ns metabase.driver.bigquery-cloud-sdk.common
   "Common utility functions and utilities for the bigquery-cloud-sdk driver and related namespaces."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.models :refer [Database]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.google.auth.oauth2 ServiceAccountCredentials)

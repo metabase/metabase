@@ -1,7 +1,6 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -20,6 +19,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [steffan-westcott.clj-otel.api.trace.span :as span]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (defn- check-card-and-dashcard-are-in-dashboard

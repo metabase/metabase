@@ -3,9 +3,9 @@
 
   The interface is the same as [[clojure.tools.logging]]."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [clojure.tools.logging.impl]
    [net.cgrand.macrovich :as macros]))

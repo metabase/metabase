@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [java-time.api :as t]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -10,6 +9,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.connection :as t2.connection]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (java.sql Connection PreparedStatement ResultSet Types)))

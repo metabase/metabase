@@ -9,7 +9,6 @@
    #_[metabase.lib.core :as lib]
    #_[metabase.models.field-usage :as field-usage]
    #_[metabase.query-processor.store :as qp.store]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [java-time.api :as t]
    [metabase.events :as events]
    [metabase.models.query :as query]
@@ -21,6 +20,7 @@
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

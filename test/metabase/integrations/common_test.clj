@@ -1,7 +1,7 @@
 (ns metabase.integrations.common-test
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.test :refer :all]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.permissions-group

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.card
   "Code for running a query in the context of a specific Card."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
@@ -27,6 +26,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

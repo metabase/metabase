@@ -1,10 +1,9 @@
 (ns metabase.lib.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.driver :as driver]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
@@ -21,6 +20,7 @@
    [potemkin :as p]
    [pretty.core :as pretty]
    [toucan2.core :as t2]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.model :as t2.model]
    [toucan2.pipeline :as t2.pipeline]
    [toucan2.query :as t2.query]))

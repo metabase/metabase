@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.update-used-cards
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [java-time.api :as t]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.schema :as qp.schema]
@@ -8,6 +7,7 @@
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)

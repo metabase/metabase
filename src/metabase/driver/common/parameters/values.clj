@@ -9,7 +9,6 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -28,6 +27,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
