@@ -50,7 +50,8 @@ export const saveChartImage = async (selector: string, fileName: string) => {
         // scale to /2 to compensate `scale:2` in html2canvas
         imgElement.width = canvas.width / 2;
         imgElement.height = canvas.height / 2;
-        window.document.querySelector("#root")?.replaceChildren(imgElement);
+
+        window.document.querySelector("body")?.replaceChildren(imgElement);
       } else {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
