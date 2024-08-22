@@ -268,16 +268,16 @@
              field-name (.getName field)
              base-type (bigquery-type->base-type f-mode type-name)]
          (into
-           {:name              field-name
-            :database-type     type-name
-            :base-type         base-type
-            :database-position database-position
-            :nfc-path          nfc-path
-            :nested-fields     (when (= :type/Dictionary base-type)
-                                 (set (fields->metabase-field-info
-                                        database-position
-                                        (conj (or nfc-path []) field-name)
-                                        (.getSubFields field))))}))))
+          {:name              field-name
+           :database-type     type-name
+           :base-type         base-type
+           :database-position database-position
+           :nfc-path          nfc-path
+           :nested-fields     (when (= :type/Dictionary base-type)
+                                (set (fields->metabase-field-info
+                                      database-position
+                                      (conj (or nfc-path []) field-name)
+                                      (.getSubFields field))))}))))
     (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name

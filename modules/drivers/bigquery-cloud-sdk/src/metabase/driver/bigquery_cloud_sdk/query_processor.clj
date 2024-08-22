@@ -117,28 +117,28 @@
   (if-let [values (repeated-values column-mode v)]
     (for [v values]
       (parse-result-of-type
-        column-type
-        nil
-        timezone-id
-        field
-        v))
+       column-type
+       nil
+       timezone-id
+       field
+       v))
     (let [subfields (.getSubFields field)]
       (into
-        {}
-        (keep (fn [[^Long idx ^Field subfield]]
-                (let [subname (.getName subfield)
-                      result (let [parsed-value (when-let [subvalue (some-> v (.get idx) .getValue)]
-                                                  (parse-result-of-type
-                                                    (.. subfield getType name)
-                                                    (.getMode subfield)
-                                                    timezone-id
-                                                    subfield
-                                                    subvalue))]
-                               (cond-> parsed-value
-                                 (seq? parsed-value) not-empty))]
-                  (when result
-                    [(keyword subname) result]))))
-        (m/indexed subfields)))))
+       {}
+       (keep (fn [[^Long idx ^Field subfield]]
+               (let [subname (.getName subfield)
+                     result (let [parsed-value (when-let [subvalue (some-> v (.get idx) .getValue)]
+                                                 (parse-result-of-type
+                                                  (.. subfield getType name)
+                                                  (.getMode subfield)
+                                                  timezone-id
+                                                  subfield
+                                                  subvalue))]
+                              (cond-> parsed-value
+                                (seq? parsed-value) not-empty))]
+                 (when result
+                   [(keyword subname) result]))))
+       (m/indexed subfields)))))
 
 (defmethod parse-result-of-type "STRING"
   [_a column-mode _b _ v]
