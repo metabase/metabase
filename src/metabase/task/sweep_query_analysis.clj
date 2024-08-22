@@ -70,7 +70,7 @@
    (analyze-cards-without-query-fields! analyze-fn)
 
    ;; we run through all the existing analysis on our first run, as it may be stale due to an old macaw version, etc.
-   (when first-time?
+   #_(when first-time?
      (log/info "Recalculating potentially stale analysis")
      ;; this will repeat the cards we've just back-filled, but in the steady state there should be none of those.
      ;; in the future, we will track versions, hashes, and timestamps to reduce the cost of this operation.

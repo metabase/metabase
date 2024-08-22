@@ -31,7 +31,8 @@
 (def ^:dynamic *analyze-execution-in-dev?*
   "Managing a background thread in the REPL is likely to confuse and infuriate, especially when running tests.
   For this reason, we run analysis on the main thread by default."
-  ::immediate)
+  ::queued
+  #_::immediate)
 
 (def ^:dynamic *analyze-execution-in-test?*
   "A card's query is normally analyzed on every create/update.
