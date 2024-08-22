@@ -455,7 +455,6 @@
     "cypress",
     "deasync",
     "esbuild",
-    "fsevents",
-    "postinstall-postinstall"
+    "fsevents"
   ]
 }
