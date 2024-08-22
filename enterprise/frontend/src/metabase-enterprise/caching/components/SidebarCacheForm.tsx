@@ -19,7 +19,7 @@ import { getItemId, getItemName } from "./utils";
 const SidebarCacheForm_Base = ({
   item,
   model,
-  setPage,
+  onClose,
   ...groupProps
 }: SidebarCacheFormProps) => {
   const configurableModels = useMemo(() => [model], [model]);
@@ -40,14 +40,10 @@ const SidebarCacheForm_Base = ({
   const saveAndCloseSidebar = useCallback(
     async (values: CacheStrategy) => {
       await saveStrategy(values);
-      setPage("default");
+      onClose();
     },
-    [saveStrategy, setPage],
+    [saveStrategy, onClose],
   );
-
-  const closeSidebar = useCallback(async () => {
-    setPage("default");
-  }, [setPage]);
 
   const {
     askBeforeDiscardingChanges,
@@ -55,8 +51,6 @@ const SidebarCacheForm_Base = ({
     isStrategyFormDirty,
     setIsStrategyFormDirty,
   } = useConfirmIfFormIsDirty();
-
-  const goBack = () => setPage("default");
 
   const headingId = `${model}-sidebar-caching-settings-heading`;
 
@@ -70,7 +64,9 @@ const SidebarCacheForm_Base = ({
       <Flex align="center">
         <BackButton
           onClick={() => {
-            isStrategyFormDirty ? askBeforeDiscardingChanges(goBack) : goBack();
+            isStrategyFormDirty
+              ? askBeforeDiscardingChanges(onClose)
+              : onClose();
           }}
         />
         <Title order={2} id={headingId}>
@@ -87,7 +83,7 @@ const SidebarCacheForm_Base = ({
           savedStrategy={savedStrategy}
           shouldAllowInvalidation
           shouldShowName={false}
-          onReset={closeSidebar}
+          onReset={onClose}
           buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
           isInSidebar
         />

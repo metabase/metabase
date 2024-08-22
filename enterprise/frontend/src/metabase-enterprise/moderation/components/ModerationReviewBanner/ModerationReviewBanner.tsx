@@ -1,15 +1,16 @@
-import { connect } from "react-redux";
 import _ from "underscore";
 
-import Users from "metabase/entities/users";
+import { useCurrentUser } from "embedding-sdk";
+import { skipToken, useGetUserQuery } from "metabase/api";
 import { alpha, color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time";
-import { getUser } from "metabase/selectors/user";
-import { Icon } from "metabase/ui";
+import { Flex, Icon, Text as UIText } from "metabase/ui";
 import {
   getIconForReview,
+  getLatestModerationReview,
   getTextForReviewBanner,
 } from "metabase-enterprise/moderation/service";
+import type Question from "metabase-lib/v1/Question";
 import type { ModerationReview, User } from "metabase-types/api";
 
 import {
@@ -21,10 +22,6 @@ import {
 
 const ICON_BUTTON_SIZE = 16;
 
-const mapStateToProps = (state: any, _props: any) => ({
-  currentUser: getUser(state),
-});
-
 interface ModerationReviewBannerProps {
   moderationReview: ModerationReview;
   user?: User | null;
@@ -35,10 +32,15 @@ interface ModerationReviewBannerProps {
 
 export const ModerationReviewBanner = ({
   moderationReview,
-  user: moderator = null,
-  currentUser,
   className,
 }: ModerationReviewBannerProps) => {
+  const { data: moderator } = useGetUserQuery(moderationReview.moderator_id);
+  const currentUser = useCurrentUser();
+
+  if (!moderator) {
+    return null;
+  }
+
   const { bannerText } = getTextForReviewBanner(
     moderationReview,
     moderator,
@@ -64,11 +66,40 @@ export const ModerationReviewBanner = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Users.load({
-    id: (_state: any, props: any) => props.moderationReview.moderator_id,
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps),
-)(ModerationReviewBanner);
+export const ModerationReviewText = ({ question }: { question: Question }) => {
+  const latestModerationReview = getLatestModerationReview(
+    question.getModerationReviews(),
+  );
+
+  const { data: moderator } = useGetUserQuery(
+    latestModerationReview?.moderator_id ?? skipToken,
+  );
+  const currentUser = useCurrentUser();
+
+  if (!moderator || !latestModerationReview) {
+    return null;
+  }
+
+  const { bannerText } = getTextForReviewBanner(
+    latestModerationReview,
+    moderator,
+    currentUser,
+  );
+
+  const relativeCreationTime = getRelativeTime(
+    latestModerationReview.created_at,
+  );
+
+  const { name: iconName, color: iconColor } = getIconForReview(
+    latestModerationReview,
+  );
+
+  return (
+    <Flex gap="sm" align="center">
+      <Icon name={iconName} color={color(iconColor)} size={ICON_BUTTON_SIZE} />
+      <UIText>
+        {bannerText} {relativeCreationTime}
+      </UIText>
+    </Flex>
+  );
+};

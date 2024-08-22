@@ -1,21 +1,25 @@
 import { useState } from "react";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
+import {
+  Sidesheet,
+  SidesheetCard,
+  SidesheetSubPage,
+  SidesheetTabPanelContainer,
+} from "metabase/common/components/Sidesheet";
+import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
 import EditableText from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
+import { onCloseQuestionInfo } from "metabase/query_builder/actions";
 import { QuestionActivityTimeline } from "metabase/query_builder/components/QuestionActivityTimeline";
-import { Stack } from "metabase/ui";
+import { Stack, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import ModelCacheManagementSection from "../ModelCacheManagementSection";
-
-import {
-  ContentSection,
-  HeaderContainer,
-  Root,
-} from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -39,68 +43,104 @@ export const QuestionInfoSidebar = ({
     }
   };
 
+  const dispatch = useDispatch();
+  const handleClose = () => dispatch(onCloseQuestionInfo());
+
   const [page, setPage] = useState<"default" | "caching">("default");
+  const [isOpen, setIsOpen] = useState(false);
 
-  return (
-    <>
-      {page === "default" && (
-        <Root>
-          <ContentSection>
-            <HeaderContainer>
-              <h3>{t`About`}</h3>
-              {question.type() === "model" && !question.isArchived() && (
-                <Link
-                  variant="brand"
-                  to={Urls.modelDetail(question.card())}
-                >{t`Model details`}</Link>
-              )}
-            </HeaderContainer>
-            <EditableText
-              initialValue={description}
-              placeholder={
-                !description && !canWrite
-                  ? t`No description`
-                  : t`Add description`
-              }
-              isOptional
-              isMultiline
-              isMarkdown
-              isDisabled={!canWrite}
-              onChange={handleSave}
-            />
-            <PLUGIN_MODERATION.QuestionModerationSection question={question} />
-          </ContentSection>
+  useMount(() => {
+    // this component is not rendered until it is "open"
+    // but we want to set isOpen after it mounts to get
+    // pretty animations
+    setIsOpen(true);
+  });
 
-          {question.type() === "model" && isPersisted && (
-            <ContentSection extraPadding>
-              <ModelCacheManagementSection model={question} />
-            </ContentSection>
-          )}
-
-          {hasCacheSection && (
-            <ContentSection extraPadding>
-              <Stack spacing="0.5rem">
-                <PLUGIN_CACHING.SidebarCacheSection
-                  model="question"
-                  item={question}
-                  setPage={setPage}
-                />
-              </Stack>
-            </ContentSection>
-          )}
-          <ContentSection extraPadding>
-            <QuestionActivityTimeline question={question} />
-          </ContentSection>
-        </Root>
-      )}
-      {page === "caching" && (
+  if (page === "caching") {
+    return (
+      <SidesheetSubPage
+        isOpen
+        title={t`Cache settings`}
+        onBack={() => setPage("default")}
+        onClose={handleClose}
+      >
         <PLUGIN_CACHING.SidebarCacheForm
           item={question}
           model="question"
-          setPage={setPage}
+          onClose={handleClose}
           pt="md"
         />
-      )}
-    </>
+      </SidesheetSubPage>
+    );
+  }
+
+  return (
+    <Sidesheet
+      title={t`Info`}
+      onClose={handleClose}
+      isOpen={isOpen}
+      removeBodyPadding
+    >
+      <Tabs
+        defaultValue="overview"
+        className={SidesheetStyles.FlexScrollContainer}
+      >
+        <Tabs.List mx="lg">
+          <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
+          <Tabs.Tab value="history">{t`History`}</Tabs.Tab>
+        </Tabs.List>
+        <SidesheetTabPanelContainer>
+          <Tabs.Panel value="overview">
+            <Stack spacing="lg">
+              <SidesheetCard title={t`Description`}>
+                <EditableText
+                  initialValue={description}
+                  placeholder={
+                    !description && !canWrite
+                      ? t`No description`
+                      : t`Add description`
+                  }
+                  isOptional
+                  isMultiline
+                  isMarkdown
+                  isDisabled={!canWrite}
+                  onChange={handleSave}
+                />
+                <PLUGIN_MODERATION.ModerationReviewText question={question} />
+                {question.type() === "model" && !question.isArchived() && (
+                  <Link
+                    variant="brand"
+                    to={Urls.modelDetail(question.card())}
+                  >{t`See more about this model`}</Link>
+                )}
+              </SidesheetCard>
+
+              {question.type() === "model" && isPersisted && (
+                <SidesheetCard>
+                  <ModelCacheManagementSection model={question} />
+                </SidesheetCard>
+              )}
+
+              {hasCacheSection && (
+                <SidesheetCard>
+                  <Stack spacing="0.5rem">
+                    <PLUGIN_CACHING.SidebarCacheSection
+                      model="question"
+                      item={question}
+                      setPage={setPage}
+                    />
+                  </Stack>
+                </SidesheetCard>
+              )}
+            </Stack>
+          </Tabs.Panel>
+          <Tabs.Panel value="history">
+            <SidesheetCard>
+              <QuestionActivityTimeline question={question} />
+            </SidesheetCard>
+          </Tabs.Panel>
+        </SidesheetTabPanelContainer>
+      </Tabs>
+    </Sidesheet>
   );
 };

@@ -117,6 +117,7 @@ class View extends Component {
       onOpenModal,
       onCloseSummary,
       onCloseTimelines,
+      onCloseQuestionInfo,
       onSave,
     } = this.props;
 
@@ -156,7 +157,13 @@ class View extends Component {
     }
 
     if (isSaved && isShowingQuestionInfoSidebar) {
-      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+      return (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={onSave}
+          onClose={onCloseQuestionInfo}
+        />
+      );
     }
 
     return null;
@@ -178,6 +185,7 @@ class View extends Component {
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
+      onCloseQuestionInfo,
       onSave,
       question,
     } = this.props;
@@ -215,7 +223,13 @@ class View extends Component {
     }
 
     if (isShowingQuestionInfoSidebar) {
-      return <QuestionInfoSidebar question={question} onSave={onSave} />;
+      return (
+        <QuestionInfoSidebar
+          question={question}
+          onSave={onSave}
+          onClose={onCloseQuestionInfo}
+        />
+      );
     }
 
     return null;
@@ -382,6 +396,7 @@ class View extends Component {
       hasVisualizeButton,
       runQuestionQuery,
       setQueryBuilderMode,
+      isShowingQuestionInfoSidebar,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -425,8 +440,11 @@ class View extends Component {
 
     const leftSidebar = this.getLeftSidebar();
     const rightSidebar = this.getRightSidebar();
+    // FIXME this sucks
     const rightSidebarWidth = isShowingTimelineSidebar
       ? SIDEBAR_SIZES.TIMELINE
+      : isShowingQuestionInfoSidebar
+      ? 0
       : SIDEBAR_SIZES.NORMAL;
 
     return (

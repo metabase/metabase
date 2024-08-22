@@ -3,7 +3,10 @@ import { t } from "ttag";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import ModerationReviewBanner from "./components/ModerationReviewBanner";
+import {
+  ModerationReviewBanner,
+  ModerationReviewText,
+} from "./components/ModerationReviewBanner";
 import { ModerationStatusIcon } from "./components/ModerationStatusIcon";
 import QuestionModerationButton from "./components/QuestionModerationButton";
 import QuestionModerationIcon from "./components/QuestionModerationIcon";
@@ -27,6 +30,7 @@ if (hasPremiumFeature("content_verification")) {
     QuestionModerationSection,
     QuestionModerationButton,
     ModerationReviewBanner,
+    ModerationReviewText,
     ModerationStatusIcon,
     getStatusIcon,
     getQuestionIcon,

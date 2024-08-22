@@ -364,6 +364,7 @@ export const PLUGIN_MODERATION = {
   QuestionModerationSection: PluginPlaceholder,
   QuestionModerationButton: PluginPlaceholder,
   ModerationReviewBanner: PluginPlaceholder,
+  ModerationReviewText: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getQuestionIcon: PluginPlaceholder,
   getStatusIcon: (_moderated_status?: string): string | IconProps | undefined =>
@@ -396,7 +397,7 @@ export type SidebarCacheSectionProps = {
 export type SidebarCacheFormProps = {
   item: CacheableDashboard | Question;
   model: CacheableModel;
-  setPage: (page: "default" | "caching") => void;
+  onClose: () => void;
 } & GroupProps;
 
 export const PLUGIN_CACHING = {
