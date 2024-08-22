@@ -674,7 +674,7 @@
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.prepareStatement conn (str "show parameters like 'TIMEZONE' in user"
                                                    (when-let [user (get-in database [:details :user])]
-                                                     (str " \"" user "\""))
+                                                     (str " \"" (str/replace user #"\s" "") "\""))
                                                    ";"))
                  rset (.executeQuery stmt)]
        (when (.next rset)

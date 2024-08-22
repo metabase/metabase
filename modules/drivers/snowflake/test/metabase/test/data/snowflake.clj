@@ -160,7 +160,7 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (.execute stmt (format "ALTER USER \"%s\" SET TIMEZONE = '%s';" user timezone))))))
+       (.execute stmt (format "ALTER USER \"%s\" SET TIMEZONE = '%s';" (str/replace user #" " "") timezone))))))
 
 (defmethod tx/create-db! :snowflake
   [driver db-def & options]
