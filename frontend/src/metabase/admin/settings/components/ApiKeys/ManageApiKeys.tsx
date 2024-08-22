@@ -45,11 +45,11 @@ function EmptyTableWarning({ onCreate }: { onCreate: () => void }) {
 }
 
 const columns = [
-  { key: "name", name: t`Key name` },
-  { key: "group_name", name: t`Group` },
-  { key: "masked_key", name: t`Key` },
-  { key: "updated_by_name", name: t`Last modified by` },
-  { key: "updated_at", name: t`Last modified on` },
+  { key: "name", name: t`Key name`, sortable: true },
+  { key: "group_name", name: t`Group`, sortable: true },
+  { key: "masked_key", name: t`Key`, sortable: true },
+  { key: "updated_by_name", name: t`Last modified by`, sortable: true },
+  { key: "updated_at", name: t`Last modified on`, sortable: true },
   { key: "actions", name: "" },
 ];
 

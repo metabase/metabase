@@ -1,0 +1,16 @@
+.table {
+  width: 100%;
+  border: 1px solid var(--mb-color-border);
+  border-collapse: separate;
+  border-radius: 1rem;
+  border-spacing: 0;
+
+  tr {
+    padding: 1rem;
+  }
+
+  tr:not(:last-child) > td,
+  tr > th {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}

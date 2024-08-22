@@ -25,9 +25,9 @@ import { getDateDisplay } from "./utils";
 
 const columns = [
   { key: "checkbox", name: "" },
-  { key: "name", name: t`Table name` },
-  { key: "created_at", name: t`Created at` },
-  { key: "schema", name: t`Schema` },
+  { key: "name", name: t`Table name`, sortable: true },
+  { key: "created_at", name: t`Created at`, sortable: true },
+  { key: "schema", name: t`Schema`, sortable: true },
   { key: "actions", name: "" },
 ];
 
