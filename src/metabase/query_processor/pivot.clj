@@ -93,7 +93,8 @@
                        :pivot-cols    pivot-cols}))))
   (sort-by
    (partial group-bitmask num-breakouts)
-   (distinct
+   (m/distinct-by
+    (partial group-bitmask num-breakouts)
     (map
      vec
      ;; this can happen for the public/embed endpoints, where we aren't given a pivot-rows / pivot-cols parameter, so

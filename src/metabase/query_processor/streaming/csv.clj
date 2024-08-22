@@ -1,7 +1,6 @@
 (ns metabase.query-processor.streaming.csv
   (:require
    [clojure.data.csv :as csv]
-   [clojure.string :as str]
    [java-time.api :as t]
    [metabase.formatter :as formatter]
    [metabase.query-processor.pivot.postprocess :as qp.pivot.postprocess]
@@ -36,131 +35,6 @@
   Disabled by default and should remain disabled until Issue #44556 is resolved and a clear plan is made."
   true)
 
-
-
-(defn init-pivot [config]
-  (let [{:keys [pivot-rows pivot-cols pivot-measures]} config]
-    {:config         config
-     :data           {}
-     :row-values     (zipmap pivot-rows (repeat (sorted-set)))
-     :column-values  (zipmap pivot-cols (repeat (sorted-set)))
-     :measure-values (zipmap pivot-measures (repeat (sorted-set)))}))
-
-(defn update-set [m k v]
-  (update m k conj v))
-
-(defn- add-wrapped-numbers
-  [a b]
-  (let [new-value (apply + (map :metabase.formatter.NumericWrapper/num-value [a b]))]
-    {:metabase.formatter.NumericWrapper/num-value new-value
-     :metabase.formatter.NumericWrapper/num-string (str new-value)}))
-
-(defn update-aggregate [measure-aggregations new-values agg-fns]
-  (into {}
-        (map
-         (fn [[measure-key agg]]
-           (let [agg-fn (get agg-fns measure-key (fn [a b]
-                                                   (+ a b)) #_add-wrapped-numbers)
-                 new-v  (get new-values measure-key)]
-             [measure-key (agg-fn agg new-v)])))
-        measure-aggregations))
-
-(defn add-row [pivot row]
-  (let [{:keys [pivot-rows
-                pivot-cols
-                pivot-measures
-                measures]} (:config pivot)
-        row-path           (mapv row pivot-rows)
-        col-path           (mapv row pivot-cols)
-        measure-vals       (select-keys row pivot-measures)
-        total-fn           (fn [m path]
-                             (update-in m path
-                                        #(update-aggregate (or % (zipmap pivot-measures (repeat 0))) measure-vals measures)))]
-    (-> pivot
-        (update :row-count (fn [v] (if v (inc v) 0)))
-        (update :data update-in (concat row-path col-path)
-                #(update-aggregate (or % (zipmap pivot-measures (repeat 0))) measure-vals measures))
-        (update :totals (fn [totals]
-                          (-> totals
-                              (total-fn [:grand-total])
-                              (total-fn row-path)
-                              (total-fn col-path)
-                              (total-fn [:section-totals (first row-path)])
-                              (total-fn (concat [:column-totals (first row-path)] col-path)))))
-
-        (update :row-values #(reduce-kv update-set % (select-keys row pivot-rows)))
-        (update :column-values #(reduce-kv update-set % (select-keys row pivot-cols))))))
-
-(defn cartesian-product [colls]
-  (if (empty? colls)
-    '(())
-    (for [x (first colls)
-          more (cartesian-product (rest colls))]
-      (cons x more))))
-
-(defn build-pivot-output
-  [pivot]
-  (let [{:keys [config data totals
-                row-values
-                column-values]} pivot
-        {:keys [pivot-rows
-                pivot-cols
-                pivot-measures
-                column-titles]} config
-        row-combos              (cartesian-product (map row-values pivot-rows))
-        col-combos              (cartesian-product (map column-values pivot-cols))
-        ;; Build the multi-level column headers
-        column-headers (concat
-                        (if (= 1 (count pivot-measures))
-                          col-combos
-                          (for [col-combo   col-combos
-                                measure-key pivot-measures]
-                            (conj (vec col-combo) (get column-titles measure-key))))
-                        (repeat (count pivot-measures)
-                                (concat
-                                 ["Row totals"]
-                                 (repeat (dec (count pivot-cols)) nil)
-                                 (when (< 1 (count pivot-measures)) [nil]))))
-        ;; Combine row keys with the new column headers
-        headers (map (fn [h]
-                       (concat (map #(get column-titles %) pivot-rows) h))
-                     (apply map vector column-headers))]
-    (concat headers
-            (apply concat
-                   (for [section-row-combos (vals (group-by first row-combos))]
-                     (concat
-                      (for [row-combo section-row-combos]
-                        (let [row-path row-combo]
-                          (concat row-combo
-                                  (concat
-                                   (for [col-combo   col-combos
-                                         measure-key pivot-measures]
-                                     (get-in data (concat row-path col-combo [measure-key])))
-                                   ;; row totals
-                                   (for [measure-key pivot-measures]
-                                     (get-in totals (concat row-path [measure-key])))))))
-                      [(let [section (ffirst section-row-combos)]
-                         (concat
-                          (cons (format "Totals for %s" section) (repeat (dec (count pivot-rows)) nil))
-                          ;; column totals
-                          (for [col-combo col-combos
-                                measure-key pivot-measures]
-                            (get-in totals (concat
-                                            [:column-totals section]
-                                            col-combo
-                                            [measure-key])))
-                          ;; section totals
-                          (for [measure-key pivot-measures]
-                            (get-in totals [:section-totals section measure-key]))))])))
-            [(concat
-              (cons "Grand totals" (repeat (dec (count pivot-rows)) nil))
-              (for [col-combo col-combos
-                    measure-key pivot-measures]
-                (get-in totals (concat col-combo [measure-key])))
-              (for [measure-key pivot-measures]
-                (get-in totals [:grand-total measure-key])))])))
-
-
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
@@ -180,7 +54,7 @@
 
           ;; when pivot options exist, we want to save them to access later when processing the complete set of results for export.
           (when opts
-            (reset! pivot-data (init-pivot opts)))
+            (reset! pivot-data (qp.pivot.postprocess/init-pivot opts)))
           (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
@@ -191,27 +65,25 @@
             (.flush writer))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
-        (let [ordered-row   (if output-order
-                              (let [row-v (into [] row)]
-                                (into [] (for [i output-order] (row-v i))))
-                              row)
-              formatted-row (mapv (fn [formatter r]
-                                    (formatter (common/format-value r)))
-                                  @ordered-formatters ordered-row)]
-
+        (let [ordered-row (if output-order
+                            (let [row-v (into [] row)]
+                              (into [] (for [i output-order] (row-v i))))
+                            row)]
           (if @pivot-data
-            ;; if we're processing a pivot result, we don't write it out yet, just store it
-            ;; so that we can post process the full set of results in finish!
+            ;; if we're processing a pivot result, we don't write it out yet, just aggregate it
+            ;; so that we can post process the data in finish!
             (when (= 0 (nth ordered-row (get-in @pivot-data [:config :pivot-grouping])))
-              (swap! pivot-data (fn [a] (add-row a ordered-row))))
-            (do
+              (swap! pivot-data (fn [a] (qp.pivot.postprocess/add-row a ordered-row))))
+            (let [formatted-row (mapv (fn [formatter r]
+                                        (formatter (common/format-value r)))
+                                      @ordered-formatters ordered-row)]
               (csv/write-csv writer [formatted-row])
               (.flush writer)))))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
         (when @pivot-data
-          (doseq [xf-row (build-pivot-output @pivot-data)]
+          (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data @ordered-formatters)]
             (csv/write-csv writer [xf-row])))
         (.flush writer)
         (.flush os)

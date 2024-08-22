@@ -181,6 +181,56 @@
 ;; The Pivot Table Download/export test can be a bit confusing. I've kept a 'see pivot result' function in a comment at the end of this ns
 ;; If you eval/run that in your repl, you should be able to see the results (It's not too many rows so should print acceptably)
 ;; If you need to add assertions or fix up this test, that may be a helpful function to run!
+
+(deftest ^:parallel simple-pivot-export-test
+  (testing "Pivot table csv exports look pivoted"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card {pivot-card-id :id}
+                     {:display                :pivot
+                      :visualization_settings {:pivot_table.column_split
+                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                :columns [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
+                                                :values  [[:aggregation 0]]}
+                                               :column_settings
+                                               {"[\"name\",\"sum\"]" {:number_style       "currency"
+                                                                      :currency_in_header false}}}
+                      :dataset_query          {:database (mt/id)
+                                               :type     :query
+                                               :query
+                                               {:source-table (mt/id :products)
+                                                :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+        (binding [qp.csv/*pivot-export-post-processing-enabled* true]
+          (testing "unformatted"
+            (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+                              csv/read-csv)]
+              (is (= [["Category" "2016-01-01T00:00:00Z" "2017-01-01T00:00:00Z" "2018-01-01T00:00:00Z" "2019-01-01T00:00:00Z" "Row totals"]
+                      ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
+                      ["Totals for Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
+                      ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
+                      ["Totals for Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
+                      ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
+                      ["Totals for Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
+                      ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
+                      ["Totals for Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
+                      ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
+                     result))))
+          (testing "formatted"
+            (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=true" pivot-card-id))
+                              csv/read-csv)]
+              (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
+                      ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                      ["Totals for Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
+                      ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                      ["Totals for Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
+                      ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                      ["Totals for Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
+                      ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                      ["Totals for Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
+                      ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
+                     result)))))))))
+
 (deftest ^:parallel pivot-export-test
   []
   (mt/dataset test-data
@@ -306,18 +356,18 @@
         (binding [qp.csv/*pivot-export-post-processing-enabled* true]
           (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
                             csv/read-csv)]
-            (is (= [["Created At" "Doohickey" "Doohickey" "Gadget" "Gadget" "Gizmo" "Gizmo" "Widget" "Widget" "Row totals" "Row totals"]
+            (is (= [["Created At"
+                     "Doohickey" "Doohickey"
+                     "Gadget" "Gadget"
+                     "Gizmo" "Gizmo"
+                     "Widget" "Widget"
+                     "Row totals" "Row totals"]
                     ["Created At"
-                     "Sum of Price"
-                     "Average of Rating"
-                     "Sum of Price"
-                     "Average of Rating"
-                     "Sum of Price"
-                     "Average of Rating"
-                     "Sum of Price"
-                     "Average of Rating"
-                     "Sum of Price"
-                     "Average of Rating"]]
+                     "Sum of Price" "Average of Rating"
+                     "Sum of Price" "Average of Rating"
+                     "Sum of Price" "Average of Rating"
+                     "Sum of Price" "Average of Rating"
+                     "" ""]]
                    (take 2 result)))))))))
 
 (deftest ^:parallel zero-column-pivot-tables-test
@@ -338,14 +388,14 @@
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
         (binding [qp.csv/*pivot-export-post-processing-enabled* true]
-          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=true" pivot-card-id))
                             csv/read-csv)]
             (is (= [["Created At" "Category" "Sum of Price"]
-                    ["2016-05-01T00:00:00Z" "Doohickey" "144.12"]
-                    ["2016-05-01T00:00:00Z" "Gadget" "81.58"]
-                    ["2016-05-01T00:00:00Z" "Gizmo" "75.09"]
-                    ["2016-05-01T00:00:00Z" "Widget" "90.21"]
-                    ["Totals for 2016-05-01T00:00:00Z" "" "391"]]
+                    ["June, 2016" "Doohickey" "82.92"]
+                    ["June, 2016" "Gadget" "75.53"]
+                    ["June, 2016" "Gizmo" "83.26"]
+                    ["June, 2016" "Widget" ""]
+                    ["Totals for 2016-06-01T00:00:00Z" "" "241.71"]]
                    (take 6 result)))))))))
 
 (deftest ^:parallel zero-row-pivot-tables-test
@@ -367,7 +417,8 @@
           (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
                             csv/read-csv)]
             (is (= [["Category" "Doohickey" "Gadget" "Gizmo" "Widget" "Row totals"]
-                    ["Grand Totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
+                    ["" "2185.89" "3019.2" "2834.88" "3109.31" ""]
+                    ["Grand totals" "2185.89" "3019.2" "2834.88" "3109.31" "11149.28"]]
                    result))))))))
 
 (deftest ^:parallel zero-column-multiple-meausres-pivot-tables-test
@@ -376,8 +427,9 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]
-                                                          [:field (mt/id :products :category) {:base-type :type/Text}]]
+                                               {:rows    [[:field (mt/id :products :category) {:base-type :type/Text}]
+                                                          [:field (mt/id :products :created_at) {:base-type :type/DateTime
+                                                                                                 :temporal-unit :year}]]
                                                 :columns []
                                                 :values  [[:aggregation 0] [:aggregation 1]]}}
                       :dataset_query          {:database (mt/id)
@@ -385,34 +437,35 @@
                                                :query
                                                {:source-table (mt/id :products)
                                                 :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
-                                                               [:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                               [:count]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime
+                                                                                                      :temporal-unit :year}]]}}}]
         (binding [qp.csv/*pivot-export-post-processing-enabled* true]
           (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
                             csv/read-csv)]
-            (is (= [["Created At" "Category" "Sum of Price" "Sum of Price"]
-                    ["2016-01-01T00:00:00Z" "Doohickey" "632.14" "632.14"]
-                    ["2016-01-01T00:00:00Z" "Gadget" "679.83" "679.83"]
-                    ["2016-01-01T00:00:00Z" "Gizmo" "529.7" "529.7"]
-                    ["2016-01-01T00:00:00Z" "Widget" "987.39" "987.39"]
-                    ["Totals for 2016-01-01T00:00:00Z" "" "2829.06" "2829.06"]
-                    ["2017-01-01T00:00:00Z" "Doohickey" "854.19" "854.19"]
-                    ["2017-01-01T00:00:00Z" "Gadget" "1059.11" "1059.11"]
-                    ["2017-01-01T00:00:00Z" "Gizmo" "1080.18" "1080.18"]
-                    ["2017-01-01T00:00:00Z" "Widget" "1014.68" "1014.68"]
-                    ["Totals for 2017-01-01T00:00:00Z" "" "4008.16" "4008.16"]
-                    ["2018-01-01T00:00:00Z" "Doohickey" "496.43" "496.43"]
-                    ["2018-01-01T00:00:00Z" "Gadget" "844.51" "844.51"]
-                    ["2018-01-01T00:00:00Z" "Gizmo" "997.94" "997.94"]
-                    ["2018-01-01T00:00:00Z" "Widget" "912.2" "912.2"]
-                    ["Totals for 2018-01-01T00:00:00Z" "" "3251.08" "3251.08"]
-                    ["2019-01-01T00:00:00Z" "Doohickey" "203.13" "203.13"]
-                    ["2019-01-01T00:00:00Z" "Gadget" "435.75" "435.75"]
-                    ["2019-01-01T00:00:00Z" "Gizmo" "227.06" "227.06"]
-                    ["2019-01-01T00:00:00Z" "Widget" "195.04" "195.04"]
-                    ["Totals for 2019-01-01T00:00:00Z" "" "1060.98" "1060.98"]
-                    ["Grand Totals" "" "11149.28" "11149.28"]]
+            (is (= [["Category" "Created At" "Sum of Price" "Count"]
+                    ["Doohickey" "2016-01-01T00:00Z" "632.14" "13"]
+                    ["Doohickey" "2017-01-01T00:00Z" "854.19" "17"]
+                    ["Doohickey" "2018-01-01T00:00Z" "496.43" "8"]
+                    ["Doohickey" "2019-01-01T00:00Z" "203.13" "4"]
+                    ["Totals for Doohickey" "" "2185.89" "42"]
+                    ["Gadget" "2016-01-01T00:00Z" "679.83" "13"]
+                    ["Gadget" "2017-01-01T00:00Z" "1059.11" "19"]
+                    ["Gadget" "2018-01-01T00:00Z" "844.51" "14"]
+                    ["Gadget" "2019-01-01T00:00Z" "435.75" "7"]
+                    ["Totals for Gadget" "" "3019.20" "53"]
+                    ["Gizmo" "2016-01-01T00:00Z" "529.7" "9"]
+                    ["Gizmo" "2017-01-01T00:00Z" "1080.18" "21"]
+                    ["Gizmo" "2018-01-01T00:00Z" "997.94" "17"]
+                    ["Gizmo" "2019-01-01T00:00Z" "227.06" "4"]
+                    ["Totals for Gizmo" "" "2834.88" "51"]
+                    ["Widget" "2016-01-01T00:00Z" "987.39" "19"]
+                    ["Widget" "2017-01-01T00:00Z" "1014.68" "18"]
+                    ["Widget" "2018-01-01T00:00Z" "912.2" "14"]
+                    ["Widget" "2019-01-01T00:00Z" "195.04" "3"]
+                    ["Totals for Widget" "" "3109.31" "54"]
+                    ["Grand totals" "" "11149.28" "200"]]
                    result))))))))
 
 (deftest pivot-table-native-pivot-in-xlsx-test
