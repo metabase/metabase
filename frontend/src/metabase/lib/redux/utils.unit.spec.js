@@ -1,6 +1,6 @@
 import { delay } from "__support__/utils";
 
-import { fetchData, updateData, mergeEntities } from "./utils";
+import { fetchData, mergeEntities, updateData } from "./utils";
 
 describe("Metadata", () => {
   const getDefaultArgs = ({

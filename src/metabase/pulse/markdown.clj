@@ -217,8 +217,8 @@
   (walk/postwalk
    (fn [node]
      (if (and (map? node) (= (:tag node) tag))
-        (assoc node :tag :default)
-        node))
+       (assoc node :tag :default)
+       node))
    content))
 
 (defmulti ast->slack

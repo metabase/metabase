@@ -218,7 +218,7 @@
                          (t/local-date 2011 4 18)
                          (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
               (is (= expected-rows
-                     (format-rows rows {:cols [{}{}{}]}))))))))
+                     (format-rows rows {:cols [{} {} {}]}))))))))
 
     (testing "Make sure ISO-8601 timestamps respects the converted_timezone metadata"
       (doseq [timezone-id ["UTC" "Asia/Tokyo"]]

@@ -1,13 +1,12 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertEChartsTooltip,
+  cartesianChartCircleWithColor,
+  chartPathWithFillColor,
   echartsContainer,
   restore,
   visitQuestionAdhoc,
-  testTooltipPairs,
-  cartesianChartCircleWithColor,
-  testStackedTooltipRows,
-  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -93,35 +92,75 @@ describe("scenarios > visualizations > combo", () => {
 
     // First circle of the line series
     cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
-    testTooltipPairs([
-      ["Created At:", "2022"],
-      ["Average of Total:", "56.66"],
-      ["Average of Subtotal:", "54.44"],
-      ["Min of Total:", "12.32"],
-      ["Min of Subtotal:", "15.69"],
-      ["Max of Total:", "102.77"],
-      ["Max of Subtotal:", "98.82"],
-    ]);
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { color: "#A989C5", name: "Average of Total", value: "56.66" },
+        { color: "#F2A86F", name: "Average of Subtotal", value: "54.44" },
+        { color: "#EF8C8C", name: "Min of Total", value: "12.32" },
+        { color: "#98D9D9", name: "Min of Subtotal", value: "15.69" },
+        { color: "#F9D45C", name: "Max of Total", value: "102.77" },
+        { color: "#7172AD", name: "Max of Subtotal", value: "98.82" },
+      ],
+    });
 
     // First circle of stacked area series
     cartesianChartCircleWithColor("#98D9D9").eq(0).trigger("mousemove");
 
     // Check the tooltip shows only stacked areas series
-    testStackedTooltipRows([
-      ["Min of Subtotal", "15.69", "56.01 %"],
-      ["Min of Total", "12.32", "43.99 %"],
-      ["Total", "28.02", "100 %"],
-    ]);
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        {
+          color: "#EF8C8C",
+          name: "Min of Total",
+          value: "12.32",
+          secondaryValue: "43.99 %",
+        },
+        {
+          color: "#98D9D9",
+          name: "Min of Subtotal",
+          value: "15.69",
+          secondaryValue: "56.01 %",
+        },
+        {
+          name: "Total",
+          value: "28.02",
+          secondaryValue: "100 %",
+        },
+      ],
+    });
 
     // First bar of stacked bar series
     chartPathWithFillColor("#7172AD").eq(0).realHover();
-
-    testStackedTooltipRows([
-      ["Max of Subtotal", "98.82", "38.60 %"],
-      ["Max of Total", "102.77", "40.14 %"],
-      ["Average of Subtotal", "54.44", "21.26 %"],
-      ["Total", "256.03", "100 %"],
-    ]);
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        {
+          color: "#7172AD",
+          name: "Max of Subtotal",
+          value: "98.82",
+          secondaryValue: "38.60 %",
+        },
+        {
+          color: "#F9D45C",
+          name: "Max of Total",
+          value: "102.77",
+          secondaryValue: "40.14 %",
+        },
+        {
+          color: "#F2A86F",
+          name: "Average of Subtotal",
+          value: "54.44",
+          secondaryValue: "21.26 %",
+        },
+        {
+          name: "Total",
+          value: "256.03",
+          secondaryValue: "100 %",
+        },
+      ],
+    });
 
     // Switch to normalized stacking
     cy.findByTestId("chartsettings-sidebar").findByText("Stack - 100%").click();

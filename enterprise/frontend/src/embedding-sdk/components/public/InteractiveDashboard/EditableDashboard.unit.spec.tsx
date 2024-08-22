@@ -15,7 +15,7 @@ import {
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { setupPulseEndpoint } from "__support__/server-mocks/pulse";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
@@ -34,8 +34,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
@@ -112,7 +112,7 @@ const setup = async ({
 
   setupAlertsEndpoints(tableCard, []);
 
-  setupPulseEndpoint();
+  setupNotificationChannelsEndpoints({});
 
   const user = createMockUser();
 

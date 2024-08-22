@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
-import { TextInput, Icon } from "metabase/ui";
+import { Icon, TextInput } from "metabase/ui";
 
 const SEARCH_TIMEOUT = 200;
 

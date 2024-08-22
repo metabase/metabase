@@ -2,8 +2,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type {
-  RegularClickAction,
   ClickActionSection,
+  RegularClickAction,
 } from "metabase/visualizations/types";
 
 type Section = {
@@ -61,9 +61,6 @@ export const getGroupedAndSortedActions = (
     .sortBy(([key]) => (SECTIONS[key] ? SECTIONS[key].index : 99))
     .value();
 };
-
-export const getGALabelForAction = (action: RegularClickAction) =>
-  action ? `${action.section || ""}:${action.name || ""}` : null;
 
 export const getSectionTitle = (
   sectionKey: string,

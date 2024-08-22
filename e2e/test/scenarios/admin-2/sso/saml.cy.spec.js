@@ -1,20 +1,20 @@
 import {
-  restore,
   describeEE,
-  typeAndBlurUsingLabel,
-  popover,
   modal,
+  popover,
+  restore,
   setTokenFeatures,
+  typeAndBlurUsingLabel,
 } from "e2e/support/helpers";
 
 import {
-  crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
+  crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
 import {
-  getUserProvisioningInput,
-  getSuccessUi,
   getSamlCertificate,
+  getSuccessUi,
+  getUserProvisioningInput,
   setupSaml,
 } from "./shared/helpers";
 

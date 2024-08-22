@@ -9,7 +9,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-    (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)))
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
@@ -110,9 +110,9 @@
                                                                         :details {}
                                                                         :delete  "DELETE_WITH_DEPENDENTS:copy-paste-mistake"}]}}]
           (is (thrown-with-msg?
-                ExceptionInfo
-                (re-pattern (format "To delete database \"%s\" set `delete` to \"DELETE_WITH_DEPENDENTS:%s\"" test-db-name test-db-name))
-                (advanced-config.file/initialize!)))
+               ExceptionInfo
+               (re-pattern (format "To delete database \"%s\" set `delete` to \"DELETE_WITH_DEPENDENTS:%s\"" test-db-name test-db-name))
+               (advanced-config.file/initialize!)))
           (is (t2/exists? Database :name test-db-name)))
         (finally
           (t2/delete! Database :name test-db-name))))))

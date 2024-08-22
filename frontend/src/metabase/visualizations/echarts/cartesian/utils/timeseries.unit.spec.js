@@ -1,4 +1,4 @@
-import { StringColumn, NumberColumn } from "__support__/visualizations";
+import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import {
   computeTimeseriesDataInverval,

@@ -102,7 +102,7 @@
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-enabled)
-    [400 (tru "JWT SSO has not been enabled and/or configured")]))
+             [400 (tru "JWT SSO has not been enabled and/or configured")]))
 
 (defn ^:private generate-response-token
   [session jwt-data]

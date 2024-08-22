@@ -25,6 +25,10 @@
           {
             "name": "moment-timezone",
             "message": "Moment is deprecated, please use dayjs"
+          },
+          {
+            "name": "@storybook/testing-library",
+            "message": "Please use `testing-library/react` or `@testing-library/user-event`"
           }
         ]
       }
@@ -40,7 +44,8 @@
     {
       "files": ["**/*.stories.tsx"],
       "rules": {
-        "import/no-default-export": 0
+        "import/no-default-export": 0,
+        "no-restricted-imports": 0
       }
     },
     {

@@ -7,7 +7,7 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmbedded } from "metabase/selectors/embed";
 import { getIsWhiteLabeling } from "metabase/selectors/whitelabel";
-import { Icon, Anchor, Flex, Paper, Stack, Text } from "metabase/ui";
+import { Anchor, Flex, Icon, Paper, Stack, Text } from "metabase/ui";
 
 import { DismissIconButtonWrapper } from "./WhatsNewNotification.styled";
 import Sparkles from "./sparkles.svg?component";

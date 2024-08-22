@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import * as React from "react";
 import reactAnsiStyle from "react-ansi-style";
 import { t } from "ttag";

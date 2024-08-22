@@ -9,8 +9,8 @@ import _ from "underscore";
 
 import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
 import {
-  getQuestionPickerValue,
   QuestionPickerModal,
+  getQuestionPickerValue,
 } from "metabase/common/components/QuestionPicker";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Modal from "metabase/components/Modal";
@@ -19,16 +19,15 @@ import ModalS from "metabase/css/components/modal.module.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import {
-  isQuestionDashCard,
   getVisibleCardIds,
+  isQuestionDashCard,
 } from "metabase/dashboard/utils";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
-  GRID_WIDTH,
+  DEFAULT_CARD_SIZE,
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
-  DEFAULT_CARD_SIZE,
+  GRID_WIDTH,
   MIN_ROW_HEIGHT,
 } from "metabase/lib/dashboard_grid";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
@@ -37,8 +36,8 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import {
-  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
+  MOBILE_HEIGHT_BY_DISPLAY_TYPE,
 } from "metabase/visualizations/shared/utils/sizes";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
@@ -46,23 +45,23 @@ import type {
   Card,
   DashCardId,
   Dashboard,
-  DashboardTabId,
   DashboardCard,
+  DashboardTabId,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
-  removeCardFromDashboard,
-  showClickBehaviorSidebar,
+  fetchCardData,
   markNewCardSeen,
-  setMultipleDashCardAttributes,
-  setDashCardAttributes,
-  undoRemoveCardFromDashboard,
-  replaceCard,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardVisualizationSettings,
-  fetchCardData,
+  removeCardFromDashboard,
+  replaceCard,
+  setDashCardAttributes,
+  setMultipleDashCardAttributes,
+  showClickBehaviorSidebar,
+  undoRemoveCardFromDashboard,
 } from "../actions";
 import { getDashcardDataMap } from "../selectors";
 
@@ -285,7 +284,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
 
     if (changes.length > 0) {
       setMultipleDashCardAttributes({ dashcards: changes });
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Layout Changed");
     }
   };
 
@@ -480,7 +478,6 @@ class DashboardGrid extends Component<DashboardGridProps, DashboardGridState> {
       action: () =>
         this.props.undoRemoveCardFromDashboard({ dashcardId: dc.id }),
     });
-    MetabaseAnalytics.trackStructEvent("Dashboard", "Remove Card");
   };
 
   onDashCardAddSeries = (dc: BaseDashboardCard) => {

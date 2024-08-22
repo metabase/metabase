@@ -24,9 +24,9 @@ import {
   type Weekday,
   defaultHour,
   getHours,
+  getScheduleComponentLabel,
   getScheduleStrings,
   minutes,
-  getScheduleComponentLabel,
 } from "./constants";
 import type { UpdateSchedule } from "./types";
 import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";

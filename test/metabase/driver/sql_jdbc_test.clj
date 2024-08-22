@@ -46,8 +46,8 @@
             ["800 Degrees Neapolitan Pizzeria"]
             ["BCD Tofu House"]]
            (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                  [(t2/select-one Field :id (mt/id :venues :name))]
-                  (constantly conj))
+                                                    [(t2/select-one Field :id (mt/id :venues :name))]
+                                                    (constantly conj))
                 ;; since order is not guaranteed do some sorting here so we always get the same results
                 (sort-by first)
                 (take 5))))))
@@ -109,11 +109,12 @@
     (testing (format "\nnative query =\n%s" (u/pprint-to-str native-query))
       (is (= expected
              (ffirst
-              (mt/formatted-rows [int]
-                                 (qp/process-query
-                                  {:database (mt/id)
-                                   :type     :native
-                                   :native   native-query}))))))))
+              (mt/formatted-rows
+               [int]
+               (qp/process-query
+                {:database (mt/id)
+                 :type     :native
+                 :native   native-query}))))))))
 
 (deftest ^:parallel splice-parameters-mbql-string-param-test
   (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
@@ -209,8 +210,8 @@
 
 (deftest ^:parallel uuid-filtering-test
   (mt/test-drivers (set/intersection
-                     (mt/sql-jdbc-drivers)
-                     (mt/normal-drivers-with-feature :uuid-type))
+                    (mt/sql-jdbc-drivers)
+                    (mt/normal-drivers-with-feature :uuid-type))
     (let [uuid (random-uuid)
           uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as x" uuid)})
           results (qp/process-query uuid-query)
@@ -224,8 +225,8 @@
                            :type :query
                            :query {:source-table (str "card__" (:id card))}}]
           (are [expected filt]
-            (= expected
-               (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
+               (= expected
+                  (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
             [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
             [[uuid]] [:= (:field_ref col-metadata) (:field_ref col-metadata)]
             [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
@@ -263,8 +264,8 @@
                                    {:database-type "uuid"}]
                                   %))]
                     (sql.qp/->honeysql
-                      driver/*driver*
-                      [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
+                     driver/*driver*
+                     [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
             (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
                      (some-fn #(= uuid %)
                               #(= [:metabase.util.honey-sql-2/typed
@@ -272,5 +273,5 @@
                                    {:database-type "uuid"}]
                                   %))]
                     (sql.qp/->honeysql
-                      driver/*driver*
-                      [:= (:field_ref col-metadata) uuid])))))))))
+                     driver/*driver*
+                     [:= (:field_ref col-metadata) uuid])))))))))

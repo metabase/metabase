@@ -1,8 +1,8 @@
 import { screen } from "@testing-library/react";
 
 import {
-  createMockDashboard,
   createMockCollection,
+  createMockDashboard,
 } from "metabase-types/api/mocks";
 
 import { setup } from "./setup";

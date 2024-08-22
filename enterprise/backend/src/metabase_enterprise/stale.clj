@@ -101,10 +101,10 @@
    :from [[{:union-all (queries args)} :dummy_alias]]})
 
 (mu/defn find-stale-candidates* :- [:map
-                                   [:rows [:sequential [:map
-                                                        [:id pos-int?]
-                                                        [:model keyword?]]]]
-                                   [:total :int]]
+                                    [:rows [:sequential [:map
+                                                         [:id pos-int?]
+                                                         [:model keyword?]]]]
+                                    [:total :int]]
   "Find stale content in the given collections.
 
   Arguments are defined by [[FindStaleContentArgs]]:

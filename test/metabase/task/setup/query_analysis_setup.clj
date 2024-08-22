@@ -34,12 +34,12 @@
                               :dataset_query (mt/native-query {:query "SELECT id FROM venues"})}]
 
                   ;; Make sure there is no existing analysis for the relevant cards
-                  (t2/delete! :model/QueryField :card_id [:in (map :id [c1 c2 c3 c4 arch])])
+      (t2/delete! :model/QueryField :card_id [:in (map :id [c1 c2 c3 c4 arch])])
 
                   ;; Make sure some other card has analysis
-                  (query-analysis/analyze-card! c3)
+      (query-analysis/analyze-card! c3)
 
-                  (mt/call-with-map-params f [c1 c2 c3 c4 arch]))))
+      (mt/call-with-map-params f [c1 c2 c3 c4 arch]))))
 
 (defmacro with-test-setup!
   "Set up the data required to test the Query Analysis related tasks"

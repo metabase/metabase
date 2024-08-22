@@ -1,9 +1,9 @@
 import type {
-  RadioStylesParams,
   MantineTheme,
   MantineThemeOverride,
+  RadioStylesParams,
 } from "@mantine/core";
-import { getStylesRef, getSize, rem } from "@mantine/core";
+import { getSize, getStylesRef, rem } from "@mantine/core";
 
 const SIZES = {
   md: rem(20),

@@ -3,14 +3,14 @@ import {
   browseDatabase,
   collection,
   dashboard,
-  question,
+  extractCollectionId,
+  extractEntityId,
+  extractQueryParams,
+  isCollectionPath,
   model,
   modelDetail,
   modelEditor,
-  extractQueryParams,
-  extractEntityId,
-  extractCollectionId,
-  isCollectionPath,
+  question,
 } from "metabase/lib/urls";
 
 describe("urls", () => {

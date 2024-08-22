@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { Switch } from "metabase/ui";
 
 import {
-  getIncludeCurrentLabel,
   getIncludeCurrent,
+  getIncludeCurrentLabel,
   setIncludeCurrent,
 } from "../DateIntervalPicker/utils";
 import type { DateIntervalValue } from "../types";

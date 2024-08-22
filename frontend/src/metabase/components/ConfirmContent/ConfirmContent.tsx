@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,11 +11,13 @@ interface ConfirmContentProps {
   "data-testid"?: string;
   title: string;
   content?: string | null;
-  message?: string;
+  message?: string | ReactNode;
   onClose?: () => void;
   onAction?: () => void;
   onCancel?: () => void;
   confirmButtonText?: string;
+  confirmButtonPrimary?: boolean;
+  confirmButtonDanger?: boolean;
   cancelButtonText?: string;
 }
 
@@ -27,6 +30,8 @@ const ConfirmContent = ({
   onAction = _.noop,
   onCancel = _.noop,
   confirmButtonText = t`Yes`,
+  confirmButtonPrimary = false,
+  confirmButtonDanger = !confirmButtonPrimary,
   cancelButtonText = t`Cancel`,
 }: ConfirmContentProps) => (
   <ModalContent
@@ -43,16 +48,19 @@ const ConfirmContent = ({
     <p className={cx(CS.mb4, CS.textDark)}>{message}</p>
 
     <div className={CS.mlAuto}>
+      {cancelButtonText && (
+        <Button
+          onClick={() => {
+            onCancel();
+            onClose();
+          }}
+        >
+          {cancelButtonText}
+        </Button>
+      )}
       <Button
-        onClick={() => {
-          onCancel();
-          onClose();
-        }}
-      >
-        {cancelButtonText}
-      </Button>
-      <Button
-        danger
+        primary={confirmButtonPrimary}
+        danger={confirmButtonDanger}
         className={CS.ml2}
         onClick={() => {
           onAction();

@@ -15,7 +15,7 @@ interface UseCreateQuestionParams {
 
 export const useCreateQuestion = ({
   scheduleCallback,
-}: UseCreateQuestionParams) => {
+}: UseCreateQuestionParams = {}) => {
   const dispatch = useDispatch();
 
   return useCallback(

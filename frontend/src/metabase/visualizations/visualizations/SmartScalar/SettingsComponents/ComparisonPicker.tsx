@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
-import { rem, Menu, Stack, Text } from "metabase/ui";
+import { Menu, Stack, Text, rem } from "metabase/ui";
 import type {
   DatasetColumn,
   SmartScalarComparison,

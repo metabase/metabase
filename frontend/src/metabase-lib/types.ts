@@ -1,26 +1,26 @@
 import type {
   CardId,
-  DatasetColumn,
   DatabaseId,
+  DatasetColumn,
   FieldId,
   FieldValuesType,
   RowValue,
-  TableId,
   SchemaId,
+  TableId,
   TemporalUnit,
 } from "metabase-types/api";
 
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
-  DEFAULT_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
@@ -629,7 +629,7 @@ export type DatabaseItem = {
 
 export type SchemaItem = {
   type: "schema";
-  id: DatabaseId;
+  id: SchemaId;
 };
 
 export type TableItem = {

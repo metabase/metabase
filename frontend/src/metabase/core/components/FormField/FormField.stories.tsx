@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
 import type { ComponentProps } from "react";
-import { isValidElement, cloneElement } from "react";
+import { cloneElement, isValidElement } from "react";
 
 import Toggle from "../Toggle/Toggle";
 

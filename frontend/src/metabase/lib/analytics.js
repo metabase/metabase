@@ -7,8 +7,6 @@ import { getUserId } from "metabase/selectors/user";
 export const createTracker = store => {
   if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);
-
-    document.body.addEventListener("click", handleStructEventClick, true);
   }
 };
 
@@ -19,15 +17,6 @@ export const trackPageView = url => {
 
   if (Settings.snowplowEnabled()) {
     trackSnowplowPageView(getSanitizedUrl(url));
-  }
-};
-
-/**
- * @deprecated This uses GA which is not setup. We should use `trackSchemaEvent`.
- */
-export const trackStructEvent = (category, action, label, value) => {
-  if (!category || !label || !Settings.trackingEnabled()) {
-    return;
   }
 };
 
@@ -107,19 +96,6 @@ const trackSnowplowSchemaEvent = (schema, version, data) => {
       data,
     },
   });
-};
-
-const handleStructEventClick = event => {
-  if (!Settings.trackingEnabled()) {
-    return;
-  }
-
-  for (let node = event.target; node != null; node = node.parentNode) {
-    if (node.dataset && node.dataset.metabaseEvent) {
-      const parts = node.dataset.metabaseEvent.split(";").map(p => p.trim());
-      trackStructEvent(...parts);
-    }
-  }
 };
 
 const getSanitizedUrl = url => {

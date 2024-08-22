@@ -18,7 +18,7 @@
    [:params {:optional true} [:maybe [:sequential :any]]]])
 
 (defn- compile* [{query-type :type, :as query}]
-    (assert (not (:qp/compiled query)) "This query has already been compiled!")
+  (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (= query-type :native)
     (:native query)
     (driver/mbql->native driver/*driver* query)))

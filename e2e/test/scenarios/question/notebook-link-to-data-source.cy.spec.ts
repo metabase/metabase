@@ -2,28 +2,42 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
+  ALL_USERS_GROUP_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type NativeQuestionDetails,
   createNativeQuestion,
   createQuestion,
+  describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
   openNotebook,
+  openProductsTable,
   openReviewsTable,
   popover,
   restore,
+  setTokenFeatures,
   tableInteractive,
   visitModel,
   visitQuestion,
   visitQuestionAdhoc,
   visualize,
-  type NativeQuestionDetails,
 } from "e2e/support/helpers";
+import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/lib/browser";
 
-const { ORDERS, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID, PRODUCTS } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+  PEOPLE_ID,
+  PRODUCTS,
+} = SAMPLE_DATABASE;
 
 // https://docs.cypress.io/api/cypress-api/platform
 const macOSX = Cypress.platform === "darwin";
@@ -469,6 +483,66 @@ describe("scenarios > notebook > link to data source", () => {
 
         // TODO update the following once metabase##46398 is fixed
         // cy.visit(`/question/${nestedQuestion.id}/notebook`);
+      });
+    });
+
+    describeEE("sandboxing", () => {
+      beforeEach(() => {
+        setTokenFeatures("all");
+
+        cy.updatePermissionsGraph({
+          [ALL_USERS_GROUP_ID]: {
+            [SAMPLE_DB_ID]: {
+              "view-data": DataPermissionValue.BLOCKED,
+            },
+          },
+        });
+
+        // @ts-expect-error - Non-trivial types in `sandboxTable` that should be addressed separately
+        cy.sandboxTable({
+          table_id: ORDERS_ID,
+          attribute_remappings: {
+            attr_uid: [
+              "dimension",
+              ["field", ORDERS.USER_ID, { "base-type": "type/Integer" }],
+            ],
+          },
+        });
+
+        cy.signInAsSandboxedUser();
+      });
+
+      it("should work for sandboxed users when opening a table/question/model", () => {
+        visitModel(ORDERS_MODEL_ID);
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+        openNotebook();
+        getNotebookStep("data").findByText("Orders Model").click(clickConfig);
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
+      });
+
+      it("should work for sandboxed users when joined table is sandboxed", () => {
+        openProductsTable({ mode: "notebook" });
+        cy.findByTestId("action-buttons").button("Join data").click();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
+
+        getNotebookStep("join")
+          .findByLabelText("Right table")
+          .should("have.text", "Orders")
+          .click(clickConfig);
+
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 11 rows",
+        );
       });
     });
   });

@@ -24,27 +24,27 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createAdHocCard,
-  createSavedStructuredCard,
-  createAdHocNativeCard,
-  createSavedNativeCard,
-  createStructuredModelCard,
-  createNativeModelCard,
-  createComposedModelCard,
   ORDERS,
   ORDERS_ID,
-  PRODUCTS,
   PEOPLE,
-  SAMPLE_DB_ID,
+  PRODUCTS,
   REVIEWS,
   REVIEWS_ID,
+  SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
+  createComposedModelCard,
+  createNativeModelCard,
+  createSampleDatabase,
+  createSavedNativeCard,
+  createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 import type { QueryBuilderMode } from "metabase-types/store";
 import {
-  createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 import * as native from "../native";
@@ -52,7 +52,7 @@ import * as navigation from "../navigation";
 import * as querying from "../querying";
 import * as ui from "../ui";
 
-import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
+import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 

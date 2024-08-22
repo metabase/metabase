@@ -33,6 +33,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -929,7 +930,6 @@
     (is (= [[22 46] [23 47] [24 40] [25 60] [26 7]]
            (sad-toucan-incidents-with-bucketing! :week-of-year :utc)))))
 
-
 (defn- fmt-str-or-int
   [x]
   (if (string? x)
@@ -942,7 +942,8 @@
           :breakout    [:field $created_at {:temporal-unit unit}]
           :aggregation [[:count]]})
        mt/process-query
-       (mt/formatted-rows [fmt-str-or-int int])))
+       (mt/formatted-rows
+        [fmt-str-or-int int])))
 
 (deftest week-of-year-and-week-count-should-be-consistent-test
   (testing "consistent break out between weeks and week-of-year (#4910)"
@@ -1205,7 +1206,7 @@
                                                               (* i interval-seconds)
                                                               :second))
                           (u.date/add :second (* i interval-seconds)))
-                        (assert <>))])
+                 (assert <>))])
             (let [shift (quot intervalCount 2)
                   lower-bound (- shift)
                   upper-bound (- intervalCount shift)]
@@ -1316,10 +1317,11 @@
       (mt/dataset checkins:1-per-day
         (is (= 1
                (ffirst
-                (mt/formatted-rows [int]
-                  (mt/run-mbql-query checkins
-                    {:aggregation [[:count]]
-                     :filter      [:time-interval $timestamp :current :day]})))))))))
+                (mt/formatted-rows
+                 [int]
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:time-interval $timestamp :current :day]})))))))))
 
 (deftest ^:parallel time-interval-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
@@ -1327,10 +1329,11 @@
       (mt/dataset checkins:1-per-day
         (is (= 7
                (ffirst
-                (mt/formatted-rows [int]
-                  (mt/run-mbql-query checkins
-                    {:aggregation [[:count]]
-                     :filter      [:time-interval $timestamp :last :week]})))))))))
+                (mt/formatted-rows
+                 [int]
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:time-interval $timestamp :last :week]})))))))))
 
 (deftest ^:parallel time-interval-expression-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
@@ -1343,32 +1346,32 @@
                       (lib/expression "Date" timestamp-col)
                       (lib/filter (lib/time-interval timestamp-col :current :week))
                       (as-> $q (lib/filter $q (lib/time-interval
-                                                (m/find-first (comp #{"Date"} :name) (lib/visible-columns $q))
-                                                :current :week))))]
+                                               (m/find-first (comp #{"Date"} :name) (lib/visible-columns $q))
+                                               :current :week))))]
         (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel relative-time-interval-test
   (mt/test-drivers
-   (mt/normal-drivers-with-feature :date-arithmetics ::dynamic-dataset-loading)
+    (mt/normal-drivers-with-feature :date-arithmetics ::dynamic-dataset-loading)
    ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
-   (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
-     (mt/dataset checkins:1-per-day:60
-      (is (= 7
-             (ffirst
-              (mt/formatted-rows
-               [int]
-               (mt/run-mbql-query
-                checkins
-                {:aggregation [[:count]]
-                 :filter      [:relative-time-interval $timestamp -1 :week -1 :week]})))
-             (ffirst
-              (mt/formatted-rows
-               [int]
-               (mt/run-mbql-query
-                checkins
-                {:aggregation [[:count]]
-                 :filter      [:relative-time-interval $timestamp -1 :week 0 :week]})))))))))
+    (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
+      (mt/dataset checkins:1-per-day:60
+        (is (= 7
+               (ffirst
+                (mt/formatted-rows
+                 [int]
+                 (mt/run-mbql-query
+                   checkins
+                   {:aggregation [[:count]]
+                    :filter      [:relative-time-interval $timestamp -1 :week -1 :week]})))
+               (ffirst
+                (mt/formatted-rows
+                 [int]
+                 (mt/run-mbql-query
+                   checkins
+                   {:aggregation [[:count]]
+                    :filter      [:relative-time-interval $timestamp -1 :week 0 :week]})))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
@@ -1416,10 +1419,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query checkins
-                 {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query checkins
+                {:aggregation [[:count]]
+                 :filter      [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
 
 (deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
@@ -1427,22 +1431,24 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset office-checkins
       (is (= [[1]]
-             (mt/formatted-rows [int]
-               (mt/run-mbql-query checkins
-                 {:aggregation [[:count]]
-                  :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))))
+             (mt/formatted-rows
+              [int]
+              (mt/run-mbql-query checkins
+                {:aggregation [[:count]]
+                 :filter      [:= [:field $timestamp nil] "2019-01-16"]})))))))
 
 (deftest ^:parallel default-bucketing-test-3
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset office-checkins
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
         (is (= [[1]]
-               (mt/formatted-rows [int]
-                 (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:and
-                                  [:= [:field $timestamp nil] "2019-01-16"]
-                                  [:= [:field $id nil] 6]]}))))))))
+               (mt/formatted-rows
+                [int]
+                (mt/run-mbql-query checkins
+                  {:aggregation [[:count]]
+                   :filter      [:and
+                                 [:= [:field $timestamp nil] "2019-01-16"]
+                                 [:= [:field $id nil] 6]]}))))))))
 
 (defmethod driver/database-supports? [::driver/driver ::empty-results-wrong-because-of-issue-5419]
   [_driver _feature _database]
@@ -1482,10 +1488,11 @@
 
 (defn- count-of-checkins [unit filter-value]
   (ffirst
-   (mt/formatted-rows [int]
-     (mt/run-mbql-query checkins
-       {:aggregation [[:count]]
-        :filter      [:= [:field %date {:temporal-unit unit}] filter-value]}))))
+   (mt/formatted-rows
+    [int]
+    (mt/run-mbql-query checkins
+      {:aggregation [[:count]]
+       :filter      [:= [:field %date {:temporal-unit unit}] filter-value]}))))
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
@@ -1547,59 +1554,59 @@
 (deftest ^:parallel native-query-datetime-filter-test
   (testing "Field Filters with datetime values should behave like gui questions (#33492)"
     (are [native-type native-value mbql-filter expected-row-count]
-        (let [mbql-rows (-> (mt/mbql-query orders {:fields [$created_at]
-                                                   :filter mbql-filter
-                                                   :order-by [[:asc $created_at]]})
-                            qp/process-query
-                            mt/rows)
-              native-rows (-> (mt/native-query {:query (str "SELECT created_at "
-                                                            "FROM orders "
-                                                            "WHERE {{date}} "
-                                                            "ORDER BY created_at")
-                                                :template-tags {"date"
-                                                                {:name "date"
-                                                                 :display-name "Date"
-                                                                 :type :dimension
-                                                                 :widget-type native-type
-                                                                 :dimension (mt/$ids !minute.orders.created_at)}}
-                                                :parameters [{:type native-type
-                                                              :name "date"
-                                                              :target [:dimension [:template-tag "date"]]
-                                                              :value native-value}]})
-                              qp/process-query
-                              mt/rows)]
-          (is (= expected-row-count (count native-rows)))
-          (is (= mbql-rows native-rows)))
+         (let [mbql-rows (-> (mt/mbql-query orders {:fields [$created_at]
+                                                    :filter mbql-filter
+                                                    :order-by [[:asc $created_at]]})
+                             qp/process-query
+                             mt/rows)
+               native-rows (-> (mt/native-query {:query (str "SELECT created_at "
+                                                             "FROM orders "
+                                                             "WHERE {{date}} "
+                                                             "ORDER BY created_at")
+                                                 :template-tags {"date"
+                                                                 {:name "date"
+                                                                  :display-name "Date"
+                                                                  :type :dimension
+                                                                  :widget-type native-type
+                                                                  :dimension (mt/$ids !minute.orders.created_at)}}
+                                                 :parameters [{:type native-type
+                                                               :name "date"
+                                                               :target [:dimension [:template-tag "date"]]
+                                                               :value native-value}]})
+                               qp/process-query
+                               mt/rows)]
+           (is (= expected-row-count (count native-rows)))
+           (is (= mbql-rows native-rows)))
 
-        :date/range
-        "2020-03-04~2020-03-04"
-        [:between !day.created_at "2020-03-04" "2020-03-04"]
-        13
+      :date/range
+      "2020-03-04~2020-03-04"
+      [:between !day.created_at "2020-03-04" "2020-03-04"]
+      13
 
-        :date/range
-        "2020-03-04T07:19:00~2020-03-04T07:20:00"
-        [:between !minute.created_at "2020-03-04T07:19:00" "2020-03-04T07:20:00"]
-        2
+      :date/range
+      "2020-03-04T07:19:00~2020-03-04T07:20:00"
+      [:between !minute.created_at "2020-03-04T07:19:00" "2020-03-04T07:20:00"]
+      2
 
-        :date/all-options
-        "2020-03-04~2020-03-04"
-        [:between !day.created_at "2020-03-04" "2020-03-04"]
-        13
+      :date/all-options
+      "2020-03-04~2020-03-04"
+      [:between !day.created_at "2020-03-04" "2020-03-04"]
+      13
 
-        :date/all-options
-        "2020-03-04T07:19:00~2020-03-04T07:20:00"
-        [:between !minute.created_at "2020-03-04T07:19:00" "2020-03-04T07:20:00"]
-        2
+      :date/all-options
+      "2020-03-04T07:19:00~2020-03-04T07:20:00"
+      [:between !minute.created_at "2020-03-04T07:19:00" "2020-03-04T07:20:00"]
+      2
 
-        :date/single
-        "2020-03-04"
-        [:= !day.created_at "2020-03-04"]
-        13
+      :date/single
+      "2020-03-04"
+      [:= !day.created_at "2020-03-04"]
+      13
 
-        :date/single
-        "2020-03-04T07:20:00"
-        [:= !minute.created_at "2020-03-04T07:20"]
-        2)))
+      :date/single
+      "2020-03-04T07:20:00"
+      [:= !minute.created_at "2020-03-04T07:20"]
+      2)))
 
 (deftest field-filter-start-of-week-test
   (testing "Field Filters with relative date ranges should respect the custom start of week setting (#14294)"
@@ -1629,7 +1636,7 @@
           (mt/with-temporary-setting-values [start-of-week first-day-of-week]
             (is (= expected
                    (mt/first-row
-                     (qp/process-query query))))))))))
+                    (qp/process-query query))))))))))
 
 (deftest temporal-unit-parameters-test
   (mt/dataset test-data
@@ -1645,7 +1652,8 @@
                                         :value  "month"}]})
           unit-totals (fn [unit]
                         (->> (qp/process-query (assoc-in query-months [:parameters 0 :value] unit))
-                             (mt/formatted-rows [identity 2.0])
+                             (mt/formatted-rows
+                              [identity 2.0])
                              (map second)))]
       (testing "monthly"
         (is (= [37019.52 32923.82 36592.60 35548.11 43556.61 39537.82
@@ -1659,6 +1667,20 @@
       (testing "annual"
         (is (= [488444.41] (unit-totals "year")))))))
 
+(deftest ^:parallel incompatible-temporal-unit-parameter-test
+  (testing "Incompatible time unit parameter yields expected error"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"This chart can not be broken out by the selected unit of time: minute\."
+         (qp.preprocess/preprocess
+          (mt/mbql-query
+            checkins
+            {:type       :query
+             :query      {:aggregation  [[:count]]
+                          :breakout     [!day.date]}
+             :parameters [{:type   :temporal-unit
+                           :target [:dimension !day.date]
+                           :value  "minute"}]}))))))
+
 (deftest day-of-week-custom-start-of-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
@@ -1671,11 +1693,12 @@
                     first
                     [[thursday-day-of-week 2]
                      [saturday-day-of-week 1]])
-                   (mt/formatted-rows [int int]
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :breakout    [!day-of-week.date]
-                        :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
+                   (mt/formatted-rows
+                    [int int]
+                    (mt/run-mbql-query checkins
+                      {:aggregation [[:count]]
+                       :breakout    [!day-of-week.date]
+                       :filter      [:between $date "2013-01-03" "2013-01-20"]}))))))))))
 
 (deftest first-day-of-week-for-day-of-week-bucketing-test
   (testing "First day of week for `:day-of-week` bucketing should be the consistent (#17801)"
@@ -1693,7 +1716,8 @@
           (mt/with-temporary-setting-values [start-of-week first-day-of-week]
             (mt/with-native-query-testing-context query
               (is (= expected-rows
-                     (mt/formatted-rows [int int] (qp/process-query query)))))))))))
+                     (mt/formatted-rows
+                      [int int] (qp/process-query query)))))))))))
 
 (deftest filter-by-current-quarter-test
   (mt/test-drivers (mt/normal-drivers)
@@ -1705,7 +1729,8 @@
           (is (= (if (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db))
                    []
                    [[0]])
-                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  [int] (qp/process-query query)))))))))
 
 (deftest filter-by-expression-time-interval-test
   (testing "Datetime expressions can filter to a date range (#33528)"
@@ -1732,26 +1757,26 @@
 (deftest filter-by-expression-relative-time-interval-test
   (testing "Datetime expressions can filter to a date range"
     (mt/test-drivers
-     (mt/normal-drivers-with-feature :date-arithmetics ::dynamic-dataset-loading)
-     (mt/dataset checkins:1-per-day:60
-      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-            query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
-                    (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
-                                                                  (lib/visible-columns $q)))
-                    (lib/filter $q (lib/relative-time-interval
-                                    (lib/expression-ref $q "customdate") -1 :week -1 :week)))
-            mbql-query (mt/mbql-query
-                        checkins
-                        {:expressions {"customdate" $timestamp}
-                         :filter [:relative-time-interval
-                                  [:expression "customdate" {:base-type :type/DateTime}] -1 :week -1 :week]})
-            processed  (qp/process-query query)
-            mbql-processed (qp/process-query mbql-query)]
-        (is (= 7 (count (mt/rows processed))))
-        (is (= 7 (count (mt/rows mbql-processed))))
-        (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
-               (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
-               (get-in (qp/process-query query) [:data :native_form]))))))))
+      (mt/normal-drivers-with-feature :date-arithmetics ::dynamic-dataset-loading)
+      (mt/dataset checkins:1-per-day:60
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+              query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
+                      (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
+                                                                    (lib/visible-columns $q)))
+                      (lib/filter $q (lib/relative-time-interval
+                                      (lib/expression-ref $q "customdate") -1 :week -1 :week)))
+              mbql-query (mt/mbql-query
+                           checkins
+                           {:expressions {"customdate" $timestamp}
+                            :filter [:relative-time-interval
+                                     [:expression "customdate" {:base-type :type/DateTime}] -1 :week -1 :week]})
+              processed  (qp/process-query query)
+              mbql-processed (qp/process-query mbql-query)]
+          (is (= 7 (count (mt/rows processed))))
+          (is (= 7 (count (mt/rows mbql-processed))))
+          (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
+                 (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+                 (get-in (qp/process-query query) [:data :native_form]))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
 (deftest june-31st-test

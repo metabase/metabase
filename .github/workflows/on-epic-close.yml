@@ -1,0 +1,48 @@
+name: A New Feature Slack Notification
+
+on:
+  issues:
+    types:
+      - closed
+
+jobs:
+  on-epic-closed:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    if: ${{ contains(github.event.issue.labels.*.name, '.Epic') || contains(github.event.issue.labels.*.name, 'Type:New Feature') }}
+    steps:
+      - name: Setting title
+        uses: actions/github-script@v6
+        id: vars
+        with:
+          script: |
+            core.setOutput('issue_title', ${{ toJson(github.event.issue.title) }}.replaceAll(/"/g, '\\"'));
+      - name: Extracting team name
+        id: team_name
+        run: |
+          team_label=$(echo "${{ join(github.event.issue.labels.*.name, ',') }}" | grep -o '\.Team/[^,]*' | head -n 1)
+          echo $team_label
+          echo "team_label=${team_label}" >> "$GITHUB_OUTPUT"
+          team_name=${team_label#*.Team/}
+          echo $team_name
+          echo "team_name=${team_name^^}_SLACK_EPIC_WEBHOOK_URL" >> "$GITHUB_OUTPUT"
+      - name: Send the issue ${{ github.event.issue.number }} to Slack
+        id: slack
+        if: ${{ steps.team_name.outputs.team_label }}
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.vars.outputs.issue_title }}\n${{ github.event.issue.html_url }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets[steps.team_name.outputs.team_name] }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

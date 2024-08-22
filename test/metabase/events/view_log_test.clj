@@ -265,7 +265,7 @@
 (deftest get-embedded-card-embedding-logs-view-test
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card {:enable_embedding true}]
           (testing "GET /api/embed/card/:token"
             (client/client :get 200 (embed-test/card-url card))
@@ -275,7 +275,7 @@
 (deftest embedded-dashboard-card-query-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a public dashboard logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}
                        :model/Card          card     {}
                        :model/DashboardCard dashcard {:dashboard_id (:id dash)
@@ -288,7 +288,7 @@
 (deftest get-embedded-dashboard-logs-view-test
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
           (testing "GET /api/embed/dashboard/:token"
             (client/client :get 200 (embed-test/dashboard-url dash))

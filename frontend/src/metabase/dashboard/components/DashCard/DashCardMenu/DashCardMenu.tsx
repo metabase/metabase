@@ -24,8 +24,8 @@ import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
-  DashboardId,
   DashCardId,
+  DashboardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";

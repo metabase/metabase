@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -8,10 +8,10 @@ import type { Parameter, ParameterId } from "metabase-types/api";
 
 import {
   FilterButton,
-  ParametersListHeader,
-  StyledParametersList,
-  ResponsiveParametersListRoot,
   ParametersListContainer,
+  ParametersListHeader,
+  ResponsiveParametersListRoot,
+  StyledParametersList,
 } from "./ResponsiveParametersList.styled";
 
 interface ResponsiveParametersListProps {

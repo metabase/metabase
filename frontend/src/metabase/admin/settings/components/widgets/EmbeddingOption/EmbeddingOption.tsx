@@ -14,7 +14,7 @@ import {
 import type { ButtonProps } from "metabase/ui";
 import { Button, Flex, Text, Title } from "metabase/ui";
 
-import { Label, StyledCard, BoldExternalLink } from "./EmbeddingOption.styled";
+import { BoldExternalLink, Label, StyledCard } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
 import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
 import StaticEmbeddingOff from "./StaticEmbeddingOff.svg?component";

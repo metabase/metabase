@@ -7,7 +7,7 @@ import { getEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import Modal from "metabase/components/Modal";
 import ModalContent from "metabase/components/ModalContent";
 import { isNotNull } from "metabase/lib/types";
-import { Button, Anchor, Text } from "metabase/ui";
+import { Anchor, Button, Text } from "metabase/ui";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {

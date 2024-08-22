@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
-import { StyledTable } from "metabase/common/components/Table";
+import { ClientSortableTable } from "metabase/common/components/Table";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -12,10 +12,10 @@ import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, Text, Button, Icon, Checkbox } from "metabase/ui";
+import { Box, Button, Checkbox, Flex, Icon, Text } from "metabase/ui";
 import {
-  useListUploadTablesQuery,
   useDeleteUploadTableMutation,
+  useListUploadTablesQuery,
 } from "metabase-enterprise/api";
 import type { Table } from "metabase-types/api";
 
@@ -39,7 +39,7 @@ export function UploadManagementTable() {
   // TODO: once we have uploads running through RTK Query, we can remove the force update
   // because we can properly invalidate the tables tag
   const {
-    data: uploadTables,
+    data: uploadTables = [],
     error,
     isLoading,
   } = useListUploadTablesQuery(undefined, {
@@ -149,7 +149,7 @@ export function UploadManagementTable() {
       <Text fw="bold" color="text-medium">
         {t`Uploaded Tables`}
       </Text>
-      <StyledTable
+      <ClientSortableTable
         data-testid="upload-tables-table"
         columns={columns}
         rows={uploadTables}

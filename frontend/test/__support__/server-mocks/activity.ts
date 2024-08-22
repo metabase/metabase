@@ -2,10 +2,10 @@ import fetchMock from "fetch-mock";
 import querystring from "querystring";
 
 import type {
-  PopularItem,
-  RecentItem,
   Dashboard,
+  PopularItem,
   RecentContexts,
+  RecentItem,
 } from "metabase-types/api";
 
 export function setupRecentViewsEndpoints(recentItems: RecentItem[]) {

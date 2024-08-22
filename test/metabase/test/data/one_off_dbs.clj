@@ -42,7 +42,6 @@
   [& body]
   `(do-with-blank-db (fn [] ~@body)))
 
-
 ;;; ------------------------------------------------- Blueberries DB -------------------------------------------------
 
 (defn do-with-blueberries-db
@@ -58,7 +57,6 @@
   [& body]
   `(do-with-blueberries-db (fn [] ~@body)))
 
-
 ;;; ------------------------------------ Helper Fns for Populating Blueberries DB ------------------------------------
 
 (defn range-str
@@ -66,8 +64,8 @@
   We also sort the list because select distinct will also do sort automatically."
   [& args]
   (->> (apply range args)
-      (map str)
-      sort))
+       (map str)
+       sort))
 
 (defn- insert-sql
   "Generate SQL to insert a row for each value in `values`."
