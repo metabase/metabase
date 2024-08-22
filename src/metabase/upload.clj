@@ -254,6 +254,9 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
+(defn- assert-separator-chosen [s]
+  (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
+
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
   Our heuristic is to use the separator that gives us the most number of columns.
@@ -266,10 +269,12 @@
                                      (comp (take max-inferred-lines)
                                            (map count))
                                      (csv/read-csv reader :separator s))
-                               (catch Exception _e nil))))]
+                               (catch Exception _e :invalid))))]
     (->> (map (juxt identity count-columns) separators)
+         (remove (comp #{:invalid} second))
          (sort-by (comp separator-priority second) u/reverse-compare)
-         ffirst)))
+         ffirst
+         assert-separator-chosen)))
 
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
