@@ -225,17 +225,34 @@ describe("scenarios > dashboard > filters > query stages", () => {
           type: "model",
           name: "M2 - Model-based Model",
         });
+
+        createQ2("q3qb", this.q1, {
+          type: "question",
+          name: "Q3 - Question-based Question",
+        });
+        createQ3("q3mb", this.m1, {
+          type: "question",
+          name: "Q3 - Model-based Question",
+        });
+        createQ3("m3qb", this.q1, {
+          type: "model",
+          name: "M3 - Question-based Model",
+        });
+        createQ3("m3mb", this.m1, {
+          type: "model",
+          name: "M3 - Model-based Model",
+        });
       });
 
       cy.then(function () {
         createTestDashboard({
           questions: {
-            questionBased: [this.q2qb],
-            modelBased: [this.q2mb],
+            questionBased: [this.q2qb, this.q3qb],
+            modelBased: [this.q2mb, this.q3mb],
           },
           models: {
-            questionBased: [this.m2qb],
-            modelBased: [this.m2mb],
+            questionBased: [this.m2qb, this.m3qb],
+            modelBased: [this.m2mb, this.m3mb],
           },
         }).then(dashboard => visitDashboard(dashboard.id));
       });
@@ -402,6 +419,7 @@ function createQ2(
   questionDetails?: Partial<StructuredQuestionDetails>,
 ) {
   return createQuestion({
+    description: "join, custom column, no aggregations, no breakouts",
     query: {
       "source-table": `card__${source.id}`,
       expressions: {
@@ -427,6 +445,44 @@ function createQ2(
           "source-table": REVIEWS_ID,
         },
       ],
+    },
+    ...questionDetails,
+  }).then(response => cy.wrap(response.body).as(alias));
+}
+
+function createQ3(
+  alias: string,
+  source: Card,
+  questionDetails?: Partial<StructuredQuestionDetails>,
+) {
+  return createQuestion({
+    description: "join, custom column, aggregations, no breakouts",
+    query: {
+      "source-table": `card__${source.id}`,
+      expressions: {
+        Net: ["-", TOTAL_FIELD, TAX_FIELD],
+      },
+      joins: [
+        {
+          fields: "all",
+          strategy: "left-join",
+          alias: "Reviews - Product",
+          condition: [
+            "=",
+            PRODUCT_ID_FIELD,
+            [
+              "field",
+              "PRODUCT_ID",
+              {
+                "base-type": "type/Integer",
+                "join-alias": "Reviews - Product",
+              },
+            ],
+          ],
+          "source-table": REVIEWS_ID,
+        },
+      ],
+      aggregation: [["count"], ["sum", TOTAL_FIELD]],
     },
     ...questionDetails,
   }).then(response => cy.wrap(response.body).as(alias));
