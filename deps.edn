@@ -538,10 +538,29 @@
    ;; different port from `:test` so you can run it at the same time as `:test`.
    :jvm-opts ["-Dmb.jetty.port=3002"]}
 
-  ;; clj -T:cljfmt fix '{:paths ["src/metabase/events/view_log.clj"]}'
+  ;; to fix indentation in source files:
+  ;;
+  ;;     clj -T:cljfmt fix
+  ;;
+  ;; to fix errors in specific source files:
+  ;;
+  ;;     clj -T:cljfmt fix '{:paths ["src/metabase/query_processor/card.clj"]}'
+  ;;
+  ;; to check for errors without fixing them:
+  ;;
+  ;;    clj -T:cljfmt check
   :cljfmt
-  {:deps       {io.github.weavejester/cljfmt {:git/tag "0.11.2", :git/sha "fb26b22f569724b05c93eb2502592dfc2de898c3"}}
-   :ns-default cljfmt.tool}
+  {:deps       {#_io.github.weavejester/cljfmt
+                #_{:git/tag "0.12.0", :git/sha "434408f6909924f524c8027b37422d32bb49622d"}
+                ;; using my fork of cljfmt until these PRs are merged upstream:
+                ;; - https://github.com/weavejester/cljfmt/pull/346
+                ;; - https://github.com/weavejester/cljfmt/pull/347
+                ;; - https://github.com/weavejester/cljfmt/pull/348
+                ;; - https://github.com/weavejester/cljfmt/pull/350
+                io.github.camsaul/cljfmt
+                {:git/sha "77ede1e49c8718c9e1c9ac35cb6f34d0b02a65f3"}}
+   :ns-default cljfmt.tool
+   :exec-fn    cljfmt.tool/fix}
 
 ;;; building Uberjar, build and release scripts
 
