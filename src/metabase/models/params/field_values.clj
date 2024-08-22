@@ -48,8 +48,9 @@
     (let [field-ids (->> (t2/select :model/Field :id [:in (set field-ids)])
                          field/readable-fields-only
                          (map :id))]
-      (update-vals (field-values/batched-get-latest-full-field-values field-ids)
-                   #(select-keys % [:field_id :human_readable_values :values])))))
+      (when (seq field-ids)
+        (update-vals (field-values/batched-get-latest-full-field-values field-ids)
+                     #(select-keys % [:field_id :human_readable_values :values]))))))
 
 (defenterprise field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
