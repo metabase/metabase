@@ -1,10 +1,12 @@
+#! /usr/bin/env bash
+
 # Reformat files that have changed since the last commit. See also `cljfmt_staged.sh` which is meant to be used as a
-# commit hook
+# commit hook, or `kondo-updated.sh` for doing the same thing
 #
 # By default, reformats uncommitted changes i.e. files that are different compared to HEAD. You can choose a different
 # target to diff against e.g. `master` as follows:
 #
-#    ./bin/cljfmt.sh master
+#    ./bin/cljfmt-updated.sh master
 
 set -euo pipefail
 
