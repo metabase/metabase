@@ -29,7 +29,7 @@ runs:
     - name: Setup bun
       uses: oven-sh/setup-bun@v2
 
-    - run: bun install
+    - run: bun pm cache rm && bun install
       shell: bash
 
     # - name: Get node_modules cache
