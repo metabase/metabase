@@ -18,7 +18,7 @@ List of cards that have an invalid reference in their query. Shape of each card 
      :data   [card1, card2, ...]
      :limit  50
      :offset 100
-  ```.
+  ```
 
 ### PARAMS:
 

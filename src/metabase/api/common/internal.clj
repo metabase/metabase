@@ -28,7 +28,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn handle-nonstandard-namespaces
-   "HACK to make sure some enterprise endpoints are consistent with the code.
+  "HACK to make sure some enterprise endpoints are consistent with the code.
    The right way to fix this is to move them -- see #22687"
   [name]
   (let [replacements
@@ -116,18 +116,18 @@
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
   `param-symb->schema` map passed in after the argslist."
   [param-symb->schema route-str]
-  ;; these are here
-  (when (seq param-symb->schema)
-    (str "\n\n### PARAMS:\n\n"
-         (str/join "\n\n"
-                   (for [[param-symb schema] param-symb->schema]
-                     (let [p-name (param-name param-symb schema)
+  (let [params (for [[param-symb schema] param-symb->schema
+                     :let [p-name (param-name param-symb schema)
                            p-desc (dox-for-schema schema route-str)]
-                       (format "-  **`%s`** %s"
-                               p-name
-                               (if (str/blank? p-desc) ; some params lack descriptions
-                                 p-desc
-                                 (u/add-period p-desc)))))))))
+                     :when (not (or
+                                 (str/blank? p-name)
+                                 (= "_" p-name)))]
+                 (format "-  **`%s`** %s"
+                         p-name
+                         (u/add-period p-desc)))]
+    (when (seq params)
+      (str "\n\n### PARAMS:\n\n"
+           (str/join "\n\n" params)))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."

@@ -20,29 +20,17 @@ Get the latest cloud migration, if any.
 
 You must be a superuser to do this.
 
-### PARAMS:
-
--  **`_`**
-
 ## `POST /api/cloud-migration/`
 
 Initiate a new cloud migration.
 
 You must be a superuser to do this.
 
-### PARAMS:
-
--  **`_`**
-
 ## `PUT /api/cloud-migration/cancel`
 
 Cancel any ongoing cloud migrations, if any.
 
 You must be a superuser to do this.
-
-### PARAMS:
-
--  **`_`**
 
 ---
 
