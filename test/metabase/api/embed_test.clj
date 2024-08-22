@@ -1776,9 +1776,8 @@
      ;; eid models:
      :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :http}
      :model/Collection         {collection_id           :id collection_eid           :entity_id} {}
+     ;; filling entity id for User doesn't work: do it manually below.
      :model/User               {core_user_id            :id #_#_core_user_eid            :entity_id} {}
-     ;; filling entity id here doesn't work: do it manually below.
-
      :model/Dimension          {dimension_id            :id dimension_eid            :entity_id} {:field_id field-id}
      :model/NativeQuerySnippet {native_query_snippet_id :id native_query_snippet_eid :entity_id} {:creator_id core_user_id}
      :model/PermissionsGroup   {permissions_group_id    :id permissions_group_eid    :entity_id} {}
