@@ -31,3 +31,8 @@ export function browseTable(table: Table) {
   const databaseId = table.db?.id || table.db_id;
   return `/browse/databases/${databaseId}/schema/${table.schema_name}`;
 }
+
+export function browseSemanticLayer(database: DatabaseV1 | Database) {
+  const name = database.name
+  return appendSlug(`/browse/semantic-layer/${database.id}`, slugg(name));
+}

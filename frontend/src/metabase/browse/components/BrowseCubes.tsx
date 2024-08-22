@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { useEffect, useState } from "react";
 
 import NoResults from "assets/img/no_results.svg";
-import { useGetCubeDataQuery, useUpdateCubeDataMutation } from "metabase/api";
+import { useGetCubeDataQuery, useUpdateCubeDataMutation, useSyncDatabaseSchemaMutation } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Button, Box } from "metabase/ui";
 
@@ -24,6 +24,8 @@ import { CubePreviewTable } from "metabase/components/Cube/CubePreviewTable";
 export const BrowseCubes = () => {
   const { data: cubeData, isLoading, error } = useGetCubeDataQuery();
   const [updateCubeData] = useUpdateCubeDataMutation();
+  const [ syncSChema ] = useSyncDatabaseSchemaMutation();
+  const [dbId, setDbId] = useState<number | null>(null)
   const [isCubeFlowOpen, setIsCubeFlowOpen] = useState<boolean>(false);
   const [selectedCube, setSelectedCube] = useState<CubeDataItem | null>(null);
   const [isSql, setIsSql] = useState<boolean>(false)
@@ -54,10 +56,29 @@ export const BrowseCubes = () => {
       setSelectedCube(matchedCube);
       const extractDetails = extractCubeName(matchedCube.content as string)
       setTitle(extractDetails)
+      const dbId = setDbFromUrl();
+      if(dbId !== undefined) {
+        setDbId(dbId)
+      }
     } else {
       console.warn(`No cube found matching the name: ${cubeName}`);
       setSelectedCube(null);
     }
+  };
+
+  const setDbFromUrl = () => {
+    const pathSegments = window.location.pathname.split('/');
+    const cubesIndex = pathSegments.indexOf('cubes');
+    if (cubesIndex === -1 || cubesIndex === 0) return;
+    
+    const slug = pathSegments[cubesIndex - 1];
+  
+    if (!slug) return;
+      const indexOfDash = slug.indexOf('-');
+      if (indexOfDash === -1) {
+          return 0; 
+      }
+    return Number(slug.substring(0, indexOfDash))
   };
 
   const updateCube = async (updatedCubes: any) => {
@@ -87,8 +108,16 @@ export const BrowseCubes = () => {
         payload
       })
 
+      await syncDbSchema()
+
     } catch (error) {
       throw error;
+    }
+  }
+
+  const syncDbSchema = async() => {
+    if(dbId !== null) {
+      await syncSChema(dbId)
     }
   }
 

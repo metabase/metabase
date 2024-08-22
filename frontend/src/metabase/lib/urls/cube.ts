@@ -16,11 +16,16 @@ const removeJsExtension = (filename:string) => {
 
 export function browseCube(cube: CubeDataItem) {
   const name = removeJsExtension(cube.fileName)
+  const currentUrl = window.location.pathname;
+  const slugMatch = currentUrl.match(/\/browse\/semantic-layer\/([^/]+)/);
+  const slug = slugMatch ? slugMatch[1] : '';
 
-
-  return appendSlug(`/browse/semantic-layer/${name}`);
+  return appendSlug(`/browse/semantic-layer/${slug}/cubes/${name}`);
 }
 
 export function browseCubeFlow() {
-return appendSlug('/browse/data-map');
+  const currentUrl = window.location.pathname;
+  const slugMatch = currentUrl.match(/\/browse\/semantic-layer\/([^/]+)/);
+  const slug = slugMatch ? slugMatch[1] : '';
+  return appendSlug(`/browse/semantic-layer/${slug}/data-map`);
 }

@@ -12,6 +12,8 @@ export interface AppBarProps {
   currentUser: User;
   collectionId?: CollectionId;
   cubeName?: string;
+  semanticName?: string;
+  semanticSlug?: string;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;

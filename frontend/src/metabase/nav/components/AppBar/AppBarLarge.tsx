@@ -23,6 +23,8 @@ import { SemanticCrumbs } from "metabase/components/SemanticCrumbs";
 export interface AppBarLargeProps {
   collectionId?: CollectionId;
   cubeName?: string;
+  semanticName?: string;
+  semanticSlug?: string;
   isNavBarOpen?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
@@ -41,6 +43,8 @@ export interface AppBarLargeProps {
 const AppBarLarge = ({
   collectionId,
   cubeName,
+  semanticName,
+  semanticSlug,
   isNavBarOpen,
   isNavBarEnabled,
   isLogoVisible,
@@ -80,7 +84,8 @@ const AppBarLarge = ({
             <SemanticCrumbs 
                   crumbs={[
                     { title: t`Semantic Layer`, to: "/browse/semantic-layer" },
-                    { title: `${cubeName}` },
+                    ...(semanticName ? [{ title: t`${semanticName}`, to: `/browse/semantic-layer/${semanticSlug}` }] : []),
+                    ...(cubeName ? [{ title: cubeName }] : []),
                   ]}
                 />
           ) : isDataMapVisible ? (

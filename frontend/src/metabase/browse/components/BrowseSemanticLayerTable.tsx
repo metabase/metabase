@@ -18,7 +18,7 @@ import { SemanticTable } from "./SemanticTable";
 import { MaybeItemLinkDataMap } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 
 
-export const BrowseSemanticLayer = () => {
+export const BrowseSemanticLayerTable = () => {
   const { data: cubeData, isLoading, error } = useGetCubeDataQuery();
   const [selectedCube, setSelectedCube] = useState(null);
 
