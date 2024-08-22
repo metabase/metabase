@@ -87,7 +87,7 @@ const renderRow = (row: Pokemon) => {
   );
 };
 
-describe("common > components > Table", () => {
+describe("common > components > ClientSortableTable", () => {
   it("should render table headings", () => {
     render(
       <ClientSortableTable
@@ -134,11 +134,11 @@ describe("common > components > Table", () => {
     firstRowShouldHaveText("Charmander");
 
     await userEvent.click(sortButton);
-    expect(getIcon("chevrondown")).toBeInTheDocument();
+    expect(getIcon("chevronup")).toBeInTheDocument();
     firstRowShouldHaveText("Bulbasaur");
 
     await userEvent.click(sortButton);
-    expect(getIcon("chevronup")).toBeInTheDocument();
+    expect(getIcon("chevrondown")).toBeInTheDocument();
     firstRowShouldHaveText("Squirtle");
   });
 
@@ -198,15 +198,15 @@ describe("common > components > Table", () => {
     firstRowShouldHaveText("Charmander");
 
     await userEvent.click(sortNameButton);
-    expect(getIcon("chevrondown")).toBeInTheDocument();
+    expect(getIcon("chevronup")).toBeInTheDocument();
     firstRowShouldHaveText("Bulbasaur");
 
     await userEvent.click(sortGenButton);
-    expect(getIcon("chevrondown")).toBeInTheDocument();
+    expect(getIcon("chevronup")).toBeInTheDocument();
     firstRowShouldHaveText("1");
 
     await userEvent.click(sortGenButton);
-    expect(getIcon("chevronup")).toBeInTheDocument();
+    expect(getIcon("chevrondown")).toBeInTheDocument();
     firstRowShouldHaveText("8");
   });
 
@@ -259,7 +259,7 @@ describe("common > components > Table", () => {
   });
 });
 
-describe("common > components > ControlledTable", () => {
+describe("common > components > Table", () => {
   it("should call the onSort handler with values when a row is clicked", async () => {
     const onSort = jest.fn();
 
@@ -277,7 +277,7 @@ describe("common > components > ControlledTable", () => {
 
     await userEvent.click(screen.getByText("Type"));
 
-    expect(onSort).toHaveBeenCalledWith({ name: "type", direction: "asc" });
+    expect(onSort).toHaveBeenCalledWith("type", "asc");
   });
 
   it("if pageination props are passed, it should render the pagination controller.", async () => {

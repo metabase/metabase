@@ -14,10 +14,13 @@ export type ClientSortableTableProps<T extends BaseRow> = TableProps<T> & {
 /**
  * A basic reusable table component that supports client-side sorting by a column
  *
- * @param columns     - an array of objects with name and key properties
- * @param rows        - an array of objects with keys that match the column keys
- * @param rowRenderer - a function that takes a row object and returns a <tr> element
- * @param tableProps  - additional props to pass to the <table> element
+ * @param props.columns               - an array of objects with name and key properties
+ * @param props.rows                  - an array of objects with keys that match the column keys
+ * @param props.rowRenderer           - a function that takes a row object and returns a <tr> element
+ * @param props.formatValueForSorting - a function that is passed the row and column and returns a value to be used for sorting. Defaults to row[column]
+ * @param props.locale                - a locale used for string comparisons
+ * @param props.emptyBody             - content to be displayed when the row count is 0
+ * @param props.cols                  - a ReactNode that is inserted in the table element before <thead>. Useful for defining <colgroups> and <cols>
  */
 export function ClientSortableTable<Row extends BaseRow>({
   columns,
@@ -57,13 +60,12 @@ export function ClientSortableTable<Row extends BaseRow>({
       rows={sortedRows}
       columns={columns}
       rowRenderer={rowRenderer}
-      onSort={({ name, direction }) => {
+      onSort={(name, direction) => {
         setSortColumn(name);
         setSortDirection(direction);
       }}
-      sortColumn={
-        sortColumn ? { name: sortColumn, direction: sortDirection } : undefined
-      }
+      sortColumnName={sortColumn}
+      sortDirection={sortDirection}
       {...rest}
     />
   );
