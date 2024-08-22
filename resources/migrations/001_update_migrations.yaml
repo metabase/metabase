@@ -8120,9 +8120,6 @@ databaseChangeLog:
                   constraints:
                     nullable: true
                   defaultValue: null
-                  name: dataset_query_metrics_v2_migration_backup
-                  remarks: The copy of dataset_query before the metrics v2 migration
-                  type: ${text.type}
 
   - changeSet:
       id: v50.2024-06-28T12:35:50
