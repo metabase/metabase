@@ -1,19 +1,18 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { useTestAlertMutation } from "metabase/api";
+import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
+import CS from "metabase/css/core/index.css";
+import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
+import { createChannel } from "metabase/lib/pulse";
+import { Button, Icon, Switch, Flex, Text, Box } from "metabase/ui";
 import type {
   NotificationChannel,
   Alert,
   ChannelSpec,
   User,
 } from "metabase-types/api";
-
-import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
-import { Button, Icon, Switch } from "metabase/ui";
-
-import CS from "metabase/css/core/index.css";
-import { useTestAlertMutation } from "metabase/api";
-import { createChannel } from "metabase/lib/pulse";
 
 export const WebhookChannelEdit = ({
   channelSpec,
@@ -33,15 +32,37 @@ export const WebhookChannelEdit = ({
   user: User;
   notification: NotificationChannel;
 }) => {
-  console.log(alert);
-
-  const [testAlert] = useTestAlertMutation();
+  const [testAlert, testAlertRequest] = useTestAlertMutation();
+  const { label, setLabel } = useActionButtonLabel({
+    defaultLabel: t`Sent a test`,
+  });
 
   const channelIndex = alert.channels.findIndex(
     channel =>
       channel.channel_type === "http" && channel.channel_id === notification.id,
   );
   const channel = alert.channels[channelIndex];
+
+  const handleTest = async () => {
+    await testAlert({
+      name: notification.name,
+      channels: [
+        createChannel(channelSpec, {
+          channel_id: notification.id,
+        }),
+      ],
+      cards: [alert.card],
+      skip_if_empty: false,
+      alert_condition: "rows",
+    })
+      .unwrap()
+      .then(() => {
+        setLabel(t`Succes`);
+      })
+      .catch(() => {
+        setLabel(t`Something went wrong`);
+      });
+  };
 
   return (
     <li className={CS.borderRowDivider}>
@@ -64,22 +85,20 @@ export const WebhookChannelEdit = ({
       </div>
       {channel?.enabled && channelSpec.configured ? (
         <ul className={cx(CS.bgLight, CS.px3)}>
-          <li className={CS.py2}>
-            <Button
-              onClick={() =>
-                testAlert({
-                  name: notification.name,
-                  channels: [
-                    createChannel(channelSpec, { channel_id: notification.id }),
-                  ],
-                  cards: [alert.card],
-                  skip_if_empty: false,
-                  alert_condition: "rows",
-                })
-              }
-            >
-              Test Me
-            </Button>
+          <li className={CS.py3}>
+            <Flex justify="space-between" gap="5rem">
+              <Text style={{ flexBasis: 0, flexGrow: 1 }}>
+                {notification.description}
+              </Text>
+              <Box>
+                <Button
+                  onClick={handleTest}
+                  disabled={testAlertRequest?.isLoading}
+                >
+                  {label}
+                </Button>
+              </Box>
+            </Flex>
           </li>
 
           {/* {renderChannel(channel, channelSpec, channelIndex)} */}

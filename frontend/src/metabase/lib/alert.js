@@ -11,6 +11,8 @@ export function channelIsValid(channel) {
       );
     case "slack":
       return channel.details && scheduleIsValid(channel);
+    case "http":
+      return channel.channel_id && scheduleIsValid(channel);
     default:
       return false;
   }
