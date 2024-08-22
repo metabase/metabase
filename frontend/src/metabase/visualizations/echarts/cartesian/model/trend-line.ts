@@ -162,6 +162,7 @@ export const getTrendLines = (
       color: Color(renderingContext.getColor(seriesModel.color))
         .lighten(0.25)
         .hex(),
+      visible: true,
     }),
   );
   const dataKeys = trendSeriesModels.map(seriesModel => seriesModel.dataKey);

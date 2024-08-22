@@ -68,8 +68,21 @@ export function useModelsAndOption(
       getModel = getScatterPlotModel;
     }
 
-    return getModel(seriesToRender, settings, renderingContext, showWarning);
-  }, [card.display, seriesToRender, settings, renderingContext, showWarning]);
+    return getModel(
+      seriesToRender,
+      settings,
+      hiddenSeries,
+      renderingContext,
+      showWarning,
+    );
+  }, [
+    card.display,
+    seriesToRender,
+    settings,
+    hiddenSeries,
+    renderingContext,
+    showWarning,
+  ]);
 
   const chartMeasurements = useMemo(
     () =>
@@ -137,7 +150,6 @@ export function useModelsAndOption(
         baseOption = getScatterPlotOption(
           chartModel as ScatterPlotModel,
           chartMeasurements,
-          hiddenSeries,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
           settings,
@@ -150,7 +162,6 @@ export function useModelsAndOption(
         baseOption = getCartesianChartOption(
           chartModel as CartesianChartModel,
           chartMeasurements,
-          hiddenSeries,
           timelineEventsModel,
           selectedOrHoveredTimelineEventIds,
           settings,
@@ -172,7 +183,6 @@ export function useModelsAndOption(
     tooltipOption,
     chartModel,
     chartMeasurements,
-    hiddenSeries,
     timelineEventsModel,
     selectedOrHoveredTimelineEventIds,
     settings,

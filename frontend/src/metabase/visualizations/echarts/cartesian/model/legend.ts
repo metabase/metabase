@@ -4,7 +4,6 @@ import type { LegendItem, SeriesModel } from "./types";
 export const getLegendItems = (
   seriesModels: SeriesModel[],
   showAllLegendItems: boolean = false,
-  hiddenSeries: string[] = [],
 ): LegendItem[] => {
   if (
     seriesModels.length === 1 &&
@@ -18,6 +17,6 @@ export const getLegendItems = (
     key: seriesModel.dataKey,
     name: seriesModel.name,
     color: seriesModel.color,
-    visible: !hiddenSeries.includes(seriesModel.dataKey),
+    visible: seriesModel.visible,
   }));
 };

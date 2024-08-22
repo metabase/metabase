@@ -24,7 +24,6 @@ import { buildEChartsScatterSeries } from "./series";
 export function getScatterPlotOption(
   chartModel: ScatterPlotModel,
   chartMeasurements: ChartMeasurements,
-  hiddenSeries: string[],
   timelineEventsModel: TimelineEventsModel | null,
   selectedTimelineEventsIds: TimelineEventId[],
   settings: ComputedVisualizationSettings,
