@@ -2,8 +2,8 @@ import cx from "classnames";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { FilterContent } from "metabase/querying/components/FilterContent";
-import { useFilterContent } from "metabase/querying/components/FilterModal";
+import { FilterContent } from "metabase/querying/filters/components/FilterContent";
+import { useFilterContent } from "metabase/querying/filters/components/FilterModal";
 import { Box, Group, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
