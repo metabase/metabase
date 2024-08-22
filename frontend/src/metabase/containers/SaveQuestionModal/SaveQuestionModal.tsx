@@ -85,12 +85,13 @@ const isOverwriteMode = (
 
 export const SaveQuestionModal = ({
   question,
-  originalQuestion,
+  originalQuestion: latestOriginalQuestion,
   onCreate,
   onSave,
   onClose,
   multiStep,
 }: SaveQuestionModalProps) => {
+  const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
   const isReadonly = originalQuestion != null && !originalQuestion.canWrite();
 
   const initialCollectionId = useGetDefaultCollectionId(
