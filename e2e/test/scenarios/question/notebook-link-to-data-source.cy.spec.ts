@@ -8,6 +8,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   type NativeQuestionDetails,
+  assertDatasetIsSandboxed,
   createNativeQuestion,
   createQuestion,
   describeEE,
@@ -524,9 +525,12 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
+        assertDatasetIsSandboxed(`@modelQuery${ORDERS_MODEL_ID}`);
       });
 
       it("should work for sandboxed users when joined table is sandboxed", () => {
+        cy.intercept("/api/dataset").as("dataset");
+
         openProductsTable({ mode: "notebook" });
         cy.findByTestId("action-buttons").button("Join data").click();
         entityPickerModal().within(() => {
@@ -543,6 +547,7 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
+        assertDatasetIsSandboxed();
       });
     });
   });

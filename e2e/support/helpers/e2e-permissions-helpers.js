@@ -122,3 +122,9 @@ export function assertSameBeforeAndAfterSave(assertionCallback) {
   savePermissions();
   assertionCallback();
 }
+
+export function assertDatasetIsSandboxed(requestAlias = "@dataset") {
+  cy.get(requestAlias).then(({ response }) => {
+    expect(response.body.data.is_sandboxed).to.equal(true);
+  });
+}
