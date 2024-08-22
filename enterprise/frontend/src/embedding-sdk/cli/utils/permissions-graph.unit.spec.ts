@@ -1,5 +1,6 @@
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
 
+import { getCollectionPermissions } from "./get-collection-permissions";
 import { getPermissionsForGroups } from "./get-permission-groups";
 import { getTenancyIsolationSandboxes } from "./get-tenancy-isolation-sandboxes";
 
@@ -32,6 +33,15 @@ describe("permission graph generation for embedding cli", () => {
     // Expect 6 sandboxes: 3 customer groups x 2 tables with tenant isolation
     expect(sandboxes.length).toBe(6);
     expect(sandboxes[0]).toStrictEqual(EXPECTED_PERMISSION_SANDBOX);
+  });
+
+  it("should generate valid permissions for collections", () => {
+    const groups = getCollectionPermissions({
+      groupIds: [3, 4, 5],
+      collectionIds: [9, 10, 11],
+    });
+
+    expect(groups).toStrictEqual(EXPECTED_COLLECTION_PERMISSION_GROUP);
   });
 });
 
@@ -86,5 +96,31 @@ const EXPECTED_PERMISSION_SANDBOX = {
         },
       ],
     ],
+  },
+};
+
+const EXPECTED_COLLECTION_PERMISSION_GROUP = {
+  "1": {
+    "9": "none",
+    "10": "none",
+    "11": "none",
+  },
+  "3": {
+    "9": "write",
+    "10": "none",
+    "11": "none",
+    root: "none",
+  },
+  "4": {
+    "9": "none",
+    "10": "write",
+    "11": "none",
+    root: "none",
+  },
+  "5": {
+    "9": "none",
+    "10": "none",
+    "11": "write",
+    root: "none",
   },
 };

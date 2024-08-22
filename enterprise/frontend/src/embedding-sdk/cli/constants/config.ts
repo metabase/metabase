@@ -20,3 +20,6 @@ export const HARDCODED_JWT_SHARED_SECRET =
  * This is used for sandboxing.
  **/
 export const USER_ATTRIBUTE_CUSTOMER_ID = "customer_id";
+
+// Name of the permission groups and collections to create.
+export const SANDBOXED_GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
