@@ -448,9 +448,13 @@
     "defaults"
   ],
   "trustedDependencies": [
+    "@swc/core",
     "aws-sdk",
     "core-js",
     "core-js-pure",
+    "cypress",
+    "deasync",
+    "esbuild",
     "fsevents",
     "postinstall-postinstall"
   ]
