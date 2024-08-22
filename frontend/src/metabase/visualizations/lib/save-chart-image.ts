@@ -51,7 +51,11 @@ export const saveChartImage = async (selector: string, fileName: string) => {
         imgElement.width = canvas.width / 2;
         imgElement.height = canvas.height / 2;
 
-        window.document.querySelector("body")?.replaceChildren(imgElement);
+        const root: HTMLElement = window.document.querySelector("#root")!;
+
+        root?.replaceChildren(imgElement);
+
+        window.document.body.style.height = "initial";
       } else {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
