@@ -36,7 +36,15 @@ const useCTAText = () => {
     // eslint-disable-next-line no-literal-metabase-strings -- This only shows for admins
     description: t`Give your customers the full power of Metabase in your own app, with SSO, advanced permissions, customization, and more.`,
     linkText: t`Learn more`,
-    url: `https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=${plan}`,
+    url: `https://www.metabase.com/product/embedded-analytics?${new URLSearchParams(
+      {
+        utm_source: "product",
+        utm_medium: "upsell",
+        utm_campaign: "embedding-interactive",
+        utm_content: "static-embed-popover",
+        source_plan: plan,
+      },
+    )}`,
     target: "_blank",
   };
 };
