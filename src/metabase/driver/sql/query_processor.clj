@@ -1372,24 +1372,27 @@
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
   (let [field-honeysql (->honeysql driver field)]
-    (binding [*parent-honeysql-col-type-info* {:database-type (h2x/database-type field-honeysql)
-                                                   :base-type     (get-in field [2 :base-type])}]
+    (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
+                                                       {:database-type database-type})
+                                                     (select-keys (field 2) [:base-type]))]
       [:between field-honeysql (->honeysql driver min-val) (->honeysql driver max-val)])))
 
 (doseq [operator [:> :>= :< :<=]]
   (defmethod ->honeysql [:sql operator] ; [:> :>= :< :<=] -- For grep.
     [driver [_ field value]]
     (let [field-honeysql (->honeysql driver field)]
-      (binding [*parent-honeysql-col-type-info* {:database-type (h2x/database-type field-honeysql)
-                                                     :base-type     (get-in field [2 :base-type])}]
+      (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
+                                                         {:database-type database-type})
+                                                       (select-keys (field 2) [:base-type]))]
         [operator field-honeysql (->honeysql driver value)]))))
 
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
   (assert field)
   (let [field-honeysql (->honeysql driver (maybe-cast-uuid-for-equality driver field value))]
-    (binding [*parent-honeysql-col-type-info* {:database-type (h2x/database-type field-honeysql)
-                                                   :base-type     (get-in field [2 :base-type])}]
+    (binding [*parent-honeysql-col-type-info* (merge (when-let [database-type (h2x/database-type field-honeysql)]
+                                                       {:database-type database-type})
+                                                     (select-keys (field 2) [:base-type]))]
       [:= field-honeysql (->honeysql driver value)])))
 
 (defn- correct-null-behaviour
