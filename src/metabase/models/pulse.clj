@@ -460,30 +460,26 @@
 
     * All previously existing channels will be updated with their most recent information."
   [notification-or-id channels :- [:sequential :map]]
-  (let [existing-channels                 (t2/select :model/PulseChannel :pulse_id (u/the-id notification-or-id))
-        channel-type+id->existing-channel (update-vals (group-by (juxt :channel_type :channel_id) channels) first)
-        channels                          (map-indexed
-                                           (fn [idx channel]
-                                             (assoc channel
-                                                    :channel_type   (keyword (:channel_type channel))
-                                                    :schedule_type  (keyword (:schedule_type channel))
-                                                    :schedule_frame (keyword (:schedule_frame channel))
-                                                    :pulse_id       (u/the-id notification-or-id)
-                                                    ;; channel from FE might not have an id, so we need to find the id
-                                                    ;; from the existing channels using channel_type + channel_id
-                                                    ;; for "new channels" we assign it with an negative id so that
-                                                    ;; row-diff will treat it as :to-create
-                                                    :id             (or
-                                                                     (:id channel)
-                                                                     (:id (get channel-type+id->existing-channel ((juxt :channel_type :channel_id) channel)))
-                                                                     ;; new channel
-                                                                     (- (inc idx)))))
-                                           channels)
+  (let [existing-channels   (t2/select :model/PulseChannel :pulse_id (u/the-id notification-or-id))
+        channels            (map-indexed
+                             (fn [idx channel]
+                               (assoc channel
+                                      :channel_type   (keyword (:channel_type channel))
+                                      :schedule_type  (keyword (:schedule_type channel))
+                                      :schedule_frame (keyword (:schedule_frame channel))
+                                      :pulse_id       (u/the-id notification-or-id)
+                                      ;; for "new channels" we assign it with an negative id so that
+                                      ;; row-diff will treat it as :to-create
+                                      :id             (or
+                                                       (:id channel)
+                                                       ;; new channel
+                                                       (- (inc idx)))))
+                             channels)
         {:keys [to-create
                 to-update
-                to-delete]}               (u/row-diff existing-channels
-                                                      channels
-                                                      {:to-compare #(dissoc % :created_at :updated_at)})]
+                to-delete]} (u/row-diff existing-channels
+                                        channels
+                                        {:to-compare #(dissoc % :created_at :updated_at)})]
     (doseq [channel to-create]
       (pulse-channel/create-pulse-channel! channel))
     (doseq [channel to-update]
