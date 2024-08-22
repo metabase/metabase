@@ -2,19 +2,12 @@
 # See https://github.com/necojackarc/auto-request-review/tree/master?tab=readme-ov-file#reviewers-configuration
 # for the spec
 
-reviewers:
-  groups:
-    migration-owners:
-      - qnkhuat
-      - calherries
-      #- team:core-backend-components # can use team, but it needs a PAT, will figure it out later
-
 files:
   # migrations related files
   'resources/migrations/**':
-    - migration-owners
+    - team:core-backend-components
   'src/metabase/db/custom_migrations.clj':
-    - migration-owners
+    - team:core-backend-components
 
 options:
   ignore_draft: true
