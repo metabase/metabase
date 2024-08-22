@@ -101,7 +101,7 @@
     :as   details}]
   (if password
     details
-    (let [base-details (apply dissoc details (vals (secret/->sub-props "private-key")))
+    (let [base-details (apply dissoc details (vals (secret/get-sub-props "private-key")))
           secret-map   (secret/db-details-prop->secret-map details "private-key")
           private-key-file (cond
                              ;; Local file path
