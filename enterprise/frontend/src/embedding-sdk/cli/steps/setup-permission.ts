@@ -2,14 +2,13 @@ import { search } from "@inquirer/prompts";
 import chalk from "chalk";
 import toggle from "inquirer-toggle";
 
-import { NOT_ENOUGH_TENANCY_COLUMN_ROWS } from "embedding-sdk/cli/constants/messages";
-import { sampleTenancyColumnValuesFromTables } from "embedding-sdk/cli/utils/sample-tenancy-column-values";
-
+import { NOT_ENOUGH_TENANCY_COLUMN_ROWS } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { getPermissionsForGroups } from "../utils/get-permission-groups";
 import { getTenancyIsolationSandboxes } from "../utils/get-tenancy-isolation-sandboxes";
 import { printHelperText } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
+import { sampleTenancyColumnValuesFromTables } from "../utils/sample-tenancy-column-values";
 
 // Name of the permission groups and collections to create.
 const GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
@@ -153,7 +152,14 @@ export const setupPermissions: CliStepMethod = async state => {
     });
 
     await propagateErrorResponse(res);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Failed to update permissions. Reason: ${reason}`;
 
+    return [{ type: "error", message }, state];
+  }
+
+  try {
     const tenancyColumnValues = await sampleTenancyColumnValuesFromTables({
       chosenTables: state.chosenTables,
       databaseId: state.databaseId ?? 0,
@@ -174,7 +180,7 @@ export const setupPermissions: CliStepMethod = async state => {
     return [{ type: "success" }, { ...state, tenancyColumnValues }];
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    const message = `Failed to update permissions. Reason: ${reason}`;
+    const message = `Failed to query tenancy column values (e.g. customer_id). Reason: ${reason}`;
 
     return [{ type: "error", message }, state];
   }
