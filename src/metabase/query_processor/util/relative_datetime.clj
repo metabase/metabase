@@ -38,7 +38,7 @@
   `base-type`. When values are not present, use sane defaults."
   [driver unit amount
    & {:keys [base-type database-type]
-      :or {base-type     :type/DateTime
+      :or {base-type     :type/DateTimeWithTZ
            database-type "timestamp"}}]
   (if (use-server-side-relative-datetime? unit)
     (h2x/cast database-type (relative-datetime-sql-str unit amount base-type))
