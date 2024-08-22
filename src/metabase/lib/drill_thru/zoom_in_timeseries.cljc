@@ -43,31 +43,28 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(mu/defn- valid-current-units-for-schema-type :- [:vector :keyword]
-  [schema-type :- ::lib.schema.common/base-type]
-  (cond (isa? schema-type :type/Date)
-        [:year :quarter :month :week :day]
-        (isa? schema-type :type/DateTime)
-        [:year :quarter :month :week :day :hour :minute]
-        :else
-        []))
+(mu/defn- valid-current-units :- [:vector ::lib.schema.temporal-bucketing/unit.date-time.truncate]
+  [query :- ::lib.schema/query
+   stage :- :int
+   field :- :mbql.clause/field]
+  (into [] (reverse (eduction (map lib.temporal-bucket/raw-temporal-bucket)
+                              (filter #(contains? lib.schema.temporal-bucketing/datetime-truncation-units %))
+                              (lib.temporal-bucket/available-temporal-buckets query stage field)))))
 
-(mu/defn- valid-current-units :- [:vector :keyword]
-  [column :- ::lib.schema.metadata/column]
-  (valid-current-units-for-schema-type
-   ((some-fn :metabase.lib.field/original-effective-type :base-type) column)))
-
-(mu/defn- column->unit->next-unit
-  :- [:map-of :keyword ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
-  [column :- ::lib.schema.metadata/column]
-  (let [units (valid-current-units column)]
+(mu/defn- unit->next-unit
+  :- [:map-of
+      ::lib.schema.temporal-bucketing/unit.date-time.truncate
+      ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
+  [query :- ::lib.schema/query
+   stage :- :int
+   field :- :mbql.clause/field]
+  (let [units (valid-current-units query stage field)]
     (zipmap (drop-last units)
             (drop 1 units))))
 
@@ -84,10 +81,12 @@
                              (lib.temporal-bucket/temporal-bucket column)))]
            (assoc dimension :column-ref breakout))))
 
-(mu/defn- next-breakout-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
-  [column :- ::lib.schema.metadata/column]
-  (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket column)]
-    ((column->unit->next-unit column) current-unit)))
+(mu/defn- next-breakout-unit :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
+  [query :- ::lib.schema/query
+   stage :- :int
+   field :- :mbql.clause/field]
+  (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket field)]
+    ((unit->next-unit query stage field) current-unit)))
 
 (mu/defn- describe-next-unit :- ::lib.schema.common/non-blank-string
   [unit :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
@@ -110,9 +109,9 @@
    {:keys [dimensions], :as _context} :- ::lib.schema.drill-thru/context]
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              (not-empty dimensions))
-    (when-let [{:keys [value], :as dimension} (matching-breakout-dimension query stage-number dimensions)]
+    (when-let [{:keys [value column-ref], :as dimension} (matching-breakout-dimension query stage-number dimensions)]
       (when value
-        (when-let [next-unit (next-breakout-unit (:column dimension))]
+        (when-let [next-unit (next-breakout-unit query stage-number column-ref)]
           {:lib/type     :metabase.lib.drill-thru/drill-thru
            :display-name (describe-next-unit next-unit)
            :type         :drill-thru/zoom-in.timeseries

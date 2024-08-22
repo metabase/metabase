@@ -255,11 +255,20 @@
                                               "2022-12-01T00:00:00+02:00"]]}]}
                     (lib/drill-thru query -1 drill)))))))))
 
+(defn- valid-current-units-for-field
+  [table field]
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata table))
+                  (lib/aggregate (lib/count))
+                  (lib/breakout (-> (meta/field-metadata table field)
+                                    (lib/with-temporal-bucket :year))))
+        breakout (first (lib/breakouts query))]
+    (#'lib.drill-thru.zoom-in-timeseries/valid-current-units query -1 breakout)))
+
 (def ^:private datetime-unit-pairs
-  (partition 2 1 (#'lib.drill-thru.zoom-in-timeseries/valid-current-units-for-schema-type :type/DateTime)))
+  (partition 2 1 (valid-current-units-for-field :orders :created-at)))
 
 (def ^:private date-unit-pairs
-  (partition 2 1 (#'lib.drill-thru.zoom-in-timeseries/valid-current-units-for-schema-type :type/Date)))
+  (partition 2 1 (valid-current-units-for-field :people :birth-date)))
 
 (deftest ^:parallel zoom-in-timeseries-unit-tower-test
   (doseq [[unit1 unit2] datetime-unit-pairs]
