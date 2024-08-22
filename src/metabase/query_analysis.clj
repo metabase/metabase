@@ -215,8 +215,8 @@
         card-id (:id card)]
     (cond
       (not card)       (log/warnf "Card not found: %s" card-id)
-      (:archived card) (log/warnf "Skipping archived card: %s" card-id)
-      :else            (log/debugf "Performing query analysis for card %s" card-id))
+      (:archived card) (log/warnf "[query-analysis] Skipping archived card: %s" card-id)
+      :else            (log/debugf "[query-analysis] Performing query analysis for card %s" card-id))
     (when (and card (not (:archived card)))
       (update-query-analysis-for-card! card))))
 
@@ -242,12 +242,12 @@
   (let [id        (u/the-id card-or-id)
         enqueued? (queue/maybe-put! queue card-or-id)]
     (if enqueued?
-      (log/debugf "Queued Card %s for async analysis" id)
-      (log/warnf "Deferred analysis of Card %s, as the queue is full" id))))
+      (log/debugf "[query-analysis] Queued Card %s for async analysis" id)
+      (log/warnf "[query-analysis] Deferred analysis of Card %s, as the queue is full" id))))
 
 (defn- blocking-put! [queue timeout card-or-id]
   (let [id (u/the-id card-or-id)]
-    (log/debugf "Synchronously analyzing Card %s" id)
+    (log/debugf "[query-analysis] Synchronously analyzing Card %s" id)
     (queue/blocking-put! queue timeout card-or-id)))
 
 (defn analyze-async!

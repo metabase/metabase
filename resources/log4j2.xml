@@ -33,6 +33,7 @@
     <Logger name="metabase.server.middleware" level="DEBUG"/>
     <Logger name="metabase.task.analyze-queries" level="DEBUG"/>
     <Logger name="metabase.task.sweep-query-analysis" level="DEBUG"/>
+    <Logger name="metabase.util.queue" level="DEBUG"/>
     <Logger name="org.quartz" level="INFO"/>
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
 

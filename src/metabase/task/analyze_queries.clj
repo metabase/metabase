@@ -41,21 +41,22 @@
   (loop [remaining stop-after]
     (when (public-settings/query-analysis-enabled)
       (let [card-or-id (next-card-id-fn)
+            _ (log/debugf "[query-analysis] next message: %s" card-or-id)
             card-id    (u/the-id card-or-id)
             timer      (u/start-timer)
             card       (query-analysis/->analyzable card-or-id)]
         (if (failure-map/non-retryable? card)
-          (log/warnf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
+          (log/warnf "[query-analysis] Skipping analysis of Card %s as its query has caused failures in the past." card-id)
           (try
             (query-analysis/analyze-card! card)
             (failure-map/track-success! card)
             (let [taken-ms (Math/ceil (u/since-ms timer))
                   sleep-ms (wait-proportional taken-ms)]
-              (log/debugf "Query analysis for Card %s took %sms (incl. persisting)" card-id taken-ms)
-              (log/debugf "Waiting %sms before analysing further cards" sleep-ms)
+              (log/debugf "[query-analysis] Query analysis for Card %s took %sms (incl. persisting)" card-id taken-ms)
+              (log/debugf "[query-analysis] Waiting %sms before analysing further cards" sleep-ms)
               (Thread/sleep sleep-ms))
             (catch Exception e
-              (log/errorf e "Error analysing and updating query for Card %s" card-id)
+              (log/errorf e "[query-analysis] Error analysing and updating query for Card %s" card-id)
               (failure-map/track-failure! card)
               (Thread/sleep (wait-fail (u/since-ms timer))))))
         (cond
