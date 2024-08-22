@@ -142,7 +142,8 @@ LightThemeDownload.args = {
   downloadsEnabled: true,
 };
 LightThemeDownload.play = async ({ canvasElement }) => {
-  await downloadQuestionAsPng(canvasElement);
+  const asyncCallback = createAsyncCallback();
+  await downloadQuestionAsPng(canvasElement, asyncCallback);
 };
 
 // Dark theme
@@ -164,9 +165,7 @@ DarkThemeDownload.args = {
   ...DarkThemeDefault.args,
   downloadsEnabled: true,
 };
-DarkThemeDownload.play = async ({ canvasElement }) => {
-  await downloadQuestionAsPng(canvasElement);
-};
+DarkThemeDownload.play = LightThemeDownload.play;
 
 // Transparent theme
 export const TransparentThemeDefault = Template.bind({});
@@ -327,7 +326,10 @@ function NarrowContainer(Story: Story) {
   );
 }
 
-const downloadQuestionAsPng = async (canvasElement: HTMLElement) => {
+const downloadQuestionAsPng = async (
+  canvasElement: HTMLElement,
+  asyncCallback: () => void,
+) => {
   const canvas = within(canvasElement);
 
   const downloadButton = await canvas.findByTestId("download-button");
@@ -336,4 +338,6 @@ const downloadQuestionAsPng = async (canvasElement: HTMLElement) => {
   const documentElement = within(document.documentElement);
   const pngButton = await documentElement.findByText(".png");
   await userEvent.click(pngButton);
+  await canvas.findByTestId("image-downloaded");
+  asyncCallback();
 };

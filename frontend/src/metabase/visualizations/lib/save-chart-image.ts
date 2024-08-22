@@ -52,8 +52,10 @@ export const saveChartImage = async (selector: string, fileName: string) => {
         imgElement.height = canvas.height / 2;
 
         const root: HTMLElement = window.document.querySelector("#root")!;
-
-        root?.replaceChildren(imgElement);
+        const imageDownloaded = document.createElement("div");
+        imageDownloaded.setAttribute("data-testid", "image-downloaded");
+        root.replaceChildren(imgElement);
+        root.appendChild(imageDownloaded);
 
         window.document.body.style.height = "initial";
       } else {
