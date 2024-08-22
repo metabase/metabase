@@ -24,10 +24,11 @@ export const getExpressServerSnippet = (options: Options) => {
   }));
 
   return `
-const express = require('express')
-const jwt = require('jsonwebtoken')
-const cors = require('cors')
+const express = require("express");
+const fetch = require("node-fetch");
+const jwt = require("jsonwebtoken");
 const session = require('express-session')
+const cors = require('cors')
 
 const PORT = process.env.PORT || ${DEFAULT_EXPRESS_SERVER_PORT}
 
@@ -40,86 +41,48 @@ const USERS = ${JSON.stringify(users, null, 2)}
 
 const getUser = (email) => USERS.find((user) => user.email === email)
 
-const signUserToken = (user) =>
-  jwt.sign(
+async function metabaseAuthHandler(req, res) {
+  const { user } = req.session;
+
+  if (!user) {
+    return res.status(401).json({
+      status: "error",
+      message: "not authenticated",
+    });
+  }
+
+  const token = jwt.sign(
     {
       email: user.email,
       first_name: user.firstName,
       last_name: user.lastName,
       groups: user.groups,
       customer_id: user.customerId,
-      exp: Math.round(Date.now() / 1000) + 60 * 0.25,
+      exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
     },
-    METABASE_JWT_SHARED_SECRET
-  )
+    // This is the JWT signing secret in your Metabase JWT authentication setting
+    METABASE_JWT_SHARED_SECRET,
+  );
 
-const sessionConfig = {
-  name: 'session',
-  resave: false,
-  saveUninitialized: true,
-  secret: 'session-secret',
-}
-
-const app = express()
-app.use(express.json())
-app.use(express.text())
-app.use(express.urlencoded({extended: false}))
-app.use(cors({credentials: true, origin: true}))
-app.use(session(sessionConfig))
-
-app.get('/', (_, res) => res.send({ok: true}))
-
-app.get('/sso/metabase', async (req, res) => {
-  if (!req.sessionID || !req.session) {
-    return res.status(401).json({
-      status: 'error',
-      message: 'not logged in',
-    })
-  }
-
-  const {email} = req.session
-  const user = getUser(email)
-
-  if (!user) {
-    return res
-      .status(401)
-      .json({status: 'error', message: 'no user in session', email})
-  }
-
-  const ssoUrl = new URL('/auth/sso', METABASE_INSTANCE_URL)
-  ssoUrl.searchParams.set('jwt', signUserToken(user))
-  ssoUrl.searchParams.set('token', 'true')
+  const ssoUrl = \`\${METABASE_INSTANCE_URL}/auth/sso?token=true&jwt=\${token}\`;
 
   try {
-    const ssoResponse = await fetch(ssoUrl, {method: 'GET'})
-    const ssoResponseText = await ssoResponse.text()
+    const response = await fetch(ssoUrl, { method: "GET" });
+    const token = await response.json();
 
-    if (ssoResponseText.includes('SSO has not been enabled')) {
-      return res
-        .status(500)
-        .json({status: 'error', message: 'SSO has not been enabled'})
-    }
-
-    if (!ssoResponse.ok) {
-      return res.status(500).json({status: 'error', message: ssoResponseText})
-    }
-
-    const token = JSON.parse(ssoResponseText)
-
-    return res.status(200).json(token)
+    return res.status(200).json(token);
   } catch (error) {
     if (error instanceof Error) {
       res.status(401).json({
-        status: 'error',
-        message: 'auth failed',
+        status: "error",
+        message: "authentication failed",
         error: error.message,
-        session: req.session,
-      })
+      });
     }
   }
-})
+}
 
-app.post('/switch-user', (req, res) => {
+async function switchUserHandler(req, res) {
   const {email} = req.body
 
   const user = getUser(email)
@@ -135,13 +98,42 @@ app.post('/switch-user', (req, res) => {
   }
 
   req.session.regenerate(() => {
-    req.session.email = email
+    req.session.user = user
     res.status(200).json({user})
   })
-})
+}
 
-app.listen(PORT, async () => {
-  console.log(\`[mock sso api] running at http://localhost:\${PORT}\`)
-})
+const app = express();
+
+// Middleware
+
+// If your FE application is on a different domain from your BE, you need to enable CORS
+// by setting Access-Control-Allow-Credentials to true and Access-Control-Allow-Origin
+// to your FE application URL.
+app.use(
+  cors({
+    credentials: true,
+    origin: true,
+  }),
+);
+
+app.use(
+  session({
+    secret: 'session-secret',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false },
+  }),
+);
+
+app.use(express.json());
+
+// routes
+app.get('/', (_, res) => res.send({ok: true}))
+app.get("/sso/metabase", metabaseAuthHandler);
+app.post('/switch-user', switchUserHandler)
+app.listen(PORT, () => {
+  console.log(\`API running at http://localhost:\${PORT}\`);
+});
 `;
 };

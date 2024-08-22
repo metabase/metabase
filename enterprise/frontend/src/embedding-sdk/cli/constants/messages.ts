@@ -67,7 +67,7 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
 
 export const getExpressServerGeneratedMessage = (filePath: string) => {
   const NPM_INSTALL_DEPS_COMMAND = chalk.blue(
-    "npm install express express-session jsonwebtoken cors",
+    "npm install express express-session jsonwebtoken cors node-fetch@2",
   );
 
   return `
