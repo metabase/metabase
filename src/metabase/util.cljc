@@ -838,17 +838,16 @@
   return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
-  - `:to-create` is a list of maps that ids in `new-rows`
+  - `:to-create` is a list of maps that ids only in `new-rows` or don't have an id
   - `:to-delete` is a list of maps that has ids only in `current-rows`
   - `:to-skip`   is a list of identical maps that has ids in both lists
   - `:to-update` is a list of different maps that has ids in both lists
 
   Optional arguments:
   - `id-fn` - function to get row-matching identifiers
-  - `to-compare` - function to get rows into a comparable state
-  "
+  - `to-compare` - function to get rows into a comparable state"
   [current-rows new-rows & {:keys [id-fn to-compare]
-                            :or   {id-fn   :id
+                            :or   {id-fn      :id
                                    to-compare identity}}]
   (let [[delete-ids
          create-ids
