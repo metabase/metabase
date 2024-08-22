@@ -65,8 +65,8 @@
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset sad-toucan-incidents
       (let [query (mt/mbql-query incidents
-                     {:filter   [:= !day.timestamp "2015-06-02"]
-                      :order-by [[:asc $timestamp]]})]
+                    {:filter   [:= !day.timestamp "2015-06-02"]
+                     :order-by [[:asc $timestamp]]})]
         ;; There's a race condition with this test. If we happen to grab a connection that is in a session with the
         ;; timezone set to pacific, we'll get 9 results even when the above if statement is true. It seems to be pretty
         ;; rare, but explicitly specifying UTC will make the issue go away
@@ -152,8 +152,7 @@
           (testing (format "\nquery = %s" (u/pprint-to-str query))
             (is (= [[41]]
                    (mt/formatted-rows [int]
-                     (qp/process-query query))))))))))
-
+                                      (qp/process-query query))))))))))
 
 ;;; :type/ISO8601DateTimeString tests
 
@@ -331,9 +330,9 @@
            (sort-by
             first
             (mt/rows (mt/dataset yyyymmddhhss-binary-times
-                                 (qp/process-query
-                                  (assoc (mt/mbql-query times)
-                                         :middleware {:format-rows? false})))))))))
+                       (qp/process-query
+                        (assoc (mt/mbql-query times)
+                               :middleware {:format-rows? false})))))))))
 
 (deftest ^:parallel yyyymmddhhmmss-dates
   (mt/test-drivers #{:mongo :oracle :postgres :h2 :mysql :bigquery-cloud-sdk :snowflake :redshift :sqlserver}
@@ -366,6 +365,6 @@
            (sort-by
             first
             (mt/rows (mt/dataset yyyymmddhhss-times
-                                 (qp/process-query
-                                  (assoc (mt/mbql-query times)
-                                         :middleware {:format-rows? false})))))))))
+                       (qp/process-query
+                        (assoc (mt/mbql-query times)
+                               :middleware {:format-rows? false})))))))))

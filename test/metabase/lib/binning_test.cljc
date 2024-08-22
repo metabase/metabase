@@ -42,20 +42,20 @@
           bucket-created (lib/with-temporal-bucket created-col (first (lib/available-temporal-buckets query created-col)))
           query (lib/breakout query bucket-created)]
       (is (=?
-            (complement :metabase.lib.field/binning)
-            (m/find-first (comp #{"TOTAL"} :name) (lib/visible-columns query))))
+           (complement :metabase.lib.field/binning)
+           (m/find-first (comp #{"TOTAL"} :name) (lib/visible-columns query))))
       (is (=?
-            {:metabase.lib.field/binning {:strategy :default}}
-            (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
+           {:metabase.lib.field/binning {:strategy :default}}
+           (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
       (is (=?
-            {:metabase.lib.field/binning {:strategy :default}}
-            (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
+           {:metabase.lib.field/binning {:strategy :default}}
+           (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
       (is (=?
-            (complement :metabase.lib.field/temporal-unit)
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/visible-columns query))))
+           (complement :metabase.lib.field/temporal-unit)
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/visible-columns query))))
       (is (=?
-            {:metabase.lib.field/temporal-unit :minute}
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
+           {:metabase.lib.field/temporal-unit :minute}
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
       (is (=?
-            {:metabase.lib.field/temporal-unit :minute}
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
+           {:metabase.lib.field/temporal-unit :minute}
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))

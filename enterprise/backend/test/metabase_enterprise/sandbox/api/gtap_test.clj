@@ -114,8 +114,8 @@
       (testing "Meaningful errors should be returned if you create an invalid GTAP"
         (mt/with-temp [Field _ {:name "My field" :table_id table-id :base_type :type/Integer}
                        Card  {card-id :id} {:dataset_query (mt/mbql-query venues
-                                                                          {:fields      [[:expression "My field"]]
-                                                                           :expressions {"My field" [:ltrim "wow"]}})}]
+                                                             {:fields      [[:expression "My field"]]
+                                                              :expressions {"My field" [:ltrim "wow"]}})}]
           (with-gtap-cleanup
             (is (=? {:message  "Sandbox Questions can't return columns that have different types than the Table they are sandboxing."
                      :expected "type/Integer"
@@ -253,8 +253,8 @@
 
           (testing "Test that we can update a sandbox using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
-                                                  :table_id table-id-1
-                                                  :group_id group-id)
+                                               :table_id table-id-1
+                                               :group_id group-id)
                   graph      (-> (data-perms.graph/api-graph)
                                  (assoc :sandboxes [{:id                   sandbox-id
                                                      :card_id              card-id-2
@@ -270,8 +270,8 @@
 
           (testing "Test that we can create and update multiple sandboxes at once using the permission graph API"
             (let [sandbox-id (t2/select-one-fn :id GroupTableAccessPolicy
-                                                  :table_id table-id-1
-                                                  :group_id group-id)
+                                               :table_id table-id-1
+                                               :group_id group-id)
                   graph       (-> (data-perms.graph/api-graph)
                                   (assoc-in [:groups group-id (mt/id) :view-data] {"PUBLIC" {table-id-2 :sandboxed}})
                                   (assoc :sandboxes [{:id                   sandbox-id

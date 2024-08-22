@@ -441,10 +441,10 @@
   (with-required-param-card [uuid]
     (is (= [[22]]
            (mt/rows
-             (client/client :get 202 (str "public/card/" uuid "/query")
-                            :parameters (json/encode [{:type   :number
-                                                       :target [:variable [:template-tag "price"]]
-                                                       :value  1}])))))))
+            (client/client :get 202 (str "public/card/" uuid "/query")
+                           :parameters (json/encode [{:type   :number
+                                                      :target [:variable [:template-tag "price"]]
+                                                      :value  1}])))))))
 
 (deftest missing-required-param-error-message-test
   (testing (str "If you're missing a required param, the error message should get passed thru, rather than the normal "
@@ -466,7 +466,6 @@
                                                            :dimension    [:field (mt/id :checkins :date) nil]
                                                            :widget-type  "date/quarter-year"}}}}))
 
-
 (deftest make-sure-csv--etc---downloads-take-editable-params-into-account---6407----
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (t2.with-temp/with-temp [Card {uuid :public_uuid} (card-with-date-field-filter)]
@@ -476,7 +475,6 @@
                                                        :type   :date/quarter-year
                                                        :target [:dimension [:template-tag :date]]
                                                        :value  "Q1-2014"}])))))))
-
 
 (deftest make-sure-it-also-works-with-the-forwarded-url
   (mt/test-helpers-set-global-values!
@@ -508,7 +506,6 @@
                  :data
                  keys
                  set))))))
-
 
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
 
@@ -545,10 +542,10 @@
           (is (= {:name true, :dashcards 0, :tabs 0}
                  (fetch-public-dashboard dash)))))
       (testing "dashboard with tabs should return tabs"
-       (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
-         (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
-         (is (= {:name true, :dashcards 2, :tabs 2}
-                (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
+        (api.dashboard-test/with-simple-dashboard-with-tabs [{:keys [dashboard-id]}]
+          (t2/update! :model/Dashboard :id dashboard-id (shared-obj))
+          (is (= {:name true, :dashcards 2, :tabs 2}
+                 (fetch-public-dashboard (t2/select-one :model/Dashboard :id dashboard-id)))))))))
 
 (deftest public-dashboard-with-implicit-action-only-expose-unhidden-fields
   (mt/with-temporary-setting-values [enable-public-sharing true]
@@ -870,7 +867,6 @@
                                                               :id      "_MSG_"}]))
                          mt/rows))))))))))
 
-
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
 
 (deftest double-check-that-the-field-has-fieldvalues
@@ -950,7 +946,6 @@
                                    :type         :dimension
                                    :dimension    [:field (mt/id :venues :name) nil]}}}}})
 
-
 ;;; ------------------------------------------- card->referenced-field-ids -------------------------------------------
 
 (deftest card-referencing-nothing
@@ -970,7 +965,6 @@
 
 ;;; --------------------------------------- check-field-is-referenced-by-card ----------------------------------------
 
-
 (deftest check-that-the-check-succeeds-when-field-is-referenced
   (t2.with-temp/with-temp [Card card (mbql-card-referencing-venue-name)]
     (#'api.public/check-field-is-referenced-by-card (mt/id :venues :name) (u/the-id card))))
@@ -980,7 +974,6 @@
        Exception
        (t2.with-temp/with-temp [Card card (mbql-card-referencing-venue-name)]
          (#'api.public/check-field-is-referenced-by-card (mt/id :venues :category_id) (u/the-id card))))))
-
 
 ;;; ----------------------------------------- check-search-field-is-allowed ------------------------------------------
 
@@ -1006,13 +999,10 @@
                (mt/with-temp-vals-in-db Field (mt/id :venues :name) {:semantic_type "type/Latitude"}
                  (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :venues :name))))))
 
-
 (deftest not-allowed-if-search-field-belongs-to-a-different-table
   (is (thrown? Exception
                (mt/with-temp-vals-in-db Field (mt/id :categories :name) {:semantic_type "type/Name"}
                  (#'api.public/check-search-field-is-allowed (mt/id :venues :id) (mt/id :categories :name))))))
-
-
 
 ;;; ------------------------------------- check-field-is-referenced-by-dashboard -------------------------------------
 
@@ -1022,13 +1012,11 @@
    :parameter_mappings [{:card_id (u/the-id card)
                          :target  [:dimension [:field (mt/id :venues :id) nil]]}]})
 
-
 (deftest field-is--referenced--by-dashboard-if-it-s-one-of-the-dashboard-s-params---
   (is (mt/with-temp [Dashboard     dashboard {}
                      Card          card {}
                      DashboardCard _ (dashcard-with-param-mapping-to-venue-id dashboard card)]
         (#'api.public/check-field-is-referenced-by-dashboard (mt/id :venues :id) (u/the-id dashboard)))))
-
 
 (deftest field-not-found-on-dashcard
   (is (thrown? Exception
@@ -1124,7 +1112,6 @@
                 (is (= "An error occurred."
                        (client/client :get 400 (str "public/action/" (:public_uuid action-opts)))))))))))))
 
-
 ;;; ------------------------------- GET /api/public/card/:uuid/field/:field/values nil --------------------------------
 
 (defn- field-values-url [card-or-dashboard field-or-id]
@@ -1146,8 +1133,8 @@
   {:style/indent 3}
   [table-kw field-kw [card-binding] & body]
   `(do-with-sharing-enabled-and-temp-card-referencing ~table-kw ~field-kw
-     (fn [~card-binding]
-       ~@body)))
+                                                      (fn [~card-binding]
+                                                        ~@body)))
 
 (deftest should-be-able-to-fetch-values-for-a-field-referenced-by-a-public-card
   (is (= {:values          [["20th Century Cafe"]
@@ -1190,8 +1177,8 @@
   {:style/indent 3}
   [table-kw field-kw [dashboard-binding card-binding dashcard-binding] & body]
   `(do-with-sharing-enabled-and-temp-dashcard-referencing ~table-kw ~field-kw
-     (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
-       ~@body)))
+                                                          (fn [~(or dashboard-binding '_) ~(or card-binding '_) ~(or dashcard-binding '_)]
+                                                            ~@body)))
 
 (deftest should-be-able-to-use-it-when-everything-is-g2g
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :name [dashboard]
@@ -1216,7 +1203,6 @@
       (is (= "An error occurred."
              (client/client :get 400 (field-values-url dashboard (mt/id :venues :name))))))))
 
-
 ;;; ----------------------------------------------- search-card-fields -----------------------------------------------
 
 (deftest search-card-fields
@@ -1235,7 +1221,6 @@
     (is (thrown?
          Exception
          (api.public/search-card-fields (u/the-id card) (mt/id :venues :id) (mt/id :venues :id) "33 T" 10)))))
-
 
 ;;; ----------------------- GET /api/public/card/:uuid/field/:field/search/:search-field-id nil -----------------------
 
@@ -1266,7 +1251,6 @@
            (mt/with-temporary-setting-values [enable-public-sharing false]
              (client/client :get 400 (field-search-url card (mt/id :venues :id) (mt/id :venues :name))
                             :value "33 T"))))))
-
 
 ;;; -------------------- GET /api/public/dashboard/:uuid/field/:field/search/:search-field-id nil ---------------------
 
@@ -1314,7 +1298,6 @@
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
 
-
 (deftest we-should-be-able-to-use-the-api-endpoint-and-get-the-same-results-we-get-by-calling-the-function-above-directly
   (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
     (is (= [10 "Fred 62"]
@@ -1326,7 +1309,6 @@
     (is (= "Not found."
            (client/client :get 404 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
                           :value "10")))))
-
 
 (deftest ---or-if-the-remapping-field-isn-t-allowed-to-be-used-with-the-other-field
   (with-sharing-enabled-and-temp-card-referencing :venues :id [card]
@@ -1342,7 +1324,6 @@
                             :value "10"))))))
 
 ;;; --------------------- GET /api/public/dashboard/:uuid/field/:field/remapping/:remapped-id nil ---------------------
-
 
 (deftest api-endpoint-should-return-same-results-as-function
   (with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
@@ -1783,9 +1764,9 @@
             (testing "Check that we send a snowplow event when execute an action"
               (snowplow-test/with-fake-snowplow-collector
                 (client/client
-                  :post 200
-                  (format "public/action/%s/execute" public_uuid)
-                  {:parameters {:id 1 :name "European"}})
+                 :post 200
+                 (format "public/action/%s/execute" public_uuid)
+                 {:parameters {:id 1 :name "European"}})
                 (is (= {:data   {"action_id" (t2/select-one-pk 'Action :public_uuid public_uuid)
                                  "event"     "action_executed"
                                  "source"    "public_form"
@@ -1806,9 +1787,9 @@
                                                               [:csv false ["2000" "2024-03-26"]]
                                                               [:json true ["2,000" "March 26, 2024"]]
                                                               [:json false [2000 "2024-03-26"]]]]
-              (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
-                (is (= expected
-                       (->> (mt/user-http-request
-                             :crowberto :get 200
-                             (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
-                            ((get output-helper export-format))))))))))))
+            (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
+              (is (= expected
+                     (->> (mt/user-http-request
+                           :crowberto :get 200
+                           (format "public/card/%s/query/%s?format_rows=%s" uuid (name export-format) apply-formatting?))
+                          ((get output-helper export-format))))))))))))

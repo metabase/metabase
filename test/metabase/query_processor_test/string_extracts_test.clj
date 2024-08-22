@@ -102,23 +102,23 @@
 
 (deftest ^:parallel regex-match-first-escaping-test
   (mt/test-drivers
-      (mt/normal-drivers-with-feature :expressions :regex)
-      (is (= "Taylor's" (test-string-extract
-                         [:regex-match-first [:field (data/id :venues :name) nil] "^Taylor's"]
-                         [:= [:field (data/id :venues :name) nil] "Taylor's Prime Steak House"])))))
+    (mt/normal-drivers-with-feature :expressions :regex)
+    (is (= "Taylor's" (test-string-extract
+                       [:regex-match-first [:field (data/id :venues :name) nil] "^Taylor's"]
+                       [:= [:field (data/id :venues :name) nil] "Taylor's Prime Steak House"])))))
 
 (deftest ^:parallel regex-extract-in-explict-join-test
   (testing "Should be able to use regex extra in an explict join (#17790)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
       (mt/dataset test-data
         (let [query (mt/mbql-query orders
-                                   {:joins       [{:source-table $$products
-                                                   :alias        "Products"
-                                                   :condition    [:= $product_id &Products.products.id]
-                                                   :fields       :all}]
-                                    :expressions {:regex [:regex-match-first &Products.products.category ".*"]}
-                                    :order-by    [[:asc $id]]
-                                    :limit       2})]
+                      {:joins       [{:source-table $$products
+                                      :alias        "Products"
+                                      :condition    [:= $product_id &Products.products.id]
+                                      :fields       :all}]
+                       :expressions {:regex [:regex-match-first &Products.products.category ".*"]}
+                       :order-by    [[:asc $id]]
+                       :limit       2})]
           (mt/with-native-query-testing-context query
             (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      "Widget"

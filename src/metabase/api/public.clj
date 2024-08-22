@@ -47,7 +47,6 @@
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 
-
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
 (defn combine-parameters-and-template-tags
@@ -78,9 +77,9 @@
   (if qp.perms/*param-values-query*
     card
     (mi/instance
-      Card
-      (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
-                                  [:dataset_query :type [:native :template-tags]]]))))
+     Card
+     (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+                                 [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -193,7 +192,6 @@
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
                 :format-rows?          format_rows}))
-
 
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
@@ -357,7 +355,6 @@
      :height  height
      :html    (embed/iframe url width height)}))
 
-
 ;;; ----------------------------------------------- Public Action ------------------------------------------------
 
 (api/defendpoint GET "/action/:uuid"
@@ -368,7 +365,6 @@
   (let [action (api/check-404 (action/select-action :public_uuid uuid :archived false))]
     (actions/check-actions-enabled! action)
     (public-action action)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -457,7 +453,6 @@
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (dashboard-and-field-id->values dashboard-id field-id)))
 
-
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 
 (defn search-card-fields
@@ -499,7 +494,6 @@
   (validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
     (search-dashboard-fields dashboard-id field-id search-field-id value limit)))
-
 
 ;;; --------------------------------------------------- Remappings ---------------------------------------------------
 
@@ -557,7 +551,7 @@
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
     (mw.session/as-admin
-     (api.card/param-values card param-key))))
+      (api.card/param-values card param-key))))
 
 (api/defendpoint GET "/card/:uuid/params/:param-key/search/:query"
   "Fetch values for a parameter on a public card containing `query`."
@@ -568,7 +562,7 @@
   (validation/check-public-sharing-enabled)
   (let [card (t2/select-one Card :public_uuid uuid, :archived false)]
     (mw.session/as-admin
-     (api.card/param-values card param-key query))))
+      (api.card/param-values card param-key query))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
@@ -601,7 +595,7 @@
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
   (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)
-                                             :qp qp.pivot/run-pivot-query))
+                                           :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
@@ -663,7 +657,6 @@
                                                                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
             (actions/execute-action! action (update-keys parameters name))))))))
-
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------
 

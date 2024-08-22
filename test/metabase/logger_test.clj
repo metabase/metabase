@@ -1,9 +1,9 @@
 (ns metabase.logger-test
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
    [metabase.logger :as logger]

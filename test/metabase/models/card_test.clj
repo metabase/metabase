@@ -750,12 +750,11 @@
                  :visualization_settings
                  (json/parse-string keyword)))))))
 
-
 ;;; -------------------------------------------- Revision tests  --------------------------------------------
 
 (deftest ^:parallel diff-cards-str-test
   (are [x y expected] (= expected
-                       (u/build-sentence (revision/diff-strings :model/Card x y)))
+                         (u/build-sentence (revision/diff-strings :model/Card x y)))
     {:name        "Diff Test"
      :description nil}
     {:name        "Diff Test Changed"
@@ -955,8 +954,8 @@
                                  :parameter_id              "param_3"
                                  :parameterized_object_type "card"
                                  :parameterized_object_id (:id card3)}]
-   (is (= [2 1 0]
-          (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
+    (is (= [2 1 0]
+           (map :parameter_usage_count (t2/hydrate [card1 card2 card3] :parameter_usage_count))))))
 
 (deftest average-query-time-and-last-query-started-test
   (let [now       (t/offset-date-time)

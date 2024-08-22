@@ -63,27 +63,27 @@
         (actions/check-actions-enabled-for-database!
          (t2/select-one Database :id (:database_id action)))))
     (try
-     (case action-type
-       :query
-       (execute-query-action! action request-parameters)
+      (case action-type
+        :query
+        (execute-query-action! action request-parameters)
 
-       :http
-       (http-action/execute-http-action! action request-parameters))
-     (catch Exception e
-       (log/error e "Error executing action.")
-       (if-let [ed (ex-data e)]
-         (let [ed (cond-> ed
-                    (and (nil? (:status-code ed))
-                         (= (:type ed) :missing-required-permissions))
-                    (assoc :status-code 403)
+        :http
+        (http-action/execute-http-action! action request-parameters))
+      (catch Exception e
+        (log/error e "Error executing action.")
+        (if-let [ed (ex-data e)]
+          (let [ed (cond-> ed
+                     (and (nil? (:status-code ed))
+                          (= (:type ed) :missing-required-permissions))
+                     (assoc :status-code 403)
 
-                    (nil? (:message ed))
-                    (assoc :message (ex-message e)))]
-           (if (= (ex-data e) ed)
-             (throw e)
-             (throw (ex-info (ex-message e) ed e))))
-         {:body {:message (or (ex-message e) (tru "Error executing action."))}
-          :status 500})))))
+                     (nil? (:message ed))
+                     (assoc :message (ex-message e)))]
+            (if (= (ex-data e) ed)
+              (throw e)
+              (throw (ex-info (ex-message e) ed e))))
+          {:body {:message (or (ex-message e) (tru "Error executing action."))}
+           :status 500})))))
 
 (defn- check-no-extra-parameters
   "Check that the given request parameters do not contain any parameters that are not in the given set of destination parameter ids"
@@ -233,10 +233,10 @@
         exposed-param-ids (-> (set (map :id (:parameters action)))
                               (set/difference (set hidden-param-ids)))]
     (m/filter-keys
-      #(contains? exposed-param-ids %)
-      (zipmap
-        (map (comp u/slugify :name) (get-in result [:data :cols]))
-        (first (get-in result [:data :rows]))))))
+     #(contains? exposed-param-ids %)
+     (zipmap
+      (map (comp u/slugify :name) (get-in result [:data :cols]))
+      (first (get-in result [:data :rows]))))))
 
 (defn fetch-values
   "Fetch values to pre-fill implicit action execution - custom actions will return no values.

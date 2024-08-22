@@ -73,13 +73,13 @@
                     (mt/with-additional-premium-features #{:sandboxes}
                       ;; create Cards/GTAPs from defs
                       (do-with-gtap-defs! group gtaps
-                        (fn []
+                                          (fn []
                           ;; bind user as current user, then run f
-                          (if (keyword? test-user-name-or-user-id)
-                            (test.users/with-test-user test-user-name-or-user-id
-                              (f group))
-                            (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
-                              (f group)))))))))))]
+                                            (if (keyword? test-user-name-or-user-id)
+                                              (test.users/with-test-user test-user-name-or-user-id
+                                                (f group))
+                                              (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
+                                                (f group)))))))))))]
     ;; create a temp copy of the current DB if we haven't already created one. If one is already created, keep using
     ;; that so we can test multiple sandboxed users against the same DB
     (if data.impl/*db-is-temp-copy?*

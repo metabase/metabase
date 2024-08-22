@@ -26,7 +26,6 @@
        :value    (vec v)
        :options  options})))
 
-
 (defmacro ^:private chain-filter [field field->value & options]
   `(chain-filter/chain-filter
     (mt/$ids nil ~(symbol (str \% (name field))))
@@ -36,11 +35,11 @@
 
 (defmacro ^:private chain-filter-search [field field->value query & options]
   `(chain-filter/chain-filter-search
-     (mt/$ids nil ~(symbol (str \% (name field))))
-     (mt/$ids nil ~(vec (for [[k v] field->value]
-                          (shorthand->constraint (symbol (str \% k)) v))))
-     ~query
-     ~@options))
+    (mt/$ids nil ~(symbol (str \% (name field))))
+    (mt/$ids nil ~(vec (for [[k v] field->value]
+                         (shorthand->constraint (symbol (str \% k)) v))))
+    ~query
+    ~@options))
 
 (defn take-n-values
   "Call `take` on the result of chain-filter function.
@@ -331,7 +330,6 @@
          #"Cannot search against non-Text Field"
          (chain-filter/chain-filter-search (mt/$ids %venues.price) nil "s")))))
 
-
 ;;; --------------------------------------------------- Remapping ----------------------------------------------------
 
 (defn do-with-human-readable-values-remapping [thunk]
@@ -609,8 +607,8 @@
       (try
         (thunk)
         (finally
-         (t2/update! Field field-id {:has_field_values has_field_values})
-         (t2/insert! FieldValues fvs))))))
+          (t2/update! Field field-id {:has_field_values has_field_values})
+          (t2/insert! FieldValues fvs))))))
 
 (defmacro ^:private with-clean-field-values-for-field
   "Run `body` with all FieldValues for `field-id` deleted.
@@ -656,9 +654,9 @@
 
         (with-clean-field-values-for-field (mt/id :categories :name)
           (testing "`true` if the values of a field exceeds our [[field-values/*total-max-length*]] limit"
-              (binding [field-values/*total-max-length* 10]
-                (is (= true
-                       (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
+            (binding [field-values/*total-max-length* 10]
+              (is (= true
+                     (:has_more_values (chain-filter categories.name {venues.price 4})))))))))
 
     (testing "for non-cached fields"
       (testing "with contraints"

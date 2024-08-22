@@ -153,7 +153,6 @@
                               a-namespace)]
     `(do-with-log-level ~a-namespace ~level (fn [] ~@body))))
 
-
 ;;;; [[with-log-messages-for-level]]
 
 (p/defprotocol+ ^:private IInMemoryAppender

@@ -47,7 +47,6 @@
   {:attribute_remappings {:in  (comp mi/json-in normalize-attribute-remapping-targets)
                           :out (comp normalize-attribute-remapping-targets mi/json-out-without-keywordization)}})
 
-
 (defn table-field-names->cols
   "Return a mapping of field names to corresponding cols for given table."
   [table-id]

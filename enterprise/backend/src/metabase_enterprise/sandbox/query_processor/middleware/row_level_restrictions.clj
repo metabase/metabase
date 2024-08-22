@@ -21,14 +21,14 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
-   #_{:clj-kondo/ignore [:deprecated-namespace]}
+   ^{:clj-kondo/ignore [:deprecated-namespace]}
    [metabase.query-processor.middleware.fetch-source-query-legacy :as fetch-source-query-legacy]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -65,9 +65,9 @@
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
     (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for-tables table-ids)]
-       (when (seq enforced-sandboxes)
-         (assert-one-gtap-per-table enforced-sandboxes)
-         enforced-sandboxes))))
+      (when (seq enforced-sandboxes)
+        (assert-one-gtap-per-table enforced-sandboxes)
+        enforced-sandboxes))))
 
 (defn- query->table-id->gtap [query]
   {:pre [(some? *current-user-id*)]}
@@ -196,18 +196,18 @@
         ;; make sure source query has `:source-metadata`; add it if needed
         [metadata save?] (cond
                           ;; if it already has `:source-metadata`, we're good to go.
-                          (seq source-metadata)
-                          [source-metadata false]
+                           (seq source-metadata)
+                           [source-metadata false]
 
                           ;; if it doesn't have source metadata, but it's an MBQL query, we can preprocess the query to
                           ;; get the expected metadata.
-                          (not (get-in source-query [:source-query :native]))
-                          [(mbql-query-metadata source-query) true]
+                           (not (get-in source-query [:source-query :native]))
+                           [(mbql-query-metadata source-query) true]
 
                           ;; otherwise if it's a native query we'll have to run the query really quickly to get the
                           ;; expected metadata.
-                          :else
-                          [(native-query-metadata source-query) true])
+                           :else
+                           [(native-query-metadata source-query) true])
         metadata (reconcile-metadata metadata table-metadata)]
     (assert (seq metadata))
     ;; save the result metadata so we don't have to do it again next time if applicable
@@ -218,7 +218,6 @@
     (when-let [field-ids (not-empty (filter some? (map :id metadata)))]
       (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider) :metadata/column field-ids))
     (assoc source-query :source-metadata metadata)))
-
 
 (mu/defn ^:private gtap->source :- [:map
                                     [:source-query :any]
@@ -258,8 +257,8 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-                     (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
-                                                 :throw-exceptions? true))
+      (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                                            :throw-exceptions? true))
 
     (let [table-ids (sandbox->table-ids sandbox)
           table-id->db-id (into {} (mapv (juxt identity database/table-id->database-id) table-ids))
@@ -387,7 +386,6 @@
               gtapped-query)))
         query)
     query))
-
 
 ;;;; Post-processing
 

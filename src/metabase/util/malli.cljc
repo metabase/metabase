@@ -77,7 +77,7 @@
      {:style/indent 0}
      [& body]
      (macros/case
-       :clj
+      :clj
        `(binding [mu.fn/*enforce* false]
           ~@body)
 
@@ -110,8 +110,8 @@
      "Like [[schema.core/defmethod]], but for Malli."
      [multifn dispatch-value & fn-tail]
      (macros/case
-       :clj  `(-defmethod-clj ~multifn ~dispatch-value ~@fn-tail)
-       :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
+      :clj  `(-defmethod-clj ~multifn ~dispatch-value ~@fn-tail)
+      :cljs `(-defmethod-cljs ~multifn ~dispatch-value ~@fn-tail))))
 
 #?(:clj
    (defn validate-throw

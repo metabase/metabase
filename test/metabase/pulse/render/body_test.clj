@@ -185,7 +185,7 @@
           {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
           {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
-                 {:bar-column second, :min-value 0, :max-value 40})))))
+                                               {:bar-column second, :min-value 0, :max-value 40})))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -228,8 +228,8 @@
           [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan"]
           [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
-                           {}
-                           {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
+                                                         {}
+                                                         {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
@@ -254,8 +254,8 @@
           {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
           {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
-                 {}
-                 {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
+                                               {}
+                                               {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
 
 (deftest error-test
   (testing "renders error"
@@ -848,9 +848,9 @@
 
 (deftest render-cards-are-thread-safe-test-for-js-visualization
   (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
-                                                                          {:aggregation [[:count]]
-                                                                           :breakout    [$orders.created_at]
-                                                                           :limit       1})
+                                                             {:aggregation [[:count]]
+                                                              :breakout    [$orders.created_at]
+                                                              :limit       1})
                                    :display                :line
                                    :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                             :graph.metrics    ["count"]}}]
@@ -881,19 +881,19 @@
                                                               {:table.cell_column "TOTAL"
                                                                :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                                                                    {:column_title "CASH MONEY"}}}}]
-       (mt/with-current-user (mt/user->id :rasta)
-         (let [card-doc        (render.tu/render-card-as-hickory card-id)
-               card-header-els (hik.s/select (hik.s/tag :th) card-doc)
-               dashcard-doc    (render.tu/render-dashcard-as-hickory dashcard-id)
-               dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
-               card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
-                                "Total" "Discount ($)" "Created At" "Quantity"]
-               dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
-                                "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
-           (is (= {:card     card-header
-                   :dashcard dashcard-header}
-                  {:card     (mapcat :content card-header-els)
-                   :dashcard (mapcat :content dash-header-els)}))))))))
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [card-doc        (render.tu/render-card-as-hickory card-id)
+                card-header-els (hik.s/select (hik.s/tag :th) card-doc)
+                dashcard-doc    (render.tu/render-dashcard-as-hickory dashcard-id)
+                dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
+                card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "Total" "Discount ($)" "Created At" "Quantity"]
+                dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+            (is (= {:card     card-header
+                    :dashcard dashcard-header}
+                   {:card     (mapcat :content card-header-els)
+                    :dashcard (mapcat :content dash-header-els)}))))))))
 
 (deftest table-renders-respect-conditional-formatting
   (testing "Rendered Tables respect the conditional formatting on a card."
@@ -962,12 +962,12 @@
             (let [card-doc     (render.tu/render-card-as-hickory card-id)
                   card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
               (is (=  ids-to-colour
-                     (keep
-                      (fn [[id row-els]]
-                        (let [{:keys [attrs]} (first row-els)
-                              style-str       (:style attrs)]
-                          (when (str/includes? style-str "background-color")
-                            id)))
-                      (map vector
-                       (range)
-                       (map :content (take 20 card-row-els)))))))))))))
+                      (keep
+                       (fn [[id row-els]]
+                         (let [{:keys [attrs]} (first row-els)
+                               style-str       (:style attrs)]
+                           (when (str/includes? style-str "background-color")
+                             id)))
+                       (map vector
+                            (range)
+                            (map :content (take 20 card-row-els)))))))))))))

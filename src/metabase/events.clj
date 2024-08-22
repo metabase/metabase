@@ -124,11 +124,11 @@
            :attributes {}}
           (let [{:keys [object]} event]
             (log/debugf "Publishing %s event (name and id):\n\n%s"
-                       (u/colorize :yellow (pr-str topic))
-                       (u/pprint-to-str (let [model (mi/model object)]
-                                          (cond-> (select-keys object [:name :id])
-                                            model
-                                            (assoc :model model))))))
+                        (u/colorize :yellow (pr-str topic))
+                        (u/pprint-to-str (let [model (mi/model object)]
+                                           (cond-> (select-keys object [:name :id])
+                                             model
+                                             (assoc :model model))))))
           (assert (and (qualified-keyword? topic)
                        (isa? topic :metabase/event))
                   (format "Invalid event topic %s: events must derive from :metabase/event" (pr-str topic)))

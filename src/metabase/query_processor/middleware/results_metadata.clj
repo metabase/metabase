@@ -3,6 +3,7 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [metabase.analyze.query-results :as qr]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -12,7 +13,6 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

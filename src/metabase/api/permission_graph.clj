@@ -134,7 +134,6 @@
    [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
    [:revision int?]])
 
-
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 
 (s/def ::execute (s/or :str->kw #{"all" "none"}))

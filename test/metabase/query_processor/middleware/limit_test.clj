@@ -70,7 +70,7 @@
               :query {:limit                 qp.i/absolute-max-results
                       ::limit/original-limit nil}
               :info  {:context :csv-download}}
-              (limit/add-default-limit query))))))
+             (limit/add-default-limit query))))))
 
 (deftest download-row-limit-test
   (testing "Apply custom download row limits when"
@@ -88,13 +88,13 @@
                          "below"
                          "above")
                        context)
-          (mt/with-temp-env-var-value! [mb-download-row-limit limit]
-            (is (= expected
-                   (get-in (limit/add-default-limit
-                            {:type  :query
-                             :query {}
-                             :info  {:context context}})
-                           [:query :limit])))))))
+        (mt/with-temp-env-var-value! [mb-download-row-limit limit]
+          (is (= expected
+                 (get-in (limit/add-default-limit
+                          {:type  :query
+                           :query {}
+                           :info  {:context context}})
+                         [:query :limit])))))))
   (testing "Apply appropriate maximum when download-row-limit is unset, but `(mbql.u/query->max-rows-limit query)` returns a value above absolute-max-results"
     (doseq [[limit expected context] [[1000 1000 :csv-download]
                                       [1000 1000 :json-download]
@@ -107,12 +107,12 @@
                          "below"
                          "above")
                        context)
-          (is (= expected
-                 (get-in (limit/add-default-limit
-                          {:type        :query
-                           :query       {}
+        (is (= expected
+               (get-in (limit/add-default-limit
+                        {:type        :query
+                         :query       {}
                            ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
                            ;; so we can use this to check the behaviour of `limit/add-default-limit` when download-row-limit is unset
-                           :constraints (when limit {:max-results-bare-rows limit})
-                           :info        {:context context}})
-                         [:query :limit])))))))
+                         :constraints (when limit {:max-results-bare-rows limit})
+                         :info        {:context context}})
+                       [:query :limit])))))))

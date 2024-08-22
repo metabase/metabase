@@ -33,10 +33,10 @@
                        :type/Text)]}
               (qp.test-util/rows-and-cols
                (mt/format-rows-by [str int str]
-                 (mt/run-mbql-query venues
-                   {:fields   [$name $category_id]
-                    :order-by [[:asc $name]]
-                    :limit    4}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:fields   [$name $category_id]
+                                     :order-by [[:asc $name]]
+                                     :limit    4}))))))))
 
 (deftest ^:parallel basic-external-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -66,10 +66,10 @@
                        :semantic_type :type/Quantity}]}
               (qp.test-util/rows-and-cols
                (mt/format-rows-by [str int int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :breakout    [$category_id]
-                    :limit       3}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:count]]
+                                     :breakout    [$category_id]
+                                     :limit       3}))))))))
 
 (deftest ^:parallel nested-remapping-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries)
@@ -163,11 +163,11 @@
                                  :remapped_from (mt/format-name "category_id")
                                  :field_ref     $category_id->categories.name))]}
                 (-> (select-columns (set (map mt/format-name ["name" "price" "name_2"]))
-                      (mt/format-rows-by [str int str str]
-                        (mt/run-mbql-query venues
-                          {:fields   [$name $price $category_id]
-                           :order-by [[:asc $name]]
-                           :limit    4})))
+                                    (mt/format-rows-by [str int str str]
+                                                       (mt/run-mbql-query venues
+                                                         {:fields   [$name $price $category_id]
+                                                          :order-by [[:asc $name]]
+                                                          :limit    4})))
                     (update :cols (fn [[c1 c2 c3]]
                                     [c1 c2 (dissoc c3 :source_alias)])))))))))
 
@@ -258,7 +258,7 @@
               (mt/with-native-query-testing-context query
                 (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
                        (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
-                         (qp/process-query query))))))))))))
+                                          (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test
   (testing "Should be able to do multiple FK remaps via different FKs from Table A to Table B (#9236)"
@@ -321,7 +321,7 @@
                           ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
                           ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
                          (mt/formatted-rows [str str str int]
-                           results))))))))))))
+                                            results))))))))))))
 
 (deftest ^:parallel inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"

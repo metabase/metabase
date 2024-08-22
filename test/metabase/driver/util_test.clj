@@ -213,12 +213,12 @@
              :required    true}
             {:name "last-prop"}]
            (driver.u/connection-props-server->client
-             nil
-             [{:name "first-prop"}
-              {:name         "my-schema-filters"
-               :type         :schema-filters
-               :display-name "Schemas"}
-              {:name "last-prop"}])))))
+            nil
+            [{:name "first-prop"}
+             {:name         "my-schema-filters"
+              :type         :schema-filters
+              :display-name "Schemas"}
+             {:name "last-prop"}])))))
 
 (deftest ^:parallel connection-props-server->client-detect-cycles-test
   (testing "connection-props-server->client detects cycles in visible-if dependencies"
@@ -226,9 +226,9 @@
                       {:name "prop-b", :visible-if {:prop-a "something else"}}
                       {:name "prop-c", :visible-if {:prop-b "something else entirely"}}]]
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Cycle detected"
-            (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
+           clojure.lang.ExceptionInfo
+           #"Cycle detected"
+           (driver.u/connection-props-server->client :fake-cyclic-driver fake-props))))))
 
 (deftest ^:parallel connection-details-client->server-test
   (testing "db-details-client->server works as expected"
@@ -279,8 +279,8 @@
 
 (deftest ^:parallel mark-h2-superseded-test
   (testing "H2 should have :superseded-by set so it doesn't show up in the list of available drivers in the UI DB edit forms"
-   (is (=? {:driver-name "H2", :superseded-by :deprecated}
-           (:h2 (driver.u/available-drivers-info))))))
+    (is (=? {:driver-name "H2", :superseded-by :deprecated}
+            (:h2 (driver.u/available-drivers-info))))))
 
 (deftest ^:parallel database-id->driver-use-qp-store-test
   (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider

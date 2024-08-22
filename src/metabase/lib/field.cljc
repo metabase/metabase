@@ -637,13 +637,13 @@
         source (:lib/source column)]
     (-> (case source
           (:source/table-defaults
-            :source/fields
-            :source/card
-            :source/previous-stage
-            :source/expressions
-            :source/aggregations
-            :source/breakouts)         (cond-> query
-                                         (contains? stage :fields) (include-field stage-number column))
+           :source/fields
+           :source/card
+           :source/previous-stage
+           :source/expressions
+           :source/aggregations
+           :source/breakouts)         (cond-> query
+                                        (contains? stage :fields) (include-field stage-number column))
           :source/joins               (add-field-to-join query stage-number column)
           :source/implicitly-joinable (include-field query stage-number column)
           :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
@@ -657,7 +657,7 @@
 
 (defn- remove-matching-ref [column refs]
   (let [match (lib.equality/find-matching-ref column refs)]
-     (remove #(= % match) refs)))
+    (remove #(= % match) refs)))
 
 (defn- exclude-field
   "This is called only for fields that plausibly need removing. If the stage has no `:fields`, this will populate it.
@@ -710,7 +710,7 @@
            :source/implicitly-joinable) (exclude-field query stage-number column)
           :source/joins                 (remove-field-from-join query stage-number column)
           :source/native                (throw (ex-info (native-query-fields-edit-error)
-                                                         {:query query :stage stage-number}))
+                                                        {:query query :stage stage-number}))
 
           (:source/breakouts
            :source/aggregations)        (throw (ex-info (source-clauses-only-fields-edit-error)

@@ -104,7 +104,6 @@
                  {:name col-name})
                unescaped-col-names)})
 
-
 ;;; ------------------------------------------------------ Rows ------------------------------------------------------
 
 (defn- row->vec [row-col-names]
@@ -123,7 +122,6 @@
 (defn- post-process-row [row-col-names]
   ;; if we formed the query using MBQL then we apply a couple post processing functions
   (row->vec row-col-names))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Run                                                       |

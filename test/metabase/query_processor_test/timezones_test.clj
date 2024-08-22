@@ -47,10 +47,10 @@
       (is (= [[12 "2014-07-03T01:30:00Z"]
               [10 "2014-07-03T19:30:00Z"]]
              (mt/formatted-rows [int identity]
-               (mt/run-mbql-query users
-                 {:fields   [$id $last_login]
-                  :filter   [:= $id 10 12]
-                  :order-by [[:asc $last_login]]})))
+                                (mt/run-mbql-query users
+                                  {:fields   [$id $last_login]
+                                   :filter   [:= $id 10 12]
+                                   :order-by [[:asc $last_login]]})))
           "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone"))
     (mt/test-drivers (set-timezone-drivers)
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
@@ -59,10 +59,10 @@
         (mt/with-temporary-setting-values [report-timezone timezone]
           (is (= expected-rows
                  (mt/formatted-rows [int identity]
-                   (mt/run-mbql-query users
-                     {:fields   [$id $last_login]
-                      :filter   [:= $last_login "2014-07-03"]
-                      :order-by [[:asc $last_login]]})))
+                                    (mt/run-mbql-query users
+                                      {:fields   [$id $last_login]
+                                       :filter   [:= $last_login "2014-07-03"]
+                                       :order-by [[:asc $last_login]]})))
               (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test
@@ -71,20 +71,20 @@
       (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (mt/formatted-rows [int identity identity]
-                 (mt/run-mbql-query users
-                   {:filter [:between $last_login "2014-08-02T03:00:00.000000" "2014-08-02T06:00:00.000000"]})))
+                                  (mt/run-mbql-query users
+                                    {:filter [:between $last_login "2014-08-02T03:00:00.000000" "2014-08-02T06:00:00.000000"]})))
             (str "If MBQL datetime literal strings do not explicitly specify a timezone, they should be parsed as if "
                  "in the current reporting timezone (Pacific in this case)"))
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (mt/formatted-rows [int identity identity]
-                 (mt/run-mbql-query users
-                   {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
+                                  (mt/run-mbql-query users
+                                    {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
             "MBQL datetime literal strings that include timezone should be parsed in it regardless of report timezone")))
     (testing "UTC timezone"
       (let [run-query   (fn []
                           (mt/formatted-rows [int identity identity]
-                            (mt/run-mbql-query users
-                              {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})))
+                                             (mt/run-mbql-query users
+                                               {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})))
             utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00Z"]]]
         (mt/test-drivers (set-timezone-drivers)
           (is (= utc-results
@@ -197,11 +197,11 @@
   (zipmap
    [:date :time :datetime :time_ltz :time_tz :datetime_ltz :datetime_tz :datetime_tz_id]
    (mt/first-row
-     (qp/process-query
-       (mt/query attempts
-         {:query      {:fields [$date $time $datetime $time_ltz $time_tz $datetime_ltz $datetime_tz $datetime_tz_id]
-                       :filter [:= $id 1]}
-          :middleware {:format-rows? false}})))))
+    (qp/process-query
+     (mt/query attempts
+       {:query      {:fields [$date $time $datetime $time_ltz $time_tz $datetime_ltz $datetime_tz $datetime_tz_id]
+                     :filter [:= $id 1]}
+        :middleware {:format-rows? false}})))))
 
 (defn- driver-distinguishes-between-base-types?
   "True if the current distinguishes between two base types when loading data in test datasets.

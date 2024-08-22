@@ -33,8 +33,8 @@
 (set! *warn-on-reflection* true)
 
 (defonce ^{:doc "The set of Liquibase instances which potentially have taken locks by this process."}
-         potentially-locked-instances
-         (atom #{}))
+  potentially-locked-instances
+  (atom #{}))
 
 (comment
   ;; load our custom migrations
@@ -88,28 +88,28 @@
 (defn- decide-liquibase-file
   [^java.sql.Connection conn]
   (if (fresh-install? conn)
-   changelog-file
-   (let [latest-migration (->> (jdbc/query {:connection conn}
-                                           [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
-                               first
-                               :id)]
-     (cond
-       (nil? latest-migration)
-       changelog-file
+    changelog-file
+    (let [latest-migration (->> (jdbc/query {:connection conn}
+                                            [(format "select id from %s order by dateexecuted desc limit 1" (changelog-table-name conn))])
+                                first
+                                :id)]
+      (cond
+        (nil? latest-migration)
+        changelog-file
 
        ;; post-44 installation downgraded to 45
-       (= latest-migration "v00.00-000")
-       changelog-file
+        (= latest-migration "v00.00-000")
+        changelog-file
 
        ;; pre 42
-       (not (str/starts-with? latest-migration "v"))
-       changelog-legacy-file
+        (not (str/starts-with? latest-migration "v"))
+        changelog-legacy-file
 
-       (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
-       changelog-legacy-file
+        (< (->> latest-migration (re-find #"v(\d+)\..*") second parse-long) 45)
+        changelog-legacy-file
 
-       :else
-       changelog-file))))
+        :else
+        changelog-file))))
 
 (defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]
   (JdbcConnection. jdbc-connection))
@@ -345,21 +345,21 @@
   (log/info "Checking if Database has unrun migrations...")
   (if (seq (unrun-migrations data-source))
     (do
-     (log/info "Database has unrun migrations. Checking if migration lock is taken...")
-     (with-scope-locked liquibase
+      (log/info "Database has unrun migrations. Checking if migration lock is taken...")
+      (with-scope-locked liquibase
       ;; while we were waiting for the lock, it was possible that another instance finished the migration(s), so make
       ;; sure something still needs to be done...
-      (let [to-run-migrations      (unrun-migrations data-source)
-            unrun-migrations-count (count to-run-migrations)]
-        (if (pos? unrun-migrations-count)
-          (let [^Contexts contexts nil
-                start-time         (System/currentTimeMillis)]
-            (log/infof "Running %s migrations ..." unrun-migrations-count)
-            (doseq [^ChangeSet change to-run-migrations]
-              (log/tracef "To run migration %s" (.getId change)))
-            (.update liquibase contexts)
-            (log/infof "Migration complete in %s" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))
-          (log/info "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
+        (let [to-run-migrations      (unrun-migrations data-source)
+              unrun-migrations-count (count to-run-migrations)]
+          (if (pos? unrun-migrations-count)
+            (let [^Contexts contexts nil
+                  start-time         (System/currentTimeMillis)]
+              (log/infof "Running %s migrations ..." unrun-migrations-count)
+              (doseq [^ChangeSet change to-run-migrations]
+                (log/tracef "To run migration %s" (.getId change)))
+              (.update liquibase contexts)
+              (log/infof "Migration complete in %s" (u/format-milliseconds (- (System/currentTimeMillis) start-time))))
+            (log/info "Migration lock cleared, but nothing to do here! Migrations were finished by another instance.")))))
     (log/info "No unrun migrations found.")))
 
 (defn update-with-change-log
@@ -478,12 +478,12 @@
                      (config/current-major-version)))))
    (with-scope-locked liquibase
     ;; count and rollback only the applied change set ids which come after the target version (only the "v..." IDs need to be considered)
-    (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC" (changelog-table-name conn))
-          changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
+     (let [changeset-query (format "SELECT id FROM %s WHERE id LIKE 'v%%' ORDER BY ORDEREXECUTED ASC" (changelog-table-name conn))
+           changeset-ids   (map :id (jdbc/query {:connection conn} [changeset-query]))
           ;; IDs in changesets do not include the leading 0/1 digit, so the major version is the first number
-          ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
-      (log/infof "Rolling back app database schema to version %d" target-version)
-      (.rollback liquibase (count ids-to-drop) "")))))
+           ids-to-drop     (drop-while #(not= (inc target-version) (first (extract-numbers %))) changeset-ids)]
+       (log/infof "Rolling back app database schema to version %d" target-version)
+       (.rollback liquibase (count ids-to-drop) "")))))
 
 (defn latest-applied-major-version
   "Gets the latest version that was applied to the database."

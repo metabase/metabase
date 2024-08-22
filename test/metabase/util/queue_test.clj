@@ -31,8 +31,8 @@
 
     (run! background-fn)
     (future
-     (dotimes [_ realtime-threads]
-       (run! realtime-fn)))
+      (dotimes [_ realtime-threads]
+        (run! realtime-fn)))
 
     (let [processed (volatile! [])]
       (try

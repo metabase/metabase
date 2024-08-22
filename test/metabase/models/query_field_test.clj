@@ -161,4 +161,4 @@
           mlv2-query        (-> (lib/query metadata-provider venues)
                                 (lib/aggregate (lib/distinct venues-name)))]
       (is (= {:direct #{(mt/id :venues :name)}}
-               (#'query-field/query-field-ids mlv2-query))))))
+             (#'query-field/query-field-ids mlv2-query))))))

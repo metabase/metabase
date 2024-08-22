@@ -323,9 +323,9 @@
                   (remove-user-from-group! [req-user status group-to-remove]
                     (u/ignore-exceptions
                      ;; ensure `user-to-update` is in `group-to-remove`
-                     (t2/insert! PermissionsGroupMembership
-                                 :user_id (:id user-to-update)
-                                 :group_id (:id group-to-remove)))
+                      (t2/insert! PermissionsGroupMembership
+                                  :user_id (:id user-to-update)
+                                  :group_id (:id group-to-remove)))
                     (let [current-user-group-membership (gm/user-group-memberships user-to-update)
                           new-user-group-membership     (into [] (filter #(not= (:id group-to-remove)
                                                                                 (:id %))

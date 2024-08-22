@@ -53,8 +53,8 @@
       (pretty [_]
         (str "\n"
              (u/pprint-to-str 'blue
-               (for [[hash {:keys [created]}] @store]
-                 [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
+                              (for [[hash {:keys [created]}] @store]
+                                [hash (u/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
       i/CacheBackend
       (cached-results [this query-hash strategy respond]
@@ -278,7 +278,7 @@
         (testing "Cached results should exist"
           (is (= true
                  (i/cached-results cache/*backend* query-hash (ttl-strategy)
-                   some?))))
+                                   some?))))
         (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
         (testing "Invalid cache entry should be handled gracefully"
           (is (= :not-cached
@@ -438,8 +438,8 @@
              :csv os
              (fn [rff]
                (is (= false
-                     (boolean (:cached (qp/process-query query rff))))
-                  "Query shouldn't be cached after first run with the mock cache in place")))
+                      (boolean (:cached (qp/process-query query rff))))
+                   "Query shouldn't be cached after first run with the mock cache in place")))
             (mt/wait-for-result save-chan))
           (is (= (-> (assoc normal-results :cache/details {:cached true})
                      (m/dissoc-in [:data :results_metadata :checksum]))
@@ -467,32 +467,32 @@
   (testing "Double-check that perms checks still happen even for cached results"
     (mt/with-temp-copy-of-db
       (mt/with-no-data-perms-for-all-users!
-       (mt/with-test-user :rasta
-         (with-mock-cache [save-chan]
-           (letfn [(run-forbidden-query []
-                     (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
-                                              :cache-strategy (ttl-strategy))))]
-             (testing "Shouldn't be allowed to run a query if we don't have perms for it"
-               (is (thrown-with-msg?
-                    clojure.lang.ExceptionInfo
-                    #"You do not have permissions to run this query"
-                    (run-forbidden-query))))
-             (testing "Run forbidden query as superuser to populate the cache"
-               (mw.session/with-current-user (mt/user->id :crowberto)
-                 (is (= [[1000]]
-                        (mt/rows (run-forbidden-query))))))
-             (testing "Cache entry should be saved within 5 seconds"
-               (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
-                 (is (= save-chan
-                        chan))))
-             (testing "Run forbidden query again as superuser again, should be cached"
-               (mw.session/with-current-user (mt/user->id :crowberto)
-                 (is (=? {:cache/details {:cached     true
-                                          :updated_at some?
-                                          :cache-hash some?}}
-                         (run-forbidden-query)))))
-             (testing "Run query as regular user, should get perms Exception even though result is cached"
-               (is (thrown-with-msg?
-                    clojure.lang.ExceptionInfo
-                    #"You do not have permissions to run this query"
-                    (run-forbidden-query)))))))))))
+        (mt/with-test-user :rasta
+          (with-mock-cache [save-chan]
+            (letfn [(run-forbidden-query []
+                      (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                               :cache-strategy (ttl-strategy))))]
+              (testing "Shouldn't be allowed to run a query if we don't have perms for it"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to run this query"
+                     (run-forbidden-query))))
+              (testing "Run forbidden query as superuser to populate the cache"
+                (mw.session/with-current-user (mt/user->id :crowberto)
+                  (is (= [[1000]]
+                         (mt/rows (run-forbidden-query))))))
+              (testing "Cache entry should be saved within 5 seconds"
+                (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
+                  (is (= save-chan
+                         chan))))
+              (testing "Run forbidden query again as superuser again, should be cached"
+                (mw.session/with-current-user (mt/user->id :crowberto)
+                  (is (=? {:cache/details {:cached     true
+                                           :updated_at some?
+                                           :cache-hash some?}}
+                          (run-forbidden-query)))))
+              (testing "Run query as regular user, should get perms Exception even though result is cached"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to run this query"
+                     (run-forbidden-query)))))))))))

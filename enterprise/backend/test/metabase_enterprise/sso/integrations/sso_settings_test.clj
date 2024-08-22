@@ -171,25 +171,25 @@
            #"Setting jwt-attribute-email is not enabled because feature :sso-jwt is not available"
            (sso-settings/jwt-attribute-email! "email")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-attribute-firstname is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-attribute-firstname! "first_name")))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-attribute-firstname is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-attribute-firstname! "first_name")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-attribute-lastname is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-attribute-lastname! "last_name")))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-attribute-lastname is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-attribute-lastname! "last_name")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-group-sync is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-group-sync! true)))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-group-sync is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-group-sync! true)))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-attribute-groups is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-attribute-groups! "groups")))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-attribute-groups is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-attribute-groups! "groups")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-group-mappings is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-group-mappings! {:group_id [1]})))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-group-mappings is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-group-mappings! {:group_id [1]})))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting jwt-enabled is not enabled because feature :sso-jwt is not available"

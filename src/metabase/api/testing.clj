@@ -54,9 +54,9 @@
   "Immediately destroy all open connections in the app DB connection pool."
   []
   (let [data-source (mdb/data-source)]
-     (when (instance? PoolBackedDataSource data-source)
-       (log/info "Destroying application database connection pool")
-       (.hardReset ^PoolBackedDataSource data-source))))
+    (when (instance? PoolBackedDataSource data-source)
+      (log/info "Destroying application database connection pool")
+      (.hardReset ^PoolBackedDataSource data-source))))
 
 (defn- restore-app-db-from-snapshot!
   "Drop all objects in the application DB, then reload everything from the SQL dump at `snapshot-path`."

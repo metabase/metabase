@@ -28,10 +28,10 @@
   [card-id thunk]
   (assert (fn? thunk))
   (let [original-last-used-at (card-last-used-at card-id)]
-   (mt/with-temporary-setting-values [synchronous-batch-updates true]
-     (thunk))
-   (testing "last_used_at should be updated after executing the query"
-     (is (not= original-last-used-at (card-last-used-at card-id))))))
+    (mt/with-temporary-setting-values [synchronous-batch-updates true]
+      (thunk))
+    (testing "last_used_at should be updated after executing the query"
+      (is (not= original-last-used-at (card-last-used-at card-id))))))
 
 (deftest nested-cards-test
   (with-used-cards-setup!

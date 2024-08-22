@@ -101,9 +101,9 @@
     (assoc refs :database_id (keyword (str "db" (quot table-number 10))))))
 
 (defn- clean-entity
- "Removes any comparison-confounding fields, like `:created_at`."
- [entity]
- (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
+  "Removes any comparison-confounding fields, like `:created_at`."
+  [entity]
+  (dissoc entity :created_at :result_metadata :metadata_sync_schedule :cache_field_values_schedule))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest e2e-storage-ingestion-test
@@ -116,7 +116,7 @@
         (ts/with-db source-db
           (testing "insert"
             (test-gen/insert!
-             { ;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
+             {;; Actions are special case where there is a 1:1 relationship between an action and an action subtype (query, implicit, or http)
               ;; We generate 10 actions for each subtype, and 10 of each subtype.
               ;; actions 0-9 are query actions, 10-19 are implicit actions, and 20-29 are http actions.
               :action                  (apply concat
@@ -189,7 +189,7 @@
                                              (many-random-fks 20 {:refs {:human_readable_field_id ::rs/omit}}
                                                               {:field_id [:field 1000]})))
               :metric                  (many-random-fks 30 {:spec-gen {:definition {:aggregation  [[:count]]
-                                                                                     :source-table 9}}}
+                                                                                    :source-table 9}}}
                                                         {:table_id   [:t 100]
                                                          :creator_id [:u 10]})
               :segment                 (many-random-fks 30 {:spec-gen {:definition {:filter [:!= [:field 60 nil] 50],
@@ -458,34 +458,34 @@
 
                   (storage/store! (seq extraction) dump-dir)))
 
-             (testing "ingest and load"
-               (ts/with-db dest-db
+              (testing "ingest and load"
+                (ts/with-db dest-db
                  ;; ingest
-                 (testing "doing ingestion"
-                   (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                       "successful"))
+                  (testing "doing ingestion"
+                    (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                        "successful"))
 
-                 (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
-                       card1d  (t2/select-one Card :name (:name card1s))
-                       card2d  (t2/select-one Card :name (:name card2s))
-                       field1d (t2/select-one Field :name (:name field1s))]
-                   (testing "parameter on dashboard is loaded correctly"
-                     (is (= {:card_id     (:id card1d),
-                             :value_field [:field (:id field1d) nil]}
-                            (-> dash1d
-                                :parameters
-                                first
-                                :values_source_config)))
-                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
+                  (let [dash1d  (t2/select-one Dashboard :name (:name dash1s))
+                        card1d  (t2/select-one Card :name (:name card1s))
+                        card2d  (t2/select-one Card :name (:name card2s))
+                        field1d (t2/select-one Field :name (:name field1s))]
+                    (testing "parameter on dashboard is loaded correctly"
+                      (is (= {:card_id     (:id card1d),
+                              :value_field [:field (:id field1d) nil]}
+                             (-> dash1d
+                                 :parameters
+                                 first
+                                 :values_source_config)))
+                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "dashboard" :parameterized_object_id (:id dash1d)))))
 
-                   (testing "parameter on card is loaded correctly"
-                     (is (= {:card_id     (:id card1d),
-                             :value_field [:field (:id field1d) nil]}
-                            (-> card2d
-                                :parameters
-                                first
-                                :values_source_config)))
-                     (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
+                    (testing "parameter on card is loaded correctly"
+                      (is (= {:card_id     (:id card1d),
+                              :value_field [:field (:id field1d) nil]}
+                             (-> card2d
+                                 :parameters
+                                 first
+                                 :values_source_config)))
+                      (is (some? (t2/select-one 'ParameterCard :parameterized_object_type "card" :parameterized_object_id (:id card2d)))))))))))))))
 
 (deftest dashcards-with-link-cards-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -554,17 +554,17 @@
                         {:model "dataset"    :id model-eid}]
                        (dashboard->link-cards extracted-dashboard)))
 
-               (is (= #{[{:id dash-eid          :model "Dashboard"}]
-                        [{:id coll-eid          :model "Collection"}]
-                        [{:id model-eid         :model "Card"}]
-                        [{:id card-eid          :model "Card"}]
-                        [{:id "Linked database" :model "Database"}]
-                        [{:model "Database" :id "Linked database"}
-                         {:model "Schema"   :id "Public"}
-                         {:model "Table"    :id "Linked table"}]}
-                    (set (serdes/dependencies extracted-dashboard))))
+                (is (= #{[{:id dash-eid          :model "Dashboard"}]
+                         [{:id coll-eid          :model "Collection"}]
+                         [{:id model-eid         :model "Card"}]
+                         [{:id card-eid          :model "Card"}]
+                         [{:id "Linked database" :model "Database"}]
+                         [{:model "Database" :id "Linked database"}
+                          {:model "Schema"   :id "Public"}
+                          {:model "Table"    :id "Linked table"}]}
+                       (set (serdes/dependencies extracted-dashboard))))
 
-               (storage/store! (seq extraction) dump-dir)))
+                (storage/store! (seq extraction) dump-dir)))
 
             (testing "ingest and load"
               ;; ingest
@@ -580,7 +580,7 @@
                          [model-name 'Card]
                          [dash-name  'Dashboard]]]
                   (testing (format "model %s from link cards are loaded properly" model)
-                   (is (some? (t2/select model :name name)))))
+                    (is (some? (t2/select model :name name)))))
 
                 (testing "linkcards are loaded with correct fk"
                   (let [new-db-id    (t2/select-one-pk Database :name db-name)
@@ -654,70 +654,70 @@
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-     (ts/with-dbs [source-db dest-db]
-       (ts/with-db source-db
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
          ;; preparation
-         (t2.with-temp/with-temp
-           [Dashboard           {dashboard-id :id
-                                 dashboard-eid :entity_id} {:name "Dashboard with tab"}
-            Card                {card-id-1 :id
-                                 card-eid-1 :entity_id}    {:name "Card 1"}
-            Card                {card-id-2 :id
-                                 card-eid-2 :entity_id}    {:name "Card 2"}
-            :model/DashboardTab {tab-id-1 :id
-                                 tab-eid-1 :entity_id}     {:name "Tab 1" :position 0 :dashboard_id dashboard-id}
-            :model/DashboardTab {tab-id-2 :id
-                                 tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-1
-                                                            :dashboard_tab_id tab-id-1}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-2
-                                                            :dashboard_tab_id tab-id-1}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-1
-                                                            :dashboard_tab_id tab-id-2}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-2
-                                                            :dashboard_tab_id tab-id-2}]
-           (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-             (storage/store! (seq extraction) dump-dir))
+          (t2.with-temp/with-temp
+            [Dashboard           {dashboard-id :id
+                                  dashboard-eid :entity_id} {:name "Dashboard with tab"}
+             Card                {card-id-1 :id
+                                  card-eid-1 :entity_id}    {:name "Card 1"}
+             Card                {card-id-2 :id
+                                  card-eid-2 :entity_id}    {:name "Card 2"}
+             :model/DashboardTab {tab-id-1 :id
+                                  tab-eid-1 :entity_id}     {:name "Tab 1" :position 0 :dashboard_id dashboard-id}
+             :model/DashboardTab {tab-id-2 :id
+                                  tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-1
+                                                             :dashboard_tab_id tab-id-1}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-2
+                                                             :dashboard_tab_id tab-id-1}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-1
+                                                             :dashboard_tab_id tab-id-2}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-2
+                                                             :dashboard_tab_id tab-id-2}]
+            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+              (storage/store! (seq extraction) dump-dir))
 
-           (testing "ingest and load"
-             (ts/with-db dest-db
+            (testing "ingest and load"
+              (ts/with-db dest-db
                ;; ingest
-               (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                     "successful"))
-               (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
-                                       (t2/hydrate :tabs :dashcards))
-                     new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
-                     new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
-                     new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
-                     new-card-id-2 (t2/select-one-pk Card :entity_id card-eid-2)]
+                (testing "doing ingestion"
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                      "successful"))
+                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
+                                        (t2/hydrate :tabs :dashcards))
+                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
+                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
+                      new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
+                      new-card-id-2 (t2/select-one-pk Card :entity_id card-eid-2)]
 
-                 (is (=? [{:id           new-tab-id-1
-                           :dashboard_id (:id new-dashboard)
-                           :name         "Tab 1"
-                           :position     0}
-                          {:id           new-tab-id-2
-                           :dashboard_id (:id new-dashboard)
-                           :name         "Tab 2"
-                           :position     1}]
-                         (:tabs new-dashboard)))
-                 (is (=? [{:card_id          new-card-id-1
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-1}
-                          {:card_id          new-card-id-2
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-1}
-                          {:card_id          new-card-id-1
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-2}
-                          {:card_id          new-card-id-2
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-2}]
-                         (:dashcards new-dashboard))))))))))))
+                  (is (=? [{:id           new-tab-id-1
+                            :dashboard_id (:id new-dashboard)
+                            :name         "Tab 1"
+                            :position     0}
+                           {:id           new-tab-id-2
+                            :dashboard_id (:id new-dashboard)
+                            :name         "Tab 2"
+                            :position     1}]
+                          (:tabs new-dashboard)))
+                  (is (=? [{:card_id          new-card-id-1
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-1}
+                           {:card_id          new-card-id-2
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-1}
+                           {:card_id          new-card-id-1
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-2}
+                           {:card_id          new-card-id-2
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-2}]
+                          (:dashcards new-dashboard))))))))))))
 
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"

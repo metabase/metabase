@@ -1,10 +1,10 @@
 (ns metabase.shared.formatting.date-test
   (:require
+   #?@(:clj [[metabase.shared.formatting.internal.date-formatters :as formatters]
+             [metabase.test :as mt]])
    [clojure.test :refer [are deftest is testing]]
    [metabase.shared.formatting.date :as date]
-   [metabase.shared.util.time :as shared.ut]
-   #?@(:clj [[metabase.shared.formatting.internal.date-formatters :as formatters]
-             [metabase.test :as mt]]))
+   [metabase.shared.util.time :as shared.ut])
   #?(:clj (:import
            java.util.Locale)))
 

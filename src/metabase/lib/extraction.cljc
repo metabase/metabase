@@ -81,8 +81,7 @@
 (mu/defn extraction-expression :- ::lib.schema.expression/expression
   "Given an `extraction` as returned by [[column-extractions]], return the expression clause that should be added to a
   query."
-  [{:keys [column tag] :as _expression} :- ::lib.schema.extraction/extraction
-   ]
+  [{:keys [column tag] :as _expression} :- ::lib.schema.extraction/extraction]
   (case tag
     ;; Temporal extractions
     :hour-of-day     (lib.expression/get-hour column)

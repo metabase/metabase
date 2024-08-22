@@ -71,17 +71,17 @@
 
 (deftest card-update-test
   (testing :event/card-update
-   (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
-     (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
-     (is (= {:model        "Card"
-             :model_id     card-id
-             :user_id      (mt/user->id :crowberto)
-             :object       (card->revision-object card)
-             :is_reversion false
-             :is_creation  false}
-            (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                           :model       "Card"
-                           :model_id    card-id))))))
+    (t2.with-temp/with-temp [Card {card-id :id, :as card} (card-properties)]
+      (events/publish-event! :event/card-update {:object card :user-id (mt/user->id :crowberto)})
+      (is (= {:model        "Card"
+              :model_id     card-id
+              :user_id      (mt/user->id :crowberto)
+              :object       (card->revision-object card)
+              :is_reversion false
+              :is_creation  false}
+             (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                            :model       "Card"
+                            :model_id    card-id))))))
 
 (deftest card-update-shoud-not-contains-public-info-test
   (testing :event/card-update
@@ -93,51 +93,51 @@
                                     (->> (t2/select-one-fn :object Revision
                                                            :model       "Card"
                                                            :model_id    card-id)
-                                     keys set)))))))
+                                         keys set)))))))
 
 (deftest dashboard-create-test
   (testing :event/dashboard-create
     (mt/with-test-user :rasta
-     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-       (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})
-       (is (= {:model        "Dashboard"
-               :model_id     dashboard-id
-               :user_id      (mt/user->id :rasta)
-               :object       (assoc (dashboard->revision-object dashboard) :cards [])
-               :is_reversion false
-               :is_creation  true}
-              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                             :model "Dashboard"
-                             :model_id dashboard-id)))))))
+      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+        (events/publish-event! :event/dashboard-create {:object dashboard :user-id (mt/user->id :rasta)})
+        (is (= {:model        "Dashboard"
+                :model_id     dashboard-id
+                :user_id      (mt/user->id :rasta)
+                :object       (assoc (dashboard->revision-object dashboard) :cards [])
+                :is_reversion false
+                :is_creation  true}
+               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                              :model "Dashboard"
+                              :model_id dashboard-id)))))))
 
 (deftest dashboard-update-test
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
-     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
-       (is (= {:model        "Dashboard"
-               :model_id     dashboard-id
-               :user_id      (mt/user->id :rasta)
-               :object       (dashboard->revision-object dashboard)
-               :is_reversion false
-               :is_creation  false}
-              (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
-                             :model    "Dashboard"
-                             :model_id dashboard-id)))))))
+      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+        (is (= {:model        "Dashboard"
+                :model_id     dashboard-id
+                :user_id      (mt/user->id :rasta)
+                :object       (dashboard->revision-object dashboard)
+                :is_reversion false
+                :is_creation  false}
+               (t2/select-one [Revision :model :model_id :user_id :object :is_reversion :is_creation]
+                              :model    "Dashboard"
+                              :model_id dashboard-id)))))))
 
 (deftest dashboard-update-shoud-not-contains-public-info-test
   (testing :event/dashboard-update
     (mt/with-test-user :rasta
-     (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
-       (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
+      (t2.with-temp/with-temp [Dashboard {dashboard-id :id, :as dashboard}]
+        (events/publish-event! :event/dashboard-update {:object dashboard :user-id (mt/user->id :rasta)})
 
        ;; we don't want the public_uuid and made_public_by_id to be recorded in a revision
        ;; otherwise revert a card to earlier revision might toggle the public sharing settings
-       (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
-                                     (->> (t2/select-one-fn :object Revision
-                                                            :model       "Dashboard"
-                                                            :model_id    dashboard-id)
-                                          keys set))))))))
+        (is (empty? (set/intersection #{:public_uuid :made_public_by_id}
+                                      (->> (t2/select-one-fn :object Revision
+                                                             :model       "Dashboard"
+                                                             :model_id    dashboard-id)
+                                           keys set))))))))
 (deftest dashboard-add-cards-test
   (testing ":event/dashboard-update with adding dashcards"
     (t2.with-temp/with-temp [Dashboard     {dashboard-id :id, :as dashboard} {}
@@ -293,32 +293,32 @@
 
 (deftest metric-update-test
   (testing :event/metric-update
-   (t2.with-temp/with-temp [Database {database-id :id} {}
-                            Table    {:keys [id]}      {:db_id database-id}
-                            LegacyMetric   metric            {:table_id id, :definition {:a "b"}}]
-     (events/publish-event! :event/metric-update
-                            (assoc {:object metric}
-                                   :revision-message "updated"
-                                   :user-id (mt/user->id :crowberto)))
-     (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
-                                   :model "Metric"
-                                   :model_id (:id metric))]
-       (is (= {:model        "Metric"
-               :user_id      (mt/user->id :crowberto)
-               :object       {:name                    "Toucans in the rainforest"
-                              :description             "Lookin' for a blueberry"
-                              :entity_id               (:entity_id metric)
-                              :how_is_this_calculated  nil
-                              :show_in_getting_started false
-                              :caveats                 nil
-                              :points_of_interest      nil
-                              :archived                false
-                              :creator_id              (mt/user->id :rasta)
-                              :definition              {:a "b"}}
-               :is_reversion false
-               :is_creation  false
-               :message      "updated"}
-              (assoc revision :object (dissoc (:object revision) :id :table_id))))))))
+    (t2.with-temp/with-temp [Database {database-id :id} {}
+                             Table    {:keys [id]}      {:db_id database-id}
+                             LegacyMetric   metric            {:table_id id, :definition {:a "b"}}]
+      (events/publish-event! :event/metric-update
+                             (assoc {:object metric}
+                                    :revision-message "updated"
+                                    :user-id (mt/user->id :crowberto)))
+      (let [revision (t2/select-one [Revision :model :user_id :object :is_reversion :is_creation :message]
+                                    :model "Metric"
+                                    :model_id (:id metric))]
+        (is (= {:model        "Metric"
+                :user_id      (mt/user->id :crowberto)
+                :object       {:name                    "Toucans in the rainforest"
+                               :description             "Lookin' for a blueberry"
+                               :entity_id               (:entity_id metric)
+                               :how_is_this_calculated  nil
+                               :show_in_getting_started false
+                               :caveats                 nil
+                               :points_of_interest      nil
+                               :archived                false
+                               :creator_id              (mt/user->id :rasta)
+                               :definition              {:a "b"}}
+                :is_reversion false
+                :is_creation  false
+                :message      "updated"}
+               (assoc revision :object (dissoc (:object revision) :id :table_id))))))))
 
 (deftest metric-delete-test
   (testing ":metric-delete"

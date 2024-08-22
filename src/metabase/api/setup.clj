@@ -194,7 +194,7 @@
                                                                 [:= :type "model"]
                                                                 (mi/exclude-internal-content-hsql :model/Card)]})
                 :embedded-resource (or (t2/exists? :model/Card :enable_embedding true)
-                          (t2/exists? :model/Dashboard :enable_embedding true))}})
+                                       (t2/exists? :model/Dashboard :enable_embedding true))}})
 
 (defn- get-connected-tasks
   [{:keys [configured counts exists embedding] :as _info}]

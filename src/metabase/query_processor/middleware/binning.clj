@@ -54,9 +54,9 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value (missing or incomplete fingerprint)")
-               {:type qp.error-type/invalid-query
-                :field-id-or-name field-id-or-name
-                :fingerprint fingerprint})))
+                      {:type qp.error-type/invalid-query
+                       :field-id-or-name field-id-or-name
+                       :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
 (def ^:private PossiblyLegacyColumnMetadata

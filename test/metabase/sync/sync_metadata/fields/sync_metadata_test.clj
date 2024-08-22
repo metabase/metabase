@@ -9,7 +9,6 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-
 (defn- updates-that-will-be-performed
   ([new-metadata-from-sync metadata-in-application-db]
    ;; use alphabetical field_order by default because the default, database, will update the position
@@ -268,32 +267,32 @@
                                   :base-type  :type/Text}]
                                 [["ngoc@metabase.com"]]]]
         (try
-         (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-         (let [original-field (t2/select-one :model/Field (mt/id :table :field))]
-           (testing "sanity check: the original state"
-             (is (=? {:semantic_type  :type/Email
-                      :fingerprint    (mt/malli=? :map)
-                      :base_type      :type/Text
-                      :effective_type :type/Text}
-                     original-field)))
+          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+          (let [original-field (t2/select-one :model/Field (mt/id :table :field))]
+            (testing "sanity check: the original state"
+              (is (=? {:semantic_type  :type/Email
+                       :fingerprint    (mt/malli=? :map)
+                       :base_type      :type/Text
+                       :effective_type :type/Text}
+                      original-field)))
            ;; drop the column and create a new one with the same name
-           (sql-jdbc.execute/do-with-connection-with-options
-            :h2
-            (mt/db)
-            {}
-            (fn [conn]
-              (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"
-                           "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
-                           "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
-                (next.jdbc/execute! conn [sql]))))
-           (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-           (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
-             (testing "updated field is re-fingerprinted and analyzed"
-               (is (=? {:semantic_type  :type/Category
-                        :fingerprint    (mt/malli=? :map)
-                        :base_type      :type/Integer
-                        :effective_type :type/Integer}
-                       new-field))
-               (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
-         (finally
-          (t2/delete! :model/Database (mt/id))))))))
+            (sql-jdbc.execute/do-with-connection-with-options
+             :h2
+             (mt/db)
+             {}
+             (fn [conn]
+               (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"
+                            "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
+                            "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
+                 (next.jdbc/execute! conn [sql]))))
+            (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+            (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
+              (testing "updated field is re-fingerprinted and analyzed"
+                (is (=? {:semantic_type  :type/Category
+                         :fingerprint    (mt/malli=? :map)
+                         :base_type      :type/Integer
+                         :effective_type :type/Integer}
+                        new-field))
+                (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
+          (finally
+            (t2/delete! :model/Database (mt/id))))))))

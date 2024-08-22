@@ -31,7 +31,7 @@
             (base64-encode
              (.digest (doto (MessageDigest/getInstance "SHA-256")
                         (.update (.getBytes (slurp (io/resource resource-filename))))))))]
-    (mapv file-hash [ ;; inline script in index.html that sets `MetabaseBootstrap` and the like
+    (mapv file-hash [;; inline script in index.html that sets `MetabaseBootstrap` and the like
                      "frontend_client/inline_js/index_bootstrap.js"
                      ;; inline script in init.html
                      "frontend_client/inline_js/init.js"
@@ -62,22 +62,22 @@
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
-                                  ["'self'"
-                                   "https://maps.google.com"
-                                   "https://accounts.google.com"
-                                   (when (public-settings/anon-tracking-enabled)
-                                     "https://www.google-analytics.com")
+                                 ["'self'"
+                                  "https://maps.google.com"
+                                  "https://accounts.google.com"
+                                  (when (public-settings/anon-tracking-enabled)
+                                    "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
-                                   (when config/is-dev?
-                                     "http://localhost:8080")
+                                  (when config/is-dev?
+                                    "http://localhost:8080")
                                    ;; for react dev tools to work in Firefox until resolution of
                                    ;; https://github.com/facebook/react/issues/17997
-                                   (when config/is-dev?
-                                     "'unsafe-inline'")]
-                                  ;; CLJS REPL
                                   (when config/is-dev?
-                                    ["'unsafe-eval'"
-                                     "http://localhost:9630"])
+                                    "'unsafe-inline'")]
+                                  ;; CLJS REPL
+                                 (when config/is-dev?
+                                   ["'unsafe-eval'"
+                                    "http://localhost:9630"])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
@@ -141,7 +141,6 @@
            :domain domain
            :port port})))))
 
-
 (defn approved-domain?
   "Checks if the domain is compatible with the reference one"
   [domain reference-domain]
@@ -164,10 +163,10 @@
    (= port reference-port)))
 
 (defn parse-approved-origins
-    "Parses the space separated string of approved origins"
-    [approved-origins-raw]
-    (let [urls (str/split approved-origins-raw #" +")]
-     (keep parse-url urls)))
+  "Parses the space separated string of approved origins"
+  [approved-origins-raw]
+  (let [urls (str/split approved-origins-raw #" +")]
+    (keep parse-url urls)))
 
 (defn approved-origin?
   "Returns true if `origin` should be allowed for CORS based on the `approved-origins`"
@@ -177,19 +176,19 @@
      (let [approved-list (parse-approved-origins approved-origins-raw)
            origin        (parse-url raw-origin)]
        (some (fn [approved-origin]
-                           (and
-                            (approved-domain? (:domain origin) (:domain approved-origin))
-                            (approved-protocol? (:protocol origin) (:protocol approved-origin))
-                            (approved-port? (:port origin) (:port approved-origin))))
-                      approved-list)))))
+               (and
+                (approved-domain? (:domain origin) (:domain approved-origin))
+                (approved-protocol? (:protocol origin) (:protocol approved-origin))
+                (approved-port? (:port origin) (:port approved-origin))))
+             approved-list)))))
 
 (defn- access-control-headers
   [origin]
   (merge
    (when
     (approved-origin? origin (embedding-app-origin))
-    {"Access-Control-Allow-Origin" origin
-     "Vary"                        "Origin"})
+     {"Access-Control-Allow-Origin" origin
+      "Vary"                        "Origin"})
 
    {"Access-Control-Allow-Headers"   "*"
     "Access-Control-Allow-Methods"   "*"
@@ -218,7 +217,7 @@
      {"X-Frame-Options"                 (if (embedding-app-origin)
                                           (format "ALLOW-FROM %s" (first-embedding-app-origin))
                                           "DENY")})
-   { ;; Tell browser to block suspected XSS attacks
+   {;; Tell browser to block suspected XSS attacks
     "X-XSS-Protection"                  "1; mode=block"
     ;; Prevent Flash / PDF files from including content from site.
     "X-Permitted-Cross-Domain-Policies" "none"

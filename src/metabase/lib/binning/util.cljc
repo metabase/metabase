@@ -48,7 +48,6 @@
        {:num-bins  num-bins
         :bin-width (calculate-bin-width min-value max-value num-bins)}])))
 
-
 ;;; ------------------------------------- Humanized binning with nicer-breakout --------------------------------------
 
 (defn- ceil-to

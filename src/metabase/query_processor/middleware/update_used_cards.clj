@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.update-used-cards
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [java-time.api :as t]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.schema :as qp.schema]
@@ -7,7 +8,6 @@
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -31,10 +31,10 @@
 (defonce ^:private
   update-used-cards-queue
   (delay
-   (grouper/start!
-    update-used-cards!*
-    :capacity 500
-    :interval (* update-used-card-interval-seconds 1000))))
+    (grouper/start!
+     update-used-cards!*
+     :capacity 500
+     :interval (* update-used-card-interval-seconds 1000))))
 
 (mu/defn update-used-cards! :- ::qp.schema/qp
   "Middleware that get all card-ids that were used during a query execution and updates their `last_used_at`.

@@ -308,24 +308,24 @@
 (deftest dashboard-width-revision-diff-test
   (testing "The Dashboard's revision history correctly reports dashboard width changes (#38910)"
     (t2.with-temp/with-temp
-        [:model/Dashboard  {dashboard-id :id :as dash} {:name "A dashboard"}
-         :model/Revision   _ {:model    "Dashboard"
-                              :model_id dashboard-id
-                              :user_id  (mt/user->id :crowberto)
-                              :object   (assoc dash :width nil)}
-         :model/Revision   _ {:model    "Dashboard"
-                              :model_id dashboard-id
-                              :user_id  (mt/user->id :crowberto)
-                              :object   (assoc dash :width "full")}
-         :model/Revision   _ {:model    "Dashboard"
-                              :model_id dashboard-id
-                              :user_id  (mt/user->id :crowberto)
-                              :object   (assoc dash :width "fixed")}]
-        (is (= ["changed the width setting from full to fixed."
-                "changed the width setting."
-                "modified this."]
-               (map :description
-                    (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
+      [:model/Dashboard  {dashboard-id :id :as dash} {:name "A dashboard"}
+       :model/Revision   _ {:model    "Dashboard"
+                            :model_id dashboard-id
+                            :user_id  (mt/user->id :crowberto)
+                            :object   (assoc dash :width nil)}
+       :model/Revision   _ {:model    "Dashboard"
+                            :model_id dashboard-id
+                            :user_id  (mt/user->id :crowberto)
+                            :object   (assoc dash :width "full")}
+       :model/Revision   _ {:model    "Dashboard"
+                            :model_id dashboard-id
+                            :user_id  (mt/user->id :crowberto)
+                            :object   (assoc dash :width "fixed")}]
+      (is (= ["changed the width setting from full to fixed."
+              "changed the width setting."
+              "modified this."]
+             (map :description
+                  (mt/user-http-request :crowberto :get 200 "revision" :entity "dashboard" :id dashboard-id)))))))
 
 (deftest card-revision-description-test
   (testing "revision description for card are generated correctly"
@@ -355,8 +355,7 @@
       (t2/update! :model/Card :id card-id {:description "meaningful number"})
       (create-card-revision! card-id false :crowberto)
 
-
-      ;; 5. change collection
+;; 5. change collection
       (t2/update! :model/Card :id card-id {:collection_id coll-id})
       (create-card-revision! card-id false :crowberto)
 
@@ -405,8 +404,7 @@
                                                :name        "New name"})
           (create-card-revision! card-id false :crowberto)
 
-
-          ;; 2. revert to an earlier revision
+;; 2. revert to an earlier revision
           (let [earlier-revision-id (t2/select-one-pk :model/Revision :model "Card" :model_id card-id {:order-by [[:timestamp :desc]]})]
             (revision/revert! {:entity :model/Card :id card-id :user-id (mt/user->id :crowberto) :revision-id earlier-revision-id}))
 

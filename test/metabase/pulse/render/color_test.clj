@@ -59,10 +59,10 @@
                (fn []
                  (color/get-background-color (color/make-color-selector {:cols [{:name "test"}]
                                                                          :rows [[5] [5]]}
-                                                                        {:table.column_formatting[{:columns ["test"],
-                                                                                                   :type :single,
-                                                                                                   :operator "=",
-                                                                                                   :value 5,
-                                                                                                   :color "#ff0000",
-                                                                                                   :highlight_row true}]})
+                                                                        {:table.column_formatting [{:columns ["test"],
+                                                                                                    :type :single,
+                                                                                                    :operator "=",
+                                                                                                    :value 5,
+                                                                                                    :color "#ff0000",
+                                                                                                    :highlight_row true}]})
                                              "any value" "test" 1))))))

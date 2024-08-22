@@ -29,8 +29,8 @@
   [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
   [x]
   (set (lib.util.match/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
-                     (when-not (some #{:source-metadata} &parents)
-                       &match))))
+         (when-not (some #{:source-metadata} &parents)
+           &match))))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
   (str dest-table-name "__via__" source-fk-field-name))
@@ -213,7 +213,7 @@
   "Sort `joins` by topological dependency order: joins that are referenced by the `:condition` of another will be sorted
   first. If no dependencies exist between joins, preserve the existing order."
   [joins]
-  (let [ ;; make a map of join alias -> immediate dependencies
+  (let [;; make a map of join alias -> immediate dependencies
         join->immediate-deps (into {}
                                    (map (fn [join]
                                           [(:alias join) (join-dependencies join)]))
@@ -233,18 +233,18 @@
                                (contains? (join->all-deps (:alias join-1))
                                           (:alias join-2)))]
     (->> ;; add a key to each join to record its original position
-         (map-indexed (fn [i join]
-                        (assoc join ::original-position i)) joins)
+     (map-indexed (fn [i join]
+                    (assoc join ::original-position i)) joins)
          ;; sort the joins by topological order falling back to preserving original position
-         (sort (fn [join-1 join-2]
-                 (cond
-                   (depends-on? join-1 join-2) 1
-                   (depends-on? join-2 join-1) -1
-                   :else                       (compare (::original-position join-1)
-                                                        (::original-position join-2)))))
+     (sort (fn [join-1 join-2]
+             (cond
+               (depends-on? join-1 join-2) 1
+               (depends-on? join-2 join-1) -1
+               :else                       (compare (::original-position join-1)
+                                                    (::original-position join-2)))))
          ;; remove the keys we used to record original position
-         (mapv (fn [join]
-                 (dissoc join ::original-position))))))
+     (mapv (fn [join]
+             (dissoc join ::original-position))))))
 
 (defn- resolve-implicit-joins-this-level
   "Add new `:joins` for tables referenced by `:field` forms with a `:source-field`. Add `:join-alias` info to those

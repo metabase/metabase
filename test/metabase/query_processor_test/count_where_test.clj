@@ -92,9 +92,9 @@
 (deftest ^:parallel metric-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (t2.with-temp/with-temp [LegacyMetric {metric-id :id} {:table_id   (mt/id :venues)
-                                                     :definition {:source-table (mt/id :venues)
-                                                                  :aggregation  [:count-where
-                                                                                 [:< [:field (mt/id :venues :price) nil] 4]]}}]
+                                                           :definition {:source-table (mt/id :venues)
+                                                                        :aggregation  [:count-where
+                                                                                       [:< [:field (mt/id :venues :price) nil] 4]]}}]
       (is (= 94
              (->> {:aggregation [[:metric metric-id]]}
                   (mt/run-mbql-query venues)

@@ -455,7 +455,7 @@
       (collection/check-collection-namespace Card (:collection_id card)))))
 
 (defenterprise pre-update-check-sandbox-constraints
- "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_])
 
@@ -474,23 +474,23 @@
               {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
               affected-param-ids-set (cond
                                       ;; update all parameters that use this card as source
-                                      (:archived changes)
-                                      (set (map :parameter_id param-cards))
+                                       (:archived changes)
+                                       (set (map :parameter_id param-cards))
 
                                       ;; update only parameters that have value_field no longer in this card
-                                      (:result_metadata changes)
-                                      (let [param-id->parameter (m/index-by :id parameters)]
-                                        (->> param-cards
-                                             (filter (fn [param-card]
+                                       (:result_metadata changes)
+                                       (let [param-id->parameter (m/index-by :id parameters)]
+                                         (->> param-cards
+                                              (filter (fn [param-card]
                                                        ;; if cant find the value-field in result_metadata, then we should
                                                        ;; remove it
-                                                       (nil? (qp.util/field->field-info
-                                                              (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
-                                                              (:result_metadata changes)))))
-                                             (map :parameter_id)
-                                             set))
+                                                        (nil? (qp.util/field->field-info
+                                                               (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
+                                                               (:result_metadata changes)))))
+                                              (map :parameter_id)
+                                              set))
 
-                                      :else #{})
+                                       :else #{})
               new-parameters (map (fn [parameter]
                                     (if (affected-param-ids-set (:id parameter))
                                       (-> parameter
@@ -570,13 +570,12 @@
       ;; TODO: should be done in after-update
       ;; has to place it here because changes is not available in after-update hook see toucan2#129
       (when (contains? changes :dataset_query)
-       (query-field/update-query-fields-for-card! changes))
+        (query-field/update-query-fields-for-card! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
-
 
 (t2/define-after-select :model/Card
   [card]
@@ -614,8 +613,8 @@
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
       ;; verified-result-metadata? flag (see #37009).
       (cond-> #_changes
-        (or (empty? (:result_metadata card))
-            (not verified-result-metadata?))
+       (or (empty? (:result_metadata card))
+           (not verified-result-metadata?))
         populate-result-metadata)
       pre-update
       populate-query-fields
@@ -976,7 +975,6 @@ saved later when it is ready."
     (query-analyzer/replace-names query {:columns column-replacements
                                          :tables  table-replacements})))
 
-
 (defn replace-fields-and-tables!
   "Given a card and a map of the form
 
@@ -1073,7 +1071,6 @@ saved later when it is ready."
         ["Card" card-id])
       (for [snippet-id snippets]
         ["NativeQuerySnippet" snippet-id])))))
-
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 

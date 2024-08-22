@@ -803,38 +803,38 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-                     (is (= [(default-table-search-row "RoundTable")]
-                            (search-request-data user :q "RoundTable"))))))
+        (is (= [(default-table-search-row "RoundTable")]
+               (search-request-data user :q "RoundTable"))))))
   (testing "You should not see hidden tables"
     (mt/with-temp [Table _normal {:name "Foo Visible"}
                    Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-                     (is (= [(default-table-search-row "Foo Visible")]
-                            (search-request-data user :q "Foo"))))))
+        (is (= [(default-table-search-row "Foo Visible")]
+               (search-request-data user :q "Foo"))))))
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                              (search-request-data user :q "Lancelot")))))))
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+                 (search-request-data user :q "Lancelot")))))))
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                              (search-request-data user :q "Lancelot")))))))
+          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+                 (search-request-data user :q "Lancelot")))))))
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= []
-                              (search-request-data user :q table-name :archived true)))))))
+          (is (= []
+                 (search-request-data user :q table-name :archived true)))))))
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= []
-                              (search-request-data user :q table-name)))))))
+          (is (= []
+                 (search-request-data user :q table-name)))))))
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
     (mt/with-temp [Database {db-id :id} {}
                    Table    table {:db_id db-id}]
@@ -854,9 +854,9 @@
         (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
         (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(default-table-search-row "RoundTable")]
-                              (binding [*search-request-results-database-id* db-id]
-                                (search-request-data user :q "RoundTable")))))))))
+          (is (= [(default-table-search-row "RoundTable")]
+                 (binding [*search-request-results-database-id* db-id]
+                   (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
@@ -1446,9 +1446,9 @@
        :model/Card {native-model-in-name :id}  {:name search-term :type :model}
        :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
       (mt/with-actions
-        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
-         {http-action :action-id}  {:type :http :name search-term}
-         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
+       [_                         {:type :model :dataset_query (mt/mbql-query venues)}
+        {http-action :action-id}  {:type :http :name search-term}
+        {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]

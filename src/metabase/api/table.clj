@@ -1,6 +1,7 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require
+   #_{:clj-kondo/ignore [:consistent-alias]}
    [clojure.java.io :as io]
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
@@ -20,7 +21,6 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.sync :as sync]
    [metabase.sync.concurrent :as sync.concurrent]
-   #_{:clj-kondo/ignore [:consistent-alias]}
    [metabase.sync.field-values :as sync.field-values]
    [metabase.types :as types]
    [metabase.upload :as upload]
@@ -71,8 +71,8 @@
   [{:keys [id] :as existing-table} body]
   {id ms/PositiveInt}
   (when-let [changes (not-empty (u/select-keys-when body
-                                  :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                                  :present [:description :caveats :points_of_interest :visibility_type]))]
+                                                    :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                                                    :present [:description :caveats :points_of_interest :visibility_type]))]
     (api/check-500 (pos? (t2/update! Table id changes))))
   (let [updated-table        (t2/select-one Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
@@ -139,13 +139,11 @@
    show_in_getting_started [:maybe :boolean]}
   (update-tables! ids body))
 
-
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
 (def ^:private minute-str (deferred-tru "Minute"))
 (def ^:private hour-str (deferred-tru "Hour"))
 (def ^:private day-str (deferred-tru "Day"))
-
 
 ;; note the order of these options corresponds to the order they will be shown to the user in the UI
 (def ^:private time-options

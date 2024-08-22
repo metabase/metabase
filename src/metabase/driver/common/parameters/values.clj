@@ -9,6 +9,7 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require
+   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -27,7 +28,6 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -230,7 +230,6 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
-
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
 (mu/defn ^:private param-value-for-raw-value-tag
@@ -272,7 +271,6 @@
 (defmethod parse-tag :date
   [tag params]
   (param-value-for-raw-value-tag tag params))
-
 
 ;;; Parsing Values
 

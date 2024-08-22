@@ -191,7 +191,7 @@
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
-                {:type qp.error-type/driver}))))
+                       {:type qp.error-type/driver}))))
    [[] nil]
    xs))
 
@@ -199,7 +199,7 @@
   (let [[replaced missing] (substitute* param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
-               {:type qp.error-type/invalid-query})))
+                      {:type qp.error-type/invalid-query})))
     (when (seq replaced)
       (str/join replaced))))
 

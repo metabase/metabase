@@ -361,10 +361,10 @@
 
 (deftest update-field-values-hook-test
   (t2.with-temp/with-temp [FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
-                                                             :type     :full}
+                                                         :type     :full}
                            FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
-                                                             :type     :sandbox
-                                                             :hash_key "random-hash"}]
+                                                         :type     :sandbox
+                                                         :hash_key "random-hash"}]
     (testing "The model hooks prevent us changing the intrinsic identity of a field values"
       (doseq [[id update-map] [[sandbox-id {:field_id 1}]
                                [sandbox-id {:type :full}]

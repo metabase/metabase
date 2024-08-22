@@ -100,10 +100,10 @@
              (keyword (or (namespace event-name-prefix) "event")
                       (str (name prefix) suffix)))]
      (with-sync-events
-       (event-keyword event-name-prefix "-begin")
-       (event-keyword event-name-prefix "-end")
-       database-or-id
-       f)))
+      (event-keyword event-name-prefix "-begin")
+      (event-keyword event-name-prefix "-end")
+      database-or-id
+      f)))
 
   ([begin-event-name :- Topic
     end-event-name   :- Topic
@@ -163,7 +163,7 @@
   [database f]
   (fn []
     (driver/sync-in-context (driver.u/database->driver database) database
-      f)))
+                            f)))
 
 ;; TODO: future, expand this to `driver` level, where the drivers themselves can add to the
 ;; list of exception classes (like, driver-specific exceptions)
@@ -212,11 +212,11 @@
    message   :- ms/NonBlankString
    f         :- fn?]
   ((with-duplicate-ops-prevented operation database
-     (with-sync-events operation database
-       (with-start-and-finish-logging message
-         (with-db-logging-disabled
-           (sync-in-context database
-             (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
+                                 (with-sync-events operation database
+                                                   (with-start-and-finish-logging message
+                                                                                  (with-db-logging-disabled
+                                                                                   (sync-in-context database
+                                                                                                    (partial do-with-error-handling (format "Error in sync step %s" message) f))))))))
 
 (defmacro sync-operation
   "Perform the operations in `body` as a sync operation, which wraps the code in several special macros that do things
@@ -489,8 +489,8 @@
                          (catch Throwable e
                            (if *log-exceptions-and-continue?*
                              (do
-                              (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
-                              {:throwable e})
+                               (log/warn e (format "Error running step ''%s'' for %s" step-name (name-for-logging database)))
+                               {:throwable e})
                              (throw e))))))
         end-time   (t/zoned-date-time)]
     [step-name (assoc results

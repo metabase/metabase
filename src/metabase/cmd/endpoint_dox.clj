@@ -50,10 +50,9 @@
 
 (defn- exclude-from-docs?
   "Should we exclude the endpoint from the docs?"
- [endpoint]
+  [endpoint]
   (let [ep-name (:ns-name endpoint)
-        eps-to-exclude #{
-                         "Cloud migration"
+        eps-to-exclude #{"Cloud migration"
                          "Routes" ; api/routes
                          }]
     (contains? eps-to-exclude ep-name)))

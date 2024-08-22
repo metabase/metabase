@@ -59,7 +59,6 @@
   "Generate a call to the JavaScript `parseFloat` function."
   (partial fn-call :parseFloat))
 
-
 (defn or
   "Interpose the JavaScript or operator (`||`) between `args`, and wrap the entire expression in parens.
 

@@ -81,9 +81,9 @@
           (try
             ;; Insert each row
             (mongo.util/insert-one (mongo.util/collection db (name table-name))
-                                  (into (ordered-map/ordered-map :_id (inc i))
-                                        (cond->> (zipmap field-names row)
-                                          *remove-nil?* (m/remove-vals nil?))))
+                                   (into (ordered-map/ordered-map :_id (inc i))
+                                         (cond->> (zipmap field-names row)
+                                           *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 

@@ -114,10 +114,10 @@
      (instance-of SiteLocalizedString)]))
 
 (defn- valid-str-form?
- [str-form]
- (and
-  (= (first str-form) 'str)
-  (every? string? (rest str-form))))
+  [str-form]
+  (and
+   (= (first str-form) 'str)
+   (every? string? (rest str-form))))
 
 (defn- validate-number-of-args
   "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
