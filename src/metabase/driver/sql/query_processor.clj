@@ -1364,7 +1364,7 @@
 
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. Its value should be
-  `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime,
+  `{:base-type keyword? :database-type string?}`. The value is used in `->honeysql <driver> :relative-datetime`,
   the :snowflake implementation at the time of writing, and later in the [[metabase.query-processor.util.relative-datetime/maybe-cacheable-relative-datetime-honeysql]]
   to determine (1) format of server-side generated sql temporal string and (2) the database type it should be cast to."
   nil)
