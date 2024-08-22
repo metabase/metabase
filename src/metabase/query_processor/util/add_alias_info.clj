@@ -408,7 +408,7 @@
   (let [expensive-info (expensive-field-info inner-query field-clause)]
     (merge {::source-table (field-source-table-alias inner-query field-clause)
             ::source-alias (field-source-alias inner-query field-clause expensive-info)}
-           (when-let [nfc-path (:nfc-path expensive-info)]
+           (when-let [nfc-path (not-empty (:nfc-path expensive-info))]
              {::nfc-path nfc-path})
            (when-let [position (clause->position inner-query field-clause)]
              {::desired-alias (unique-alias-fn position (field-desired-alias inner-query field-clause expensive-info))
