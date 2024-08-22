@@ -21,7 +21,7 @@ export const RightViewFooterButtonGroup = () => {
   const isObjectDetail = useSelector(getIsObjectDetail);
 
   return (
-    <>
+    <Group noWrap>
       {QuestionRowCount.shouldRender({
         result,
         isObjectDetail,
@@ -41,6 +41,6 @@ export const RightViewFooterButtonGroup = () => {
           <QuestionTimelineWidget className={cx(CS.hide, CS.smShow)} />
         )}
       </Group>
-    </>
+    </Group>
   );
 };

@@ -38,13 +38,9 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       data-testid="view-footer"
     >
       <Group position="apart" pos="relative" noWrap w="100%">
-        <Group className={CS.flex1}>
-          {!hideChartSettings && <LeftViewFooterButtonGroup />}
-        </Group>
+        {!hideChartSettings && <LeftViewFooterButtonGroup />}
         {isVisualized && <CenterViewFooterButtonGroup />}
-        <Group noWrap>
-          <RightViewFooterButtonGroup />
-        </Group>
+        <RightViewFooterButtonGroup />
       </Group>
     </ViewFooterRoot>
   );
