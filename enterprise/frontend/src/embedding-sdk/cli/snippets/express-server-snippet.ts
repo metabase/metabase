@@ -7,7 +7,7 @@ import {
 
 interface Options {
   instanceUrl: string;
-  tenantIds: number[];
+  tenantIds: (number | string)[];
 }
 
 const DEFAULT_EXPRESS_SERVER_PORT = 4477;

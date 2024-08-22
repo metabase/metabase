@@ -53,7 +53,11 @@ export const generateExpressServerFile: CliStepMethod = async state => {
     }
   }
 
-  const snippet = getExpressServerSnippet({ instanceUrl });
+  const snippet = getExpressServerSnippet({
+    instanceUrl,
+    tenantIds: state.tenantIds ?? [],
+  });
+
   await fs.writeFile(filePath, snippet);
 
   console.log(getExpressServerGeneratedMessage(filePath));
