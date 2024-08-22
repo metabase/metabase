@@ -1766,7 +1766,7 @@
             eid-5 id-5}
            (api.embed.common/table->entity-ids->ids {:report_card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
-(deftest entity-id-mixed-translations-test
+(deftest ^:this entity-id-mixed-translations-test
   (mt/with-temp
     [;; prereqs to create the eid-able entities:
      :model/Card  {model-id :id} {:type :model}
@@ -1808,18 +1808,18 @@
               segment_eid segment_id
               timeline_eid timeline_id}
              (api.embed.common/table->entity-ids->ids
-              {:action [action_eid]
-               :collection [collection_eid]
-               :core_user [core_user_eid]
-               :dashboard_tab [dashboard_tab_eid]
-               :dimension [dimension_eid]
-               :native_query_snippet [native_query_snippet_eid]
-               :permissions_group [permissions_group_eid]
-               :pulse [pulse_eid]
-               :pulse_card [pulse_card_eid]
-               :pulse_channel [pulse_channel_eid]
-               :report_card [report_card_eid]
-               :report_dashboard [report_dashboard_eid]
-               :report_dashboardcard [report_dashboardcard_eid]
-               :segment [segment_eid]
-               :timeline [timeline_eid]}))))))
+              {:Action [action_eid]
+               :Card [report_card_eid]
+               :Collection [collection_eid]
+               :Dashboard [report_dashboard_eid]
+               :DashboardCard [report_dashboardcard_eid]
+               :DashboardTab [dashboard_tab_eid]
+               :Dimension [dimension_eid]
+               :NativeQuerySnippet [native_query_snippet_eid]
+               :PermissionsGroup [permissions_group_eid]
+               :Pulse [pulse_eid]
+               :PulseCard [pulse_card_eid]
+               :PulseChannel [pulse_channel_eid]
+               :Segment [segment_eid]
+               :Timeline [timeline_eid]
+               :User [core_user_eid]}))))))
