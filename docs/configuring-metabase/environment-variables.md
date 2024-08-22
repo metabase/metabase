@@ -9,7 +9,7 @@ redirect_from:
 _This documentation was generated from source by running:_
 
 ```
-clojure -M:ee:run environment-variables-documentation
+clojure -M:ee:doc environment-variables-documentation
 ```
 
 Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence. Note that, unlike settings configured in the Admin settings of your Metabase, the environment variables won't get written into the application database.
@@ -296,6 +296,18 @@ Consider metabase.driver/can-connect? / can-connect-with-details? to have failed
 Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
         In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
         as the connections via tunnels have more overhead than connections without.
+
+### `MB_DB_QUERY_TIMEOUT_MINUTES`
+
+- Type: integer
+- Default: `20`
+
+By default, this is 20 minutes.
+
+Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  If you have long-running queries, you might consider increasing this value.
+  Adjusting the timeout does not impact Metabase’s frontend.
+  Please be aware that other services (like Nginx) may still drop long-running queries.
 
 ### `MB_EE_AI_FEATURES_ENABLED`
 
