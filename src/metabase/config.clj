@@ -74,7 +74,6 @@
     (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 
-
 ;; These are convenience functions for accessing config values that ensures a specific return type
 ;;
 ;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
@@ -152,7 +151,7 @@
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
-   13371338)
+  13371338)
 
 (def ^:dynamic *disable-setting-cache*
   "Whether to disable database cache. Here for loading circularity reasons."

@@ -7,6 +7,7 @@ import {
   modal,
   openNativeEditor,
   openNewPublicLinkDropdown,
+  openSharingMenu,
   restore,
   saveQuestion,
   visitQuestion,
@@ -102,7 +103,7 @@ describe("scenarios > public > question", () => {
       cy.signInAsNormalUser().then(() => {
         visitQuestion(id);
 
-        cy.icon("share").click();
+        openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");

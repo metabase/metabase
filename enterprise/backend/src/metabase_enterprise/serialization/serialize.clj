@@ -162,7 +162,7 @@
     nil
     (reduce-kv (fn [acc k v]
                  (assoc acc (convert-param-mapping-key k)
-                            (convert-param-mapping-val nil v))) {} param-mapping)))
+                        (convert-param-mapping-val nil v))) {} param-mapping)))
 
 (defn- convert-click-behavior [{:keys [::mb.viz/link-type ::mb.viz/link-target-id] :as click}]
   (-> (if-let [new-target-id (case link-type
@@ -194,7 +194,7 @@
   (let [dashboard-cards   (t2/select DashboardCard :dashboard_id (u/the-id dashboard))
         series            (when (not-empty dashboard-cards)
                             (t2/select DashboardCardSeries
-                              :dashboardcard_id [:in (map u/the-id dashboard-cards)]))]
+                                       :dashboardcard_id [:in (map u/the-id dashboard-cards)]))]
     (for [dashboard-card dashboard-cards]
       (-> dashboard-card
           (assoc :series (for [series series
@@ -219,12 +219,12 @@
 (defmethod serialize-one Pulse
   [pulse]
   (assoc pulse
-    :cards    (for [card (t2/select PulseCard :pulse_id (u/the-id pulse))]
-                (-> card
-                    (dissoc :id :pulse_id)
-                    (update :card_id (partial fully-qualified-name Card))))
-    :channels (for [channel (t2/select PulseChannel :pulse_id (u/the-id pulse))]
-                (strip-crud channel))))
+         :cards    (for [card (t2/select PulseCard :pulse_id (u/the-id pulse))]
+                     (-> card
+                         (dissoc :id :pulse_id)
+                         (update :card_id (partial fully-qualified-name Card))))
+         :channels (for [channel (t2/select PulseChannel :pulse_id (u/the-id pulse))]
+                     (strip-crud channel))))
 
 (defmethod serialize-one User
   [user]

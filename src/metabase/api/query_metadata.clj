@@ -140,8 +140,8 @@
         card-ids  (into #{} (map :id) cards)
         links     (batch-fetch-dashboard-links dashcards)]
     (merge
-      (->> (remove (comp card-ids :id) (:cards links))
-           (concat cards)
-           batch-fetch-card-metadata)
-      {:cards      (or (:cards links)      [])
-       :dashboards (or (:dashboards links) [])})))
+     (->> (remove (comp card-ids :id) (:cards links))
+          (concat cards)
+          batch-fetch-card-metadata)
+     {:cards      (or (:cards links)      [])
+      :dashboards (or (:dashboards links) [])})))

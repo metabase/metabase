@@ -27,9 +27,7 @@ export const useFilterContent = (
   initialQuery: Lib.Query,
   onSubmit: (newQuery: Lib.Query) => void,
 ) => {
-  const [query, setQuery] = useState(() =>
-    Lib.appendStageIfSummarized(initialQuery),
-  );
+  const [query, setQuery] = useState(() => Lib.ensureFilterStage(initialQuery));
   const queryRef = useRef(query);
   const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);

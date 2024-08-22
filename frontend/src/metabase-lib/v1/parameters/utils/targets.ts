@@ -172,7 +172,7 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
     return { query, columns };
   }
 
-  const nextQuery = Lib.appendStageIfSummarized(query);
+  const nextQuery = Lib.ensureFilterStage(query);
   const availableColumns = getFilterableColumns(nextQuery);
   const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>

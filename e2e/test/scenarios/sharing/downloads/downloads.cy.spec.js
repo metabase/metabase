@@ -20,6 +20,7 @@ import {
   getDashboardCard,
   getDashboardCardMenu,
   multiAutocompleteInput,
+  openSharingMenu,
   popover,
   queryBuilderMain,
   resetSnowplow,
@@ -328,11 +329,7 @@ describe("scenarios > dashboard > download pdf", () => {
       visitDashboard(dashboard.id);
     });
 
-    cy.findByLabelText("Move, trash, and more…").click();
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Export as PDF").click();
-
+    openSharingMenu("Export as PDF");
     cy.verifyDownload(`saving pdf dashboard - ${date}.pdf`);
   });
 });
@@ -355,9 +352,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
-      cy.findByLabelText("Move, trash, and more…").click();
-
-      popover().findByText("Export as PDF").click();
+      openSharingMenu("Export as PDF");
 
       expectGoodSnowplowEvent({
         event: "dashboard_pdf_exported",

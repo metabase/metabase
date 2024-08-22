@@ -30,6 +30,11 @@ export const EMBEDDING_FAILED_MESSAGE = `
 export const PREMIUM_TOKEN_REQUIRED_MESSAGE =
   "  Don't forget to add your premium token to your Metabase instance in the admin settings! The embedding demo will not work without a license.";
 
+export const getGeneratedComponentFilesMessage = (path: string) => `
+  Generated example React components files in "${path}".
+  You can import the <AnalyticsPage /> component in your React app.
+`;
+
 export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
