@@ -197,26 +197,32 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
 export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
+const defaultLandingPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const defaultLoginPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const getLoadingMessage = (isSlow: boolean) =>
+  isSlow ? t`Waiting for results...` : t`Doing science...`;
+
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
-    isSlow ? t`Waiting for results...` : t`Doing science...`,
+  getLoadingMessageFactory: (_state: State) => getLoadingMessage,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
   getLoginPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLoginPageIllustration;
   },
   getLandingPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLandingPageIllustration;
   },
   getNoDataIllustration: (_state: State): string => {
     return noResultsSource;
