@@ -4,9 +4,9 @@ import _ from "underscore";
 import type {
   DashCardId,
   Dashboard,
-  QuestionDashboardCard,
   DashboardId,
   DashboardTabId,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { StoreDashboard, StoreDashcard } from "metabase-types/store";
 

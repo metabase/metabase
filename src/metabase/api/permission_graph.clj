@@ -53,17 +53,18 @@
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
+(def ^:private Perms
+  "Perms that get reused for TablePerms and SchemaPerms"
+  [:enum
+   :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no :blocked])
+
 (def ^:private TablePerms
-  [:or
-   [:enum :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no]
-   [:map
-    [:read {:optional true} [:enum :all :none]]
-    [:query {:optional true} [:enum :all :none :segmented]]]])
+  [:or Perms [:map
+              [:read {:optional true} [:enum :all :none]]
+              [:query {:optional true} [:enum :all :none :segmented]]]])
 
 (def ^:private SchemaPerms
-  [:or
-   [:enum :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no]
-   [:map-of Id TablePerms]])
+  [:or Perms [:map-of Id TablePerms]])
 
 (def ^:private SchemaGraph
   [:map-of
@@ -132,7 +133,6 @@
   [:map
    [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
    [:revision int?]])
-
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 

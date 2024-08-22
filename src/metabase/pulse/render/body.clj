@@ -405,11 +405,11 @@
              :src   (:image-src image-bundle)}]]}))
 
 (defn- get-col-by-name
-    [cols col-name]
-    (->> (map-indexed (fn [idx m] [idx m]) cols)
-         (some (fn [[idx col]]
-                 (when (= col-name (:name col))
-                   [idx col])))))
+  [cols col-name]
+  (->> (map-indexed (fn [idx m] [idx m]) cols)
+       (some (fn [[idx col]]
+               (when (= col-name (:name col))
+                 [idx col])))))
 
 (mu/defmethod render :scalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
@@ -563,8 +563,8 @@
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         rows          (if (and funnel-viz (all-unique? funnel-viz))
-                         (funnel-rows funnel-viz raw-rows)
-                         raw-rows)
+                        (funnel-rows funnel-viz raw-rows)
+                        raw-rows)
         [x-col y-col] cols
         settings      (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
                         (assoc jsviz-settings :step    {:name   (:display_name x-col)

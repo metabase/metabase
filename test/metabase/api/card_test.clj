@@ -24,6 +24,7 @@
             Pulse PulseCard PulseChannel PulseChannelRecipient Table Timeline
             TimelineEvent]]
    [metabase.models.card.metadata :as card.metadata]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.permissions :as perms]
@@ -139,7 +140,7 @@
   `(do-with-temp-native-card! (fn [~(or db-binding '_) ~(or card-binding '_)]
                                 ~@body)))
 
-(defn do-with-cards-in-a-collection [card-or-cards-or-ids grant-perms-fn! f]
+(defn do-with-cards-in-a-collection! [card-or-cards-or-ids grant-perms-fn! f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection collection]
       ;; put all the Card(s) in our temp `collection`
@@ -152,18 +153,18 @@
       ;; call (f)
       (f))))
 
-(defmacro with-cards-in-readable-collection
+(defmacro with-cards-in-readable-collection!
   "Execute `body` with `card-or-cards-or-ids` added to a temporary Collection that All Users have read permissions for."
   {:style/indent 1}
   [card-or-cards-or-ids & body]
-  `(do-with-cards-in-a-collection ~card-or-cards-or-ids perms/grant-collection-read-permissions! (fn [] ~@body)))
+  `(do-with-cards-in-a-collection! ~card-or-cards-or-ids perms/grant-collection-read-permissions! (fn [] ~@body)))
 
-(defmacro with-cards-in-writeable-collection
+(defmacro with-cards-in-writeable-collection!
   "Execute `body` with `card-or-cards-or-ids` added to a temporary Collection that All Users have *write* permissions
   for."
   {:style/indent 1}
   [card-or-cards-or-ids & body]
-  `(do-with-cards-in-a-collection ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
+  `(do-with-cards-in-a-collection! ~card-or-cards-or-ids perms/grant-collection-readwrite-permissions! (fn [] ~@body)))
 
 (defn- do-with-temp-native-card-with-params! [f]
   (mt/with-temp
@@ -248,7 +249,7 @@
   (mt/with-temp [Database db {}
                  :model/Card     card-1 {:database_id (mt/id)}
                  :model/Card     card-2 {:database_id (u/the-id db)}]
-    (with-cards-in-readable-collection [card-1 card-2]
+    (with-cards-in-readable-collection! [card-1 card-2]
       (is (= true
              (card-returned? :database (mt/id) card-1)))
       (is (= false
@@ -271,7 +272,7 @@
                    Table    table-2  {:db_id (u/the-id db)}
                    :model/Card     card-1   {:table_id (u/the-id table-1)}
                    :model/Card     card-2   {:table_id (u/the-id table-2)}]
-      (with-cards-in-readable-collection [card-1 card-2]
+      (with-cards-in-readable-collection! [card-1 card-2]
         (is (= true
                (card-returned? :table (u/the-id table-1) (u/the-id card-1))))
         (is (= false
@@ -289,7 +290,7 @@
     (mt/with-temp [:model/Card card-1 {:name "Card 1"}
                    :model/Card card-2 {:name "Card 2"}
                    :model/Card card-3 {:name "Card 3"}]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
+      (with-cards-in-readable-collection! [card-1 card-2 card-3]
         (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-2)) {:archived true})
         (mt/user-http-request :crowberto :put 200 (format "card/%d" (u/the-id card-3)) {:archived true})
         (is (= #{"Card 2" "Card 3"}
@@ -353,7 +354,7 @@
                    :model/Card         card-3 {:name "Card 3"}
                    CardBookmark _ {:card_id (u/the-id card-1), :user_id (mt/user->id :rasta)}
                    CardBookmark _ {:card_id (u/the-id card-2), :user_id (mt/user->id :crowberto)}]
-      (with-cards-in-readable-collection [card-1 card-2 card-3]
+      (with-cards-in-readable-collection! [card-1 card-2 card-3]
         (is (= [{:name "Card 1"}]
                (for [card (mt/user-http-request :rasta :get 200 "card", :f :bookmarked)]
                  (select-keys card [:name]))))))))
@@ -443,7 +444,7 @@
                                      :archived true
                                      :dataset_query {:query {:source-table (str "card__" model-id)}}}]
     (testing "list cards using a model"
-      (with-cards-in-readable-collection [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
+      (with-cards-in-readable-collection! [model card-1 card-2 card-3 card-4 card-5 card-6 card-7]
         (is (= #{"Card 1" "Card 3" "Card 4"}
                (into #{} (map :name) (mt/user-http-request :rasta :get 200 "card"
                                                            :f :using_model :model_id model-id))))
@@ -457,7 +458,7 @@
 (deftest get-cards-with-last-edit-info-test
   (mt/with-temp [:model/Card {card-1-id :id} {:name "Card 1"}
                  :model/Card {card-2-id :id} {:name "Card 2"}]
-    (with-cards-in-readable-collection [card-1-id card-2-id]
+    (with-cards-in-readable-collection! [card-1-id card-2-id]
       (doseq [user-id [(mt/user->id :rasta) (mt/user->id :crowberto)]]
         (revision/push-revision!
          {:entity       :model/Card
@@ -550,7 +551,7 @@
                                   {:name       "A Native query table"
                                    :display    :table
                                    :query_type "native"})]
-      (with-cards-in-readable-collection [line bar area scalar scalar-2 native pie table native-2 metric metric-2]
+      (with-cards-in-readable-collection! [line bar area scalar scalar-2 native pie table native-2 metric metric-2]
        (doseq [:let [excluded #{"A Scalar 2" "Another Metric" "A Line with no access" "A pie" "A table" "A Native query table"}]
                [card-id display-type expected excluded]
                [[(:id line)   :line   #{"A Native query" "An Area" "A Bar" "A Metric"} excluded]
@@ -1315,7 +1316,7 @@
 
 (deftest test-that-we-can-edit-a-card
   (t2.with-temp/with-temp [:model/Card card {:name "Original Name"}]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (is (= "Original Name"
              (t2/select-one-fn :name :model/Card, :id (u/the-id card))))
       (is (= {:timestamp true, :first_name "Rasta", :last_name "Toucan", :email "rasta@metabase.com", :id true}
@@ -1327,7 +1328,7 @@
 
 (deftest can-we-update-a-card-s-archived-status-
   (t2.with-temp/with-temp [:model/Card card]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (let [archived?     (fn [] (:archived (t2/select-one :model/Card :id (u/the-id card))))
             set-archived! (fn [archived]
                             (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:archived archived})
@@ -1358,13 +1359,13 @@
 (deftest clear-description-test
   (testing "Can we clear the description of a Card? (#4738)"
     (t2.with-temp/with-temp [:model/Card card {:description "What a nice Card"}]
-      (with-cards-in-writeable-collection card
+      (with-cards-in-writeable-collection! card
         (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description nil})
         (is (nil? (t2/select-one-fn :description :model/Card :id (u/the-id card))))))))
 
 (deftest description-should-be-blankable-as-well
   (t2.with-temp/with-temp [:model/Card card {:description "What a nice Card"}]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
              (t2/select-one-fn :description :model/Card :id (u/the-id card)))))))
@@ -1436,7 +1437,7 @@
 
 (deftest can-we-change-the-collection-position-of-a-card-
   (t2.with-temp/with-temp [:model/Card card]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position 1})
       (is (= 1
@@ -1444,7 +1445,7 @@
 
 (deftest can-we-change-the-collection-preview-flag-of-a-card-
   (t2.with-temp/with-temp [:model/Card card]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_preview false})
       (is (= false
@@ -1452,7 +1453,7 @@
 
 (deftest ---and-unset--unpin--it-as-well-
   (t2.with-temp/with-temp [:model/Card card {:collection_position 1}]
-    (with-cards-in-writeable-collection card
+    (with-cards-in-writeable-collection! card
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card))
                             {:collection_position nil})
       (is (= nil
@@ -1849,7 +1850,7 @@
            PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
                                         :pulse_channel_id (u/the-id pc)}]
           (mt/with-temporary-setting-values [site-url "https://metabase.com"]
-            (with-cards-in-writeable-collection card
+            (with-cards-in-writeable-collection! card
               (mt/with-fake-inbox
                 (when deleted?
                   (u/with-timeout 5000
@@ -1882,7 +1883,7 @@
                         PulseChannel          pc    {:pulse_id (u/the-id pulse)}
                         PulseChannelRecipient _     {:user_id          (mt/user->id :rasta)
                                                      :pulse_channel_id (u/the-id pc)}]
-           (with-cards-in-writeable-collection card
+           (with-cards-in-writeable-collection! card
              (mt/with-fake-inbox
                (array-map
                 :emails-1 (do
@@ -1901,7 +1902,7 @@
 
 (deftest check-that-we-can-delete-a-card
   (is (nil? (t2.with-temp/with-temp [:model/Card card]
-              (with-cards-in-writeable-collection card
+              (with-cards-in-writeable-collection! card
                 (mt/user-http-request :rasta :delete 204 (str "card/" (u/the-id card)))
                 (t2/select-one :model/Card :id (u/the-id card)))))))
 
@@ -2043,7 +2044,7 @@
 (deftest csv-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= ["COUNT(*)"
                 "75"]
                (str/split-lines
@@ -2051,7 +2052,7 @@
                                                                (u/the-id card)))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= ["COUNT(*)"
                 "8"]
                (str/split-lines
@@ -2062,12 +2063,12 @@
 (deftest json-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "75"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{(keyword "COUNT(*)") "8"}]
                (mt/user-http-request :rasta :post 200 (format "card/%d/query/json" (u/the-id card))
                                      :parameters encoded-params)))))))
@@ -2167,13 +2168,13 @@
 (deftest xlsx-download-test
   (testing "no parameters"
     (with-temp-native-card! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params! [_ card]
-      (with-cards-in-readable-collection card
+      (with-cards-in-readable-collection! card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))
@@ -2421,7 +2422,7 @@
                                                              :query      {:source-table (mt/id :venues)}
                                                              :middleware {:add-default-userland-constraints? true
                                                                           :userland-query?                   true}}}]
-    (with-cards-in-readable-collection card
+    (with-cards-in-readable-collection! card
       (let [orig qp.card/process-query-for-card]
         (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
                                                        (apply orig card-id export-format
@@ -3028,8 +3029,8 @@
                                     :data :cols last :visibility_type))
               "in cols (important for the saved metadata)"))))))
 
-(defn- do-with-persistence-setup [f]
-  ;; mt/with-temp-scheduler actually just reuses the current scheduler. The scheduler factory caches by name set in
+(defn- do-with-persistence-setup! [f]
+  ;; mt/with-temp-scheduler! actually just reuses the current scheduler. The scheduler factory caches by name set in
   ;; the resources/quartz.properties file and we reuse that scheduler
   (let [sched (.getScheduler
                (StdSchedulerFactory. (doto (java.util.Properties.)
@@ -3051,11 +3052,11 @@
         (finally
           (qs/shutdown sched))))))
 
-(defmacro ^:private with-persistence-setup
+(defmacro ^:private with-persistence-setup!
   "Sets up a temp scheduler, a temp database and enabled persistence. Scheduler will be in standby mode so that jobs
   won't run. Just check for trigger presence."
   [db-binding & body]
-  `(do-with-persistence-setup (fn [~db-binding] ~@body)))
+  `(do-with-persistence-setup! (fn [~db-binding] ~@body)))
 
 (defn- job-info-for-individual-refresh
   "Return a set of PersistedInfo ids of all jobs scheduled for individual refreshes."
@@ -3070,7 +3071,7 @@
 
 (deftest refresh-persistence
   (testing "Can schedule refreshes for models"
-    (with-persistence-setup db
+    (with-persistence-setup! db
       (t2.with-temp/with-temp
         [:model/Card          model      {:type :model :database_id (u/the-id db)}
          :model/Card          notmodel   {:type :question :database_id (u/the-id db)}
@@ -3095,7 +3096,7 @@
               "Scheduled refresh of archived model"))))))
 
 (deftest unpersist-persist-model-test
-  (with-persistence-setup db
+  (with-persistence-setup! db
     (t2.with-temp/with-temp
       [:model/Card          model     {:database_id (u/the-id db), :type :model}
        :model/PersistedInfo pmodel    {:database_id (u/the-id db), :card_id (u/the-id model)}]
@@ -3442,7 +3443,7 @@
                                                                                                        :columns [],
                                                                                                        :values [[:aggregation 0]]},
                                                                             :table.cell_column "sum"}}]
-          (with-cards-in-readable-collection [model card]
+          (with-cards-in-readable-collection! [model card]
             (is (=?
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
@@ -3460,7 +3461,7 @@
                                                                                                        :columns [],
                                                                                                        :values [[:aggregation 0]]},
                                                                             :table.cell_column "sum"}}]
-          (with-cards-in-readable-collection [model card]
+          (with-cards-in-readable-collection! [model card]
             (is (=?
                   {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
                   (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
@@ -3629,37 +3630,152 @@
       (is (=? {:can_run_adhoc_query false}
               (mt/user-http-request :crowberto :get 200 (str "card/" (:id no-query))))))))
 
+(deftest data-and-collection-query-permissions-test
+  (mt/with-temp [:model/Collection collection  {}
+                 :model/Card       card        {:dataset_query {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                :database_id   (mt/id)
+                                                :collection_id (u/the-id collection)}]
+    (letfn [(process-query []
+              (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))
+            (blocked? [response] (or
+                                  (= "You don't have permissions to do that." response)
+                                  (re-matches #"Blocked: you are not allowed to run queries against Database \d+."
+                                              (:error response))))]
+      ;;    | Data perms | Collection perms | outcome
+      ;;    ------------ | ---------------- | --------
+      ;;    | no         | no               | blocked
+      ;;    | yes        | no               | blocked
+      ;;    | no         | yes              | blocked
+      ;;    | yes        | yes              | OK
+
+      (testing "Should NOT be able to run the parent Card with :blocked data-perms and no collection perms"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (not (mi/can-read? collection)))
+              (is (not (mi/can-read? card))))
+            (is (blocked? (process-query))))))
+
+      (testing "Should NOT be able to run the parent Card with valid data-perms and no collection perms"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (not (mi/can-read? collection)))
+              (is (not (mi/can-read? card))))
+            (is (blocked? (process-query))))))
+
+      (testing "should NOT be able to run native queries with :blocked data-perms on any table"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (mi/can-read? collection))
+              (is (mi/can-read? card)))
+            (is (process-query)))))
+
+      ;; delete these in place so we can reset them below, you cannot set them twice in a row
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+
+      (testing "should NOT be able to run the parent Card when data-perms and valid collection perms"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (mi/can-read? collection))
+              (is (mi/can-read? card)))
+            (is (= [[1] [2]] (mt/rows (process-query))))))))))
+
 (deftest nested-query-permissions-test
-  (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
-    (mt/with-no-data-perms-for-all-users!
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection allowed-collection    {}
-                       :model/Collection disallowed-collection {}
-                       :model/Card       parent-card           {:dataset_query {:database (mt/id)
-                                                                                :type     :native
-                                                                                :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
-                                                                :database_id   (mt/id)
-                                                                :collection_id (u/the-id disallowed-collection)}
-                       :model/Card       child-card            {:dataset_query {:database (mt/id)
-                                                                                :type     :query
-                                                                                :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
-                                                                :collection_id (u/the-id allowed-collection)}]
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection disallowed-collection {}
+                   :model/Card       parent-card           {:dataset_query {:database (mt/id)
+                                                                            :type     :native
+                                                                            :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                            :database_id   (mt/id)
+                                                            :collection_id (u/the-id disallowed-collection)}
+                   :model/Collection allowed-collection    {}
+                   :model/Card       child-card            {:dataset_query {:database (mt/id)
+                                                                            :type     :query
+                                                                            :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
+                                                            :collection_id (u/the-id allowed-collection)}]
+      (letfn [(rasta-view-data-perm= [perm] (is (= perm
+                                                   (get-in (data-perms/permissions-for-user (mt/user->id :rasta)) [(mt/id) :perms/view-data]))
+                                                "rasta should be blocked for this table."))]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
           (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
           (letfn [(process-query-for-card [card]
                     (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
-            (testing "Should not be able to run the parent Card"
-              (mt/with-test-user :rasta
-                (is (not (mi/can-read? disallowed-collection)))
-                (is (not (mi/can-read? parent-card))))
-              (is (= "You don't have permissions to do that."
-                     (process-query-for-card parent-card))))
-            (testing "Should be able to run the child Card (#15131)"
-              (mt/with-test-user :rasta
-                (is (not (mi/can-read? parent-card)))
-                (is (mi/can-read? allowed-collection))
-                (is (mi/can-read? child-card)))
-              (is (= [[1] [2]]
-                     (mt/rows (process-query-for-card child-card)))))))))))
+            (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
+              (testing "Should not be able to run the parent Card"
+                (mt/with-test-user :rasta
+                  (is (not (mi/can-read? disallowed-collection)))
+                  (is (not (mi/can-read? parent-card))))
+                (is (= "You don't have permissions to do that."
+                       (process-query-for-card parent-card))))
+              (testing "Should be able to run the child Card (#15131)"
+                (mt/with-test-user :rasta
+                  (is (not (mi/can-read? parent-card)))
+                  (is (mi/can-read? allowed-collection))
+                  (is (mi/can-read? child-card)))
+                (testing "Data perms prohibit running queries"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You do not have permissions to run this query."
+                       (mt/rows (process-query-for-card child-card)))
+                      "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))))
+            (testing "view-data = unrestricted is required to allow running the query"
+              (mt/with-restored-data-perms!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                (rasta-view-data-perm= :unrestricted)
+                (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
+                    "view-data = unrestricted is sufficient to allow running the query")))))))))
+
+(deftest cannot-run-any-native-queries-when-blocked-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection allowed-collection    {}
+                   :model/Collection disallowed-collection {}
+                   :model/Card       parent-card           {:dataset_query {:database (mt/id)
+                                                                            :type     :native
+                                                                            :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                            :database_id   (mt/id)
+                                                            :collection_id (u/the-id disallowed-collection)}
+                   :model/Card       child-card            {:dataset_query {:database (mt/id)
+                                                                            :type     :query
+                                                                            :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
+                                                            :collection_id (u/the-id allowed-collection)}]
+      (letfn [(process-query-for-card [card]
+                (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
+        (testing "Cannot run native queries when a single table is unrestricted and the rest are blocked"
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query."
+                 (mt/rows (process-query-for-card child-card)))
+                "Someone with `:blocked` permissions on ANY table in the database cannot run ANY card with native queries, including as a source for another card.")))
+        ;; update collection perms in place:
+        (perms/revoke-collection-permissions! (perms-group/all-users) allowed-collection)
+        (testing "Cannot run native queries when a single table is blocked and the rest are unrestricted"
+          (mt/with-no-data-perms-for-all-users!
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"You do not have permissions to run this query."
+                 (mt/rows (process-query-for-card child-card)))
+                "Someone with `:blocked` permissions on ANY table in the database cannot run ANY card with native queries, including as a source for another card.")))))))
 
 (deftest query-metadata-test
   (mt/with-temp

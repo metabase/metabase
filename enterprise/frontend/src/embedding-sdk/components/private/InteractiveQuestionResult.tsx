@@ -13,23 +13,23 @@ import { Box, Flex, Group, Stack } from "metabase/ui";
 
 import {
   BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
   Filter,
+  FilterBar,
   FilterButton,
-  Summarize,
-  SummarizeButton,
   Notebook,
   NotebookButton,
+  QuestionResetButton,
   QuestionVisualization,
+  Summarize,
+  SummarizeButton,
+  Title,
 } from "./InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
-interface InteractiveQuestionResultProps {
+export interface InteractiveQuestionResultProps {
   height?: string | number;
   withResetButton?: boolean;
-  withTitle: boolean;
+  withTitle?: boolean;
   customTitle?: ReactNode;
 }
 

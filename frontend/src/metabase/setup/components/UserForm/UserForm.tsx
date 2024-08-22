@@ -5,7 +5,7 @@ import * as Yup from "yup";
 
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import { useFormSubmitButton, FormProvider } from "metabase/forms";
+import { FormProvider, useFormSubmitButton } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import { Flex } from "metabase/ui";
 import type { UserInfo } from "metabase-types/store";

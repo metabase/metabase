@@ -11,7 +11,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErr
 import type { DashboardSidebarPageProps } from "metabase/dashboard/components/DashboardInfoSidebar";
 import { color } from "metabase/lib/colors";
 import { Button, Flex, Icon, Title } from "metabase/ui";
-import type { CacheableModel, CacheStrategy } from "metabase-types/api";
+import type { CacheStrategy, CacheableModel } from "metabase-types/api";
 
 import { DashboardStrategySidebarBody } from "./DashboardStrategySidebar.styled";
 

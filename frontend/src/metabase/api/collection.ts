@@ -1,25 +1,25 @@
 import type {
-  ListCollectionItemsRequest,
-  ListCollectionItemsResponse,
-  ListStaleCollectionItemsRequest,
-  UpdateCollectionRequest,
   Collection,
   CreateCollectionRequest,
+  DeleteCollectionRequest,
+  ListCollectionItemsRequest,
+  ListCollectionItemsResponse,
   ListCollectionsRequest,
   ListCollectionsTreeRequest,
-  DeleteCollectionRequest,
-  getCollectionRequest,
+  ListStaleCollectionItemsRequest,
   ListStaleCollectionItemsResponse,
+  UpdateCollectionRequest,
+  getCollectionRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
-  provideCollectionItemListTags,
-  provideCollectionTags,
-  provideCollectionListTags,
+  idTag,
   invalidateTags,
   listTag,
-  idTag,
+  provideCollectionItemListTags,
+  provideCollectionListTags,
+  provideCollectionTags,
 } from "./tags";
 
 export const collectionApi = Api.injectEndpoints({

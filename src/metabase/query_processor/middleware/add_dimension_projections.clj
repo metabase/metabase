@@ -194,7 +194,7 @@
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (not-empty (remap-column-infos (concat fields breakout)))]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query
-      (let [ ;; make a map of field-id-clause -> fk-clause from the tuples
+      (let [;; make a map of field-id-clause -> fk-clause from the tuples
             original->remapped             (into {} (map (juxt :original-field-clause :new-field-clause)) infos)
             existing-fields                (add-fk-remaps-rewrite-existing-fields infos fields)
             ;; don't add any new entries for fields that already exist. Use [[mbql.u/remove-namespaced-options]] here so
@@ -246,7 +246,6 @@
       (cond-> query
         ;; convert the remappings to plain maps so we don't have to look at record type nonsense everywhere
         (seq remaps) (assoc ::external-remaps (mapv (partial into {}) remaps))))))
-
 
 ;;;; Post-processing
 
@@ -376,7 +375,6 @@
   (-> columns
       (merge-metadata-for-internal-remaps internal-cols-info)
       (merge-metadata-for-external-remaps remapping-dimensions)))
-
 
 ;;;; Transform to add additional cols to results
 

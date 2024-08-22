@@ -140,7 +140,7 @@ See [asking questions][question].
 
 You can refer to a model in a SQL query just like you can refer to a saved question:
 
-```
+```sql
 {% raw %}
 SELECT * FROM {{#1-customer-model}}
 {% endraw %}
@@ -148,7 +148,7 @@ SELECT * FROM {{#1-customer-model}}
 
 Or as a [common table expression (CTE)][cte]:
 
-```
+```sql
 {% raw %}
 WITH model AS {{#3807-invoice-model}}
 SELECT *

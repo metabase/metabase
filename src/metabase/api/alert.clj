@@ -61,7 +61,7 @@
 
 (defn- only-alert-keys [request]
   (u/select-keys-when request
-    :present [:alert_condition :alert_first_only :alert_above_goal :archived]))
+                      :present [:alert_condition :alert_first_only :alert_above_goal :archived]))
 
 (defn email-channel
   "Get email channel from an alert."
@@ -120,7 +120,7 @@
   (set (:recipients (email-channel alert))))
 
 (defn- non-creator-recipients [{{creator-id :id} :creator :as alert}]
- (remove #(= creator-id (:id %)) (collect-alert-recipients alert)))
+  (remove #(= creator-id (:id %)) (collect-alert-recipients alert)))
 
 (defn- notify-new-alert-created! [alert]
   (when (email/email-configured?)
@@ -153,10 +153,10 @@
                     (-> new-alert-request-body
                         only-alert-keys
                         (pulse/create-alert! api/*current-user-id* alert-card channels)))]
-   (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
-   (notify-new-alert-created! new-alert)
+    (events/publish-event! :event/alert-create {:object new-alert :user-id api/*current-user-id*})
+    (notify-new-alert-created! new-alert)
     ;; return our new Alert
-   new-alert))
+    new-alert))
 
 (defn- notify-on-archive-if-needed!
   "When an alert is archived, we notify all recipients that they are no longer receiving that alert."
@@ -177,14 +177,14 @@
    channels         [:maybe [:+ [:map]]]
    archived         [:maybe :boolean]}
   (try
-   (validation/check-has-application-permission :monitoring)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-application-permission :subscription false)))
+    (validation/check-has-application-permission :monitoring)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-has-application-permission :subscription false)))
 
   ;; fetch the existing Alert in the DB
   (let [alert-before-update                   (api/check-404 (pulse/retrieve-alert id))
         current-user-has-application-permissions? (and (premium-features/enable-advanced-permissions?)
-                                                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
+                                                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
         has-subscription-perms?               (and current-user-has-application-permissions?
                                                    (current-user-has-application-permissions? :subscription))
         has-monitoring-permissions?           (and current-user-has-application-permissions?
@@ -254,7 +254,7 @@
     (api/let-404 [alert-id (u/the-id alert)
                   pc-id    (t2/select-one-pk PulseChannel :pulse_id alert-id :channel_type "email")
                   pcr-id   (t2/select-one-pk PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
-                 (t2/delete! PulseChannelRecipient :id pcr-id))
+      (t2/delete! PulseChannelRecipient :id pcr-id))
     ;; Send emails letting people know they have been unsubscribed
     (let [user @api/*current-user*]
       (when (email/email-configured?)

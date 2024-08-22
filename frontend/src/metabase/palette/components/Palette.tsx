@@ -1,5 +1,5 @@
 import { KBarPortal, VisualState, useKBar } from "kbar";
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";

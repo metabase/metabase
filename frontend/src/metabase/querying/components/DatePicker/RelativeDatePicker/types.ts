@@ -1,7 +1,7 @@
 import type {
-  RelativeIntervalDirection,
   DatePickerTruncationUnit,
   RelativeDatePickerValue,
+  RelativeIntervalDirection,
 } from "../types";
 
 export interface Tab {

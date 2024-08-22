@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";

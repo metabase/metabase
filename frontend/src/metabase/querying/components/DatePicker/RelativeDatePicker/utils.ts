@@ -2,10 +2,10 @@ import * as Lib from "metabase-lib";
 
 import { DATE_PICKER_TRUNCATION_UNITS } from "../constants";
 import type {
-  RelativeIntervalDirection,
-  RelativeDatePickerValue,
   DatePickerTruncationUnit,
   DatePickerValue,
+  RelativeDatePickerValue,
+  RelativeIntervalDirection,
 } from "../types";
 
 import { DEFAULT_VALUE } from "./constants";

@@ -13,13 +13,13 @@ import {
   restore,
   rightSidebar,
   saveDashboard,
+  setFilter,
   sidebar,
   toggleDashboardInfoSidebar,
   undoToast,
   visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
-  setFilter,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;

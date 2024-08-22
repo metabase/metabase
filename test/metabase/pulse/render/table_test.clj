@@ -129,7 +129,7 @@
                                                                                   :native   {:query q}}
                                                          :visualization_settings formatting-viz}]
         (testing "Custom column titles and column format settings are respected in render."
-          (let [doc     (render.tu/render-card-as-hickory card-id)
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
                 row-els (hik.s/select (hik.s/tag :tr) doc)]
             (is (= [["Eh" "Bee" "Sea" "D" "E"]
                     ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]]
@@ -139,7 +139,7 @@
                                                                                 :date_separator  "-"
                                                                                 :date_abbreviate false}
                                                                 :type/Number   {:number_separators ",."}}]
-            (let [doc     (render.tu/render-card-as-hickory card-id)
+            (let [doc     (render.tu/render-card-as-hickory! card-id)
                   row-els (hik.s/select (hik.s/tag :tr) doc)]
               (is (= [["Eh" "Bee" "Sea" "D" "E"]
                       ["10%" "9E3" "12-10-2022" "---0,12___" "0,667"]]
@@ -165,7 +165,7 @@
                                                                            :type     :native
                                                                            :native   {:query q}}
                                                   :visualization_settings disabled-cols-viz}]
-          (let [doc     (render.tu/render-card-as-hickory card-id)
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
                 row-els (hik.s/select (hik.s/tag :tr) doc)]
             (is (= [["B" "A"]
                     ["9,000" "0.1"]]

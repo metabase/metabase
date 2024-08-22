@@ -13,16 +13,16 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
-  DataKey,
-  Extent,
   ChartDataset,
+  DataKey,
+  Datum,
+  Extent,
+  NumericAxisScaleTransforms,
   SeriesExtents,
   SeriesModel,
-  Datum,
-  XAxisModel,
-  NumericAxisScaleTransforms,
-  TimeSeriesXAxisModel,
   StackModel,
+  TimeSeriesXAxisModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { sumMetric } from "metabase/visualizations/lib/dataset";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";

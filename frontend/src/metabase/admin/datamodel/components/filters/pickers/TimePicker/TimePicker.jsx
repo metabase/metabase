@@ -9,9 +9,9 @@ import DatePicker, {
 import HoursMinutesInput from "../LegacyDatePicker/HoursMinutesInput";
 
 import {
-  TimePickerRoot,
   BetweenConnector,
   MultiTimePickerRoot,
+  TimePickerRoot,
 } from "./TimePicker.styled";
 
 const TimeInput = ({ value, onChange }) => {

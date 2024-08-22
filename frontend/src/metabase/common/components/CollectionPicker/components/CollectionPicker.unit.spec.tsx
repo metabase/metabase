@@ -8,8 +8,8 @@ import {
   mockScrollBy,
   renderWithProviders,
   screen,
-  within,
   waitFor,
+  within,
 } from "__support__/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 import {

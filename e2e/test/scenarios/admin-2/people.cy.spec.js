@@ -3,18 +3,21 @@ import _ from "underscore";
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  NORMAL_USER_ID,
   COLLECTION_GROUP_ID,
+  NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
+  createAlert,
+  createApiKey,
+  createPulse,
+  describeEE,
+  getCurrentUser,
+  getFullName,
   modal,
   popover,
-  setupSMTP,
-  describeEE,
-  getFullName,
+  restore,
   setTokenFeatures,
-  createApiKey,
+  setupSMTP,
 } from "e2e/support/helpers";
 
 const { sandboxed, normal, admin, nodata, nocollection } = USERS;
@@ -531,12 +534,12 @@ describeEE("scenarios > admin > people", () => {
   });
 
   it("should unsubscribe a user from all subscriptions and alerts", () => {
-    cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+    getCurrentUser().then(({ body: { id: user_id } }) => {
       cy.createQuestionAndDashboard({
         questionDetails: getQuestionDetails(),
       }).then(({ body: { card_id, dashboard_id } }) => {
-        cy.createAlert(getAlertDetails({ user_id, card_id }));
-        cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
+        createAlert(getAlertDetails({ user_id, card_id }));
+        createPulse(getPulseDetails({ card_id, dashboard_id }));
       });
     });
 

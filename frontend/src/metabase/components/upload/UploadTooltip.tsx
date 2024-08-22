@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import Tooltip, {
   TooltipContainer,
-  TooltipTitle,
   TooltipSubtitle,
+  TooltipTitle,
 } from "metabase/core/components/Tooltip";
 import {
   MAX_UPLOAD_STRING,

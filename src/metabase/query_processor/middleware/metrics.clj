@@ -29,10 +29,10 @@
                       (update (lib.util/fresh-uuids replacement)
                               1
                               #(merge
-                                 %
-                                 {:name metric-name}
-                                 (select-keys % [:name :display-name])
-                                 (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
+                                %
+                                {:name metric-name}
+                                (select-keys % [:name :display-name])
+                                (select-keys (get &match 1) [:lib/uuid :name :display-name]))))
                     (throw (ex-info "Incompatible metric" {:match &match :lookup lookup}))))))
     query))
 
@@ -52,8 +52,8 @@
                       (let [unprocessed-metric-query (lib/query query (:dataset-query card-metadata))
                             [_ {aggregation-name :name}] (first (lib/aggregations unprocessed-metric-query))
                             metric-query (lib.convert/->pMBQL
-                                           ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
-                                            unprocessed-metric-query))
+                                          ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
+                                           unprocessed-metric-query))
                             metric-name (:name card-metadata)]
                         (if-let [aggregation (first (lib/aggregations metric-query))]
                           [(:id card-metadata)
@@ -76,14 +76,14 @@
                                                   [expression-name new-name]))))
                                       (lib/expressions metric-query))]
     (reduce
-      (fn [metric-query [original-name new-name]]
-        (let [expression (m/find-first (comp #{original-name} :lib/expression-name second) (lib/expressions metric-query))]
-          (lib/replace-clause
-            metric-query
-            expression
-            (lib/with-expression-name expression new-name))))
-      metric-query
-      original+new-name-pairs)))
+     (fn [metric-query [original-name new-name]]
+       (let [expression (m/find-first (comp #{original-name} :lib/expression-name second) (lib/expressions metric-query))]
+         (lib/replace-clause
+          metric-query
+          expression
+          (lib/with-expression-name expression new-name))))
+     metric-query
+     original+new-name-pairs)))
 
 (defn- temp-query-at-stage-path
   [query stage-path]
@@ -155,13 +155,13 @@
           (let [stage-a-source (:qp/stage-is-from-source-card stage-a)
                 metric-metadata (some->> stage-a-source (lib.metadata/card query))]
             (when (and
-                    stage-a-source
-                    (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
-                    (= (:type metric-metadata) :metric)
+                   stage-a-source
+                   (not= stage-a-source (:qp/stage-is-from-source-card stage-b))
+                   (= (:type metric-metadata) :metric)
                     ;; This indicates this stage has not been processed
                     ;; because metrics must have aggregations
                     ;; if it is missing, then it has been removed in this process
-                    (:aggregation stage-a))
+                   (:aggregation stage-a))
               [idx-a metric-metadata])))
         (partition-all 2 1 (m/indexed expanded-stages))))
 
@@ -195,9 +195,9 @@
           lookup {(:id metric-metadata)
                   {:name metric-name :aggregation metric-aggregation}}
           stage-query (replace-metric-aggregation-refs
-                        stage-query
-                        (inc last-metric-stage-number)
-                        lookup)
+                       stage-query
+                       (inc last-metric-stage-number)
+                       lookup)
           new-following-stage (lib.util/query-stage stage-query (inc last-metric-stage-number))
           combined-stages (vec (remove nil? (concat pre-transition-stages
                                                     [new-metric-stage new-following-stage]

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -12,7 +13,9 @@
 (deftest ^:parallel coalesce-test
   (testing "`coalesce` correctly returns the most permissive value by default"
     (are [expected args] (= expected (apply data-perms/coalesce args))
-      :unrestricted    [:perms/view-data   #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service :blocked}]
+      :unrestricted    [:perms/view-data #{:unrestricted :legacy-no-self-service}]
+      :blocked         [:perms/view-data #{:legacy-no-self-service :blocked}]
       :blocked         [:perms/view-data #{:blocked}]
       nil              [:perms/view-data #{}])))
 
@@ -109,11 +112,8 @@
                #"Permission type :perms/create-queries cannot be set to :invalid"
                (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :invalid}))))
 
-        (testing "A table-level permission cannot be set to :block"
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Block permissions must be set at the database-level only."
-               (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
+        (testing "A table-level permission can be set to :block"
+          (is (= nil (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
 
         (testing "Table-level permissions can only be set in bulk for tables in the same database"
           (is (thrown-with-msg?
@@ -128,6 +128,24 @@
           (is (nil?  (create-queries-perm-value table-id-1)))
           (is (nil?  (create-queries-perm-value table-id-2)))
           (is (nil?  (create-queries-perm-value table-id-3))))))))
+
+(deftest native-queries-against-db-with-some-blocked-table-is-illegal-test
+  (mt/with-temp [:model/Card {card-id :id {db-id :database} :dataset_query} {:dataset_query (mt/native-query {:query "select 1"})}]
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries (data-perms/most-permissive-value :perms/create-queries))
+      (data-perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data (data-perms/most-permissive-value :perms/view-data))
+      ;; rasta has access to the database:
+      (is (= "Can Run Query"
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+                     "Can Run Query")))
+
+      ;; block a single table on the db:
+      (let [tables-in-db (map :id (:tables (t2/hydrate (t2/select-one :model/Database db-id) :tables)))
+            table-id (rand-nth tables-in-db)]
+        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {table-id :blocked}))
+
+      (is (= "You do not have permissions to run this query."
+             (:error (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))))))))
 
 (deftest database-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}    {}
@@ -622,3 +640,63 @@
           (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
           (data-perms/with-additional-table-permission :perms/view-data db-id table-id :unrestricted
             (is (= :unrestricted (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))))))))
+
+(deftest blocked-tables-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+    (let [user-id  (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                        :last_name   "Hughes"
+                                                        :email       "howard@aircraft.com"
+                                                        :password    "superstrong"
+                                                        :date_joined :%now})
+          db-id    (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                :engine     "h2"
+                                                                :created_at :%now
+                                                                :updated_at :%now
+                                                                :details    "{}"})
+          table-id (t2/insert-returning-pk! :metabase_table {:name       "orders"
+                                                             :active     true
+                                                             :db_id      db-id
+                                                             :created_at #t "2020"
+                                                             :updated_at #t "2020"})
+          group-id (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
+      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))
+
+(deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+    (let [user-id      (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                            :last_name   "Hughes"
+                                                            :email       "howard@aircraft.com"
+                                                            :password    "superstrong"
+                                                            :date_joined :%now})
+          db-id        (t2/insert-returning-pk! :metabase_database {:name       "DB"
+                                                                    :engine     "h2"
+                                                                    :created_at :%now
+                                                                    :updated_at :%now
+                                                                    :details    "{}"})
+          table-id     (t2/insert-returning-pk! :metabase_table {:name       "orders"
+                                                                 :active     true
+                                                                 :db_id      db-id
+                                                                 :created_at #t "2020"
+                                                                 :updated_at #t "2020"})
+          _other-table (t2/insert-returning-pk! :metabase_table {:name       "other"
+                                                                 :active     true
+                                                                 :db_id      db-id
+                                                                 :created_at #t "2020"
+                                                                 :updated_at #t "2020"})
+          group-id     (t2/insert-returning-pk! :model/PermissionsGroup {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! group-id table-id :perms/view-data :blocked)
+      (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data db-id table-id)))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))

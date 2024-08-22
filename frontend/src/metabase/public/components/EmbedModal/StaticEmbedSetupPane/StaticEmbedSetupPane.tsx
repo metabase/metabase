@@ -17,13 +17,13 @@ import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import { getIframeQueryWithoutDefaults } from "metabase/public/lib/code-templates";
 import { getSignedPreviewUrlWithoutHash } from "metabase/public/lib/embed";
 import type {
-  EmbeddingDisplayOptions,
-  EmbeddingParameters,
-  EmbeddingParametersValues,
-  EmbeddingParameterVisibility,
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
+  EmbeddingParameterVisibility,
+  EmbeddingParameters,
+  EmbeddingParametersValues,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";
@@ -34,7 +34,7 @@ import { LookAndFeelSettings } from "./LookAndFeelSettings";
 import { OverviewSettings } from "./OverviewSettings";
 import { ParametersSettings } from "./ParametersSettings";
 import { PreviewModeSelector } from "./PreviewModeSelector";
-import { PreviewPane, type PreviewBackgroundType } from "./PreviewPane";
+import { type PreviewBackgroundType, PreviewPane } from "./PreviewPane";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { getDefaultDisplayOptions } from "./config";

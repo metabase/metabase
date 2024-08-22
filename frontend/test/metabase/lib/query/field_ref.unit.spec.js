@@ -1,6 +1,6 @@
 import {
-  isValidField,
   isExpressionField,
+  isValidField,
 } from "metabase-lib/v1/queries/utils/field-ref";
 
 describe("field_ref", () => {

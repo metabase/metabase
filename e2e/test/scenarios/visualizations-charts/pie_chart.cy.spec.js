@@ -1,13 +1,13 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  popover,
-  tableHeaderClick,
-  pieSlices,
-  leftSidebar,
   chartPathWithFillColor,
+  leftSidebar,
+  pieSlices,
+  popover,
+  restore,
+  tableHeaderClick,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;

@@ -1,23 +1,37 @@
 import type { EChartsType } from "echarts/core";
 import { type MutableRefObject, useEffect, useMemo } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
+import { formatPercent } from "metabase/static-viz/lib/numbers";
+import type {
+  EChartsTooltipModel,
+  EChartsTooltipRow,
+} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
+import {
+  getPercent,
+  getTotalValue,
+} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
+import {
+  getMarkerColorClass,
+  useClickedStateTooltipSync,
+} from "metabase/visualizations/echarts/tooltip";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ClickObject,
-  StackedTooltipModel,
   VisualizationProps,
 } from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 
 export const getTooltipModel = (
-  hoveredIndex: number,
+  dataIndex: number,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
-): StackedTooltipModel => {
+): EChartsTooltipModel => {
+  const hoveredIndex = dataIndexToHoveredIndex(dataIndex);
   const hoveredOther =
     chartModel.slices[hoveredIndex].data.isOther &&
     chartModel.otherSlices.length > 1;
@@ -31,19 +45,36 @@ export const getTooltipModel = (
     }),
   );
 
-  const [headerRows, bodyRows] = _.partition(
-    rows,
-    (_, index) => index === (hoveredOther ? null : hoveredIndex),
-  );
+  const rowsTotal = getTotalValue(rows);
+  const isShowingTotalSensible = rows.length > 1;
+
+  const formattedRows: EChartsTooltipRow[] = rows.map((row, index) => {
+    const markerColorClass = row.color
+      ? getMarkerColorClass(row.color)
+      : undefined;
+    return {
+      isFocused: !hoveredOther && index === hoveredIndex,
+      markerColorClass,
+      name: row.name,
+      values: [
+        row.formatter(row.value),
+        formatPercent(getPercent(chartModel.total, row.value) ?? 0),
+      ],
+    };
+  });
 
   return {
-    headerTitle: getFriendlyName(chartModel.colDescs.dimensionDesc.column),
-    headerRows,
-    bodyRows,
-    totalFormatter: formatters.formatMetric,
-    grandTotal: chartModel.total,
-    showTotal: true,
-    showPercentages: true,
+    header: getFriendlyName(chartModel.colDescs.dimensionDesc.column),
+    rows: formattedRows,
+    footer: isShowingTotalSensible
+      ? {
+          name: t`Total`,
+          values: [
+            formatters.formatMetric(rowsTotal),
+            formatPercent(getPercent(chartModel.total, rowsTotal) ?? 0),
+          ],
+        }
+      : undefined,
   };
 };
 
@@ -53,7 +84,6 @@ const hoveredIndexToDataIndex = (index: number) => index + 1;
 function getHoverData(
   event: EChartsSeriesMouseEvent,
   chartModel: PieChartModel,
-  formatters: PieChartFormatters,
 ) {
   if (event.dataIndex == null) {
     return null;
@@ -68,7 +98,6 @@ function getHoverData(
   return {
     index,
     event: event.event.event,
-    stackedTooltipModel: getTooltipModel(index, chartModel, formatters),
   };
 }
 
@@ -115,7 +144,6 @@ export function useChartEvents(
   props: VisualizationProps,
   chartRef: MutableRefObject<EChartsType | undefined>,
   chartModel: PieChartModel,
-  formatters: PieChartFormatters,
 ) {
   const {
     onHoverChange,
@@ -150,6 +178,8 @@ export function useChartEvents(
     [chart, hoveredIndex],
   );
 
+  useClickedStateTooltipSync(chartRef.current, props.clicked);
+
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
       {
@@ -163,7 +193,7 @@ export function useChartEvents(
         eventName: "mousemove",
         query: "series",
         handler: (event: EChartsSeriesMouseEvent) => {
-          onHoverChange?.(getHoverData(event, chartModel, formatters));
+          onHoverChange?.(getHoverData(event, chartModel));
         },
       },
       {
@@ -188,7 +218,6 @@ export function useChartEvents(
       visualizationIsClickable,
       onVisualizationClick,
       chartModel,
-      formatters,
     ],
   );
 

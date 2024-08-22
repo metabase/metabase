@@ -154,8 +154,8 @@
   (when-let [binning-options (binning column-metadata)]
     (case (:strategy binning-options)
       :num-bins
-      (or ;; If the column is already binned, compute the width of this single bin based on its bounds and width.
-          (when-let [bin-width (:bin-width binning-options)]
+      ;;   If the column is already binned, compute the width of this single bin based on its bounds and width.
+      (or (when-let [bin-width (:bin-width binning-options)]
             {:bin-width bin-width
              :min-value value
              :max-value (+ value bin-width)})

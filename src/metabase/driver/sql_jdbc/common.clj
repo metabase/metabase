@@ -72,7 +72,7 @@
   {:pre [(or (nil? additional-options) (string? additional-options))
          (contains? valid-separator-styles separator-style)
          (or (nil? name-value-separator?) (and (string? name-value-separator?)
-                                            (= 1 (count name-value-separator?))))
+                                               (= 1 (count name-value-separator?))))
          (or (nil? lowercase-keys?) (boolean? lowercase-keys?))]}
   (if (str/blank? additional-options)
     {}

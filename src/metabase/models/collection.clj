@@ -152,9 +152,8 @@
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
     (throw (ex-info (tru "Collection name cannot be blank!")
-             {:status-code 400, :errors {:name (tru "cannot be blank")}})))
+                    {:status-code 400, :errors {:name (tru "cannot be blank")}})))
   (u/slugify collection-name collection-slug-max-length))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Nested Collections: Location Paths                                       |
@@ -523,7 +522,6 @@
          (assoc collection :effective_parent (id->parent-coll parent-id))))
      collections)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -532,8 +530,8 @@
   [{:keys [location]}]
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (t2/select [Collection :name :id :personal_owner_id]
-      :id [:in ancestor-ids]
-      {:order-by [:location]})))
+               :id [:in ancestor-ids]
+               {:order-by [:location]})))
 
 (mi/define-simple-hydration-method ancestors
   :ancestors
@@ -683,23 +681,23 @@
                                                               :read)})]
     ;; Collection B is an effective child of Collection A if...
     (into
-      [:and
+     [:and
        ;; it is a descendant of Collection A. For the Trash, this just means the collection is archived. Otherwise
        ;; we check that Collection B's location contains A's location as a prefix
-       (if (is-trash? collection)
-         [:= :archived true]
-         [:like :location (h2x/literal (str (children-location collection) "%"))])
+      (if (is-trash? collection)
+        [:= :archived true]
+        [:like :location (h2x/literal (str (children-location collection) "%"))])
        ;; when we're looking at a particular archived collection, we only see the subtree that was archived together.
-       (when (:archive_operation_id collection)
-         [:= :archive_operation_id (:archive_operation_id collection)])
+      (when (:archive_operation_id collection)
+        [:= :archive_operation_id (:archive_operation_id collection)])
        ;; it is visible.
-       (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
+      (visible-collection-ids->honeysql-filter-clause :id visible-collection-ids)
        ;; it is NOT a descendant of a visible Collection other than A - e.g. a visible subcollection.
-       (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
+      (visible-collection-ids->direct-visible-descendant-clause (t2/hydrate collection :effective_location) visible-collection-ids)
        ;; don't want personal collections in collection items. Only on the sidebar
-       [:= :personal_owner_id nil]]
+      [:= :personal_owner_id nil]]
       ;; (any additional conditions)
-      additional-honeysql-where-clauses)))
+     additional-honeysql-where-clauses)))
 
 (mu/defn effective-children-query :- [:map
                                       [:select :any]
@@ -744,7 +742,6 @@
   this Collection. See documentation for [[metabase.models.collection/effective-children-query]] for more details."
   [collection & additional-honeysql-where-clauses]
   (apply effective-children* collection additional-honeysql-where-clauses))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    Recursive Operations: Moving & Archiving                                    |
@@ -983,17 +980,17 @@
                                                      :object (perms/collection-readwrite-path source-collection-or-id))]
     ;; ...and insert corresponding rows for each destination Collection
     (t2/insert! Permissions
-      (concat
+                (concat
        ;; insert all the new read-perms records
-       (for [dest     dest-collections-or-ids
-             :let     [read-path (perms/collection-read-path dest)]
-             group-id group-ids-with-read-perms]
-         {:group_id group-id, :object read-path})
+                 (for [dest     dest-collections-or-ids
+                       :let     [read-path (perms/collection-read-path dest)]
+                       group-id group-ids-with-read-perms]
+                   {:group_id group-id, :object read-path})
        ;; ...and all the new write-perms records
-       (for [dest     dest-collections-or-ids
-             :let     [readwrite-path (perms/collection-readwrite-path dest)]
-             group-id group-ids-with-write-perms]
-         {:group_id group-id, :object readwrite-path})))))
+                 (for [dest     dest-collections-or-ids
+                       :let     [readwrite-path (perms/collection-readwrite-path dest)]
+                       group-id group-ids-with-write-perms]
+                   {:group_id group-id, :object readwrite-path})))))
 
 (defn- copy-parent-permissions!
   "When creating a new Collection, we shall copy the Permissions entries for its parent. That way, Groups who can see
@@ -1101,7 +1098,6 @@
         ;; this newly privatized Collection
         (revoke-perms-when-moving-into-personal-collection! collection-before-updates)))))
 
-
 ;; PUTTING IT ALL TOGETHER <3
 
 (defn- namespace-equals?
@@ -1180,7 +1176,6 @@
                                [:= :object (perms/collection-readwrite-path collection)]
                                [:= :object (perms/collection-read-path collection)]]}))
 
-
 ;;; -------------------------------------------------- IModel Impl ---------------------------------------------------
 
 ;;; Return the required set of permissions to `read-or-write` `collection-or-id`.
@@ -1224,7 +1219,7 @@
   [_collection]
   [:name :namespace parent-identity-hash :created_at])
 
-(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
+(defmethod serdes/extract-query "Collection" [_model {:keys [collection-set where]}]
   (let [not-trash-clause [:or
                           [:= :type nil]
                           [:not= :type trash-collection-type]]]
@@ -1233,12 +1228,14 @@
                            {:where
                             [:and
                              [:in :id collection-set]
-                             not-trash-clause]})
+                             not-trash-clause
+                             (or where true)]})
       (t2/reducible-select Collection
                            {:where
                             [:and
                              [:= :personal_owner_id nil]
-                             not-trash-clause]}))))
+                             not-trash-clause
+                             (or where true)]}))))
 
 (defmethod serdes/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
@@ -1324,7 +1321,6 @@
                        :required-perms required-perms
                        :actual-perms   actual-perms})))))
 
-
 (defn check-allowed-to-change-collection
   "If we're changing the `collection_id` of an object, make sure we have write permissions for both the old and new
   Collections, or throw a 403 if not. If `collection_id` isn't present in `object-updates`, or the value is the same
@@ -1348,7 +1344,6 @@
     ;; check that the new location is not archived. the root can't be archived.
     (when-let [collection-id (:collection_id object-updates)]
       (api/check-400 (t2/exists? :model/Collection :id collection-id :archived false)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
@@ -1377,7 +1372,7 @@
   (let [{first-name :first_name
          last-name  :last_name
          email      :email} (t2/select-one ['User :first_name :last_name :email]
-                              :id (u/the-id user-or-id))]
+                                           :id (u/the-id user-or-id))]
     (format-personal-collection-name first-name last-name email user-or-site)))
 
 (defn personal-collection-with-ui-details
@@ -1447,7 +1442,7 @@
   (when (seq users)
     ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (t2/select-fn->pk :personal_owner_id Collection
-                                   :personal_owner_id [:in (set (map u/the-id users))])]
+                                                   :personal_owner_id [:in (set (map u/the-id users))])]
       (assert (map? user-id->collection-id))
       ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
       ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
@@ -1628,8 +1623,8 @@
                                                archived-directly?
                                                (not parent-archived?)
                                                (perms/set-has-full-permissions-for-set?
-                                                     @api/*current-user-permissions-set*
-                                                     (perms-for-archiving coll)))))))))
+                                                @api/*current-user-permissions-set*
+                                                (perms-for-archiving coll)))))))))
 
 (defmethod hydrate-can-restore :default [_model items]
   (for [[{collection :collection} item] (map vector (t2/hydrate items :collection) items)]
