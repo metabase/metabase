@@ -91,10 +91,10 @@
   `(mt/test-helpers-set-global-values!
      (mt/with-additional-premium-features #{:sso-saml}
        (call-with-login-attributes-cleared!
-         (fn []
-           (call-with-default-saml-config!
-            (fn []
-              ~@body)))))))
+        (fn []
+          (call-with-default-saml-config!
+           (fn []
+             ~@body)))))))
 
 (defn successful-login?
   "Return true if the response indicates a successful user login"
@@ -106,8 +106,9 @@
   manually add `_1` to the state manager and turn off the <Assertion> signature validator so we can actually run
   tests."
   ([thunk]
-   (do-with-some-validators-disabled! nil #{:signature :not-on-or-after :recipient :issuer}
-     thunk))
+   (do-with-some-validators-disabled!
+    nil #{:signature :not-on-or-after :recipient :issuer}
+    thunk))
 
   ([disabled-response-validators disabled-assertion-validators thunk]
    (let [orig              saml/validate
@@ -317,24 +318,24 @@
     (with-other-sso-types-disabled!
       (with-saml-default-setup!
         (do-with-some-validators-disabled!
-          nil #{:not-on-or-after :recipient :issuer}
-          (fn []
-            (let [req-options (saml-post-request-options (saml-test-response)
-                                                         default-redirect-uri)
-                  response    (client/client-real-response :post 401 "/auth/sso" req-options)]
-              (testing (format "response =\n%s" (u/pprint-to-str response))
-                (is (not (successful-login? response)))))))))))
+         nil #{:not-on-or-after :recipient :issuer}
+         (fn []
+           (let [req-options (saml-post-request-options (saml-test-response)
+                                                        default-redirect-uri)
+                 response    (client/client-real-response :post 401 "/auth/sso" req-options)]
+             (testing (format "response =\n%s" (u/pprint-to-str response))
+               (is (not (successful-login? response)))))))))))
 
 (deftest validate-not-on-or-after-test
   (with-other-sso-types-disabled!
     (with-saml-default-setup!
       (testing "The sample responses should normally fail because the <Assertion> NotOnOrAfter has passed"
         (do-with-some-validators-disabled!
-          nil #{:signature :recipient}
-          (fn []
-            (let [req-options (saml-post-request-options (saml-test-response)
-                                                         (saml/str->base64 default-redirect-uri))]
-              (is (not (successful-login? (client/client-real-response :post 401 "/auth/sso" req-options)))))))))))
+         nil #{:signature :recipient}
+         (fn []
+           (let [req-options (saml-post-request-options (saml-test-response)
+                                                        (saml/str->base64 default-redirect-uri))]
+             (is (not (successful-login? (client/client-real-response :post 401 "/auth/sso" req-options)))))))))))
 
 (deftest validate-not-on-or-after-test-2
   (with-other-sso-types-disabled!

@@ -25,7 +25,7 @@
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (com.fasterxml.jackson.core JsonFactory JsonParser JsonToken JsonParser$NumberType)
@@ -68,7 +68,7 @@
   [driver ^String column-name ^String database-type]
   (when-let [semantic-type (sql-jdbc.sync.interface/column->semantic-type driver database-type column-name)]
     (assert (isa? semantic-type :type/*)
-      (str "Invalid type: " semantic-type))
+            (str "Invalid type: " semantic-type))
     semantic-type))
 
 (defmethod sql-jdbc.sync.interface/fallback-metadata-query :sql-jdbc
@@ -107,31 +107,31 @@
   "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
   [driver ^Connection conn db-name-or-nil schema table-name]
   (sql-jdbc.sync.common/reducible-results
-    #(.getColumns (.getMetaData conn)
-                  db-name-or-nil
-                  (some->> schema (driver/escape-entity-name-for-metadata driver))
-                  (some->> table-name (driver/escape-entity-name-for-metadata driver))
-                  nil)
-    (fn [^ResultSet rs]
+   #(.getColumns (.getMetaData conn)
+                 db-name-or-nil
+                 (some->> schema (driver/escape-entity-name-for-metadata driver))
+                 (some->> table-name (driver/escape-entity-name-for-metadata driver))
+                 nil)
+   (fn [^ResultSet rs]
       ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
-      #(let [default            (.getString rs "COLUMN_DEF")
-             no-default?        (contains? #{nil "NULL" "null"} default)
-             nullable           (.getInt rs "NULLABLE")
-             not-nullable?      (= 0 nullable)
+     #(let [default            (.getString rs "COLUMN_DEF")
+            no-default?        (contains? #{nil "NULL" "null"} default)
+            nullable           (.getInt rs "NULLABLE")
+            not-nullable?      (= 0 nullable)
              ;; IS_AUTOINCREMENT could return nil
-             auto-increment     (.getString rs "IS_AUTOINCREMENT")
-             auto-increment?    (= "YES" auto-increment)
-             no-auto-increment? (= "NO" auto-increment)
-             column-name        (.getString rs "COLUMN_NAME")
-             required?          (and no-default? not-nullable? no-auto-increment?)]
-         (merge
-           {:name                       column-name
-            :database-type              (.getString rs "TYPE_NAME")
-            :database-is-auto-increment auto-increment?
-            :database-required          required?}
-           (when-let [remarks (.getString rs "REMARKS")]
-             (when-not (str/blank? remarks)
-               {:field-comment remarks})))))))
+            auto-increment     (.getString rs "IS_AUTOINCREMENT")
+            auto-increment?    (= "YES" auto-increment)
+            no-auto-increment? (= "NO" auto-increment)
+            column-name        (.getString rs "COLUMN_NAME")
+            required?          (and no-default? not-nullable? no-auto-increment?)]
+        (merge
+         {:name                       column-name
+          :database-type              (.getString rs "TYPE_NAME")
+          :database-is-auto-increment auto-increment?
+          :database-required          required?}
+         (when-let [remarks (.getString rs "REMARKS")]
+           (when-not (str/blank? remarks)
+             {:field-comment remarks})))))))
 
 (defn ^:private fields-metadata
   [driver ^Connection conn {schema :schema, table-name :name} ^String db-name-or-nil]
@@ -335,12 +335,12 @@
      (describe-table-fks* driver conn table db-name-or-nil))))
 
 (defmulti describe-fks-sql
- "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
+  "Returns a SQL query ([sql & params]) for use in the default JDBC implementation of [[metabase.driver/describe-fks]],
  i.e. [[describe-fks]]."
- {:added    "0.49.0"
-  :arglists '([driver & {:keys [schema-names table-names]}])}
- driver/dispatch-on-initialized-driver
- :hierarchy #'driver/hierarchy)
+  {:added    "0.49.0"
+   :arglists '([driver & {:keys [schema-names table-names]}])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
 (defn describe-fks
   "Default implementation of [[metabase.driver/describe-fks]] for JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -404,13 +404,13 @@
 
 (defn- number-type [t]
   (u/case-enum t
-    JsonParser$NumberType/INT         Long
-    JsonParser$NumberType/LONG        Long
-    JsonParser$NumberType/FLOAT       Double
-    JsonParser$NumberType/DOUBLE      Double
-    JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
+               JsonParser$NumberType/INT         Long
+               JsonParser$NumberType/LONG        Long
+               JsonParser$NumberType/FLOAT       Double
+               JsonParser$NumberType/DOUBLE      Double
+               JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
     ;; there seem to be no way to encounter this, search in tests for `BigDecimal`
-    JsonParser$NumberType/BIG_DECIMAL BigDecimal))
+               JsonParser$NumberType/BIG_DECIMAL BigDecimal))
 
 (defn- json-object?
   "Return true if the string `s` is a JSON where value is an object.
@@ -435,34 +435,34 @@
              res       (transient {})]
         (let [token (.nextToken p)]
           (cond
-           (nil? token)
-           (persistent! res)
+            (nil? token)
+            (persistent! res)
 
            ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
            ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
            ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
            ;; entry (instead of doing `<=`).
-           (< max-nested-field-columns (count res))
-           (persistent! res)
+            (< max-nested-field-columns (count res))
+            (persistent! res)
 
-           :else
-           (u/case-enum token
-             JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-             JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
-             JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
-             JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
-             JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
-             JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
-                                                                    (type-by-parsing-string (.getText p))))
-             JsonToken/FIELD_NAME         (recur path (.getText p) res)
-             JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
-             JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
+            :else
+            (u/case-enum token
+                         JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+                         JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+                         JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
+                         JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
+                         JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
+                         JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
+                                                                                (type-by-parsing-string (.getText p))))
+                         JsonToken/FIELD_NAME         (recur path (.getText p) res)
+                         JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
+                         JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
              ;; We put top-level array row type semantics on JSON roadmap but skip for now
-             JsonToken/START_ARRAY        (do (.skipChildren p)
-                                              (if field
-                                                (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
-                                                (recur path field res)))
-             JsonToken/END_ARRAY          (recur path field res))))))))
+                         JsonToken/START_ARRAY        (do (.skipChildren p)
+                                                          (if field
+                                                            (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
+                                                            (recur path field res)))
+                         JsonToken/END_ARRAY          (recur path field res))))))))
 
 (defn- json-map->types [json-map]
   (apply merge (map #(json->types (second %) [(first %)]) json-map)))
@@ -494,11 +494,11 @@
              [json-column java.lang.Number]
 
              (every?
-               (fn [column-type]
-                 (some (fn [allowed-type]
-                         (isa? column-type allowed-type))
-                       [String Number Boolean java.time.LocalDateTime]))
-               [(acc-field-type-map json-column) (second-field-type-map json-column)])
+              (fn [column-type]
+                (some (fn [allowed-type]
+                        (isa? column-type allowed-type))
+                      [String Number Boolean java.time.LocalDateTime]))
+              [(acc-field-type-map json-column) (second-field-type-map json-column)])
              [json-column java.lang.String]
 
              :else
@@ -659,16 +659,16 @@
   [driver database table]
   (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     (sql-jdbc.execute/do-with-connection-with-options
-      driver
-      jdbc-spec
-      nil
-      (fn [^Connection conn]
-        (let [unfold-json-fields (table->unfold-json-fields driver conn table)
+     driver
+     jdbc-spec
+     nil
+     (fn [^Connection conn]
+       (let [unfold-json-fields (table->unfold-json-fields driver conn table)
               ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
               ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
               ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
               ;; database [:details :db])` works for most drivers but not H2.
-              pks                (get-table-pks driver conn nil table)]
-          (if (empty? unfold-json-fields)
-            #{}
-            (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))
+             pks                (get-table-pks driver conn nil table)]
+         (if (empty? unfold-json-fields)
+           #{}
+           (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))

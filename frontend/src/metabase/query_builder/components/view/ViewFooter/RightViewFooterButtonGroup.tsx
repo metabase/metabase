@@ -2,13 +2,10 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { Group } from "metabase/ui";
-import type { Alert } from "metabase-types/api";
 
 import type { QueryDownloadWidgetProps } from "../../QueryDownloadWidget/QueryDownloadWidget";
 import { ExecutionTime } from "../ExecutionTime";
-import QuestionAlertWidget from "../QuestionAlertWidget";
 import {
   QuestionLastUpdated,
   type QuestionLastUpdatedProps,
@@ -20,33 +17,18 @@ import type {
   QuestionTimelineWidgetOpts,
   QuestionTimelineWidgetProps,
 } from "../QuestionTimelineWidget/QuestionTimelineWidget";
-import {
-  QuestionEmbedAction,
-  type QuestionEmbedActionProps,
-} from "../ViewFooter/QuestionEmbedAction";
 
 export type RightViewFooterButtonGroupProps = QuestionTimelineWidgetProps &
   QuestionTimelineWidgetOpts &
   QueryDownloadWidgetProps &
   QuestionLastUpdatedProps &
-  QuestionEmbedActionProps &
-  QuestionRowCountOpts &
-  QuestionAlertsProps;
-
-// Putting these props here right now since QuestionAlerts will be refactored
-type QuestionAlertsProps = {
-  canManageSubscriptions: boolean;
-  questionAlerts: Alert[];
-};
+  QuestionRowCountOpts;
 
 export const RightViewFooterButtonGroup = ({
   result,
   isObjectDetail,
   question,
   visualizationSettings,
-  canManageSubscriptions,
-  questionAlerts,
-  onOpenModal,
   isTimeseries,
   isShowingTimelineSidebar,
   onOpenTimelines,
@@ -77,23 +59,6 @@ export const RightViewFooterButtonGroup = ({
           dashboardId={question.card().dashboardId}
         />
       )}
-      {QuestionAlertWidget.shouldRender({
-        question,
-        visualizationSettings,
-      }) && (
-        <QuestionAlertWidget
-          className={cx(CS.hide, CS.smShow)}
-          canManageSubscriptions={canManageSubscriptions}
-          question={question}
-          questionAlerts={questionAlerts}
-          onCreateAlert={() =>
-            question.isSaved()
-              ? onOpenModal(MODAL_TYPES.CREATE_ALERT)
-              : onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT)
-          }
-        />
-      )}
-      <QuestionEmbedAction onOpenModal={onOpenModal} question={question} />
       {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
         <QuestionTimelineWidget
           className={cx(CS.hide, CS.smShow)}

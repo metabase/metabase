@@ -33,9 +33,9 @@ import {
   getTextCardDetails,
   modal,
   openDashboardMenu,
-  openEmbedModalFromMenu,
   openProductsTable,
   openQuestionsSidebar,
+  openSharingMenu,
   popover,
   queryBuilderHeader,
   removeDashboardCard,
@@ -651,7 +651,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // and connect it to the card
     selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
@@ -929,7 +929,7 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
 
     modal().within(() => {
       cy.icon("close").click();

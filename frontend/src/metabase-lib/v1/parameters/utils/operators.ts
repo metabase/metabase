@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 import {
   doesOperatorExist,
   getOperatorByTypeAndName,
@@ -16,10 +14,11 @@ import { getIsMultiSelect } from "./parameter-values";
 
 type OperatorType = "date" | "number" | "string";
 export type ParameterSectionId =
-  | "number"
-  | "string"
   | "date"
+  | "temporal-unit"
   | "location"
+  | "string"
+  | "number"
   | "id";
 
 export function getOperatorDisplayName(
@@ -86,14 +85,6 @@ export function buildTypedOperatorOptions(
       ),
     };
   });
-}
-
-export function buildTemporalUnitOption(): ParameterMappingOptions {
-  return {
-    name: t`Unit of Time`,
-    type: "temporal-unit",
-    sectionId: "temporal-unit",
-  };
 }
 
 export function getNumberParameterArity(parameter: Parameter) {

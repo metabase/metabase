@@ -13,9 +13,8 @@ import {
   multiAutocompleteInput,
   onlyOnOSS,
   openEmailPage,
-  openEmbedModalFromMenu,
-  openPublicLinkPopoverFromMenu,
   openPulseSubscription,
+  openSharingMenu,
   popover,
   removeMultiAutocompleteValue,
   restore,
@@ -25,6 +24,7 @@ import {
   setTokenFeatures,
   setupSMTP,
   setupSubscriptionWithRecipients,
+  sharingMenu,
   sidebar,
   viewEmailPage,
   visitDashboard,
@@ -46,13 +46,10 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     cy.findByLabelText("subscriptions").should("not.exist");
 
-    openPublicLinkPopoverFromMenu();
+    openSharingMenu(/public link/i);
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
-    // close link popover
-    cy.icon("share").click();
-
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
     getEmbedModalSharingPane().within(() => {
       cy.findByText("Public embed").should("be.visible");
       cy.findByText("Static embed").should("be.visible");
@@ -67,16 +64,14 @@ describe("scenarios > dashboard > subscriptions", () => {
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
-    openEmbedModalFromMenu();
-    // Ensure clicking share icon opens sharing and embedding modal directly,
-    // without a menu with sharing and dashboard subscription options.
+    openSharingMenu();
     // Dashboard subscriptions are not shown because
     // getting notifications with static text-only cards doesn't make a lot of sense
-    cy.findByLabelText("subscriptions").should("not.exist");
+    sharingMenu().findByText("subscriptions").should("not.exist");
 
-    getEmbedModalSharingPane().within(() => {
-      cy.findByText("Public embed").should("be.visible");
-      cy.findByText("Static embed").should("be.visible");
+    sharingMenu().within(() => {
+      cy.findByText("Create a public link").should("be.visible");
+      cy.findByText("Embed").should("be.visible");
     });
   });
 
@@ -85,7 +80,7 @@ describe("scenarios > dashboard > subscriptions", () => {
       openDashboardSubscriptions();
 
       // The sidebar starts open after the method there, so test that clicking the icon closes it
-      cy.findByLabelText("subscriptions").click();
+      openSharingMenu("Subscriptions");
       sidebar().should("not.exist");
     });
   });
@@ -502,21 +497,11 @@ describe("scenarios > dashboard > subscriptions", () => {
         .should("not.be.disabled");
     });
 
-    it("should forward non-admin users to add slack form when clicking add", () => {
+    it("should disable subscriptions for non-admin users", () => {
       cy.signInAsNormalUser();
-      openDashboardSubscriptions();
-
-      sidebar().within(() => {
-        cy.findByPlaceholderText("Pick a user or channel...").click();
-      });
-
-      popover().findByText("#work").click();
-      sidebar().findAllByRole("button", { name: "Done" }).click();
-
-      sidebar().within(() => {
-        cy.findByLabelText("add icon").click();
-        cy.findByText("Send this dashboard to Slack").should("exist");
-      });
+      visitDashboard(ORDERS_DASHBOARD_ID);
+      openSharingMenu();
+      sharingMenu().findByText("Can't send subscriptions").should("be.visible");
     });
   });
 
@@ -726,7 +711,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   visitDashboard(dashboard_id);
-  cy.findByLabelText("subscriptions").click();
+  openSharingMenu("Subscriptions");
 }
 
 function assignRecipient({

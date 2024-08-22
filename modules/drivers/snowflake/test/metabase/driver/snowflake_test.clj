@@ -271,18 +271,13 @@
                    (map (partial into {})
                         (t2/select [Table :name] :db_id (u/the-id database)))))))))))
 
-(def dynamic-db
-  (mt/dataset-definition "dynamic-db"
-    ["metabase_users"
-     [{:field-name "name" :base-type :type/Text}]
-     [["mb_qnkhuat"]]]))
-
 (defn- do-with-dynamic-table
   [thunk]
-  (mt/dataset (mt/dataset-definition "dynamic-db"
-                ["metabase_users"
-                 [{:field-name "name" :base-type :type/Text}]
-                 [["mb_qnkhuat"]]])
+  (mt/dataset (mt/dataset-definition
+               "dynamic-db"
+               ["metabase_users"
+                [{:field-name "name" :base-type :type/Text}]
+                [["mb_qnkhuat"]]])
     (let [details (:details (mt/db))]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = '1 minute' warehouse = 'COMPUTE_WH' AS
@@ -413,112 +408,112 @@
 
 (deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
-   :snowflake
-   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
-         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
+    :snowflake
+    (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+          warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
-         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
-         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database          {:name    "Snowflake RSA test DB custom"
-                            :engine  :snowflake
+          user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
+          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+          db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+          database          {:name    "Snowflake RSA test DB custom"
+                             :engine  :snowflake
                             ;; Details as collected from `api handler POST / database` are used.
-                            :details {:role                nil
-                                      :warehouse           warehouse
-                                      :db                  db
-                                      :password            nil
-                                      :private-key-options "uploaded"
-                                      :advanced-options    false
-                                      :schema-filters-type "all"
-                                      :account             account
-                                      :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                (u/encode-base64 private-key-value))
-                                      :tunnel-enabled      false
-                                      :user                user}}]
+                             :details {:role                nil
+                                       :warehouse           warehouse
+                                       :db                  db
+                                       :password            nil
+                                       :private-key-options "uploaded"
+                                       :advanced-options    false
+                                       :schema-filters-type "all"
+                                       :account             account
+                                       :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                 (u/encode-base64 private-key-value))
+                                       :tunnel-enabled      false
+                                       :user                user}}]
      ;; TODO: We should make those message returned when role is incorrect more descriptive!
-     (testing "Database can not be accessed with `nil` default role"
-       (is (= "Looks like the Database name is incorrect."
-              (:message (mt/user-http-request :crowberto :post 400 "database"
-                                              database)))))
-     (testing "Database can not be accessed with PUBLIC role (default)"
-       (is (= "Looks like the Database name is incorrect."
-              (:message (mt/user-http-request :crowberto :post 400 "database"
-                                              (assoc-in database [:details :role] "PUBLIC"))))))
-     (testing "Database can be created using specified role"
+      (testing "Database can not be accessed with `nil` default role"
+        (is (= "Looks like the Database name is incorrect."
+               (:message (mt/user-http-request :crowberto :post 400 "database"
+                                               database)))))
+      (testing "Database can not be accessed with PUBLIC role (default)"
+        (is (= "Looks like the Database name is incorrect."
+               (:message (mt/user-http-request :crowberto :post 400 "database"
+                                               (assoc-in database [:details :role] "PUBLIC"))))))
+      (testing "Database can be created using specified role"
        ;; Map containing :details is expected to be database, hence considering request successful.
-       (is (contains? (mt/user-http-request :crowberto :post 200 "database"
-                                            (assoc-in database [:details :role]
-                                                      (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
-                      :details))
+        (is (contains? (mt/user-http-request :crowberto :post 200 "database"
+                                             (assoc-in database [:details :role]
+                                                       (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
+                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
-       (Thread/sleep 7000))
-     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB custom")
-           [table :as tables] (t2/select :model/Table :db_id (:id db))
-           fields             (t2/select :model/Field :table_id (:id table))]
-       (testing "Created database is correctly synced"
-         (testing "Application database contains one database, one table and one new field"
-           (is (= 1 (count dbs)))
-           (is (= 1 (count tables)))
-           (is (= 2 (count fields)))))
-       (testing "Querying the database returns expected results"
-         (is (= [[1 "John Toucan Smith"]]
-                (mt/rows (qp/process-query {:database (:id db)
-                                            :type :query
-                                            :query {:source-table (:id table)}})))))
+        (Thread/sleep 7000))
+      (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB custom")
+            [table :as tables] (t2/select :model/Table :db_id (:id db))
+            fields             (t2/select :model/Field :table_id (:id table))]
+        (testing "Created database is correctly synced"
+          (testing "Application database contains one database, one table and one new field"
+            (is (= 1 (count dbs)))
+            (is (= 1 (count tables)))
+            (is (= 2 (count fields)))))
+        (testing "Querying the database returns expected results"
+          (is (= [[1 "John Toucan Smith"]]
+                 (mt/rows (qp/process-query {:database (:id db)
+                                             :type :query
+                                             :query {:source-table (:id table)}})))))
        ;; Cleanup
-       (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-       (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
-       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
 (deftest ^:synchronized pk-auth-default-role-e2e-test
   (mt/test-driver
-   :snowflake
-   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
-         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
+    :snowflake
+    (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+          warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
          ;; User with default role PULIC. To access the db custom role has to be used.
-         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
-         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
-         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
-         database          {:name    "Snowflake RSA test DB default"
-                            :engine  :snowflake
+          user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
+          private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+          db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+          database          {:name    "Snowflake RSA test DB default"
+                             :engine  :snowflake
                             ;; Details as collected from `api handler POST / database` are used.
-                            :details {:role                nil
-                                      :warehouse           warehouse
-                                      :db                  db
-                                      :password            nil
-                                      :private-key-options "uploaded"
-                                      :advanced-options    false
-                                      :schema-filters-type "all"
-                                      :account             account
-                                      :private-key-value   (str "data:application/octet-stream;base64,"
-                                                                (u/encode-base64 private-key-value))
-                                      :tunnel-enabled      false
-                                      :user                user}}]
-     (testing "Database can be created using _default_ `nil` role"
+                             :details {:role                nil
+                                       :warehouse           warehouse
+                                       :db                  db
+                                       :password            nil
+                                       :private-key-options "uploaded"
+                                       :advanced-options    false
+                                       :schema-filters-type "all"
+                                       :account             account
+                                       :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                 (u/encode-base64 private-key-value))
+                                       :tunnel-enabled      false
+                                       :user                user}}]
+      (testing "Database can be created using _default_ `nil` role"
        ;; Map containing :details is expected to be database, hence considering request successful.
-       (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
-                      :details))
+        (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
+                       :details))
         ;; As the request is asynchronous, wait for sync to complete.
-       (Thread/sleep 7000))
-     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB default")
-           [table :as tables] (t2/select :model/Table :db_id (:id db))
-           fields             (t2/select :model/Field :table_id (:id table))]
-       (testing "Created database is correctly synced"
-         (testing "Application database contains one database, one table and one new field"
-           (is (= 1 (count dbs)))
-           (is (= 1 (count tables)))
-           (is (= 2 (count fields)))))
-       (testing "Querying the database returns expected results"
-         (is (= [[1 "John Toucan Smith"]]
-                (mt/rows (qp/process-query {:database (:id db)
-                                            :type :query
-                                            :query {:source-table (:id table)}})))))
+        (Thread/sleep 7000))
+      (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB default")
+            [table :as tables] (t2/select :model/Table :db_id (:id db))
+            fields             (t2/select :model/Field :table_id (:id table))]
+        (testing "Created database is correctly synced"
+          (testing "Application database contains one database, one table and one new field"
+            (is (= 1 (count dbs)))
+            (is (= 1 (count tables)))
+            (is (= 2 (count fields)))))
+        (testing "Querying the database returns expected results"
+          (is (= [[1 "John Toucan Smith"]]
+                 (mt/rows (qp/process-query {:database (:id db)
+                                             :type :query
+                                             :query {:source-table (:id table)}})))))
        ;; Cleanup
-       (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-       (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
-       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
-       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
+        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+        (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake
@@ -701,19 +696,20 @@
                           "context" "ad-hoc"
                           "userId" 1000
                           "databaseId" (mt/id)}
-            result-query (driver/prettify-native-form :snowflake
-                           (query->native!
-                             (assoc
-                               (mt/mbql-query users {:limit 2000})
-                               :parameters [{:type   "id"
-                                             :target [:dimension [:field (mt/id :users :id) nil]]
-                                             :value  ["1" "2" "3"]}]
-                               :info {:executed-by  1000
-                                      :card-id      1234
-                                      :dashboard-id 5678
-                                      :context      :ad-hoc
-                                      :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
-                                                                 93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
+            result-query (driver/prettify-native-form
+                          :snowflake
+                          (query->native!
+                           (assoc
+                            (mt/mbql-query users {:limit 2000})
+                            :parameters [{:type   "id"
+                                          :target [:dimension [:field (mt/id :users :id) nil]]
+                                          :value  ["1" "2" "3"]}]
+                            :info {:executed-by  1000
+                                   :card-id      1234
+                                   :dashboard-id 5678
+                                   :context      :ad-hoc
+                                   :query-hash   (byte-array [-53 -125 -44 -10 -18 -36 37 14 -37 15 44 22 -8 -39 -94 30
+                                                              93 66 -13 34 -52 -20 -31 73 76 -114 -13 -42 52 88 31 -30])})))
             result-comment (second (re-find #"-- (\{.*\})" result-query))
             result-map (json/read-str result-comment)]
         (is (= expected-map result-map))))))

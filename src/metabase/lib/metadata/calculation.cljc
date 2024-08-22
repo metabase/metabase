@@ -336,16 +336,16 @@
      ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
      ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
      ;; called with one `stage-number` anyway.
-     (keyword "display-info" (str "stage-" stage-number)) x
-     (fn [x]
-       (try
-         (display-info-method query stage-number x)
-         (catch #?(:clj Throwable :cljs js/Error) e
-           (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                     (lib.dispatch/dispatch-value x)
-                                     (ex-message e))
-                           {:query query, :stage-number stage-number, :x x}
-                           e))))))))
+    (keyword "display-info" (str "stage-" stage-number)) x
+    (fn [x]
+      (try
+        (display-info-method query stage-number x)
+        (catch #?(:clj Throwable :cljs js/Error) e
+          (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                    (lib.dispatch/dispatch-value x)
+                                    (ex-message e))
+                          {:query query, :stage-number stage-number, :x x}
+                          e))))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
@@ -558,8 +558,8 @@
    (if (and (map? x)
             (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
      (lib.cache/side-channel-cache
-       (keyword (str stage-number "__visible-columns-no-opts")) query
-       (fn [_] (visible-columns query stage-number x nil)))
+      (keyword (str stage-number "__visible-columns-no-opts")) query
+      (fn [_] (visible-columns query stage-number x nil)))
      (visible-columns query stage-number x nil)))
 
   ([query          :- ::lib.schema/query

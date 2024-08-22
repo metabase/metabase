@@ -205,17 +205,17 @@
                (or date? date-time?) (coerce-local-date-time input))]
        (if (and t (.isValid t))
          (or
-           (format-extraction-unit t unit)
-           (cond
-             time? (.format t "h:mm A")
-             date? (.format t "MMM D, YYYY")
-             date-time? (.format t "MMM D, YYYY, h:mm A")))
+          (format-extraction-unit t unit)
+          (cond
+            time? (.format t "h:mm A")
+            date? (.format t "MMM D, YYYY")
+            date-time? (.format t "MMM D, YYYY, h:mm A")))
          input))
      (if (= unit :hour-of-day)
        (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
        (or
-         (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
-         (str input))))))
+        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
+        (str input))))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.
