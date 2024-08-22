@@ -18,6 +18,7 @@ runs:
         echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
         yarn cache clean
       shell: bash
+
     - name: Get M2 cache
       uses: actions/cache@v4
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
@@ -25,26 +26,32 @@ runs:
         path: ~/.m2
         key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
 
-    - name: Get node_modules cache
-      uses: actions/cache@v4
-      id: node-modules-cache
-      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
-      with:
-        path: node_modules
-        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
+    - name: Setup bun
+      uses: oven-sh/setup-bun@v2
 
-    - name: Get yarn cache directory path
-      id: yarn-cache-dir-path
-      if: steps.node-modules-cache.outputs.cache-hit != 'true'
-      run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+    - run: bun install
       shell: bash
 
-    - uses: actions/cache@v4
-      if: steps.node-modules-cache.outputs.cache-hit != 'true'
-      with:
-        path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
-        key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
-        restore-keys: ${{ runner.os }}-yarn-
+    # - name: Get node_modules cache
+    #   uses: actions/cache@v4
+    #   id: node-modules-cache
+    #   if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
+    #   with:
+    #     path: node_modules
+    #     key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
 
-    - run: yarn install --frozen-lockfile --prefer-offline
-      shell: bash
+    # - name: Get yarn cache directory path
+    #   id: yarn-cache-dir-path
+    #   if: steps.node-modules-cache.outputs.cache-hit != 'true'
+    #   run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+    #   shell: bash
+
+    # - uses: actions/cache@v4
+    #   if: steps.node-modules-cache.outputs.cache-hit != 'true'
+    #   with:
+    #     path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+    #     key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+    #     restore-keys: ${{ runner.os }}-yarn-
+
+    # - run: yarn install --frozen-lockfile --prefer-offline
+    #   shell: bash
