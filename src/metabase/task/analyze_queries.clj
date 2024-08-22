@@ -42,8 +42,8 @@
   (loop [remaining stop-after]
     (when (public-settings/query-analysis-enabled)
       (let [card-or-id (next-card-id-fn)
-            _ (log/debugf "[query-analysis] next message: %s" (u/the-id card-or-id))
             card-id    (u/the-id card-or-id)
+            _ (log/debugf "[query-analysis] next message: %s" card-id)
             timer      (u/start-timer)
             card       (query-analysis/->analyzable card-or-id)]
         (if (failure-map/non-retryable? card)
