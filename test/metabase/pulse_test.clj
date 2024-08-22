@@ -152,7 +152,6 @@
      ;; override just the :display property of the Card
      {:card   {:display \"table\"}
       :assert {:email (fn [_ _] (is ...))}})"
-  {:style/indent 1}
   [common & {:as message->m}]
   (doseq [[message m] message->m]
     (testing message

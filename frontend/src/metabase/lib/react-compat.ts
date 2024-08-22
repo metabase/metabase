@@ -2,7 +2,7 @@
 
 import React from "react";
 import ReactDOM from "react-dom";
-import { createRoot, type Root } from "react-dom/client";
+import { type Root, createRoot } from "react-dom/client";
 
 // React 18 and later has the useSyncExternalStore hook.
 export const isReact17OrEarlier = () => !("useSyncExternalStore" in React);

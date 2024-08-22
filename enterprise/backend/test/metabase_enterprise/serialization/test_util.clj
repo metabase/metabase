@@ -88,9 +88,9 @@
     (recur (dec arity)
            (fn [& args]
              (do-with-in-memory-h2-db
-               (str "db-" arity)
-               (fn [data-source]
-                 (apply f data-source args)))))))
+              (str "db-" arity)
+              (fn [data-source]
+                (apply f data-source args)))))))
 
 (defmacro with-dbs
   "Create and set up in-memory H2 application databases for each symbol in the bindings vector, each of which is then

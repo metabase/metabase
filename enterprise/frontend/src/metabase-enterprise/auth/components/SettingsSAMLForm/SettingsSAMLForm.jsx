@@ -13,10 +13,10 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import {
-  FormSection,
   Form,
   FormErrorMessage,
   FormProvider,
+  FormSection,
   FormSubmitButton,
   FormSwitch,
   FormTextInput,

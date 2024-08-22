@@ -180,8 +180,8 @@
     String   (u.date/parse x)
     Temporal x
     (throw (ex-info (tru "Don''t know how to parse {0} {1} as a temporal literal" (class x) (pr-str x))
-             {:type      qp.error-type/invalid-parameter
-              :parameter x}))))
+                    {:type      qp.error-type/invalid-parameter
+                     :parameter x}))))
 
 (defmethod ->replacement-snippet-info [:sql Date]
   [driver {:keys [s]}]

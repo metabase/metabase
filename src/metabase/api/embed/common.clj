@@ -180,9 +180,7 @@
         merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
     (into {} (for [[slug value] merged-slug->value
                    :when        value]
-                [(get slug->id (name slug)) value]))))
-
-
+               [(get slug->id (name slug)) value]))))
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
@@ -237,7 +235,7 @@
         dashcards      (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
-                             (if-let [value (get token-params (keyword (:slug param)))]
+                              (if-let [value (get token-params (keyword (:slug param)))]
                                 (conj acc (assoc param :value value))
                                 acc))
                             []
@@ -252,11 +250,11 @@
             dashcards))))
 
 (mu/defn- apply-slug->value :- [:maybe [:sequential
-                                                 [:map
-                                                  [:slug ms/NonBlankString]
-                                                  [:type :keyword]
-                                                  [:target :any]
-                                                  [:value :any]]]]
+                                        [:map
+                                         [:slug ms/NonBlankString]
+                                         [:type :keyword]
+                                         [:target :any]
+                                         [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
   [parameters slug->value]

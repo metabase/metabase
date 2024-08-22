@@ -1,12 +1,12 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertEChartsTooltip,
+  cartesianChartCircleWithColor,
+  chartPathWithFillColor,
   echartsContainer,
   restore,
   visitQuestionAdhoc,
-  cartesianChartCircleWithColor,
-  chartPathWithFillColor,
-  assertEChartsTooltip,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, ORDERS_ID, ORDERS } = SAMPLE_DATABASE;

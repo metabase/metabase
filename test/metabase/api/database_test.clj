@@ -19,6 +19,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database :refer [protected-password]]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.public-settings.premium-features :as premium-features]
@@ -110,7 +111,7 @@
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position]))))
 
-(defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
+(defn- card-with-native-query [card-name & {:as kvs}]
   (merge
    {:name          card-name
     :database_id   (mt/id)
@@ -119,7 +120,7 @@
                     :native   {:query (format "SELECT * FROM VENUES")}}}
    kvs))
 
-(defn- card-with-mbql-query {:style/indent 1} [card-name & {:as inner-query-clauses}]
+(defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
   {:name          card-name
    :database_id   (mt/id)
    :dataset_query {:database (mt/id)
@@ -1788,6 +1789,47 @@
       (testing "to fetch Tables with `nil` or empty schemas, use the blank string"
         (is (= ["t1" "t2"]
                (map :name (mt/user-http-request :lucky :get 200 (format "database/%d/schema/" db-id)))))))))
+
+(deftest get-schema-tables-unreadable-metrics-are-not-returned-test
+  (mt/with-temp [Collection model-coll   {:name "Model Collection"}
+                 Card       card         (assoc (card-with-native-query "Card 1")
+                                                :collection_id (:id model-coll)
+                                                :type :model)
+                 Collection metric-coll {:name "Metric Collection"}
+                 Card       metric      {:type          :metric
+                                         :name          "Metric"
+                                         :database_id   (mt/id)
+                                         :collection_id (:id metric-coll)
+                                         :dataset_query {:type     :query
+                                                         :database (mt/id)
+                                                         :query    {:source-table (str "card__" (:id card))
+                                                                    :aggregation  [[:count]]}}}]
+    (is (=? {:status "completed"}
+            (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (:id card)))))
+    (let [virtual-table {:id           (format "card__%d" (:id card))
+                         :db_id        (mt/id)
+                         :metrics      nil
+                         :display_name "Card 1"
+                         :schema       (:name model-coll)
+                         :type         "model"}]
+      (testing "Metrics should be returned"
+        (is (=? [(assoc virtual-table
+                        :metrics [{:id             (:id metric)
+                                   :name           "Metric"
+                                   :type           "metric"
+                                   :source_card_id (:id card)
+                                   :database_id    (mt/id)}])]
+                (mt/user-http-request :lucky :get 200
+                                      (format "database/%d/datasets/%s"
+                                              lib.schema.id/saved-questions-virtual-database-id
+                                              (:name model-coll))))))
+      (perms/revoke-collection-permissions! (perms-group/all-users) (:id metric-coll))
+      (testing "Metrics should not be returned if its collection is not accessible"
+        (is (=? [virtual-table]
+                (mt/user-http-request :lucky :get 200
+                                      (format "database/%d/datasets/%s"
+                                              lib.schema.id/saved-questions-virtual-database-id
+                                              (:name model-coll)))))))))
 
 (deftest get-schema-tables-permissions-test
   (testing "GET /api/database/:id/schema/:schema against permissions"

@@ -1,4 +1,4 @@
-import { match, P } from "ts-pattern";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";

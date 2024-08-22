@@ -24,10 +24,10 @@ import {
   createMockCollection,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   PEOPLE,
   PEOPLE_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import EditSandboxingModal from "./EditSandboxingModal";

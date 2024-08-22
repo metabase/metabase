@@ -33,3 +33,19 @@ export function isQuestionRunnable(
 
   return question.canRun();
 }
+
+export const isSavedQuestionChanged = (
+  question: Question | undefined,
+  originalQuestion: Question | null | undefined,
+) => {
+  const isSavedQuestion = originalQuestion != null;
+  const hasChanges = question != null;
+  const wereChangesSaved = question?.isSaved();
+  const hasUnsavedChanges = hasChanges && !wereChangesSaved;
+
+  return (
+    isSavedQuestion &&
+    hasUnsavedChanges &&
+    originalQuestion.type() === "question"
+  );
+};

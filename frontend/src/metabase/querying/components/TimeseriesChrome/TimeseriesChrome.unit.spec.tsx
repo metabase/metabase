@@ -1,11 +1,11 @@
-import { userEvent } from "@storybook/testing-library";
+import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
+  SAMPLE_METADATA,
   createQuery,
   createQueryWithClauses,
-  SAMPLE_METADATA,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";

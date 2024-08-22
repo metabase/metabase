@@ -121,7 +121,7 @@
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
-                               query stage-number column column-ref :filter)]
+                              query stage-number column column-ref :filter)]
       (merge drill-details
              {:lib/type   :metabase.lib.drill-thru/drill-thru
               :type       :drill-thru/quick-filter

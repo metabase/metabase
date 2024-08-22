@@ -4,11 +4,11 @@ import { getQuestionSteps } from "metabase/query_builder/components/notebook/lib
 import * as Lib from "metabase-lib";
 import type { StructuredQuery as StructuredQueryObject } from "metabase-types/api";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({

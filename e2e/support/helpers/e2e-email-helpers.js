@@ -1,4 +1,4 @@
-import { sidebar } from "e2e/support/helpers";
+import { openSharingMenu, sidebar } from "e2e/support/helpers";
 
 import { WEBMAIL_CONFIG } from "../cypress_data";
 
@@ -82,7 +82,7 @@ export const clickSend = () => {
 };
 
 export const openAndAddEmailsToSubscriptions = recipients => {
-  cy.findByLabelText("subscriptions").click();
+  openSharingMenu("Subscriptions");
 
   sidebar().findByText("Create a dashboard subscription").should("be.visible");
 

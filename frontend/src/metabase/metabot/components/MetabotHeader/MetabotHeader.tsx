@@ -11,7 +11,7 @@ import type { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
 import type { Dispatch, MetabotQueryStatus, State } from "metabase-types/store";
 
 import { cancelQuery, runPromptQuery, updatePrompt } from "../../actions";
-import { getFeedbackType, getQueryStatus, getPrompt } from "../../selectors";
+import { getFeedbackType, getPrompt, getQueryStatus } from "../../selectors";
 import DatabasePicker from "../DatabasePicker";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";

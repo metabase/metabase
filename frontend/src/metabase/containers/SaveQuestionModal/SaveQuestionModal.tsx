@@ -1,6 +1,6 @@
 import {
-  SaveQuestionForm,
   LLMSuggestionQuestionInfo,
+  SaveQuestionForm,
   SaveQuestionTitle,
 } from "metabase/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";

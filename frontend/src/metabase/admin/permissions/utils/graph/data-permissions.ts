@@ -2,16 +2,16 @@ import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
 import {
-  PLUGIN_DATA_PERMISSIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
+  PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
 import type {
-  GroupsPermissions,
-  GroupPermissions,
-  DatabasePermissions,
   ConcreteTableId,
+  DatabasePermissions,
+  GroupPermissions,
+  GroupsPermissions,
 } from "metabase-types/api";
 
 import type {

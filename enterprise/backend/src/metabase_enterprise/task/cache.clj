@@ -50,9 +50,9 @@
         next-run-at (calc-next-run (:schedule config) now)
         marker      (:marker state)]
     (t2/update! :model/CacheConfig {:id id}
-                     (cond-> {:next_run_at next-run-at}
-                       (not= marker result) (assoc :state {:marker result}
-                                                   :invalidated_at now)))))
+                (cond-> {:next_run_at next-run-at}
+                  (not= marker result) (assoc :state {:marker result}
+                                              :invalidated_at now)))))
 
 (defn- refresh-query-configs!
   "Fetches `:query`-strategy configs wants to re-check their queries, runs those queries and updates `invalidated_at`
@@ -75,19 +75,19 @@
 
 (def ^:private cache-job
   (jobs/build
-    (jobs/with-description "Schedule Caches refresh task")
-    (jobs/of-type Cache)
-    (jobs/with-identity (jobs/key "metabase-enterprise.cache.job"))
-    (jobs/store-durably)))
+   (jobs/with-description "Schedule Caches refresh task")
+   (jobs/of-type Cache)
+   (jobs/with-identity (jobs/key "metabase-enterprise.cache.job"))
+   (jobs/store-durably)))
 
 (def ^:private cache-trigger
   (triggers/build
-    (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
-    (triggers/start-now)
-    (triggers/with-schedule
-      (cron/schedule
-        ;; run every minute
-        (cron/cron-schedule "0 * * * * ? *")))))
+   (triggers/with-identity (triggers/key "metabase-enterprise.cache.trigger"))
+   (triggers/start-now)
+   (triggers/with-schedule
+    (cron/schedule
+      ;; run every minute
+     (cron/cron-schedule "0 * * * * ? *")))))
 
 (defenterprise init-cache-task!
   "Inits periodical task checking for cache expiration"

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -8,10 +8,10 @@ import { parseNumberValue } from "metabase/lib/number";
 import { isNotNull } from "metabase/lib/types";
 import { UpdateFilterButton } from "metabase/parameters/components/UpdateFilterButton";
 import {
-  WidgetRoot,
-  WidgetLabel,
   Footer,
   TokenFieldWrapper,
+  WidgetLabel,
+  WidgetRoot,
 } from "metabase/parameters/components/widgets/Widget.styled";
 import { MultiAutocomplete } from "metabase/ui";
 import type { Parameter, ParameterValue } from "metabase-types/api";

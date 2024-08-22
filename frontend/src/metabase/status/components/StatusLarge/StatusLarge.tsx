@@ -7,18 +7,18 @@ import { Icon } from "metabase/ui";
 import useStatusVisibility from "../../hooks/use-status-visibility";
 
 import {
-  StatusCardRoot,
-  StatusCardIcon,
+  StatusBody,
   StatusCardBody,
-  StatusCardTitle,
   StatusCardDescription,
-  StatusCardSpinner,
+  StatusCardIcon,
   StatusCardIconContainer,
-  StatusRoot,
+  StatusCardRoot,
+  StatusCardSpinner,
+  StatusCardTitle,
   StatusHeader,
+  StatusRoot,
   StatusTitle,
   StatusToggle,
-  StatusBody,
 } from "./StatusLarge.styled";
 
 type Status = {

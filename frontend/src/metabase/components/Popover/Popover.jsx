@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { Children, cloneElement, Component } from "react";
+import { Children, Component, cloneElement } from "react";
 import ReactDOM from "react-dom";
 import Tether from "tether";
 

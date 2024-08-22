@@ -39,7 +39,7 @@
 
     (u/varargs String)
     (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1, :arglists '([klass] [klass xs])}
+  {:style/indent [:defn], :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getTypeName ^Class (ns-resolve *ns* klass)))))
@@ -170,7 +170,6 @@
 
    For implementing more fine grained retry policies like exponential backoff,
    consider using the `metabase.util.retry` namespace."
-  {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
     (f)
@@ -193,8 +192,9 @@
   consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries & body]
-  `(do-with-auto-retries ~num-retries
-     (fn [] ~@body)))
+  `(do-with-auto-retries
+    ~num-retries
+    (fn [] ~@body)))
 
 (def ^:private ^Base64$Decoder base64-decoder
   "A shared Base64 decoder instance."

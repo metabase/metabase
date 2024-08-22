@@ -4,8 +4,8 @@ import { render, screen } from "__support__/ui";
 import Search from "metabase/entities/search";
 import { Text } from "metabase/ui";
 import {
-  createMockSearchResult,
   createMockCollection,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 import { getSearchResultSubtext } from "./useCommandPalette";

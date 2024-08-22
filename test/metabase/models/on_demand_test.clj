@@ -17,7 +17,6 @@
 (defn- do-with-mocked-field-values-updating!
   "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
   of Fields that should have been updated. Returns the set of updated Field names."
-  {:style/indent 0}
   [f]
   (let [updated-field-names (atom #{})]
     (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
@@ -41,7 +40,7 @@
                                          :widget-type  "category"
                                          :default      "Widget"}}}})
 
-(defn- do-with-updated-fields-for-card! {:style/indent 1} [options & [f]]
+(defn- do-with-updated-fields-for-card! [options & [f]]
   (mt/with-temp [Database db    (:db options)
                  Table    table (merge {:db_id (u/the-id db)}
                                        (:table options))

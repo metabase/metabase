@@ -12,14 +12,14 @@ import {
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockField, createMockSegment } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
   ORDERS,
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS_ID,
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

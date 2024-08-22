@@ -128,11 +128,13 @@
 
 (defn- with-parens
   "Returns a regex that matches the argument, with or without surrounding parentheses."
+  {:style/indent [:form]}
   [number-regex]
   (re-pattern (str "(" number-regex ")|(\\(" number-regex "\\))")))
 
 (defn- with-currency
   "Returns a regex that matches a positive or negative number, including currency symbols"
+  {:style/indent [:form]}
   [number-regex]
   ;; currency signs can be all over: $2, -$2, $-2, 2€
   (re-pattern (str upload-parsing/currency-regex "?\\s*-?"

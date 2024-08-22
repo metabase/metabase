@@ -1,4 +1,7 @@
-import type { ScheduleSettings } from "metabase-types/api/settings";
+import type {
+  ScheduleSettings,
+  ScheduleType,
+} from "metabase-types/api/settings";
 
 import type { Card } from "./card";
 import type { User } from "./user";
@@ -30,7 +33,7 @@ export type ChannelSpecRecipients = ("user" | "email")[];
 export type ChannelSpec = {
   type: ChannelType;
   name: string;
-  schedules: ScheduleValue[];
+  schedules: ScheduleType[];
   schedule_type: any;
   allows_recipients: boolean;
   configured: boolean;
@@ -88,13 +91,13 @@ export type SlackChannelSpec = ChannelSpec & {
 };
 
 type EmailChannelSpec = ChannelSpec & {
-  recipients: ("user" | "email")[];
+  recipients: ChannelSpecRecipients;
 };
-export interface FormInput {
+export interface ChannelApiResponse {
   channels: {
     email: SlackChannelSpec;
     slack: EmailChannelSpec;
   };
 }
 
-export type ChannelType = keyof FormInput["channels"];
+export type ChannelType = keyof ChannelApiResponse["channels"];

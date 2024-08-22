@@ -3,8 +3,8 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { getMetadata } from "metabase/selectors/metadata";
 import Dimension from "metabase-lib/v1/Dimension";
 import {
-  createSampleDatabase,
   PRODUCTS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 

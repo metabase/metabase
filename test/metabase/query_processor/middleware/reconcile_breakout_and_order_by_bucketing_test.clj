@@ -5,7 +5,7 @@
     :as
     reconcile-bucketing]))
 
-(defn- mbql-query {:style/indent 0} [& clauses]
+(defn- mbql-query [& clauses]
   {:database 1
    :type     :query
    :query    (apply assoc {:source-table 1} clauses)})

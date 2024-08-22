@@ -27,11 +27,11 @@
                 :limit  [:inline 5]}]
       (is (= hsql
              (sql.qp/apply-top-level-clause :sparksql :page
-               {:select   [[:default.categories.name :name] [:default.categories.id :id]]
-                :from     [:default.categories]
-                :order-by [[:default.categories.id :asc]]}
-               {:page {:page  2
-                       :items 5}})))
+                                            {:select   [[:default.categories.name :name] [:default.categories.id :id]]
+                                             :from     [:default.categories]
+                                             :order-by [[:default.categories.id :asc]]}
+                                            {:page {:page  2
+                                                    :items 5}})))
       (is (= [["SELECT"
                "  `name`,"
                "  `id`"

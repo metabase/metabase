@@ -1,6 +1,6 @@
 import {
-  createContext,
   type PropsWithChildren,
+  createContext,
   useCallback,
   useContext,
   useMemo,
@@ -9,8 +9,7 @@ import {
 
 import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
-import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
+import { isNotNull } from "metabase/lib/types";
 import type Question from "metabase-lib/v1/Question";
 
 import { SAVE_QUESTION_SCHEMA } from "./schema";
@@ -56,10 +55,13 @@ export const SaveQuestionProvider = ({
     [originalQuestion, question, onSave, onCreate],
   );
 
-  const isSavedQuestionChanged = useSelector(getIsSavedQuestionChanged);
   // we care only about the very first result as question can be changed before
   // the modal is closed
-  const [isSavedQuestionInitiallyChanged] = useState(isSavedQuestionChanged);
+  const [isSavedQuestionInitiallyChanged] = useState(
+    isNotNull(originalQuestion) &&
+      originalQuestion.type() !== "model" &&
+      question.isDirtyComparedTo(originalQuestion),
+  );
 
   const showSaveType =
     isSavedQuestionInitiallyChanged &&

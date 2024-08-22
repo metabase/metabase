@@ -2,10 +2,10 @@ import _ from "underscore";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import type {
-  CollectionId,
-  CollectionItemModel,
   Card,
   CardType,
+  CollectionId,
+  CollectionItemModel,
   ListCollectionItemsRequest,
 } from "metabase-types/api";
 

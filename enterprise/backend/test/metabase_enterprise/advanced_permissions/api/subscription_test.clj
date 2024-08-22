@@ -19,10 +19,10 @@
   Use it when we need to isolate a user's permissions during tests."
   [& body]
   `(try
-    (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
-    ~@body
-    (finally
-     (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
+     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+     ~@body
+     (finally
+       (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
 
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"

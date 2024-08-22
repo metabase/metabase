@@ -149,7 +149,7 @@
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))
            (conj result db))
-        result))
+         result))
      []
      dbs)))
 

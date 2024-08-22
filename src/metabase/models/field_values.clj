@@ -151,7 +151,7 @@
   "Remove all advanced FieldValues for a `field-or-id`."
   [field-or-id]
   (t2/delete! FieldValues :field_id (u/the-id field-or-id)
-                          :type     [:in advanced-field-values-types]))
+              :type     [:in advanced-field-values-types]))
 
 (defn clear-field-values-for-field!
   "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
@@ -227,7 +227,6 @@
                                        :else
                                        [])))))
 
-
 (defmethod serdes/hash-fields :model/FieldValues
   [_field-values]
   [(serdes/hydrated-hash :field)])
@@ -282,12 +281,12 @@
 
   ([max-length coll]
    (lazy-seq
-     (when-let [s (seq coll)]
-       (let [f          (first s)
-             new-length (- max-length (count (str (first f))))]
-         (when-not (neg? new-length)
-           (cons f (take-by-length new-length
-                                   (rest s)))))))))
+    (when-let [s (seq coll)]
+      (let [f          (first s)
+            new-length (- max-length (count (str (first f))))]
+        (when-not (neg? new-length)
+          (cons f (take-by-length new-length
+                                  (rest s)))))))))
 
 (defn fixup-human-readable-values
   "Field values and human readable values are lists that are zipped together. If the field values have changed, the
@@ -410,7 +409,7 @@
   [field-id type hash]
   (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
   (delete-duplicates-and-return-latest!
-    (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
+   (t2/select FieldValues :field_id field-id :type type :hash_key hash)))
 
 (defn get-latest-full-field-values
   "This returns the full FieldValues for the given Field.
@@ -526,7 +525,7 @@
                                (t2/select-pk->fn :db_id 'Table :id [:in table-ids]))
         db-id->is-on-demand? (when (seq table-id->db-id)
                                (t2/select-pk->fn :is_on_demand 'Database
-                                 :id [:in (set (vals table-id->db-id))]))]
+                                                 :id [:in (set (vals table-id->db-id))]))]
     (into {} (for [table-id table-ids]
                [table-id (-> table-id table-id->db-id db-id->is-on-demand?)]))))
 
@@ -561,25 +560,29 @@
   ;; Take the path, but drop the FieldValues section at the end, to get the parent Field's path instead.
   [(pop (serdes/path fv))])
 
-(defmethod serdes/extract-one "FieldValues" [_model-name _opts fv]
-  (-> (serdes/extract-one-basics "FieldValues" fv)
-      (dissoc :field_id)))
-
-(defmethod serdes/load-xform "FieldValues" [fv]
-  (let [[db schema table field :as field-ref] (map :id (pop (serdes/path fv)))
-        field-ref (if field
-                    field-ref
-                    ;; It's too short, so no schema. Shift them over and add a nil schema.
-                    [db nil schema table])]
-    (-> (serdes/load-xform-basics fv)
-        (assoc :field_id (serdes/*import-field-fk* field-ref))
-        (update :type keyword))))
-
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
     ;; We only serialize the full values, see [[metabase.models.field/with-values]]
     (get-latest-full-field-values (:id field))))
+
+(defn- field-path->field-ref [field-values-path]
+  (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]
+    (if field
+      field-ref
+      ;; It's too short, so no schema. Shift them over and add a nil schema.
+      [db nil schema table])))
+
+(defmethod serdes/make-spec "FieldValues" [_model-name _opts]
+  {:copy      [:values :human_readable_values :has_more_values :hash_key]
+   :transform {:created_at   (serdes/date)
+               :last_used_at (serdes/date)
+               :type         (serdes/kw)
+               :field_id     {::serdes/fk true
+                              :export     (constantly nil)
+                              :import     (fn [_]
+                                            (let [field-ref (field-path->field-ref (serdes/path serdes/*current*))]
+                                              (serdes/*import-field-fk* field-ref)))}}})
 
 (defmethod serdes/load-update! "FieldValues" [_ ingested local]
   ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.

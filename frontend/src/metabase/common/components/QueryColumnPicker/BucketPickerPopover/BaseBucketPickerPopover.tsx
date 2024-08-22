@@ -9,8 +9,8 @@ import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
-  Content,
   ChevronDown,
+  Content,
   MoreButton,
   SelectListItem,
   TriggerButton,

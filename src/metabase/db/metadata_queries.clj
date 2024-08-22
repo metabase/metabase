@@ -43,9 +43,9 @@
                                                                       [:= :t.database_require_filter true]
                                                                       [:in :t.id table-ids]]}))
         update-query-filter-fn (fn [existing-filter new-filter]
-                                (if (some? existing-filter)
-                                  [:and existing-filter new-filter]
-                                  new-filter))]
+                                 (if (some? existing-filter)
+                                   [:and existing-filter new-filter]
+                                   new-filter))]
     (case (count required-filter-fields)
       0
       query
@@ -73,23 +73,23 @@
       rff))))
 
 (defn search-values-query
- "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query generated
+  "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query generated
   differs slightly based on whether the two Fields are the same Field.
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
- [field search-field value limit]
- (-> (table-query (:table_id field)
-                  {:filter   (when (some? value)
-                               [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
+  [field search-field value limit]
+  (-> (table-query (:table_id field)
+                   {:filter   (when (some? value)
+                                [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
                    ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
                    ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
                    ;; identifiers/aliases
-                   :breakout (if (= (u/the-id field) (u/the-id search-field))
-                               [[:field (u/the-id field) nil]]
-                               [[:field (u/the-id field) nil]
-                                [:field (u/the-id search-field) nil]])
-                   :limit    limit})
-     :data :rows))
+                    :breakout (if (= (u/the-id field) (u/the-id search-field))
+                                [[:field (u/the-id field) nil]]
+                                [[:field (u/the-id field) nil]
+                                 [:field (u/the-id search-field) nil]])
+                    :limit    limit})
+      :data :rows))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."
@@ -168,7 +168,6 @@
   `:truncation-size`: [optional] size to truncate text fields if the driver supports expressions.
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
-  {:style/indent 1}
   ([table  :- (ms/InstanceOf :model/Table)
     fields :- [:sequential (ms/InstanceOf :model/Field)]
     rff]

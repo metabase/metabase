@@ -311,7 +311,6 @@
   strings:
 
      (obj->json->obj {:type :query}) -> {:type \"query\"}"
-  {:style/indent 0}
   [obj]
   (json/parse-string (json/generate-string obj) keyword))
 

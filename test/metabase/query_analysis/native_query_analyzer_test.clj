@@ -142,17 +142,8 @@
 (deftest ^:parallel pseudo-table-fields-tests
   (testing "When macaw returns an unknown field without a table, we keep it even if it could be phantom."
     ;; At the time of writing this test, Macaw would (incorrectly) return "week" as an ambiguous source column.
-    (is (= [{                      :column "week",       :explicit-reference true}
-            {:table "source_table" :column "flobbed_at", :explicit-reference true}]
-           (field-refs "WITH date_series AS (
-                       SELECT generate_series('2016-01-01'::date, '2024-09-14'::date, '1 week') AS week
-                     )
-                     SELECT week, COUNT(*) as count
-                     FROM date_series
-                     JOIN source_table
-                       ON flobbed_at < week
-                     GROUP BY week
-                     ORDER BY week")))))
+    (is (= [{:column "some_exotic_constant", :explicit-reference true}]
+           (field-refs "SELECT some_exotic_constant")))))
 
 (deftest ^:parallel field-matching-keywords-test
   (when (not (contains? #{:snowflake :oracle} driver/*driver*))
