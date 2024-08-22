@@ -2,33 +2,23 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { getIsTimeseries } from "metabase/query_builder/selectors";
+import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
+import {
+  getFirstQueryResult,
+  getIsObjectDetail,
+  getIsTimeseries,
+} from "metabase/query_builder/selectors";
 import { Group } from "metabase/ui";
 
-import type { QueryDownloadWidgetProps } from "../../QueryDownloadWidget/QueryDownloadWidget";
 import { ExecutionTime } from "../ExecutionTime";
-import {
-  QuestionLastUpdated,
-  type QuestionLastUpdatedProps,
-} from "../QuestionLastUpdated/QuestionLastUpdated";
+import { QuestionLastUpdated } from "../QuestionLastUpdated/QuestionLastUpdated";
 import QuestionRowCount from "../QuestionRowCount";
-import type { QuestionRowCountOpts } from "../QuestionRowCount/QuestionRowCount";
 import QuestionTimelineWidget from "../QuestionTimelineWidget";
-import type { QuestionTimelineWidgetProps } from "../QuestionTimelineWidget/QuestionTimelineWidget";
 
-export type RightViewFooterButtonGroupProps = QuestionTimelineWidgetProps &
-  QueryDownloadWidgetProps &
-  QuestionLastUpdatedProps &
-  QuestionRowCountOpts;
-
-export const RightViewFooterButtonGroup = ({
-  result,
-  isObjectDetail,
-  question,
-  visualizationSettings,
-}: RightViewFooterButtonGroupProps) => {
+export const RightViewFooterButtonGroup = () => {
   const isTimeseries = useSelector(getIsTimeseries);
+  const result = useSelector(getFirstQueryResult);
+  const isObjectDetail = useSelector(getIsObjectDetail);
 
   return (
     <>
@@ -46,16 +36,7 @@ export const RightViewFooterButtonGroup = ({
             result={result}
           />
         )}
-        {QueryDownloadWidget.shouldRender({ result }) && (
-          <QueryDownloadWidget
-            className={cx(CS.hide, CS.smShow)}
-            question={question}
-            result={result}
-            visualizationSettings={visualizationSettings}
-            dashcardId={question.card().dashcardId}
-            dashboardId={question.card().dashboardId}
-          />
-        )}
+        <ViewFooterDownloadWidget />
         {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
           <QuestionTimelineWidget className={cx(CS.hide, CS.smShow)} />
         )}
