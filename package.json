@@ -314,6 +314,7 @@
     "ansi-regex": "5.0.1",
     "d3-color": "^3.1.0",
     "debug": "^4.3.4",
+    "esbuild": "^0.21.0",
     "follow-redirects": "^1.15.5",
     "jsdom": "^22.1.0",
     "json5": "2.2.2",
@@ -454,6 +455,7 @@
     "core-js-pure",
     "cypress",
     "deasync",
+    "esbuild",
     "fsevents",
     "postinstall-postinstall"
   ]
