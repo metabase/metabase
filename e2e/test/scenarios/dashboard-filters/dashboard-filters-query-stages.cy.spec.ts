@@ -88,6 +88,7 @@ const PEOPLE_NUMBER_COLUMNS = ["Longitude", "Latitude"];
 
 const REVIEWS_DATE_COLUMNS = ["Created At"];
 const REVIEWS_TEXT_COLUMNS = ["Reviewer", "Body"];
+const REVIEWS_NUMBER_COLUMNS = ["Rating"];
 
 /**
  * "Questions" tab - dashcards are questions
@@ -210,19 +211,19 @@ describe("scenarios > dashboard > filters > query stages", () => {
       cy.then(function () {
         createQ2("q2qb", this.q1, {
           type: "question",
-          name: "Q2 - Question-based question",
+          name: "Q2 - Question-based Question",
         });
         createQ2("q2mb", this.m1, {
           type: "question",
-          name: "Q2 - Model-based question",
+          name: "Q2 - Model-based Question",
         });
         createQ2("m2qb", this.q1, {
           type: "model",
-          name: "M2 - Question-based model",
+          name: "M2 - Question-based Model",
         });
         createQ2("m2mb", this.m1, {
           type: "model",
-          name: "M2 - Model-based model",
+          name: "M2 - Model-based Model",
         });
       });
 
@@ -243,52 +244,114 @@ describe("scenarios > dashboard > filters > query stages", () => {
     it("allows to map to all relevant columns", () => {
       editDashboard();
 
-      cy.log("date columns");
+      cy.log("# questions");
+
+      cy.log("## date columns");
       getFilter("Date").click();
       verifyDashcardMappingOptions(0, [
-        ["Q1 Orders question", ORDERS_DATE_COLUMNS],
+        ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
         ["Review", REVIEWS_DATE_COLUMNS],
-        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
       verifyDashcardMappingOptions(1, [
-        ["Q1 Orders question", ORDERS_DATE_COLUMNS],
+        ["M1 Orders Model", ORDERS_DATE_COLUMNS],
         ["Review", REVIEWS_DATE_COLUMNS],
-        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]],
+        ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
 
-      cy.log("text columns");
+      cy.log("## text columns");
       getFilter("Text").click();
       verifyDashcardMappingOptions(0, [
         ["Review", REVIEWS_TEXT_COLUMNS],
-        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_TEXT_COLUMNS],
       ]);
       verifyDashcardMappingOptions(1, [
-        ["Product", PRODUCTS_TEXT_COLUMNS],
-        ["User", PEOPLE_TEXT_COLUMNS],
-      ]);
-      verifyDashcardMappingOptions(2, [
-        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["Review", REVIEWS_TEXT_COLUMNS],
+        ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_TEXT_COLUMNS],
       ]);
 
-      cy.log("number columns");
+      cy.log("## number columns");
       getFilter("Number").click();
       verifyDashcardMappingOptions(0, [
-        ["Order", ORDERS_NUMBER_COLUMNS],
-        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["Q1 Orders Question", ORDERS_NUMBER_COLUMNS],
+        ["Review", REVIEWS_NUMBER_COLUMNS],
+        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
       verifyDashcardMappingOptions(1, [
         ["M1 Orders Model", ORDERS_NUMBER_COLUMNS],
-        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["Review", REVIEWS_NUMBER_COLUMNS],
+        ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
-      verifyDashcardMappingOptions(2, [
-        ["Q0 Order", ORDERS_NUMBER_COLUMNS],
+
+      cy.log("# models");
+      cy.findByRole("tab", { name: "Models" }).click();
+
+      cy.log("## date columns");
+      getFilter("Date").click();
+      verifyDashcardMappingOptions(0, [
+        [
+          "M2 - Question-based Model",
+          [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
+        ],
+        ["Product", PRODUCTS_DATE_COLUMNS],
+        ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        [
+          "M2 - Model-based Model",
+          [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
+        ],
+        ["Product", PRODUCTS_DATE_COLUMNS],
+        ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
+        ["User", PEOPLE_DATE_COLUMNS],
+      ]);
+
+      cy.log("## text columns");
+      getFilter("Text").click();
+      verifyDashcardMappingOptions(0, [
+        [
+          "M2 - Question-based Model",
+          ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
+        ],
+        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        [
+          "M2 - Model-based Model",
+          ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
+        ],
+        ["Product", PRODUCTS_TEXT_COLUMNS],
+        ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
+        ["User", PEOPLE_TEXT_COLUMNS],
+      ]);
+
+      cy.log("## number columns");
+      getFilter("Number").click();
+      verifyDashcardMappingOptions(0, [
+        [
+          "M2 - Question-based Model",
+          [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
+        ],
         ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
+        ["User", PEOPLE_NUMBER_COLUMNS],
+      ]);
+      verifyDashcardMappingOptions(1, [
+        [
+          "M2 - Model-based Model",
+          [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
+        ],
+        ["Product", PRODUCTS_NUMBER_COLUMNS],
+        ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
     });
@@ -298,7 +361,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 function createQ0(alias: string) {
   return createQuestion({
     name: "Q0 Orders",
-    description: "Plain Orders table",
+    description: "Question based on a database table",
     query: {
       "source-table": ORDERS_ID,
     },
@@ -307,7 +370,7 @@ function createQ0(alias: string) {
 
 function createQ1(alias: string, source: Card) {
   return createQuestion({
-    name: "Q1 Orders question",
+    name: "Q1 Orders Question",
     description: "Question based on a question",
     query: {
       "source-table": `card__${source.id}`,
@@ -456,10 +519,12 @@ function verifyPopoverMappingOptions(sections: MappingSection[]) {
     let index = 0;
 
     for (const [sectionName, columnNames] of sections) {
+      getPopoverItems().eq(index).scrollIntoView();
       getPopoverItems().eq(index).should("have.text", sectionName);
       ++index;
 
       for (const columnName of columnNames) {
+        getPopoverItems().eq(index).scrollIntoView();
         getPopoverItems()
           .eq(index)
           .findByLabelText(columnName)
