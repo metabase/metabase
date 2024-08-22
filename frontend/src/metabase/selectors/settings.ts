@@ -97,10 +97,21 @@ export const getUpgradeUrl = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
   (state: State) => getSetting(state, "active-users-count"),
   (state: State, opts: UpgradeUrlOpts) => opts.utm_media,
-  (source, count, media) => {
+  (plan, count, content) => {
     const url = new URL("https://www.metabase.com/upgrade");
-    url.searchParams.append("utm_media", media);
-    url.searchParams.append("utm_source", source);
+    const searchParams = {
+      utm_source: "product",
+      utm_medium: "upsell",
+      utm_campaign: "embedding-static-font",
+      utm_content: content,
+      source_plan: plan,
+    };
+    for (const key in searchParams) {
+      url.searchParams.append(
+        key,
+        searchParams[key as keyof typeof searchParams],
+      );
+    }
     if (count != null) {
       url.searchParams.append("utm_users", String(count));
     }
