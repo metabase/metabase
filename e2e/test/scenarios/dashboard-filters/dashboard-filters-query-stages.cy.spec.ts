@@ -9,7 +9,11 @@ import {
   restore,
   visitDashboard,
 } from "e2e/support/helpers";
-import type { Card, ConcreteFieldReference } from "metabase-types/api";
+import type {
+  Card,
+  ConcreteFieldReference,
+  StructuredQuery,
+} from "metabase-types/api";
 
 const { ORDERS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
 
@@ -420,32 +424,7 @@ function createQ2(
 ) {
   return createQuestion({
     description: "join, custom column, no aggregations, no breakouts",
-    query: {
-      "source-table": `card__${source.id}`,
-      expressions: {
-        Net: ["-", TOTAL_FIELD, TAX_FIELD],
-      },
-      joins: [
-        {
-          fields: "all",
-          strategy: "left-join",
-          alias: "Reviews - Product",
-          condition: [
-            "=",
-            PRODUCT_ID_FIELD,
-            [
-              "field",
-              "PRODUCT_ID",
-              {
-                "base-type": "type/Integer",
-                "join-alias": "Reviews - Product",
-              },
-            ],
-          ],
-          "source-table": REVIEWS_ID,
-        },
-      ],
-    },
+    query: createQ2Query(source),
     ...questionDetails,
   }).then(response => cy.wrap(response.body).as(alias));
 }
@@ -457,35 +436,45 @@ function createQ3(
 ) {
   return createQuestion({
     description: "join, custom column, aggregations, no breakouts",
-    query: {
-      "source-table": `card__${source.id}`,
-      expressions: {
-        Net: ["-", TOTAL_FIELD, TAX_FIELD],
-      },
-      joins: [
-        {
-          fields: "all",
-          strategy: "left-join",
-          alias: "Reviews - Product",
-          condition: [
-            "=",
-            PRODUCT_ID_FIELD,
-            [
-              "field",
-              "PRODUCT_ID",
-              {
-                "base-type": "type/Integer",
-                "join-alias": "Reviews - Product",
-              },
-            ],
-          ],
-          "source-table": REVIEWS_ID,
-        },
-      ],
-      aggregation: [["count"], ["sum", TOTAL_FIELD]],
-    },
+    query: createQ3Query(source),
     ...questionDetails,
   }).then(response => cy.wrap(response.body).as(alias));
+}
+
+function createQ2Query(source: Card): StructuredQuery {
+  return {
+    "source-table": `card__${source.id}`,
+    expressions: {
+      Net: ["-", TOTAL_FIELD, TAX_FIELD],
+    },
+    joins: [
+      {
+        fields: "all",
+        strategy: "left-join",
+        alias: "Reviews - Product",
+        condition: [
+          "=",
+          PRODUCT_ID_FIELD,
+          [
+            "field",
+            "PRODUCT_ID",
+            {
+              "base-type": "type/Integer",
+              "join-alias": "Reviews - Product",
+            },
+          ],
+        ],
+        "source-table": REVIEWS_ID,
+      },
+    ],
+  };
+}
+
+function createQ3Query(source: Card): StructuredQuery {
+  return {
+    ...createQ2Query(source),
+    aggregation: [["count"], ["sum", TOTAL_FIELD]],
+  };
 }
 
 function createTestDashboard({
