@@ -448,15 +448,10 @@
     "defaults"
   ],
   "trustedDependencies": [
-    "@swc/core",
     "aws-sdk",
     "core-js",
     "core-js-pure",
-    "cypress",
-    "deasync",
-    "esbuild",
     "fsevents",
-    "iframe-resizer",
     "postinstall-postinstall"
   ]
 }
