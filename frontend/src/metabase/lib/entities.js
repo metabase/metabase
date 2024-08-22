@@ -473,8 +473,9 @@ export function createEntity(def) {
     requestType,
   ];
 
+  const defaultRequestState = {};
   const getRequestState = (state, props) =>
-    getIn(state, getRequestStatePath(props)) || {};
+    getIn(state, getRequestStatePath(props)) || defaultRequestState;
 
   const getLoading = createSelector(
     [getRequestState],

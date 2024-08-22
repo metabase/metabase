@@ -359,6 +359,7 @@ export const getQuestions = (state: State) => {
   return questionsById;
 };
 
+// TODO: remove it as we added cache to MLv2 and it should be fast now
 // getQuestions selector returns an array with stable references to the questions
 // but array itself is always new, so it may cause troubles in re-renderings
 const getQuestionsMemoized = createDeepEqualSelector(
