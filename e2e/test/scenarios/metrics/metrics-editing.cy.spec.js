@@ -9,6 +9,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  hovercard,
   modal,
   openQuestionActions,
   popover,
@@ -45,6 +46,7 @@ const ORDERS_SCALAR_MODEL_METRIC = {
 const ORDERS_SCALAR_FILTER_METRIC = {
   name: "Orders metric with filter",
   type: "metric",
+  description: "This is a description _with markdown_",
   query: {
     "source-table": ORDERS_ID,
     filter: [">", ["field", ORDERS.TOTAL, null], 100],
@@ -426,6 +428,48 @@ describe("scenarios > metrics > editing", () => {
       });
       visualize();
       verifyScalarValue("18,760");
+    });
+
+    it("should for searching for metrics", () => {
+      createQuestion(ORDERS_SCALAR_METRIC);
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
+      createQuestion(PRODUCTS_SCALAR_METRIC);
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      startNewAggregation();
+      popover().within(() => {
+        cy.findByPlaceholderText("Find...").type("with filter");
+        cy.findByText("Common Metrics").should("be.visible");
+        cy.findByText(ORDERS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(PRODUCTS_SCALAR_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+      });
+    });
+
+    it("should show the description for metrics", () => {
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      startNewAggregation();
+      popover().within(() => {
+        cy.findByText("Common Metrics").click();
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).realHover();
+
+        cy.findByLabelText("More info").should("exist").realHover();
+      });
+
+      hovercard().within(() => {
+        cy.contains("This is a description").should("be.visible");
+        cy.contains("with markdown").should("be.visible");
+      });
     });
   });
 });
