@@ -146,17 +146,40 @@ export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCells
 interface PivotTableRootProps {
   isDashboard?: boolean;
   isNightMode?: boolean;
+  shouldOverflow?: boolean;
+  isEditing?: boolean;
 }
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
-  overflow: auto;
+  overflow-y: hidden;
+  overflow-x: ${props => (props.shouldOverflow ? "auto" : "hidden")};
   font-size: ${({ theme }) => theme.other.pivotTable.cell.fontSize};
 
   ${props =>
     props.isDashboard
       ? css`
           border-top: 1px solid var(--mb-color-border) (props);
+        `
+      : null}
+
+  ${props =>
+    props.isEditing
+      ? css`
+          & {
+            user-select: none;
+          }
+
+          &::-webkit-scrollbar,
+          & *::-webkit-scrollbar {
+            display: none;
+          }
+
+          &,
+          & * {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+          }
         `
       : null}
 `;
