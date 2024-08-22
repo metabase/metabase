@@ -5,25 +5,27 @@ import { color } from "metabase/lib/colors";
 export const StepRoot = styled.section`
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 2rem;
-  margin-bottom: 1.75rem;
+  padding: 2.5rem;
   border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   background-color: ${color("white")};
+  gap: 32px;
+  margin-bottom: 1.75rem;
 `;
 
 export const StepTitle = styled.div`
   color: ${color("text-light")};
-  padding: 1rem 0;
   font-size: 2rem;
   font-weight: 700;
 `;
 
 export const StepBody = styled.div`
-  padding-top: 2rem;
+  padding: 24px;
+  border: 1px solid ${color("border")};
+  border-radius: 4px;
 `;
 
 export const StepFooter = styled.div`
-  padding: 2rem 0 1rem;
+  display: flex;
+  justify-content: flex-end;
 `;
