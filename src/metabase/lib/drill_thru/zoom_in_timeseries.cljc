@@ -57,17 +57,6 @@
                               (filter #(contains? lib.schema.temporal-bucketing/datetime-truncation-units %))
                               (lib.temporal-bucket/available-temporal-buckets query stage field)))))
 
-(mu/defn- unit->next-unit
-  :- [:map-of
-      ::lib.schema.temporal-bucketing/unit.date-time.truncate
-      ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
-  [query :- ::lib.schema/query
-   stage :- :int
-   field :- :mbql.clause/field]
-  (let [units (valid-current-units query stage field)]
-    (zipmap (drop-last units)
-            (drop 1 units))))
-
 (mu/defn- matching-breakout-dimension :- [:maybe ::lib.schema.drill-thru/context.row.value]
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -86,7 +75,8 @@
    stage :- :int
    field :- :mbql.clause/field]
   (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket field)]
-    ((unit->next-unit query stage field) current-unit)))
+    (second (drop-while #(not= % current-unit)
+                        (valid-current-units query stage field)))))
 
 (mu/defn- describe-next-unit :- ::lib.schema.common/non-blank-string
   [unit :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
