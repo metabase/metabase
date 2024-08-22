@@ -1070,7 +1070,11 @@
                    [{:model "Database"   :id "My Database"}
                     {:model "Table"      :id "Schemaless Table"}
                     {:model "Field"      :id "A Field"}]}
-                 (set (serdes/dependencies ser)))))))))
+                 (set (serdes/dependencies ser))))))
+      (testing "Nullable transformations stay as nulls"
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one Card :id card-id-2))]
+          (is (=? {:made_public_by_id nil}
+                  ser)))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
