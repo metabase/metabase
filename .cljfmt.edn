@@ -10,7 +10,7 @@
 
  :paths
  ["src"
-  #_"test"
+  "test"
   "enterprise/backend"
   "bin/build"
   "modules/drivers"
@@ -36,14 +36,16 @@
  {;; clojure.core stuff
   fn*                                                                                  [[:inner 0]]
   with-meta                                                                            [[:default]]
-
-  extend-protocol [[:block 1] [:inner 1]]
-
   ;; library stuff. Libraries that specify their own `:style/indent` specs are included in the section after this
   ;; since it is generated automatically.
   clojure.core.logic/fresh                                                             [[:block 1]]
   clojure.core.logic/matcha                                                            [[:block 1]]
   clojure.core.logic/run                                                               [[:block 2]]
+  clojure.core.match/match                                                             [[:block 1]]
+  clojure.test.check.properties/for-all                                                [[:block 1]]
+  clojure.test.check.properties/for-all*                                               [[:block 1]]
+  clojure.test.check/quick-check                                                       [[:block 1]]
+  clojure.tools.macro/macrolet                                                         [[:block 1] [:inner 2 0]]
   clojurewerkz.quartzite.jobs/build                                                    [[:default]]
   clojurewerkz.quartzite.jobs/with-description                                         [[:default]]
   clojurewerkz.quartzite.jobs/with-identity                                            [[:default]]

@@ -39,7 +39,7 @@
 (defn- format-response [m]
   (when-not (map? m)
     (throw (ex-info (format "Expected results to be a map! Got: %s" (u/pprint-to-str m))
-             {:results m})))
+                    {:results m})))
   (into
    {}
    (for [[k v] (-> m
@@ -299,7 +299,7 @@
               :params nil}
              (mt/user-http-request :crowberto :post 200 "dataset/native"
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
-                                     :pretty false)))))))
+                                          :pretty false)))))))
 
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
@@ -335,7 +335,7 @@
                          [:message            [:= "You do not have permissions to run this query."]]]
                         (mt/user-http-request :rasta :post "dataset/native"
                                               (mt/mbql-query venues
-                                                             {:fields [$id $name]}))))))))))
+                                                {:fields [$id $name]}))))))))))
 
 (deftest ^:parallel compile-test-4
   (testing "POST /api/dataset/native"
@@ -666,19 +666,19 @@
              :tables    [{:id (mt/id :products)}]
              :fields    empty?}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                   (mt/mbql-query products)))))
+                                  (mt/mbql-query products)))))
   (testing "Parameterized native query"
     (is (=? {:databases [{:id (mt/id)}]
              :tables    empty?
              :fields    [{:id (mt/id :people :id)}]}
             (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
-                                   {:database (mt/id)
-                                    :type     :native
-                                    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
-                                               :template-tags
-                                               {"id" {:name         "id"
-                                                      :display-name "Id"
-                                                      :type         :dimension
-                                                      :dimension    [:field (mt/id :people :id) nil]
-                                                      :widget-type  :id
-                                                      :default      nil}}}})))))
+                                  {:database (mt/id)
+                                   :type     :native
+                                   :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                              :template-tags
+                                              {"id" {:name         "id"
+                                                     :display-name "Id"
+                                                     :type         :dimension
+                                                     :dimension    [:field (mt/id :people :id) nil]
+                                                     :widget-type  :id
+                                                     :default      nil}}}})))))
