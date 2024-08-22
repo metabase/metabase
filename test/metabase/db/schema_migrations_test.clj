@@ -1351,6 +1351,7 @@
                                        :schema_name schema
                                        :perm_type perm-type
                                        :perm_value perm-value))]
+
         (migrate-up!)
         (insert-perm! "perms/data-access" "unrestricted")
         (migrate! :down 49)
@@ -1730,6 +1731,7 @@
                  (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-2 :group_id group-id :perm_type "perms/create-queries"))))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest split-data-permissions-legacy-no-self-service-migration-test
   (testing "view-data is set to `legacy-no-self-service` for groups that meet specific conditions"
     (impl/test-migrations ["v50.2024-02-26T22:15:54" "v50.2024-02-26T22:15:55"] [migrate!]
@@ -2034,12 +2036,64 @@
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
 
         (migrate-up!)
-        (t2/insert-returning-pks! :connection_impersonations {:group_id group-id :db_id db-id :attribute "foo"})
-        (insert-perm! "perms/view-data" "unrestricted")
-        (insert-perm! "perms/create-queries" "no")
+        (insert-perm! "perms/view-data" "blocked" table-id)
         (migrate! :down 49)
         (is (= #{(format "/block/db/%d/" db-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
+
+(deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-26T22:15:55"] [migrate!]
+    (let [user-id      (t2/insert-returning-pk! (t2/table-name :model/User)
+                                                {:first_name  "Howard"
+                                                 :last_name   "Hughes"
+                                                 :email       "howard@aircraft.com"
+                                                 :password    "superstrong"
+                                                 :date_joined :%now})
+          db-id        (t2/insert-returning-pk! (t2/table-name :model/Database)
+                                                {:name       "DB"
+                                                 :engine     "h2"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :details    "{}"})
+          table-id     (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:name       "orders"
+                                                 :active     true
+                                                 :schema "PUBLIC"
+                                                 :db_id      db-id
+                                                 :created_at #t "2020"
+                                                 :updated_at #t "2020"})
+          other-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                  {:name       "other"
+                                                   :active     true
+                                                   :schema "PUBLIC"
+                                                   :db_id      db-id
+                                                   :created_at #t "2020"
+                                                   :updated_at #t "2020"})
+          group-id     (t2/insert-returning-pk! :permissions_group {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (clear-permissions!)
+      ;; set one table to be unrestricted
+      (t2/insert! (t2/table-name :model/DataPermissions)
+                  :db_id db-id
+                  :group_id group-id
+                  :table_id table-id
+                  :schema_name "PUBLIC"
+                  :perm_type "perms/view-data"
+                  :perm_value "unrestricted")
+      ;; set the other table to be blocked
+      (t2/insert! (t2/table-name :model/DataPermissions)
+                  :db_id db-id
+                  :group_id group-id
+                  :table_id other-table-id
+                  :schema_name "PUBLIC"
+                  :perm_type "perms/view-data"
+                  :perm_value "blocked")
+      (is (= 1 (t2/count (t2/table-name :model/DataPermissions) :group_id group-id :table_id table-id :perm_type "perms/view-data")))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))
 
 (deftest sandboxing-rollback-test
   ;; Rollback tests flake on MySQL, so only run on Postgres/H2
