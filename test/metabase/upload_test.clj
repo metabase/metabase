@@ -452,7 +452,10 @@
                 "\" 3\";;           b;false;\"$ 1,000.1\";2022-02-01;2022-02-01T00:00:00"]
    :tab        ["id    \tnulls\tstring \tbool \tnumber       \tdate      \tdatetime"
                 "2   \t\t          a \ttrue \t1.1        \t2022-01-01\t2022-01-01T00:00:00"
-                "\" 3\"\t\t           b\tfalse\t\"$ 1,000.1\"\t2022-02-01\t2022-02-01T00:00:00"]})
+                "\" 3\"\t\t           b\tfalse\t\"$ 1,000.1\"\t2022-02-01\t2022-02-01T00:00:00"]
+   :pipe       ["id    |nulls|string |bool |number       |date      |datetime"
+                "2\t   ||          a |true |1.1\t        |2022-01-01|2022-01-01T00:00:00"
+                "\" 3\"||           b|false|\"$ 1,000.1\"|2022-02-01|2022-02-01T00:00:00"]})
 
 (defn- columns-with-auto-pk [columns]
   (cond-> columns
@@ -535,7 +538,7 @@
       (is (= \, (infer-separator rows)))))
   (doseq [[separator lines] example-files]
     (testing (str "inferring " separator)
-      (let [s ({:tab \tab :semi-colon \; :comma \,} separator)]
+      (let [s ({:tab \tab :semi-colon \; :comma \, :pipe \|} separator)]
         (is (= s (infer-separator lines))))))
   ;; it's actually decently hard to make it not stumble on comma or semicolon. The strategy here is that the data
   ;; column count is greater than the header column count regardless of the separators we choose
