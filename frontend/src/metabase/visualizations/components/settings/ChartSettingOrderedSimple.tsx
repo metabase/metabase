@@ -19,6 +19,10 @@ interface SortableItem {
   enabled: boolean;
   name: string;
   color?: string;
+  // Note: when providing the `orderedItems` prop, hidden items should be put at
+  // the end of the list to ensure non-hidden items are ordered correctly when
+  // moving them.
+  hidden?: boolean;
 }
 
 interface ChartSettingOrderedSimpleProps {
@@ -31,6 +35,7 @@ interface ChartSettingOrderedSimpleProps {
   series: Series;
   hasEditSettings: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
+  onSortEnd: (newItems: SortableItem[]) => void;
   formatItemName?: (itemName: string) => string;
 }
 
@@ -40,6 +45,7 @@ export const ChartSettingOrderedSimple = ({
   onShowWidget,
   hasEditSettings = true,
   onChangeSeriesColor,
+  onSortEnd,
   formatItemName,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = useCallback(
@@ -55,9 +61,14 @@ export const ChartSettingOrderedSimple = ({
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
       const oldIndex = orderedItems.findIndex(item => item.key === id);
-      onChange(arrayMove(orderedItems, oldIndex, newIndex));
+
+      if (onSortEnd != null) {
+        onSortEnd?.(arrayMove(orderedItems, oldIndex, newIndex));
+      } else {
+        onChange(arrayMove(orderedItems, oldIndex, newIndex));
+      }
     },
-    [orderedItems, onChange],
+    [orderedItems, onChange, onSortEnd],
   );
 
   const getItemTitle = useCallback(
@@ -96,11 +107,13 @@ export const ChartSettingOrderedSimple = ({
 
   const getId = useCallback((item: SortableItem) => item.key, []);
 
+  const nonHiddenItems = orderedItems.filter(item => !item.hidden);
+
   return (
     <ChartSettingOrderedSimpleRoot>
       {orderedItems.length > 0 ? (
         <ChartSettingOrderedItems
-          items={orderedItems}
+          items={nonHiddenItems}
           getItemName={getItemTitle}
           onRemove={toggleDisplay}
           onEnable={toggleDisplay}

@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -15,12 +16,14 @@ import {
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import {
+  getAggregatedRows,
   getColors,
   getDefaultPercentVisibility,
   getDefaultShowLegend,
   getDefaultSliceThreshold,
   getKeyFromDimensionValue,
   getSortedAggregatedRows,
+  getSortedRows,
 } from "metabase/visualizations/shared/settings/pie";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
 import {
@@ -32,7 +35,7 @@ import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, RowValues } from "metabase-types/api";
 
 import { SliceNameWidget } from "./SliceNameWidget";
 
@@ -97,15 +100,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       getValue: (rawSeries, settings) => {
         const [
           {
-            data: { cols, rows },
+            data: { cols, rows: dataRows },
           },
         ] = rawSeries;
-
-        const savedPieRows = settings["pie.rows"];
-        if (savedPieRows != null) {
-          // TODO merge saved and new rows from query
-          return savedPieRows;
-        }
 
         const dimensionIndex = cols.findIndex(
           col => col.name === settings["pie.dimension"],
@@ -113,24 +110,153 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         const metricIndex = cols.findIndex(
           col => col.name === settings["pie.metric"],
         );
+
+        let colors = getColors(rawSeries, settings);
+        // `pie.colors` is a legacy setting used by old questions for their
+        // colors. We'll still read it to preserve those color selections, but
+        // will no longer write values to it, instead storing colors here in
+        // `pie.rows`.
+        if (settings["pie.colors"] != null) {
+          colors = { ...colors, ...settings["pie.colors"] };
+        }
+        const savedPieRows = settings["pie.rows"];
+        if (savedPieRows != null) {
+          const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
+
+          const keyToSavedPieRow = new Map<PieRow["key"], PieRow>();
+          savedPieRows.map(pieRow => keyToSavedPieRow.set(pieRow.key, pieRow));
+
+          const currentDataRows = getAggregatedRows(
+            dataRows,
+            dimensionIndex,
+            metricIndex,
+          );
+
+          const keyToCurrentDataRow = new Map<PieRow["key"], RowValues>();
+          const currentDataKeys = currentDataRows.map(dataRow => {
+            const key = getKeyFromDimensionValue(dataRow[dimensionIndex]);
+            keyToCurrentDataRow.set(key, dataRow);
+
+            return key;
+          });
+
+          const added = _.difference(currentDataKeys, savedPieKeys);
+          const removed = _.difference(savedPieKeys, currentDataKeys);
+          const kept = _.intersection(savedPieKeys, currentDataKeys);
+
+          let newPieRows: PieRow[] = [];
+          // Case 1: Auto sorted
+          if (settings["pie.sort_rows"]) {
+            const sortedCurrentDataRows = getSortedRows(dataRows, metricIndex);
+
+            newPieRows = sortedCurrentDataRows.map(dataRow => {
+              const dimensionValue = dataRow[dimensionIndex];
+              const key = getKeyFromDimensionValue(dimensionValue);
+
+              const savedRow = keyToSavedPieRow.get(key);
+              if (savedRow != null) {
+                const newRow = { ...savedRow, hidden: false };
+
+                if (savedRow.defaultColor) {
+                  // Historically we have used the dimension value in the `pie.colors`
+                  // setting instead of the key computed above, e.g. `null` instead of
+                  // `(empty)`. For compatibility with existing questions we will
+                  // continue to use the dimension value.
+                  newRow.color = colors[String(dimensionValue)];
+                }
+
+                return newRow;
+              }
+
+              // TODO I think these two conditions can be merged
+              const color = colors[String(dimensionValue)];
+
+              return {
+                key,
+                name: String(key),
+                color,
+                defaultColor: true,
+                enabled: true,
+                hidden: false,
+              };
+            });
+            // Case 2: Preserve manual sort for existing rows, sort `added` rows
+          } else {
+            newPieRows = kept.map(keptKey => {
+              const savedPieRow = keyToSavedPieRow.get(keptKey);
+              if (savedPieRow == null) {
+                throw Error(
+                  `Did not find saved pie row for kept key ${keptKey}`,
+                );
+              }
+
+              return {
+                ...savedPieRow,
+                hidden: false,
+              };
+            });
+
+            const addedRows = added.map(addedKey => {
+              const dataRow = keyToCurrentDataRow.get(addedKey);
+              if (dataRow == null) {
+                throw Error(
+                  `Could not find data row for added key ${addedKey}`,
+                );
+              }
+
+              return dataRow;
+            });
+            const sortedAddedRows = getSortedRows(addedRows, metricIndex);
+
+            newPieRows.push(
+              ...sortedAddedRows.map(addedDataRow => {
+                const dimensionValue = addedDataRow[dimensionIndex];
+
+                // TODO create common func for creating pieRow objects?
+                const color = colors[String(dimensionValue)];
+                const key = getKeyFromDimensionValue(dimensionValue);
+
+                return {
+                  key,
+                  name: String(key),
+                  color,
+                  defaultColor: true,
+                  enabled: true,
+                  hidden: false,
+                };
+              }),
+            );
+          }
+
+          const removedPieRows = removed.map(removedKey => {
+            const savedPieRow = keyToSavedPieRow.get(removedKey);
+            if (savedPieRow == null) {
+              throw Error(
+                `Did not find saved pie row for removed key ${removedKey}`,
+              );
+            }
+
+            return {
+              ...savedPieRow,
+              hidden: true,
+            };
+          });
+          newPieRows.push(...removedPieRows);
+
+          return newPieRows;
+        }
+
+        // TODO move all this to `getDefault`?
+
         const sortedRows = getSortedAggregatedRows(
-          rows,
+          dataRows,
           dimensionIndex,
           metricIndex,
         );
 
-        return sortedRows.map(row => {
-          const dimensionValue = row[dimensionIndex];
+        return sortedRows.map(dataRow => {
+          const dimensionValue = dataRow[dimensionIndex];
           const key = getKeyFromDimensionValue(dimensionValue);
-
-          let colors = getColors(rawSeries, settings);
-          // `pie.colors` is a legacy setting used by old questions for their
-          // colors. We'll still read it to preserve those color selections, but
-          // will no longer write values to it, instead storing colors here in
-          // `pie.rows`.
-          if (settings["pie.colors"] != null) {
-            colors = { ...colors, ...settings["pie.colors"] };
-          }
 
           // Older viz settings can have hsl values that need to be converted to
           // hex since Batik does not support hsl.
@@ -155,6 +281,8 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         rawSeries,
         vizSettings: ComputedVisualizationSettings,
         onChange,
+        _extra,
+        onChangeSettings,
       ) => {
         const [
           {
@@ -194,11 +322,25 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
               }),
             );
           },
+          onSortEnd: (newPieRows: PieRow[]) =>
+            onChangeSettings({
+              "pie.sort_rows": false,
+              "pie.rows": newPieRows,
+            }),
           formatItemName: (itemName: string) =>
             formatValue(itemName, dimensionColSettings),
         };
       },
-      readDependencies: ["pie.dimension", "pie.metric", "pie.colors"],
+      readDependencies: [
+        "pie.dimension",
+        "pie.metric",
+        "pie.colors",
+        "pie.sort_rows",
+      ],
+    },
+    "pie.sort_rows": {
+      hidden: true,
+      getDefault: () => true, // TODO move to static viz as well
     },
     ...seriesSetting({
       def: {

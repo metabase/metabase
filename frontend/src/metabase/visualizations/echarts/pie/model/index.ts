@@ -71,6 +71,7 @@ export function getPieChartModel(
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
+  // TODO consider making this a hidden viz setting like _aggregatedRows to avoid recomputation?
   const aggregatedRows = getAggregatedRows(
     dataRows,
     colDescs.dimensionDesc.index,
@@ -92,9 +93,9 @@ export function getPieChartModel(
     throw Error("missing `pie.rows` setting");
   }
 
-  const enabledPieRows = pieRows.filter(row => row.enabled);
+  const visiblePieRows = pieRows.filter(row => row.enabled && !row.hidden);
 
-  const pieRowsWithValues = enabledPieRows.map(pieRow => {
+  const pieRowsWithValues = visiblePieRows.map(pieRow => {
     const value = rowValuesByKey.get(pieRow.key);
     if (value === undefined) {
       throw Error(`No row values found for key ${pieRow.key}`);

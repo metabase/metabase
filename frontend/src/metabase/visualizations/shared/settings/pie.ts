@@ -85,6 +85,25 @@ export function getAggregatedRows(
   return aggregatedRows;
 }
 
+export function getSortedRows(rows: RowValues[], metricIndex: number) {
+  return rows.sort((rowA, rowB) => {
+    const valueA = rowA[metricIndex];
+    const valueB = rowB[metricIndex];
+
+    if (!isNumber(valueA) && !isNumber(valueB)) {
+      return 0;
+    }
+    if (!isNumber(valueA)) {
+      return 1;
+    }
+    if (!isNumber(valueB)) {
+      return -1;
+    }
+    return valueB - valueA;
+  });
+}
+
+// TODO delete this function, replace with calls to getSortedRows, getAggregatedRows
 export function getSortedAggregatedRows(
   rows: RowValues[],
   dimensionIndex: number,

@@ -207,6 +207,7 @@ export type VisualizationSettings = {
   "pie.dimension"?: string;
   "pie.rows"?: PieRow[];
   "pie.metric"?: string;
+  "pie.sort_rows"?: boolean;
   "pie.show_legend"?: boolean;
   "pie.show_total"?: boolean;
   "pie.percent_visibility"?: "off" | "legend" | "inside" | "both";
