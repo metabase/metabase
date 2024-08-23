@@ -602,16 +602,15 @@
                (:name (lib.equality/find-matching-column query -1 (lib/ref col) returned))))))))
 
 (deftest ^:parallel field-refs-to-custom-expressions-test
-  (testing "custom columns that wrap a Field have `:id` - prefer matching `[:field {} 7]` to the regular field (#35839)"
+  (testing "custom columns that wrap a Field must not have `:id` (#44940)"
     (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/expression "CA" (meta/field-metadata :orders :created-at)))
           columns    (lib/visible-columns query)
           created-at (m/find-first #(= (:name %) "CREATED_AT") columns)
           ca-expr    (m/find-first #(= (:name %) "CA") columns)]
       (testing "different columns"
-        (is (not= created-at ca-expr))
-        (testing "but both have the ID"
-          (is (= (:id created-at) (:id ca-expr)))))
+        (is (int? (:id created-at)))
+        (is (nil? (:id ca-expr))))
 
       (testing "both refs should match correctly"
         (is (= created-at
@@ -651,3 +650,16 @@
                 (lib/ref col)
                 [total-10
                  total-20])))))))
+
+(deftest ^:parallel find-matching-column-by-id-with-expression-aliasing-joined-column-test
+  (testing "find-matching-column should be able to find columns based on ID even when a joined column is aliased as an expression (#44940)"
+    (let [a-ref [:field {:lib/uuid (str (random-uuid))
+                         :base-type :type/Text
+                         :join-alias "Cat"}
+                 (meta/id :categories :name)]
+          query (-> lib.tu/query-with-join
+                    (lib/expression "Joied Name" a-ref))
+          cols  (lib/returned-columns query)]
+      (is (=? {:name "NAME"
+               :id (meta/id :categories :name)}
+              (lib.equality/find-matching-column query -1 a-ref cols))))))
