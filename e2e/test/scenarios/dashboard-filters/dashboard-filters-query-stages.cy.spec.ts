@@ -90,10 +90,10 @@ const REVIEWS_NUMBER_COLUMNS = ["Rating"];
 
 /**
  * Abbreviations used for card aliases in this test suite:
- *  q = question
- *  m = model
- *  qb = question-based (i.e. data source is a question)
- *  mb = model-based (i.e. data source is a model)
+ *  qbq = question-based question
+ *  qbm = question-based model
+ *  mbq = model-based question
+ *  mbm = model-based model
  */
 describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
@@ -105,7 +105,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
   describe("base queries", () => {
     beforeEach(() => {
       cy.then(function () {
-        createAndVisitTestDashboard([this.q0, this.q1, this.m1]);
+        createAndVisitTestDashboard([
+          this.baseOrdersQuestion,
+          this.nestedOrdersQuestion,
+          this.nestedOrdersModel,
+        ]);
       });
     });
 
@@ -137,7 +141,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
       verifyDashcardMappingOptions(2, [
-        ["M1 Orders Model", ORDERS_DATE_COLUMNS],
+        ["Base Orders Model", ORDERS_DATE_COLUMNS],
         ["Product", PRODUCTS_DATE_COLUMNS],
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
@@ -170,7 +174,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
       verifyDashcardMappingOptions(2, [
-        ["M1 Orders Model", ORDERS_NUMBER_COLUMNS],
+        ["Base Orders Model", ORDERS_NUMBER_COLUMNS],
         ["Product", PRODUCTS_NUMBER_COLUMNS],
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
@@ -178,34 +182,36 @@ describe("scenarios > dashboard > filters > query stages", () => {
   });
 
   describe("1-stage queries", () => {
-    describe("Q2 - join, custom column, no aggregations, no breakouts", () => {
+    describe("Q1 - join, custom column, no aggregations, no breakouts", () => {
       beforeEach(() => {
         cy.then(function () {
           createQuestion({
-            query: createQ2Query(this.q1),
-            name: "Q2 - Question-based Question",
-          }).then(response => cy.wrap(response.body).as("q2qb"));
+            type: "question",
+            query: createQ1Query(this.nestedOrdersQuestion),
+            name: "Question-based Question",
+          }).then(response => cy.wrap(response.body).as("qbq"));
 
           createQuestion({
-            query: createQ2Query(this.m1),
-            name: "Q2 - Model-based Question",
-          }).then(response => cy.wrap(response.body).as("q2mb"));
-
-          createQuestion({
-            type: "model",
-            name: "M2 - Question-based Model",
-            query: createQ2Query(this.q1),
-          }).then(response => cy.wrap(response.body).as("m2qb"));
+            type: "question",
+            query: createQ1Query(this.nestedOrdersModel),
+            name: "Model-based Question",
+          }).then(response => cy.wrap(response.body).as("mbq"));
 
           createQuestion({
             type: "model",
-            name: "M2 - Model-based Model",
-            query: createQ2Query(this.m1),
-          }).then(response => cy.wrap(response.body).as("m2mb"));
+            name: "Question-based Model",
+            query: createQ1Query(this.nestedOrdersQuestion),
+          }).then(response => cy.wrap(response.body).as("qbm"));
+
+          createQuestion({
+            type: "model",
+            name: "Model-based Model",
+            query: createQ1Query(this.nestedOrdersModel),
+          }).then(response => cy.wrap(response.body).as("mbm"));
         });
 
         cy.then(function () {
-          const cards = [this.q2qb, this.q2mb, this.m2qb, this.m2mb];
+          const cards = [this.qbq, this.mbq, this.qbm, this.mbm];
           createAndVisitTestDashboard(cards);
         });
       });
@@ -228,20 +234,20 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(0, [
-          ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
+          ["Base Orders Question", ORDERS_DATE_COLUMNS],
           ["Review", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(1, [
-          ["M1 Orders Model", ORDERS_DATE_COLUMNS],
+          ["Base Orders Model", ORDERS_DATE_COLUMNS],
           ["Review", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(2, [
           [
-            "M2 - Question-based Model",
+            "Question-based Model",
             [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
           ],
           ["Product", PRODUCTS_DATE_COLUMNS],
@@ -250,7 +256,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(3, [
           [
-            "M2 - Model-based Model",
+            "Model-based Model",
             [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
           ],
           ["Product", PRODUCTS_DATE_COLUMNS],
@@ -272,7 +278,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(2, [
           [
-            "M2 - Question-based Model",
+            "Question-based Model",
             ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
           ],
           ["Product", PRODUCTS_TEXT_COLUMNS],
@@ -281,7 +287,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(3, [
           [
-            "M2 - Model-based Model",
+            "Model-based Model",
             ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
           ],
           ["Product", PRODUCTS_TEXT_COLUMNS],
@@ -292,7 +298,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(0, [
-          ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Review", REVIEWS_NUMBER_COLUMNS],
           [
             "Product",
@@ -301,7 +307,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
         verifyDashcardMappingOptions(1, [
-          ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Review", REVIEWS_NUMBER_COLUMNS],
           [
             "Product",
@@ -311,7 +317,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(2, [
           [
-            "M2 - Question-based Model",
+            "Question-based Model",
             [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
           ],
           ["Product", PRODUCTS_NUMBER_COLUMNS],
@@ -320,7 +326,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyDashcardMappingOptions(3, [
           [
-            "M2 - Model-based Model",
+            "Model-based Model",
             [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
           ],
           ["Product", PRODUCTS_NUMBER_COLUMNS],
@@ -330,34 +336,36 @@ describe("scenarios > dashboard > filters > query stages", () => {
       }
     });
 
-    describe("Q3 - join, custom column, aggregations, no breakouts", () => {
+    describe("Q2 - join, custom column, 2 aggregations, no breakouts", () => {
       beforeEach(() => {
         cy.then(function () {
           createQuestion({
-            query: createQ3Query(this.q1),
-            name: "Q3 - Question-based Question",
-          }).then(response => cy.wrap(response.body).as("q3qb"));
+            type: "question",
+            query: createQ2Query(this.nestedOrdersQuestion),
+            name: "Question-based Question",
+          }).then(response => cy.wrap(response.body).as("qbq"));
 
           createQuestion({
-            query: createQ3Query(this.m1),
-            name: "Q3 - Model-based Question",
-          }).then(response => cy.wrap(response.body).as("q3mb"));
-
-          createQuestion({
-            type: "model",
-            name: "M3 - Question-based Model",
-            query: createQ3Query(this.q1),
-          }).then(response => cy.wrap(response.body).as("m3qb"));
+            type: "question",
+            query: createQ2Query(this.nestedOrdersModel),
+            name: "Model-based Question",
+          }).then(response => cy.wrap(response.body).as("mbq"));
 
           createQuestion({
             type: "model",
-            name: "M3 - Model-based Model",
-            query: createQ3Query(this.m1),
-          }).then(response => cy.wrap(response.body).as("m3mb"));
+            name: "Question-based Model",
+            query: createQ2Query(this.nestedOrdersQuestion),
+          }).then(response => cy.wrap(response.body).as("qbm"));
+
+          createQuestion({
+            type: "model",
+            name: "Model-based Model",
+            query: createQ2Query(this.nestedOrdersModel),
+          }).then(response => cy.wrap(response.body).as("mbm"));
         });
 
         cy.then(function () {
-          const cards = [this.q3qb, this.q3mb, this.m3qb, this.m3mb];
+          const cards = [this.qbq, this.mbq, this.qbm, this.mbm];
           createAndVisitTestDashboard(cards);
         });
       });
@@ -380,13 +388,13 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyDateMappingOptions() {
         verifyDashcardMappingOptions(0, [
-          ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
+          ["Base Orders Question", ORDERS_DATE_COLUMNS],
           ["Review", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
         verifyDashcardMappingOptions(1, [
-          ["M1 Orders Model", ORDERS_DATE_COLUMNS],
+          ["Base Orders Model", ORDERS_DATE_COLUMNS],
           ["Review", REVIEWS_DATE_COLUMNS],
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
@@ -412,13 +420,114 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
       function verifyNumberMappingOptions() {
         verifyDashcardMappingOptions(0, [
-          ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Review", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
         verifyDashcardMappingOptions(1, [
-          ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
+      }
+    });
+
+    describe("Q3 - join, custom column, no aggregations, 2 breakouts", () => {
+      // TODO
+      beforeEach(() => {
+        cy.then(function () {
+          createQuestion({
+            type: "question",
+            query: createQ3Query(this.nestedOrdersQuestion),
+            name: "Question-based Question",
+          }).then(response => cy.wrap(response.body).as("qbq"));
+
+          createQuestion({
+            type: "question",
+            query: createQ3Query(this.nestedOrdersModel),
+            name: "Model-based Question",
+          }).then(response => cy.wrap(response.body).as("mbq"));
+
+          createQuestion({
+            type: "model",
+            name: "Question-based Model",
+            query: createQ3Query(this.nestedOrdersQuestion),
+          }).then(response => cy.wrap(response.body).as("qbm"));
+
+          createQuestion({
+            type: "model",
+            name: "Model-based Model",
+            query: createQ3Query(this.nestedOrdersModel),
+          }).then(response => cy.wrap(response.body).as("mbm"));
+        });
+
+        cy.then(function () {
+          const cards = [this.qbq, this.mbq, this.qbm, this.mbm];
+          createAndVisitTestDashboard(cards);
+        });
+      });
+
+      it("allows to map to all relevant columns", () => {
+        editDashboard();
+
+        cy.log("## date columns");
+        getFilter("Date").click();
+        verifyDateMappingOptions();
+
+        cy.log("## text columns");
+        getFilter("Text").click();
+        verifyTextMappingOptions();
+
+        cy.log("## number columns");
+        getFilter("Number").click();
+        verifyNumberMappingOptions();
+      });
+
+      function verifyDateMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Base Orders Question", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["Base Orders Model", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
+      }
+
+      function verifyTextMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
+      }
+
+      function verifyNumberMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Base Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["Base Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Review", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
@@ -432,34 +541,34 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
 function createBaseQuestions() {
   createQuestion({
+    type: "question",
     name: "Q0 Orders",
     description: "Question based on a database table",
     query: {
       "source-table": ORDERS_ID,
     },
-  }).then(response => cy.wrap(response.body).as("q0"));
+  }).then(response => cy.wrap(response.body).as("baseOrdersQuestion"));
 
   cy.then(function () {
     createQuestion({
-      name: "Q1 Orders Question",
-      query: createQ1uery(this.q0),
-    }).then(response => cy.wrap(response.body).as("q1"));
+      type: "question",
+      name: "Base Orders Question",
+      query: {
+        "source-table": `card__${this.baseOrdersQuestion.id}`,
+      },
+    }).then(response => cy.wrap(response.body).as("nestedOrdersQuestion"));
 
     createQuestion({
       type: "model",
-      name: "M1 Orders Model",
-      query: createQ1uery(this.q0),
-    }).then(response => cy.wrap(response.body).as("m1"));
+      name: "Base Orders Model",
+      query: {
+        "source-table": `card__${this.baseOrdersQuestion.id}`,
+      },
+    }).then(response => cy.wrap(response.body).as("nestedOrdersModel"));
   });
 }
 
-function createQ1uery(source: Card): StructuredQuery {
-  return {
-    "source-table": `card__${source.id}`,
-  };
-}
-
-function createQ2Query(source: Card): StructuredQuery {
+function createQ1Query(source: Card): StructuredQuery {
   return {
     "source-table": `card__${source.id}`,
     expressions: {
@@ -488,10 +597,17 @@ function createQ2Query(source: Card): StructuredQuery {
   };
 }
 
+function createQ2Query(source: Card): StructuredQuery {
+  return {
+    ...createQ1Query(source),
+    aggregation: [["count"], ["sum", TOTAL_FIELD]],
+  };
+}
+
 function createQ3Query(source: Card): StructuredQuery {
   return {
-    ...createQ2Query(source),
-    aggregation: [["count"], ["sum", TOTAL_FIELD]],
+    ...createQ1Query(source),
+    breakout: [],
   };
 }
 
