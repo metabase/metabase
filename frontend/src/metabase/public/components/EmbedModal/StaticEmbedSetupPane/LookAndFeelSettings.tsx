@@ -52,7 +52,10 @@ export const LookAndFeelSettings = ({
     }),
   );
   const upgradePageUrl = useSelector(state =>
-    getUpgradeUrl(state, { utm_media: "static-embed-settings-look-and-feel" }),
+    getUpgradeUrl(state, {
+      utm_campaign: "embedding-static-font",
+      utm_content: "static-embed-settings-look-and-feel",
+    }),
   );
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
