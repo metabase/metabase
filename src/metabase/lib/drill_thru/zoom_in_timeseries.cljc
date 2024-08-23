@@ -75,8 +75,9 @@
    stage :- :int
    field :- :mbql.clause/field]
   (when-let [current-unit (lib.temporal-bucket/raw-temporal-bucket field)]
-    (second (drop-while #(not= % current-unit)
-                        (valid-current-units query stage field)))))
+    (->> (valid-current-units query stage field)
+         (drop-while #(not= % current-unit))
+         second)))
 
 (mu/defn- describe-next-unit :- ::lib.schema.common/non-blank-string
   [unit :- ::lib.schema.drill-thru/drill-thru.zoom-in.timeseries.next-unit]
