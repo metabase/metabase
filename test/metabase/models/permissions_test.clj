@@ -316,11 +316,11 @@
     (are [object m] (= m (select-keys (#'perms/maybe-break-out-permission-data {:object object})
                                       [:collection_id :perm_type :perm_value]))
       "/collection/123/" {:collection_id 123
-                          :perm_type "perms/collection-access"
-                          :perm_value "read-and-write"}
+                          :perm_type :perms/collection-access
+                          :perm_value :read-and-write}
       "/collection/123/read/" {:collection_id 123
-                               :perm_type "perms/collection-access"
-                               :perm_value "read"}
+                               :perm_type :perms/collection-access
+                               :perm_value :read}
 
       ;; We only do this for collection permissions right now.
       "/foo/1234/" {}

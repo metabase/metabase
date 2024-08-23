@@ -1,3 +1,8 @@
+DELETE p FROM permissions p
+LEFT OUTER JOIN collection c
+ON p.object = CONCAT('/collection/', c.id, '/') OR p.object = CONCAT('/collection/', c.id, '/read/')
+WHERE c.id IS NULL AND p.object REGEXP '^/collection/\\d+/(read/)?$';
+
 UPDATE permissions
 SET
   -- extract the collection_id from the object path
