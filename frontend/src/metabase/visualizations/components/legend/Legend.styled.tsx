@@ -25,5 +25,5 @@ export const LegendLinkContainer = styled.div<{ isVertical: boolean }>`
 
 export const LegendPopoverContainer = styled.div`
   padding: 0.5rem;
-  overflow: hidden;
+  overflow-x: hidden;
 `;
