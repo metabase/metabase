@@ -1400,15 +1400,11 @@
 
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
-               (->> (t2/select-one Field :id fk-id)
-                    (serdes/extract-one "Field" {})
-                    :fk_target_field_id))))
+               (:fk_target_field_id (ts/extract-one "Field" fk-id)))))
 
       (testing "Fields that reference parents are properly exported as Field references"
         (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
-               (->> (t2/select-one Field :id nested-id)
-                    (serdes/extract-one "Field" {})
-                    :parent_id)))))))
+               (:parent_id (ts/extract-one "Field" nested-id))))))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db
