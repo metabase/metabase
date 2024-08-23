@@ -12,6 +12,7 @@
    [metabase.api.card :as api.card]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
+     [metabase.api.checkpoints :as api.checkpoints]
    [metabase.api.common :as api :refer [defroutes context]]
    [metabase.api.dashboard :as api.dashboard]
    [metabase.api.database :as api.database]
@@ -109,6 +110,7 @@
   (context "/card"                 [] (+auth api.card/routes))
   (context "/cloud-migration"      [] (+auth api.cloud-migration/routes))
   (context "/collection"           [] (+auth api.collection/routes))
+    (context "/checkpoints"           [] (+auth api.checkpoints/routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
   (context "/dataset"              [] (+auth api.dataset/routes))

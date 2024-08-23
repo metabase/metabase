@@ -1,11 +1,11 @@
-version: '3'
+version: "3"
 services:
   omnibase:
     build:
       context: .
       dockerfile: Dockerfile
     expose:
-      - '3000'
+      - "3000"
     environment:
       - MB_EMAIL_SMTP_PASSWORD=${MB_EMAIL_SMTP_PASSWORD}
       - MB_EMAIL_SMTP_USERNAME=${MB_EMAIL_SMTP_USERNAME}
@@ -17,7 +17,7 @@ services:
       - MB_DB_PASS=${MB_DB_PASS}
       - REACT_APP_SEMANTIC=${REACT_APP_SEMANTIC}
       - REACT_APP_WEBSOCKET_SERVER=${REACT_APP_WEBSOCKET_SERVER}
-      - REACT_APP_SEMANTIC=${REACT_APP_SEMANTIC}
+      - REACT_APP_SERVER=${REACT_APP_SERVER}
       - VERSION=${VERSION}
     restart: always
     networks:

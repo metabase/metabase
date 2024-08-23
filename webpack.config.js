@@ -314,6 +314,9 @@ const config = {
       REACT_APP_DB_CONFIG: process.env.REACT_APP_DB_CONFIG || 9,
       REACT_APP_SEMANTIC:
         process.env.REACT_APP_SEMANTIC || "https://dev.semantic.omniloy.com",
+
+      REACT_APP_SERVER:
+        process.env.REACT_APP_SERVER || "https://dev.app.omniloy.com",    
       COMPANY_NAME: process.env.COMPANY_NAME || "blank_street",
       CUBEJS_TOKEN: process.env.CUBEJS_TOKEN || "21ca2256ab82064e7d05a12096d821e199f196851f2132318f4014a65e8d339224d836ef4e331badfc27c42b614c8b2dbd4c06d2c759dc53530e01f0d5f0ee7e"
     }),
