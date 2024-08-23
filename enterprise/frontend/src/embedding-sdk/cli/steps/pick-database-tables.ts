@@ -39,11 +39,9 @@ export const pickDatabaseTables: CliStepMethod = async state => {
       { retries: 10, delay: 1000 },
     );
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    const message = `Cannot fetch database schema. Reason: ${reason}`;
     spinner.fail();
 
-    return [{ type: "error", message }, state];
+    return [cliError("Cannot fetch database schema", error), state];
   }
 
   const tablesWithoutMetadata: Table[] = [];
@@ -94,39 +92,49 @@ export const pickDatabaseTables: CliStepMethod = async state => {
     })),
   });
 
+  spinner.start("Fetching table metadata...");
+
   const chosenTables: Table[] = [];
 
-  for (const tableId of chosenTableIds) {
-    const datasetQuery = {
-      type: "query",
-      database: databaseId,
-      query: { "source-table": tableId },
-    };
+  try {
+    for (const tableId of chosenTableIds) {
+      const datasetQuery = {
+        type: "query",
+        database: databaseId,
+        query: { "source-table": tableId },
+      };
 
-    // The table's fields may still be syncing, so we retry a few times.
-    await retry(
-      async () => {
-        // Get the query metadata from a table
-        const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
-          method: "POST",
-          headers: { "content-type": "application/json", cookie },
-          body: JSON.stringify(datasetQuery),
-        });
+      // The table's fields may still be syncing, so we retry a few times.
+      const table = await retry(
+        async () => {
+          // Get the query metadata from a table
+          const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
+            method: "POST",
+            headers: { "content-type": "application/json", cookie },
+            body: JSON.stringify(datasetQuery),
+          });
 
-        await propagateErrorResponse(res);
+          await propagateErrorResponse(res);
 
-        const metadataResult = (await res.json()) as { tables: Table[] };
-        const [table] = metadataResult.tables;
+          const metadataResult = (await res.json()) as { tables: Table[] };
+          const [table] = metadataResult.tables;
 
-        if (!table?.fields || table.fields.length === 0) {
-          throw new Error(`Table "${table.name}" has no fields.`);
-        }
+          if (!table?.fields || table.fields.length === 0) {
+            throw new Error(`Table "${table.name}" has no fields.`);
+          }
 
-        chosenTables.push(table);
-      },
-      { retries: 5, delay: 1000 },
-    );
+          return table;
+        },
+        { retries: 5, delay: 1000 },
+      );
+
+      chosenTables.push(table);
+    }
+  } catch (error) {
+    return [cliError("Cannot fetch table metadata", error), state];
   }
+
+  spinner.succeed();
 
   return [
     { type: "done" },
