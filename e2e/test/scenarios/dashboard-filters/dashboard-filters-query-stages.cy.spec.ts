@@ -610,6 +610,13 @@ function verifyNoDashcardMappingOptions(dashcardIndex: number) {
   getDashboardCard(dashcardIndex)
     .findByText("No valid fields")
     .should("be.visible");
+
+  getDashboardCard(dashcardIndex).findByText("No valid fields").realHover();
+  cy.findByRole("tooltip")
+    .findByText(
+      "This card doesn't have any fields or parameters that can be mapped to this parameter type.",
+    )
+    .should("be.visible");
 }
 
 type SectionName = string;
