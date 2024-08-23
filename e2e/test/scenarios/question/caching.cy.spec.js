@@ -1,6 +1,7 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   describeEE,
+  modal,
   restore,
   rightSidebar,
   setTokenFeatures,
@@ -68,6 +69,9 @@ describeEE("scenarios > question > caching", () => {
       cy.findByRole("button", {
         name: /Clear cache for this question/,
       }).click();
+      modal().within(() => {
+        cy.findByRole("button", { name: /Clear cache/ }).click();
+      });
       cy.wait("@invalidateCache");
       cy.findByText("Cache cleared").should("be.visible");
     });
