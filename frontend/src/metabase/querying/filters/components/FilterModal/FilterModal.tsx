@@ -1,98 +1,19 @@
-import { useMemo, useRef, useState } from "react";
-
-import CS from "metabase/css/core/index.css";
-import { FilterModalBody } from "metabase/querying/filters/components/FilterContent/FilterModalBody";
-import { FilterModalFooter } from "metabase/querying/filters/components/FilterContent/FilterModalFooter";
-import { FilterModalHeader } from "metabase/querying/filters/components/FilterContent/FilterModalHeader";
 import { Flex, Modal } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
+
+import { useFilterModal } from "../../hooks/use-filter-modal";
 
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
-import { SEARCH_KEY } from "./constants";
-import {
-  appendStageIfAggregated,
-  getGroupItems,
-  getModalTitle,
-  getModalWidth,
-  hasFilters,
-  isSearchActive,
-  removeFilters,
-  searchGroupItems,
-} from "./utils";
+import { FilterModalBody } from "./FilterModalBody";
+import { FilterModalFooter } from "./FilterModalFooter";
+import { FilterModalHeader } from "./FilterModalHeader";
+import { getModalTitle, getModalWidth } from "./utils";
 
 export interface FilterModalProps {
   query: Lib.Query;
   onSubmit: (newQuery: Lib.Query) => void;
   onClose: () => void;
 }
-
-export const useFilterContent = (
-  initialQuery: Lib.Query,
-  onSubmit: (newQuery: Lib.Query) => void,
-) => {
-  const [query, setQuery] = useState(() =>
-    appendStageIfAggregated(initialQuery),
-  );
-  const queryRef = useRef(query);
-  const [version, setVersion] = useState(1);
-  const [isChanged, setIsChanged] = useState(false);
-  const groupItems = useMemo(() => getGroupItems(query), [query]);
-  const [tab, setTab] = useState<string | null>(groupItems[0]?.key);
-  const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
-  const [searchText, setSearchText] = useState("");
-  const isSearching = isSearchActive(searchText);
-
-  const visibleItems = useMemo(
-    () => (isSearching ? searchGroupItems(groupItems, searchText) : groupItems),
-    [groupItems, searchText, isSearching],
-  );
-
-  const handleInput = () => {
-    if (!isChanged) {
-      setIsChanged(true);
-    }
-  };
-
-  const handleChange = (newQuery: Lib.Query) => {
-    setQuery(newQuery);
-    setIsChanged(true);
-    // for handleSubmit to see the latest query if it is called in the same tick
-    queryRef.current = newQuery;
-  };
-
-  const handleReset = () => {
-    handleChange(removeFilters(query));
-    // to reset internal state of filter components
-    setVersion(version + 1);
-  };
-
-  const handleSubmit = () => {
-    onSubmit(Lib.dropEmptyStages(queryRef.current));
-  };
-
-  const handleSearch = (searchText: string) => {
-    setTab(isSearchActive(searchText) ? SEARCH_KEY : groupItems[0]?.key);
-    setSearchText(searchText);
-  };
-
-  return {
-    query,
-    version,
-    isChanged,
-    groupItems,
-    tab,
-    setTab,
-    canRemoveFilters,
-    searchText,
-    isSearching,
-    visibleItems,
-    handleInput,
-    handleChange,
-    handleReset,
-    handleSubmit,
-    handleSearch,
-  };
-};
 
 export function FilterModal({
   query: initialQuery,
@@ -115,7 +36,7 @@ export function FilterModal({
     handleReset,
     handleSubmit,
     handleSearch,
-  } = useFilterContent(initialQuery, onSubmit);
+  } = useFilterModal(initialQuery, onSubmit);
 
   const onSubmitFilters = () => {
     handleSubmit();
@@ -128,7 +49,7 @@ export function FilterModal({
       <Modal.Content>
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
-          <Flex mx="md" justify="end" className={CS.flex1}>
+          <Flex mx="md" justify="end" style={{ flex: 1 }}>
             <FilterModalHeader value={searchText} onChange={handleSearch} />
           </Flex>
           <Modal.CloseButton />

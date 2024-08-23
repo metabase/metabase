@@ -2,10 +2,12 @@ import cx from "classnames";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { FilterModalBody } from "metabase/querying/filters/components/FilterContent/FilterModalBody";
-import { FilterModalFooter } from "metabase/querying/filters/components/FilterContent/FilterModalFooter";
-import { FilterModalHeader } from "metabase/querying/filters/components/FilterContent/FilterModalHeader";
-import { useFilterContent } from "metabase/querying/filters/components/FilterModal";
+import {
+  FilterModalBody,
+  FilterModalFooter,
+  FilterModalHeader,
+  useFilterModal,
+} from "metabase/querying/filters";
 import { Box, Group, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -46,7 +48,7 @@ const FilterInner = ({
     handleReset,
     handleSubmit,
     handleSearch,
-  } = useFilterContent(question.query(), onQueryChange);
+  } = useFilterModal(question.query(), onQueryChange);
 
   const onApplyFilters = () => {
     handleSubmit();
