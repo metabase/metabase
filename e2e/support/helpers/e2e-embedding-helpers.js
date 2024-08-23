@@ -107,18 +107,24 @@ export function visitEmbeddedPage(
   }
 }
 
+export function getIframeUrl() {
+  modal().findByText("Preview").click();
+
+  return cy.document().then(doc => {
+    const iframe = doc.querySelector("iframe");
+
+    return iframe.src;
+  });
+}
+
 /**
  * Grab an iframe `src` via UI and open it,
  * but make sure user is signed out.
  */
 export function visitIframe() {
-  modal().findByText("Preview").click();
-
-  cy.document().then(doc => {
-    const iframe = doc.querySelector("iframe");
-
+  getIframeUrl().then(iframeUrl => {
     cy.signOut();
-    cy.visit(iframe.src);
+    cy.visit(iframeUrl);
   });
 }
 

@@ -19,7 +19,7 @@ Returns object containing default user details for initial setup, if configured,
 
 ### PARAMS:
 
-*  **`token`**
+-  **`token`**
 
 ## `POST /api/setup/`
 
@@ -29,53 +29,27 @@ Special endpoint for creating the first user during setup. This endpoint both cr
 
 ### PARAMS:
 
-*  **`engine`** 
+-  **`invited_last_name`** nullable value must be a non-blank string.
 
-*  **`schedules`** nullable :metabase.sync.schedules/ExpandedSchedulesMap
+-  **`site_locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
 
-*  **`allow_tracking`** nullable boolean, or value must be a valid boolean string ('true' or 'false').
+-  **`email`** value must be a valid email address.
 
-*  **`invited_last_name`** nullable value must be a non-blank string.
+-  **`first_name`** nullable value must be a non-blank string.
 
-*  **`site_locale`** nullable String must be a valid two-letter ISO language or language-country code e.g. en or en_US.
+-  **`request`** 
 
-*  **`email`** value must be a valid email address.
+-  **`password`** password is too common.
 
-*  **`first_name`** nullable value must be a non-blank string.
+-  **`invited_email`** nullable value must be a valid email address.
 
-*  **`request`** 
+-  **`invited_first_name`** nullable value must be a non-blank string.
 
-*  **`auto_run_queries`** nullable boolean
+-  **`site_name`** value must be a non-blank string.
 
-*  **`password`** password is too common.
+-  **`token`** Token does not match the setup token.
 
-*  **`name`** 
-
-*  **`invited_email`** nullable value must be a valid email address.
-
-*  **`invited_first_name`** nullable value must be a non-blank string.
-
-*  **`site_name`** value must be a non-blank string.
-
-*  **`token`** Token does not match the setup token.
-
-*  **`details`** 
-
-*  **`database`** 
-
-*  **`last_name`** nullable value must be a non-blank string.
-
-## `POST /api/setup/validate`
-
-Validate that we can connect to a database given a set of details.
-
-### PARAMS:
-
-*  **`engine`** value must be a valid database engine.
-
-*  **`details`** 
-
-*  **`token`** Token does not match the setup token.
+-  **`last_name`** nullable value must be a non-blank string.
 
 ---
 

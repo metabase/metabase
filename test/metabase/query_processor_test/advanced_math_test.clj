@@ -69,8 +69,9 @@
       (mt/with-native-query-testing-context query
         (is (= expected
                (ffirst
-                (mt/formatted-rows [1.0]
-                  (mt/process-query query))))))))
+                (mt/formatted-rows
+                 [1.0]
+                 (mt/process-query query))))))))
   (when (driver.u/supports? driver/*driver* :expression-aggregations (mt/db))
     (testing "Inside an expression aggregation"
       (let [query (mt/mbql-query venues
@@ -78,8 +79,9 @@
         (mt/with-native-query-testing-context query
           (is (= (+ expected 1.0)
                  (ffirst
-                  (mt/formatted-rows [1.0]
-                    (mt/process-query query))))))))))
+                  (mt/formatted-rows
+                   [1.0]
+                   (mt/process-query query))))))))))
 
 ;;; there is a test for standard deviation itself
 ;;; in [[metabase.query-processor-test.aggregation-test/standard-deviation-test]]
