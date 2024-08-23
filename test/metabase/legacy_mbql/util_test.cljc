@@ -222,14 +222,14 @@
                          :expressions  {"negated" [:* [:field 1 nil] -1]}
                          :filter       [:= [:field 2 nil] 200]}}
              (mbql.u/add-filter-clause
-               {:database 1
-                :type     :query
-                :query    {:source-query {:source-table 1
-                                          :filter       [:= [:field 1 nil] 100]
-                                          :aggregation  [[:count]]}
-                           :expressions  {"negated" [:* [:field 1 nil] -1]}}}
-               stage-number
-               [:= [:field 2 nil] 200])))))
+              {:database 1
+               :type     :query
+               :query    {:source-query {:source-table 1
+                                         :filter       [:= [:field 1 nil] 100]
+                                         :aggregation  [[:count]]}
+                          :expressions  {"negated" [:* [:field 1 nil] -1]}}}
+              stage-number
+              [:= [:field 2 nil] 200])))))
 
 (t/deftest ^:parallel desugar-time-interval-test
   (t/is (= [:between
