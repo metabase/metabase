@@ -38,4 +38,4 @@
                                  (map :hash_key (t2/select FieldValues :field_id (u/the-id field) :type :impersonation)))))
                     (is (= 2 (t2/count FieldValues :field_id (u/the-id field) :type :impersonation)))))))))
         (finally
-           (t2/delete! FieldValues :field_id (u/the-id field) :type :impersonation))))))
+          (t2/delete! FieldValues :field_id (u/the-id field) :type :impersonation))))))

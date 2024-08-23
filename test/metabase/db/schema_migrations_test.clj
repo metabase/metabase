@@ -78,7 +78,6 @@
                                          :is_active    true
                                          :is_superuser false)))
 
-
 (deftest make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
     (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
@@ -152,14 +151,14 @@
   (testing "Migrations v46.00-029 thru v46.00-031: make Dimension field_id unique instead of field_id + name"
     (impl/test-migrations ["v46.00-029" "v46.00-031"] [migrate!]
       (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) {:details   "{}"
-                                                                                    :engine    "h2"
-                                                                                    :is_sample false
-                                                                                    :name      "populate-collection-created-at-test-db"}))
+                                                                                   :engine    "h2"
+                                                                                   :is_sample false
+                                                                                   :name      "populate-collection-created-at-test-db"}))
             table-id    (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      database-id
-                                                                                 :name       "Table"
-                                                                                 :created_at :%now
-                                                                                 :updated_at :%now
-                                                                                 :active     true}))
+                                                                                :name       "Table"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true}))
             field-1-id  (first (t2/insert-returning-pks! (t2/table-name Field) {:name          "F1"
                                                                                 :table_id      table-id
                                                                                 :base_type     "type/Text"
@@ -284,14 +283,14 @@
           mysql-field-2-id :type/Text)
         ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
         #_(testing "Rollback restores the original state"
-           (migrate! :down 46)
-           (let [new-base-types (t2/select-pk->fn :base_type Field)]
-             (are [field-id expected] (= expected (get new-base-types field-id))
-               pg-field-1-id :type/Structured
-               pg-field-2-id :type/Structured
-               pg-field-3-id :type/Text
-               mysql-field-1-id :type/SerializedJSON
-               mysql-field-2-id :type/Text)))))))
+            (migrate! :down 46)
+            (let [new-base-types (t2/select-pk->fn :base_type Field)]
+              (are [field-id expected] (= expected (get new-base-types field-id))
+                pg-field-1-id :type/Structured
+                pg-field-2-id :type/Structured
+                pg-field-3-id :type/Text
+                mysql-field-1-id :type/SerializedJSON
+                mysql-field-2-id :type/Text)))))))
 
 (deftest migrate-google-auth-test
   (testing "Migrations v47.00-009 and v47.00-012: migrate google_auth into sso_source"
@@ -392,13 +391,13 @@
 
       ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
       #_(testing "downgrade works correctly"
-         (migrate! :down 46)
-         (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
-                                                  :model/DashboardCard :id [:in dashcard-ids]
-                                                  {:order-by [[:id :asc]]})]
-           (is (= cases rollbacked-to-18))
-           (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
-           (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
+          (migrate! :down 46)
+          (let [rollbacked-to-18 (t2/select-fn-vec #(select-keys % [:row :col :size_x :size_y])
+                                                   :model/DashboardCard :id [:in dashcard-ids]
+                                                   {:order-by [[:id :asc]]})]
+            (is (= cases rollbacked-to-18))
+            (is (true? (custom-migrations-test/no-cards-are-overlap? rollbacked-to-18)))
+            (is (true? (custom-migrations-test/no-cards-are-out-of-grid-and-has-size-0? rollbacked-to-18 18))))))))
 
 (deftest backfill-permission-id-test
   (testing "Migrations v46.00-088-v46.00-90: backfill `permission_id` FK on sandbox table"
@@ -487,9 +486,9 @@
 (deftest fks-are-indexed-test
   (mt/test-driver :postgres
     (testing "FKs are not created automatically in Postgres, check that migrations add necessary indexes"
-     (is (= [{:table_name  "field_usage"
-              :column_name "query_execution_id"}]
-            (t2/query
+      (is (= [{:table_name  "field_usage"
+               :column_name "query_execution_id"}]
+             (t2/query
               "SELECT
                    conrelid::regclass::text AS table_name,
                    a.attname AS column_name
@@ -551,79 +550,79 @@
           (testing (str "View " view-name " should be created")
             ;; Just assert that something was returned by the query and no exception was thrown
             (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
-        #_#_ ;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
-        (migrate! :down 47)
-        (testing "Views should be removed when downgrading"
-          (doseq [view-name new-view-names]
-            (is (thrown?
-                 clojure.lang.ExceptionInfo
-                 (t2/query (str "SELECT 1 FROM " view-name))))))))))
+        #_#_;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
+            (migrate! :down 47)
+          (testing "Views should be removed when downgrading"
+            (doseq [view-name new-view-names]
+              (is (thrown?
+                   clojure.lang.ExceptionInfo
+                   (t2/query (str "SELECT 1 FROM " view-name))))))))))
 
 (deftest activity-data-migration-test
   (testing "Migration v48.00-049"
     (mt/test-drivers [:postgres :mysql]
-     (impl/test-migrations "v48.00-049" [migrate!]
-       (create-raw-user! (mt/random-email))
+      (impl/test-migrations "v48.00-049" [migrate!]
+        (create-raw-user! (mt/random-email))
        ;; Use raw :activity keyword as table name since the model has since been removed
-       (let [_activity-1 (t2/insert-returning-pks! :activity
-                                                   {:topic       "card-create"
-                                                    :user_id     1
-                                                    :timestamp   :%now
-                                                    :model       "Card"
-                                                    :model_id    2
-                                                    :database_id 1
-                                                    :table_id    6
-                                                    :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
-         (testing "activity rows are copied into audit_log"
-           (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :activity)))
-           (migrate!)
-           (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :activity))))
+        (let [_activity-1 (t2/insert-returning-pks! :activity
+                                                    {:topic       "card-create"
+                                                     :user_id     1
+                                                     :timestamp   :%now
+                                                     :model       "Card"
+                                                     :model_id    2
+                                                     :database_id 1
+                                                     :table_id    6
+                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
+          (testing "activity rows are copied into audit_log"
+            (is (= 0 (t2/count :model/AuditLog)))
+            (is (= 1 (t2/count :activity)))
+            (migrate!)
+            (is (= 1 (t2/count :model/AuditLog)))
+            (is (= 1 (t2/count :activity))))
 
-         (testing "`database_id` and `table_id` are merged into `details`"
-           (is (partial=
-                {:id 1
-                 :topic :card-create
-                 :end_timestamp nil
-                 :user_id 1
-                 :model "Card"
-                 :model_id 2
-                 :details {:database_id 1
-                           :table_id 6}}
-                (t2/select-one :model/AuditLog)))))))
+          (testing "`database_id` and `table_id` are merged into `details`"
+            (is (partial=
+                 {:id 1
+                  :topic :card-create
+                  :end_timestamp nil
+                  :user_id 1
+                  :model "Card"
+                  :model_id 2
+                  :details {:database_id 1
+                            :table_id 6}}
+                 (t2/select-one :model/AuditLog)))))))
 
     (mt/test-drivers [:h2]
-     (impl/test-migrations "v48.00-049" [migrate!]
-       (create-raw-user! (mt/random-email))
-       (let [_activity-1 (t2/insert-returning-pks! "activity"
-                                                   {:topic       "card-create"
-                                                    :user_id     1
-                                                    :timestamp   :%now
-                                                    :model       "Card"
-                                                    :model_id    2
-                                                    :database_id 1
-                                                    :table_id    6
-                                                    :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
-         (testing "activity rows are copied into audit_log"
-           (is (= 0 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :activity)))
-           (migrate!)
-           (is (= 1 (t2/count :model/AuditLog)))
-           (is (= 1 (t2/count :activity))))
+      (impl/test-migrations "v48.00-049" [migrate!]
+        (create-raw-user! (mt/random-email))
+        (let [_activity-1 (t2/insert-returning-pks! "activity"
+                                                    {:topic       "card-create"
+                                                     :user_id     1
+                                                     :timestamp   :%now
+                                                     :model       "Card"
+                                                     :model_id    2
+                                                     :database_id 1
+                                                     :table_id    6
+                                                     :details     "{\"arbitrary_key\": \"arbitrary_value\"}"})]
+          (testing "activity rows are copied into audit_log"
+            (is (= 0 (t2/count :model/AuditLog)))
+            (is (= 1 (t2/count :activity)))
+            (migrate!)
+            (is (= 1 (t2/count :model/AuditLog)))
+            (is (= 1 (t2/count :activity))))
 
-         (testing "`database_id` and `table_id` are inserted into `details`, but not merged with the previous value
+          (testing "`database_id` and `table_id` are inserted into `details`, but not merged with the previous value
                    (H2 limitation)"
-           (is (partial=
-                {:id 1
-                 :topic :card-create
-                 :end_timestamp nil
-                 :user_id 1
-                 :model "Card"
-                 :model_id 2
-                 :details {:database_id 1
-                           :table_id 6}}
-                (t2/select-one :model/AuditLog)))))))))
+            (is (partial=
+                 {:id 1
+                  :topic :card-create
+                  :end_timestamp nil
+                  :user_id 1
+                  :model "Card"
+                  :model_id 2
+                  :details {:database_id 1
+                            :table_id 6}}
+                 (t2/select-one :model/AuditLog)))))))))
 
 (deftest inactive-fields-fk-migration-test
   (testing "Migration v48.00-051"
@@ -763,14 +762,14 @@
     (impl/test-migrations "v49.00-000" [migrate!]
       (migrate!)
       (is (pos?
-             (:count
-              (t2/query-one
-               (case (mdb/db-type)
-                 :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
+           (:count
+            (t2/query-one
+             (case (mdb/db-type)
+               :postgres "SELECT COUNT(*) as count FROM pg_indexes WHERE
                            tablename = 'databasechangelog' AND indexname = 'idx_databasechangelog_id_author_filename';"
-                 :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
+               :mysql    "SELECT COUNT(*) as count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'idx_databasechangelog_id_author_filename';"
                  ;; h2 has a strange way of naming constraint
-                 :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
+               :h2       "SELECT COUNT(*) as count FROM information_schema.indexes
                            WHERE TABLE_NAME = 'DATABASECHANGELOG' AND INDEX_NAME = 'IDX_DATABASECHANGELOG_ID_AUTHOR_FILENAME_INDEX_1';"))))))))
 
 (deftest enable-public-sharing-default-test
@@ -872,10 +871,10 @@
                                                         :object      "{}"
                                                         :most_recent true
                                                         :timestamp   now})]
-         (migrate!)
-         (is (= {false #{rev-dash-1-old rev-dash-2-old rev-card-1-old rev-card-2-old}
-                 true  #{rev-dash-1-new rev-dash-2-new rev-card-1-new rev-card-2-new rev-card-3-new}}
-                (update-vals (group-by :most_recent (t2/select (t2/table-name :model/Revision))) #(set (map :id %))))))))))
+          (migrate!)
+          (is (= {false #{rev-dash-1-old rev-dash-2-old rev-card-1-old rev-card-2-old}
+                  true  #{rev-dash-1-new rev-dash-2-new rev-card-1-new rev-card-2-new rev-card-3-new}}
+                 (update-vals (group-by :most_recent (t2/select (t2/table-name :model/Revision))) #(set (map :id %))))))))))
 
 (defn- clear-permissions!
   []
@@ -1140,7 +1139,6 @@
                                       (t2/table-name :model/DataPermissions)
                                       :db_id db-id :table_id table-id-1 :group_id group-id :perm_type "perms/download-results"))))
 
-
         (testing "One-million-rows download access for a table"
           (clear-permissions!)
           (t2/insert! (t2/table-name Permissions) {:group_id group-id
@@ -1203,7 +1201,6 @@
                  (t2/select-one-fn :perm_value
                                    (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id table-id-3 :group_id group-id))))))))
-
 
 (deftest manage-table-metadata-permissions-schema-migration-test
   (testing "Manage table metadata permissions are correctly migrated from `permissions` to `data_permissions`"
@@ -1364,6 +1361,7 @@
                                        :schema_name schema
                                        :perm_type perm-type
                                        :perm_value perm-value))]
+
         (migrate-up!)
         (insert-perm! "perms/data-access" "unrestricted")
         (migrate! :down 49)
@@ -1711,7 +1709,6 @@
                  (t2/select-one-fn :perm_value (t2/table-name :model/DataPermissions)
                                    :db_id db-id :table_id nil :group_id group-id :perm_type "perms/create-queries"))))
 
-
         (testing "Granular (table-level) data access"
           (clear-permissions!)
           (t2/insert! (t2/table-name :model/DataPermissions) {:db_id db-id
@@ -2012,9 +2009,19 @@
         (migrate-up!)
         (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
         (insert-perm! "perms/view-data" "unrestricted")
+        (insert-perm! "perms/create-queries" "query-builder")
+        (migrate! :down 49)
+        (is (= #{(format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
+               (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
+
+        (migrate-up!)
+        (t2/insert-returning-pks! :sandboxes {:group_id group-id :table_id table-id})
+        (insert-perm! "perms/view-data" "unrestricted")
         (insert-perm! "perms/create-queries" "no" table-id)
         (migrate! :down 49)
-        (is (= #{(format "/block/db/%d/" db-id)}
+        ;; In this scenario, the sandbox path is preserved, but the block path overrides it
+        (is (= #{(format "/block/db/%d/" db-id)
+                 (format "/db/%d/schema/PUBLIC/table/%d/query/segmented/" db-id table-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))
 
       (testing "Impersonated data access"
@@ -2036,43 +2043,125 @@
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))
 
         (migrate-up!)
-        (t2/insert-returning-pks! :connection_impersonations {:group_id group-id :db_id db-id :attribute "foo"})
-        (insert-perm! "perms/view-data" "unrestricted")
-        (insert-perm! "perms/create-queries" "no")
+        (insert-perm! "perms/view-data" "blocked" table-id)
         (migrate! :down 49)
         (is (= #{(format "/block/db/%d/" db-id)}
                (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id)))))))
+
+(deftest dbs-with-a-single-blocked-table-downgrade-to-blocked-dbs
+  (impl/test-migrations ["v50.2024-01-04T13:52:51" "v50.2024-02-26T22:15:55"] [migrate!]
+    (let [user-id      (t2/insert-returning-pk! (t2/table-name :model/User)
+                                                {:first_name  "Howard"
+                                                 :last_name   "Hughes"
+                                                 :email       "howard@aircraft.com"
+                                                 :password    "superstrong"
+                                                 :date_joined :%now})
+          db-id        (t2/insert-returning-pk! (t2/table-name :model/Database)
+                                                {:name       "DB"
+                                                 :engine     "h2"
+                                                 :created_at :%now
+                                                 :updated_at :%now
+                                                 :details    "{}"})
+          table-id     (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                {:name       "orders"
+                                                 :active     true
+                                                 :schema "PUBLIC"
+                                                 :db_id      db-id
+                                                 :created_at #t "2020"
+                                                 :updated_at #t "2020"})
+          other-table-id (t2/insert-returning-pk! (t2/table-name :model/Table)
+                                                  {:name       "other"
+                                                   :active     true
+                                                   :schema "PUBLIC"
+                                                   :db_id      db-id
+                                                   :created_at #t "2020"
+                                                   :updated_at #t "2020"})
+          group-id     (t2/insert-returning-pk! :permissions_group {:name "Test Group"})]
+      (t2/insert! :model/PermissionsGroupMembership {:user_id user-id :group_id group-id})
+      (migrate!)
+      (clear-permissions!)
+      ;; set one table to be unrestricted
+      (t2/insert! (t2/table-name :model/DataPermissions)
+                  :db_id db-id
+                  :group_id group-id
+                  :table_id table-id
+                  :schema_name "PUBLIC"
+                  :perm_type "perms/view-data"
+                  :perm_value "unrestricted")
+      ;; set the other table to be blocked
+      (t2/insert! (t2/table-name :model/DataPermissions)
+                  :db_id db-id
+                  :group_id group-id
+                  :table_id other-table-id
+                  :schema_name "PUBLIC"
+                  :perm_type "perms/view-data"
+                  :perm_value "blocked")
+      (is (= 1 (t2/count (t2/table-name :model/DataPermissions) :group_id group-id :table_id table-id :perm_type "perms/view-data")))
+      (migrate! :down 49)
+      (is (contains?
+           (t2/select-fn-set :object :model/Permissions :group_id group-id)
+           (str "/block/db/" db-id "/"))))))
 
 (deftest sandboxing-rollback-test
   ;; Rollback tests flake on MySQL, so only run on Postgres/H2
   (mt/test-drivers [:postgres :h2]
     (testing "Can we rollback to 49 when sandboxing is configured"
       (impl/test-migrations ["v50.2024-01-10T03:27:29" "v50.2024-06-20T13:21:30"] [migrate!]
-        (let [db-id         (first (t2/insert-returning-pks! (t2/table-name Database) {:name       "DB"
-                                                                                       :engine     "h2"
-                                                                                       :created_at :%now
-                                                                                       :updated_at :%now
-                                                                                       :details    "{}"}))
-              table-id      (first (t2/insert-returning-pks! (t2/table-name Table) {:db_id      db-id
-                                                                                    :schema     "SchemaName"
-                                                                                    :name       "Table"
-                                                                                    :created_at :%now
-                                                                                    :updated_at :%now
-                                                                                    :active     true}))
-              permission-id (t2/insert-returning-pk! (t2/table-name :model/Permissions) {:object "/db/fake-permission/"
-                                                                                         :group_id 1})
-              _             (t2/query-one {:insert-into :sandboxes
-                                           :values      [{:group_id             1
-                                                          :table_id             table-id
-                                                          :attribute_remappings "{\"foo\", 1}"
-                                                          :permission_id        permission-id}]})
-              expected        {:group_id             1
-                               :table_id             table-id
-                               :attribute_remappings "{\"foo\", 1}"}]
+        (clear-permissions!)
+        (let [db-id      (t2/insert-returning-pk! (t2/table-name :model/Database) {:name       "DB"
+                                                                                   :engine     "h2"
+                                                                                   :created_at :%now
+                                                                                   :updated_at :%now
+                                                                                   :details    "{}"})
+              table-id-1 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                :schema     "SchemaName"
+                                                                                :name       "Table 1"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true})
+              table-id-2 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                :schema     "SchemaName"
+                                                                                :name       "Table 2"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true})
+              table-id-3 (t2/insert-returning-pk! (t2/table-name :model/Table) {:db_id      db-id
+                                                                                :schema     "SchemaName"
+                                                                                :name       "Table 3"
+                                                                                :created_at :%now
+                                                                                :updated_at :%now
+                                                                                :active     true})
+              group-id   (t2/insert-returning-pk! (t2/table-name :model/PermissionsGroup) {:name "Test Group"})
+              perm-id-1  (t2/insert-returning-pk! (t2/table-name :model/Permissions)
+                                                  {:object   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-1)
+                                                   :group_id group-id})
+              perm-id-2  (t2/insert-returning-pk! (t2/table-name :model/Permissions)
+                                                  {:object (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-2)
+                                                   :group_id group-id})
+              _          (t2/insert-returning-pk! (t2/table-name :model/Permissions)
+                                                  {:object (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-3)
+                                                   :group_id group-id})
+              _          (t2/query-one {:insert-into :sandboxes
+                                        :values      [{:group_id             group-id
+                                                       :table_id             table-id-1
+                                                       :attribute_remappings "{\"foo\", 1}"
+                                                       :permission_id        perm-id-1}]})
+              _          (t2/query-one {:insert-into :sandboxes
+                                        :values      [{:group_id             group-id
+                                                       :table_id             table-id-2
+                                                       :attribute_remappings "{\"foo\", 1}"
+                                                       :permission_id        perm-id-2}]})
+              expected   {:group_id             group-id
+                          :table_id             table-id-1
+                          :attribute_remappings "{\"foo\", 1}"}]
           (migrate!)
-          (is (=? expected (t2/select-one :sandboxes :table_id table-id)))
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id-1)))
           (migrate! :down 49)
-          (is (=? expected (t2/select-one :sandboxes :table_id table-id))))))))
+          (is (=? expected (t2/select-one :sandboxes :table_id table-id-1)))
+          (is (= #{(format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-1)
+                   (format "/db/%d/schema/SchemaName/table/%d/query/segmented/" db-id table-id-2)
+                   (format "/db/%d/schema/SchemaName/table/%d/" db-id table-id-3)}
+                 (t2/select-fn-set :object (t2/table-name :model/Permissions) :group_id group-id))))))))
 
 (deftest view-count-test
   (testing "report_card.view_count and report_dashboard.view_count should be populated"

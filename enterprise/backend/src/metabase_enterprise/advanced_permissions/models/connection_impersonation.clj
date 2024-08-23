@@ -31,7 +31,7 @@
                                             (when group-ids [:in :group_id group-ids])
                                             (when-not audit-db? [:not [:= :db_id audit/audit-db-id]])]})]
      (reduce (fn [acc {:keys [db_id group_id]}]
-                (assoc-in acc [group_id db_id :view-data] :impersonated))
+               (assoc-in acc [group_id db_id :view-data] :impersonated))
              {}
              impersonations))))
 

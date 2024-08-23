@@ -26,10 +26,10 @@ import {
 } from "./InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
-interface InteractiveQuestionResultProps {
+export interface InteractiveQuestionResultProps {
   height?: string | number;
   withResetButton?: boolean;
-  withTitle: boolean;
+  withTitle?: boolean;
   customTitle?: ReactNode;
 }
 

@@ -35,10 +35,12 @@ const uploadError = createAction(UPLOAD_FILE_ERROR);
 const clearUpload = createAction(UPLOAD_FILE_CLEAR);
 export const clearAllUploads = createAction(UPLOAD_FILE_CLEAR_ALL);
 
-export const getAllUploads = (state: State) => Object.values(state.upload);
+export const getAllUploads = (state: State) => state.upload;
 
 export const hasActiveUploads = (state: State) =>
-  getAllUploads(state).some(upload => upload.status === "in-progress");
+  Object.values(getAllUploads(state)).some(
+    upload => upload.status === "in-progress",
+  );
 
 export interface UploadFileProps {
   file: File;

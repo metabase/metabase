@@ -621,9 +621,9 @@
                          :limit              1})
                       (-> (lib.tu.macros/mbql-query products
                             {:expressions {"CATEGORY" [:concat $category "2"]}
-                             :breakout    [:expression"CATEGORY"]
+                             :breakout    [:expression "CATEGORY"]
                              :aggregation [[:count]]
-                             :order-by    [[:asc [:expression"CATEGORY"]]]
+                             :order-by    [[:asc [:expression "CATEGORY"]]]
                              :limit       1})
                           qp.preprocess/preprocess
                           add/add-alias-info

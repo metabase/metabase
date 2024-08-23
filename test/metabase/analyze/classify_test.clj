@@ -21,9 +21,9 @@
   (testing "Fields with few values are marked as category and list"
     (let [field      (->field {:name "state", :base_type :type/Text})
           classified (classifiers/run-classifiers field {:global
-                                                      {:distinct-count
-                                                       (dec analyze/category-cardinality-threshold)
-                                                       :nil% 0.3}})]
+                                                         {:distinct-count
+                                                          (dec analyze/category-cardinality-threshold)
+                                                          :nil% 0.3}})]
       (is (= {:has_field_values :auto-list, :semantic_type :type/Category}
              (select-keys classified [:has_field_values :semantic_type]))))))
 
