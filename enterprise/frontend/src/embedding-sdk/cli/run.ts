@@ -6,6 +6,7 @@ import {
 } from "./constants/messages";
 import {
   addDatabaseConnectionStep,
+  askForTenancyColumns,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
@@ -47,6 +48,7 @@ export const CLI_STEPS = [
   },
   { id: "setupLicense", executeStep: setupLicense },
   { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
+  { id: "askForTenancyColumns", executeStep: askForTenancyColumns },
   { id: "setupPermissions", executeStep: setupPermissions },
 ] as const;
 
