@@ -47,9 +47,15 @@ export const AppearanceSettings = ({
       page: "embedding/static-embedding",
     }),
   );
-  const upgradePageUrl = useSelector(state =>
+  const fontUpgradeUrl = useSelector(state =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-static-font",
+      utm_content: "static-embed-settings-look-and-feel",
+    }),
+  );
+  const metabaseBannerUpgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, {
+      utm_campaign: "remove-mb-branding",
       utm_content: "static-embed-settings-look-and-feel",
     }),
   );
@@ -159,7 +165,7 @@ export const AppearanceSettings = ({
               <Text>{jt`You can change the font with ${(
                 <ExternalLink
                   key="fontPlan"
-                  href={upgradePageUrl}
+                  href={fontUpgradeUrl}
                 >{t`a paid plan`}</ExternalLink>
               )}.`}</Text>
             )}
@@ -201,7 +207,7 @@ export const AppearanceSettings = ({
             <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
               <ExternalLink
                 key="bannerPlan"
-                href={upgradePageUrl}
+                href={metabaseBannerUpgradeUrl}
               >{t`a paid plan`}</ExternalLink>
             )} to remove the banner.`}</Text>
           </StaticEmbedSetupPaneSettingsContentSection>

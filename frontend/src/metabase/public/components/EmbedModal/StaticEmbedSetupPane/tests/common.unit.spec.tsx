@@ -514,7 +514,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/upgrade?utm_media=static-embed-settings-look-and-feel&utm_source=oss",
+          "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=remove-mb-branding&utm_content=static-embed-settings-look-and-feel&source_plan=oss",
         );
       });
     });
