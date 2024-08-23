@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/api";
-import { StyledTable } from "metabase/common/components/Table";
+import { ClientSortableTable } from "metabase/common/components/Table";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -75,7 +75,7 @@ function ApiKeysTable({
   }
 
   return (
-    <StyledTable
+    <ClientSortableTable
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
