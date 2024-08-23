@@ -1,14 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  FieldPicker,
-  type FieldPickerItem,
-} from "metabase/common/components/FieldPicker";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";
+import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { NotebookDataPicker } from "../NotebookDataPicker";
 

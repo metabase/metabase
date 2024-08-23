@@ -1,8 +1,6 @@
-import {
-  FieldPicker,
-  type FieldPickerItem,
-} from "metabase/common/components/FieldPicker";
 import type * as Lib from "metabase-lib";
+
+import { FieldPicker, type FieldPickerItem } from "../../FieldPicker";
 
 interface JoinTableColumnPickerDraftProps {
   query: Lib.Query;

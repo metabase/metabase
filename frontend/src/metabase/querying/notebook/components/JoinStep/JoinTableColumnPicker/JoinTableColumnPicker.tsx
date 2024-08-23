@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 
-import {
-  FieldPicker,
-  type FieldPickerItem,
-} from "metabase/common/components/FieldPicker";
 import * as Lib from "metabase-lib";
+
+import { FieldPicker, type FieldPickerItem } from "../../FieldPicker";
 
 interface JoinTableColumnPickerProps {
   query: Lib.Query;
