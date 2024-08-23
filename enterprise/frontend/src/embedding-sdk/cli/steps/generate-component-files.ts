@@ -44,7 +44,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     dashboards,
 
     // Enable user switching only when a valid license is present,
-    // as they won't be able to use JWT.
+    // as JWT requires a valid license.
     userSwitcherEnabled: !!token,
   });
 
