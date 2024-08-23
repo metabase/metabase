@@ -23,17 +23,17 @@
   (testing "We match references with known fields where possible, and remove redundancies"
     (is (= [{:field-id 1, :table "t1", :column "c1"}
             {:field-id 2, :table "t3", :column "c1"}
-            {             :table "t2", :column "c2"}
+            {:table "t2", :column "c2"}
             {:field-id 3, :table "t3", :column "c3"}
-            {                          :column "c4"}]
+            {:column "c4"}]
            (sort-by (juxt :column :table :field-id)
                     (#'nqa/consolidate-columns
                      [{:table "t1" :column "c1"}
-                      {            :column "c1"}
+                      {:column "c1"}
                       {:table "t2" :column "c2"}
-                      {            :column "c2"}
+                      {:column "c2"}
                       {:table "t3" :column "c3"}
-                      {            :column "c4"}]
+                      {:column "c4"}]
                      [{:field-id 1 :table "t1" :column "c1"}
                       {:field-id 2 :table "t3" :column "c1"}
                       {:field-id 3 :table "t3" :column "c3"}]))))))

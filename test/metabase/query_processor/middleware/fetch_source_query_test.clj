@@ -125,8 +125,7 @@
       (is (false? (public-settings/enable-nested-queries))))
     (qp.store/with-metadata-provider mock-metadata-provider
 
-
-      ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
+;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
       (is (thrown-with-msg? Exception
                             #"Nested queries are disabled"
                             (resolve-source-cards
@@ -219,10 +218,10 @@
   tests the actual contents of the metadata."
   [results]
   (letfn [(clean [sm] (map #(select-keys % [:field_ref]) sm))]
-   (update-in results [:query :joins]
-              (fn [joins]
-                (map (fn [join] (update join :source-metadata clean))
-                     joins)))))
+    (update-in results [:query :joins]
+               (fn [joins]
+                 (map (fn [join] (update join :source-metadata clean))
+                      joins)))))
 
 (def ^:private joins-metadata
   [{:name         "ID"

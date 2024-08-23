@@ -483,8 +483,8 @@
 (defn- infered-col-type
   [expr]
   (-> (add-column-info (lib.tu.macros/mbql-query venues {:expressions {"expr" expr}
-                                              :fields      [[:expression "expr"]]
-                                              :limit       10})
+                                                         :fields      [[:expression "expr"]]
+                                                         :limit       10})
                        {})
       :cols
       first
@@ -492,9 +492,9 @@
 
 (deftest ^:parallel computed-columns-inference
   (letfn [(infer [expr] (-> (lib.tu.macros/mbql-query venues
-                                           {:expressions {"expr" expr}
-                                            :fields [[:expression "expr"]]
-                                            :limit 10})
+                              {:expressions {"expr" expr}
+                               :fields [[:expression "expr"]]
+                               :limit 10})
                             (add-column-info {})
                             :cols
                             first))]
