@@ -274,15 +274,24 @@ describe("scenarios > dashboard > filters > query stages", () => {
       editDashboard();
 
       cy.log("# questions");
-      verifyQuestions();
+      cy.log("## date columns");
+      verifyQuestionDateMappingOptions();
+      cy.log("## text columns");
+      verifyQuestionTextMappingOptions();
+      cy.log("## number columns");
+      verifyQuestionNumberMappingOptions();
 
       cy.findByRole("tab", { name: "Models" }).click();
 
       cy.log("# models");
-      verifyModels();
+      cy.log("## date columns");
+      verifyModelDateMappingOptions();
+      cy.log("## text columns");
+      verifyModelTextMappingOptions();
+      cy.log("## number columns");
+      verifyModelNumberMappingOptions();
 
-      function verifyQuestions() {
-        cy.log("## date columns");
+      function verifyQuestionDateMappingOptions() {
         getFilter("Date").click();
         verifyDashcardMappingOptions(0, [
           ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
@@ -308,8 +317,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
+      }
 
-        cy.log("## text columns");
+      function verifyQuestionTextMappingOptions() {
         getFilter("Text").click();
         verifyDashcardMappingOptions(0, [
           ["Review", REVIEWS_TEXT_COLUMNS],
@@ -331,8 +341,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
+      }
 
-        cy.log("## number columns");
+      function verifyQuestionNumberMappingOptions() {
         getFilter("Number").click();
         verifyDashcardMappingOptions(0, [
           ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
@@ -360,8 +371,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
       }
 
-      function verifyModels() {
-        cy.log("## date columns");
+      function verifyModelDateMappingOptions() {
         getFilter("Date").click();
         verifyDashcardMappingOptions(0, [
           [
@@ -383,8 +393,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyNoDashcardMappingOptions(2);
         verifyNoDashcardMappingOptions(3);
+      }
 
-        cy.log("## text columns");
+      function verifyModelTextMappingOptions() {
         getFilter("Text").click();
         verifyDashcardMappingOptions(0, [
           [
@@ -406,8 +417,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ]);
         verifyNoDashcardMappingOptions(2);
         verifyNoDashcardMappingOptions(3);
+      }
 
-        cy.log("## number columns");
+      function verifyModelNumberMappingOptions() {
         getFilter("Number").click();
         verifyDashcardMappingOptions(0, [
           [
