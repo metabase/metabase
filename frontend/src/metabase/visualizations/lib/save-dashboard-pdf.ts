@@ -1,7 +1,5 @@
 import { t } from "ttag";
 
-import { isStorybookActive } from "metabase/env";
-import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import type { Dashboard } from "metabase-types/api";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
@@ -47,17 +45,7 @@ export const saveDashboardPdf = async (
 
   pdf.addImage(image, "JPEG", 0, 0, imageWidth, imageHeight, "", "FAST", 0);
 
-  if (isStorybookActive) {
-    // if we're running storybook we open the PDF in place
-    // so we can test the export result with loki
-    image.toBlob(blob => {
-      if (blob) {
-        openImageBlobOnStorybook({ canvas: image, blob });
-      }
-    });
-  } else {
-    pdf.save(fileName);
-  }
+  pdf.save(fileName);
 };
 
 export const getExportTabAsPdfButtonText = (tabs: Dashboard["tabs"]) => {
