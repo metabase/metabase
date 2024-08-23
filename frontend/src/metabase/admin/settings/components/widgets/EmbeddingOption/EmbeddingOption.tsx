@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { Link } from "react-router";
 import { jt, t } from "ttag";
 
@@ -11,14 +12,16 @@ import {
   getSetting,
   getUpgradeUrl,
 } from "metabase/selectors/settings";
-import type { ButtonProps } from "metabase/ui";
-import { Button, Flex, Text, Title } from "metabase/ui";
+import { Button, type ButtonProps, Flex, Icon, Text, Title } from "metabase/ui";
 
+import EmbeddingOptionStyle from "./EmbeddingOption.module.css";
 import { BoldExternalLink, Label, StyledCard } from "./EmbeddingOption.styled";
 import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
 import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
+import SdkIcon from "./SdkIcon.svg?component";
 import StaticEmbeddingOff from "./StaticEmbeddingOff.svg?component";
 import StaticEmbeddingOn from "./StaticEmbeddingOn.svg?component";
+
 interface EmbeddingOptionProps {
   title: string;
   label?: string;
@@ -87,6 +90,34 @@ export const StaticEmbeddingOptionCard = () => {
   );
 };
 
+export function EmbeddingSdkOptionCard() {
+  const isEmbeddingEnabled = useSetting("enable-embedding");
+  const isEE = PLUGIN_EMBEDDING.isEnabled();
+
+  return (
+    <EmbeddingOption
+      icon={
+        <SdkIcon
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: !isEmbeddingEnabled,
+          })}
+        />
+      }
+      title={t`Embedding SDK for React`}
+      label={t`PRO & ENTERPRISE`}
+      description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
+    >
+      <BoldExternalLink>
+        {t`Check out our Quick Start`}
+        <Icon name="share" />
+      </BoldExternalLink>
+      <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
+        {!isEE ? t`Try it out` : t`Configure`}
+      </LinkButton>
+    </EmbeddingOption>
+  );
+}
+
 export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
   const plan = useSelector(state =>
@@ -123,6 +154,7 @@ export const InteractiveEmbeddingOptionCard = () => {
         href={`${quickStartUrl}?utm_source=${plan}&utm_media=embed-settings`}
       >
         {t`Check out our Quick Start`}
+        <Icon name="share" />
       </BoldExternalLink>
       {isEE ? (
         <LinkButton

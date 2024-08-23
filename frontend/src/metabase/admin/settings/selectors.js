@@ -1,10 +1,11 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
@@ -27,6 +28,7 @@ import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdate
 import { UploadSettings } from "./components/UploadSettings";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
+  EmbeddingSdkOptionCard,
   InteractiveEmbeddingOptionCard,
   StaticEmbeddingOptionCard,
 } from "./components/widgets/EmbeddingOption";
@@ -440,6 +442,10 @@ export const ADMIN_SETTINGS_SECTIONS = {
         widget: StaticEmbeddingOptionCard,
       },
       {
+        key: "-embedding-sdk",
+        widget: EmbeddingSdkOptionCard,
+      },
+      {
         key: "-interactive-embedding",
         widget: InteractiveEmbeddingOptionCard,
       },
@@ -491,6 +497,41 @@ export const ADMIN_SETTINGS_SECTIONS = {
           <RedirectWidget to="/admin/settings/embedding-in-other-applications" />
         ),
         getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
+      },
+    ],
+  },
+  "embedding-in-other-applications/sdk": {
+    settings: [
+      {
+        key: "-breadcrumb",
+        widget: () => {
+          return (
+            <Breadcrumbs
+              size="large"
+              crumbs={[
+                [
+                  t`Embedding`,
+                  "/admin/settings/embedding-in-other-applications",
+                ],
+                [t`Embedding SDK for React`],
+              ]}
+            />
+          );
+        },
+      },
+      {
+        key: "authorized-cors-origins",
+        display_name: t`Cross-Origin Resource Sharing (CORS)`,
+        description: jt`Enter the origins for the websites or web apps where you want to allow SDK embedding, separated by a space. Here are the ${(
+          <ExternalLink
+            key="specs"
+            href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors"
+          >
+            {t`exact specifications`}
+          </ExternalLink>
+        )} for what can be entered.`,
+        placeholder: "https://*.example.com",
+        type: "string",
       },
     ],
   },

@@ -25,4 +25,7 @@ export const Label = styled.span`
 export const BoldExternalLink = styled(ExternalLink)`
   color: var(--mb-color-brand);
   font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: calc(6 / 16 * 1rem);
 `;
