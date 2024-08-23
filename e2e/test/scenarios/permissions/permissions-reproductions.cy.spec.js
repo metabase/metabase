@@ -675,7 +675,7 @@ describeEE("issue 24966", () => {
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");
     cy.get("@dashcardId").then(id => {
-      assertDatasetReqIsSandboxed(`@dashcardQuery${id}`);
+      assertDatasetReqIsSandboxed({ requestAlias: `@dashcardQuery${id}` });
     });
   });
 });

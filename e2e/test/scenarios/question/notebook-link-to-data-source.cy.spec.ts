@@ -525,7 +525,9 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
-        assertDatasetReqIsSandboxed(`@modelQuery${ORDERS_MODEL_ID}`);
+        assertDatasetReqIsSandboxed({
+          requestAlias: `@modelQuery${ORDERS_MODEL_ID}`,
+        });
       });
 
       it("should work for sandboxed users when joined table is sandboxed", () => {
