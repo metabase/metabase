@@ -49,7 +49,7 @@ const config = {
     ace: {},
     ga: {},
   },
-  reporters: ["default", "jest-junit"],
+  reporters: ["default", "jest-junit", "github-actions"],
   coverageDirectory: "./coverage",
   coverageReporters: ["html", "lcov"],
   collectCoverageFrom: [
