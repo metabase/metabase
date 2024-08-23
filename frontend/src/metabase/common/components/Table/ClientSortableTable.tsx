@@ -1,3 +1,5 @@
+import cx from "classnames";
+
 import type { SortDirection } from "metabase-types/api/sorting";
 
 import { type BaseRow, Table, type TableProps } from "./Table";
@@ -9,17 +11,14 @@ export type ClientSortableTableProps<T extends BaseRow> = TableProps<T> & {
   formatValueForSorting?: (row: T, columnName: string) => any;
   defaultSortColumn?: string;
   defaultSortDirection?: SortDirection;
+  className?: string;
 };
 
 /**
  * A basic reusable table component that supports client-side sorting by a column
- *
- * @param columns     - an array of objects with name and key properties
- * @param rows        - an array of objects with keys that match the column keys
- * @param rowRenderer - a function that takes a row object and returns a <tr> element
- * @param tableProps  - additional props to pass to the <table> element
  */
 export function ClientSortableTable<Row extends BaseRow>({
+  className,
   columns,
   rows,
   rowRenderer,
@@ -44,17 +43,16 @@ export function ClientSortableTable<Row extends BaseRow>({
 
   return (
     <Table
-      className={TableS.Table}
+      className={cx(className, TableS.Table)}
       rows={sortedRows}
       columns={columns}
       rowRenderer={rowRenderer}
-      onSort={({ name, direction }) => {
+      onSort={(name, direction) => {
         setSortColumn(name);
         setSortDirection(direction);
       }}
-      sortColumn={
-        sortColumn ? { name: sortColumn, direction: sortDirection } : undefined
-      }
+      sortColumnName={sortColumn}
+      sortDirection={sortDirection}
       {...rest}
     />
   );

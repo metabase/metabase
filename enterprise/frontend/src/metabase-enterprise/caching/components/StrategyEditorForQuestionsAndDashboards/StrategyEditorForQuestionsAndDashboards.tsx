@@ -29,7 +29,7 @@ import type {
   UpdateTarget,
 } from "../types";
 
-import C from "./StrategyEditorForQuestionsAndDashboards.module.css";
+import StrategyEditorForQuestionsAndDashboardsC from "./StrategyEditorForQuestionsAndDashboards.module.css";
 import { TableRowForCacheableItem } from "./TableRowForCacheableItem";
 import { getConstants } from "./constants";
 import { formatValueForSorting } from "./utils";
@@ -86,6 +86,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       ? {
           models: ["dashboard"],
           ids: dashboardIds,
+          ancestors: true,
         }
       : skipToken,
   );
@@ -276,7 +277,9 @@ const _StrategyEditorForQuestionsAndDashboards = ({
           >
             <Flex align="flex-start">
               <ClientSortableTable<CacheableItem>
-                className={C.CacheableItemTable}
+                className={
+                  StrategyEditorForQuestionsAndDashboardsC.CacheableItemTable
+                }
                 columns={tableColumns}
                 rows={cacheableItems}
                 rowRenderer={rowRenderer}
@@ -300,7 +303,9 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       </Stack>
 
       {targetId !== null && targetModel !== null && (
-        <Panel className={C.StrategyFormPanel}>
+        <Panel
+          className={StrategyEditorForQuestionsAndDashboardsC.StrategyFormPanel}
+        >
           <Button
             variant="subtle"
             pos="absolute"
@@ -340,7 +345,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
     columns={columns}
     rows={[{ id: 0 }, { id: 1 }, { id: 2 }]}
     rowRenderer={() => (
-      <tr className={C.SkeletonTableRow}>
+      <tr className={StrategyEditorForQuestionsAndDashboardsC.SkeletonTableRow}>
         <Repeat times={3}>
           <td style={{ width: "20rem" }}>
             <Skeleton h="1rem" natural />
@@ -348,12 +353,12 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
         </Repeat>
       </tr>
     )}
-    className={C.CacheableItemTable}
+    className={StrategyEditorForQuestionsAndDashboardsC.CacheableItemTable}
   />
 );
 
 const NoResultsTableRow = () => (
-  <tr className={C.NoResultsTableRow}>
+  <tr className={StrategyEditorForQuestionsAndDashboardsC.NoResultsTableRow}>
     <td colSpan={3}>
       <Center fw="bold" c="text-light">
         {t`No dashboards or questions have their own caching policies yet.`}

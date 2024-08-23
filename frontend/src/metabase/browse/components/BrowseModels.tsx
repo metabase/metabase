@@ -34,7 +34,7 @@ export const BrowseModels = () => {
   /** Mapping of filter names to true if the filter is active or false if it is inactive */
   const [actualModelFilters, setActualModelFilters] = useModelFilterSettings();
 
-  const modelsResult = useFetchModels({ model_ancestors: true });
+  const modelsResult = useFetchModels({ ancestors: true });
 
   const { models, doVerifiedModelsExist } = useMemo(() => {
     const unfilteredModels =

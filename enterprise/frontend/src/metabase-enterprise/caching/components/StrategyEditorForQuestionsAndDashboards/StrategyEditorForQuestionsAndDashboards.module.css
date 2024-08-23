@@ -14,7 +14,7 @@
   background-color: var(--mb-color-text-white);
 
   td {
-    padding: 0.75rem;
+    padding: 0.75rem !important;
   }
 
   tbody > tr:hover {

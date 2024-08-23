@@ -4,7 +4,7 @@ import {
   PaginationControls,
   type PaginationControlsProps,
 } from "metabase/components/PaginationControls";
-import { Box, Flex, FlexProps, Icon } from "metabase/ui";
+import { Box, Flex, type FlexProps, Icon } from "metabase/ui";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import CS from "./Table.module.css";
@@ -25,7 +25,7 @@ export type TableProps<Row extends BaseRow> = {
   > & { onPageChange: (page: number) => void };
   emptyBody?: React.ReactNode;
   cols?: React.ReactNode;
-};
+} & Omit<React.HTMLProps<HTMLTableElement>, "rows" | "cols">;
 
 /**
  * A basic reusable table component
@@ -55,7 +55,7 @@ export function Table<Row extends BaseRow>({
 }: TableProps<Row>) {
   return (
     <>
-      <table {...rest} className={CS.Table}>
+      <table className={CS.Table} {...rest}>
         {cols && <colgroup>{cols}</colgroup>}
         <thead>
           <tr>
