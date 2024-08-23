@@ -52,7 +52,7 @@
               (let [email-body (-> @inbox vals first first :body first :content)]
                 (is (string? email-body))
                 (let [[_ query-params] (re-find #"creator\?context=(.*)\"" email-body)
-                      decoded          (some-> query-params codecs/b64->str json/parse-string )]
+                      decoded          (some-> query-params codecs/b64->str json/parse-string)]
                   (is (=? {"instance" {"created_at"     (mt/malli=? ms/TemporalString)
                                        "plan"           (mt/malli=? :string)
                                        "version"        (mt/malli=? :string)

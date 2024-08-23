@@ -46,7 +46,7 @@
              (lib.drill-thru.common/mbql-stage? query stage-number))
     (when-let [drill (column-extract-drill-for-column query column)]
       (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
-                                 query stage-number column column-ref :expression)]
+                                query stage-number column column-ref :expression)]
         (merge drill
                drill-details
                {:lib/type :metabase.lib.drill-thru/drill-thru

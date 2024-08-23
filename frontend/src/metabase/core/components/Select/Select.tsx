@@ -7,7 +7,7 @@ import type {
   ReactNode,
   RefObject,
 } from "react";
-import { createRef, Children, Component } from "react";
+import { Children, Component, createRef } from "react";
 import _ from "underscore";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";

@@ -297,6 +297,26 @@ Timeout in milliseconds for connecting to databases, both Metabase application d
         In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
         as the connections via tunnels have more overhead than connections without.
 
+### `MB_DB_QUERY_TIMEOUT_MINUTES`
+
+- Type: integer
+- Default: `3`
+
+By default, this is 20 minutes.
+
+Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  If you have long-running queries, you might consider increasing this value.
+  Adjusting the timeout does not impact Metabase’s frontend.
+  Please be aware that other services (like Nginx) may still drop long-running queries.
+
+### `MB_DOWNLOAD_ROW_LIMIT`
+
+- Type: integer
+- Default: `null`
+- [Exported as](../installation-and-operation/serialization.md): `download-row-limit`.
+
+Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.
+
 ### `MB_EE_AI_FEATURES_ENABLED`
 
 - Type: boolean
@@ -919,6 +939,14 @@ When attempting to assemble prompts, the threshold at which prompt will no longe
 
 Matching style for native query editors autocomplete. Can be "substring", "prefix", or "off". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off.
 
+### `MB_NESTED_FIELD_COLUMNS_VALUE_LENGTH_LIMIT`
+
+- Type: integer
+- Default: `50000`
+- [Exported as](../installation-and-operation/serialization.md): `nested-field-columns-value-length-limit`.
+
+Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set too high it could lead to slow syncs or out of memory errors.
+
 ### `MB_NO_DATA_ILLUSTRATION`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1035,6 +1063,7 @@ Token for premium features. Go to the MetaStore to get yours!
 
 - Type: boolean
 - Default: `true`
+- [Configuration file name](./config-file.md): `query-analysis-enabled`
 
 Whether or not we analyze any queries at all.
 
@@ -1281,6 +1310,14 @@ Is SAML Single Log Out enabled?
 
 When we enable SAML user provisioning, we automatically create a Metabase account on SAML signin for users who
 don't have one.
+
+### `MB_SCIM_ENABLED`
+
+- Type: boolean
+- Default: `null`
+- [Configuration file name](./config-file.md): `scim-enabled`
+
+Is SCIM currently enabled?
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 
@@ -1702,15 +1739,6 @@ Type: integer<br>
 Default: `null`
 
 The port for [MB_DB_HOST](#mb_db_host).
-
-
-### `MB_DB_QUERY_TIMEOUT_MINUTES`
-
-Type: integer<br>
-Default: `180`
-
-Timeout in minutes for query execution, both Metabase application database and data connections. In case you're execute a query and run into a timeout, you might consider increasing this value.
-
 
 ### `MB_DB_TYPE`
 

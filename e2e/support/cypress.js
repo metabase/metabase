@@ -3,11 +3,28 @@ registerCypressGrep();
 
 import "@cypress/skip-test/support";
 import "@testing-library/cypress/add-commands";
+import { configure } from "@testing-library/cypress";
 import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 
 const isCI = Cypress.env("CI");
+
+// remove default html output on test failure
+configure({
+  getElementError: (message, container) => {
+    // to re-enable the default stack trace, uncomment
+    // import { prettyDOM } from "@testing-library/dom";
+    // const error = new Error(
+    //  [message, prettyDOM(container)].filter(Boolean).join('\n\n'),
+    // )
+    const error = new Error(message);
+    error.name = "TestingLibraryElementError";
+    error.stack = null;
+
+    return error;
+  },
+});
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
 

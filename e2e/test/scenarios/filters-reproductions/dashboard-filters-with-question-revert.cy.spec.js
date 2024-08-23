@@ -1,19 +1,20 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  snapshot,
   editDashboard,
   filterWidget,
   getDashboardCard,
+  getIframeBody,
+  modal,
+  openSharingMenu,
   popover,
+  questionInfoButton,
   restore,
   saveDashboard,
   setFilter,
+  snapshot,
   visitDashboard,
   visitEmbeddedPage,
-  questionInfoButton,
-  modal,
-  getIframeBody,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -219,8 +220,7 @@ describe("issue 35954", () => {
         });
 
         visitDashboard(id);
-        cy.findByTestId("resource-embed-button").click();
-        cy.findByTestId("embed-menu-embed-modal-item").click();
+        openSharingMenu("Embed");
         modal().findByText("Static embed").click();
 
         cy.findByTestId("embedding-preview").within(() => {

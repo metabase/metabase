@@ -8,6 +8,6 @@
 
 (deftest ^:synchronized can-connect-test
   (mt/test-driver
-   :mongo
-   (testing "Mongo driver can connect to a sharded cluster"
-     (is (true? (driver/can-connect? :mongo (mt/db)))))))
+    :mongo
+    (testing "Mongo driver can connect to a sharded cluster"
+      (is (true? (driver/can-connect? :mongo (mt/db)))))))

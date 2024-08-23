@@ -1,44 +1,45 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  visitDashboard,
-  visitEmbeddedPage,
-  filterWidget,
-  visitIframe,
-  getDashboardCard,
   addOrUpdateDashboardCard,
-  openStaticEmbeddingModal,
-  downloadAndAssert,
-  assertSheetRowsCount,
-  modal,
-  getIframeBody,
-  describeEE,
-  setTokenFeatures,
-  dashboardParametersContainer,
-  goToTab,
-  editDashboard,
-  toggleRequiredParameter,
-  sidebar,
-  saveDashboard,
-  getRequiredToggle,
-  closeStaticEmbeddingModal,
-  publishChanges,
-  setEmbeddingParameter,
   assertEmbeddingParameter,
-  multiAutocompleteInput,
+  assertSheetRowsCount,
+  closeStaticEmbeddingModal,
   createDashboardWithTabs,
   createQuestion,
+  dashboardParametersContainer,
+  describeEE,
+  downloadAndAssert,
+  editDashboard,
+  filterWidget,
+  getDashboardCard,
+  getIframeBody,
+  getIframeUrl,
+  getRequiredToggle,
+  goToTab,
+  modal,
+  multiAutocompleteInput,
+  openStaticEmbeddingModal,
+  popover,
+  publishChanges,
+  restore,
+  saveDashboard,
+  setEmbeddingParameter,
+  setTokenFeatures,
+  sidebar,
+  toggleRequiredParameter,
+  visitDashboard,
+  visitEmbeddedPage,
+  visitIframe,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import {
-  questionDetails,
-  questionDetailsWithDefaults,
   dashboardDetails,
   mapParameters,
+  questionDetails,
+  questionDetailsWithDefaults,
 } from "./shared/embedding-dashboard";
 
 const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -882,6 +883,60 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
+    });
+  });
+
+  it("should resize iframe to dashboard content size (metabase#47061)", () => {
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    createQuestion(questionDetails)
+      .then(({ body: { id: card_id } }) => {
+        createDashboardWithTabs({
+          ...dashboardDetails,
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 20,
+            },
+          ],
+        });
+      })
+      .then(dashboard => {
+        visitDashboard(dashboard.id);
+      });
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    getIframeUrl().then(iframeUrl => {
+      Cypress.config("baseUrl", null);
+      cy.visit(
+        `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`,
+      );
+    });
+
+    getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
+
+    cy.get("#iframe").then($iframe => {
+      const [iframe] = $iframe;
+      expect(iframe.clientHeight).to.be.greaterThan(1000);
     });
   });
 });

@@ -4,10 +4,10 @@ import CollectionPermissionsModal from "metabase/admin/permissions/components/Co
 import { canonicalCollectionId } from "metabase/collections/utils";
 import Modal from "metabase/components/Modal";
 import {
+  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
+  PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  PLUGIN_SNIPPET_SIDEBAR_MODALS,
-  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

@@ -1,5 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { assoc, updateIn, dissoc, getIn } from "icepick";
+import { assoc, dissoc, getIn, updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -13,7 +13,7 @@ import {
 import { useToggle } from "metabase/hooks/use-toggle";
 import { capitalize } from "metabase/lib/formatting";
 import { getIsEmbedded } from "metabase/selectors/embed";
-import { Button, Icon, Loader, Text, Stack, Modal, Flex } from "metabase/ui";
+import { Button, Flex, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 
 import type { ErrorPayload } from "./types";
 import { useErrorInfo } from "./use-error-info";
@@ -72,7 +72,6 @@ export const ErrorDiagnosticModal = ({
       opened
       onClose={onClose}
       title={t`Download diagnostic information`}
-      padding="xl"
       size="lg"
     >
       <FormProvider

@@ -9,12 +9,12 @@ import {
 } from "metabase-lib/test-helpers";
 import { createMockField } from "metabase-types/api/mocks";
 import {
+  PEOPLE_ID,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
-  PEOPLE_ID,
 } from "metabase-types/api/mocks/presets";
 
 const PEOPLE_TABLE = createPeopleTable();

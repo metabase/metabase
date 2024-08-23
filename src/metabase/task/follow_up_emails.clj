@@ -73,5 +73,5 @@
                  (triggers/start-now)
                  (triggers/with-schedule
                    ;; run once a day
-                   (cron/cron-schedule "0 0 12 * * ? *")))]
+                  (cron/cron-schedule "0 0 12 * * ? *")))]
     (task/schedule-task! job trigger)))

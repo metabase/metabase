@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { t, jt, ngettext, msgid } from "ttag";
+import { jt, msgid, ngettext, t } from "ttag";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import Tooltip from "metabase/core/components/Tooltip";

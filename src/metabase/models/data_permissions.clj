@@ -31,7 +31,6 @@
    :type       mi/transform-keyword
    :value      mi/transform-keyword})
 
-
 ;;; ---------------------------------------- Permission definitions ---------------------------------------------------
 
 ;; IMPORTANT: If you add a new permission type, `:values` must be ordered from *most* permissive to *least* permissive.
@@ -41,7 +40,6 @@
 ;;
 ;;  - If a user does not have any value for the permission when it is fetched, the *least* permissive value is used as a
 ;;    fallback.
-
 
 (def Permissions
   "Permissions which apply to individual databases or tables."
@@ -62,7 +60,6 @@
   "Malli spec for a keyword that matches any value in [[Permissions]]."
   (into [:enum {:error/message "Invalid permission value"}]
         (distinct (mapcat :values (vals Permissions)))))
-
 
 ;;; ------------------------------------------- Misc Utils ------------------------------------------------------------
 
@@ -314,7 +311,7 @@
                            (map :perm_value)
                            (into #{}))]
       (or (coalesce perm-type (conj perm-values (get-additional-table-permission! {:db-id database-id :table-id table-id}
-                                                                            perm-type)))
+                                                                                  perm-type)))
           (least-permissive-value perm-type)))))
 
 (mu/defn user-has-permission-for-table? :- :boolean
@@ -538,7 +535,6 @@
               {}
               granular-graph))))
 
-
 ;;; ---------------------------------------- Fetching the data permissions graph --------------------------------------
 
 (def ^:private Graph
@@ -584,7 +580,6 @@
          (assoc-in graph path value)))
      {}
      data-perms)))
-
 
 ;;; --------------------------------------------- Updating permissions ------------------------------------------------
 

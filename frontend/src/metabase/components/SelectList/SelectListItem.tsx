@@ -5,7 +5,7 @@ import type { IconProps } from "metabase/ui";
 
 import type { BaseSelectListItemProps } from "./BaseSelectListItem";
 import { BaseSelectListItem } from "./BaseSelectListItem";
-import { ItemRoot, ItemIcon, ItemTitle } from "./SelectListItem.styled";
+import { ItemIcon, ItemRoot, ItemTitle } from "./SelectListItem.styled";
 
 export interface SelectListItemProps
   extends Omit<BaseSelectListItemProps, "children"> {

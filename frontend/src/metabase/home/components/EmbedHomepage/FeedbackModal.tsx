@@ -5,12 +5,12 @@ import {
   Button,
   Group,
   Modal,
-  rem,
   Stack,
   Text,
-  Textarea,
   TextInput,
+  Textarea,
   Title,
+  rem,
 } from "metabase/ui";
 
 type FeedbackModalProps = {

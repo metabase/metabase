@@ -1,24 +1,24 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  disconnectDashboardFilter,
+  editDashboard,
+  filterWidget,
+  getDashboardCard,
+  multiAutocompleteInput,
   popover,
   restore,
-  visitDashboard,
-  filterWidget,
-  editDashboard,
-  sidebar,
-  getDashboardCard,
-  selectDashboardFilter,
-  disconnectDashboardFilter,
   saveDashboard,
-  updateDashboardCards,
+  selectDashboardFilter,
   setFilter,
+  sidebar,
   spyRequestFinished,
-  multiAutocompleteInput,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -610,7 +610,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       // create a disconnected filter + a default value
       editDashboard();
-      setFilter("Time", "Relative Date");
+      setFilter("Date picker", "Relative Date");
 
       sidebar().findByText("Default value").next().click();
       popover().contains("Previous 7 days").click({ force: true });

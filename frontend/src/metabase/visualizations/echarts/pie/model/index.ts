@@ -13,11 +13,11 @@ import type {
 import type { RawSeries, RowValue } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
-import { OTHER_SLICE_MIN_PERCENTAGE, OTHER_SLICE_KEY } from "../constants";
+import { OTHER_SLICE_KEY, OTHER_SLICE_MIN_PERCENTAGE } from "../constants";
 
 import type {
-  PieColumnDescriptors,
   PieChartModel,
+  PieColumnDescriptors,
   PieSliceData,
 } from "./types";
 

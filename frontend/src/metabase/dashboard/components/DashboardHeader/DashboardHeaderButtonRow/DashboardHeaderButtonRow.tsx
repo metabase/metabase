@@ -18,7 +18,7 @@ import {
 } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
 
-import { DASHBOARD_VIEW_ACTIONS, DASHBOARD_EDITING_ACTIONS } from "./constants";
+import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
 
 export const DashboardHeaderButtonRow = ({
   dashboardActionKeys = null,

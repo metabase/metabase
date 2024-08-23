@@ -1,6 +1,6 @@
 import {
-  setupLanguage,
   setupInstance,
+  setupLanguage,
 } from "e2e/test/scenarios/cross-version/helpers/cross-version-helpers.js";
 
 import { version } from "./helpers/cross-version-source-helpers";

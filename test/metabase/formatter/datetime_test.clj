@@ -32,7 +32,7 @@
              (datetime/format-temporal-str "UTC" nil :now))))
     (testing "Temporal Units are formatted"
       (testing :minute
-        (is (= "July, 2020, 6:04 PM"
+        (is (= "July 16, 2020, 6:04 PM"
                (datetime/format-temporal-str "UTC" now {:unit :minute}))))
       (testing :hour
         (is (= "July 16, 2020, 6 PM"
@@ -154,10 +154,10 @@
                                           (public-settings/custom-formatting))]
           (is (= "7-16-2020, 6:04 PM"
                  (datetime/format-temporal-str
-                   "UTC"
-                   now
-                   {:effective_type :type/DateTime}
-                   {::mb.viz/global-column-settings global-settings}))))))))
+                  "UTC"
+                  now
+                  {:effective_type :type/DateTime}
+                  {::mb.viz/global-column-settings global-settings}))))))))
 
 (deftest format-datetime-test
   (testing "Testing permutations of a datetime string with different type information and viz settings (#36559)"

@@ -1,13 +1,13 @@
 (ns metabase.lib.drill-thru.fk-filter-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -149,30 +149,30 @@
   (testing "adds an = filter for the selected column and value"
     (testing "in the same stage for a plain query"
       (lib.drill-thru.tu/test-drill-application
-        {:click-type     :cell
-         :query-type     :unaggregated
-         :column-name    "USER_ID"
-         :drill-type     :drill-thru/fk-filter
-         :expected       {:lib/type  :metabase.lib.drill-thru/drill-thru
-                          :type      :drill-thru/fk-filter
-                          :column-name "User ID"
-                          :table-name  "Orders"}
-         :expected-query {:stages [{:source-table (meta/id :orders)
-                                    :filters      [[:= {}
-                                                    [:field {} (meta/id :orders :user-id)]
-                                                    (get-in lib.drill-thru.tu/test-queries
-                                                            ["ORDERS" :unaggregated :row "USER_ID"])]]}]}}))
+       {:click-type     :cell
+        :query-type     :unaggregated
+        :column-name    "USER_ID"
+        :drill-type     :drill-thru/fk-filter
+        :expected       {:lib/type  :metabase.lib.drill-thru/drill-thru
+                         :type      :drill-thru/fk-filter
+                         :column-name "User ID"
+                         :table-name  "Orders"}
+        :expected-query {:stages [{:source-table (meta/id :orders)
+                                   :filters      [[:= {}
+                                                   [:field {} (meta/id :orders :user-id)]
+                                                   (get-in lib.drill-thru.tu/test-queries
+                                                           ["ORDERS" :unaggregated :row "USER_ID"])]]}]}}))
     (testing "in a new stage for an aggregated query"
       (lib.drill-thru.tu/test-drill-application
-        {:click-type     :cell
-         :query-type     :aggregated
-         :column-name    "PRODUCT_ID"
-         :drill-type     :drill-thru/fk-filter
-         :expected       {:lib/type  :metabase.lib.drill-thru/drill-thru
-                          :type      :drill-thru/fk-filter
-                          :column-name "Product ID"
-                          :table-name  "Orders"}
-         :expected-query {:stages [(-> (get lib.drill-thru.tu/test-queries "ORDERS") :aggregated :query :stages first)
-                                   {:filters [[:= {} [:field {} (meta/id :orders :product-id)]
-                                               (get-in lib.drill-thru.tu/test-queries
-                                                       ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}}))))
+       {:click-type     :cell
+        :query-type     :aggregated
+        :column-name    "PRODUCT_ID"
+        :drill-type     :drill-thru/fk-filter
+        :expected       {:lib/type  :metabase.lib.drill-thru/drill-thru
+                         :type      :drill-thru/fk-filter
+                         :column-name "Product ID"
+                         :table-name  "Orders"}
+        :expected-query {:stages [(-> (get lib.drill-thru.tu/test-queries "ORDERS") :aggregated :query :stages first)
+                                  {:filters [[:= {} [:field {} (meta/id :orders :product-id)]
+                                              (get-in lib.drill-thru.tu/test-queries
+                                                      ["ORDERS" :aggregated :row "PRODUCT_ID"])]]}]}}))))

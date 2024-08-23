@@ -3,27 +3,27 @@ import { t } from "ttag";
 import { unescapeString } from "../index";
 
 import {
-  /* ALL_ASTYPES */ ADD,
-  FIELD,
-  LOGICAL_AND,
-  CALL,
-  EQUALITY,
-  NUMBER,
+  ADD,
+  ARG_LIST,
   BOOLEAN,
-  LOGICAL_OR,
+  CALL,
   COMPARISON,
+  EQUALITY,
+  FIELD,
   GROUP,
+  IDENTIFIER,
+  LOGICAL_AND,
+  LOGICAL_NOT,
+  LOGICAL_OR,
   MULDIV_OP,
+  NEGATIVE,
+  NUMBER,
+  ROOT,
   STRING,
   SUB,
-  NEGATIVE,
-  LOGICAL_NOT,
-  IDENTIFIER,
-  ROOT,
-  ARG_LIST,
 } from "./syntax";
-import type { NodeType, Node } from "./types";
-import { assert, CompileError } from "./types";
+import type { Node, NodeType } from "./types";
+import { CompileError, assert } from "./types";
 
 export type Expr =
   | number

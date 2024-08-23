@@ -82,5 +82,6 @@
                   [40.0 42]
                   [50.0 1]
                   [60.0 1]]
-                 (mt/formatted-rows [double long]
-                   (qp/process-query query')))))))))
+                 (mt/formatted-rows
+                  [double long]
+                  (qp/process-query query')))))))))

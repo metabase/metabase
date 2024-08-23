@@ -9,18 +9,18 @@ import {
 } from "metabase-lib/test-helpers";
 import type { DatasetQuery, Join } from "metabase-types/api";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   REVIEWS,
   REVIEWS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import {
+  DEFAULT_QUERY,
   aggregationOpts,
   expressionOpts,
   metadata,
-  DEFAULT_QUERY,
 } from "./__support__/expressions";
 import { sharedMetadata } from "./__support__/shared";
 import type { Suggestion } from "./suggest";

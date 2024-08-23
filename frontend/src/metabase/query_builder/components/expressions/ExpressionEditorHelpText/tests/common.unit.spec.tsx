@@ -5,8 +5,8 @@ import { getBrokenUpTextMatcher } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import {
-  createSampleDatabase,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";

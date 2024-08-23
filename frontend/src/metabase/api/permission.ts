@@ -1,15 +1,15 @@
 import type {
-  GroupId,
-  Group,
-  GroupListQuery,
   BaseGroupInfo,
+  Group,
+  GroupId,
+  GroupListQuery,
 } from "metabase-types/api";
 
 import { Api } from "./api";
 import {
   idTag,
-  listTag,
   invalidateTags,
+  listTag,
   providePermissionsGroupListTags,
   providePermissionsGroupTags,
 } from "./tags";

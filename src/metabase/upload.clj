@@ -115,10 +115,10 @@
   (swap! last-timestamp
          (fn [prev-timestamp]
            (t/max
-             (t/local-date-time)
-             (-> prev-timestamp
-                 (t/plus (t/seconds 1))
-                 (t/truncate-to :seconds))))))
+            (t/local-date-time)
+            (-> prev-timestamp
+                (t/plus (t/seconds 1))
+                (t/truncate-to :seconds))))))
 
 (defn- unique-table-name
   "Append the current datetime to the given name to create a unique table name. The resulting name will be short enough for the given driver (truncating the supplied `table-name` if necessary)."
@@ -217,7 +217,7 @@
 (defn- file-size-mb [csv-file]
   (/ (.length ^File csv-file) 1048576.0))
 
-(def ^:private separators ",;\t")
+(def ^:private separators ",;\t|")
 
 ;; This number was chosen arbitrarily. There is robustness / performance trade-off.
 (def ^:private max-inferred-lines 10)
@@ -254,6 +254,9 @@
 (defn- file-mime-type [^File file]
   (.detect tika file))
 
+(defn- assert-separator-chosen [s]
+  (or s (throw (IllegalArgumentException. "Unable to determine separator"))))
+
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
   Our heuristic is to use the separator that gives us the most number of columns.
@@ -266,10 +269,12 @@
                                      (comp (take max-inferred-lines)
                                            (map count))
                                      (csv/read-csv reader :separator s))
-                               (catch Exception _e nil))))]
+                               (catch Exception _e :invalid))))]
     (->> (map (juxt identity count-columns) separators)
+         (remove (comp #{:invalid} second))
          (sort-by (comp separator-priority second) u/reverse-compare)
-         ffirst)))
+         ffirst
+         assert-separator-chosen)))
 
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
@@ -293,8 +298,8 @@
   (let [max-length (max-column-bytes driver)]
     (fn [base suffix]
       (as-> (str base "_" suffix) %
-            (driver/escape-alias driver %)
-            (lib.util/truncate-alias % max-length)))))
+        (driver/escape-alias driver %)
+        (lib.util/truncate-alias % max-length)))))
 
 (defn- derive-column-names [driver header]
   (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver))]
@@ -403,7 +408,7 @@
              (not (driver.s/include-schema? db schema-name)))
         (ex-info (tru "The schema {0} is not syncable." schema-name)
                  {:status-code 422}))
-   (can-use-uploads-error db)))
+      (can-use-uploads-error db)))
 
 (defn- check-can-create-upload
   "Throws an error if the user cannot upload to the given database and schema."

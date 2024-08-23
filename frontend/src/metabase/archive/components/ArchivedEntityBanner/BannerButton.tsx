@@ -1,5 +1,5 @@
 import type { IconName } from "metabase/ui";
-import { Button, Flex, FixedSizeIcon, Text } from "metabase/ui";
+import { Button, FixedSizeIcon, Flex, Text } from "metabase/ui";
 
 interface BannerButtonProps {
   iconName: IconName;

@@ -13,8 +13,8 @@ import { Icon, type IconName } from "metabase/ui";
 import type {
   Alert,
   Channel,
+  ChannelApiResponse,
   ChannelSpec,
-  FormInput,
   ChannelType,
   Pulse,
   User,
@@ -31,7 +31,7 @@ interface PulseEditChannelsProps {
   pulse: Pulse;
   pulseId: Alert["id"];
   pulseIsValid: boolean;
-  formInput: FormInput;
+  formInput: ChannelApiResponse;
   user: User;
   users: User[];
   setPulse: (value: Pulse) => void;
