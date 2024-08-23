@@ -193,7 +193,7 @@
   "If there are multiple matching columns and `a-ref` has a binning value, check if only one column has that same
   binning."
   [a-ref   :- ::lib.schema.ref/ref
-    columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
+   columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
   (or (when-let [binning (lib.binning/binning a-ref)]
         (let [matching-columns (filter #(-> % lib.binning/binning (lib.binning/binning= binning))
                                        columns)]
