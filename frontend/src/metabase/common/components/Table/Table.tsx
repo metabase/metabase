@@ -42,8 +42,8 @@ export type TableProps<Row extends BaseRow> = {
  * @note All other props are passed to the <table> element
  */
 export function Table<Row extends BaseRow>({
-  rows,
   columns,
+  rows,
   rowRenderer,
   sortColumnName,
   sortDirection,
