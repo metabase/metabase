@@ -36,23 +36,23 @@
 
 (def ^:private ExpectedGetQueryActionAPIResponse
   "Expected schema for a query action as it should appear in the response for an API request to one of the GET endpoints."
- [:map
-  [:id                     ms/PositiveInt]
-  [:type                   [:= "query"]]
-  [:model_id               ms/PositiveInt]
-  [:database_id            ms/PositiveInt]
-  [:dataset_query          [:map
+  [:map
+   [:id                     ms/PositiveInt]
+   [:type                   [:= "query"]]
+   [:model_id               ms/PositiveInt]
+   [:database_id            ms/PositiveInt]
+   [:dataset_query          [:map
                              [:database ms/PositiveInt]
                              [:type     [:= "native"]]
                              [:native   [:map
                                          [:query :string]]]]]
-  [:parameters             :any]
-  [:parameter_mappings     :any]
-  [:visualization_settings :map]
-  [:public_uuid            [:maybe ms/UUIDString]]
-  [:made_public_by_id      [:maybe ms/PositiveInt]]
-  [:creator_id             ms/PositiveInt]
-  [:creator                DefaultUser]])
+   [:parameters             :any]
+   [:parameter_mappings     :any]
+   [:visualization_settings :map]
+   [:public_uuid            [:maybe ms/UUIDString]]
+   [:made_public_by_id      [:maybe ms/PositiveInt]]
+   [:creator_id             ms/PositiveInt]
+   [:creator                DefaultUser]])
 
 (defn all-actions-default
   [card-id]
@@ -123,7 +123,7 @@
                     :when (= (:type action) "query")]
               (testing "Should return a query action deserialized (#23201)"
                 (is (malli= ExpectedGetQueryActionAPIResponse
-                             action)))))
+                            action)))))
           (testing "Should not be allowed to list actions without permission on the model"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (str "action?model-id=" card-id)))
@@ -137,7 +137,7 @@
                       :when (= (:type action) "query")]
                 (testing "Should return a query action deserialized (#23201)"
                   (is (malli= ExpectedGetQueryActionAPIResponse
-                               action))))
+                              action))))
               (testing "Does not have archived actions"
                 (is (not (contains? action-ids (:id archived)))))
               (testing "Does not return actions on models without permissions"
@@ -153,7 +153,7 @@
           (let [action (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id))]
             (testing "Should return a query action deserialized (#23201)"
               (is (malli= ExpectedGetQueryActionAPIResponse
-                           action))))
+                          action))))
           (testing "Should not be allowed to get the action without permission on the model"
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (format "action/%d" action-id))))))))))
@@ -200,7 +200,7 @@
                 (mt/with-temp [Card model {:type :model
                                            :dataset_query
                                            (mt/native-query
-                                            {:query "select * from checkins limit 1"})}]
+                                             {:query "select * from checkins limit 1"})}]
                   (let [action (cross-db-action (:id model) test-data-id)
                         response (mt/user-http-request :rasta :post 400 "action"
                                                        action)]
@@ -494,7 +494,6 @@
               (is (= "Not found."
                      (mt/user-http-request :crowberto :delete 404 (format "action/%d/public_link" action-id)))))))
 
-
         (testing "Test that we *cannot* unshare a action if we are not admins"
           (let [action-opts (shared-action-opts)]
             (mt/with-actions [{:keys [action-id]} action-opts]
@@ -604,8 +603,8 @@
     (mt/with-actions-enabled
       (mt/with-actions [_ {:type :model :dataset_query (mt/mbql-query users)}
                         {:keys [action-id]} {:type :implicit :kind "row/update"
-                                                      :visualization_settings {:fields {"name" {:id     "name"
-                                                                                                :hidden true}}}}]
+                                             :visualization_settings {:fields {"name" {:id     "name"
+                                                                                       :hidden true}}}}]
         (testing "Hidden parameter should fail gracefully"
           (testing "GET /api/action/:id/execute"
             (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
@@ -652,7 +651,7 @@
         (mt/with-actions-disabled
           (testing "error if actions is disabled"
             (is (= "Actions are not enabled."
-                 (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
+                   (:message (mt/user-http-request :crowberto :get 400 (format "action/%d/execute" delete-action-id) :parameters (json/encode {:id 1})))))))))))
 
 ;; This is just to test the flow, a comprehensive tests for error type ares in
 ;; [[metabase.driver.sql-jdbc.actions-test/action-error-handling-test]]

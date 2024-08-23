@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru.summarize-column-by-time-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -7,8 +8,7 @@
     :as lib.drill-thru.summarize-column-by-time]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
-   [metabase.lib.test-metadata :as meta]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -16,16 +16,16 @@
   (testing (str "summarize-column-by-time is available for header click with no aggregations or breakouts, "
                 "for a summable column and at least one date-flavoured breakout available")
     (canned/canned-test
-      :drill-thru/summarize-column-by-time
-      (fn [test-case _context {:keys [click column-type]}]
-        (and (= click :header)
-             (= column-type :number)
-             (not (:native? test-case))
-             (zero? (:aggregations test-case))
-             (zero? (:breakouts test-case))
-             (some #(or (isa? (:effective-type %) :type/Date)
-                        (isa? (:effective-type %) :type/DateTime))
-                   (lib/breakoutable-columns (:query test-case))))))))
+     :drill-thru/summarize-column-by-time
+     (fn [test-case _context {:keys [click column-type]}]
+       (and (= click :header)
+            (= column-type :number)
+            (not (:native? test-case))
+            (zero? (:aggregations test-case))
+            (zero? (:breakouts test-case))
+            (some #(or (isa? (:effective-type %) :type/Date)
+                       (isa? (:effective-type %) :type/DateTime))
+                  (lib/breakoutable-columns (:query test-case))))))))
 
 (deftest ^:parallel aggregate-column-test
   (testing "Don't suggest summarize-column-by-time drill thrus for aggregate columns like `count(*)`"
