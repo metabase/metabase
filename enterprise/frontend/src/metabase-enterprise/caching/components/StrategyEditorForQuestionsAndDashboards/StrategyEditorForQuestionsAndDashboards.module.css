@@ -1,0 +1,37 @@
+.NoResultsTableRow,
+.SkeletonTableRow {
+  &:hover {
+    background-color: transparent !important;
+  }
+}
+
+.SkeletonTableRow {
+  height: 3rem;
+}
+
+.CacheableItemTable {
+  table-layout: fixed;
+  background-color: var(--mb-color-text-white);
+
+  td {
+    padding: 0.75rem;
+  }
+
+  tbody > tr:hover {
+    background-color: var(--mb-color-brand-alpha-04) !important;
+  }
+}
+
+.StrategyFormPanel {
+  border-left: 1px solid var(--mb-color-border);
+  position: relative;
+  max-width: 30rem;
+
+  @media screen and (--breakpoint-max-lg) {
+    max-width: 25rem;
+  }
+}
+
+.ItemLink {
+  font-size: inherit !important;
+}

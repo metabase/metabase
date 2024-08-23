@@ -2,7 +2,11 @@ import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
-import { ClientSortableTable } from "metabase/common/components/Table";
+import {
+  ClientSortableTable,
+  type Table,
+} from "metabase/common/components/Table";
+import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -35,6 +39,8 @@ export function UploadManagementTable() {
   const [deleteTableRequest] = useDeleteUploadTableMutation();
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const dispatch = useDispatch();
+
+  const locale = useLocale();
 
   // TODO: once we have uploads running through RTK Query, we can remove the force update
   // because we can properly invalidate the tables tag
@@ -154,6 +160,7 @@ export function UploadManagementTable() {
         columns={columns}
         rows={uploadTables}
         rowRenderer={row => renderRow(row)}
+        locale={locale}
       />
     </Box>
   );

@@ -8,19 +8,15 @@ import { Box, Flex, Icon } from "metabase/ui";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import CS from "./Table.module.css";
+import type { ColumnItem } from "./types";
 
 export type BaseRow = Record<string, unknown> & { id: number | string };
-
-type ColumnItem = {
-  name: string;
-  key: string;
-  sortable?: boolean;
-};
 
 export type TableProps<Row extends BaseRow> = {
   columns: ColumnItem[];
   rows: Row[];
   rowRenderer: (row: Row) => React.ReactNode;
+  tableProps?: React.HTMLAttributes<HTMLTableElement>;
   sortColumnName?: string | null;
   sortDirection?: SortDirection;
   onSort?: (columnName: string, direction: SortDirection) => void;
@@ -44,11 +40,11 @@ export type TableProps<Row extends BaseRow> = {
  * @param props.sortDirection   - The direction of the sort. Can be "asc" or "desc"
  * @param props.onSort          - a callback containing updated sort info for when a header is clicked
  * @param props.paginationProps - a map of information used to render pagination controls.
+ * @note All other props are passed to the <table> element
  */
-
 export function Table<Row extends BaseRow>({
-  columns,
   rows,
+  columns,
   rowRenderer,
   sortColumnName,
   sortDirection,
@@ -118,6 +114,7 @@ function ColumnHeader({
   sortColumn,
   sortDirection,
   onSort,
+  ...rest
 }: {
   column: ColumnItem;
   sortColumn?: string | null;
@@ -137,6 +134,7 @@ function ColumnHeader({
             : SortDirection.Asc,
         )
       }
+      {...rest}
     >
       {column.name}
       {
