@@ -6,6 +6,7 @@
    [metabase.lib.breakout :as lib.breakout]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31368 :as lib.tu.mocks-31368]
@@ -44,8 +45,8 @@
                   (lib/order-by (meta/field-metadata :venues :price))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
                                                  [(lib/=
-                                                    (meta/field-metadata :venues :category-id)
-                                                    (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                                   (meta/field-metadata :venues :category-id)
+                                                   (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                                 (lib/with-join-fields [(meta/field-metadata :categories :id)])))
                   (lib/append-stage)
                   (lib/with-fields [(meta/field-metadata :venues :price)])
@@ -169,12 +170,73 @@
         (is (=? [{:display-name "ID"}
                  {:display-name "Name"}
                  {:display-name "Category ID"}
-                 {:display-name "Latitude", :breakout-position 1}
+                 {:display-name "Latitude", :breakout-positions [1]}
                  {:display-name "Longitude"}
-                 {:display-name "Price", :breakout-position 0}
+                 {:display-name "Price", :breakout-positions [0]}
                  {:display-name "ID"}
                  {:display-name "Name"}]
                 (lib/breakoutable-columns query)))))))
+
+(deftest ^:parallel multiple-breakouts-for-the-same-column-test
+  (testing "multiple breakout positions for the same column"
+    (let [base-query         lib.tu/venues-query
+          column             (meta/field-metadata :venues :price)
+          binning-strategies (lib/available-binning-strategies base-query column)
+          query              (-> base-query
+                                 (lib/breakout (lib/with-binning column (first binning-strategies)))
+                                 (lib/breakout (lib/with-binning column (second binning-strategies))))]
+      (is (=? [{:display-name "ID"}
+               {:display-name "Name"}
+               {:display-name "Category ID"}
+               {:display-name "Latitude"}
+               {:display-name "Longitude"}
+               {:display-name "Price", :breakout-positions [0 1]}
+               {:display-name "ID"}
+               {:display-name "Name"}]
+              (lib/breakoutable-columns query)))))
+  (testing "should ignore duplicate breakouts without binning strategy or temporal bucket"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (first (lib/breakoutable-columns base-query))
+          query      (-> base-query
+                         (lib/breakout column)
+                         (lib/breakout column))
+          breakouts  (lib/breakouts query)]
+      (is (= 1 (count breakouts)))))
+  (testing "should ignore duplicate breakouts with the same binning strategy"
+    (let [base-query       (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column           (meta/field-metadata :people :latitude)
+          binning-strategy (first (lib/available-binning-strategies base-query column))
+          query            (-> base-query
+                               (lib/breakout (lib/with-binning column binning-strategy))
+                               (lib/breakout (lib/with-binning column binning-strategy)))
+          breakouts        (lib/breakouts query)]
+      (is (= 1 (count breakouts)))))
+  (testing "should ignore duplicate breakouts with the same temporal bucket"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (meta/field-metadata :people :birth-date)
+          query      (-> base-query
+                         (lib/breakout (lib/with-temporal-bucket column :month))
+                         (lib/breakout (lib/with-temporal-bucket column :month)))
+          breakouts  (lib/breakouts query)]
+      (is (= 1 (count breakouts)))))
+  (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (meta/field-metadata :people :birth-date)
+          query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
+                                        (lib.query/->legacy-MBQL)
+                                        (lib/query meta/metadata-provider))
+                                   (lib/with-temporal-bucket column :year))
+          breakouts  (lib/breakouts query)]
+      (is (= 1 (count breakouts)))))
+  (testing "should allow multiple breakouts with different temporal buckets when converting from legacy MBQL"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (meta/field-metadata :people :birth-date)
+          query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
+                                        (lib.query/->legacy-MBQL)
+                                        (lib/query meta/metadata-provider))
+                                   (lib/with-temporal-bucket column :month))
+          breakouts  (lib/breakouts query)]
+      (is (= 2 (count breakouts))))))
 
 (deftest ^:parallel breakoutable-explicit-joins-test
   (testing "breakoutable-columns should include columns from explicit joins"
@@ -335,11 +397,11 @@
                {:display-name "Category ID", :lib/source :source/table-defaults}
                {:display-name "Latitude",    :lib/source :source/table-defaults}
                {:display-name "Longitude",   :lib/source :source/table-defaults}
-               {:display-name "Price"        :lib/source :source/table-defaults, :breakout-position 1}
+               {:display-name "Price"        :lib/source :source/table-defaults, :breakout-positions [1]}
                {:display-name "ID",          :lib/source :source/implicitly-joinable}
-               {:display-name "Name",        :lib/source :source/implicitly-joinable, :breakout-position 0}]
+               {:display-name "Name",        :lib/source :source/implicitly-joinable, :breakout-positions [0]}]
               breakoutables'))
-      (is (= 2 (count (filter :breakout-position breakoutables'))))
+      (is (= 2 (count (filter :breakout-positions breakoutables'))))
       (is (=? [{:table {:name "VENUES", :display-name "Venues", :is-source-table true}
                 :semantic-type :type/PK
                 :name "ID"
@@ -394,7 +456,7 @@
                 :is-from-previous-stage false
                 :is-calculated false
                 :is-implicitly-joinable false
-                :breakout-position 1}
+                :breakout-positions [1]}
                {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
                 :semantic-type :type/PK
                 :name "ID"
@@ -413,7 +475,7 @@
                 :is-from-previous-stage false
                 :is-calculated false
                 :is-implicitly-joinable true
-                :breakout-position 0}]
+                :breakout-positions [0]}]
               (map #(lib/display-info query' %) breakoutables'))))))
 
 (deftest ^:parallel breakoutable-columns-with-source-card-e2e-test
@@ -427,15 +489,15 @@
                      :base-type :type/Integer}
                     name-col))
             (let [query' (lib/breakout query name-col)]
-               (is (=? {:stages
-                        [{:source-card 1
-                          :breakout    [[:field {:base-type :type/Integer} "USER_ID"]]}]}
-                       query'))
-               (is (= "My Card, Grouped by User ID"
-                      (lib/describe-query query')))
-               (is (= ["User ID"]
-                      (for [breakout (lib/breakouts query')]
-                        (lib/display-name query' breakout)))))))))))
+              (is (=? {:stages
+                       [{:source-card 1
+                         :breakout    [[:field {:base-type :type/Integer} "USER_ID"]]}]}
+                      query'))
+              (is (= "My Card, Grouped by User ID"
+                     (lib/describe-query query')))
+              (is (= ["User ID"]
+                     (for [breakout (lib/breakouts query')]
+                       (lib/display-name query' breakout)))))))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
   (let [query (-> lib.tu/venues-query
@@ -530,8 +592,8 @@
                         (lib/breakout field-ref))]
           (is (= [field-ref]
                  (lib/breakouts query)))
-          (is (=? {:name              "NAME"
-                   :breakout-position 0}
+          (is (=? {:name               "NAME"
+                   :breakout-positions [0]}
                   (m/find-first #(= (:id %) (meta/id :categories :name))
                                 (lib/breakoutable-columns query)))))))))
 
@@ -558,8 +620,8 @@
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakoutable-columns-test
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
-    (is (=? {:display-name      "Products → Category"
-             :breakout-position 0}
+    (is (=? {:display-name       "Products → Category"
+             :breakout-positions [0]}
             (m/find-first #(= (:id %) (meta/id :products :category))
                           (lib/breakoutable-columns (legacy-query-with-broken-breakout)))))))
 
@@ -568,7 +630,7 @@
     (is (=? {:stages [{:aggregation [[:count {}]]
                        :breakout    [[:field
                                       {:binning {:strategy :bin-width, :bin-width 1}}
-                                   (meta/id :people :latitude)]]}]}
+                                      (meta/id :people :latitude)]]}]}
             (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                 (lib/aggregate (lib/count))
                 (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width, :bin-width 1})))))))
@@ -605,15 +667,35 @@
               (lib.breakout/remove-existing-breakouts-for-column query' (meta/field-metadata :people :latitude)))))))
 
 (deftest ^:parallel breakout-column-test
-  (let [query      (-> lib.tu/venues-query
-                       (lib/breakout  (meta/field-metadata :venues :category-id))
-                       (lib/breakout  (meta/field-metadata :venues :price))
-                       (lib/aggregate (lib/count)))
-        category   (m/find-first #(= (:name %) "CATEGORY_ID") (lib/visible-columns query))
-        price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
-        breakouts  (lib/breakouts query)]
-    (is (= (count breakouts) 2))
-    (is (=? category
-            (lib.breakout/breakout-column query -1 (first breakouts))))
-    (is (=? price
-            (lib.breakout/breakout-column query -1 (second breakouts))))))
+  (testing "should find the correct column"
+    (let [query      (-> lib.tu/venues-query
+                         (lib/breakout  (meta/field-metadata :venues :category-id))
+                         (lib/breakout  (meta/field-metadata :venues :price))
+                         (lib/aggregate (lib/count)))
+          category   (meta/field-metadata :venues :category-id)
+          price      (meta/field-metadata :venues :price)
+          breakouts  (lib/breakouts query)]
+      (is (= (count breakouts) 2))
+      (is (=? category
+              (lib.breakout/breakout-column query (first breakouts))))
+      (is (=? price
+              (lib.breakout/breakout-column query (second breakouts))))))
+  (testing "should set the binning strategy from the breakout clause"
+    (let [base-query       (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column           (meta/field-metadata :people :latitude)
+          binning-strategy (first (lib/available-binning-strategies base-query column))
+          query            (->> (lib/with-binning column binning-strategy)
+                                (lib/breakout base-query))
+          breakout         (first (lib/breakouts query))]
+      (is (=? {:strategy :default}
+              (->> (lib/breakout-column query breakout)
+                   (lib/binning))))))
+  (testing "should set the temporal unit from the breakout clause"
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (meta/field-metadata :people :birth-date)
+          query      (->> (lib/with-temporal-bucket column :month)
+                          (lib/breakout base-query))
+          breakout   (first (lib/breakouts query))]
+      (is (=? {:unit :month}
+              (->> (lib/breakout-column query breakout)
+                   (lib/temporal-bucket)))))))

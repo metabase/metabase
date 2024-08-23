@@ -28,7 +28,7 @@
   (testing "Should nicely format a chain of exceptions, with the top-level Exception appearing first"
     (testing "lowest-level error `:type` should be pulled up to the top-level"
       (let [e1 (ex-info "1" {:level 1})
-            e2 (ex-info "2" {:level 2, :type qp.error-type/qp} e1)
+            e2 (ex-info "2" {:level 2, :type qp.error-type/qp :is-curated true} e1)
             e3 (ex-info "3" {:level 3} e2)]
         (is (= {:status     :failed
                 :class      clojure.lang.ExceptionInfo
@@ -36,12 +36,13 @@
                 :stacktrace true
                 :error_type :qp
                 :ex-data    {:level 1}
-                :via        [{:status     :failed
-                              :class      clojure.lang.ExceptionInfo
-                              :error      "2"
-                              :stacktrace true
-                              :ex-data    {:level 2, :type :qp}
-                              :error_type :qp}
+                :via        [{:status        :failed
+                              :class         clojure.lang.ExceptionInfo
+                              :error         "2"
+                              :stacktrace    true
+                              :ex-data       {:level 2, :type :qp, :is-curated true}
+                              :error_type    :qp
+                              :error_is_curated true}
                              {:status     :failed
                               :class      clojure.lang.ExceptionInfo
                               :error      "3"
@@ -52,7 +53,6 @@
                    (update :via (fn [causes]
                                   (for [cause causes]
                                     (update cause :stacktrace sequential?)))))))))))
-
 
 (defn catch-exceptions
   ([run]

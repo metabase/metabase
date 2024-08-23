@@ -1,6 +1,5 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-
-import { color } from "metabase/lib/colors";
 
 export const EmptyStateContainer = styled.div`
   padding: 2rem 2rem 0 2rem;
@@ -41,13 +40,23 @@ export const OptionItem = styled.div<OptionItemProps>`
   margin: 0;
   padding: 0.5rem 0.6rem;
   width: 100%;
-  background-color: ${props =>
-    props.selected ? color(props.selectedColor) : color("bg-white")};
-  color: ${props =>
-    props.selected ? color("text-white") : "var(--mb-color-text-dark)"};
+  ${props =>
+    props.selected
+      ? css`
+          color: var(--mb-color-text-selected);
+          background-color: ${props.selectedColor};
+        `
+      : css`
+          color: var(--mb-color-text-primary);
+          background-color: var(--mb-color-background);
+        `}
 
   &:hover {
-    background-color: ${props =>
-      props.selected ? color(props.selectedColor) : "var(--mb-color-bg-light)"};
+    ${props =>
+      !props.selected &&
+      css`
+        color: var(--mb-color-text-hover);
+        background-color: var(--mb-color-background-hover);
+      `}
   }
 `;

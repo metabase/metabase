@@ -41,7 +41,6 @@
        {:value default-value})
      (dissoc parameter :default))))
 
-
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 
@@ -64,9 +63,9 @@
   [{:keys [entity url] :as _link-card}]
   (let [url-link-card? (some? url)]
     {:text (str (format
-                  "### [%s](%s)"
-                  (if url-link-card? url (:name entity))
-                  (if url-link-card? url (link-card-entity->url entity)))
+                 "### [%s](%s)"
+                 (if url-link-card? url (:name entity))
+                 (if url-link-card? url (link-card-entity->url entity)))
                 (when-let [description (if url-link-card? nil (:description entity))]
                   (format "\n%s" description)))
      :type :text}))
@@ -87,8 +86,8 @@
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
             instance           (t2/select-one
-                                 (serdes/link-card-model->toucan-model model)
-                                 (dashboard-card/link-card-info-query-for-model model id))]
+                                (serdes/link-card-model->toucan-model model)
+                                (dashboard-card/link-card-info-query-for-model model id))]
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
@@ -147,6 +146,12 @@
   {:text name
    :type :tab-title})
 
+(defn- render-tabs?
+  "Check if a dashboard has more than 1 tab, and thus needs them to be rendered.
+  We don't need to render the tab title if only 1 exists (issue #45123)."
+  [dashboard-or-id]
+  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
+
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
 
@@ -154,13 +159,13 @@
   [{:keys [skip_if_empty] pulse-creator-id :creator_id :as pulse} dashboard & {:as _options}]
   (let [dashboard-id (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
-      (let [parts (if (dashboard/has-tabs? dashboard)
-                    (let [tabs            (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
-                          tabs-with-cards (filter #(seq (:cards %)) tabs)]
-                      (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards
-                                            :when                   (seq cards)]
+      (let [parts (if (render-tabs? dashboard)
+                    (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
+                          tabs-with-cards    (filter #(seq (:cards %)) tabs)
+                          should-render-tab? (< 1 (count tabs-with-cards))]
+                      (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                                         (concat
-                                         (when (< 1 (count tabs-with-cards))
+                                         (when should-render-tab?
                                            [(tab->part tab)])
                                          (dashcards->part cards pulse dashboard))))))
                     (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]
@@ -168,8 +173,8 @@
           ;; Remove cards that have no results when empty results aren't wanted
           (remove (fn [{part-type :type :as part}]
                     (and
-                      (= part-type :card)
-                      (zero? (get-in part [:result :row_count] 0))))
+                     (= part-type :card)
+                     (zero? (get-in part [:result :row_count] 0))))
                   parts)
           parts)))))
 
@@ -192,7 +197,7 @@
   (let [goal-comparison      (if alert_above_goal >= <)
         goal-val             (ui-logic/find-goal-value first-result)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card first-result)
-                                                            (get-in first-result [:result :data]))]
+                                                                  (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info (tru "Unable to compare results to goal for alert.")
@@ -202,7 +207,6 @@
      (some (fn [row]
              (goal-comparison (comparison-col-rowfn row) goal-val))
            (get-in first-result [:result :data :rows])))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Creating Notifications To Send                                         |

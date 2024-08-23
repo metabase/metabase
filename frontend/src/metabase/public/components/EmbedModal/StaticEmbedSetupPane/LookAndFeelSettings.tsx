@@ -4,12 +4,11 @@ import { jt, t } from "ttag";
 import { UpsellMetabaseBanner } from "metabase/admin/upsells/UpsellMetabaseBanner";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
-  EmbeddingDisplayOptions,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
 import {
   getDocsUrl,
@@ -53,7 +52,10 @@ export const LookAndFeelSettings = ({
     }),
   );
   const upgradePageUrl = useSelector(state =>
-    getUpgradeUrl(state, { utm_media: "static-embed-settings-appearance" }),
+    getUpgradeUrl(state, {
+      utm_campaign: "embedding-static-font",
+      utm_content: "static-embed-settings-look-and-feel",
+    }),
   );
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
@@ -62,9 +64,6 @@ export const LookAndFeelSettings = ({
   const availableFonts = useSelector(state =>
     getSetting(state, "available-fonts"),
   );
-  const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
-
-  const downloadDataId = useUniqueId("download-data");
 
   return (
     <>
@@ -75,7 +74,13 @@ export const LookAndFeelSettings = ({
           <Text>{jt`These options require changing the server code. You can play around with and preview the options here. Check out the ${(
             <ExternalLink
               key="doc"
-              href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
+              href={`${docsUrl}?${new URLSearchParams({
+                utm_source: "product",
+                utm_medium: "docs",
+                utm_campaign: "embedding-static",
+                utm_content: "static-embed-settings-look-and-feel",
+                source_plan: plan,
+              })}#customizing-the-appearance-of-static-embeds`}
             >{t`documentation`}</ExternalLink>
           )} for more.`}</Text>
 
@@ -180,26 +185,19 @@ export const LookAndFeelSettings = ({
           />
 
           {canWhitelabel && (
-            // We only show the "Download Data" toggle if the users are pro/enterprise
-            <DisplayOptionSection
-              title={t`Download data`}
-              titleId={downloadDataId}
-            >
-              <Switch
-                aria-labelledby={downloadDataId}
-                label={t`Enable users to download data from this embed`}
-                labelPosition="left"
-                size="sm"
-                variant="stretch"
-                checked={displayOptions.downloads ?? true}
-                onChange={e =>
-                  onChangeDisplayOptions({
-                    ...displayOptions,
-                    downloads: e.target.checked,
-                  })
-                }
-              />
-            </DisplayOptionSection>
+            <Switch
+              label={t`Download buttons`}
+              labelPosition="left"
+              size="sm"
+              variant="stretch"
+              checked={displayOptions.downloads ?? true}
+              onChange={e =>
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  downloads: e.target.checked,
+                })
+              }
+            />
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>

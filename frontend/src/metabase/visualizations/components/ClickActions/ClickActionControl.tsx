@@ -1,6 +1,6 @@
 import Tooltip from "metabase/core/components/Tooltip";
 import type { IconName } from "metabase/ui";
-import { Icon, Button } from "metabase/ui";
+import { Button, Icon } from "metabase/ui";
 import {
   type ClickAction,
   type CustomClickAction,
@@ -16,9 +16,9 @@ import {
   FormattingControl,
   InfoControl,
   SortControl,
+  Subtitle,
   TokenActionButton,
   TokenFilterActionButton,
-  Subtitle,
 } from "./ClickActionControl.styled";
 
 interface Props {

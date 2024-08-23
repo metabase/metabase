@@ -1,53 +1,53 @@
-import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { NO_COLLECTION_PERSONAL_COLLECTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visualize,
-  openTable,
-  openOrdersTable,
-  popover,
-  modal,
-  summarize,
-  startNewQuestion,
+  addCustomColumn,
+  appBar,
+  assertEChartsTooltip,
+  assertQueryBuilderRowCount,
+  cartesianChartCircle,
+  createNativeQuestion,
+  createQuestion,
+  echartsContainer,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
-  questionInfoButton,
-  rightSidebar,
-  getNotebookStep,
-  visitQuestionAdhoc,
-  openNotebook,
-  queryBuilderHeader,
-  cartesianChartCircle,
   filter,
-  moveColumnDown,
-  getDraggableElements,
-  resetTestTable,
-  getTable,
-  resyncDatabase,
-  createQuestion,
-  saveQuestion,
-  echartsContainer,
-  newButton,
-  appBar,
-  openProductsTable,
-  queryBuilderFooter,
-  enterCustomColumnDetails,
-  addCustomColumn,
-  tableInteractive,
-  createNativeQuestion,
-  queryBuilderMain,
-  leftSidebar,
-  assertQueryBuilderRowCount,
-  visitDashboard,
   getDashboardCard,
-  testTooltipPairs,
+  getDraggableElements,
+  getNotebookStep,
+  getTable,
   join,
-  visitQuestion,
-  tableHeaderClick,
-  withDatabase,
-  visitModel,
+  leftSidebar,
+  modal,
+  moveColumnDown,
+  newButton,
+  openNotebook,
+  openOrdersTable,
+  openProductsTable,
+  openTable,
+  popover,
+  queryBuilderFooter,
+  queryBuilderHeader,
+  queryBuilderMain,
+  questionInfoButton,
+  resetTestTable,
+  restore,
+  resyncDatabase,
+  rightSidebar,
+  saveQuestion,
   setModelMetadata,
+  startNewQuestion,
+  summarize,
+  tableHeaderClick,
+  tableInteractive,
+  visitDashboard,
+  visitModel,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -1207,11 +1207,12 @@ describe("issue 31960", () => {
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).realHover();
     });
-    testTooltipPairs([
-      ["Created At:", "July 10–16, 2022"],
-      ["Count:", String(rowCount)],
-      ["Compared to previous week", "+10%"],
-    ]);
+    assertEChartsTooltip({
+      header: "July 10–16, 2022",
+      rows: [
+        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
+      ],
+    });
     getDashboardCard().within(() => {
       cartesianChartCircle().eq(dotIndex).click({ force: true });
     });
@@ -1249,7 +1250,7 @@ describe("issue 43294", () => {
 
     cy.log("compare action");
     cy.button("Add column").click();
-    popover().findByText("Compare “Count” to previous months").click();
+    popover().findByText("Compare to the past").click();
     popover().button("Done").click();
 
     cy.log("extract action");
@@ -2075,6 +2076,52 @@ describe("issue 45452", () => {
       const element = $el[0];
       expect(element.scrollHeight > element.clientHeight).to.be.true;
       expect(element.offsetWidth > element.clientWidth).to.be.true;
+    });
+  });
+});
+
+describe("issue 41612", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card").as("createQuestion");
+  });
+
+  it("should not ignore chart viz settings when viewing raw results as a table (metabase#41612)", () => {
+    visitQuestionAdhoc(
+      {
+        display: "line",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            "source-table": ORDERS_ID,
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    queryBuilderMain().findByLabelText("Switch to data").click();
+    queryBuilderHeader().button("Save").click();
+    modal().button("Save").click();
+
+    cy.wait("@createQuestion").then(xhr => {
+      const card = xhr.request.body;
+      expect(card.visualization_settings["graph.metrics"]).to.deep.equal([
+        "count",
+      ]);
+      expect(card.visualization_settings["graph.dimensions"]).to.deep.equal([
+        "CREATED_AT",
+      ]);
     });
   });
 });

@@ -1,42 +1,45 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
+  addOrUpdateDashboardCard,
+  assertEmbeddingParameter,
+  assertSheetRowsCount,
+  closeStaticEmbeddingModal,
+  createDashboardWithTabs,
+  createQuestion,
+  dashboardParametersContainer,
+  describeEE,
+  downloadAndAssert,
+  editDashboard,
+  filterWidget,
+  getDashboardCard,
+  getIframeBody,
+  getIframeUrl,
+  getRequiredToggle,
+  goToTab,
+  modal,
+  multiAutocompleteInput,
+  openStaticEmbeddingModal,
   popover,
+  publishChanges,
+  restore,
+  saveDashboard,
+  setEmbeddingParameter,
+  setTokenFeatures,
+  sidebar,
+  toggleRequiredParameter,
   visitDashboard,
   visitEmbeddedPage,
-  filterWidget,
   visitIframe,
-  getDashboardCard,
-  addOrUpdateDashboardCard,
-  openStaticEmbeddingModal,
-  downloadAndAssert,
-  assertSheetRowsCount,
-  modal,
-  getIframeBody,
-  describeEE,
-  setTokenFeatures,
-  dashboardParametersContainer,
-  goToTab,
-  editDashboard,
-  toggleRequiredParameter,
-  sidebar,
-  saveDashboard,
-  getRequiredToggle,
-  closeStaticEmbeddingModal,
-  publishChanges,
-  setEmbeddingParameter,
-  assertEmbeddingParameter,
-  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { addWidgetStringFilter } from "../native-filters/helpers/e2e-field-filter-helpers";
 
 import {
-  questionDetails,
-  questionDetailsWithDefaults,
   dashboardDetails,
   mapParameters,
+  questionDetails,
+  questionDetailsWithDefaults,
 } from "./shared/embedding-dashboard";
 
 const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -283,6 +286,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
       assertRequiredEnabledForName({ name: "User", enabled: false });
       assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
     });
+
+    it("should render cursor pointer on hover over a toggle (metabase#46223)", () => {
+      visitDashboard("@dashboardId");
+
+      cy.findAllByTestId("parameter-value-widget-target")
+        .first()
+        .realHover()
+        .should("have.css", "cursor", "pointer");
+    });
   });
 
   context("API", () => {
@@ -527,6 +539,34 @@ describe("scenarios > embedding > dashboard parameters", () => {
       },
     );
   });
+
+  it("should send 'X-Metabase-Client' header for api requests", () => {
+    cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
+
+    cy.get("@dashboardId").then(dashboardId => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        embedding_params: {},
+        enable_embedding: true,
+      });
+
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: {},
+      };
+
+      visitEmbeddedPage(payload, {
+        onBeforeLoad: window => {
+          window.Cypress = undefined;
+        },
+      });
+
+      cy.wait("@getEmbeddedDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
+      });
+    });
+  });
 });
 
 describe("scenarios > embedding > dashboard parameters with defaults", () => {
@@ -717,6 +757,186 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
+    });
+  });
+
+  it("should not rerender the static dashboard with tabs preview unnecessarily (metabase#46378)", () => {
+    const textFilter = createMockParameter({
+      id: "3",
+      name: "Text filter",
+      slug: "filter-text",
+      type: "string/contains",
+      sectionId: "string",
+    });
+
+    const TAB_1 = { id: "11", name: "Tab 1" };
+    const TAB_2 = { id: "12", name: "Tab 2" };
+
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+      embedding_params: {
+        /**
+         * Make sure the parameter is shown in embed preview, because it previously
+         * caused the iframe to rerender even when only the hash part of the embed
+         * preview URL is changed.
+         *
+         * @see useSyncedQueryString in frontend/src/metabase/hooks/use-synced-query-string.ts
+         */
+        [textFilter.slug]: "enabled",
+      },
+      parameters: [textFilter],
+      tabs: [TAB_1, TAB_2],
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    createQuestion(questionDetails)
+      .then(({ body: { id: card_id } }) => {
+        createDashboardWithTabs({
+          ...dashboardDetails,
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              dashboard_tab_id: TAB_1.id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 12,
+            },
+          ],
+        });
+      })
+      .then(dashboard => {
+        visitDashboard(dashboard.id);
+      });
+
+    cy.intercept(
+      "GET",
+      "api/preview_embed/dashboard/*",
+      cy.spy().as("previewEmbedSpy"),
+    ).as("previewEmbed");
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    cy.wait("@previewEmbed");
+
+    modal().within(() => {
+      cy.findByRole("tab", { name: "Look and Feel" }).click();
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard theme");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("light"); // default value
+        });
+
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dark").click({ force: true });
+      cy.wait(1000);
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("night");
+        });
+
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard title");
+      getIframeBody().findByText(dashboardDetails.name).should("exist");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dashboard title").click({ force: true });
+      getIframeBody().findByText(dashboardDetails.name).should("not.exist");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard border");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "1px");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dashboard border").click({ force: true });
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "0px");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert font");
+      getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      cy.findByLabelText("Font").click();
+    });
+
+    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
+    popover().findByText("Oswald").click();
+    modal().within(() => {
+      getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+    });
+  });
+
+  it("should resize iframe to dashboard content size (metabase#47061)", () => {
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    createQuestion(questionDetails)
+      .then(({ body: { id: card_id } }) => {
+        createDashboardWithTabs({
+          ...dashboardDetails,
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 20,
+            },
+          ],
+        });
+      })
+      .then(dashboard => {
+        visitDashboard(dashboard.id);
+      });
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    getIframeUrl().then(iframeUrl => {
+      Cypress.config("baseUrl", null);
+      cy.visit(
+        `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`,
+      );
+    });
+
+    getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
+
+    cy.get("#iframe").then($iframe => {
+      const [iframe] = $iframe;
+      expect(iframe.clientHeight).to.be.greaterThan(1000);
     });
   });
 });

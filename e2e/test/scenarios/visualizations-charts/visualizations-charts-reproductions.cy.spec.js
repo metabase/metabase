@@ -1,35 +1,36 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  cartesianChartCircle,
-  withDatabase,
-  openSeriesSettings,
-  echartsContainer,
-  testPairedTooltipValues,
-  filter,
-  filterWidget,
-  filterField,
-  visitAlias,
-  queryBuilderMain,
-  queryBuilderHeader,
-  visitQuestionAdhoc,
-  sidebar,
-  chartPathWithFillColor,
-  summarize,
-  saveDashboard,
-  visitDashboard,
-  editDashboard,
-  createQuestion,
-  visualize,
-  openNotebook,
-  removeSummaryGroupingField,
   addSummaryField,
   addSummaryGroupingField,
-  selectFilterOperator,
-  saveSavedQuestion,
+  assertEChartsTooltip,
+  cartesianChartCircle,
+  chartPathWithFillColor,
+  createQuestion,
+  echartsContainer,
+  editDashboard,
+  filter,
+  filterField,
+  filterWidget,
+  openNotebook,
+  openSeriesSettings,
+  popover,
+  queryBuilderHeader,
+  queryBuilderMain,
+  removeSummaryGroupingField,
+  restore,
   runNativeQuery,
+  saveDashboard,
+  saveSavedQuestion,
+  selectFilterOperator,
+  sidebar,
+  summarize,
+  testPairedTooltipValues,
+  visitAlias,
+  visitDashboard,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -129,9 +130,14 @@ describe("issue 16170", { tags: "@mongo" }, () => {
 
       cartesianChartCircle().eq(-2).trigger("mousemove");
 
-      popover().within(() => {
-        testPairedTooltipValues("Created At", "2019");
-        testPairedTooltipValues("Count", "6,524");
+      assertEChartsTooltip({
+        header: "2019",
+        rows: [
+          {
+            name: "Count",
+            value: "6,524",
+          },
+        ],
       });
     });
   });
@@ -559,9 +565,15 @@ describe("issue 21452", () => {
 
     cartesianChartCircle().first().realHover();
 
-    popover().within(() => {
-      testPairedTooltipValues("Created At", "2022");
-      testPairedTooltipValues("Foo", "3,236");
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Foo",
+          value: "3,236",
+        },
+      ],
     });
 
     cy.get("@dataset.all").should("have.length", 1);
@@ -853,17 +865,58 @@ describe("issue 27279", () => {
 
     // Extra step, just to be overly cautious
     chartPathWithFillColor("#98D9D9").realHover();
-    popover().within(() => {
-      testPairedTooltipValues("K", "F2021");
-      testPairedTooltipValues("O", "-3");
-      testPairedTooltipValues("Sum of V", "1");
+
+    assertEChartsTooltip({
+      header: "F2021",
+      rows: [
+        {
+          color: "#98D9D9",
+          name: "-3",
+          value: "1",
+        },
+        {
+          color: "#F2A86F",
+          name: "-2",
+          value: "(empty)",
+        },
+        {
+          color: "#F9D45C",
+          name: "-1",
+          value: "(empty)",
+        },
+        {
+          color: "#509EE3",
+          name: "0",
+          value: "(empty)",
+        },
+      ],
     });
 
     chartPathWithFillColor("#509EE3").realHover();
-    popover().within(() => {
-      testPairedTooltipValues("K", "F2022");
-      testPairedTooltipValues("O", "0");
-      testPairedTooltipValues("Sum of V", "4");
+    assertEChartsTooltip({
+      header: "F2022",
+      rows: [
+        {
+          color: "#98D9D9",
+          name: "-3",
+          value: "(empty)",
+        },
+        {
+          color: "#F2A86F",
+          name: "-2",
+          value: "(empty)",
+        },
+        {
+          color: "#F9D45C",
+          name: "-1",
+          value: "(empty)",
+        },
+        {
+          color: "#509EE3",
+          name: "0",
+          value: "4",
+        },
+      ],
     });
   });
 });

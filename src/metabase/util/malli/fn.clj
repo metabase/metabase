@@ -139,8 +139,8 @@
     (deparameterized-fn-form (parse-fn-tail '[:- :int [x :- :int] (inc x)]))
     ;; =>
     (fn [x] (inc x))"
-  [parsed]
-  `(core/fn ~@(deparameterized-fn-tail parsed)))
+  [parsed & [fn-name]]
+  `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
@@ -154,14 +154,14 @@
                                                   [{:keys [value message]}]
                                                   (str message ", got: " (pr-str value)))})
             details   (merge
-                        {:type      error-type
-                         :error     error
-                         :humanized humanized
-                         :schema    schema
-                         :value     value}
-                        error-context)]
+                       {:type      error-type
+                        :error     error
+                        :humanized humanized
+                        :schema    schema
+                        :value     value}
+                       error-context)]
         (if (or config/is-dev?
-              config/is-test?)
+                config/is-test?)
           ;; In dev and test, throw an exception.
           (throw (ex-info (case error-type
                             ::invalid-input  (i18n/tru "Invalid input: {0}" (pr-str humanized))
@@ -169,12 +169,12 @@
                           details))
           ;; In prod, log a warning.
           (log/warn
-            (case error-type
-              ::invalid-input  (i18n/tru "Invalid input - Please report this as an issue on Github: {0}"
-                                         (pr-str humanized))
-              ::invalid-output (i18n/tru "Invalid output - Please report this as an issue on Github: {0}"
-                                         (pr-str humanized)))
-            details))))))
+           (case error-type
+             ::invalid-input  (i18n/tru "Invalid input - Please report this as an issue on Github: {0}"
+                                        (pr-str humanized))
+             ::invalid-output (i18n/tru "Invalid output - Please report this as an issue on Github: {0}"
+                                        (pr-str humanized)))
+           details))))))
 
 (defn validate-input
   "Impl for [[metabase.util.malli.fn/fn]]; validates an input argument with `value` against `schema` using a cached
@@ -293,8 +293,8 @@
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
-  [error-context parsed]
-  `(let [~'&f ~(deparameterized-fn-form parsed)]
+  [error-context parsed & [fn-name]]
+  `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------

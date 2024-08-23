@@ -1,37 +1,42 @@
-import { USERS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_ID,
   ADMIN_USER_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  setupSMTP,
-  visitDashboard,
-  sendEmailAndAssert,
-  sidebar,
-  editDashboard,
-  saveDashboard,
-  modal,
-  visitQuestion,
-  setTokenFeatures,
-  clickSend,
-  openNewPublicLinkDropdown,
-  setFilter,
-  describeEE,
   chartPathWithFillColor,
-  sendEmailAndVisitIt,
-  visitPublicDashboard,
-  visitEmbeddedPage,
-  getIframeBody,
-  openStaticEmbeddingModal,
-  dashboardHeader,
+  clickSend,
+  createQuestion,
+  createQuestionAndDashboard,
+  describeEE,
+  editDashboard,
   filterWidget,
+  getDashboardCard,
   getFullName,
+  getIframeBody,
+  modal,
   openAndAddEmailsToSubscriptions,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  openStaticEmbeddingModal,
+  popover,
+  restore,
+  saveDashboard,
+  sendEmailAndAssert,
+  sendEmailAndVisitIt,
+  setFilter,
+  setTokenFeatures,
+  setupSMTP,
+  sharingMenuButton,
+  sidebar,
+  tooltip,
+  visitDashboard,
+  visitEmbeddedPage,
+  visitPublicDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -58,7 +63,7 @@ describe("issue 18009", { tags: "@external" }, () => {
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.findByLabelText("subscriptions").click();
+    openSharingMenu("Subscriptions");
 
     sidebar()
       .findByPlaceholderText("Enter user names or email addresses")
@@ -114,7 +119,7 @@ describe("issue 18344", { tags: "@external" }, () => {
 
   it("subscription should not include original question name when it's been renamed in the dashboard (metabase#18344)", () => {
     // Send a test email subscription
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -159,7 +164,7 @@ describe("issue 18352", { tags: "@external" }, () => {
   });
 
   it("should send the card with the INT64 values (metabase#18352)", () => {
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
@@ -230,7 +235,7 @@ describeEE("issue 18669", { tags: "@external" }, () => {
   });
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -284,7 +289,7 @@ describe("issue 20393", () => {
 
     editDashboard();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // map the date parameter to the card
     cy.findByTestId("dashcard-container").contains("Select").click();
@@ -329,54 +334,57 @@ describe("issue 21559", { tags: "@external" }, () => {
     },
     display: "scalar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
     setupSMTP();
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: q1Details,
     }).then(({ body: { dashboard_id } }) => {
-      cy.createQuestion(q2Details);
+      createQuestion(q2Details);
 
       visitDashboard(dashboard_id);
+      cy.findByTestId("scalar-value").should("have.text", "80.52");
       editDashboard();
     });
   });
 
-  it(
-    "should respect dashboard card visualization (metabase#21559)",
-    { tags: "@flaky" },
-    () => {
-      cy.findByTestId("add-series-button").click({ force: true });
+  it("should respect dashboard card visualization (metabase#21559)", () => {
+    cy.findByTestId("add-series-button").click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByTestId("add-series-modal").within(() => {
       cy.findByText(q2Details.name).click();
-      cy.findByTestId("add-series-modal").within(() => {
-        // wait for elements to appear inside modal
-        chartPathWithFillColor("#A989C5").should("have.length", 1);
-        chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
-        cy.button("Done").click();
-      });
-
-      // Make sure visualization changed to bars
+      // wait for elements to appear inside modal
       chartPathWithFillColor("#A989C5").should("have.length", 1);
       chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
-      saveDashboard();
+      cy.button("Done").click();
+    });
 
-      openAndAddEmailsToSubscriptions([
-        `${admin.first_name} ${admin.last_name}`,
-      ]);
+    cy.findByTestId("add-series-modal").should("not.exist");
 
-      sendEmailAndAssert(email => {
-        expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
-        expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
-      });
-    },
-  );
+    // Make sure visualization changed to bars
+    getDashboardCard(0).within(() => {
+      chartPathWithFillColor("#A989C5").should("have.length", 1);
+      chartPathWithFillColor("#88BF4D").should("have.length", 1);
+    });
+
+    saveDashboard();
+    // Wait for "Edited a few seconds ago" to disappear because the whole
+    // dashboard re-renders after that!
+    cy.findByTestId("revision-history-button").should("not.be.visible");
+
+    openAndAddEmailsToSubscriptions([`${admin.first_name} ${admin.last_name}`]);
+
+    sendEmailAndAssert(email => {
+      expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
+      expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
+    });
+  });
 });
 
 describe("issue 22524", () => {
@@ -719,7 +727,7 @@ describe("issue 30314", () => {
   it("should clean the new subscription form on cancel (metabase#30314)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    dashboardHeader().findByLabelText("subscriptions").click();
+    openSharingMenu("Subscriptions");
     sidebar().within(() => {
       cy.findByText("Email it").click();
 
@@ -789,7 +797,7 @@ describe("issue 17657", () => {
   it("frontend should gracefully handle the case of a subscription without a recipient (metabase#17657)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
@@ -884,7 +892,7 @@ describe("issue 17658", { tags: "@external" }, () => {
   it("should delete dashboard subscription from any collection (metabase#17658)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
@@ -959,7 +967,7 @@ describe("issue 17547", () => {
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    cy.icon("bell").click();
+    openSharingMenu("Edit alerts");
     popover().within(() => {
       cy.findByText("Daily, 12:00 PM");
       cy.findByText("Edit").click();
@@ -971,7 +979,7 @@ describe("issue 17547", () => {
 
     cy.wait("@alertQuery");
 
-    cy.icon("bell").click();
+    openSharingMenu("Edit alerts");
     popover().within(() => {
       cy.findByText("Daily, 12:00 AM");
     });
@@ -987,13 +995,8 @@ describe("issue 16108", () => {
   it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
     visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("download").realHover();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Download full results");
-    cy.icon("bell").realHover();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Get alerts");
-    cy.icon("share").realHover();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sharing");
+    tooltip().findByText("Download full results");
+    sharingMenuButton().realHover();
+    tooltip().findByText("Sharing");
   });
 });

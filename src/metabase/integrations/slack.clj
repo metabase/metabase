@@ -20,8 +20,8 @@
 
 (defsetting slack-token
   (deferred-tru
-    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
-         "Please use a new Slack app integration instead."))
+   (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
+        "Please use a new Slack app integration instead."))
   :deprecated "0.42.0"
   :visibility :settings-manager
   :doc        false
@@ -42,8 +42,8 @@
 
 (defsetting slack-token-valid?
   (deferred-tru
-    (str "Whether the current Slack app token, if set, is valid. "
-         "Set to 'false' if a Slack API request returns an auth error."))
+   (str "Whether the current Slack app token, if set, is valid. "
+        "Set to 'false' if a Slack API request returns an auth error."))
   :type       :boolean
   :visibility :settings-manager
   :doc        false
@@ -360,8 +360,8 @@
                      (u/poll {:thunk       complete!
                               :done?       uploaded-to-channel?
                               ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
-                              ;; If it takes more than 10 seconds, something else is wrong and we should abort.
-                              :timeout-ms  3000
+                              ;; If it takes more than 20 seconds, something else is wrong and we should abort.
+                              :timeout-ms  20000
                               :interval-ms 500}))
             (throw (ex-info "Timed out waiting to confirm the file was uploaded to a Slack channel."
                             {:channel-id channel-id, :filename filename})))]
@@ -370,7 +370,6 @@
 (defn- get-upload-url! [filename file]
   (POST "files.getUploadURLExternal" {:query-params {:filename filename
                                                      :length   (count file)}}))
-
 
 (defn- upload-file-to-url! [upload-url file]
   (let [response (http/post upload-url {:multipart [{:name "file", :content file}]})]
@@ -406,10 +405,10 @@
    & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST "chat.postMessage"
-        {:form-params
-         {:channel     channel-id
-          :username    "MetaBot"
-          :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
-          :text        text-or-nil
-          :attachments (when (seq attachments)
-                         (json/generate-string attachments))}}))
+    {:form-params
+     {:channel     channel-id
+      :username    "MetaBot"
+      :icon_url    "http://static.metabase.com/metabot_slack_avatar_whitebg.png"
+      :text        text-or-nil
+      :attachments (when (seq attachments)
+                     (json/generate-string attachments))}}))

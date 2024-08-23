@@ -1,21 +1,21 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  entityPickerModal,
-  restore,
-  popover,
-  visualize,
-  visitQuestionAdhoc,
+  cartesianChartCircle,
   changeBinningForDimension,
+  chartPathWithFillColor,
+  entityPickerModal,
+  entityPickerModalTab,
   getBinningButtonForDimension,
+  getNotebookStep,
+  openOrdersTable,
+  popover,
+  restore,
+  rightSidebar,
   startNewQuestion,
   summarize,
-  openOrdersTable,
-  getNotebookStep,
-  rightSidebar,
-  chartPathWithFillColor,
-  cartesianChartCircle,
-  entityPickerModalTab,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

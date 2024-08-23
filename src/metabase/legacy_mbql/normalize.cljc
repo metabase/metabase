@@ -73,7 +73,6 @@
        ((set k-or-ks) clause-name)
        (= k-or-ks clause-name)))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                NORMALIZE TOKENS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -158,6 +157,12 @@
        amount
        (maybe-normalize-token amount))
      (maybe-normalize-token unit)]))
+
+(defmethod normalize-mbql-clause-tokens :relative-time-interval
+  [[_ col & [_value _bucket _offset-value _offset-bucket :as args]]]
+  (into [:relative-time-interval (normalize-tokens col :ignore-path)]
+        (map maybe-normalize-token)
+        args))
 
 (defmethod normalize-mbql-clause-tokens :relative-datetime
   ;; Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
@@ -852,7 +857,6 @@
                       {:query query}
                       e)))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          WHOLE-QUERY TRANSFORMATIONS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -978,7 +982,6 @@
        (throw (ex-info "Error removing empty clauses from form."
                        {:form x, :path path}
                        e))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |

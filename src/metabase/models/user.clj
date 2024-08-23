@@ -289,7 +289,7 @@
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
-                                                    :user_id [:in (set (map u/the-id users))]))]
+                                                             :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
@@ -333,8 +333,8 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   (mu/with-api-error-message
-    [:map-of ms/KeywordOrString :any]
-    (deferred-tru "login attribute keys must be a keyword or string")))
+   [:map-of ms/KeywordOrString :any]
+   (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -345,6 +345,7 @@
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
+   [:locale           {:optional true} [:maybe ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ms/KeywordOrString]]])
 
 (def ^:private Invitor
@@ -353,7 +354,7 @@
    [:email      ms/Email]
    [:first_name [:maybe ms/NonBlankString]]])
 
-(mu/defn- insert-new-user!
+(mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
@@ -437,14 +438,14 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-       (when (seq to-remove)
-         (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+        (when (seq to-remove)
+          (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
        ;; TODO use multipel insert here
-       (doseq [group-id to-add]
-         (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+        (doseq [group-id to-add]
+          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------

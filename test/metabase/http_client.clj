@@ -39,16 +39,16 @@
 (defn- build-query-string
   [query-parameters]
   (str/join \& (letfn [(url-encode [s]
-                                  (cond-> s
-                                    (keyword? s) u/qualified-name
-                                    (some? s)    codec/url-encode))
+                         (cond-> s
+                           (keyword? s) u/qualified-name
+                           (some? s)    codec/url-encode))
                        (encode-key-value [k v]
                          (str (url-encode k) \= (url-encode v)))]
-                      (flatten (for [[k value-or-values] query-parameters]
-                                 (if (sequential? value-or-values)
-                                   (for [v value-or-values]
-                                     (encode-key-value k v))
-                                   [(encode-key-value k value-or-values)]))))))
+                 (flatten (for [[k value-or-values] query-parameters]
+                            (if (sequential? value-or-values)
+                              (for [v value-or-values]
+                                (encode-key-value k v))
+                              [(encode-key-value k value-or-values)]))))))
 
 (defn build-url
   "Build an API URL for `localhost` and `MB_JETTY_PORT` with `query-parameters`.
@@ -169,7 +169,6 @@
                       {:credentials credentials}
                       e)))))
 
-
 ;;; client
 
 (defn build-request-map
@@ -218,6 +217,7 @@
   {:get    http/get
    :post   http/post
    :put    http/put
+   :patch  http/patch
    :delete http/delete})
 
 (def ^:private ClientParamsMap
@@ -330,16 +330,16 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                       (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
-                       (catch clojure.lang.ExceptionInfo e
-                         (log/debug e method-name url)
-                         (ex-data e))
-                       (catch Exception e
-                         (throw (ex-info (.getMessage e)
-                                         {:method  method-name
-                                          :url     url
-                                          :request request}
-                                         e)))))
+                        (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
+                        (catch clojure.lang.ExceptionInfo e
+                          (log/debug e method-name url)
+                          (ex-data e))
+                        (catch Exception e
+                          (throw (ex-info (.getMessage e)
+                                          {:method  method-name
+                                           :url     url
+                                           :request request}
+                                          e)))))
         ;; Now perform the HTTP request
         {:keys [status body] :as response} (thunk)]
     (log/debug :mock-request method-name url status)
@@ -349,7 +349,7 @@
 (def ^:private http-client-args
   [:catn
    [:credentials      [:? [:or string? map?]]]
-   [:method           [:enum :get :put :post :delete]]
+   [:method           [:enum :get :put :post :patch :delete]]
    [:expected-status  [:? integer?]]
    [:url              string?]
    [:request-options  [:? [:fn (every-pred map? :request-options)]]]
@@ -426,7 +426,7 @@
 
    *  `credentials`          Optional map of `:username` and `:password` or Session token of a User who we
                              should perform the request as
-   *  `method`               `:get`, `:post`, `:delete`, or `:put`
+   *  `method`               `:get`, `:post`, `:delete`, `:put`, or `:patch`
    *  `expected-status-code` When passed, throw an exception if the response has a different status code.
    *  `endpoint`             URL minus the `<host>/api/` part e.g. `card/1/favorite`. Appended to `*url-prefix*`.
    *  `request-options`      Optional map of options to pass as part of request to `clj-http.client`, e.g. `:headers`.

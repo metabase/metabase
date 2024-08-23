@@ -1,5 +1,6 @@
 (ns metabase.lib.equality-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.generators :as gen]
    [malli.generator :as mg]
@@ -12,8 +13,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.util :as u]
-   [metabase.util.malli.registry :as mr]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -54,7 +54,7 @@
       {:lib/type :m, :a 1}          {:a 1, :b/c 2}
       {:lib/type :m, :a 1, :b/c 2}  {:a 1, :b/c 2}
       {:lib/type :m, :a 1, :b/c 2}  {:a 1, :b/c 3}
-      {:lib/type :m1, }             {:lib/type :m2, }
+      {:lib/type :m1}             {:lib/type :m2}
       {:lib/type :m1, :a 1}         {:lib/type :m2, :a 1}
       {:lib/type :m1, :a 1}         {:lib/type :m2, :a 1, :b/c 2}
       {:lib/type :m1, :a 1, :b/c 2} {:lib/type :m2, :a 1, :b/c 2}
@@ -291,14 +291,14 @@
   (let [query (-> lib.tu/venues-query
                   (lib/breakout (meta/field-metadata :venues :id)))
         filterable-cols (lib/filterable-columns query)
-        matched-from-col (lib.equality/find-matching-column query -1 (m/find-first :breakout-position (lib/breakoutable-columns query)) filterable-cols)
+        matched-from-col (lib.equality/find-matching-column query -1 (m/find-first :breakout-positions (lib/breakoutable-columns query)) filterable-cols)
         matched-from-ref (lib.equality/find-matching-column query -1 (first (lib/breakouts query)) filterable-cols)]
     (is (=?
-          {:id (meta/id :venues :id)}
-          matched-from-ref))
+         {:id (meta/id :venues :id)}
+         matched-from-ref))
     (is (=?
-          {:id (meta/id :venues :id)}
-          matched-from-col))
+         {:id (meta/id :venues :id)}
+         matched-from-col))
     (is (= matched-from-ref
            matched-from-col))))
 
@@ -341,7 +341,7 @@
   (testing "find-matching-column with a self join"
     (let [query     lib.tu/query-with-self-join
           cols      (for [col (meta/fields :orders)]
-                       (meta/field-metadata :orders col))
+                      (meta/field-metadata :orders col))
           table-col #(assoc % :lib/source :source/table-defaults)
           join-col  #(merge %
                             {:lib/source                   :source/joins
@@ -495,29 +495,29 @@
       (testing "matches with UUID"
         (is (=? {:display-name "Count", :lib/source :source/aggregations}
                 (lib.equality/find-matching-column
-                  [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
-                  (lib/returned-columns query)))))
+                 [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
+                 (lib/returned-columns query)))))
       (testing "fails with bad UUID but good source-name"
         (is (nil? (lib.equality/find-matching-column
-                    [:aggregation {:lib/uuid        (str (random-uuid))
-                                   :lib/source-name "count"}
-                     "this is a bad UUID"]
-                    (lib/returned-columns query))))))
+                   [:aggregation {:lib/uuid        (str (random-uuid))
+                                  :lib/source-name "count"}
+                    "this is a bad UUID"]
+                   (lib/returned-columns query))))))
     (testing "when passing query"
       (testing "matches with UUID"
         (is (=? {:display-name "Count", :lib/source :source/aggregations}
                 (lib.equality/find-matching-column
-                  query -1
-                  [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
-                  (lib/returned-columns query)))))
+                 query -1
+                 [:aggregation {:lib/uuid (str (random-uuid))} (lib.options/uuid ag)]
+                 (lib/returned-columns query)))))
       (testing "matches with bad UUID but good source-name"
         (is (=? {:display-name "Count", :lib/source :source/aggregations}
                 (lib.equality/find-matching-column
-                  query -1
-                  [:aggregation {:lib/uuid        (str (random-uuid))
-                                 :lib/source-name "count"}
-                   "this is a bad UUID"]
-                  (lib/returned-columns query))))))))
+                 query -1
+                 [:aggregation {:lib/uuid        (str (random-uuid))
+                                :lib/source-name "count"}
+                  "this is a bad UUID"]
+                 (lib/returned-columns query))))))))
 
 (deftest ^:parallel find-matching-column-expression-test
   (is (=? {:name "expr", :lib/source :source/expressions}

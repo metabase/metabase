@@ -56,7 +56,7 @@
   :audit :getter)
 
 (defsetting ldap-user-filter
-  (deferred-tru "User lookup filter. The placeholder '{login}' will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter. The placeholder '{login'} will be replaced by the user supplied login.")
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"
   :audit   :getter)
 
@@ -213,7 +213,7 @@
        (log/debug "LDAP connection test successful")
        {:status :SUCCESS}))
     (catch LDAPException e
-       (log/debug "LDAP connection test failed: " (.getMessage e))
+      (log/debug "LDAP connection test failed: " (.getMessage e))
       {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
       (log/debug "LDAP connection test failed: " (.getMessage e))

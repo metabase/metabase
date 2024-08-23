@@ -53,10 +53,10 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
-  RowVisualizationRoot,
   RowChartContainer,
   RowChartLegendLayout,
   RowLegendCaption,
+  RowVisualizationRoot,
 } from "./RowChart.styled";
 import {
   getColumnValueFormatter,
@@ -139,7 +139,7 @@ const RowChartVisualization = ({
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const stackOffset = getStackOffset(settings);
-  const theme = useRowChartTheme(fontFamily);
+  const theme = useRowChartTheme(fontFamily, isDashboard, isFullscreen);
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),

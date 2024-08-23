@@ -1,6 +1,8 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
+import { openSharingMenu } from "./e2e-sharing-helpers";
+
 /**
  * @typedef {object} QuestionResource
  * @property {number} question - ID of a question we are embedding
@@ -38,7 +40,7 @@ import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = {}, hideFilters = [], pageStyle = {} } = {},
+  { setFilters = {}, hideFilters = [], pageStyle = {}, onBeforeLoad } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
 
@@ -63,6 +65,7 @@ export function visitEmbeddedPage(
       url: urlRoot,
       qs: setFilters,
       onBeforeLoad: window => {
+        onBeforeLoad?.(window);
         if (urlHash) {
           window.location.hash = urlHash;
         }
@@ -104,18 +107,24 @@ export function visitEmbeddedPage(
   }
 }
 
+export function getIframeUrl() {
+  modal().findByText("Preview").click();
+
+  return cy.document().then(doc => {
+    const iframe = doc.querySelector("iframe");
+
+    return iframe.src;
+  });
+}
+
 /**
  * Grab an iframe `src` via UI and open it,
  * but make sure user is signed out.
  */
 export function visitIframe() {
-  modal().findByText("Preview").click();
-
-  cy.document().then(doc => {
-    const iframe = doc.querySelector("iframe");
-
+  getIframeUrl().then(iframeUrl => {
     cy.signOut();
-    cy.visit(iframe.src);
+    cy.visit(iframeUrl);
   });
 }
 
@@ -137,20 +146,6 @@ export function getEmbedModalSharingPane() {
   return cy.findByTestId("sharing-pane-container");
 }
 
-export function openPublicLinkPopoverFromMenu() {
-  cy.icon("share").click();
-  cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-public-link-item")
-    .click();
-}
-
-export function openEmbedModalFromMenu() {
-  cy.icon("share").click();
-  cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-embed-modal-item")
-    .click();
-}
-
 /**
  * Open Static Embedding setup modal
  * @param {object} params
@@ -164,7 +159,7 @@ export function openStaticEmbeddingModal({
   acceptTerms = true,
   confirmSave,
 } = {}) {
-  openEmbedModalFromMenu();
+  openSharingMenu("Embed");
 
   if (confirmSave) {
     cy.findByRole("button", { name: "Save" }).click();
@@ -242,7 +237,7 @@ export function openNewPublicLinkDropdown(resourceType) {
     "sharingEnabled",
   );
 
-  openPublicLinkPopoverFromMenu();
+  openSharingMenu(/public link/i);
 
   cy.wait("@sharingEnabled").then(
     ({

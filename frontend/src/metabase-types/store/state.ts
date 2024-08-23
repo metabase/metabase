@@ -6,6 +6,7 @@ import type { AdminState } from "./admin";
 import type { AppState } from "./app";
 import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
+import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EntitiesState } from "./entities";
 import type { MetabotState } from "./metabot";
@@ -37,6 +38,7 @@ export interface State {
   upload: FileUploadState;
   modal: ModalName;
   undo: UndoState;
+  downloads: DownloadsState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

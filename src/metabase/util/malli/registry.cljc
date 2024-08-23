@@ -1,10 +1,10 @@
 (ns metabase.util.malli.registry
   (:refer-clojure :exclude [declare def])
   (:require
+   #?@(:clj ([malli.experimental.time :as malli.time]))
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut]
-   #?@(:clj ([malli.experimental.time :as malli.time])))
+   [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
@@ -17,7 +17,7 @@
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
-  (or (get-in @cache [k schema])
+  (or (get (get @cache k) schema) ; get-in is terribly inefficient
       (let [v (value-thunk)]
         (swap! cache assoc-in [k schema] v)
         v)))

@@ -1,10 +1,11 @@
-import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   appBar,
   entityPickerModal,
   getNotebookStep,
   popover,
   queryWritableDB,
+  relativeDatePicker,
   resetTestTable,
   restore,
   resyncDatabase,
@@ -166,5 +167,71 @@ describe("(metabase#45042)", () => {
     //Click something to dismiss nav list
     cy.findByRole("link", { name: "General" }).click();
     cy.findByRole("list", { name: "Navigation links" }).should("not.exist");
+  });
+});
+
+describe("(metabase#46714)", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.visit("/admin/datamodel/segment/create");
+
+    cy.findByTestId("gui-builder").findByText("Select a table").click();
+
+    popover().within(() => {
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("gui-builder")
+      .findByText("Add filters to narrow your answer")
+      .click();
+  });
+
+  it("should allow users to apply relative date options in the segment date picker", () => {
+    popover().within(() => {
+      cy.findByText("Created At").click();
+      cy.findByText("Relative dates...").click();
+      cy.findByRole("button", { name: "Previous" }).click();
+      cy.findByLabelText("Options").click();
+    });
+
+    cy.findByTestId("relative-date-picker-options").within(() => {
+      cy.findByText("Starting from...").click();
+    });
+
+    relativeDatePicker.setValue({ value: 68, unit: "day" });
+
+    relativeDatePicker.setStartingFrom({
+      value: 70,
+      unit: "day",
+    });
+
+    popover().findByText("Add filter").click();
+
+    cy.findByTestId("filter-widget-target").should(
+      "have.text",
+      "Created At  Previous 68 Days, starting 70 days ago",
+    );
+  });
+
+  it("should not hide operator select menu behind the main filter popover", () => {
+    popover().within(() => {
+      cy.findByText("Total").click();
+    });
+
+    cy.findByTestId("operator-select").should("have.value", "Equal to").click();
+    cy.findByTestId("select-dropdown")
+      .should("exist")
+      .findByText("Less than")
+      .click();
+    cy.findByTestId("operator-select").should("have.value", "Less than");
+    cy.findByTestId("field-values-widget").clear().type("1000");
+    popover().findByText("Add filter").click();
+
+    cy.findByTestId("filter-widget-target").should(
+      "have.text",
+      "Total is less than 1000",
+    );
   });
 });

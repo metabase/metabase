@@ -14,7 +14,6 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- do-with-conn-impersonation-defs
-  {:style/indent 2}
   [group [{:keys [db-id attribute] :as impersonation-def} & more] f]
   (if-not impersonation-def
     (f)
@@ -35,15 +34,16 @@
                 (data-perms/set-database-permission! group (data/id) :perms/create-queries :query-builder-and-native)
                 (let [{:keys [impersonations attributes]} args]
                   ;; set user login_attributes
-                  (met/with-user-attributes test-user-name-or-user-id attributes
-                    (do-with-conn-impersonation-defs group impersonations
-                      (fn []
-                        ;; bind user as current user, then run f
-                        (if (keyword? test-user-name-or-user-id)
-                          (test.users/with-test-user test-user-name-or-user-id
-                            (f group))
-                          (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
-                            (f group))))))))))]
+                  (met/with-user-attributes! test-user-name-or-user-id attributes
+                    (do-with-conn-impersonation-defs
+                     group impersonations
+                     (fn []
+                       ;; bind user as current user, then run f
+                       (if (keyword? test-user-name-or-user-id)
+                         (test.users/with-test-user test-user-name-or-user-id
+                           (f group))
+                         (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
+                           (f group))))))))))]
     (thunk)))
 
 (defmacro with-impersonations-for-user!
@@ -51,8 +51,8 @@
   `:rasta` or an arbitrary User ID."
   [test-user-name-or-user-id impersonations-and-attributes-map & body]
   `(do-with-impersonations-for-user! ~impersonations-and-attributes-map
-                                    ~test-user-name-or-user-id
-                                    (fn [~'&group] ~@body)))
+                                     ~test-user-name-or-user-id
+                                     (fn [~'&group] ~@body)))
 
 (defmacro with-impersonations!
   "Execute `body` with `impersonations` and optionally user `attributes` in effect for the :rasta test user, for the

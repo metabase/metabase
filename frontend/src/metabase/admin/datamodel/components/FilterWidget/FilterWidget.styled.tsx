@@ -10,6 +10,7 @@ export const FilterWidgetRoot = styled.div<FilterWidgetRootProps>`
   flex-shrink: 0;
   border: 2px solid transparent;
   border-radius: 0.5rem;
+  cursor: pointer;
 
   ${({ isSelected }) =>
     isSelected &&

@@ -3,12 +3,12 @@ import {
   getYAxesModels,
 } from "metabase/visualizations/echarts/cartesian/model/axis";
 import {
+  applyVisualizationSettingsDataTransformations,
   getCardsColumnByDataKeyMap,
   getJoinedCardsDataset,
   getSortedSeriesModels,
-  applyVisualizationSettingsDataTransformations,
-  sortDataset,
   scaleDataset,
+  sortDataset,
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import {
   getCardsSeriesModels,
@@ -16,10 +16,7 @@ import {
   getDimensionModel,
   getFormatters,
 } from "metabase/visualizations/echarts/cartesian/model/series";
-import type {
-  CartesianChartModel,
-  ShowWarning,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getSingleSeriesDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/settings/cartesian-chart";
@@ -28,6 +25,8 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
+
+import type { ShowWarning } from "../../types";
 
 import { getStackModels } from "./stack";
 import { getAxisTransforms } from "./transforms";

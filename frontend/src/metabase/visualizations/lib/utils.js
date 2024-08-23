@@ -4,8 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import { isDimension, isMetric, isDate } from "metabase-lib/v1/types/utils/isa";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
 
@@ -26,11 +26,14 @@ export function columnsAreValid(colNames, data, filter = () => true) {
   for (const col of data.cols) {
     colsByName[col.name] = col;
   }
-  return colNames.reduce(
+
+  const isValid = colNames.reduce(
     (acc, name) =>
       acc && (name == null || (colsByName[name] && filter(colsByName[name]))),
     true,
   );
+
+  return Boolean(isValid);
 }
 
 // computed size properties (drop 'px' and convert string -> Number)

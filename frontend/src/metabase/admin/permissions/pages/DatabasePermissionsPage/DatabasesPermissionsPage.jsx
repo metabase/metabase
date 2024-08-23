@@ -12,7 +12,7 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
-import { Loader, Center } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 
 import {
   PermissionsEditor,
@@ -21,12 +21,12 @@ import {
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
-  updateDataPermission,
   LOAD_DATA_PERMISSIONS_FOR_DB,
+  updateDataPermission,
 } from "../../permissions";
 import {
-  getGroupsDataPermissionEditor,
   getDataFocusSidebar,
+  getGroupsDataPermissionEditor,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
 } from "../../selectors/data-permissions";

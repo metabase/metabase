@@ -7,9 +7,9 @@ import {
 import {
   getDashboardComplete,
   getEditingParameter,
-  getHiddenParameterSlugs,
   getIsEditing,
   getIsNightMode,
+  getTabHiddenParameterSlugs,
   getValuePopulatedParameters,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -26,7 +26,7 @@ export function DashboardParameterList({
   const dashboard = useSelector(getDashboardComplete);
   const parameters = useSelector(getValuePopulatedParameters);
   const editingParameter = useSelector(getEditingParameter);
-  const hiddenParameterSlugs = useSelector(getHiddenParameterSlugs);
+  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
   const isEditing = useSelector(getIsEditing);
   const isNightMode = useSelector(getIsNightMode);
   const shouldRenderAsNightMode = isNightMode && isFullscreen;

@@ -54,14 +54,34 @@ export function getDefaultDimensions(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
 ) {
-  return preserveExistingColumnsOrder(
-    settings["graph.dimensions"] ?? [],
-    getDefaultColumns(rawSeries).dimensions,
-  );
+  const prevDimensions = settings["graph.dimensions"] ?? [];
+  const defaultDimensions = getDefaultColumns(rawSeries).dimensions;
+  if (
+    prevDimensions.length > 0 &&
+    defaultDimensions.length > 0 &&
+    defaultDimensions[0] == null
+  ) {
+    return prevDimensions;
+  }
+
+  return preserveExistingColumnsOrder(prevDimensions, defaultDimensions);
 }
 
-export function getDefaultMetrics(rawSeries: RawSeries) {
-  return getDefaultColumns(rawSeries).metrics;
+export function getDefaultMetrics(
+  rawSeries: RawSeries,
+  settings: ComputedVisualizationSettings,
+) {
+  const prevMetrics = settings["graph.metrics"] ?? [];
+  const defaultMetrics = getDefaultColumns(rawSeries).metrics;
+  if (
+    prevMetrics.length > 0 &&
+    defaultMetrics.length > 0 &&
+    defaultMetrics[0] == null
+  ) {
+    return prevMetrics;
+  }
+
+  return defaultMetrics;
 }
 
 export const STACKABLE_SERIES_DISPLAY_TYPES = new Set(["area", "bar"]);

@@ -216,6 +216,7 @@
   is-empty not-empty
   starts-with ends-with
   contains does-not-contain
+  relative-time-interval
   time-interval
   segment]
  [lib.filter.update
@@ -243,8 +244,7 @@
   with-join-strategy
   with-join-conditions]
  [lib.metric
-  available-metrics
-  metric-based?]
+  available-metrics]
  [lib.limit
   current-limit
   limit]

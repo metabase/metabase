@@ -58,8 +58,7 @@
   color: var(--mb-color-text-secondary);
 }
 
-.DashboardNight .parameter.noPopover input:focus,
-.ThemeNight .parameter.noPopover input:focus {
+.DashboardNight .parameter.noPopover input:focus {
   color: var(--mb-color-text-white);
 }
 
@@ -68,4 +67,8 @@
   font-size: 16px;
   font-weight: bold;
   color: var(--mb-color-text-secondary);
+}
+
+.widgetStatus {
+  flex: 0 0 auto;
 }

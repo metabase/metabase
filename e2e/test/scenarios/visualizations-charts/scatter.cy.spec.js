@@ -1,10 +1,10 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertEChartsTooltip,
+  cartesianChartCircle,
   restore,
   visitQuestionAdhoc,
-  popover,
-  cartesianChartCircle,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -42,10 +42,21 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    popover().within(() => {
-      cy.findByText("Created At:");
-      cy.findByText("Count:");
-      cy.findByText(/Distinct values of Products? → ID:/);
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "Created At",
+          value: "May 2023",
+        },
+        {
+          name: "Count",
+          value: "271",
+        },
+        {
+          name: "Distinct values of Product → ID",
+          value: "137",
+        },
+      ],
     });
   });
 
@@ -68,10 +79,21 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    popover().within(() => {
-      cy.findByText("Created At:");
-      cy.findByText("Orders count:");
-      cy.findByText("Products count:");
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "Created At",
+          value: "May 2023",
+        },
+        {
+          name: "Orders count",
+          value: "271",
+        },
+        {
+          name: "Products count",
+          value: "137",
+        },
+      ],
     });
   });
 

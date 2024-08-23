@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { getLimitedPermissionAvailabilityMessage } from "metabase/admin/permissions/constants/messages";
@@ -8,14 +8,15 @@ import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import { getSetting } from "metabase/selectors/settings";
 import {
-  rem,
   Accordion,
   Box,
   Flex,
+  Icon,
+  List,
   Stack,
   Text,
   Title,
-  Icon,
+  rem,
 } from "metabase/ui";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
@@ -120,7 +121,34 @@ export const DataPermissionsHelp = () => {
                 icon="permissions_limited"
                 iconColor="brand"
                 name={t`Sandboxed (Pro)`}
-                description={t`Let's you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
+                description={t`Lets you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
+              />
+
+              <PermissionHelpDescription
+                hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
+                icon="close"
+                iconColor="danger"
+                name={t`Blocked (Pro)`}
+                description={
+                  <>
+                    <Text>{t`The group can’t view:`}</Text>
+                    <List style={{ marginInlineEnd: "1rem" }}>
+                      <List.Item>
+                        <Text>{t`The schema/table when browsing data.`}</Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>
+                          {t`Query-builder questions using that schema/table.`}
+                        </Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>
+                          {t`ANY native questions querying the database, regardless of schema/table.`}
+                        </Text>
+                      </List.Item>
+                    </List>
+                  </>
+                }
               />
             </Stack>
           </Accordion.Panel>

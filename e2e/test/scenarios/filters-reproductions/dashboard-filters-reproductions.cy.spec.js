@@ -16,6 +16,7 @@ import {
   createDashboardWithTabs,
   createNativeQuestion,
   createQuestion,
+  dashboardParameterSidebar,
   dashboardParametersContainer,
   editDashboard,
   filterWidget,
@@ -30,16 +31,15 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  setModelMetadata,
   sidebar,
+  tableHeaderClick,
   undoToast,
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
   visitModel,
   visitPublicDashboard,
-  setModelMetadata,
-  tableHeaderClick,
-  dashboardParameterSidebar,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -963,7 +963,7 @@ describe("issue 16177", () => {
   it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Quantity");
     dashboardParameterSidebar().findByText("No default").click();
     popover().findByText("Yesterday").click();
@@ -1182,7 +1182,7 @@ describe("issue 22482", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -1779,8 +1779,7 @@ describe("issue 25374", () => {
 
   it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
     // Drill-through and go to the question
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(questionDetails.name).click();
+    getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
     cy.get("[data-testid=cell-data]")
@@ -1804,7 +1803,59 @@ describe("issue 25374", () => {
     // Make sure URL search params are correct
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
   });
+
+  it("should retain comma-separated values when reverting to default (metabase#25374-3)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Equal to")
+      .click();
+    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
+    saveDashboard();
+
+    cy.button("Clear").click();
+    cy.location("search").should("eq", "?equal_to=");
+
+    cy.button("Reset filter to default state").click();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+
+    // Drill-through and go to the question
+    getDashboardCard(0).findByText(questionDetails.name).click();
+    cy.wait("@cardQuery");
+
+    cy.get("[data-testid=cell-data]")
+      .should("contain", "COUNT(*)")
+      .and("contain", "3");
+
+    cy.location("search").should("eq", "?num=1%2C2%2C3");
+  });
+
+  it("should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Equal to")
+      .click();
+    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
+    saveDashboard();
+
+    cy.button("Clear").click();
+    cy.location("search").should("eq", "?equal_to=");
+
+    cy.button("Move, trash, and more…").click();
+    popover().findByText("Reset all filters").should("be.visible").click();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+
+    // Drill-through and go to the question
+    getDashboardCard(0).findByText(questionDetails.name).click();
+    cy.wait("@cardQuery");
+
+    cy.get("[data-testid=cell-data]")
+      .should("contain", "COUNT(*)")
+      .and("contain", "3");
+
+    cy.location("search").should("eq", "?num=1%2C2%2C3");
+  });
 });
+
 describe("issue 25908", () => {
   const questionDetails = {
     name: "25908",
@@ -2729,7 +2780,9 @@ describe("issue 43799", () => {
       },
     );
     editDashboard();
-    cy.findByTestId("dashboard-header").findByLabelText("Add a filter").click();
+    cy.findByTestId("dashboard-header")
+      .findByLabelText("Add a filter or parameter")
+      .click();
     popover().findByText("Text or Category").click();
     getDashboardCard().findByText("Select…").click();
     popover().findByText("People - User → Source").click();
@@ -2890,7 +2943,7 @@ describe("issue 27579", () => {
   it("should be able to remove the last exclude hour option (metabase#27579)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Created At");
     saveDashboard();
     filterWidget().click();
@@ -3522,10 +3575,10 @@ describe("issue 34955", () => {
       visitDashboard(dashboard_id);
       editDashboard();
 
-      setFilter("Time", "Single Date", "On");
+      setFilter("Date picker", "Single Date", "On");
       connectFilterToColumn(ccName);
 
-      setFilter("Time", "Date Range", "Between");
+      setFilter("Date picker", "Date Range", "Between");
       connectFilterToColumn(ccName);
 
       saveDashboard();

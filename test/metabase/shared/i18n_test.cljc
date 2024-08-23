@@ -23,6 +23,6 @@
       7 "7 cats worth of food"))
   (testing "escaping in both"
     (are [n exp] (= exp (i18n/trun "{0} cat''s food" "{0} cats'' food" n))
-         0 "0 cats' food"
-         1 "1 cat's food"
-         7 "7 cats' food")))
+      0 "0 cats' food"
+      1 "1 cat's food"
+      7 "7 cats' food")))

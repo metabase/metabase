@@ -50,25 +50,25 @@ jobs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
       node_version: ${{ fromJson(steps.dependencies.outputs.result).node_version }}
     steps:
-    - uses: actions/checkout@v4
-      with:
-        sparse-checkout: release
-    - name: Prepare build scripts
-      run: cd ${{ github.workspace }}/release && yarn && yarn build
-    - name: Get build dependencies
-      uses: actions/github-script@v7
-      id: dependencies
-      with:
-        script: | # js
-          const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Get build dependencies
+        uses: actions/github-script@v7
+        id: dependencies
+        with:
+          script: | # js
+            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-          const version = getVersionFromReleaseBranch('${{ github.ref }}');
-          const requirements = getBuildRequirements(version);
+            const version = getVersionFromReleaseBranch('${{ github.ref }}');
+            const requirements = getBuildRequirements(version);
 
-          return {
-            java_version: requirements.java,
-            node_version: requirements.node,
-          };
+            return {
+              java_version: requirements.java,
+              node_version: requirements.node,
+            };
 
   build:
     needs: [files-changed, e2e-matrix-builder, get-build-requirements]
@@ -85,17 +85,19 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      # make sure that builds on release branches get licenses, because we use them for releases
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
         with:
-          node-version: '${{ needs.get-build-requirements.outputs.node_version }}'
+          node-version: "${{ needs.get-build-requirements.outputs.node_version }}"
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: e2e-tests
-          java-version: '${{ needs.get-build-requirements.outputs.java_version || 11 }}'
+          m2-cache-key: uberjar
+          java-version: "${{ needs.get-build-requirements.outputs.java_version || 11 }}"
 
       - name: Build uberjar with ./bin/build.sh
         run: ./bin/build.sh
@@ -125,6 +127,7 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz
+      CYPRESS_CI: true
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}

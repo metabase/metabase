@@ -1,43 +1,44 @@
-import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  POPOVER_ELEMENT,
+  adhocQuestionHash,
+  appBar,
   commandPalette,
   commandPaletteSearch,
   createQuestion,
-  restore,
-  visualize,
-  openTable,
-  openOrdersTable,
-  popover,
-  modal,
-  summarize,
-  openNativeEditor,
-  startNewQuestion,
-  openNavigationSidebar,
-  navigationSidebar,
+  editDashboard,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
-  withDatabase,
-  adhocQuestionHash,
   expressionEditorWidget,
-  enterCustomColumnDetails,
-  showDashboardCardActions,
   filterWidget,
-  saveDashboard,
-  editDashboard,
-  visitDashboard,
-  questionInfoButton,
-  rightSidebar,
   getNotebookStep,
   leftSidebar,
-  POPOVER_ELEMENT,
-  appBar,
-  visitQuestion,
-  openProductsTable,
   mockSessionProperty,
-  visitQuestionAdhoc,
+  modal,
+  navigationSidebar,
+  openNativeEditor,
+  openNavigationSidebar,
+  openNotebook,
+  openOrdersTable,
+  openProductsTable,
+  openTable,
+  popover,
+  questionInfoButton,
+  restore,
+  rightSidebar,
+  saveDashboard,
+  showDashboardCardActions,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 
 import { setAdHocFilter } from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -142,7 +143,7 @@ describe("issue 6239", () => {
     cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
-    cy.icon("notebook").click();
+    openNotebook();
 
     // Sort descending this time
     cy.icon("arrow_up").click();
@@ -662,7 +663,7 @@ function closeModal() {
 }
 
 function openNotebookMode() {
-  cy.icon("notebook").click();
+  openNotebook();
 }
 
 function removeJoinedTable() {
@@ -915,7 +916,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
       cy.icon("refresh").should("be.visible");
       cy.icon("bookmark").should("be.visible");
       // querying
-      cy.icon("notebook").should("not.exist");
+      cy.findByTestId("notebook-button").should("not.exist");
       cy.findByText("Filter").should("not.exist");
       cy.findByText("Summarize").should("not.exist");
       cy.button("Save").should("not.exist");

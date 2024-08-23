@@ -80,14 +80,15 @@
 
 (def rv-models
   "These are models for which we will retrieve recency."
-  [:card :model ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
-                ;; needed to distinguish between them.
+  [:card :dataset :metric
+   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
+   ;; needed to distinguish between them.
    :dashboard :table :collection])
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (get {:model      :model/Card
+  (get {:dataset    :model/Card
         :card       :model/Card
         :dashboard  :model/Dashboard
         :table      :model/Table
@@ -100,13 +101,13 @@
                     {:select [:rv.id]
                      :from [[:recent_views :rv]]
                      :where [:and
-                             [:= :rv.model (get {:model "card"} model (name model))]
+                             [:= :rv.model (get {:dataset "card"} model (name model))]
                              [:= :rv.user_id user-id]
                              [:= :rv.context (h2x/literal (name context))]
-                             (when (#{:card :model} model) ;; TODO add metric
+                             (when (#{:card :dataset} model) ;; TODO add metric
                                [:= :rc.type (cond (= model :card) (h2x/literal "question")
                                                   ;; TODO add metric
-                                                  (= model :model) (h2x/literal "model"))])]
+                                                  (= model :dataset) (h2x/literal "model"))])]
                      :left-join [[:report_card :rc]
                                  [:and
                                   [:= :rc.id :rv.model_id]
@@ -318,11 +319,7 @@
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status metric)
-     :parent_collection (if (:collection-id metric)
-                          {:id (:collection-id metric)
-                           :name (:collection-name metric)
-                           :authority_level (:collection-authority-level metric)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll metric)}))
 
 ;; ================== Recent Dashboards ==================
 
@@ -366,7 +363,7 @@
   [collection-ids]
   (if-not (seq collection-ids)
     []
-    (let [ ;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
+    (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
                                            :archived :location]

@@ -7,11 +7,17 @@ import {
 } from "e2e/support/helpers/e2e-ui-elements-helpers";
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
+export function notebookButton() {
+  return cy
+    .findByTestId("qb-header-action-panel")
+    .findByTestId("notebook-button");
+}
+
 /**
  * Switch to a notebook editor from a simple query view (aka "chill mode").
  */
 export function openNotebook() {
-  return cy.findByTestId("qb-header-action-panel").icon("notebook").click();
+  return notebookButton().click();
 }
 
 /**

@@ -38,7 +38,6 @@
     :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
-
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (def Field
@@ -186,7 +185,6 @@
 (defmethod serdes/hash-fields :model/Field
   [_field]
   [:name (serdes/hydrated-hash :table)])
-
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -357,7 +355,7 @@
 ;; a trio of strings with schema maybe nil.
 (defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
   (let [table (when (number? table_id)
-                   (t2/select-one 'Table :id table_id))
+                (t2/select-one 'Table :id table_id))
         db    (when table
                 (t2/select-one-fn :name 'Database :id (:db_id table)))
         [db schema table] (if (number? table_id)
@@ -372,12 +370,10 @@
 (defmethod serdes/entity-id "Field" [_ {:keys [name]}]
   name)
 
-(defmethod serdes/extract-query "Field" [_model-name _opts]
-  (let [d (t2/select Dimension)
-        dimensions (->> d
-                        (group-by :field_id))]
-    (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
-              (t2/reducible-select Field))))
+(defmethod serdes/load-find-local "Field"
+  [path]
+  (let [table (serdes/load-find-local (pop path))]
+    (t2/select-one Field :name (-> path last :id) :table_id (:id table))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
@@ -393,49 +389,21 @@
       fks   (set/union #{fks})
       true  (disj this))))
 
-(defn- extract-dimensions [dimensions]
-  (->> (for [dim dimensions]
-         (-> (into (sorted-map) dim)
-             (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
-             (update :human_readable_field_id serdes/*export-field-fk*)))
-       (sort-by :created_at)))
-
-(defmethod serdes/extract-one "Field"
-  [_model-name _opts field]
-  (let [field (if (contains? field :dimensions)
-                field
-                (assoc field :dimensions (t2/select Dimension :field_id (:id field))))]
-    (-> (serdes/extract-one-basics "Field" field)
-        (update :dimensions         extract-dimensions)
-        (update :table_id           serdes/*export-table-fk*)
-        (update :fk_target_field_id serdes/*export-field-fk*)
-        (update :parent_id          serdes/*export-field-fk*)
-        (dissoc :fingerprint :last_analyzed :fingerprint_version))))
-
-(defmethod serdes/load-xform "Field"
-  [field]
-  (-> (serdes/load-xform-basics field)
-      (update :table_id           serdes/*import-table-fk*)
-      (update :fk_target_field_id serdes/*import-field-fk*)
-      (update :parent_id          serdes/*import-field-fk*)))
-
-(defmethod serdes/load-find-local "Field"
-  [path]
-  (let [table (serdes/load-find-local (pop path))]
-    (t2/select-one Field :name (-> path last :id) :table_id (:id table))))
-
-(defmethod serdes/load-one! "Field" [ingested maybe-local]
-  (let [field ((get-method serdes/load-one! :default) (dissoc ingested :dimensions) maybe-local)]
-    (doseq [dim (:dimensions ingested)]
-      (let [local (t2/select-one Dimension :entity_id (:entity_id dim))
-            dim   (assoc dim
-                         :field_id    (:id field)
-                         :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]
-        (serdes/load-one! dim local)))))
+(defmethod serdes/make-spec "Field" [_model-name opts]
+  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
+               :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
+               :description :display_name :effective_type :has_field_values :is_defective_duplicate :json_unfolding
+               :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
+               :unique_field_helper :visibility_type]
+   :skip      [:fingerprint :fingerprint_version :last_analyzed]
+   :transform {:created_at         (serdes/date)
+               :table_id           (serdes/fk :model/Table)
+               :fk_target_field_id (serdes/fk :model/Field)
+               :parent_id          (serdes/fk :model/Field)
+               :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
 
 (defmethod serdes/storage-path "Field" [field _]
-  (-> field
-      serdes/path
+  (-> (serdes/path field)
       drop-last
       serdes/storage-table-path-prefix
       (concat ["fields" (:name field)])))

@@ -63,8 +63,8 @@
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
     (when-not (get-method u.humanization/name->human-readable-name new-strategy)
       (throw (IllegalArgumentException.
-               (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
-                    new-strategy (keys (methods u.humanization/name->human-readable-name))))))
+              (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
+                   new-strategy (keys (methods u.humanization/name->human-readable-name))))))
     (let [old-strategy (setting/get-value-of-type :keyword :humanization-strategy)]
       ;; ok, now set the new value
       (setting/set-value-of-type! :keyword :humanization-strategy new-value)
@@ -77,8 +77,8 @@
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
   (deferred-tru
-    (str "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them "
-         "with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
+   (str "To make table and field names more human-friendly, Metabase will replace dashes and underscores in them "
+        "with spaces. We’ll capitalize each word while at it, so ‘last_visited_at’ will become ‘Last Visited At’."))
   :type       :keyword
   :default    :simple
   :visibility :settings-manager

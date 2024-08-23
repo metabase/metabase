@@ -185,7 +185,6 @@
   `relative-datetime` form."
   (one-of absolute-datetime relative-datetime time))
 
-
 ;;; -------------------------------------------------- Other Values --------------------------------------------------
 
 (mr/def ::ValueTypeInfo
@@ -207,7 +206,6 @@
 (defclause ^:internal value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
-
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
@@ -858,6 +856,13 @@
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
 
+(defclause ^:sugar relative-time-interval
+  col           Field
+  value         :int
+  bucket        [:ref ::RelativeDatetimeUnit]
+  offset-value  :int
+  offset-bucket [:ref ::RelativeDatetimeUnit])
+
 ;; A segment is a special `macro` that saves some pre-definied filter clause, e.g. [:segment 1]
 ;; this gets replaced by a normal Filter clause in MBQL macroexpansion
 ;;
@@ -890,7 +895,7 @@
               ;; filters drivers must implement
               and or not = != < > <= >= between starts-with ends-with contains
               ;; SUGAR filters drivers do not need to implement
-              does-not-contain inside is-empty not-empty is-null not-null time-interval segment)]])
+              does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval segment)]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -983,7 +988,6 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
 (defclause metric
@@ -1030,7 +1034,6 @@
    [:aggregation-options aggregation-options]
    [:unnamed-aggregation UnnamedAggregation]])
 
-
 ;;; ---------------------------------------------------- Order-By ----------------------------------------------------
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
@@ -1045,7 +1048,6 @@
 (mr/def ::OrderBy
   "Schema for an `order-by` clause subclause."
   (one-of asc desc))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Queries                                                     |
@@ -1234,7 +1236,6 @@
    NativeQuery:Common
    [:map
     [:native :any]]])
-
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
@@ -1458,7 +1459,6 @@
     (fn [{:keys [breakout fields]}]
       (empty? (set/intersection (set breakout) (set fields))))]])
 
-
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
 (mr/def ::WidgetType
@@ -1599,7 +1599,6 @@
   incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default
   `false`."}
     [:maybe :boolean]]])
-
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 

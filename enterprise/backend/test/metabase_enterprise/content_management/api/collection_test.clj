@@ -79,7 +79,6 @@
           (is (= "Official Collections is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
                  (mt/user-http-request :crowberto :put 402 (format "collection/%d" id) {:authority_level "official"}))))))))
 
-
 (deftest update-collection-authority-backward-compatible-test
   ;; edge cases we need to handle for backwards compatibility see metabase-private#77
   (testing "backwards-compatible check when doesn't have :official-collections feature\n"

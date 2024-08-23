@@ -1,4 +1,5 @@
-import { act } from "@testing-library/react";
+import { waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -9,8 +10,13 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as sdkConfigModule from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
-import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
+import {
+  sdkReducers,
+  useSdkDispatch,
+  useSdkSelector,
+} from "embedding-sdk/store";
 import { refreshTokenAsync } from "embedding-sdk/store/reducer";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
@@ -20,7 +26,7 @@ import {
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
 import type { SDKConfig, SDKConfigWithJWT } from "embedding-sdk/types";
-import { useDispatch } from "metabase/lib/redux";
+import { GET } from "metabase/lib/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -31,7 +37,7 @@ import { createMockState } from "metabase-types/store/mocks";
 const TEST_USER = createMockUser();
 
 const TestComponent = ({ config }: { config: SDKConfig }) => {
-  const dispatch = useDispatch();
+  const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
   const isLoggedIn = useSdkSelector(getIsLoggedIn);
@@ -46,6 +52,10 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
   const refreshToken = () =>
     dispatch(refreshTokenAsync("http://TEST_URI/sso/metabase"));
 
+  const handleClick = () => {
+    GET("/api/some/url")();
+  };
+
   return (
     <div
       data-testid="test-component"
@@ -55,6 +65,7 @@ const TestComponent = ({ config }: { config: SDKConfig }) => {
     >
       Test Component
       <button onClick={refreshToken}>Refresh Token</button>
+      <button onClick={handleClick}>Send test request</button>
     </div>
   );
 };
@@ -74,6 +85,8 @@ const setup = ({
     exp: 1965805007,
     iat: 1965805007,
   });
+
+  fetchMock.get("path:/api/some/url", {});
 
   setupCurrentUserEndpoint(
     TEST_USER,
@@ -129,6 +142,29 @@ describe("useInitData hook", () => {
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
         "No JWT URI or API key provided.",
+      );
+    });
+
+    it("should set a context for all API requests", async () => {
+      jest
+        .spyOn(sdkConfigModule, "getEmbeddingSdkVersion")
+        .mockImplementationOnce(() => "1.2.3");
+
+      setup({});
+
+      await userEvent.click(screen.getByText("Send test request"));
+
+      await waitFor(() => {
+        expect(fetchMock.called("path:/api/some/url")).toBeTruthy();
+      });
+
+      const lastCallRequest = fetchMock.lastCall("path:/api/some/url")?.request;
+
+      expect(lastCallRequest?.headers.get("X-Metabase-Client")).toEqual(
+        "embedding-sdk-react",
+      );
+      expect(lastCallRequest?.headers.get("X-Metabase-Client-Version")).toEqual(
+        "1.2.3",
       );
     });
   });
@@ -204,9 +240,7 @@ describe("useInitData hook", () => {
 
       rerender(<TestComponent config={config} />);
 
-      act(() => {
-        screen.getByText("Refresh Token").click();
-      });
+      await userEvent.click(screen.getByText("Refresh Token"));
 
       expect(fetchRequestToken).toHaveBeenCalledTimes(1);
     });

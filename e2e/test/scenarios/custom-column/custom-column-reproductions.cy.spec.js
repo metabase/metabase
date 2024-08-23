@@ -2,39 +2,39 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   addCustomColumn,
-  enterCustomColumnDetails,
-  getNotebookStep,
-  entityPickerModal,
-  popover,
-  visualize,
-  restore,
-  startNewQuestion,
-  queryBuilderMain,
-  selectFilterOperator,
-  entityPickerModalTab,
-  withDatabase,
-  summarize,
+  addOrUpdateDashboardCard,
   cartesianChartCircle,
+  createNativeQuestion,
+  editDashboard,
+  enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
+  filterWidget,
+  getDashboardCard,
+  getNotebookStep,
+  main,
+  modal,
+  multiAutocompleteInput,
+  openNotebook,
   openOrdersTable,
   openProductsTable,
-  openNotebook,
-  filter,
-  visitDashboard,
-  editDashboard,
-  setFilter,
-  filterWidget,
-  visitQuestionAdhoc,
-  addOrUpdateDashboardCard,
-  modal,
+  popover,
+  queryBuilderMain,
+  resetTestTable,
+  restore,
   saveDashboard,
   selectDashboardFilter,
-  getDashboardCard,
-  visitQuestion,
+  selectFilterOperator,
+  setFilter,
+  startNewQuestion,
+  summarize,
   tableHeaderClick,
-  resetTestTable,
-  main,
-  multiAutocompleteInput,
-  createNativeQuestion,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
+  withDatabase,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -318,7 +318,8 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     filterWidget().click();
     popover().within(() => {
-      multiAutocompleteInput().type("14");
+      cy.findByRole("textbox").type("14");
+      cy.findByText("14").click();
       cy.button("Add filter").click();
     });
   }
@@ -393,7 +394,7 @@ describe("issue 18814", () => {
   });
 
   it("should be able to use a custom column in aggregation for a nested query (metabase#18814)", () => {
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.icon("sum").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -475,7 +476,7 @@ describe.skip("issue 19744", () => {
   it("custom column after aggregation shouldn't limit or change the behavior of dashboard filters (metabase#19744)", () => {
     editDashboard();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     cy.findByTestId("dashcard-container").contains("Select…").click();
     popover().contains("Created At");
@@ -617,7 +618,7 @@ describe("issue 20229", () => {
     ccAssertion();
 
     // Switch to the notebook view to deselect at least one column
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.findAllByTestId("fields-picker").click();
     popover().within(() => {
@@ -652,7 +653,7 @@ describe("issue 21135", () => {
     restore();
     cy.signInAsAdmin();
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    cy.icon("notebook").click();
+    openNotebook();
   });
 
   it("should handle cc with the same name as the table column (metabase#21135)", () => {

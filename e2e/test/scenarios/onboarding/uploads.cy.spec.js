@@ -1,13 +1,14 @@
 import {
-  restore,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  resetSnowplow,
-  enableTracking,
-  uploadFile,
   CSV_FILES,
+  describeWithSnowplow,
+  enableTracking,
   enableUploads,
+  expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
+  mockSessionPropertiesTokenFeatures,
+  resetSnowplow,
+  restore,
+  uploadFile,
 } from "e2e/support/helpers";
 
 describeWithSnowplow(
@@ -19,22 +20,7 @@ describeWithSnowplow(
       cy.signInAsAdmin();
 
       enableUploads("postgres");
-
-      cy.intercept(
-        { method: "GET", url: "/api/session/properties" },
-        request => {
-          request.on("response", response => {
-            if (typeof response.body === "object") {
-              // Setting the DWH feature
-              const tokenFeatures = response.body["token-features"];
-              response.body = {
-                ...response.body,
-                "token-features": { ...tokenFeatures, attached_dwh: true },
-              };
-            }
-          });
-        },
-      ).as("getSessionProperties");
+      mockSessionPropertiesTokenFeatures({ attached_dwh: true });
 
       resetSnowplow();
       cy.signInAsAdmin();

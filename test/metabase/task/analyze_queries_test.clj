@@ -15,7 +15,7 @@
           queue    (queue/bounded-transfer-queue 100)]
 
       ;; Make sure there is *no* pre-existing analysis.
-      (t2/delete! :model/QueryField :card_id [:in card-ids])
+      (t2/delete! :model/QueryAnalysis :card_id [:in card-ids])
 
       (let [get-count #(t2/count :model/QueryField :card_id %)]
         (testing "QueryField is empty - queries weren't analyzed"

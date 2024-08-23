@@ -1,4 +1,4 @@
-import { useMantineTheme, type MantineTheme } from "metabase/ui";
+import { type MantineTheme, useMantineTheme } from "metabase/ui";
 
 interface WithMantineThemeProps {
   theme: MantineTheme;

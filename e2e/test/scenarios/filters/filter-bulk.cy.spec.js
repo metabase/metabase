@@ -2,16 +2,16 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
-  popover,
-  restore,
-  visitQuestionAdhoc,
-  setupBooleanQuery,
-  modal,
   filter,
   filterField,
   filterFieldPopover,
   filterSelectField,
   hovercard,
+  modal,
+  popover,
+  restore,
+  setupBooleanQuery,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 

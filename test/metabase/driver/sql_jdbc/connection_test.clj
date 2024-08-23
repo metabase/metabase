@@ -36,6 +36,8 @@
 (use-fixtures :once (fixtures/initialize :db))
 (use-fixtures :once ssh-test/do-with-mock-servers)
 
+;;; this is mostly testing [[h2/*allow-testing-h2-connections*]] so it's ok to hardcode driver names below.
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel can-connect-with-details?-test
   (testing "Should not be able to connect without setting h2/*allow-testing-h2-connections*"
     (is (not (driver.u/can-connect-with-details? :h2 (:details (data/db))))))
@@ -154,7 +156,7 @@
                     (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
                               (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
                   (t2/update! Database (mt/id) {:details (:details db-perturbed)})
-                  (let [ ;; this call should result in the connection pool becoming invalidated, and the new hash value
+                  (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
                         db-hash-2    (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
@@ -178,7 +180,11 @@
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
-            (t2/update! Database (mt/id) {:details (:details db)}))))))
+            (t2/update! Database (mt/id) {:details (:details db)})))))))
+
+;;; Postgres-specific, so ok to hardcode driver names below.
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest connection-pool-invalidated-on-details-change-postgres-secrets-are-stable-test
   (testing "postgres secrets are stable (#23034)"
     (mt/with-temp [Secret secret {:name       "file based secret"
                                   :kind       :perm-cert
@@ -201,8 +207,13 @@
                (#'sql-jdbc.conn/jdbc-spec-hash db))
             "Same db produced different hashes due to secrets")))))
 
+;;; TODO -- this set is hardcoded in dozens of places in the codebase, we should unify them all into one single
+;;; definition somewhere.
+(def ^:private app-db-types
+  #{:h2 :mysql :postgres})
+
 (deftest connection-pool-does-not-cache-audit-db
-  (mt/test-drivers #{:h2 :mysql :postgres}
+  (mt/test-drivers app-db-types
     (when config/ee-available?
       (t2/delete! 'Database {:where [:= :is_audit true]})
       (let [status (mbc/ensure-audit-db-installed!)
@@ -231,8 +242,11 @@
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
 
+;;; TODO Not clear why we're only testing Postgres here, do we support Azure Managed Identity for any other app DB type?
+;;; Needs a comment please.
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest test-auth-provider-connection
-  (mt/test-drivers #{:postgres}
+  (mt/test-driver :postgres
     (testing "Azure Managed Identity connections can be created and expired passwords get renewed"
       (let [db-details (:details (mt/db))
             oauth-db-details (-> db-details
@@ -264,6 +278,16 @@
               ;; we must have created more than one connection
               (is (> @connection-creations 1)))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::test-ssh-tunnel-connection]
+  [_driver _feature _database]
+  false)
+
+;;; for now, run against Postgres and mysql, although in theory it could run against many different kinds
+(doseq [driver [:postgres :mysql :snowflake]]
+  (defmethod driver/database-supports? [driver ::test-ssh-tunnel-connection]
+    [_driver _feature _database]
+    true))
+
 (deftest test-ssh-tunnel-connection
   ;; TODO: Formerly this test ran against "all JDBC drivers except this big list":
   ;; (apply disj (sql-jdbc.tu/sql-jdbc-drivers)
@@ -274,7 +298,7 @@
   ;; (eg. Oracle) do seem to support SSH tunnelling but still fail on this test, it's not clear if this should be
   ;; controlled by a driver feature, a ^:dynamic override, or something else.
   ;; For now I'm making this test run against only `#{:postgres :mysql :snowflake}` like the below.
-  (mt/test-drivers #{:postgres :mysql :snowflake}
+  (mt/test-drivers (mt/normal-drivers-with-feature ::test-ssh-tunnel-connection)
     (testing "ssh tunnel is established"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true
@@ -290,8 +314,7 @@
                    (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))))))))
 
 (deftest test-ssh-tunnel-reconnection
-  ;; for now, run against Postgres and mysql, although in theory it could run against many different kinds
-  (mt/test-drivers #{:postgres :mysql :snowflake}
+  (mt/test-drivers (mt/normal-drivers-with-feature ::test-ssh-tunnel-connection)
     (testing "ssh tunnel is reestablished if it becomes closed, so subsequent queries still succeed"
       (let [tunnel-db-details (assoc (:details (mt/db))
                                      :tunnel-enabled true

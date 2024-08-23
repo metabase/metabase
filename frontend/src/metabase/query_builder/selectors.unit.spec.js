@@ -2,26 +2,26 @@ import { assoc, assocIn } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
 import {
-  getQuestion,
   getIsResultDirty,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getQuestion,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
 import Question from "metabase-lib/v1/Question";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import {
-  createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {

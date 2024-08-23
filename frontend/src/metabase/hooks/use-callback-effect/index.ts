@@ -1,1 +1,4 @@
-export { useCallbackEffect } from "./use-callback-effect";
+export {
+  useCallbackEffect,
+  type ScheduleCallback,
+} from "./use-callback-effect";

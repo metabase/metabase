@@ -1,23 +1,25 @@
 import cx from "classnames";
 import debounce from "lodash.debounce";
-import type { CSSProperties, ComponentType } from "react";
-import { Component } from "react";
+import type {
+  CSSProperties,
+  ComponentType,
+  ForwardedRef,
+  PropsWithoutRef,
+} from "react";
+import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
+import { waitTimeContext } from "metabase/context/wait-time";
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
 import resizeObserver from "metabase/lib/resize-observer";
-
-import { explicitSizeRefreshModeContext } from "./context";
 
 const WAIT_TIME = 300;
 
 const REFRESH_MODE = {
   throttle: (fn: () => void) => _.throttle(fn, WAIT_TIME),
   debounce: (fn: () => void) => debounce(fn, WAIT_TIME),
-  // Using lodash.debounce with leading=true to execute the function immediately and also at the end of the debounce period.
-  // Underscore debounce with immediate=true will not execute the function after the wait period unless it is called again.
   debounceLeading: (fn: () => void) =>
     debounce(fn, WAIT_TIME, { leading: true }),
   none: (fn: () => void) => fn,
@@ -36,13 +38,16 @@ type SizeState = {
   height: number | null;
 };
 
-type BaseInnerProps = {
+type InnerProps = {
+  forwardedRef: ForwardedRef<unknown>;
   className?: string;
   style?: CSSProperties;
   onUpdateSize?: () => void;
 };
 
-function ExplicitSize<T extends BaseInnerProps>({
+type ExplicitSizeOuterProps<T> = Omit<T, "width" | "height">;
+
+function ExplicitSize<T>({
   selector,
   wrapped = false,
   refreshMode = "throttle",
@@ -50,12 +55,15 @@ function ExplicitSize<T extends BaseInnerProps>({
   return (ComposedComponent: ComponentType<T & SizeState>) => {
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
-    class WrappedComponent extends Component<T> {
-      static contextType = explicitSizeRefreshModeContext;
+    class WrappedComponent extends Component<T & InnerProps> {
+      static contextType = waitTimeContext;
 
       static displayName = `ExplicitSize[${displayName}]`;
 
-      state: SizeState;
+      state: SizeState = {
+        width: null,
+        height: null,
+      };
 
       timeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -67,16 +75,12 @@ function ExplicitSize<T extends BaseInnerProps>({
 
       _updateSize: () => void;
 
-      constructor(props: T, context: unknown) {
+      constructor(props: T & InnerProps, context: unknown) {
         super(props, context);
-        this.state = {
-          width: null,
-          height: null,
-        };
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
-        if (this.context) {
-          this._refreshMode = this.context as RefreshMode;
+        if (this.context === 0) {
+          this._refreshMode = "none";
         } else {
           this._refreshMode =
             typeof refreshMode === "string" ? refreshMode : "throttle";
@@ -197,6 +201,13 @@ function ExplicitSize<T extends BaseInnerProps>({
         const element = this._getElement();
         if (element) {
           const { width, height } = element.getBoundingClientRect();
+
+          if (!width && !height) {
+            // cypress raises lots of errors in timeline trying to call setState
+            // on the unmounted element, so we're just ignoring
+            return;
+          }
+
           if (this.state.width !== width || this.state.height !== height) {
             this.setState({ width, height }, () =>
               this.props?.onUpdateSize?.(),
@@ -204,27 +215,39 @@ function ExplicitSize<T extends BaseInnerProps>({
           }
         }
       };
-
       render() {
+        const { forwardedRef, ...props } = this.props;
         if (wrapped) {
-          const { className, style = {}, ...props } = this.props;
+          const { className, style = {}, ...rest } = props;
           const { width, height } = this.state;
           return (
             <div className={cx(className, CS.relative)} style={style}>
               <ComposedComponent
+                ref={forwardedRef}
                 style={{ position: "absolute", top: 0, left: 0, width, height }}
-                {...(props as T)}
+                {...(rest as unknown as T)}
                 {...this.state}
               />
             </div>
           );
         } else {
-          return <ComposedComponent {...this.props} {...this.state} />;
+          return (
+            <ComposedComponent
+              ref={forwardedRef}
+              {...(props as unknown as T)}
+              {...this.state}
+            />
+          );
         }
       }
     }
 
-    return WrappedComponent;
+    return React.forwardRef<
+      unknown,
+      PropsWithoutRef<ExplicitSizeOuterProps<T>>
+    >((props, ref) => (
+      <WrappedComponent {...(props as T & InnerProps)} forwardedRef={ref} />
+    ));
   };
 }
 

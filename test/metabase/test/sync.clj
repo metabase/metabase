@@ -20,7 +20,7 @@
   [& _]
   (throw (Exception. "simulated exception")))
 
-(defmacro sync-survives-crash?
+(defmacro sync-survives-crash?!
   "Can sync process survive `f` crashing?"
   [f]
   `(is (= (sync-steps-run-to-completion)

@@ -4,9 +4,9 @@ import { DEFAULT_FONT } from "embedding-sdk/config";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import type {
-  MetabaseTheme,
   MetabaseColor,
   MetabaseComponentTheme,
+  MetabaseTheme,
 } from "../../types/theme";
 
 import { colorTuple } from "./color-tuple";
@@ -56,10 +56,12 @@ export function getEmbeddingThemeOverride(
       const color = theme.colors[name as MetabaseColor];
 
       if (color && typeof color === "string") {
-        const themeColorName =
+        const themeColorNames =
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
 
-        override.colors[themeColorName] = colorTuple(color);
+        for (const themeColorName of themeColorNames) {
+          override.colors[themeColorName] = colorTuple(color);
+        }
       }
     }
   }

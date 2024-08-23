@@ -6,7 +6,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Icon, Modal, Box, Button, Text } from "metabase/ui";
+import { Box, Button, Icon, Modal, Text } from "metabase/ui";
 
 interface MigrationStartProps {
   startNewMigration: () => void;
@@ -45,7 +45,7 @@ export const MigrationStart = ({
       <Modal.Root
         opened={isModalOpen}
         onClose={closeModal}
-        size={"36rem"}
+        size="36rem"
         data-testid="new-cloud-migration-confirmation"
       >
         <Modal.Overlay />

@@ -3,19 +3,19 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  setTokenFeatures,
-  popover,
   describeEE,
   modal,
+  newButton,
+  onlyOnEE,
+  onlyOnOSS,
+  popover,
+  restore,
+  setTokenFeatures,
+  sidebar,
+  tableHeaderClick,
   visitDashboard,
   visitModel,
   visitQuestion,
-  tableHeaderClick,
-  onlyOnOSS,
-  onlyOnEE,
-  newButton,
-  sidebar,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -338,7 +338,7 @@ describe("question and dashboard links", () => {
     it("should show a analytics link for dashboards", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.intercept("GET", "/api/collection/**").as("collection");
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").click();
 
       cy.wait("@collection");
@@ -373,7 +373,7 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });
@@ -393,7 +393,7 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });

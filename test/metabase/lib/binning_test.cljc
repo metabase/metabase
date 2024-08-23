@@ -31,7 +31,7 @@
     (is (= {:bin-width 12.5, :min-value 15, :max-value 27.5}
            (lib.binning/resolve-bin-width query col-quantity 15)))))
 
-(deftest ^:parallel binning-and-bucketing-only-show-up-for-returned-and-breakoutable-columns
+(deftest ^:parallel binning-and-bucketing-only-show-up-for-returned-and-breakout-columns
   (testing "Within the stage, binning and bucketing at breakout should be invisible, outside the stage it should be visible"
     (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                     (lib/aggregate (lib/count)))
@@ -42,20 +42,26 @@
           bucket-created (lib/with-temporal-bucket created-col (first (lib/available-temporal-buckets query created-col)))
           query (lib/breakout query bucket-created)]
       (is (=?
-            (complement :metabase.lib.field/binning)
-            (m/find-first (comp #{"TOTAL"} :name) (lib/visible-columns query))))
+           (complement :metabase.lib.field/binning)
+           (m/find-first (comp #{"TOTAL"} :name) (lib/visible-columns query))))
       (is (=?
-            {:metabase.lib.field/binning {:strategy :default}}
-            (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
+           (complement :metabase.lib.field/binning)
+           (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
       (is (=?
-            {:metabase.lib.field/binning {:strategy :default}}
-            (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
+           {:metabase.lib.field/binning {:strategy :default}}
+           (lib/breakout-column query -1 (first (lib/breakouts query)))))
       (is (=?
-            (complement :metabase.lib.field/temporal-unit)
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/visible-columns query))))
+           {:metabase.lib.field/binning {:strategy :default}}
+           (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
       (is (=?
-            {:metabase.lib.field/temporal-unit :minute}
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
+           (complement :metabase.lib.field/temporal-unit)
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/visible-columns query))))
       (is (=?
-            {:metabase.lib.field/temporal-unit :minute}
-            (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
+           (complement :metabase.lib.field/temporal-unit)
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
+      (is (=?
+           {:metabase.lib.field/temporal-unit :minute}
+           (lib/breakout-column query -1 (second (lib/breakouts query)))))
+      (is (=?
+           {:metabase.lib.field/temporal-unit :minute}
+           (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))

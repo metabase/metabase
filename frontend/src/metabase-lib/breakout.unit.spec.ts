@@ -1,7 +1,7 @@
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
 
-import { createQuery, columnFinder, findTemporalBucket } from "./test-helpers";
+import { columnFinder, createQuery, findTemporalBucket } from "./test-helpers";
 
 describe("breakout", () => {
   describe("add breakout", () => {
@@ -34,9 +34,9 @@ describe("breakout", () => {
         "TAX",
       );
 
-      expect(
-        Lib.displayInfo(nextQuery, 0, nextTaxColumn).breakoutPosition,
-      ).toBe(0);
+      expect(Lib.displayInfo(nextQuery, 0, nextTaxColumn)).toMatchObject({
+        breakoutPositions: [0],
+      });
 
       const roundtripQuery = createQuery({
         query: Lib.toLegacyQuery(nextQuery),
@@ -48,8 +48,8 @@ describe("breakout", () => {
       )("ORDERS", "TAX");
 
       expect(
-        Lib.displayInfo(roundtripQuery, 0, roundtripTaxColumn).breakoutPosition,
-      ).toBe(0);
+        Lib.displayInfo(roundtripQuery, 0, roundtripTaxColumn),
+      ).toMatchObject({ breakoutPositions: [0] });
     });
 
     it("should note whether the temporal unit is for extraction in the displayInfo", () => {

@@ -609,8 +609,8 @@
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (lib.metadata/field (qp.store/metadata-provider) stored-field-id))]
     (and
-      (some? stored-field)
-      (lib.field/json-field? stored-field))))
+     (some? stored-field)
+     (lib.field/json-field? stored-field))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
@@ -625,7 +625,6 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -755,8 +754,8 @@
 
       true
       (as-> params ;; from outer cond->
-        (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
-                       :ssl-use-client-auth)
+            (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
+                    :ssl-use-client-auth)
         (apply dissoc params all-subprops)))))
 
 (def ^:private disable-ssl-params
@@ -939,10 +938,10 @@
           "   NULL as role,"
           "   t.schemaname as schema,"
           "   t.objectname as table,"
-          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
-          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
-          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'delete') as delete"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'update') as update,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'select') as select,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'insert') as insert,"
+          "   pg_catalog.has_table_privilege(     current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'delete') as delete"
           " from ("
           "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
           "   union"

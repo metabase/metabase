@@ -2,33 +2,33 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  chartPathWithFillColor,
   commandPalette,
   commandPaletteButton,
-  restore,
-  visualize,
-  openOrdersTable,
-  popover,
-  modal,
-  openNativeEditor,
-  startNewQuestion,
-  entityPickerModal,
-  entityPickerModalTab,
-  visitQuestion,
-  visitQuestionAdhoc,
-  openNotebook,
-  selectFilterOperator,
-  chartPathWithFillColor,
-  openQuestionActions,
-  queryBuilderHeader,
-  saveQuestion,
-  saveSavedQuestion,
-  tableHeaderClick,
-  onlyOnOSS,
-  entityPickerModalItem,
-  newButton,
   createNativeQuestion,
   createQuestion,
+  entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   getNotebookStep,
+  modal,
+  newButton,
+  onlyOnOSS,
+  openNativeEditor,
+  openNotebook,
+  openOrdersTable,
+  openQuestionActions,
+  popover,
+  queryBuilderHeader,
+  restore,
+  saveQuestion,
+  saveSavedQuestion,
+  selectFilterOperator,
+  startNewQuestion,
+  tableHeaderClick,
+  visitQuestion,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -110,7 +110,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
   });
 
   it("from the notebook GUI (metabase#24839-1)", () => {
-    cy.icon("notebook").click();
+    openNotebook();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

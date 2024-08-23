@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 

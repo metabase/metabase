@@ -8,7 +8,7 @@ import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import BaseModelDetailLink from "metabase/models/components/ModelDetailLink";
 import type { TextProps } from "metabase/ui";
-import { Text, FixedSizeIcon } from "metabase/ui";
+import { FixedSizeIcon, Text } from "metabase/ui";
 
 import { RawMaybeLink } from "../Badge/Badge.styled";
 

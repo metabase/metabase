@@ -1,10 +1,11 @@
 import { withRouter } from "react-router";
 
-import { RefreshWidgetButton } from "../../DashboardActions.styled";
+import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
+import { Center, Divider } from "metabase/ui";
+
 import { DashboardBookmark } from "../../DashboardBookmark";
-import { DashboardEmbedAction } from "../../DashboardEmbedAction";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
-import { DashboardHeaderActionDivider } from "../DashboardHeader.styled";
+import { RefreshWidget } from "../../RefreshWidget";
 import {
   AddActionElementButton,
   AddFilterParameterButton,
@@ -12,17 +13,14 @@ import {
   AddLinkCardButton,
   AddQuestionButton,
   AddSectionButton,
-  AddTemporalUnitButton,
   CopyAnalyticsDashboardButton,
   DashboardActionMenu,
   DashboardInfoButton,
-  DashboardSubscriptionButton,
   EditDashboardButton,
   FullscreenAnalyticsDashboard,
   FullscreenToggle,
-  getExtraButtons,
   NightModeToggleButton,
-  shouldRenderSubscriptionButton,
+  getExtraButtons,
 } from "../buttons";
 
 import type {
@@ -36,14 +34,12 @@ export const DASHBOARD_ACTION = {
   ADD_HEADING_OR_TEXT: "ADD_HEADING_OR_TEXT",
   ADD_LINK_CARD: "ADD_LINK_CARD",
   ADD_SECTION: "ADD_SECTION",
-  ADD_TEMPORAL_UNIT: "ADD_TEMPORAL_UNIT",
   ADD_FILTER_PARAMETER: "ADD_FILTER_PARAMETER",
   ADD_ACTION_ELEMENT: "ADD_ACTION_ELEMENT",
   EXTRA_EDIT_BUTTONS_MENU: "EXTRA_EDIT_BUTTONS_MENU",
   COPY_ANALYTICS_DASHBOARD: "COPY_ANALYTICS_DASHBOARD",
   EDIT_DASHBOARD: "EDIT_DASHBOARD",
-  DASHBOARD_SUBSCRIPTION: "DASHBOARD_SUBSCRIPTION",
-  DASHBOARD_EMBED_ACTION: "DASHBOARD_EMBED_ACTION",
+  DASHBOARD_SHARING: "DASHBOARD_SHARING",
   REFRESH_WIDGET: "REFRESH_WIDGET",
   NIGHT_MODE_TOGGLE: "NIGHT_MODE_TOGGLE",
   FULLSCREEN_TOGGLE: "FULLSCREEN_TOGGLE",
@@ -75,10 +71,6 @@ export const dashboardActionButtons: Record<
     component: AddSectionButton,
     enabled: ({ isEditing }) => isEditing,
   },
-  [DASHBOARD_ACTION.ADD_TEMPORAL_UNIT]: {
-    component: AddTemporalUnitButton,
-    enabled: ({ isEditing }) => isEditing,
-  },
   [DASHBOARD_ACTION.ADD_FILTER_PARAMETER]: {
     component: AddFilterParameterButton,
     enabled: ({ isEditing }) => isEditing,
@@ -101,29 +93,9 @@ export const dashboardActionButtons: Record<
     enabled: ({ isFullscreen, isEditing, canEdit }) =>
       !isFullscreen && !isEditing && canEdit,
   },
-  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION]: {
-    component: DashboardSubscriptionButton,
-    enabled: ({
-      dashboard,
-      canManageSubscriptions,
-      formInput,
-      isAdmin,
-      isEditing,
-      isFullscreen,
-    }) =>
-      shouldRenderSubscriptionButton({
-        dashboard,
-        canManageSubscriptions,
-        formInput,
-        isAdmin,
-        isEditing,
-        isFullscreen,
-      }),
-  },
-  [DASHBOARD_ACTION.DASHBOARD_EMBED_ACTION]: {
-    component: DashboardEmbedAction,
-    enabled: ({ dashboard, isPublic }) =>
-      !isPublic && dashboard && !dashboard.archived,
+  [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
+    component: DashboardSharingMenu,
+    enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     component: ({
@@ -131,7 +103,7 @@ export const dashboardActionButtons: Record<
       setRefreshElapsedHook,
       onRefreshPeriodChange,
     }) => (
-      <RefreshWidgetButton
+      <RefreshWidget
         period={refreshPeriod}
         setRefreshElapsedHook={setRefreshElapsedHook}
         onChangePeriod={onRefreshPeriodChange}
@@ -168,7 +140,8 @@ export const dashboardActionButtons: Record<
         onFullscreenChange={onFullscreenChange}
       />
     ),
-    enabled: ({ isFullscreen, isPublic }) => isPublic || isFullscreen,
+    enabled: ({ isFullscreen, isPublic, isEmbeddingSdk = false }) =>
+      isPublic || isFullscreen || isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
     component: DashboardBookmark,
@@ -180,14 +153,24 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     component: withRouter<HeaderButtonProps>(
-      ({ onFullscreenChange, isFullscreen, dashboard, canEdit, location }) => (
+      ({
+        canResetFilters,
+        onResetFilters,
+        onFullscreenChange,
+        isFullscreen,
+        dashboard,
+        canEdit,
+        location,
+      }) => (
         <DashboardActionMenu
           items={getExtraButtons({
+            canResetFilters,
+            onResetFilters,
             onFullscreenChange,
             isFullscreen,
             dashboard,
             canEdit,
-            pathname: location.pathname,
+            pathname: location?.pathname,
           })}
         />
       ),
@@ -218,7 +201,11 @@ export const dashboardActionButtons: Record<
 
   //   UTILITY
   [DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER]: {
-    component: () => <DashboardHeaderActionDivider />,
+    component: () => (
+      <Center h="1.25rem" px="sm">
+        <Divider orientation="vertical" />
+      </Center>
+    ),
     enabled: () => true,
   },
 };

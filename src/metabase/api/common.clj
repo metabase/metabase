@@ -134,7 +134,6 @@
   more information about the Metabase permissions system."
   (atom #{}))
 
-
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
 (defn- check-one [condition code message]
@@ -197,8 +196,8 @@
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
   (throw (ex-info (tru "Invalid field: {0}" field-name)
-           {:status-code 400
-            :errors      {(keyword field-name) message}})))
+                  {:status-code 400
+                   :errors      {(keyword field-name) message}})))
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
@@ -210,11 +209,9 @@
   `checkp` can be called with the form
 
       (checkp test field-name message)"
-  {:style/indent 1}
-  ([tst field-name message]
-   (when-not tst
-     (throw-invalid-param-exception (str field-name) message))))
-
+  [tst field-name message]
+  (when-not tst
+    (throw-invalid-param-exception (str field-name) message)))
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 
@@ -238,7 +235,6 @@
            ~@(vec (apply concat (for [[binding test] (partition-all 2 bindings)]
                                   [binding `(check ~test ~response-pair-symb)])))]
        ~@body)))
-
 
 ;;; ### GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
@@ -298,7 +294,6 @@
 (def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
-
 
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
@@ -494,7 +489,6 @@
   "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
   don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
   `obj` if the check is successful."
-  {:style/indent 2}
   ([obj]
    (check-404 obj)
    (try
@@ -516,7 +510,6 @@
   "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
   don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
   `obj` if the check is successful."
-  {:style/indent 2}
   ([obj]
    (check-404 obj)
    (try
@@ -537,7 +530,7 @@
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
   hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
-  {:added "0.32.0", :style/indent 2}
+  {:added "0.32.0"}
   [entity m]
   (try
     (check-403 (mi/can-create? entity m))
@@ -552,7 +545,7 @@
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `PUT` API endpoints instead have the `can-update?` logic for a given model hardcoded
   into them -- this should be considered an antipattern and be refactored out going forward."
-  {:added "0.36.0", :style/indent 2}
+  {:added "0.36.0"}
   [instance changes]
   (try
     (check-403 (mi/can-update? instance changes))
@@ -569,7 +562,7 @@
   (u/prog1 object
     (check-404 object)
     (check (not (:archived object))
-      [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
+           [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
@@ -667,7 +660,6 @@
          (reconcile-position-for-collection! old-collection-id old-position nil)
          (reconcile-position-for-collection! new-collection-id nil new-position))))))
 
-
 ;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
 
 (defn bit->boolean
@@ -697,7 +689,6 @@
     (map parse-fn xs)
     [(parse-fn xs)]))
 
-
 ;;; ---------------------------------------- SET `archived_directly` ---------------------------------
 
 (defn updates-with-archived-directly
@@ -705,7 +696,17 @@
   [current-obj obj-updates]
   (cond-> obj-updates
     (column-will-change? :archived current-obj obj-updates)
-    (assoc :archived_directly (boolean (:archived obj-updates)))))
+    (assoc :archived_directly (boolean (:archived obj-updates)))
+
+    ;; This is a hack around a frontend issue. Apparently, the undo functionality depends on calculating a diff
+    ;; between the current state and the previous state. Sometimes this results in the frontend telling us to
+    ;; *both* mark an item as archived *and* "move" it to the Trash.
+    ;;
+    ;; Let's just say that if you're marking something as archived, we throw away any `collection_id` you passed in
+    ;; along with it.
+    (and (column-will-change? :archived current-obj obj-updates)
+         (:archived obj-updates))
+    (dissoc :collection_id)))
 
 (defn present-in-trash-if-archived-directly
   "If `:archived_directly` is `true`, set `:collection_id` to the trash collection ID."
@@ -713,3 +714,19 @@
   (cond-> item
     (:archived_directly item)
     (assoc :collection_id trash-collection-id)))
+
+(mu/defn present-items
+  "A convenience function that takes a heterogeneous collection of items. Each item should have, at minimum, a `:model`
+  and an `:id`. The `f` function is called like `(f model all-items-with-that-model)` and should return a collection
+  of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
+  for reordering items the way they were."
+  [f items :- [:sequential [:map
+                            [:id ms/PositiveInt]
+                            [:model :keyword]]]]
+  (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
+    (->> items
+         (group-by :model)
+         (mapcat (fn [[model items]]
+                   (map #(assoc % ::model model) (f model items))))
+         (sort-by (comp id+model->order (juxt :id ::model)))
+         (map #(dissoc % ::model)))))

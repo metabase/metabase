@@ -185,7 +185,7 @@
           {:bar-width (float 0.0), :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
           {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows example-test-data}
-                 {:bar-column second, :min-value 0, :max-value 40})))))
+                                               {:bar-column second, :min-value 0, :max-value 40})))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -228,8 +228,8 @@
           [(number "2" 2) "34.04060000° N" "Ok" "December 5, 2014, 3:15 PM" "The Apple Pan"]
           [(number "3" 3) "34.04740000° N" "Good" "August 1, 2014, 12:45 PM" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
-                           {}
-                           {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
+                                                         {}
+                                                         {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
@@ -254,13 +254,13 @@
           {:bar-width nil, :row [(number "4" 4) "0.00000000° N" "September 1, 2018, 7:32 PM" "The Tipsy Tardigrade"]}
           {:bar-width nil, :row [(number "5" 5) "" "October 12, 2022, 5:55 AM" "The Bungalow"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
-                 {}
-                 {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
+                                               {}
+                                               {:cols test-columns-with-date-semantic-type :rows example-test-data})))))
 
 (deftest error-test
   (testing "renders error"
     (is (= "An error occurred while displaying this card."
-           (-> (body/render :render-error nil nil nil nil nil) :content last))))
+           (-> (body/render :render-error nil nil nil nil nil) :content last str))))
   (testing "renders card error"
     (is (= "There was a problem with this question."
            (-> (body/render :card-error nil nil nil nil nil) :content last)))))
@@ -480,7 +480,7 @@
                             {:key "January", :name "January", :enabled true}],
                            :funnel.order_dimension "CREATED_AT"}}]
         (mt/with-temp [Card {card-id :id} funnel-card]
-          (let [doc        (render.tu/render-card-as-hickory card-id)
+          (let [doc        (render.tu/render-card-as-hickory! card-id)
                 pulse-body (hik.s/select
                             (hik.s/class "pulse-body")
                             doc)]
@@ -522,7 +522,7 @@
                             {:key "purchase" :name "purchase" :enabled true}]}}]
         (mt/with-temp [:model/Card {card-id :id} funnel-card]
           (let [row-names      (into #{} (map first funnel-rows))
-                doc            (render.tu/render-card-as-hickory card-id)
+                doc            (render.tu/render-card-as-hickory! card-id)
                 section-labels (->> doc
                                     (hik.s/select (hik.s/tag :tspan))
                                     (mapv (comp first :content))
@@ -530,37 +530,57 @@
             (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
                    section-labels))))))))
 
-(deftest render-categorical-donut-test
-  (let [columns [{:name          "category",
-                  :display_name  "Category",
-                  :base_type     :type/Text
-                  :semantic_type nil}
-                 {:name          "NumPurchased",
-                  :display_name  "NumPurchased",
-                  :base_type     :type/Integer
-                  :semantic_type nil}]
-        render  (fn [rows & [viz-settings]]
-                  (body/render :categorical/donut :inline pacific-tz
-                               render.tu/test-card
-                               nil
-                               {:cols columns :rows rows :viz-settings viz-settings}))
-        prune   (fn prune [html-tree]
-                  (walk/prewalk (fn no-maps [x]
-                                  (if (vector? x)
-                                    (filterv (complement map?) x)
-                                    x))
-                                html-tree))]
-    (testing "Renders without error"
-      (let [rendered-info (render [[nil 10] ["Doohickey" 65] ["Widget" 25]] {:show_values true})]
-        (is (has-inline-image? rendered-info))))
-    (testing "Includes percentages"
-      (is (= [:div
-              [:img]
-              [:table
-               [:tr [:td [:span "•"]] [:td "(empty)"] [:td "10%"]]
-               [:tr [:td [:span "•"]] [:td "Doohickey"] [:td "65%"]]
-               [:tr [:td [:span "•"]] [:td "Widget"] [:td "25%"]]]]
-             (prune (:content (render [[nil 10] ["Doohickey" 65] ["Widget" 25]]))))))))
+(deftest render-pie-chart-test
+  (testing "The static-viz pie chart renders correctly."
+    (mt/dataset test-data
+      (let [q       {:database (mt/id)
+                     :type     :query
+                     :query
+                     {:source-table (mt/id :products)
+                      :aggregation  [[:count]]
+                      :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
+            colours {:Doohickey "#AAAAAA"
+                     :Gadget    "#BBBBBB"
+                     :Gizmo     "#CCCCCC"
+                     :Widget    "#DDDDDD"}]
+        (mt/with-temp [:model/Card {card-a-id :id} {:name                   "not-a-crumble"
+                                                    :display                :pie
+                                                    :visualization_settings {:pie.colors colours}
+                                                    :dataset_query          q}
+                       :model/Card {card-b-id :id} {:name                   "maybe-a-donut"
+                                                    :display                :pie
+                                                    :visualization_settings {:pie.show_legend false
+                                                                             :pie.show_total  false
+                                                                             :pie.colors      colours}
+                                                    :dataset_query          q}]
+          (let [card-a-doc (render.tu/render-card-as-hickory! card-a-id)
+                card-b-doc (render.tu/render-card-as-hickory! card-b-id)]
+            ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
+            ;; we should expect to see each of the 4 (and only those 4) colours.
+            ;; This is also true of the colours for the legend circle elements.
+            ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
+            (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
+                                                  {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :total-els-text     #{"TOTAL"}}]
+                                                 [card-b-doc "Renders legend even if disabled in viz-settings, so that static pie charts are legible, but does not render total if it is disabled."
+                                                  {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :total-els-text     #{}}]]]
+              (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
+                                         (map #(get-in % [:attrs :fill]))
+                                         set)
+                    slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
+                                         (map #(get-in % [:attrs :fill]))
+                                         set)
+                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"TOTAL") doc)
+                                         (map (fn [el] (-> el :content first)))
+                                         set)]
+                (testing test-str
+                  (is (= expectations
+                         {:legend-els-colours legend-elements
+                          :slice-els-colours  slice-elements
+                          :total-els-text     total-elements})))))))))))
 
 (deftest render-progress
   (let [col [{:name          "NumPurchased",
@@ -578,23 +598,6 @@
     (testing "Renders negative value without error"
       (let [rendered-info (render [[-25]])]
         (is (has-inline-image? rendered-info))))))
-
-(def donut-info #'body/donut-info)
-
-(deftest ^:parallel donut-info-test
-  (let [rows [["a" 45] ["b" 45] ["c" 5] ["d" 5]]]
-    (testing "If everything is above the threshold does nothing"
-      (is (= rows (:rows (donut-info 4 rows)))))
-    (testing "Collapses smaller sections below threshold"
-      (is (= [["a" 45] ["b" 45] ["Other" 10]]
-             (:rows (donut-info 5 rows)))))
-    (testing "Computes percentages"
-      (is (= {"a" "45%" "b" "45%" "Other" "10%"}
-             (:percentages (donut-info 5 rows)))))
-    (testing "Includes zero percent rows"
-      (let [rows [["a" 50] ["b" 50] ["d" 0]]]
-        (is (= {"a" "50%" "b" "50%" "Other" "0%"}
-               (:percentages (donut-info 5 rows))))))))
 
 (deftest ^:parallel format-percentage-test
   (are [value expected] (= expected
@@ -662,7 +665,7 @@
                                                              :dataset_query          q
                                                              :visualization_settings viz}]
             (testing "the render succeeds with unknown column settings keys"
-              (is (seq (render.tu/render-card-as-hickory card-id))))))))))
+              (is (seq (render.tu/render-card-as-hickory! card-id))))))))))
 
 (deftest trend-chart-renders-in-alerts-test
   (testing "Trend charts render successfully in Alerts. (#39854)"
@@ -679,7 +682,7 @@
         ;; Here, we simulate an Alert (NOT a subscription) by only providing a card and not mocking a DashCard.
         (mt/with-temp [:model/Card {card-id :id} {:display       :smartscalar
                                                   :dataset_query q}]
-          (let [doc       (render.tu/render-card-as-hickory card-id)
+          (let [doc       (render.tu/render-card-as-hickory! card-id)
                 span-text (->> doc
                                (hik.s/select (hik.s/tag :span))
                                (mapv (comp first :content))
@@ -728,7 +731,7 @@
                                                         :visualization_settings (viz "right")
                                                         :dataset_query          q}]
           (testing "Every series on the left correctly only renders left axis."
-            (let [doc                (render.tu/render-card-as-hickory left-card-id)
+            (let [doc                (render.tu/render-card-as-hickory! left-card-id)
                   axis-label-element (hik.s/select (content-selector ["Count"]) doc)
                   ;; the axis label has a :transform property like this: "matrix(0,1,-1,0,520,162.3245)"
                   ;; which is explained here: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
@@ -744,7 +747,7 @@
               (is (= 1 (count axis-label-element)))
               (is (> 200 axis-y-transform))))
           (testing "Every series on the right correctly only renders right axis."
-            (let [doc                (render.tu/render-card-as-hickory right-card-id)
+            (let [doc                (render.tu/render-card-as-hickory! right-card-id)
                   axis-label-element (hik.s/select (content-selector ["Count"]) doc)
                   axis-y-transform   (-> axis-label-element
                                          (get-in [0 :attrs :transform])
@@ -773,8 +776,8 @@
                        :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                      :card_id          card-b-id}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [card-doc               (render.tu/render-card-as-hickory card-a-id)
-                  dashcard-doc           (render.tu/render-dashcard-as-hickory dashcard-id)
+            (let [card-doc               (render.tu/render-card-as-hickory! card-a-id)
+                  dashcard-doc           (render.tu/render-dashcard-as-hickory! dashcard-id)
                   card-path-elements     (hik.s/select (hik.s/tag :path) card-doc)
                   card-paths-count       (count card-path-elements)
                   dashcard-path-elements (hik.s/select (hik.s/tag :path) dashcard-doc)
@@ -824,7 +827,7 @@
                        :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id
                                                      :card_id          card-b-id}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [dashcard-doc           (render.tu/render-dashcard-as-hickory
+            (let [dashcard-doc           (render.tu/render-dashcard-as-hickory!
                                           dashcard-id
                                           [{:value     "2019-05"
                                             :id        "944bba5f"
@@ -848,9 +851,9 @@
 
 (deftest render-cards-are-thread-safe-test-for-js-visualization
   (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders
-                                                                          {:aggregation [[:count]]
-                                                                           :breakout    [$orders.created_at]
-                                                                           :limit       1})
+                                                             {:aggregation [[:count]]
+                                                              :breakout    [$orders.created_at]
+                                                              :limit       1})
                                    :display                :line
                                    :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                             :graph.metrics    ["count"]}}]
@@ -881,19 +884,19 @@
                                                               {:table.cell_column "TOTAL"
                                                                :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                                                                    {:column_title "CASH MONEY"}}}}]
-    (mt/with-current-user (mt/user->id :rasta)
-      (let [card-doc        (render.tu/render-card-as-hickory card-id)
-            card-header-els (hik.s/select (hik.s/tag :th) card-doc)
-            dashcard-doc    (render.tu/render-dashcard-as-hickory dashcard-id)
-            dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
-            card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
-                             "Total" "Discount ($)" "Created At" "Quantity"]
-            dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
-                             "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
-        (is (= {:card     card-header
-                :dashcard dashcard-header}
-               {:card     (mapcat :content card-header-els)
-                :dashcard (mapcat :content dash-header-els)}))))))))
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [card-doc        (render.tu/render-card-as-hickory! card-id)
+                card-header-els (hik.s/select (hik.s/tag :th) card-doc)
+                dashcard-doc    (render.tu/render-dashcard-as-hickory! dashcard-id)
+                dash-header-els (hik.s/select (hik.s/tag :th) dashcard-doc)
+                card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "Total" "Discount ($)" "Created At" "Quantity"]
+                dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+            (is (= {:card     card-header
+                    :dashcard dashcard-header}
+                   {:card     (mapcat :content card-header-els)
+                    :dashcard (mapcat :content dash-header-els)}))))))))
 
 (deftest table-renders-respect-conditional-formatting
   (testing "Rendered Tables respect the conditional formatting on a card."
@@ -917,7 +920,7 @@
                                                              :id            idx})
                                                           ids-to-colour))}}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [card-doc     (render.tu/render-card-as-hickory card-id)
+            (let [card-doc     (render.tu/render-card-as-hickory! card-id)
                   card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
               (is (= (mapv str ids-to-colour)
                      (keep
@@ -925,7 +928,7 @@
                         (let [style-str (:style attrs)]
                           (when (str/includes? style-str "background-color")
                             (-> el :content first))))
-                           (mapcat :content (take 20 card-row-els))))))))))))
+                      (mapcat :content (take 20 card-row-els))))))))))))
 
 (deftest table-renders-conditional-formatting-even-with-hidden-column
   (testing "Rendered Tables respect the conditional formatting on a card."
@@ -959,15 +962,15 @@
                                                              :id            idx})
                                                           ids-to-colour))}}]
           (mt/with-current-user (mt/user->id :rasta)
-            (let [card-doc     (render.tu/render-card-as-hickory card-id)
+            (let [card-doc     (render.tu/render-card-as-hickory! card-id)
                   card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
               (is (=  ids-to-colour
-                     (keep
-                      (fn [[id row-els]]
-                        (let [{:keys [attrs]} (first row-els)
-                              style-str       (:style attrs)]
-                          (when (str/includes? style-str "background-color")
-                            id)))
-                      (map vector
-                       (range)
-                       (map :content (take 20 card-row-els)))))))))))))
+                      (keep
+                       (fn [[id row-els]]
+                         (let [{:keys [attrs]} (first row-els)
+                               style-str       (:style attrs)]
+                           (when (str/includes? style-str "background-color")
+                             id)))
+                       (map vector
+                            (range)
+                            (map :content (take 20 card-row-els)))))))))))))

@@ -1,4 +1,4 @@
-import { useRegisterActions, type Action } from "kbar";
+import { type Action, useRegisterActions } from "kbar";
 import { useCallback, useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
@@ -14,8 +14,8 @@ import * as Urls from "metabase/lib/urls";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import {
   getHasDataAccess,
-  getHasNativeWrite,
   getHasDatabaseWithActionsEnabled,
+  getHasNativeWrite,
 } from "metabase/selectors/data";
 
 export const useCommandPaletteBasicActions = ({

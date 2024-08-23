@@ -10,7 +10,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.models.query-field :as query-field]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
@@ -92,8 +91,8 @@
 
 (defn- explicit-references [field-ids]
   (let [field-refs (explicit-field-references field-ids)]
-    {:fields field-refs
-     :tables (distinct (map #(dissoc % :field-id :field) field-refs))}))
+    {:fields (distinct field-refs)
+     :tables (distinct (map #(dissoc % :field-id :column :explicit-reference) field-refs))}))
 
 (defn- query-references
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
@@ -114,7 +113,7 @@
      :query      (explicit-references (mbql.u/referenced-field-ids query))
      :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
 
-(defn update-query-analysis-for-card!
+(defn- update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
 
   Returns `nil` (and logs the error) if there was a parse error.
@@ -122,15 +121,32 @@
   [{card-id :id, query :dataset_query}]
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
-      (let [references       (query-references query query-type)
-            reference->row   (fn [{:keys [field-id explicit-reference]}]
-                               ;; For now we only persist references which resolve to known fields
-                               (when field-id
+      (t2/with-transaction [_conn]
+        (let [analysis-id      (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id})
+              references       (query-references query query-type)
+              table->row       (fn [{:keys [schema table table-id]}]
+                                 {:card_id     card-id
+                                  :analysis_id analysis-id
+                                  :schema      schema
+                                  :table       table
+                                  :table_id    table-id})
+              field->row       (fn [{:keys [schema table column table-id field-id explicit-reference]}]
                                  {:card_id            card-id
+                                  :analysis_id        analysis-id
+                                  :schema             schema
+                                  :table              table
+                                  :column             column
+                                  :table_id           table-id
                                   :field_id           field-id
-                                  :explicit_reference explicit-reference}))
-            query-field-rows (map reference->row (:fields references))]
-        (query-field/update-query-fields-for-card! card-id query-field-rows)))))
+                                  :explicit_reference explicit-reference})
+              query-field-rows (map field->row (:fields references))
+              query-table-rows (map table->row (:tables references))]
+          (t2/insert! :model/QueryField query-field-rows)
+          (t2/insert! :model/QueryTable query-table-rows)
+          (t2/delete! :model/QueryAnalysis
+                      {:where [:and
+                               [:= :card_id card-id]
+                               [:not= :id analysis-id]]}))))))
 
 (defn- replaced-inner-query-for-native-card
   "Substitute new references for certain fields and tables, based upon the given mappings."
@@ -186,8 +202,10 @@
 (defn ->analyzable
   "Given a partial card or its id, ensure that we have all the fields required for analysis."
   [card-or-id]
-  (if (and (map? card-or-id) (every? (partial contains? card-or-id) [:id :archived :dataset_query]))
+  ;; If we don't know whether a card has been archived, give it the benefit of the doubt.
+  (if (every? #(some? (% card-or-id)) [:id :dataset_query])
     card-or-id
+    ;; If we need to query the database though, find out for sure.
     (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
 
 (defn analyze-card!
@@ -195,20 +213,20 @@
   [card-or-id]
   (let [card    (->analyzable card-or-id)
         card-id (:id card)]
-      (cond
-        (not card)       (log/warnf "Card not found: %s" card-id)
-        (:archived card) (log/warnf "Skipping archived card: %s" card-id)
-        :else            (log/infof "Performing query analysis for card %s" card-id))
-      (when (and card (not (:archived card)))
-        (update-query-analysis-for-card! card))))
+    (cond
+      (not card)       (log/warnf "Card not found: %s" card-id)
+      (:archived card) (log/warnf "Skipping archived card: %s" card-id)
+      :else            (log/debugf "Performing query analysis for card %s" card-id))
+    (when (and card (not (:archived card)))
+      (update-query-analysis-for-card! card))))
 
-(defn next-card-id!
+(defn next-card-or-id!
   "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer.
   Should only be called from [[metabase.task.analyze-queries]]."
   ([]
-   (next-card-id! worker-queue))
+   (next-card-or-id! worker-queue))
   ([queue]
-   (next-card-id! queue Long/MAX_VALUE))
+   (next-card-or-id! queue Long/MAX_VALUE))
   ([queue timeout]
    (queue/blocking-take! queue timeout)))
 
@@ -216,16 +234,28 @@
   "Indirection used to modify the execution strategy for analysis in dev and tests."
   [offer-fn! card-or-id]
   (case (execution)
-    ::immediate (analyze-card! (u/the-id card-or-id))
-    ::queued    (offer-fn! (u/the-id card-or-id))
+    ::immediate (analyze-card! card-or-id)
+    ::queued    (offer-fn! card-or-id)
     ::disabled  nil))
+
+(defn- maybe-enqueue! [queue card-or-id]
+  (let [id        (u/the-id card-or-id)
+        enqueued? (queue/maybe-put! queue card-or-id)]
+    (if enqueued?
+      (log/debugf "Queued Card %s for async analysis" id)
+      (log/warnf "Deferred analysis of Card %s, as the queue is full" id))))
+
+(defn- blocking-put! [queue timeout card-or-id]
+  (let [id (u/the-id card-or-id)]
+    (log/debugf "Synchronously analyzing Card %s" id)
+    (queue/blocking-put! queue timeout card-or-id)))
 
 (defn analyze-async!
   "Asynchronously hand-off the given card for analysis, at a high priority. This is typically the method you want."
   ([card-or-id]
    (analyze-async! worker-queue card-or-id))
   ([queue card-or-id]
-   (queue-or-analyze! (partial queue/maybe-put! queue) card-or-id)))
+   (queue-or-analyze! (partial maybe-enqueue! queue) card-or-id)))
 
 (defn analyze-sync!
   "Synchronously hand-off the given card for analysis, at a low priority. May block indefinitely, relies on consumer."

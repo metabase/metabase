@@ -45,7 +45,8 @@
    ::action        "1-0-0"
    ::embed_share   "1-0-0"
    ::llm_usage     "1-0-0"
-   ::serialization "1-0-0"})
+   ::serialization "1-0-1"
+   ::cleanup       "1-0-0"})
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
@@ -79,12 +80,14 @@
    ::embedding-enabled              ::embed_share
    ::embedding-disabled             ::embed_share
    ::llm-usage                      ::llm_usage
-   ::serialization                  ::serialization})
+   ::serialization                  ::serialization
+   ::stale-items-read               ::cleanup
+   ::stale-items-archived           ::cleanup})
 
 (defsetting analytics-uuid
   (deferred-tru
-    (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
-         "This is a public setting since some analytics events are sent prior to initial setup."))
+   (str "Unique identifier to be used in Snowplow analytics, to identify this instance of Metabase. "
+        "This is a public setting since some analytics events are sent prior to initial setup."))
   :encryption :never
   :visibility :public
   :base       setting/uuid-nonce-base
@@ -154,32 +157,32 @@
 (def ^:private network-config
   "Returns instance of a Snowplow network config"
   (let [network-config* (delay
-                         (let [request-config (-> (RequestConfig/custom)
+                          (let [request-config (-> (RequestConfig/custom)
                                                   ;; Set cookie spec to `STANDARD` to avoid warnings about an invalid cookie
                                                   ;; header in request response (PR #24579)
-                                                  (.setCookieSpec CookieSpecs/STANDARD)
-                                                  (.build))
-                               client (-> (HttpClients/custom)
-                                          (.setConnectionManager (PoolingHttpClientConnectionManager.))
-                                          (.setDefaultRequestConfig request-config)
-                                          (.build))
-                               http-client-adapter (ApacheHttpClientAdapter. (snowplow-url) client)]
-                           (NetworkConfiguration. http-client-adapter)))]
+                                                   (.setCookieSpec CookieSpecs/STANDARD)
+                                                   (.build))
+                                client (-> (HttpClients/custom)
+                                           (.setConnectionManager (PoolingHttpClientConnectionManager.))
+                                           (.setDefaultRequestConfig request-config)
+                                           (.build))
+                                http-client-adapter (ApacheHttpClientAdapter. (snowplow-url) client)]
+                            (NetworkConfiguration. http-client-adapter)))]
     (fn [] @network-config*)))
 
 (def ^:private emitter-config
   "Returns an instance of a Snowplow emitter config"
   (let [emitter-config* (delay (-> (EmitterConfiguration.)
                                    (.batchSize 1)))]
-     (fn [] @emitter-config*)))
+    (fn [] @emitter-config*)))
 
 (def ^:private tracker
   "Returns instance of a Snowplow tracker"
   (let [tracker* (delay
-                  (Snowplow/createTracker
-                   ^TrackerConfiguration (tracker-config)
-                   ^NetworkConfiguration (network-config)
-                   ^EmitterConfiguration (emitter-config)))]
+                   (Snowplow/createTracker
+                    ^TrackerConfiguration (tracker-config)
+                    ^NetworkConfiguration (network-config)
+                    ^EmitterConfiguration (emitter-config)))]
     (fn [] @tracker*)))
 
 (defn- subject

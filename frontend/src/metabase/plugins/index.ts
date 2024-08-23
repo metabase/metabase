@@ -13,9 +13,9 @@ import noResultsSource from "assets/img/no_results.svg";
 import { strategies } from "metabase/admin/performance/constants/complex";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
+  type DataPermission,
   DataPermissionValue,
   type DatabaseEntityId,
-  type DataPermission,
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
@@ -32,15 +32,16 @@ import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
-  Database as DatabaseType,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
+  CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  Database as DatabaseType,
   Dataset,
   Group,
   GroupPermissions,
@@ -97,6 +98,8 @@ export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
   impersonated: [],
 };
 
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS = [];
+
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS = [];
@@ -133,7 +136,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     | ((
         permissions: GroupsPermissions,
         groupId: number,
-        { databaseId }: DatabaseEntityId,
+        entityId: EntityId,
         value: any,
         database: Database,
         permission: DataPermission,
@@ -155,7 +158,17 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
+// auth settings
+interface AuthTabs {
+  name: string;
+  key: string;
+  to: string;
+}
+
+export const PLUGIN_ADMIN_SETTINGS_AUTH_TABS: AuthTabs[] = [];
+
 // authentication providers
+
 export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
@@ -184,26 +197,32 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
 export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
+const defaultLandingPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const defaultLoginPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const getLoadingMessage = (isSlow: boolean) =>
+  isSlow ? t`Waiting for results...` : t`Doing science...`;
+
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
-    isSlow ? t`Waiting for results...` : t`Doing science...`,
+  getLoadingMessageFactory: (_state: State) => getLoadingMessage,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
   getLoginPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLoginPageIllustration;
   },
   getLandingPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLandingPageIllustration;
   },
   getNoDataIllustration: (_state: State): string => {
     return noResultsSource;
@@ -247,7 +266,17 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
+type CleanUpMenuItem = {
+  title: string;
+  icon: string;
+  link: string;
+};
+
 export type ItemWithCollection = { collection: CollectionEssentials };
+
+type GetCollectionIdType = (
+  sourceCollectionId?: CollectionId | null,
+) => CollectionId | null;
 
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
@@ -262,9 +291,7 @@ export const PLUGIN_COLLECTIONS = {
     _: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
-  getInstanceAnalyticsCustomCollection: (
-    _collections: Collection[],
-  ): Collection | null => null,
+  useGetDefaultCollectionId: null as GetCollectionIdType | null,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
@@ -275,6 +302,15 @@ export const PLUGIN_COLLECTIONS = {
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
+  canCleanUp: false,
+  getCleanUpMenuItems: (
+    _itemCount: number,
+    _url: string,
+    _isInstanceAnalyticsCustom: boolean,
+    _isTrashed: boolean,
+    _canWrite: boolean,
+  ): CleanUpMenuItem[] => [],
+  cleanUpRoute: null as React.ReactElement | null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<

@@ -8,20 +8,20 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import {
-  getParameterMappingOptions,
   type ParameterMappingOption,
+  getParameterMappingOptions,
 } from "metabase/parameters/utils/mapping-options";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CardId,
-  QuestionDashboardCard,
-  DashboardId,
   DashCardId,
+  DashboardCard,
+  DashboardId,
+  DashboardTabId,
+  Parameter,
   ParameterId,
   ParameterTarget,
-  Parameter,
-  DashboardTabId,
-  DashboardCard,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 import type { DashboardState } from "metabase-types/store";
 

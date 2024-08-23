@@ -1,24 +1,24 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitQuestion,
-  popover,
-  visitIframe,
-  openStaticEmbeddingModal,
-  echartsContainer,
+  assertEChartsTooltip,
   cartesianChartCircle,
-  testPairedTooltipValues,
   describeEE,
+  echartsContainer,
   filterWidget,
-  visitEmbeddedPage,
+  openStaticEmbeddingModal,
+  popover,
+  restore,
   setTokenFeatures,
+  visitEmbeddedPage,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 import {
-  regularQuestion,
-  questionWithAggregation,
   joinedQuestion,
+  questionWithAggregation,
+  regularQuestion,
 } from "./shared/embedding-questions";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -107,12 +107,11 @@ describe("scenarios > embedding > questions", () => {
     echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    cartesianChartCircle().last().realHover();
+    cartesianChartCircle().last().trigger("mousemove");
 
-    popover().within(() => {
-      testPairedTooltipValues("Created At", "Aug 2022");
-      testPairedTooltipValues("Math", "2");
-      testPairedTooltipValues("Count", "79");
+    assertEChartsTooltip({
+      header: "Aug 2022",
+      rows: [{ name: "2", value: "79" }],
     });
   });
 
@@ -268,9 +267,10 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Embedding settings page should not show option to disable downloads",
         );
-        cy.findByLabelText("Customizing look and feel")
-          .should("not.contain", "Download data")
-          .and("not.contain", "Enable users to download data from this embed");
+        cy.findByLabelText("Customizing look and feel").should(
+          "not.contain",
+          "Download buttons",
+        );
 
         cy.log('Use API to "publish" this question and to enable its filter');
         cy.request("PUT", `/api/card/${questionId}`, {
@@ -328,11 +328,11 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.log("Disable downloads");
-        cy.findByLabelText("Download data")
+        cy.findByLabelText("Download buttons")
           .as("allow-download-toggle")
           .should("be.checked");
 
-        cy.findByText("Enable users to download data from this embed").click();
+        cy.findByText("Download buttons").click();
         cy.get("@allow-download-toggle").should("not.be.checked");
 
         cy.log('Use API to "publish" this question and to enable its filter');

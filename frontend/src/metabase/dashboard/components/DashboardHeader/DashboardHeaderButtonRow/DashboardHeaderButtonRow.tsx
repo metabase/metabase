@@ -9,6 +9,7 @@ import {
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/env";
 import { useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import {
@@ -17,7 +18,7 @@ import {
 } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
 
-import { DASHBOARD_VIEW_ACTIONS, DASHBOARD_EDITING_ACTIONS } from "./constants";
+import { DASHBOARD_EDITING_ACTIONS, DASHBOARD_VIEW_ACTIONS } from "./constants";
 
 export const DashboardHeaderButtonRow = ({
   dashboardActionKeys = null,
@@ -61,6 +62,7 @@ export const DashboardHeaderButtonRow = ({
             formInput,
             isAdmin,
             isPublic,
+            isEmbeddingSdk,
             ...props,
           };
 

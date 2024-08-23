@@ -8,6 +8,7 @@ import {
   Icon,
   Popover,
   Text,
+  rem,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Parameter, TemporalUnit } from "metabase-types/api";
@@ -37,6 +38,7 @@ export function TemporalUnitSettings({
           fw="normal"
           rightIcon={<Icon name="chevrondown" />}
           fullWidth
+          px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
           styles={{ inner: { justifyContent: "space-between" } }} // justify prop in mantine v7
         >
           {getSelectedText(selectedUnits, isAll, isNone)}
@@ -116,7 +118,9 @@ function TemporalUnitDropdown({
               disabled={isDisabled}
               onChange={() => handleUnitToggle(unit)}
             />
-            <Text ml="sm">{Lib.describeTemporalUnit(unit)}</Text>
+            <Text ml="sm" c="inherit">
+              {Lib.describeTemporalUnit(unit)}
+            </Text>
           </label>
         );
       })}

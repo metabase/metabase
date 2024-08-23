@@ -2,11 +2,11 @@ import { useAsyncFn } from "react-use";
 import type { AsyncFnReturn } from "react-use/lib/useAsyncFn";
 
 import { useDispatch } from "metabase/lib/redux";
-import { downloadQueryResults } from "metabase/query_builder/actions";
+import { downloadQueryResults } from "metabase/redux/downloads";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  DashboardId,
   DashCardId,
+  DashboardId,
   Dataset,
   ParameterValuesMap,
   VisualizationSettings,

@@ -6,6 +6,7 @@ import {
   SECOND_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type StructuredQuestionDetails,
   createCollection,
   createQuestion,
   entityPickerModal,
@@ -32,7 +33,6 @@ import {
   visitModel,
   visitQuestion,
   visualize,
-  type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 
@@ -123,12 +123,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
-        tabsShouldBe("Tables", [
-          "Recents",
-          "Models",
-          "Tables",
-          "Saved questions",
-        ]);
+        tabsShouldBe("Tables", ["Models", "Tables", "Saved questions"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -142,12 +137,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
-        tabsShouldBe("Tables", [
-          "Recents",
-          "Models",
-          "Tables",
-          "Saved questions",
-        ]);
+        tabsShouldBe("Tables", ["Models", "Tables", "Saved questions"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema

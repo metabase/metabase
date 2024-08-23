@@ -1,15 +1,15 @@
 import type { ChangeEvent, InputHTMLAttributes } from "react";
-import { useCallback, useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
 import {
+  ActiveTrack,
   SliderContainer,
   SliderInput,
   SliderTooltip,
   SliderTrack,
-  ActiveTrack,
-  TooltipContainer,
   THUMB_SIZE,
+  TooltipContainer,
 } from "./Slider.styled";
 
 export type NumericInputAttributes = Omit<

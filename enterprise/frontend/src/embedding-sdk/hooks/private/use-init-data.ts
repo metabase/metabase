@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import _ from "underscore";
 
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
 import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
@@ -31,7 +32,19 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   useEffect(() => {
     registerVisualizationsOnce();
-  }, [dispatch]);
+
+    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+    api.requestClient = {
+      name: "embedding-sdk-react",
+      version: EMBEDDING_SDK_VERSION,
+    };
+
+    // eslint-disable-next-line no-console
+    console.log(
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
+    );
+  }, []);
 
   useEffect(() => {
     dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));

@@ -23,6 +23,7 @@
                               :no-upsell
                               :official-collections
                               :sandboxes
+                              :scim
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -31,28 +32,31 @@
                               :sso-ldap
                               :sso-saml
                               :upload_management
-                              :whitelabel}
-          (is (= {:advanced_permissions           true
-                  :attached_dwh                   true
-                  :audit_app                      true
-                  :cache_granular_controls        true
-                  :config_text_file               true
-                  :content_verification           true
-                  :dashboard_subscription_filters true
-                  :disable_password_login         true
-                  :email_allow_list               true
-                  :email_restrict_recipients      true
-                  :embedding                      true
-                  :hosting                        true
-                  :llm_autodescription            true
-                  :official_collections           true
-                  :sandboxes                      true
-                  :session_timeout_config         true
-                  :snippet_collections            true
-                  :sso_google                     true
-                  :sso_jwt                        true
-                  :sso_ldap                       true
-                  :sso_saml                       true
-                  :upload_management              false
-                  :whitelabel                     true}
-                 (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
+                              :whitelabel
+                              :collection-cleanup}
+    (is (= {:advanced_permissions           true
+            :attached_dwh                   true
+            :audit_app                      true
+            :cache_granular_controls        true
+            :config_text_file               true
+            :content_verification           true
+            :dashboard_subscription_filters true
+            :disable_password_login         true
+            :email_allow_list               true
+            :email_restrict_recipients      true
+            :embedding                      true
+            :hosting                        true
+            :llm_autodescription            true
+            :official_collections           true
+            :sandboxes                      true
+            :scim                           true
+            :session_timeout_config         true
+            :snippet_collections            true
+            :sso_google                     true
+            :sso_jwt                        true
+            :sso_ldap                       true
+            :sso_saml                       true
+            :upload_management              false
+            :whitelabel                     true
+            :collection_cleanup             true}
+           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

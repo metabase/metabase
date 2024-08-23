@@ -5,8 +5,8 @@ import {
   createNativeQuestion,
   createQuestion,
   dashboardHeader,
-  dashboardParametersDoneButton,
   dashboardParameterSidebar,
+  dashboardParametersDoneButton,
   editDashboard,
   filterWidget,
   getDashboardCard,
@@ -187,9 +187,25 @@ const nativeUnitQuestionDetails = {
   },
 };
 
+const nativeTimeQuestionDetails = {
+  name: "SQL time",
+  display: "table",
+  native: {
+    query: "SELECT CAST('10:00' AS TIME) AS TIME",
+  },
+};
+
+const getNativeTimeQuestionBasedQuestionDetails = card => ({
+  query: {
+    "source-table": `card__${card.id}`,
+    aggregation: [["count"]],
+    breakout: [["field", "TIME", { "base-type": "type/Time" }]],
+  },
+});
+
 const parameterDetails = {
   id: "1",
-  name: "Unit of Time",
+  name: "Time grouping",
   slug: "unit_of_time",
   type: "temporal-unit",
   sectionId: "temporal-unit",
@@ -387,9 +403,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", "Started from")
         .should("contain.text", multiBreakoutQuestionDetails.name);
       queryBuilderMain().within(() => {
-        cy.findByText("Product → Created At: Week").should("be.visible");
-        cy.findByText("2022").should("be.visible");
-        cy.findByText("2023").should("be.visible");
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("May 1, 2022").should("be.visible");
       });
     });
 
@@ -787,6 +803,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         cy.findByLabelText("Year").click();
         cy.findByLabelText("Minute").click();
       });
+      dashboardParametersDoneButton().click();
       saveDashboard();
 
       filterWidget().click();
@@ -856,6 +873,34 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       getDashboardCard().findByText("Created At: Quarter").should("be.visible");
       resetFilterWidgetToDefault();
       getDashboardCard().findByText("Created At: Year").should("be.visible");
+    });
+
+    it("should show an error message when an incompatible temporal unit is used", () => {
+      cy.log("setup dashboard with a time column");
+      createNativeQuestion(nativeTimeQuestionDetails).then(({ body: card }) => {
+        cy.createDashboardWithQuestions({
+          questions: [getNativeTimeQuestionBasedQuestionDetails(card)],
+        }).then(({ dashboard }) => {
+          visitDashboard(dashboard.id);
+        });
+      });
+      editDashboard();
+      addTemporalUnitParameter();
+      selectDashboardFilter(getDashboardCard(), "TIME");
+      saveDashboard();
+
+      cy.log("use an invalid temporal unit");
+      filterWidget().click();
+      popover().findByText("Year").click();
+      getDashboardCard().should(
+        "contain.text",
+        "This chart can not be broken out by the selected unit of time: year.",
+      );
+
+      cy.log("use an valid temporal unit");
+      filterWidget().click();
+      popover().findByText("Minute").click();
+      getDashboardCard().findByText("TIME: Minute").should("be.visible");
     });
   });
 
@@ -962,9 +1007,7 @@ function backToDashboard() {
 }
 
 function addTemporalUnitParameter() {
-  cy.findByTestId("dashboard-header")
-    .findByLabelText("Add a Unit of Time widget")
-    .click();
+  setFilter("Time grouping");
 }
 
 function addQuestion(name) {

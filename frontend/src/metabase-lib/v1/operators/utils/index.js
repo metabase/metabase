@@ -1,9 +1,9 @@
 import _ from "underscore";
 
 import {
+  AGGREGATION_OPERATORS,
   FIELD_FILTER_OPERATORS,
   FILTER_OPERATORS_BY_TYPE_ORDERED,
-  AGGREGATION_OPERATORS,
   MORE_VERBOSE_NAMES,
 } from "metabase-lib/v1/operators/constants";
 import {
