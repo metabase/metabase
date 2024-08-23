@@ -122,6 +122,7 @@ const Legend = ({
               isVertical={isVertical}
               onHoverChange={onHoverChange}
               onSelectSeries={onSelectSeries}
+              onToggleSeriesVisibility={onToggleSeriesVisibility}
               onRemoveSeries={onRemoveSeries}
               isReversed={isReversed}
             />
