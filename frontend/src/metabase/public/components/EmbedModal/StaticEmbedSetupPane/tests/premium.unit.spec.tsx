@@ -102,7 +102,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-appearance&source_plan=pro-self-hosted#customizing-the-appearance-of-static-embeds",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-look-and-feel&source_plan=pro-self-hosted#customizing-the-appearance-of-static-embeds",
         );
       });
 

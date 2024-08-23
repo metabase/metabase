@@ -50,7 +50,7 @@ export const AppearanceSettings = ({
   const upgradePageUrl = useSelector(state =>
     getUpgradeUrl(state, {
       utm_campaign: "embedding-static-font",
-      utm_content: "static-embed-settings-appearance",
+      utm_content: "static-embed-settings-look-and-feel",
     }),
   );
   const plan = useSelector(state =>
@@ -76,7 +76,7 @@ export const AppearanceSettings = ({
               utm_source: "product",
               utm_medium: "docs",
               utm_campaign: "embedding-static",
-              utm_content: "static-embed-settings-appearance",
+              utm_content: "static-embed-settings-look-and-feel",
               source_plan: plan,
             })}#customizing-the-appearance-of-static-embeds`}
           >{t`documentation`}</ExternalLink>
