@@ -122,7 +122,12 @@ export interface FieldData {
   
     export const addCubeWrapper = (content: string, cubeName: string) => {
       const trimmedContent = content.trim();
-      return `cube(\`${cubeName}\`, ${trimmedContent});`;
+      const lastChar = trimmedContent.slice(-1);
+      if (lastChar === ')' || lastChar === ';') {
+        return `cube(\`${cubeName}\`, ${trimmedContent}`;
+      } else {
+        return `cube(\`${cubeName}\`, ${trimmedContent});`;
+      }
     };
   
   export function extractAllJoins(cubesContent: string[]): Record<string, string[]> {
