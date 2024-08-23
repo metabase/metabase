@@ -7,6 +7,7 @@
 
 .SkeletonTableRow {
   height: 3rem;
+
   td {
     width: 20rem;
   }
@@ -45,4 +46,15 @@
 
 .ItemLink {
   font-size: inherit !important;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}
+
+.ItemLink,
+.CollectionLink {
+  :hover {
+    color: var(--mb-color-brand);
+  }
 }

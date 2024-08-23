@@ -4,7 +4,9 @@ import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { MaybeLink } from "metabase/components/Badge/Badge.styled";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
+import Link from "metabase/core/components/Link";
 import { getIcon } from "metabase/lib/icon";
+import * as Urls from "metabase/lib/urls";
 import { Box, Button, FixedSizeIcon, Flex } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
 
@@ -74,7 +76,14 @@ export const TableRowForCacheableItem = ({
         </MaybeLink>
       </td>
       <td>
-        {collection && <EllipsifiedCollectionPath collection={collection} />}
+        {collection && (
+          <Link
+            className={StrategyEditorForQuestionsAndDashboardsS.CollectionLink}
+            to={Urls.collection(collection)}
+          >
+            <EllipsifiedCollectionPath collection={collection} />
+          </Link>
+        )}
       </td>
       <td>
         <Button
