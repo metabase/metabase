@@ -119,7 +119,7 @@ title: Driver interface changelog
   implementations with implementations of `metabase.driver/database-supports?` for your driver and the equivalent
   feature keyword instead.
 
-- Drivers that use `metabase.driver.sql.query-processor/->honeysql` can be implement
+- Drivers that use `metabase.driver.sql.query-processor/->honeysql` can implement
   `:metabase.driver.sql.query-processor/nfc-path` to include the nfc-path in the field identifier. So that record-like
   fields can be referenced with `<table>.<record>.<record-field>`. See `bigquery-cloud-sdk` for an example. Defaults To  `nil` to indicate that the path should not be part of the identifier.
 
