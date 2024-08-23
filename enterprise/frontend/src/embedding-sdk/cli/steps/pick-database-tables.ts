@@ -60,9 +60,32 @@ export const pickDatabaseTables: CliStepMethod = async state => {
       return [{ type: "error", message }, state];
     }
 
-    const schemaTables: Table[] = await res.json();
+    const schemaTablesWithoutMetadata: Table[] = await res.json();
 
-    tables.push(...schemaTables);
+    for (const table of schemaTablesWithoutMetadata) {
+      const datasetQuery = {
+        type: "query",
+        database: databaseId,
+        query: { "source-table": table.id },
+      };
+
+      // Get the query metadata from a table
+      const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify(datasetQuery),
+      });
+
+      await propagateErrorResponse(res);
+
+      const metadataResult = (await res.json()) as { tables: Table[] };
+
+      if (metadataResult.tables.length === 0) {
+        throw new Error(`Cannot find table "${table.name}" in database.`);
+      }
+
+      tables.push(...metadataResult.tables);
+    }
   }
 
   if (tables.length === 0) {

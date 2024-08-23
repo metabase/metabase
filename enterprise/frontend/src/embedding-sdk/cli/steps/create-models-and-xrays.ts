@@ -20,17 +20,19 @@ export const createModelsAndXrays: CliStepMethod = async state => {
   const spinner = ora("Creating models…").start();
 
   try {
+    const models = [];
+
     // Create a model for each table
-    const models = await Promise.all(
-      chosenTables.map(table =>
-        createModelFromTable({
-          table,
-          databaseId,
-          cookie,
-          instanceUrl,
-        }),
-      ),
-    );
+    for (const table of chosenTables) {
+      const model = await createModelFromTable({
+        table,
+        databaseId,
+        cookie,
+        instanceUrl,
+      });
+
+      models.push(model);
+    }
 
     spinner.start("X-raying your data to create dashboards...");
 
@@ -48,16 +50,9 @@ export const createModelsAndXrays: CliStepMethod = async state => {
       dashboards.push({ id: dashboardId, name: model.modelName });
     }
 
-    // Populate the table metadata into the state (e.g. table fields),
-    // so we can use it for the permissions step.
-    const tablesWithMetadata = models.map(model => model.tableWithMetadata);
-
     spinner.succeed();
 
-    return [
-      { type: "done" },
-      { ...state, dashboards, chosenTables: tablesWithMetadata },
-    ];
+    return [{ type: "done" }, { ...state, dashboards }];
   } catch (error) {
     spinner.fail();
 
