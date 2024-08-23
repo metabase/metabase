@@ -1,7 +1,7 @@
+import type { GroupItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import { Flex, Tabs } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import type { GroupItem } from "../../types";
 import { FilterTabList } from "../FilterTabList";
 import { FilterTabPanel } from "../FilterTabPanel";
 

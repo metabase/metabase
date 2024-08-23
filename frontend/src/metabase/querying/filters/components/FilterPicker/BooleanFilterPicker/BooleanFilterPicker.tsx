@@ -2,10 +2,10 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useBooleanOptionFilter } from "metabase/querying/filters/hooks/use-boolean-option-filter";
 import { Box, Button, Icon, Radio, Stack } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { useBooleanOptionFilter } from "../../../hooks/use-boolean-option-filter";
 import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { MIN_WIDTH } from "../constants";

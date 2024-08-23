@@ -6,7 +6,7 @@ import {
 } from "metabase/common/utils/column-groups";
 import * as Lib from "metabase-lib";
 
-import type { GroupItem } from "../../FilterContent";
+import type { GroupItem } from "../types";
 
 export function appendStageIfAggregated(query: Lib.Query) {
   const aggregations = Lib.aggregations(query, -1);

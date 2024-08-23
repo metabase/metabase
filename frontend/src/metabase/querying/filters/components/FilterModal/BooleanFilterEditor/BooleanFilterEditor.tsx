@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { useBooleanOperatorFilter } from "metabase/querying/filters/hooks/use-boolean-operator-filter";
 import { Checkbox, Grid, Group } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-import { useBooleanOperatorFilter } from "../../../hooks/use-boolean-operator-filter";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";
 import type { FilterEditorProps } from "../types";

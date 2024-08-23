@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import { Button, Flex, Grid, Icon, Popover } from "metabase/ui";
 
-import { useDateFilter } from "../../../hooks/use-date-filter";
 import {
   DatePicker,
   type DatePickerExtractionUnit,

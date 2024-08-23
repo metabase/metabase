@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
+import type { RelativeIntervalDirection } from "metabase/querying/filters/components/DatePicker/types";
 
-import type { RelativeIntervalDirection } from "../../../types";
 import type { DateIntervalValue } from "../../types";
 
 import { SimpleDateIntervalPicker } from "./SimpleDateIntervalPicker";

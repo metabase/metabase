@@ -3,13 +3,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isNumber } from "metabase/lib/types";
-import { Box, Flex, NumberInput, Text } from "metabase/ui";
-import * as Lib from "metabase-lib";
-
 import {
   type NumberValue,
   useNumberFilter,
-} from "../../../hooks/use-number-filter";
+} from "metabase/querying/filters/hooks/use-number-filter";
+import { Box, Flex, NumberInput, Text } from "metabase/ui";
+import * as Lib from "metabase-lib";
+
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterPickerFooter } from "../FilterPickerFooter";

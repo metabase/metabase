@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 
+import type { ColumnItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import type * as Lib from "metabase-lib";
 
-import type { ColumnItem } from "../../types";
 import { ColumnFilterGroup } from "../ColumnFilterGroup";
 
 import { sortColumns } from "./utils";

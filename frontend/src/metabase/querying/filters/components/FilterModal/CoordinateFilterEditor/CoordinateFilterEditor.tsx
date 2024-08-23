@@ -3,13 +3,13 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { isNumber } from "metabase/lib/types";
-import { Flex, Grid, NumberInput, Text } from "metabase/ui";
-import type * as Lib from "metabase-lib";
-
 import {
   type NumberValue,
   useCoordinateFilter,
-} from "../../../hooks/use-coordinate-filter";
+} from "metabase/querying/filters/hooks/use-coordinate-filter";
+import { Flex, Grid, NumberInput, Text } from "metabase/ui";
+import type * as Lib from "metabase-lib";
+
 import { NumberFilterValuePicker } from "../../FilterValuePicker";
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
 import { FilterTitle, HoverParent } from "../FilterTitle";

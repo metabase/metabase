@@ -1,6 +1,5 @@
+import type { GroupItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import type * as Lib from "metabase-lib";
-
-import type { GroupItem } from "../types";
 
 import { FilterTabContent } from "./FilterTabContent";
 import { FilterTabEmptyState } from "./FilterTabEmptyState";

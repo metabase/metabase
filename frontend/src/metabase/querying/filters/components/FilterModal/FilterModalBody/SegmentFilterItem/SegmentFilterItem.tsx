@@ -1,7 +1,7 @@
+import type { SegmentItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import type * as Lib from "metabase-lib";
 
 import { SegmentFilterEditor } from "../../SegmentFilterEditor";
-import type { SegmentItem } from "../../types";
 import { FilterTabItem } from "../FilterTabItem";
 
 import { addSegmentFilters, removeSegmentFilters } from "./utils";

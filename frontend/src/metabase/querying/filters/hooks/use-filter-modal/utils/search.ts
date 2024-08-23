@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import type { GroupItem } from "../../FilterContent";
 import { SEARCH_KEY } from "../constants";
+import type { GroupItem } from "../types";
 
 export function isSearchActive(searchText: string) {
   return searchText.length > 0;

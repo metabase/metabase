@@ -1,7 +1,7 @@
+import type { ColumnItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import * as Lib from "metabase-lib";
 
 import { ColumnFilterSection } from "../../ColumnFilterSection";
-import type { ColumnItem } from "../../types";
 import { FilterTabItem } from "../FilterTabItem";
 
 export interface ColumnFilterItemProps {

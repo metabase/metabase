@@ -1,6 +1,6 @@
+import type { GroupItem } from "metabase/querying/filters/hooks/use-filter-modal";
 import type * as Lib from "metabase-lib";
 
-import type { GroupItem } from "../../types";
 import { ColumnFilterList } from "../ColumnFilterList";
 import { SegmentFilterItem } from "../SegmentFilterItem";
 
