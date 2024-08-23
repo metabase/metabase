@@ -486,9 +486,9 @@
       (assert (:id channel) "Cannot update a PulseChannel without an :id")
       (pulse-channel/update-pulse-channel! channel))
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
-      (doseq [channel to-delete]
-        (assert (:id channel) "Cannot delete a PulseChannel without an :id")
-        (t2/delete! PulseChannel :id (:id channel))))))
+      (when (seq to-delete)
+        (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
+        (t2/delete! PulseChannel :id [:in (map :id to-delete)])))))
 
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and

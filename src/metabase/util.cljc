@@ -838,7 +838,7 @@
   return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
-  - `:to-create` is a list of maps that ids only in `new-rows`
+  - `:to-create` is a list of maps that has ids only in `new-rows`
   - `:to-delete` is a list of maps that has ids only in `current-rows`
   - `:to-skip`   is a list of identical maps that has ids in both lists
   - `:to-update` is a list of different maps that has ids in both lists
