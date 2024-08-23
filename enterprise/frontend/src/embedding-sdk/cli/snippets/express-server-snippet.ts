@@ -57,7 +57,7 @@ async function metabaseAuthHandler(req, res) {
       first_name: user.firstName,
       last_name: user.lastName,
       groups: user.groups,
-      customer_id: user.customerId,
+      ${USER_ATTRIBUTE_CUSTOMER_ID}: user.${USER_ATTRIBUTE_CUSTOMER_ID},
       exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
     },
     // This is the JWT signing secret in your Metabase JWT authentication setting
