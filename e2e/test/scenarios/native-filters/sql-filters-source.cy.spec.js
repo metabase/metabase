@@ -564,7 +564,7 @@ describe("scenarios > filters > sql filters > values source", () => {
 
 describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
-    restore("default");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
     blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);

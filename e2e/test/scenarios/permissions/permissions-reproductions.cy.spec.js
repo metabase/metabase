@@ -606,7 +606,7 @@ describeEE("issue 24966", () => {
   const dashboardDetails = { parameters: [dashboardFilter] };
 
   beforeEach(() => {
-    restore("default");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
     blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);

@@ -394,7 +394,7 @@ describe(
 
 describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
-    restore("default");
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
     blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);

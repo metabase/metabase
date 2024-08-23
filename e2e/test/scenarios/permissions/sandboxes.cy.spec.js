@@ -52,7 +52,7 @@ const { DATA_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 describeEE("formatting > sandboxes", () => {
   describe("admin", () => {
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
       blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
@@ -96,7 +96,7 @@ describeEE("formatting > sandboxes", () => {
     const QUESTION_NAME = "Joined test";
 
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
       blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
@@ -214,7 +214,7 @@ describeEE("formatting > sandboxes", () => {
 
   describe("Sandboxing reproductions", () => {
     beforeEach(() => {
-      restore("default-ee");
+      restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
       blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
