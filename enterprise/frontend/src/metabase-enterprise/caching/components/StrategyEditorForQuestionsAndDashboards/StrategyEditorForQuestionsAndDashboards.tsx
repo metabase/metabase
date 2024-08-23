@@ -37,7 +37,7 @@ import type {
   UpdateTarget,
 } from "../types";
 
-import StrategyEditorForQuestionsAndDashboardsC from "./StrategyEditorForQuestionsAndDashboards.module.css";
+import Styles from "./StrategyEditorForQuestionsAndDashboards.module.css";
 import { TableRowForCacheableItem } from "./TableRowForCacheableItem";
 import { getConstants } from "./constants";
 import { formatValueForSorting } from "./utils";
@@ -286,9 +286,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
           >
             <Flex align="flex-start">
               <ClientSortableTable<CacheableItem>
-                className={
-                  StrategyEditorForQuestionsAndDashboardsC.CacheableItemTable
-                }
+                className={Styles.CacheableItemTable}
                 columns={tableColumns}
                 rows={cacheableItems}
                 rowRenderer={rowRenderer}
@@ -312,9 +310,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       </Stack>
 
       {targetId !== null && targetModel !== null && (
-        <Panel
-          className={StrategyEditorForQuestionsAndDashboardsC.StrategyFormPanel}
-        >
+        <Panel className={Styles.StrategyFormPanel}>
           <Button
             variant="subtle"
             pos="absolute"
@@ -354,7 +350,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
     columns={columns}
     rows={[{ id: 0 }, { id: 1 }, { id: 2 }]}
     rowRenderer={() => (
-      <tr className={StrategyEditorForQuestionsAndDashboardsC.SkeletonTableRow}>
+      <tr className={Styles.SkeletonTableRow}>
         <Repeat times={3}>
           <td>
             <Skeleton h="1rem" natural />
@@ -362,13 +358,13 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
         </Repeat>
       </tr>
     )}
-    className={StrategyEditorForQuestionsAndDashboardsC.CacheableItemTable}
+    className={Styles.CacheableItemTable}
     locale="en-US"
   />
 );
 
 const NoResultsTableRow = () => (
-  <tr className={StrategyEditorForQuestionsAndDashboardsC.NoResultsTableRow}>
+  <tr className={Styles.NoResultsTableRow}>
     <td colSpan={3}>
       <Center fw="bold" c="text-light">
         {t`No dashboards or questions have their own caching policies yet.`}
