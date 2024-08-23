@@ -15,7 +15,7 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_CACHING, isInvalidatableModel } from "metabase/plugins";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -41,6 +41,7 @@ import { CacheDurationUnit } from "metabase-types/api";
 import { strategyValidationSchema } from "../constants/complex";
 import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
+import { isModelWithClearableCache } from "../types";
 import {
   cronToScheduleSettings,
   getLabelString,
@@ -295,7 +296,7 @@ const FormButtons = ({
 
   if (
     shouldAllowInvalidation &&
-    isInvalidatableModel(targetModel) &&
+    isModelWithClearableCache(targetModel) &&
     targetId &&
     targetName
   ) {

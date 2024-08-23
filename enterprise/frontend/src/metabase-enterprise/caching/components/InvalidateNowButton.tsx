@@ -5,17 +5,16 @@ import { c, t } from "ttag";
 import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
 import { useInvalidateTarget } from "metabase/admin/performance/hooks/useInvalidateTarget";
 import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPending";
+import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { Form, FormProvider } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
-import type {
-  InvalidatableModel,
-  InvalidateNowButtonProps,
-} from "metabase/plugins";
+import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { Group, Icon, Loader, Text } from "metabase/ui";
 
 import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
 
+/** Button that clears the cache of a particular object (the "target") */
 export const InvalidateNowButton = ({
   targetId,
   targetModel,
@@ -37,7 +36,7 @@ const InvalidateNowFormBody = ({
   targetModel,
 }: {
   targetName?: string;
-  targetModel: InvalidatableModel;
+  targetModel: ModelWithClearableCache;
 }) => {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -58,7 +57,7 @@ const InvalidateNowFormBody = ({
   );
 
   const buttonText = useMemo(() => {
-    const map: Record<InvalidatableModel, string> = {
+    const map: Record<ModelWithClearableCache, string> = {
       dashboard: t`Clear cache for this dashboard`,
       question: t`Clear cache for this question`,
       database: t`Clear cache for this database`,
