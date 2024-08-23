@@ -16,15 +16,18 @@
   (mt/with-premium-features #{}
     (stale.test/with-stale-items [:model/Card _ {}
                                   :model/Dashboard _ {}]
-      (is (str/starts-with? (mt/user-http-request :crowberto :get 402 "collection/root/stale")
+      (is (str/starts-with? (mt/user-http-request :crowberto :get 402 "ee/stale/root")
                             "Collection Cleanup is a paid feature")))))
+
+(defn- stale-url [collection-or-id]
+  (str "ee/stale/" (u/the-id collection-or-id)))
 
 (deftest can-fetch-stale-candidates
   (mt/with-premium-features #{:collection-cleanup}
     (with-collection-hierarchy! [{:keys [a b c d e]}]
       (stale.test/with-stale-items [:model/Card card {:collection_id (:id a)}
                                     :model/Dashboard dashboard {:collection_id (:id a)}]
-        (let [result (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale"))]
+        (let [result (mt/user-http-request :crowberto :get 200 (stale-url a))]
           (testing "With minor exceptions, the results look just like `/collection/:id/items`"
             (is (= (dissoc
                     (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/items")
@@ -44,7 +47,7 @@
                                       :model/Dashboard dashboard {:collection_id (:id a)}
                                       :model/Card card-2 {:collection_id (:id b)}
                                       :model/Dashboard dashboard-2 {:collection_id (:id b)}]
-          (let [result (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+          (let [result (mt/user-http-request :crowberto :get 200 (stale-url a)
                                              :is_recursive true)]
             (testing "count is correct"
               (is (= 4 (:total result))))
@@ -59,22 +62,22 @@
                                       :model/Card _ {:collection_id (:id d) :name "D"}
                                       :model/Card _ {:collection_id (:id e) :name "E"}]
           (is (= ["A" "B" "C" "D" "E"]
-                 (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                 (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                             :is_recursive true)
                       :data
                       (map :name))))
           (is (= ["E" "D" "C" "B" "A"]
-                 (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                 (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                             :is_recursive true :sort_direction "desc")
                       :data
                       (map :name))))
           (is (= ["A" "B" "C" "D" "E"]
-                 (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                 (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                             :is_recursive true :sort_column "name")
                       :data
                       (map :name))))
           (is (= ["E" "D" "C" "B" "A"]
-                 (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                 (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                             :is_recursive true :sort_column "name" :sort_direction "desc")
                       :data
                       (map :name))))))
@@ -86,7 +89,7 @@
                          :model/Card _ {:collection_id (:id e) :name "NOT VISIBLE"}
                          :model/Dashboard _ {:collection_id (:id e) :name "NOT VISIBLE"}]
             (is (= ["A" "E"]
-                   (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                   (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                               :is_recursive true)
                         :data
                         (map :name)))))))
@@ -97,7 +100,7 @@
           (mt/with-temp [:model/Card _ {:collection_id (:id a) :name "Just before" :last_used_at before}
                          :model/Card _ {:collection_id (:id a) :name "Just after" :last_used_at after}]
             (is (= #{"Just before"}
-                   (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                   (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                               :before_date (str cutoff))
                         :data
                         (map :name)
@@ -114,7 +117,7 @@
                    "Card in coll"
                    "Dashboard in root"
                    "Dashboard in coll"}
-                 (->> (mt/user-http-request :crowberto :get 200 "collection/root/stale"
+                 (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true)
                       :data
                       (filter #(contains? #{(u/the-id card-a)
@@ -165,7 +168,7 @@
                    :authority_level nil
                    :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}]
 
-                 (->> (mt/user-http-request :crowberto :get 200 "collection/root/stale"
+                 (->> (mt/user-http-request :crowberto :get 200 "ee/stale/root"
                                             :is_recursive true :sort_column "name")
                       :data
                       (filter #(contains? #{(u/the-id card-in-root)
@@ -182,7 +185,7 @@
     (testing "Limits and offsets work correctly"
       (with-collection-hierarchy! [{:keys [a]}]
         (let [get-names-page (fn [limit offset]
-                               (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (:id a) "/stale")
+                               (->> (mt/user-http-request :crowberto :get 200 (stale-url a)
                                                           :limit limit
                                                           :offset offset
                                                           :sort_column "name")
@@ -206,7 +209,7 @@
   (mt/with-premium-features #{:collection-cleanup}
     (with-collection-hierarchy! [{:keys [a]}]
       (snowplow-test/with-fake-snowplow-collector
-        (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+        (mt/user-http-request :crowberto :get 200 (stale-url a)
                               :before_date "1988-01-21")
         (is (= {:data {"collection_id" (:id a)
                        "event" "stale_items_read"

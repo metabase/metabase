@@ -18,6 +18,7 @@
    [metabase-enterprise.sandbox.api.routes :as sandbox]
    [metabase-enterprise.scim.routes :as scim]
    [metabase-enterprise.serialization.api :as api.serialization]
+   [metabase-enterprise.stale.routes :as stale]
    [metabase-enterprise.upload-management.api :as api.uploads]
    [metabase.api.common :refer [context defroutes]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -51,6 +52,9 @@
     (context
       "/scim" []
       (ee.api.common/+require-premium-feature :scim (deferred-tru "SCIM configuration") scim/routes))
+    (context
+      "/stale" []
+      (ee.api.common/+require-premium-feature :collection-cleanup (deferred-tru "Collection Cleanup") stale/routes))
     (context
       "/serialization" []
       (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
