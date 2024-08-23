@@ -280,6 +280,7 @@ export type ExpressionOperatorName =
   | "time-interval"
   | "relative-time-interval"
   | "relative-datetime"
+  | "datetime-add"
   | "inside"
   | "segment"
   | "offset";

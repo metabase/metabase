@@ -1,3 +1,6 @@
+import { t } from "ttag";
+import _ from "underscore";
+
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
@@ -42,15 +45,15 @@ function buildStructuredQuerySectionOptions(
   query: Lib.Query,
   stageIndex: number,
   group: Lib.ColumnGroup,
+  columns: Lib.ColumnMetadata[],
 ): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
-  const columns = Lib.getColumnsFromColumnGroup(group);
 
   return columns.map(column => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return {
-      sectionName: getColumnGroupName(groupInfo),
+      sectionName: getColumnGroupName(groupInfo) || t`Summaries`,
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
       target: buildColumnTarget(query, stageIndex, column),
@@ -154,14 +157,26 @@ export function getParameterMappingOptions(
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
   if (!isNative) {
-    const { query, stageIndex, columns } = getParameterColumns(
+    const { query, columns } = getParameterColumns(
       question,
       parameter ?? undefined,
     );
-    const columnGroups = Lib.groupColumns(columns);
 
-    const options = columnGroups.flatMap(group =>
-      buildStructuredQuerySectionOptions(query, stageIndex, group),
+    const columnsByStageIndex = _.groupBy(columns, "stageIndex");
+    const options = Object.entries(columnsByStageIndex).flatMap(
+      ([stageIndexString, columns]) => {
+        const groups = Lib.groupColumns(columns.map(({ column }) => column));
+        const stageIndex = parseInt(stageIndexString, 10);
+
+        return groups.flatMap(group =>
+          buildStructuredQuerySectionOptions(
+            query,
+            stageIndex,
+            group,
+            Lib.getColumnsFromColumnGroup(group),
+          ),
+        );
+      },
     );
 
     return options;
