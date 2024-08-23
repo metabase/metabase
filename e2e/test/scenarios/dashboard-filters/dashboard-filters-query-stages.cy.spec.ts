@@ -106,9 +106,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
     beforeEach(() => {
       cy.then(function () {
         createAndVisitTestDashboard([
-          this.baseOrdersQuestion,
-          this.nestedOrdersQuestion,
-          this.nestedOrdersModel,
+          this.ordersQuestion,
+          this.baseQuestion,
+          this.baseModel,
         ]);
       });
     });
@@ -187,26 +187,26 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.then(function () {
           createQuestion({
             type: "question",
-            query: createQ1Query(this.nestedOrdersQuestion),
+            query: createQ1Query(this.baseQuestion),
             name: "Question-based Question",
           }).then(response => cy.wrap(response.body).as("qbq"));
 
           createQuestion({
             type: "question",
-            query: createQ1Query(this.nestedOrdersModel),
+            query: createQ1Query(this.baseModel),
             name: "Model-based Question",
           }).then(response => cy.wrap(response.body).as("mbq"));
 
           createQuestion({
             type: "model",
             name: "Question-based Model",
-            query: createQ1Query(this.nestedOrdersQuestion),
+            query: createQ1Query(this.baseQuestion),
           }).then(response => cy.wrap(response.body).as("qbm"));
 
           createQuestion({
             type: "model",
             name: "Model-based Model",
-            query: createQ1Query(this.nestedOrdersModel),
+            query: createQ1Query(this.baseModel),
           }).then(response => cy.wrap(response.body).as("mbm"));
         });
 
@@ -341,26 +341,26 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.then(function () {
           createQuestion({
             type: "question",
-            query: createQ2Query(this.nestedOrdersQuestion),
+            query: createQ2Query(this.baseQuestion),
             name: "Question-based Question",
           }).then(response => cy.wrap(response.body).as("qbq"));
 
           createQuestion({
             type: "question",
-            query: createQ2Query(this.nestedOrdersModel),
+            query: createQ2Query(this.baseModel),
             name: "Model-based Question",
           }).then(response => cy.wrap(response.body).as("mbq"));
 
           createQuestion({
             type: "model",
             name: "Question-based Model",
-            query: createQ2Query(this.nestedOrdersQuestion),
+            query: createQ2Query(this.baseQuestion),
           }).then(response => cy.wrap(response.body).as("qbm"));
 
           createQuestion({
             type: "model",
             name: "Model-based Model",
-            query: createQ2Query(this.nestedOrdersModel),
+            query: createQ2Query(this.baseModel),
           }).then(response => cy.wrap(response.body).as("mbm"));
         });
 
@@ -442,26 +442,26 @@ describe("scenarios > dashboard > filters > query stages", () => {
         cy.then(function () {
           createQuestion({
             type: "question",
-            query: createQ3Query(this.nestedOrdersQuestion),
+            query: createQ3Query(this.baseQuestion),
             name: "Question-based Question",
           }).then(response => cy.wrap(response.body).as("qbq"));
 
           createQuestion({
             type: "question",
-            query: createQ3Query(this.nestedOrdersModel),
+            query: createQ3Query(this.baseModel),
             name: "Model-based Question",
           }).then(response => cy.wrap(response.body).as("mbq"));
 
           createQuestion({
             type: "model",
             name: "Question-based Model",
-            query: createQ3Query(this.nestedOrdersQuestion),
+            query: createQ3Query(this.baseQuestion),
           }).then(response => cy.wrap(response.body).as("qbm"));
 
           createQuestion({
             type: "model",
             name: "Model-based Model",
-            query: createQ3Query(this.nestedOrdersModel),
+            query: createQ3Query(this.baseModel),
           }).then(response => cy.wrap(response.body).as("mbm"));
         });
 
@@ -547,24 +547,24 @@ function createBaseQuestions() {
     query: {
       "source-table": ORDERS_ID,
     },
-  }).then(response => cy.wrap(response.body).as("baseOrdersQuestion"));
+  }).then(response => cy.wrap(response.body).as("ordersQuestion"));
 
   cy.then(function () {
     createQuestion({
       type: "question",
       name: "Base Orders Question",
       query: {
-        "source-table": `card__${this.baseOrdersQuestion.id}`,
+        "source-table": `card__${this.ordersQuestion.id}`,
       },
-    }).then(response => cy.wrap(response.body).as("nestedOrdersQuestion"));
+    }).then(response => cy.wrap(response.body).as("baseQuestion"));
 
     createQuestion({
       type: "model",
       name: "Base Orders Model",
       query: {
-        "source-table": `card__${this.baseOrdersQuestion.id}`,
+        "source-table": `card__${this.ordersQuestion.id}`,
       },
-    }).then(response => cy.wrap(response.body).as("nestedOrdersModel"));
+    }).then(response => cy.wrap(response.body).as("baseModel"));
   });
 }
 
