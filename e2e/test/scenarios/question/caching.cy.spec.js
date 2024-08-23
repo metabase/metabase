@@ -69,10 +69,13 @@ describeEE("scenarios > question > caching", () => {
       cy.findByRole("button", {
         name: /Clear cache for this question/,
       }).click();
-      modal().within(() => {
-        cy.findByRole("button", { name: /Clear cache/ }).click();
-      });
-      cy.wait("@invalidateCache");
+    });
+    modal().within(() => {
+      cy.findByRole("button", { name: /Clear cache/ }).click();
+    });
+    cy.wait("@invalidateCache");
+
+    rightSidebar().within(() => {
       cy.findByText("Cache cleared").should("be.visible");
     });
   });
