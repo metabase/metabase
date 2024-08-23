@@ -94,7 +94,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       ? {
           models: ["dashboard"],
           ids: dashboardIds,
-          ancestors: true,
+          //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
         }
       : skipToken,
   );
@@ -103,6 +103,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       ? {
           models: ["card"],
           ids: questionIds,
+          //FIXME: Add `ancestors: true` once jds/ancestors-for-all-the-things is merged
         }
       : skipToken,
   );
