@@ -1,10 +1,13 @@
 import { FilterSearchInput } from "./FilterSearchInput";
 
-type FilterHeaderProps = {
+type FilterModalHeaderProps = {
   value: string;
   onChange: (searchText: string) => void;
 };
 
-export const FilterHeader = ({ value, onChange }: FilterHeaderProps) => {
+export const FilterModalHeader = ({
+  value,
+  onChange,
+}: FilterModalHeaderProps) => {
   return <FilterSearchInput searchText={value} onChange={onChange} />;
 };

@@ -1,10 +1,10 @@
 import type * as Lib from "metabase-lib";
 
-import { FilterEmptyState } from "./FilterEmptyState";
+import { FilterModalEmptyState } from "./FilterModalEmptyState";
 import { TabContent } from "./TabContent";
 import type { GroupItem } from "./types";
 
-type FilterBodyProps = {
+type FilterModalBodyProps = {
   groupItems: GroupItem[];
   query: Lib.Query;
   tab: string | null;
@@ -17,7 +17,7 @@ type FilterBodyProps = {
   ) => void;
 };
 
-export const FilterBody = ({
+export const FilterModalBody = ({
   groupItems,
   onChange,
   onInput,
@@ -26,7 +26,7 @@ export const FilterBody = ({
   searching,
   tab,
   version,
-}: FilterBodyProps) =>
+}: FilterModalBodyProps) =>
   groupItems.length > 0 ? (
     <TabContent
       query={query}
@@ -39,5 +39,5 @@ export const FilterBody = ({
       onTabChange={onTabChange}
     />
   ) : (
-    <FilterEmptyState />
+    <FilterModalEmptyState />
   );

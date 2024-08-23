@@ -2,19 +2,19 @@ import { t } from "ttag";
 
 import { Button } from "metabase/ui";
 
-type FilterFooterProps = {
+type FilterModalFooterProps = {
   canRemoveFilters: boolean;
   onClearFilters: () => void;
   isChanged: boolean;
   onApplyFilters: () => void;
 };
 
-export const FilterFooter = ({
+export const FilterModalFooter = ({
   canRemoveFilters,
   isChanged,
   onApplyFilters,
   onClearFilters,
-}: FilterFooterProps) => (
+}: FilterModalFooterProps) => (
   <>
     <Button
       variant="subtle"

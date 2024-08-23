@@ -2,7 +2,9 @@ import cx from "classnames";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
-import { FilterContent } from "metabase/querying/filters/components/FilterContent";
+import { FilterModalBody } from "metabase/querying/filters/components/FilterContent/FilterModalBody";
+import { FilterModalFooter } from "metabase/querying/filters/components/FilterContent/FilterModalFooter";
+import { FilterModalHeader } from "metabase/querying/filters/components/FilterContent/FilterModalHeader";
 import { useFilterContent } from "metabase/querying/filters/components/FilterModal";
 import { Box, Group, Stack } from "metabase/ui";
 import type * as Lib from "metabase-lib";
@@ -59,10 +61,10 @@ const FilterInner = ({
   return (
     <Stack w="100%" h="100%">
       <Group position="right">
-        <FilterContent.Header value={searchText} onChange={handleSearch} />
+        <FilterModalHeader value={searchText} onChange={handleSearch} />
       </Group>
       <Box h="100%" className={cx(CS.flex1, CS.overflowHidden)}>
-        <FilterContent.Body
+        <FilterModalBody
           groupItems={visibleItems}
           query={query}
           tab={tab}
@@ -74,7 +76,7 @@ const FilterInner = ({
         />
       </Box>
       <Group>
-        <FilterContent.Footer
+        <FilterModalFooter
           canRemoveFilters={canRemoveFilters}
           onClearFilters={onClearFilters}
           isChanged={isChanged}

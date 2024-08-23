@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { FilterModalBody } from "metabase/querying/filters/components/FilterContent/FilterModalBody";
+import { FilterModalFooter } from "metabase/querying/filters/components/FilterContent/FilterModalFooter";
+import { FilterModalHeader } from "metabase/querying/filters/components/FilterContent/FilterModalHeader";
 import { Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import { FilterContent } from "../FilterContent";
 
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { SEARCH_KEY } from "./constants";
@@ -128,12 +129,12 @@ export function FilterModal({
         <ModalHeader p="lg">
           <Modal.Title>{getModalTitle(groupItems)}</Modal.Title>
           <Flex mx="md" justify="end" className={CS.flex1}>
-            <FilterContent.Header value={searchText} onChange={handleSearch} />
+            <FilterModalHeader value={searchText} onChange={handleSearch} />
           </Flex>
           <Modal.CloseButton />
         </ModalHeader>
         <ModalBody p={0}>
-          <FilterContent.Body
+          <FilterModalBody
             groupItems={visibleItems}
             query={query}
             tab={tab}
@@ -145,7 +146,7 @@ export function FilterModal({
           />
         </ModalBody>
         <ModalFooter p="md" direction="row" justify="space-between">
-          <FilterContent.Footer
+          <FilterModalFooter
             canRemoveFilters={canRemoveFilters}
             onClearFilters={handleReset}
             isChanged={isChanged}

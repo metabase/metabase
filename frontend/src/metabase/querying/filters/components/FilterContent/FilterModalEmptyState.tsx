@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Icon, Stack, Text } from "metabase/ui";
 
-export function FilterEmptyState() {
+export function FilterModalEmptyState() {
   return (
     <Stack c="text-light" h="100%" justify="center" align="center">
       <Icon name="search" size={40} />
