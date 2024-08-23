@@ -71,7 +71,7 @@ export const TableRowForCacheableItem = ({
             ) : (
               <Box h="sm" w="md" />
             )}
-            <Ellipsified fw="bold">{name}</Ellipsified>
+            <Ellipsified style={{ fontWeight: "bold" }}>{name}</Ellipsified>
           </Flex>
         </MaybeLink>
       </td>

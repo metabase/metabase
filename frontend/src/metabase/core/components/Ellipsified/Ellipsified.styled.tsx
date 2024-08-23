@@ -1,9 +1,5 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import type { HTMLAttributes, Ref } from "react";
-
-import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
-import { Box, type BoxProps } from "metabase/ui";
 
 const ellipsifyCss = css`
   overflow: hidden;
@@ -19,16 +15,11 @@ const clampCss = (lines: number) => css`
   overflow-wrap: break-word;
 `;
 
-type EllipsifiedRootProps = {
+interface EllipsifiedRootProps {
   lines: number;
   "data-testid"?: string;
-} & BoxProps & {
-    ref?: Ref<HTMLDivElement | null>;
-  } & HTMLAttributes<HTMLDivElement>;
+}
 
-export const EllipsifiedRoot = styled(
-  Box,
-  doNotForwardProps("lines"),
-)<EllipsifiedRootProps>`
+export const EllipsifiedRoot = styled.div<EllipsifiedRootProps>`
   ${({ lines }) => (lines > 1 ? clampCss(lines) : ellipsifyCss)};
 `;
