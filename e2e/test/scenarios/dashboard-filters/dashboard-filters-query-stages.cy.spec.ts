@@ -381,6 +381,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
 
         cy.log("## text columns");
         getFilter("Text").click();
@@ -402,6 +404,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
 
         cy.log("## number columns");
         getFilter("Number").click();
@@ -423,6 +427,8 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
       }
     });
   });
@@ -598,6 +604,12 @@ function verifyDashcardMappingOptions(
   getDashboardCard(dashcardIndex).findByText("Select…").click();
   verifyPopoverMappingOptions(sections);
   clickAway();
+}
+
+function verifyNoDashcardMappingOptions(dashcardIndex: number) {
+  getDashboardCard(dashcardIndex)
+    .findByText("No valid fields")
+    .should("be.visible");
 }
 
 type SectionName = string;
