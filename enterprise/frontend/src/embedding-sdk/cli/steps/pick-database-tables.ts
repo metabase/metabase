@@ -46,7 +46,7 @@ export const pickDatabaseTables: CliStepMethod = async state => {
     return [{ type: "error", message }, state];
   }
 
-  const tables: Table[] = [];
+  const tablesWithoutMetadata: Table[] = [];
 
   try {
     // Scan the database tables in each schemas
@@ -60,48 +60,14 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
       await propagateErrorResponse(res);
 
-      const schemaTablesWithoutMetadata: Table[] = await res.json();
-
-      for (const schemaTable of schemaTablesWithoutMetadata) {
-        const datasetQuery = {
-          type: "query",
-          database: databaseId,
-          query: { "source-table": schemaTable.id },
-        };
-
-        await retry(
-          async () => {
-            // Get the query metadata from a table
-            const res = await fetch(
-              `${instanceUrl}/api/dataset/query_metadata`,
-              {
-                method: "POST",
-                headers: { "content-type": "application/json", cookie },
-                body: JSON.stringify(datasetQuery),
-              },
-            );
-
-            await propagateErrorResponse(res);
-
-            const metadataResult = (await res.json()) as { tables: Table[] };
-            const [table] = metadataResult.tables;
-
-            // The table metadata may still be loading, so we retry a few times.
-            if (!table?.fields || table.fields.length === 0) {
-              throw new Error(`Table "${table.name}" has no fields.`);
-            }
-
-            tables.push(table);
-          },
-          { retries: 5, delay: 1000 },
-        );
-      }
+      const schemaTables: Table[] = await res.json();
+      tablesWithoutMetadata.push(...schemaTables);
     }
   } catch (error) {
     return [cliError("Cannot scan database tables", error), state];
   }
 
-  if (tables.length === 0) {
+  if (tablesWithoutMetadata.length === 0) {
     spinner.fail();
 
     return [{ type: "error", message: "No tables found in database." }, state];
@@ -109,7 +75,7 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
   spinner.succeed();
 
-  const chosenTables = await checkbox({
+  const chosenTableIds = await checkbox({
     validate: choices => {
       if (choices.length === 0) {
         return "Pick 1 - 3 tables to embed.";
@@ -122,11 +88,48 @@ export const pickDatabaseTables: CliStepMethod = async state => {
       return true;
     },
     message: "Pick 1 - 3 tables to embed:",
-    choices: tables.map(table => ({
+    choices: tablesWithoutMetadata.map(table => ({
       name: table.name,
-      value: table,
+      value: table.id,
     })),
   });
 
-  return [{ type: "done" }, { ...state, tables, chosenTables }];
+  const chosenTables: Table[] = [];
+
+  for (const tableId of chosenTableIds) {
+    const datasetQuery = {
+      type: "query",
+      database: databaseId,
+      query: { "source-table": tableId },
+    };
+
+    // The table's fields may still be syncing, so we retry a few times.
+    await retry(
+      async () => {
+        // Get the query metadata from a table
+        const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
+          method: "POST",
+          headers: { "content-type": "application/json", cookie },
+          body: JSON.stringify(datasetQuery),
+        });
+
+        await propagateErrorResponse(res);
+
+        const metadataResult = (await res.json()) as { tables: Table[] };
+        const [table] = metadataResult.tables;
+
+        if (!table?.fields || table.fields.length === 0) {
+          throw new Error(`Table "${table.name}" has no fields.`);
+        }
+
+        chosenTables.push(table);
+      },
+      { retries: 5, delay: 1000 },
+    );
+  }
+
+  return [
+    { type: "done" },
+    { ...state, tables: tablesWithoutMetadata, chosenTables },
+  ];
 };
