@@ -117,7 +117,11 @@ export const pickDatabaseTables: CliStepMethod = async state => {
           await propagateErrorResponse(res);
 
           const metadataResult = (await res.json()) as { tables: Table[] };
-          const [table] = metadataResult.tables;
+          const table = metadataResult.tables.find(t => t.id === tableId);
+
+          if (!table) {
+            throw new Error(`Table "${tableId}" not found.`);
+          }
 
           if (!table?.fields || table.fields.length === 0) {
             throw new Error(`Table "${table.name}" has no fields.`);
