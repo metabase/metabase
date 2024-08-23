@@ -5,6 +5,7 @@ import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns
 export interface PieRow {
   key: string | number;
   name: string;
+  originalName: string;
   color: string;
   defaultColor: boolean;
   enabled: boolean;
@@ -17,7 +18,8 @@ export interface PieColumnDescriptors {
 }
 
 export interface PieSliceData {
-  key: string | number; // dimension value
+  key: string | number; // dimension value, used to lookup slices
+  name: string; // display name, already formatted
   value: number; // size of the slice used for rendering
   displayValue: number; // real metric value of the slice displayed in tooltip or total graphic
   normalizedPercentage: number;

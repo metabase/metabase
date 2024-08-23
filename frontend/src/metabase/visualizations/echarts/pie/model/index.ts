@@ -122,9 +122,10 @@ export function getPieChartModel(
   }, 0);
 
   const [slices, others] = _.chain(pieRowsWithValues)
-    .map(({ value, color, name }, index): PieSliceData => {
+    .map(({ value, color, key, name }, index): PieSliceData => {
       return {
-        key: name, // TODO rename this to name to avoid confusion with viz settings value and to be more explicit
+        key,
+        name,
         value: isNonPositive ? -1 * value : value,
         displayValue: value,
         normalizedPercentage: value / total, // slice percentage values are normalized to 0-1 scale
@@ -156,6 +157,7 @@ export function getPieChartModel(
   if (otherTotal > 0) {
     slices.push({
       key: OTHER_SLICE_KEY,
+      name: OTHER_SLICE_KEY,
       value: otherTotal,
       displayValue: otherTotal,
       normalizedPercentage: otherTotal / total,
@@ -178,6 +180,7 @@ export function getPieChartModel(
   if (slices.length === 0) {
     slices.push({
       key: OTHER_SLICE_KEY,
+      name: OTHER_SLICE_KEY,
       value: 1,
       displayValue: 0,
       normalizedPercentage: 0,

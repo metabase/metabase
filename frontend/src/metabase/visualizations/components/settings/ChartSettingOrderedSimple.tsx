@@ -36,7 +36,6 @@ interface ChartSettingOrderedSimpleProps {
   hasEditSettings: boolean;
   onChangeSeriesColor: (seriesKey: string, color: string) => void;
   onSortEnd: (newItems: SortableItem[]) => void;
-  formatItemName?: (itemName: string) => string;
 }
 
 export const ChartSettingOrderedSimple = ({
@@ -46,7 +45,6 @@ export const ChartSettingOrderedSimple = ({
   hasEditSettings = true,
   onChangeSeriesColor,
   onSortEnd,
-  formatItemName,
 }: ChartSettingOrderedSimpleProps) => {
   const toggleDisplay = useCallback(
     (selectedItem: SortableItem) => {
@@ -63,7 +61,7 @@ export const ChartSettingOrderedSimple = ({
       const oldIndex = orderedItems.findIndex(item => item.key === id);
 
       if (onSortEnd != null) {
-        onSortEnd?.(arrayMove(orderedItems, oldIndex, newIndex));
+        onSortEnd(arrayMove(orderedItems, oldIndex, newIndex));
       } else {
         onChange(arrayMove(orderedItems, oldIndex, newIndex));
       }
@@ -71,18 +69,13 @@ export const ChartSettingOrderedSimple = ({
     [orderedItems, onChange, onSortEnd],
   );
 
-  const getItemTitle = useCallback(
-    (item: SortableItem) => {
-      if (isEmpty(item.name)) {
-        return NULL_DISPLAY_VALUE;
-      }
-      if (formatItemName != null) {
-        return formatItemName(item.name);
-      }
-      return item.name;
-    },
-    [formatItemName],
-  );
+  const getItemTitle = useCallback((item: SortableItem) => {
+    if (isEmpty(item.name)) {
+      return NULL_DISPLAY_VALUE;
+    }
+
+    return item.name;
+  }, []);
 
   const handleOnEdit = useCallback(
     (item: SortableItem, ref: HTMLElement | undefined) => {

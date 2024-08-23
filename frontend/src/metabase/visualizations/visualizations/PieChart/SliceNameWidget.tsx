@@ -23,13 +23,12 @@ export function SliceNameWidget({
     <Box w="100%" px="2rem" pb="0.5rem">
       <SliceNameInput
         value={row.name}
-        subtitle={row.key !== row.name ? String(row.key) : undefined}
+        subtitle={row.name !== row.originalName ? row.originalName : undefined}
         onBlurChange={event => {
           const newName = event.target.value;
 
-          const nameChanged = newName !== String(row.key);
-          if (nameChanged) {
-            updateRowName(event.target.value, row.key);
+          if (newName !== row.name) {
+            updateRowName(newName, row.key);
           }
         }}
       />

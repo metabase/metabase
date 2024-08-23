@@ -2,6 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
@@ -35,7 +36,7 @@ import type {
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
-import type { RawSeries, RowValues } from "metabase-types/api";
+import type { RawSeries, RowValue, RowValues } from "metabase-types/api";
 
 import { SliceNameWidget } from "./SliceNameWidget";
 
@@ -104,6 +105,33 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           },
         ] = rawSeries;
 
+        const getColumnSettings = settings["column"];
+        if (!getColumnSettings) {
+          throw Error("`settings.column` is undefined");
+        }
+
+        const dimensionCol = cols.find(
+          c => c.name === settings["pie.dimension"],
+        );
+        if (dimensionCol == null) {
+          throw Error(
+            `Could not find column based on "pie.dimension setting with value ${settings["pie.dimension"]}`,
+          );
+        }
+
+        const dimensionColSettings = getColumnSettings(dimensionCol);
+
+        const formatDimensionValue = (value: RowValue) => {
+          if (value == null) {
+            return NULL_DISPLAY_VALUE;
+          }
+
+          const formattedValue = formatValue(value, dimensionColSettings);
+          return String(formattedValue);
+        };
+
+        // TODO parameterize the above so it can be passed as an arg for static viz
+
         const dimensionIndex = cols.findIndex(
           col => col.name === settings["pie.dimension"],
         );
@@ -170,10 +198,12 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
 
               // TODO I think these two conditions can be merged
               const color = colors[String(dimensionValue)];
+              const name = formatDimensionValue(dimensionValue);
 
               return {
                 key,
-                name: String(key),
+                name,
+                originalName: name,
                 color,
                 defaultColor: true,
                 enabled: true,
@@ -215,10 +245,12 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
                 // TODO create common func for creating pieRow objects?
                 const color = colors[String(dimensionValue)];
                 const key = getKeyFromDimensionValue(dimensionValue);
+                const name = formatDimensionValue(dimensionValue);
 
                 return {
                   key,
-                  name: String(key),
+                  name,
+                  originalName: name,
                   color,
                   defaultColor: true,
                   enabled: true,
@@ -267,10 +299,12 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             // continue to use the dimension value.
             colors[String(dimensionValue)],
           ).hex();
+          const name = formatDimensionValue(dimensionValue);
 
           return {
             key,
-            name: key,
+            name,
+            originalName: name,
             color,
             defaultColor: true,
             enabled: true,
@@ -278,34 +312,12 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         });
       },
       getProps: (
-        rawSeries,
+        _rawSeries,
         vizSettings: ComputedVisualizationSettings,
         onChange,
         _extra,
         onChangeSettings,
       ) => {
-        const [
-          {
-            data: { cols },
-          },
-        ] = rawSeries;
-
-        const getColumnSettings = vizSettings["column"];
-        if (!getColumnSettings) {
-          throw Error("`settings.column` is undefined");
-        }
-
-        const dimensionCol = cols.find(
-          c => c.name === vizSettings["pie.dimension"],
-        );
-        if (dimensionCol == null) {
-          throw Error(
-            `Could not find column based on "pie.dimension setting with value ${vizSettings["pie.dimension"]}`,
-          );
-        }
-
-        const dimensionColSettings = getColumnSettings(dimensionCol);
-
         return {
           onChangeSeriesColor: (sliceKey: string, color: string) => {
             const pieRows = vizSettings["pie.rows"];
@@ -327,8 +339,6 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
               "pie.sort_rows": false,
               "pie.rows": newPieRows,
             }),
-          formatItemName: (itemName: string) =>
-            formatValue(itemName, dimensionColSettings),
         };
       },
       readDependencies: [
