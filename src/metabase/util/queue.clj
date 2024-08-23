@@ -25,28 +25,28 @@
                                        ^long sleep-ms]
   BoundedTransferQueue
   (maybe-put! [_ msg]
-    (log/debugf "[query-analysis] put: async queue length: %s" (.size async-queue))
+    (log/tracef "[query-analysis] put: async queue length: %s" (.size async-queue))
     (u/prog1 (.offer async-queue msg)
-      (log/debugf "[query-analysis] maybe-put! %s %s"
+      (log/tracef "[query-analysis] maybe-put! %s %s"
                   (u/the-id msg)
                   <>)))
   (blocking-put! [_ timeout msg]
-    (log/debugf "[query-analysis] synchronously putting %s" (u/the-id msg))
+    (log/tracef "[query-analysis] synchronously putting %s" (u/the-id msg))
     (.offer sync-queue msg timeout TimeUnit/MILLISECONDS)
-    (log/debugf "[query-analysis] done with sync put %s" (u/the-id msg)))
+    (log/tracef "[query-analysis] done with sync put %s" (u/the-id msg)))
   (blocking-take! [_ timeout]
     (loop [time-remaining timeout]
       (when (pos? time-remaining)
         (let [s (.size async-queue)]
           (when (pos? s)
-            (log/debugf "[query-analysis] take: async queue length: %s" s)))
+            (log/tracef "[query-analysis] take: async queue length: %s" s)))
         ;; Async messages are given higher priority, as sync messages will never be dropped.
         (or (u/prog1 (.poll async-queue)
               (when <>
-                (log/debugf "[query-analysis] took %s off the async queue" <>)))
+                (log/tracef "[query-analysis] took %s off the async queue" <>)))
             (u/prog1 (.poll sync-queue block-ms TimeUnit/MILLISECONDS)
               (when <>
-                (log/debugf "[query-analysis] took %s off the sync queue" <>)))
+                (log/tracef "[query-analysis] took %s off the sync queue" <>)))
             (do (Thread/sleep ^long sleep-ms)
                 ;; This is an underestimate, as the thread may have taken a while to wake up. That's OK.
                 (recur (- time-remaining block-ms sleep-ms)))))))

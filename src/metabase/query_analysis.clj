@@ -248,7 +248,7 @@
 
 (defn- blocking-put! [queue timeout card-or-id]
   (let [id (u/the-id card-or-id)]
-    (log/debugf "[query-analysis] Synchronously analyzing Card %s" id)
+    (log/tracef "[query-analysis] Synchronously analyzing Card %s" id)
     (queue/blocking-put! queue timeout card-or-id)))
 
 (defn analyze-async!
