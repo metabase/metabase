@@ -33,7 +33,7 @@
                                                  [:= :qf.id nil]]})]
      (run! analyze-fn cards))))
 
-(defn- analyze-stale-cards!
+#_(defn- analyze-stale-cards!
   ([]
    (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
   ([analyze-fn]
@@ -64,17 +64,17 @@
                                (fn [card-or-id]
                                  (log/debugf "Queueing card %s for query analysis" (u/the-id card-or-id))
                                  (query-analysis/analyze-sync! card-or-id))))
-  ([first-time? analyze-fn]
+  ([_first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
    (log/info "Calculating analysis for cards without any")
    (analyze-cards-without-query-fields! analyze-fn)
 
    ;; we run through all the existing analysis on our first run, as it may be stale due to an old macaw version, etc.
    #_(when first-time?
-     (log/info "Recalculating potentially stale analysis")
+       (log/info "Recalculating potentially stale analysis")
      ;; this will repeat the cards we've just back-filled, but in the steady state there should be none of those.
      ;; in the future, we will track versions, hashes, and timestamps to reduce the cost of this operation.
-     (analyze-stale-cards! analyze-fn))
+       (analyze-stale-cards! analyze-fn))
 
    ;; empty out useless records
    (log/info "Deleting analysis for archived cards")

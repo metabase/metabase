@@ -37,7 +37,6 @@
 (defn- wait-fail ^long [time-taken-ms]
   (max fail-wait-ms (wait-proportional time-taken-ms)))
 
-
 (defn- analyzer-loop* [stop-after next-card-id-fn]
   (loop [remaining stop-after]
     (when (public-settings/query-analysis-enabled)
