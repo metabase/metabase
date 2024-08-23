@@ -62,31 +62,39 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
       const schemaTablesWithoutMetadata: Table[] = await res.json();
 
-      for (const table of schemaTablesWithoutMetadata) {
+      for (const schemaTable of schemaTablesWithoutMetadata) {
         const datasetQuery = {
           type: "query",
           database: databaseId,
-          query: { "source-table": table.id },
+          query: { "source-table": schemaTable.id },
         };
 
-        // Get the query metadata from a table
-        const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
-          method: "POST",
-          headers: { "content-type": "application/json", cookie },
-          body: JSON.stringify(datasetQuery),
-        });
+        await retry(
+          async () => {
+            // Get the query metadata from a table
+            const res = await fetch(
+              `${instanceUrl}/api/dataset/query_metadata`,
+              {
+                method: "POST",
+                headers: { "content-type": "application/json", cookie },
+                body: JSON.stringify(datasetQuery),
+              },
+            );
 
-        await propagateErrorResponse(res);
+            await propagateErrorResponse(res);
 
-        const metadataResult = (await res.json()) as { tables: Table[] };
+            const metadataResult = (await res.json()) as { tables: Table[] };
+            const [table] = metadataResult.tables;
 
-        if (metadataResult.tables.length === 0) {
-          const message = `Cannot scan table "${table.name}"`;
+            // The table metadata may still be loading, so we retry a few times.
+            if (!table?.fields || table.fields.length === 0) {
+              throw new Error(`Table "${table.name}" has no fields.`);
+            }
 
-          return [{ type: "error", message }, state];
-        }
-
-        tables.push(...metadataResult.tables);
+            tables.push(table);
+          },
+          { retries: 5, delay: 1000 },
+        );
       }
     }
   } catch (error) {
