@@ -8,7 +8,8 @@ export { StaticDashboard } from "./StaticDashboard";
 export { CollectionBrowser } from "./CollectionBrowser";
 export { InteractiveDashboard } from "./InteractiveDashboard";
 export { EditableDashboard } from "./InteractiveDashboard";
-export { NewQuestion } from "./NewQuestion";
+export { ModifyQuestion } from "./ModifyQuestion";
+export { CreateQuestion } from "./CreateQuestion";
 export {
   CreateDashboardModal,
   useCreateDashboardApi,

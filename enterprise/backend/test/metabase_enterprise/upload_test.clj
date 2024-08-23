@@ -34,36 +34,36 @@
 
 (deftest based-on-upload-for-sandboxed-user-test
     ;; FIXME: Redshift is flaking on `mt/dataset` and I don't know why, so I'm excluding it temporarily
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift)
-      (upload-test/with-uploads-enabled!
-        (mt/dataset (mt/dataset-definition
-                     (mt/random-name)
-                     ["venues"
-                      [{:field-name "name" :base-type :type/Text}]
-                      [["something"]]])
-          (mt/with-temp [:model/Collection collection     {}
-                         :model/Database   {db-id :id}    {:engine driver/*driver* :details (:details (mt/db))}
-                         :model/Table      {table-id :id} {:db_id     db-id
-                                                           :is_upload true}
-                         :model/Card       {card-id :id
-                                            :as card}     {:collection_id (:id collection)
-                                                           :type          :model
-                                                           :dataset_query {:type     :query
-                                                                           :database db-id
-                                                                           :query    {:source-table table-id}}}]
-            (let [get-card (fn [] (mt/user-http-request :rasta :get 200 (str "card/" card-id)))
-                  get-collection-item (fn []
-                                        (->> (mt/user-http-request :rasta :get 200 (str "collection/" (:collection_id card) "/items?models=dataset"))
-                                             :data
-                                             (filter (fn [item]
-                                                       (= (:id item) (:id card))))
-                                             first))]
-              (testing "Sanity check: if the user is not sandboxed, based_on_upload is non-nil"
-                (is (= table-id
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :uploads) :redshift)
+    (upload-test/with-uploads-enabled!
+      (mt/dataset (mt/dataset-definition
+                   (mt/random-name)
+                   ["venues"
+                    [{:field-name "name" :base-type :type/Text}]
+                    [["something"]]])
+        (mt/with-temp [:model/Collection collection     {}
+                       :model/Database   {db-id :id}    {:engine driver/*driver* :details (:details (mt/db))}
+                       :model/Table      {table-id :id} {:db_id     db-id
+                                                         :is_upload true}
+                       :model/Card       {card-id :id
+                                          :as card}     {:collection_id (:id collection)
+                                                         :type          :model
+                                                         :dataset_query {:type     :query
+                                                                         :database db-id
+                                                                         :query    {:source-table table-id}}}]
+          (let [get-card (fn [] (mt/user-http-request :rasta :get 200 (str "card/" card-id)))
+                get-collection-item (fn []
+                                      (->> (mt/user-http-request :rasta :get 200 (str "collection/" (:collection_id card) "/items?models=dataset"))
+                                           :data
+                                           (filter (fn [item]
+                                                     (= (:id item) (:id card))))
+                                           first))]
+            (testing "Sanity check: if the user is not sandboxed, based_on_upload is non-nil"
+              (is (= table-id
+                     (:based_on_upload (get-card))
+                     (:based_on_upload (get-collection-item)))))
+            (testing "If the user is sandboxed, based_on_upload is nil"
+              (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
+                (is (= nil
                        (:based_on_upload (get-card))
-                       (:based_on_upload (get-collection-item)))))
-              (testing "If the user is sandboxed, based_on_upload is nil"
-                (met/with-gtaps-for-user! :rasta {:gtaps {:venues {}}}
-                  (is (= nil
-                         (:based_on_upload (get-card))
-                         (:based_on_upload (get-collection-item))))))))))))
+                       (:based_on_upload (get-collection-item))))))))))))

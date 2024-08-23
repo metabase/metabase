@@ -8,10 +8,10 @@
   (testing "Make sure [[config/build-type-case]] works correctly for ClojureScript."
     (is (= :dev
            (config/build-type-case
-             :dev     :dev
-             :release :release)))
+            :dev     :dev
+            :release :release)))
     (is (= :cljs/dev
            (config/build-type-case
-             :clj/dev  :clj/dev
-             :cljs/dev :cljs/dev
-             :release  :release)))))
+            :clj/dev  :clj/dev
+            :cljs/dev :cljs/dev
+            :release  :release)))))

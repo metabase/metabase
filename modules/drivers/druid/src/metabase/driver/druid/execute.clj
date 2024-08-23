@@ -120,8 +120,8 @@
   (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
     (when-not (seq getters)
       (throw (ex-info (tru "Don''t know how to retrieve results for columns {0}" (pr-str actual-col-names))
-               {:type    qp.error-type/driver
-                :results results})))
+                      {:type    qp.error-type/driver
+                       :results results})))
     (map (apply juxt getters) rows)))
 
 (defn- remove-bonus-keys

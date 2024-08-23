@@ -248,8 +248,8 @@
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
        (sql-jdbc.execute/set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                                               (lib.metadata/database (qp.store/metadata-provider)))
-                                                               (u/id db-or-id-or-spec)     db-or-id-or-spec))
+                                                                                                (lib.metadata/database (qp.store/metadata-provider)))
+                                                                  (u/id db-or-id-or-spec)     db-or-id-or-spec))
        (try
          (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
          (catch Throwable e
@@ -432,11 +432,11 @@
  [:postgres Types/TIMESTAMP])
 
 (defmethod sql-jdbc.execute/read-column-thunk
- [:redshift Types/OTHER]
- [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
- (if (= "interval" (.getColumnTypeName rsmeta i))
-   #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
-   ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
+  [:redshift Types/OTHER]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= "interval" (.getColumnTypeName rsmeta i))
+    #(.getValue ^RedshiftInterval (.getObject rs i RedshiftInterval))
+    ((get-method sql-jdbc.execute/read-column-thunk [:postgres (.getColumnType rsmeta i)]) driver rs rsmeta i)))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
@@ -507,38 +507,37 @@
 ;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
 ;; This might be helpful for getting privileges for actions in the future.
 #_(defmethod sql-jdbc.sync/current-user-table-privileges :redshift
-  [_driver conn-spec & {:as _options}]
+    [_driver conn-spec & {:as _options}]
   ;; KNOWN LIMITATION: this won't return privileges for external tables, calling has_table_privilege on an external table
   ;; result in an operation not supported error
-  (->> (jdbc/query
-        conn-spec
-        (str/join
-         "\n"
-         ["with table_privileges as ("
-          " select"
-          "   NULL as role,"
-          "   t.schemaname as schema,"
-          "   t.objectname as table,"
+    (->> (jdbc/query
+          conn-spec
+          (str/join
+           "\n"
+           ["with table_privileges as ("
+            " select"
+            "   NULL as role,"
+            "   t.schemaname as schema,"
+            "   t.objectname as table,"
           ;; if `has_table_privilege` is true `has_any_column_privilege` is false and vice versa, so we have to check both.
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.objectname || '\"',  'SELECT')"
-          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE')"
-          "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
-          " from ("
-          "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
-          "   union"
-          "   select schemaname, viewname as objectname from pg_views"
-          " ) t"
-          " where t.schemaname !~ '^pg_'"
-          "   and t.schemaname <> 'information_schema'"
-          "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
-          ")"
-          "select t.*"
-          "from table_privileges t"]))
-       (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
-
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\".\"' || t.objectname || '\"',  'SELECT')"
+            "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'SELECT') as select,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE')"
+            "     OR pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'UPDATE') as update,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'INSERT') as insert,"
+            "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'DELETE') as delete"
+            " from ("
+            "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
+            "   union"
+            "   select schemaname, viewname as objectname from pg_views"
+            " ) t"
+            " where t.schemaname !~ '^pg_'"
+            "   and t.schemaname <> 'information_schema'"
+            "   and pg_catalog.has_schema_privilege(current_user, t.schemaname, 'USAGE')"
+            ")"
+            "select t.*"
+            "from table_privileges t"]))
+         (filter #(or (:select %) (:update %) (:delete %) (:update %)))))
 
 ;;; ----------------------------------------------- Connection Impersonation ------------------------------------------
 

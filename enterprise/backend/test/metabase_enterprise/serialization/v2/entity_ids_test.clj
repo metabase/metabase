@@ -10,8 +10,8 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.time LocalDateTime)
-   (java.sql DatabaseMetaData)))
+   (java.sql DatabaseMetaData)
+   (java.time LocalDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -100,5 +100,5 @@
         (testing m
           (if (.next rs)
             (is (= DatabaseMetaData/columnNullable
-                   ( .getInt rs "NULLABLE")))
+                   (.getInt rs "NULLABLE")))
             (is false "cannot get column information")))))))

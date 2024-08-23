@@ -31,10 +31,7 @@ import {
 
 import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
 
-import {
-  InteractiveQuestion,
-  getQuestionParameters,
-} from "./InteractiveQuestion";
+import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
@@ -175,20 +172,5 @@ describe("InteractiveQuestion", () => {
 
     expect(screen.getByText("Error")).toBeInTheDocument();
     expect(screen.getByText("Question not found")).toBeInTheDocument();
-  });
-
-  describe("getQuestionParameters", () => {
-    it("should generate proper URL params", () => {
-      const questionId = 109;
-
-      expect(getQuestionParameters(questionId)).toEqual({
-        location: {
-          query: {},
-          hash: "",
-          pathname: "/question/109",
-        },
-        params: { slug: "109" },
-      });
-    });
   });
 });

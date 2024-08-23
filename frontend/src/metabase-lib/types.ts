@@ -629,7 +629,7 @@ export type DatabaseItem = {
 
 export type SchemaItem = {
   type: "schema";
-  id: DatabaseId;
+  id: SchemaId;
 };
 
 export type TableItem = {

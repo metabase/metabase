@@ -13,6 +13,7 @@ import {
   filterWidget,
   getDashboardCard,
   getIframeBody,
+  getIframeUrl,
   getRequiredToggle,
   goToTab,
   modal,
@@ -882,6 +883,60 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     modal().within(() => {
       getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
+    });
+  });
+
+  it("should resize iframe to dashboard content size (metabase#47061)", () => {
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    createQuestion(questionDetails)
+      .then(({ body: { id: card_id } }) => {
+        createDashboardWithTabs({
+          ...dashboardDetails,
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 20,
+            },
+          ],
+        });
+      })
+      .then(dashboard => {
+        visitDashboard(dashboard.id);
+      });
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    getIframeUrl().then(iframeUrl => {
+      Cypress.config("baseUrl", null);
+      cy.visit(
+        `e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`,
+      );
+    });
+
+    getIframeBody().findByText("Rows 1-21 of first 2000").should("exist");
+
+    cy.get("#iframe").then($iframe => {
+      const [iframe] = $iframe;
+      expect(iframe.clientHeight).to.be.greaterThan(1000);
     });
   });
 });

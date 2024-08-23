@@ -201,12 +201,12 @@
   [strs-or-vars]
   (->> strs-or-vars
        (partition-by (fn [str-or-var]
-                         (or (string? str-or-var)
-                             (not (:value str-or-var)))))
+                       (or (string? str-or-var)
+                           (not (:value str-or-var)))))
        (mapcat (fn [strs-or-var]
-                   (if (string? (first strs-or-var))
-                     [(str/join strs-or-var)]
-                     strs-or-var)))))
+                 (if (string? (first strs-or-var))
+                   [(str/join strs-or-var)]
+                   strs-or-var)))))
 
 (defn- add-values-to-variables
   "Given `split-text`, containing a list of alternating strings and TextParam, add a :value key to any TextParams
@@ -215,8 +215,8 @@
   (map
    (fn [maybe-variable]
      (if (TextParam? maybe-variable)
-         (assoc maybe-variable :value (value (:tag maybe-variable) tag->normalized-param locale escape-markdown))
-         maybe-variable))
+       (assoc maybe-variable :value (value (:tag maybe-variable) tag->normalized-param locale escape-markdown))
+       maybe-variable))
    split-text))
 
 (def ^:private optional-block-regex

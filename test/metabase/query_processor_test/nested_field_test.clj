@@ -21,10 +21,10 @@
                (mapv
                 (fn [[id _ _ _ {venue-name :name}]] [id venue-name])
                 (mt/rows
-                  (mt/run-mbql-query tips
-                    {:filter   [:= $tips.venue.name "Kyle's Low-Carb Grill"]
-                     :order-by [[:asc $id]]
-                     :limit    10})))))))))
+                 (mt/run-mbql-query tips
+                   {:filter   [:= $tips.venue.name "Kyle's Low-Carb Grill"]
+                    :order-by [[:asc $id]]
+                    :limit    10})))))))))
 
 (deftest ^:parallel order-by-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -60,11 +60,11 @@
                   :small  "http://cloudfront.net/cedd4221-dbdb-46c3-95a9-935cce6b3fe5/small.jpg"}
                  {:phone "415-901-6541", :name "Pacific Heights Free-Range Eatery", :categories ["Free-Range" "Eatery"], :id "88b361c8-ce69-4b2e-b0f2-9deedd574af6"}]]
                (mt/rows
-                 (mt/run-mbql-query tips
-                   {:filter   [:and
-                               [:= $tips.source.service "twitter"]
-                               [:= $tips.source.username "kyle"]]
-                    :order-by [[:asc $tips.venue.name]]}))))))))
+                (mt/run-mbql-query tips
+                  {:filter   [:and
+                              [:= $tips.source.service "twitter"]
+                              [:= $tips.source.username "kyle"]]
+                   :order-by [[:asc $tips.venue.name]]}))))))))
 
 (deftest ^:parallel aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -74,15 +74,15 @@
           ;; Let's see how many *distinct* venue names are mentioned
           (is (= [99]
                  (mt/first-row
-                   (mt/run-mbql-query tips
-                     {:aggregation [[:distinct $tips.venue.name]]})))))
+                  (mt/run-mbql-query tips
+                    {:aggregation [[:distinct $tips.venue.name]]})))))
 
         (testing ":count aggregation"
           ;; Now let's just get the regular count
           (is (= [500]
                  (mt/first-row
-                   (mt/run-mbql-query tips
-                     {:aggregation [[:count $tips.venue.name]]})))))))))
+                  (mt/run-mbql-query tips
+                    {:aggregation [[:count $tips.venue.name]]})))))))))
 
 (deftest ^:parallel breakout-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -94,20 +94,22 @@
                 ["foursquare" 100]
                 ["twitter"     98]
                 ["yelp"        90]]
-               (mt/formatted-rows [str int]
-                 (mt/run-mbql-query tips
-                   {:aggregation [[:count]]
-                    :breakout    [$tips.source.service]}))))
+               (mt/formatted-rows
+                [str int]
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :breakout    [$tips.source.service]}))))
 
         (is (= [[nil 297]
                 ["amy" 20]
                 ["biggie" 11]
                 ["bob" 20]]
-               (mt/formatted-rows [str int]
-                 (mt/run-mbql-query tips
-                   {:aggregation [[:count]]
-                    :breakout    [$tips.source.username]
-                    :limit       4}))))))))
+               (mt/formatted-rows
+                [str int]
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :breakout    [$tips.source.username]
+                   :limit       4}))))))))
 
 (deftest ^:parallel fields-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -125,10 +127,10 @@
                 ["Mission Homestyle Churros"]
                 ["Sameer's Pizza Liquor Store"]]
                (mt/rows
-                 (mt/run-mbql-query tips
-                   {:fields   [$tips.venue.name]
-                    :order-by [[:asc $id]]
-                    :limit    10}))))))))
+                (mt/run-mbql-query tips
+                  {:fields   [$tips.venue.name]
+                   :order-by [[:asc $id]]
+                   :limit    10}))))))))
 
 (deftest ^:parallel order-by-aggregation-test
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-fields)
@@ -148,8 +150,9 @@
                 ["cam_saul"      10]
                 ["rasta_toucan"  13]
                 [nil            400]]
-               (mt/formatted-rows [identity int]
-                 (mt/run-mbql-query tips
-                   {:aggregation [[:count]]
-                    :breakout    [$tips.source.mayor]
-                    :order-by    [[:asc [:aggregation 0]]]}))))))))
+               (mt/formatted-rows
+                [identity int]
+                (mt/run-mbql-query tips
+                  {:aggregation [[:count]]
+                   :breakout    [$tips.source.mayor]
+                   :order-by    [[:asc [:aggregation 0]]]}))))))))

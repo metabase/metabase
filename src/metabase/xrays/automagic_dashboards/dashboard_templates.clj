@@ -339,10 +339,10 @@
   values based on the template display type if those dimensions aren't already present."
   [card-spec]
   (update-vals
-    card-spec
-    (fn [{:keys [visualization] :as card-spec}]
-      (let [defaults (get-in dashboards.constants/card-size-defaults [(keyword visualization) :default])]
-        (into defaults card-spec)))))
+   card-spec
+   (fn [{:keys [visualization] :as card-spec}]
+     (let [defaults (get-in dashboards.constants/card-size-defaults [(keyword visualization) :default])]
+       (into defaults card-spec)))))
 
 (defn- set-default-card-dimensions
   "Update the card template dimensions to align with the default FE dimensions."

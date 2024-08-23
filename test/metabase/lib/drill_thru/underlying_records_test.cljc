@@ -1,5 +1,8 @@
 (ns metabase.lib.drill-thru.underlying-records-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
+       :clj  ([java-time.api :as t]
+              [metabase.util.malli.fn :as mu.fn]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -11,18 +14,15 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal])
-       :clj  ([java-time.api :as t]
-              [metabase.util.malli.fn :as mu.fn]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel underlying-records-availability-test
   (testing "underlying-records is available for non-header clicks with at least one breakout"
     (canned/canned-test
-      :drill-thru/underlying-records
-      (fn [test-case context {:keys [click column-kind]}]
+     :drill-thru/underlying-records
+     (fn [test-case context {:keys [click column-kind]}]
         ;; TODO: The docs claim that underlying-records works on pivot cells, and so it does, but the so-called pivot case
         ;; never occurs in actual pivot tables!
         ;; - Clicks on row/column "headers", (that is, breakout values like a month or product category) look like regular
@@ -32,10 +32,10 @@
         ;; That all makes sense to me (Braden) and I think this is a bug in the docs, but it also might be a bug in the FE
         ;; code that should be setting the aggregation :value for cell clicks?
         ;; Tech debt issue: #39380
-        (and (#{:cell #_:pivot :legend} click)
-             (not (:native? test-case))
-             (or (seq (:dimensions context))
-                 (= column-kind :aggregation)))))))
+       (and (#{:cell #_:pivot :legend} click)
+            (not (:native? test-case))
+            (or (seq (:dimensions context))
+                (= column-kind :aggregation)))))))
 
 (deftest ^:parallel returns-underlying-records-test-1
   (lib.drill-thru.tu/test-returns-drill
@@ -89,7 +89,6 @@
             (is (= 1
                    (count (filter #(= (:type %) :drill-thru/underlying-records)
                                   drills))))))))))
-
 
 (def ^:private last-month
   #?(:cljs (let [now    (js/Date.)
@@ -152,9 +151,9 @@
   (testing "sum_where(subtotal, products.category = \"Doohickey\") over time"
     (underlying-state (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                           (lib/aggregate (lib/sum-where
-                                           (meta/field-metadata :orders :subtotal)
-                                           (lib/= (meta/field-metadata :products :category)
-                                                  "Doohickey")))
+                                          (meta/field-metadata :orders :subtotal)
+                                          (lib/= (meta/field-metadata :products :category)
+                                                 "Doohickey")))
                           (lib/breakout (lib/with-temporal-bucket
                                           (meta/field-metadata :orders :created-at)
                                           :month)))

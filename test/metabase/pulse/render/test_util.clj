@@ -107,7 +107,6 @@
         svg-content (-> attrs :src parse-svg document-tag-hiccup)]
     (zip/replace loc svg-content)))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;   verification-utils
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

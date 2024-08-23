@@ -153,13 +153,13 @@
   [{:keys [first-name last-name email groups]} :- UserInfo
    {:keys [sync-groups?], :as settings}        :- LDAPSettings]
   (let [user     (t2/select-one [User :id :last_login :first_name :last_name :is_active]
-                   :%lower.email (u/lower-case-en email))
+                                :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
                          old-last-name  (:last_name user)
                          user-changes   (merge
-                                          (when (not= first-name old-first-name) {:first_name first-name})
-                                          (when (not= last-name old-last-name) {:last_name last-name}))]
+                                         (when (not= first-name old-first-name) {:first_name first-name})
+                                         (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
                          (t2/update! User (:id user) user-changes)
