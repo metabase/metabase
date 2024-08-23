@@ -1,6 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  type StructuredQuestionDetails,
   createDashboardWithTabs,
   createQuestion,
   editDashboard,
@@ -100,20 +99,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    createQ0("q0");
-
-    cy.then(function () {
-      createQuestion({
-        name: "Q1 Orders Question",
-        query: createQ1uery(this.q0),
-      }).then(response => cy.wrap(response.body).as("q1"));
-      createQuestion({
-        name: "M1 Orders Model",
-        query: createQ1uery(this.q0),
-        type: "model",
-      }).then(response => cy.wrap(response.body).as("m1"));
-    });
+    createBaseQuestions();
   });
 
   describe("base queries", () => {
@@ -195,22 +181,27 @@ describe("scenarios > dashboard > filters > query stages", () => {
     describe("Q2 - join, custom column, no aggregations, no breakouts", () => {
       beforeEach(() => {
         cy.then(function () {
-          createQ2("q2qb", this.q1, {
-            type: "question",
+          createQuestion({
+            query: createQ2Query(this.q1),
             name: "Q2 - Question-based Question",
-          });
-          createQ2("q2mb", this.m1, {
-            type: "question",
+          }).then(response => cy.wrap(response.body).as("q2qb"));
+
+          createQuestion({
+            query: createQ2Query(this.m1),
             name: "Q2 - Model-based Question",
-          });
-          createQ2("m2qb", this.q1, {
+          }).then(response => cy.wrap(response.body).as("q2mb"));
+
+          createQuestion({
             type: "model",
             name: "M2 - Question-based Model",
-          });
-          createQ2("m2mb", this.m1, {
+            query: createQ2Query(this.q1),
+          }).then(response => cy.wrap(response.body).as("m2qb"));
+
+          createQuestion({
             type: "model",
             name: "M2 - Model-based Model",
-          });
+            query: createQ2Query(this.m1),
+          }).then(response => cy.wrap(response.body).as("m2mb"));
         });
 
         cy.then(function () {
@@ -342,22 +333,27 @@ describe("scenarios > dashboard > filters > query stages", () => {
     describe("Q3 - join, custom column, aggregations, no breakouts", () => {
       beforeEach(() => {
         cy.then(function () {
-          createQ3("q3qb", this.q1, {
-            type: "question",
+          createQuestion({
+            query: createQ3Query(this.q1),
             name: "Q3 - Question-based Question",
-          });
-          createQ3("q3mb", this.m1, {
-            type: "question",
+          }).then(response => cy.wrap(response.body).as("q3qb"));
+
+          createQuestion({
+            query: createQ3Query(this.m1),
             name: "Q3 - Model-based Question",
-          });
-          createQ3("m3qb", this.q1, {
+          }).then(response => cy.wrap(response.body).as("q3mb"));
+
+          createQuestion({
             type: "model",
             name: "M3 - Question-based Model",
-          });
-          createQ3("m3mb", this.m1, {
+            query: createQ3Query(this.q1),
+          }).then(response => cy.wrap(response.body).as("m3qb"));
+
+          createQuestion({
             type: "model",
             name: "M3 - Model-based Model",
-          });
+            query: createQ3Query(this.m1),
+          }).then(response => cy.wrap(response.body).as("m3mb"));
         });
 
         cy.then(function () {
@@ -434,38 +430,27 @@ describe("scenarios > dashboard > filters > query stages", () => {
   });
 });
 
-function createQ0(alias: string) {
-  return createQuestion({
+function createBaseQuestions() {
+  createQuestion({
     name: "Q0 Orders",
     description: "Question based on a database table",
     query: {
       "source-table": ORDERS_ID,
     },
-  }).then(response => cy.wrap(response.body).as(alias));
-}
+  }).then(response => cy.wrap(response.body).as("q0"));
 
-function createQ2(
-  alias: string,
-  source: Card,
-  questionDetails?: Partial<StructuredQuestionDetails>,
-) {
-  return createQuestion({
-    description: "join, custom column, no aggregations, no breakouts",
-    query: createQ2Query(source),
-    ...questionDetails,
-  }).then(response => cy.wrap(response.body).as(alias));
-}
+  cy.then(function () {
+    createQuestion({
+      name: "Q1 Orders Question",
+      query: createQ1uery(this.q0),
+    }).then(response => cy.wrap(response.body).as("q1"));
 
-function createQ3(
-  alias: string,
-  source: Card,
-  questionDetails?: Partial<StructuredQuestionDetails>,
-) {
-  return createQuestion({
-    description: "join, custom column, aggregations, no breakouts",
-    query: createQ3Query(source),
-    ...questionDetails,
-  }).then(response => cy.wrap(response.body).as(alias));
+    createQuestion({
+      type: "model",
+      name: "M1 Orders Model",
+      query: createQ1uery(this.q0),
+    }).then(response => cy.wrap(response.body).as("m1"));
+  });
 }
 
 function createQ1uery(source: Card): StructuredQuery {
