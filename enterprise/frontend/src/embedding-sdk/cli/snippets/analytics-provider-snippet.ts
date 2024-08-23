@@ -66,7 +66,7 @@ export const AnalyticsProvider = ({children}) => {
 
   useEffect(() => {
     if (!email) {
-      switchUser(localStorage.get('user-email') || 'alice@example.com')
+      switchUser(localStorage.getItem('user-email') || 'alice@example.com')
     }
   }, [email, switchUser])
 
