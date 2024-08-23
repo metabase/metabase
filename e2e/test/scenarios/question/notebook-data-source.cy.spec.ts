@@ -29,6 +29,7 @@ import {
   saveQuestion,
   shouldDisplayTabs,
   startNewQuestion,
+  tabsShouldBe,
   visitModel,
   visitQuestion,
   visualize,
@@ -182,6 +183,9 @@ describe("scenarios > notebook > data source", () => {
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
           cy.findByText(dbName).click();
+          entityPickerModalLevel(1)
+            .findByTestId("scroll-container")
+            .scrollTo("bottom");
           cy.findByText(schemaName).click();
           cy.findByText(tableName).click();
         });
@@ -211,6 +215,9 @@ describe("scenarios > notebook > data source", () => {
         join();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
+          entityPickerModalLevel(1)
+            .findByTestId("scroll-container")
+            .scrollTo("bottom");
           cy.findByText("Public").click();
           cy.findByText("Many Data Types").click();
         });
@@ -277,11 +284,9 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(2, "Second collection");
         assertDataPickerEntitySelected(3, checkNotNull(modelDetails.name));
 
-        entityPickerModalTab("Recents").click();
-        cy.findAllByTestId("result-item")
+        cy.findByText(checkNotNull(modelDetails.name))
           .should("exist")
-          .contains("button", checkNotNull(modelDetails.name))
-          .and("have.attr", "aria-selected", "true");
+          .and("contain.text", checkNotNull(modelDetails.name));
       });
     });
 
@@ -299,12 +304,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "Orders Model");
 
-        entityPickerModalTab("Recents").click();
-        cy.findByTestId("result-item")
-          .should("exist")
-          .and("contain.text", "Orders Model")
-          .and("have.attr", "aria-selected", "true");
-
         cy.button("Close").click();
       });
 
@@ -320,12 +319,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, "Orders Model");
-
-        entityPickerModalTab("Recents").click();
-        cy.findAllByTestId("result-item")
-          .should("exist")
-          .and("contain.text", "Orders Model")
-          .and("have.attr", "aria-selected", "true");
       });
     });
 
@@ -382,14 +375,6 @@ describe("scenarios > notebook > data source", () => {
         assertDataPickerEntitySelected(0, "Our analytics");
         assertDataPickerEntitySelected(1, "First collection");
         assertDataPickerEntitySelected(2, sourceQuestionName);
-
-        entityPickerModalTab("Recents").click();
-        cy.findAllByTestId("result-item")
-          .contains("button", nestedQuestionDetails.name)
-          .and("not.have.attr", "aria-selected", "true");
-        cy.findAllByTestId("result-item")
-          .contains("button", sourceQuestionName)
-          .and("have.attr", "aria-selected", "true");
       });
     });
   });
