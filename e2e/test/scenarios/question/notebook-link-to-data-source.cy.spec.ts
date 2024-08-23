@@ -547,10 +547,10 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
-        assertDatasetReqIsSandboxed(
-          ORDERS.USER_ID,
-          USERS.sandboxed.login_attributes.attr_uid,
-        );
+        assertDatasetReqIsSandboxed({
+          columnId: ORDERS.USER_ID,
+          columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+        });
       });
     });
   });

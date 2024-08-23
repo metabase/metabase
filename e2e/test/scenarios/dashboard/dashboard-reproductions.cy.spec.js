@@ -709,11 +709,11 @@ describeEE("issue 29076", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
     assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
-    assertDatasetReqIsSandboxed(
-      ORDERS.USER_ID,
-      USERS.sandboxed.login_attributes.attr_uid,
-      "@cardQuery",
-    );
+    assertDatasetReqIsSandboxed({
+      requestAlias: "@cardQuery",
+      columnId: ORDERS.USER_ID,
+      columnAssertion: USERS.sandboxed.login_attributes.attr_uid,
+    });
   });
 });
 

@@ -416,7 +416,9 @@ describeEE("scenarios > dashboard > filters", () => {
           cy.signOut();
           cy.signInAsSandboxedUser();
           visitDashboard(card.dashboard_id);
-          assertDatasetReqIsSandboxed(`@dashcardQuery${card.id}`);
+          assertDatasetReqIsSandboxed({
+            requestAlias: `@dashcardQuery${card.id}`,
+          });
         });
       },
     );

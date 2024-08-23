@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { popover } from "e2e/support/helpers";
 
 export function selectSidebarItem(item) {
@@ -123,41 +125,27 @@ export function assertSameBeforeAndAfterSave(assertionCallback) {
   assertionCallback();
 }
 
-// helps make a few types of assertion on sandboxed request data
-// in all cases it checks if the API responds with the `is_sandboxed` boolean set to `true` in the response
-// 1. assertDatasetReqIsSandboxed() - only checks if the api responds with `is_sandboxed`, defaults request alias to `@dataset`
-// 2. assertDatasetReqIsSandboxed("@customAlias") - only checks if the api responds with `is_sandboxed`, uses custom provided alias instead of default
-// 3. assertDatasetReqIsSandboxed(fieldId, literalValue) - checks `is_sandboxed`, asserts that data in response equals the literal value for the column matching fieldId
-// 4. assertDatasetReqIsSandboxed(fieldId, predicateFn) - checks `is_sandboxed`, asserts a predicate function on every value for the column matching fieldId
-// 5. assertDatasetReqIsSandboxed(fieldId, literalValue | predicateFn, "@customAlias") - all the things combined
-export function assertDatasetReqIsSandboxed(
-  sandboxedFieldId,
-  sandboxedFieldAssertion,
-  requestAlias = "@dataset",
-) {
-  if (arguments.length === 1) {
-    requestAlias = sandboxedFieldId;
-    sandboxedFieldId = undefined;
-  }
+export function assertDatasetReqIsSandboxed(options = {}) {
+  const { requestAlias = "@dataset", columnId, columnAssertion } = options;
 
   cy.get(requestAlias).then(({ response }) => {
+    // check if data is reporting itself as sandboxed
     const { data } = response.body;
     expect(data.is_sandboxed).to.equal(true);
 
-    if (sandboxedFieldId && sandboxedFieldAssertion) {
-      const colIndex = data.cols.findIndex(c => c.id === sandboxedFieldId);
+    // if options to make assertions on a columns data
+    if (columnId && columnAssertion) {
+      const colIndex = data.cols.findIndex(c => c.id === columnId);
       expect(colIndex).to.be.gte(0);
-      const sandboxedColumnValues = data.rows.map(row => row[colIndex]);
-      if (sandboxedFieldAssertion === "function") {
-        sandboxedFieldAssertion(sandboxedColumnValues);
-      } else {
-        expect(
-          sandboxedColumnValues.every(val => val === sandboxedFieldAssertion),
-        ).to.equal(
-          true,
-          `Expected every result in column to be equal to: ${sandboxedFieldAssertion}`,
-        );
-      }
+
+      const values = data.rows.map(row => row[colIndex]);
+
+      const assertionFn = _.isFunction(columnAssertion)
+        ? columnAssertion
+        : val => val === columnAssertion;
+      const allMatch = values.every(assertionFn);
+      const errMsg = `Expected every result in column to be equal to: ${columnAssertion}`;
+      expect(allMatch).to.equal(true, errMsg);
     }
   });
 }
