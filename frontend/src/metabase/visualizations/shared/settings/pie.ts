@@ -242,7 +242,7 @@ export function getPieRows(
   let newPieRows: PieRow[] = [];
   // Case 1: Auto sorted
   if (settings["pie.sort_rows"]) {
-    const sortedCurrentDataRows = getSortedRows(dataRows, metricIndex);
+    const sortedCurrentDataRows = getSortedRows(currentDataRows, metricIndex);
 
     newPieRows = sortedCurrentDataRows.map(dataRow => {
       const dimensionValue = dataRow[dimensionIndex];
