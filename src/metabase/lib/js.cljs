@@ -2317,3 +2317,14 @@
     (keyword "can-save" card-type) a-query
     (fn [_]
       (lib.core/can-save a-query (keyword card-type))))))
+
+(defn ^:export ensure-filter-stage
+  "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.
+
+  This is so that parameters can address both the stage before and after the aggregation.
+  Adding filters to the result at stage -1 will filter after the summary, filters added at
+  stage -2 filter before the summary.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (lib.core/ensure-filter-stage a-query))

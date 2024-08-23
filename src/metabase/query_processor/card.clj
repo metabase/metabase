@@ -7,6 +7,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
@@ -53,14 +54,6 @@
                 (contains? (get target 2) :stage-number)))
          parameters)))
 
-(defn- ensure-filter-stage
-  [query]
-  (let [inner-query (:query query)]
-    (cond-> query
-      (and (:aggregation inner-query)
-           (:breakout inner-query))
-      (assoc :query {:source-query inner-query}))))
-
 (defn query-for-card
   "Generate a query for a saved Card"
   [{query :dataset_query
@@ -76,7 +69,7 @@
                 ;; parameters refer to stages as if a new stage was appended.
                 ;; This is so that we can distinguish if a filter should be applied
                 ;; before of after summarizing.
-                (filter-stage-used? parameters) ensure-filter-stage)
+                (filter-stage-used? parameters) lib/ensure-filter-stage)
         cs    (-> (cache-strategy card (:dashboard-id ids))
                   (enrich-strategy query))]
     (assoc query :cache-strategy cs)))
