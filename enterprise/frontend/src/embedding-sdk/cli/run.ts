@@ -6,6 +6,7 @@ import {
 } from "./constants/messages";
 import {
   addDatabaseConnectionStep,
+  askForTenancyColumns,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
@@ -46,6 +47,7 @@ export const CLI_STEPS = [
 
   // The following steps require the license to be defined first.
   { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
+  { id: "askForTenancyColumns", executeStep: askForTenancyColumns },
   { id: "setupPermissions", executeStep: setupPermissions },
   {
     id: "generateReactComponentFiles",

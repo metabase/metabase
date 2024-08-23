@@ -10,6 +10,7 @@ export * from "./check-sdk-available";
 export * from "./add-database-connection";
 export * from "./pick-database-tables";
 export * from "./create-models-and-xrays";
+export * from "./ask-tenancy-columns";
 export * from "./setup-permission";
 export * from "./generate-component-files";
 export * from "./generate-express-server-file";
