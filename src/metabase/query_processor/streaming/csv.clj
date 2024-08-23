@@ -91,7 +91,7 @@
             (reset! pivot-data (qp.pivot.postprocess/init-pivot opts)))
           ;; when we have a pivot-grouping, but no opts, we still want to use that to 'clean up' the raw pivot rows
           (when-not opts
-            (reset! pivot-grouping pivot-grouping-key ))
+            (reset! pivot-grouping pivot-grouping-key))
           (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
@@ -115,9 +115,9 @@
             (let [pivot-grouping-key @pivot-grouping
                   group              (get ordered-row pivot-grouping-key)]
               (when (= 0 group)
-                (let [formatted-row (cond->> (mapv (fn [formatter r]
-                                                     (formatter (common/format-value r)))
-                                                   @ordered-formatters ordered-row)
+                (let [formatted-row (cond->> (perf/mapv (fn [formatter r]
+                                                          (formatter (common/format-value r)))
+                                                        @ordered-formatters ordered-row)
                                       pivot-grouping-key (m/remove-nth pivot-grouping-key))]
                   (write-csv writer [formatted-row])
                   (.flush writer)))))))
