@@ -23,7 +23,8 @@ export const QuestionVisualization = () => {
     onNavigateBack,
   } = useInteractiveQuestionContext();
 
-  const { height, ref, width } = useSdkElementSize();
+  const display = question?.card()?.display;
+  const { height, ref, width } = useSdkElementSize(display);
 
   if (isQuestionLoading) {
     return <SdkLoader />;

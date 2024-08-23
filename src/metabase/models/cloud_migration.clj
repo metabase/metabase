@@ -74,9 +74,9 @@
 
 (defsetting read-only-mode
   (deferred-tru
-    (str "Boolean indicating whether a Metabase's is in read-only mode with regards to its app db. "
-         "Will take up to 1m to propagate to other Metabase instances in a cluster."
-         "Audit tables are excluded from read-only-mode mode."))
+   (str "Boolean indicating whether a Metabase's is in read-only mode with regards to its app db. "
+        "Will take up to 1m to propagate to other Metabase instances in a cluster."
+        "Audit tables are excluded from read-only-mode mode."))
   :type       :boolean
   :visibility :admin
   :default    false
@@ -110,7 +110,6 @@
       (throw (ex-info (tru "Metabase is in read-only-mode mode!")
                       {:status-code 403}))))
   resolved-query)
-
 
 ;; Helpers
 
@@ -151,8 +150,8 @@
                                    ret)]
     (proxy [InputStream] []
       (read
-       ([]
-        (f (.read input-stream) true))
+        ([]
+         (f (.read input-stream) true))
         ([^bytes b]
          (f (.read input-stream b)))
         ([^bytes b off len]

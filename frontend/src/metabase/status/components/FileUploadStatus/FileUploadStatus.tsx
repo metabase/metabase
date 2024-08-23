@@ -13,7 +13,8 @@ import useStatusVisibility from "../../hooks/use-status-visibility";
 import FileUploadStatusLarge from "../FileUploadStatusLarge";
 
 export const FileUploadStatus = () => {
-  const uploads = useSelector(getAllUploads);
+  const uploadsMap = useSelector(getAllUploads);
+  const uploads = Object.values(uploadsMap);
   const dispatch = useDispatch();
   const resetUploads = () => dispatch(clearAllUploads());
 

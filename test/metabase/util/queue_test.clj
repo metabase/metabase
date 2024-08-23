@@ -31,8 +31,8 @@
 
     (run! background-fn)
     (future
-     (dotimes [_ realtime-threads]
-       (run! realtime-fn)))
+      (dotimes [_ realtime-threads]
+        (run! realtime-fn)))
 
     (let [processed (volatile! [])]
       (try
@@ -64,22 +64,22 @@
                          :backfill-events backfill-events
                          :realtime-events realtime-events)]
 
-      (testing "We processed all the events that were enqueued"
-        (is (= (+ (count backfill-events) sent)
-               (count processed))))
+    (testing "We processed all the events that were enqueued"
+      (is (= (+ (count backfill-events) sent)
+             (count processed))))
 
-      (testing "No items are skipped"
-          (is (zero? skipped)))
+    (testing "No items are skipped"
+      (is (zero? skipped)))
 
-      (testing "Some items are dropped"
-        (is (pos? dropped)))
+    (testing "Some items are dropped"
+      (is (pos? dropped)))
 
-      (let [expected-events  (set (concat backfill-events realtime-events))
-            processed-events (set processed)]
-        (testing "All expected events are processed"
-          (is (zero? (count (set/difference expected-events processed-events)))))
-        (testing "There are no unexpected events processed"
-          (is (zero? (count (set/difference processed-events expected-events))))))
+    (let [expected-events  (set (concat backfill-events realtime-events))
+          processed-events (set processed)]
+      (testing "All expected events are processed"
+        (is (zero? (count (set/difference expected-events processed-events)))))
+      (testing "There are no unexpected events processed"
+        (is (zero? (count (set/difference processed-events expected-events))))))
 
-      (testing "The realtime events are processed in order"
-        (mt/ordered-subset? realtime-events processed))))
+    (testing "The realtime events are processed in order"
+      (mt/ordered-subset? realtime-events processed))))

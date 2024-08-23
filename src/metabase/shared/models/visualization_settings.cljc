@@ -36,7 +36,6 @@
 
 ;;; -------------------------------------------------- Main API --------------------------------------------------
 
-
 ;;; -------------------------------------------------- Specs --------------------------------------------------
 
 (s/def ::field-id integer?)
@@ -144,8 +143,8 @@
     (some? field-metadata) (assoc ::field-metadata field-metadata)))
 
 (s/fdef field-str->column-ref
-        :args (s/cat :field-qualified-name string? :field-metadata (s/? ::field-metadata))
-        :ret ::column-ref)
+  :args (s/cat :field-qualified-name string? :field-metadata (s/? ::field-metadata))
+  :ret ::column-ref)
 
 (defn- keyname
   "Returns the full string name of the keyword `kw`, including any \"namespace\" portion followed by forward slash.
@@ -200,12 +199,12 @@
             (cond-> (case id-or-str
                       :field-id {::field-id v}
                       :field-str {::field-str v})
-                    (some? field-md) (assoc ::field-metadata field-md)))
+              (some? field-md) (assoc ::field-metadata field-md)))
           :column-name
           {::column-name (nth parts 1)}
           :expression
           (let [[_expression [_ref [_expression column-name]]] parsed]
-           {::column-name column-name}))))))
+            {::column-name column-name}))))))
 
 (s/fdef db->norm-column-ref
   :args (s/cat :column-ref ::db-column-ref-vec)
@@ -236,9 +235,9 @@
       (throw (ex-info "Invalid input" (s/explain-data ::db-column-ref column-ref)))
       (let [[k v]    parsed
             ref->vec (case k
-                        :string?  (comp vec parse-json-string)
-                        :keyword? (comp vec parse-json-string keyname)
-                        :vector?  identity)]
+                       :string?  (comp vec parse-json-string)
+                       :keyword? (comp vec parse-json-string keyname)
+                       :vector?  identity)]
         (db->norm-column-ref (ref->vec v))))))
 
 (s/fdef parse-db-column-ref
@@ -294,7 +293,7 @@
   (cond-> {::click-behavior-type ::link
            ::link-type           entity-type
            ::link-target-id      entity-id}
-          (some? parameter-mapping) (assoc ::parameter-mapping parameter-mapping)))
+    (some? parameter-mapping) (assoc ::parameter-mapping parameter-mapping)))
 
 (s/fdef entity-click-action
   :args (s/cat :entity-type ::entity-type :entity-id int? :parameter-mapping ::parameter-mapping)
@@ -467,8 +466,8 @@
                                         (:target v) (assoc ::param-mapping-target
                                                            (db->norm-param-ref parsed-id (:target v)))
                                         :always     (-> ; from outer cond->
-                                                        (assoc ::param-mapping-id parsed-id)
-                                                        (dissoc :source :target :id)))])
+                                                     (assoc ::param-mapping-id parsed-id)
+                                                     (dissoc :source :target :id)))])
                          [k (-> v
                                 (m/update-existing :source (partial db->norm-param-ref nil))
                                 (m/update-existing :target (partial db->norm-param-ref nil))
@@ -478,19 +477,19 @@
 (defn- norm->db-dimension-param-mapping [k v]
   (let [str-id (encode-json-string k)]
     [str-id (cond-> v
-                    (::param-mapping-source v) (assoc :source
-                                                      (norm->db-param-ref
-                                                       str-id
-                                                       (::param-mapping-source v)))
-                    (::param-mapping-target v) (assoc :target
-                                                      (norm->db-param-ref
-                                                       str-id
-                                                       (::param-mapping-target v)))
-                    :always                    (->
-                                                (assoc :id str-id)
-                                                (dissoc ::param-mapping-id
-                                                        ::param-mapping-source
-                                                        ::param-mapping-target)))]))
+              (::param-mapping-source v) (assoc :source
+                                                (norm->db-param-ref
+                                                 str-id
+                                                 (::param-mapping-source v)))
+              (::param-mapping-target v) (assoc :target
+                                                (norm->db-param-ref
+                                                 str-id
+                                                 (::param-mapping-target v)))
+              :always                    (->
+                                          (assoc :id str-id)
+                                          (dissoc ::param-mapping-id
+                                                  ::param-mapping-source
+                                                  ::param-mapping-target)))]))
 
 (defn- norm->db-generic-param-mapping [pm-k pm-v]
   (let [new-v (into {} (remove (fn [[k v]]
@@ -518,13 +517,13 @@
 (defn- db->norm-click-behavior [v]
   (-> v
       (assoc
-        ::click-behavior-type
-        (db->norm-click-action-type (:type v)))
+       ::click-behavior-type
+       (db->norm-click-action-type (:type v)))
       (dissoc :type)
       (assoc ::link-type (db->norm-link-type (:linkType v)))
       (dissoc :linkType)
       (cond-> ; from outer ->
-        (some? (:parameterMapping v)) (assoc ::parameter-mapping (db->norm-param-mapping (:parameterMapping v))))
+       (some? (:parameterMapping v)) (assoc ::parameter-mapping (db->norm-param-mapping (:parameterMapping v))))
       (dissoc :parameterMapping)
       (set/rename-keys db->norm-click-behavior-keys)))
 
@@ -537,10 +536,10 @@
 
 (defn- db->norm-table-columns [v]
   (-> v
-    (assoc ::table-columns (mapv (fn [tbl-col]
-                                   (set/rename-keys tbl-col db->norm-table-columns-keys))
-                             (:table.columns v)))
-    (dissoc :table.columns)))
+      (assoc ::table-columns (mapv (fn [tbl-col]
+                                     (set/rename-keys tbl-col db->norm-table-columns-keys))
+                                   (:table.columns v)))
+      (dissoc :table.columns)))
 
 (defn- db->norm-column-settings-entry
   "Converts the DB form of a :column_settings entry value to its normalized form. Does the opposite of
@@ -582,28 +581,28 @@
   [vs]
   (cond-> vs
           ;; column_settings at top level; ex: table card
-          (:column_settings vs)
-          (assoc ::column-settings (->> (:column_settings vs)
-                                        db->norm-column-settings))
+    (:column_settings vs)
+    (assoc ::column-settings (->> (:column_settings vs)
+                                  db->norm-column-settings))
 
           ;; click behavior key at top level; ex: non-table card
-          (:click_behavior vs)
-          (assoc ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
+    (:click_behavior vs)
+    (assoc ::click-behavior (db->norm-click-behavior (:click_behavior vs)))
 
-          (:table.columns vs)
-          db->norm-table-columns
+    (:table.columns vs)
+    db->norm-table-columns
 
-          :always
-          (dissoc :column_settings :click_behavior)))
+    :always
+    (dissoc :column_settings :click_behavior)))
 
 (defn- norm->db-click-behavior-value [v]
   (-> v
       (assoc
-        :type
-        (norm->db-click-action-type (::click-behavior-type v)))
+       :type
+       (norm->db-click-action-type (::click-behavior-type v)))
       (dissoc ::click-behavior-type)
       (cond-> ; from outer ->
-        (some? (::parameter-mapping v)) (assoc :parameterMapping (norm->db-param-mapping (::parameter-mapping v))))
+       (some? (::parameter-mapping v)) (assoc :parameterMapping (norm->db-param-mapping (::parameter-mapping v))))
       (dissoc ::parameter-mapping)
       (assoc :linkType (norm->db-link-type (::link-type v)))
       (dissoc ::link-type)
@@ -651,7 +650,7 @@
     (some? (::table-columns v))
     (assoc :table.columns (mapv (fn [tbl-col]
                                   (set/rename-keys tbl-col norm->db-table-columns-keys))
-                            (::table-columns v)))
+                                (::table-columns v)))
     :always
     (dissoc ::table-columns)))
 
@@ -664,9 +663,9 @@
   [settings]
   (cond-> settings
     (::column-settings settings) (-> ; from cond->
-                                     (assoc :column_settings (norm->db-column-settings (::column-settings settings)))
-                                     (dissoc ::column-settings))
+                                  (assoc :column_settings (norm->db-column-settings (::column-settings settings)))
+                                  (dissoc ::column-settings))
     (::click-behavior settings)  (-> ; from cond->
-                                     (assoc :click_behavior (norm->db-click-behavior-value (::click-behavior settings)))
-                                     (dissoc ::click-behavior))
+                                  (assoc :click_behavior (norm->db-click-behavior-value (::click-behavior settings)))
+                                  (dissoc ::click-behavior))
     (::table-columns settings)   norm->db-table-columns))

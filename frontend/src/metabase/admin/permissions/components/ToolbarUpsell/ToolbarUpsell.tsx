@@ -18,7 +18,7 @@ interface StateProps {
 type ToolbarUpsellProps = StateProps;
 
 const mapStateToProps = (state: State): StateProps => ({
-  upgradeUrl: getUpgradeUrl(state, { utm_media: "permissions_top" }),
+  upgradeUrl: getUpgradeUrl(state, { utm_content: "permissions_top" }),
 });
 
 const ToolbarUpsell = ({ upgradeUrl }: ToolbarUpsellProps) => {

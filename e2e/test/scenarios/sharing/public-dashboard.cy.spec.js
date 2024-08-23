@@ -8,6 +8,7 @@ import {
   filterWidget,
   goToTab,
   openNewPublicLinkDropdown,
+  openSharingMenu,
   popover,
   restore,
   setTokenFeatures,
@@ -150,8 +151,7 @@ describe("scenarios > public > dashboard", () => {
 
     cy.signInAsNormalUser().then(() => {
       visitDashboard("@dashboardId");
-
-      cy.icon("share").click();
+      openSharingMenu("Public link");
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");

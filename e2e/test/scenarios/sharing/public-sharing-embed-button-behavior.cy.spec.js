@@ -10,14 +10,13 @@ import {
   expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
   modal,
-  openEmbedModalFromMenu,
-  openNewPublicLinkDropdown,
-  openPublicLinkPopoverFromMenu,
+  openSharingMenu,
   openStaticEmbeddingModal,
   popover,
   resetSnowplow,
   restore,
   setTokenFeatures,
+  sharingMenu,
   startNewQuestion,
   visitDashboard,
   visitQuestion,
@@ -46,11 +45,8 @@ import {
             visitResource(resource, id);
           });
 
-          cy.findByTestId("resource-embed-button").click();
-          cy.findByTestId("embed-header-menu").within(() => {
-            cy.findByTestId("embed-menu-embed-modal-item").should(
-              "be.disabled",
-            );
+          openSharingMenu();
+          sharingMenu().within(() => {
             cy.findByText("Embedding is off").should("be.visible");
             cy.findByText("Enable it in settings").should("be.visible");
           });
@@ -58,16 +54,15 @@ import {
       });
 
       describe("when user is non-admin", () => {
-        it(`should show disabled embed button and tooltip for ${resource}`, () => {
+        it(`should not show embed button for ${resource}`, () => {
           cy.signInAsNormalUser();
 
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
 
-          expectDisabledButtonWithTooltipLabel(
-            "Ask your admin to create a public link",
-          );
+          openSharingMenu();
+          sharingMenu().findByText(/embed/i).should("not.exist");
         });
       });
     });
@@ -87,8 +82,8 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
-            cy.findByTestId("embed-header-menu").should("be.visible");
+            openSharingMenu("Embed");
+            modal().findByText("Embed Metabase").should("be.visible");
           });
 
           it(`should let the user create a public link for ${resource}`, () => {
@@ -97,32 +92,31 @@ import {
               visitResource(resource, id);
             });
 
-            openPublicLinkPopoverFromMenu();
+            openSharingMenu(/public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
           });
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled embed button if the ${resource} doesn't have a public link`, () => {
+          it(`should show a disabled public link button if the ${resource} doesn't have a public link`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
 
-            expectDisabledButtonWithTooltipLabel(
-              "Ask your admin to create a public link",
-            );
+            openSharingMenu();
+            sharingMenu().findByText("Ask your admin to create a public link");
           });
 
-          it(`should show the embed button if the ${resource} has a public link`, () => {
+          it(`should show the public link button if the ${resource} has a public link`, () => {
             cy.get("@resourceId").then(id => {
               createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
 
-            openPublicLinkPopoverFromMenu();
+            openSharingMenu(/public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
@@ -132,7 +126,7 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openSharingMenu("Public link");
 
             assertValidPublicLink({
               resource,
@@ -156,9 +150,9 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openSharingMenu();
 
-            cy.findByTestId("embed-menu-public-link-item").within(() => {
+            sharingMenu().within(() => {
               cy.findByText("Public links are off").should("be.visible");
               cy.findByText("Enable them in settings").should("be.visible");
             });
@@ -179,7 +173,8 @@ import {
               visitResource(resource, id);
             });
 
-            expectDisabledButtonWithTooltipLabel("Public links are disabled");
+            openSharingMenu();
+            sharingMenu().findByText("Ask your admin to create a public link");
           });
         });
       });
@@ -202,7 +197,7 @@ describe("embed modal display", () => {
       setTokenFeatures("all");
       visitDashboard("@dashboardId");
 
-      openEmbedModalFromMenu();
+      openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embed").should("be.visible");
@@ -229,7 +224,7 @@ describe("embed modal display", () => {
     it("should display a link to the product page for embedded analytics", () => {
       cy.signInAsAdmin();
       visitDashboard("@dashboardId");
-      openEmbedModalFromMenu();
+      openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embed").should("be.visible");
@@ -244,7 +239,7 @@ describe("embed modal display", () => {
         cy.findByTestId("interactive-embedding-cta").should(
           "have.attr",
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=static-embed-popover",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
         );
       });
     });
@@ -266,64 +261,16 @@ describe("#39152 sharing an unsaved question", () => {
     });
     visualize();
 
-    cy.findByTestId("resource-embed-button").click();
+    openSharingMenu();
 
     modal().within(() => {
       cy.findByText("First, save your question").should("be.visible");
       cy.findByText("Save").click();
     });
 
-    openNewPublicLinkDropdown("card");
+    openSharingMenu("Create a public link");
 
     assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
-  });
-});
-
-describe("metabase#46893 - popover should appear next to button, not at the top left of the page", () => {
-  it("should show the public link popover next to the dashboard sharing button", () => {
-    restore();
-    cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-
-    createResource("dashboard").then(({ body: { id } }) => {
-      createPublicDashboardLink(id);
-      visitDashboard(id);
-    });
-
-    cy.findByTestId("resource-embed-button").click();
-
-    cy.findByTestId("embed-header-menu").then($menu => {
-      cy.findByTestId("resource-embed-button").then($button => {
-        const menuRect = $menu[0].getBoundingClientRect();
-        const buttonRect = $button[0].getBoundingClientRect();
-
-        expect(menuRect.left).to.be.closeTo(buttonRect.left, 20);
-        expect(menuRect.top).to.be.closeTo(buttonRect.bottom, 20);
-      });
-    });
-  });
-
-  it("should show the public link popover next to the question sharing button", () => {
-    restore();
-    cy.signInAsAdmin();
-    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
-
-    createResource("question").then(({ body: { id } }) => {
-      createPublicQuestionLink(id);
-      visitQuestion(id);
-    });
-
-    cy.findByTestId("resource-embed-button").click();
-
-    cy.findByTestId("embed-header-menu").then($menu => {
-      cy.findByTestId("resource-embed-button").then($button => {
-        const menuRect = $menu[0].getBoundingClientRect();
-        const buttonRect = $button[0].getBoundingClientRect();
-
-        expect(menuRect.right).to.be.closeTo(buttonRect.right, 20);
-        expect(menuRect.bottom).to.be.closeTo(buttonRect.top, 20);
-      });
-    });
   });
 });
 
@@ -352,7 +299,7 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
             visitResource(resource, id);
           });
 
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             expectGoodSnowplowEvent({
@@ -400,7 +347,7 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
             visitResource(resource, id);
           });
 
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           popover().button("Remove public link").click();
           expectGoodSnowplowEvent({
             event: "public_link_removed",
@@ -416,7 +363,7 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
             visitResource(resource, id);
           });
 
-          openEmbedModalFromMenu();
+          openSharingMenu("Embed");
           cy.findByTestId("sharing-pane-public-embed-button").within(() => {
             cy.findByText("Get an embed link").click();
             cy.findByTestId("copy-button").realClick();
@@ -433,7 +380,7 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
             visitResource(resource, id);
           });
 
-          openEmbedModalFromMenu();
+          openSharingMenu("Embed");
           cy.findByTestId("sharing-pane-public-embed-button").within(() => {
             cy.findByText("Get an embed link").click();
             cy.button("Remove public URL").click();
@@ -824,12 +771,6 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
 
 function toSecond(milliseconds) {
   return Math.round(milliseconds / 1000);
-}
-
-function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
-  cy.findByTestId("resource-embed-button").should("be.disabled");
-  cy.findByTestId("resource-embed-button").realHover();
-  cy.findByRole("tooltip").findByText(tooltipLabel).should("be.visible");
 }
 
 function createResource(resource) {

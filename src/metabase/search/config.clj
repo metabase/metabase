@@ -13,7 +13,7 @@
 
 (defsetting search-typeahead-enabled
   (deferred-tru "Enable typeahead search in the {0} navbar?"
-    (public-settings/application-name-for-setting-descriptions))
+                (public-settings/application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :visibility :authenticated

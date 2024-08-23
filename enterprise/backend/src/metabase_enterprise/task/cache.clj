@@ -86,7 +86,7 @@
    (triggers/start-now)
    (triggers/with-schedule
     (cron/schedule
-        ;; run every minute
+      ;; run every minute
      (cron/cron-schedule "0 * * * * ? *")))))
 
 (defenterprise init-cache-task!
