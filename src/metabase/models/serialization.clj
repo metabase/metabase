@@ -333,7 +333,14 @@
             (into (for [[k transform] (:transform spec)
                         :let  [res ((:export transform) (get instance k))]
                         :when (not= res ::skip)]
-                    [k res])))))
+                    (do
+                      (when-not (contains? instance k)
+                        (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
+                                        {:model    model-name
+                                         :key      k
+                                         :instance instance})))
+
+                      [k res]))))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
                       (assoc (ex-data e) :model model-name :id (:id instance))
@@ -446,10 +453,11 @@
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
       (t2/reducible-select model {:where (or where true)})
-      (t2/reducible-select model {:where [:or
-                                          [:in :collection_id collection-set]
-                                          (when (contains? collection-set nil)
-                                            [:= :collection_id nil])
+      (t2/reducible-select model {:where [:and
+                                          [:or
+                                           [:in :collection_id collection-set]
+                                           (when (contains? collection-set nil)
+                                             [:= :collection_id nil])]
                                           (when where
                                             where)]}))))
 
