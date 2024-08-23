@@ -85,8 +85,6 @@ export type NotificationChannel<Details = ChannelDetails> = {
   description: string;
 };
 
-type ScheduleValue = "hourly" | "daily" | "weekly" | "monthly";
-
 export type SlackChannelSpec = ChannelSpec & {
   fields: ChannelField[];
 };
