@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Button, OuterCircle, InnerCircle } from "./LegendItemDot.styled";
+import { Button, InnerCircle, OuterCircle } from "./LegendItemDot.styled";
 
 interface LegendItemDotProps {
   isVisible: boolean;
