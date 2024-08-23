@@ -55,7 +55,7 @@ describeEE("formatting > sandboxes", () => {
       restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
-      blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+      preparePermissions();
       cy.visit("/admin/people");
     });
 
@@ -99,7 +99,7 @@ describeEE("formatting > sandboxes", () => {
       restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
-      blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+      preparePermissions();
 
       // Add user attribute to existing ("normal" / id:2) user
       cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
@@ -217,7 +217,7 @@ describeEE("formatting > sandboxes", () => {
       restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
-      blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+      preparePermissions();
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
@@ -1189,4 +1189,10 @@ function createJoinedQuestion(name, { visitQuestion = false } = {}) {
     },
     { wrapId: true, visitQuestion },
   );
+}
+
+function preparePermissions() {
+  blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
+  blockUserGroupPermissions(USER_GROUPS.COLLECTION_GROUP);
+  blockUserGroupPermissions(USER_GROUPS.READONLY_GROUP);
 }
