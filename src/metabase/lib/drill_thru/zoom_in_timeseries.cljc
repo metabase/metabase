@@ -49,13 +49,14 @@
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
 
-(mu/defn- valid-current-units :- [:vector ::lib.schema.temporal-bucketing/unit.date-time.truncate]
+(mu/defn- valid-current-units :- [:sequential ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   [query :- ::lib.schema/query
    stage :- :int
    field :- :mbql.clause/field]
-  (into [] (reverse (eduction (map lib.temporal-bucket/raw-temporal-bucket)
-                              (filter #(contains? lib.schema.temporal-bucketing/datetime-truncation-units %))
-                              (lib.temporal-bucket/available-temporal-buckets query stage field)))))
+  (->> (lib.temporal-bucket/available-temporal-buckets query stage field)
+       (map lib.temporal-bucket/raw-temporal-bucket)
+       (filter lib.schema.temporal-bucketing/datetime-truncation-units)
+       reverse))
 
 (mu/defn- matching-breakout-dimension :- [:maybe ::lib.schema.drill-thru/context.row.value]
   [query        :- ::lib.schema/query
