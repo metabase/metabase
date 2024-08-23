@@ -8,7 +8,7 @@ import CS from "metabase/css/core/index.css";
 import { Box, Title } from "metabase/ui";
 
 import type { CoreLoadingProps } from "./types";
-import { getErrorMessage, getErrorAndLoading } from "./utils";
+import { getErrorAndLoading, getErrorMessage } from "./utils";
 
 type DelayProps =
   | {
