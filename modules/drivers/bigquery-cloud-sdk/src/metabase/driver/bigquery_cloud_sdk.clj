@@ -275,7 +275,7 @@
             nfc-path (assoc :nfc-path nfc-path)
             (= :type/Dictionary base-type) (assoc :nested-fields (set (fields->metabase-field-info
                                                                        database-position
-                                                                       (conj (or nfc-path []) field-name)
+                                                                       (conj (vec nfc-path) field-name)
                                                                        (.getSubFields field)))))))))
     (m/indexed fields))))
 
