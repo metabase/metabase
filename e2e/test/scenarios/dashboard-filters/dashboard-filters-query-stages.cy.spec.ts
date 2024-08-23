@@ -572,21 +572,22 @@ type MappingSection = [SectionName, ColumnName[]];
 
 function verifyPopoverMappingOptions(sections: MappingSection[]) {
   popover().within(() => {
-    let index = 0;
+    getPopoverItems().then($items => {
+      let index = 0;
 
-    for (const [sectionName, columnNames] of sections) {
-      getPopoverItems().eq(index).scrollIntoView();
-      getPopoverItems().eq(index).should("have.text", sectionName);
-      ++index;
-
-      for (const columnName of columnNames) {
-        getPopoverItems().eq(index).scrollIntoView();
-        getPopoverItems()
-          .eq(index)
-          .findByLabelText(columnName)
-          .should("be.visible");
+      for (const [sectionName, columnNames] of sections) {
+        const item = cy.wrap($items[index]);
+        item.scrollIntoView();
+        item.should("have.text", sectionName);
         ++index;
+
+        for (const columnName of columnNames) {
+          const item = cy.wrap($items[index]);
+          item.scrollIntoView();
+          item.findByLabelText(columnName).should("be.visible");
+          ++index;
+        }
       }
-    }
+    });
   });
 }
