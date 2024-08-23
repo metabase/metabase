@@ -137,7 +137,7 @@ export type SearchRequest = {
   last_edited_by?: UserId[];
   search_native_query?: boolean | null;
   verified?: boolean | null;
-  ancestors?: boolean | null;
+  model_ancestors?: boolean | null;
 
   // this should be in ListCollectionItemsRequest but legacy code expects them here
   collection?: CollectionId;
