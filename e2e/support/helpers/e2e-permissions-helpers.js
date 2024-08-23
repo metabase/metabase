@@ -123,8 +123,41 @@ export function assertSameBeforeAndAfterSave(assertionCallback) {
   assertionCallback();
 }
 
-export function assertDatasetReqIsSandboxed(requestAlias = "@dataset") {
+// helps make a few types of assertion on sandboxed request data
+// in all cases it checks if the API responds with the `is_sandboxed` boolean set to `true` in the response
+// 1. assertDatasetReqIsSandboxed() - only checks if the api responds with `is_sandboxed`, defaults request alias to `@dataset`
+// 2. assertDatasetReqIsSandboxed("@customAlias") - only checks if the api responds with `is_sandboxed`, uses custom provided alias instead of default
+// 3. assertDatasetReqIsSandboxed(fieldId, literalValue) - checks `is_sandboxed`, asserts that data in response equals the literal value for the column matching fieldId
+// 4. assertDatasetReqIsSandboxed(fieldId, predicateFn) - checks `is_sandboxed`, asserts a predicate function on every value for the column matching fieldId
+// 5. assertDatasetReqIsSandboxed(fieldId, literalValue | predicateFn, "@customAlias") - all the things combined
+export function assertDatasetReqIsSandboxed(
+  sandboxedFieldId,
+  sandboxedFieldAssertion,
+  requestAlias = "@dataset",
+) {
+  if (arguments.length === 1) {
+    requestAlias = sandboxedFieldId;
+    sandboxedFieldId = undefined;
+  }
+
   cy.get(requestAlias).then(({ response }) => {
-    expect(response.body.data.is_sandboxed).to.equal(true);
+    const { data } = response.body;
+    expect(data.is_sandboxed).to.equal(true);
+
+    if (sandboxedFieldId && sandboxedFieldAssertion) {
+      const colIndex = data.cols.findIndex(c => c.id === sandboxedFieldId);
+      expect(colIndex).to.be.gte(0);
+      const sandboxedColumnValues = data.rows.map(row => row[colIndex]);
+      if (sandboxedFieldAssertion === "function") {
+        sandboxedFieldAssertion(sandboxedColumnValues);
+      } else {
+        expect(
+          sandboxedColumnValues.every(val => val === sandboxedFieldAssertion),
+        ).to.equal(
+          true,
+          `Expected every result in column to be equal to: ${sandboxedFieldAssertion}`,
+        );
+      }
+    }
   });
 }

@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
@@ -547,7 +547,10 @@ describe("scenarios > notebook > link to data source", () => {
           "have.text",
           "Showing 11 rows",
         );
-        assertDatasetReqIsSandboxed();
+        assertDatasetReqIsSandboxed(
+          ORDERS.USER_ID,
+          USERS.sandboxed.login_attributes.attr_uid,
+        );
       });
     });
   });

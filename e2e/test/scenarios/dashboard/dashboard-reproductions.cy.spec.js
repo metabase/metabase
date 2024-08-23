@@ -1,7 +1,7 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
@@ -709,7 +709,11 @@ describeEE("issue 29076", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
     assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
-    assertDatasetReqIsSandboxed("@cardQuery");
+    assertDatasetReqIsSandboxed(
+      ORDERS.USER_ID,
+      USERS.sandboxed.login_attributes.attr_uid,
+      "@cardQuery",
+    );
   });
 });
 
