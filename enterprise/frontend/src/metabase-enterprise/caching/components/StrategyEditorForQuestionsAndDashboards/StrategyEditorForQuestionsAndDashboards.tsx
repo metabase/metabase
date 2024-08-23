@@ -15,7 +15,16 @@ import { ClientSortableTable } from "metabase/common/components/Table/ClientSort
 import type { ColumnItem } from "metabase/common/components/Table/types";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Button, Center, Flex, Icon, Skeleton, Stack, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  Icon,
+  Skeleton,
+  Stack,
+  Text,
+} from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
@@ -264,9 +273,9 @@ const _StrategyEditorForQuestionsAndDashboards = ({
           overflowY: "auto",
         }}
       >
-        <aside style={{ maxWidth: "32rem" }} id={explanatoryAsideId}>
+        <Box component="aside" maw="32rem" id={explanatoryAsideId}>
           {t`Here are the dashboards and questions that have their own caching policies, which override any default or database policies you’ve set.`}
-        </aside>
+        </Box>
         {confirmationModal}
         <Flex maw="60rem">
           <DelayedLoadingAndErrorWrapper
@@ -290,9 +299,9 @@ const _StrategyEditorForQuestionsAndDashboards = ({
                 aria-labelledby={explanatoryAsideId}
                 cols={
                   <>
-                    <col style={{ width: "30%" }} />
-                    <col style={{ width: "30%" }} />
-                    <col style={{ width: "30%" }} />
+                    <col />
+                    <col />
+                    <col />
                   </>
                 }
               />
@@ -346,7 +355,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
     rowRenderer={() => (
       <tr className={StrategyEditorForQuestionsAndDashboardsC.SkeletonTableRow}>
         <Repeat times={3}>
-          <td style={{ width: "20rem" }}>
+          <td>
             <Skeleton h="1rem" natural />
           </td>
         </Repeat>

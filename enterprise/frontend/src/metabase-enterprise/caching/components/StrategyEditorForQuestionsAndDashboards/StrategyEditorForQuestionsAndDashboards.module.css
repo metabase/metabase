@@ -7,11 +7,18 @@
 
 .SkeletonTableRow {
   height: 3rem;
+  td {
+    width: 20rem;
+  }
 }
 
 .CacheableItemTable {
   table-layout: fixed;
   background-color: var(--mb-color-text-white);
+
+  col {
+    width: 30%;
+  }
 
   td {
     padding: 0.75rem !important;

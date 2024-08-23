@@ -4,7 +4,7 @@ import { msgid, ngettext, t } from "ttag";
 import SettingHeader from "metabase/admin/settings/components/SettingHeader";
 import {
   ClientSortableTable,
-  type Table,
+  Table,
 } from "metabase/common/components/Table";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import {
