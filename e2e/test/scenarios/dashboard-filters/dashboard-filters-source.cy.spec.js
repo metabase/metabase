@@ -1,7 +1,8 @@
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertDatasetReqIsSandboxed,
+  blockUserGroupPermissions,
   describeEE,
   editDashboard,
   filterWidget,
@@ -393,9 +394,10 @@ describe(
 
 describeEE("scenarios > dashboard > filters", () => {
   beforeEach(() => {
-    restore("default-ee");
+    restore("default");
     cy.signInAsAdmin();
     setTokenFeatures("all");
+    blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
   });
 
   it("should sandbox parameter values in dashboards", () => {

@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { popover } from "e2e/support/helpers";
 
 export function selectSidebarItem(item) {
@@ -146,5 +147,19 @@ export function assertDatasetReqIsSandboxed(options = {}) {
       const errMsg = `Expected every result in column to be equal to: ${columnAssertion}`;
       expect(values.every(assertionFn)).to.equal(true, errMsg);
     }
+  });
+}
+
+export function blockUserGroupPermissions(
+  groupName,
+  databaseId = SAMPLE_DB_ID,
+) {
+  cy.updatePermissionsGraph({
+    [groupName]: {
+      [SAMPLE_DB_ID]: {
+        "view-data": "blocked",
+        "create-queries": "no",
+      },
+    },
   });
 }

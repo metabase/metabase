@@ -8,6 +8,7 @@ import {
 import {
   assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
+  blockUserGroupPermissions,
   commandPaletteSearch,
   describeEE,
   entityPickerModal,
@@ -605,9 +606,10 @@ describeEE("issue 24966", () => {
   const dashboardDetails = { parameters: [dashboardFilter] };
 
   beforeEach(() => {
-    restore("default-ee");
+    restore("default");
     cy.signInAsAdmin();
     setTokenFeatures("all");
+    blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
 
     // Add user attribute to existing user
     cy.request("PUT", `/api/user/${NODATA_USER_ID}`, {

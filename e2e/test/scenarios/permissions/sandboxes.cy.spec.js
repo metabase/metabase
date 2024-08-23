@@ -8,6 +8,7 @@ import {
 import {
   assertDatasetReqIsSandboxed,
   assertQueryBuilderRowCount,
+  blockUserGroupPermissions,
   chartPathWithFillColor,
   describeEE,
   entityPickerModal,
@@ -54,6 +55,7 @@ describeEE("formatting > sandboxes", () => {
       restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
       cy.visit("/admin/people");
     });
 
@@ -97,6 +99,7 @@ describeEE("formatting > sandboxes", () => {
       restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
 
       // Add user attribute to existing ("normal" / id:2) user
       cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, {
@@ -214,6 +217,7 @@ describeEE("formatting > sandboxes", () => {
       restore("default-ee");
       cy.signInAsAdmin();
       setTokenFeatures("all");
+      blockUserGroupPermissions(USER_GROUPS.ALL_USERS_GROUP);
     });
 
     it("should allow joins to the sandboxed table (metabase-enterprise#154)", () => {
