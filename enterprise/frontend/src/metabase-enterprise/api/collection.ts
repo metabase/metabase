@@ -12,9 +12,9 @@ export const collectionApi = EnterpriseApi.injectEndpoints({
       ListStaleCollectionItemsResponse,
       ListStaleCollectionItemsRequest
     >({
-      query: ({ id, ...params }) => ({
+      query: ({ id: collectionId, ...params }) => ({
         method: "GET",
-        url: `/api/ee/collection/${id}/stale`,
+        url: `/api/ee/stale/${collectionId}`,
         params,
       }),
       providesTags: response =>

@@ -13,8 +13,9 @@ import {
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
-import type { StaleCollectionItem } from "metabase-types/api";
 import type { SortingOptions } from "metabase-types/api/sorting";
+
+import type { StaleCollectionItem } from "../types";
 
 import CS from "./CleanupCollectionTable.module.css";
 import { itemKeyFn } from "./utils";

@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import type { StaleCollectionItem } from "metabase-types/api";
+import type { StaleCollectionItem } from "../types";
 
 // constant portion of this string is how mantine calculates the height of the modal
 export const getModalHeightCalc = (additionalOffset?: string) => {
