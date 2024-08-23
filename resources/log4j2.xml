@@ -29,10 +29,7 @@
     <Logger name="metabase.metabot" level="DEBUG"/>
     <Logger name="metabase.plugins" level="DEBUG"/>
     <Logger name="metabase.query-processor.async" level="DEBUG"/>
-    <Logger name="metabase.query-analysis" level="DEBUG"/>
     <Logger name="metabase.server.middleware" level="DEBUG"/>
-    <Logger name="metabase.task.analyze-queries" level="DEBUG"/>
-    <Logger name="metabase.task.sweep-query-analysis" level="DEBUG"/>
     <Logger name="org.quartz" level="INFO"/>
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
 
