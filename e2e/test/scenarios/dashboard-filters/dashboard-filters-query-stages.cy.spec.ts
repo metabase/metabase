@@ -130,8 +130,20 @@ describe("scenarios > dashboard > filters > query stages", () => {
     it("allows to map to all relevant columns", () => {
       editDashboard();
 
-      cy.log("date columns");
+      cy.log("## date columns");
       getFilter("Date").click();
+      verifyDateMappingOptions();
+
+      cy.log("## text columns");
+      getFilter("Text").click();
+      verifyTextMappingOptions();
+
+      cy.log("## number columns");
+      getFilter("Number").click();
+      verifyNumberMappingOptions();
+    });
+
+    function verifyDateMappingOptions() {
       verifyDashcardMappingOptions(0, [
         ["Order", ORDERS_DATE_COLUMNS],
         ["Product", PRODUCTS_DATE_COLUMNS],
@@ -147,9 +159,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ["Product", PRODUCTS_DATE_COLUMNS],
         ["User", PEOPLE_DATE_COLUMNS],
       ]);
+    }
 
-      cy.log("text columns");
-      getFilter("Text").click();
+    function verifyTextMappingOptions() {
       verifyDashcardMappingOptions(0, [
         ["Product", PRODUCTS_TEXT_COLUMNS],
         ["User", PEOPLE_TEXT_COLUMNS],
@@ -162,9 +174,9 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ["Product", PRODUCTS_TEXT_COLUMNS],
         ["User", PEOPLE_TEXT_COLUMNS],
       ]);
+    }
 
-      cy.log("number columns");
-      getFilter("Number").click();
+    function verifyNumberMappingOptions() {
       verifyDashcardMappingOptions(0, [
         ["Order", ORDERS_NUMBER_COLUMNS],
         ["Product", PRODUCTS_NUMBER_COLUMNS],
@@ -180,7 +192,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         ["Product", PRODUCTS_NUMBER_COLUMNS],
         ["User", PEOPLE_NUMBER_COLUMNS],
       ]);
-    });
+    }
   });
 
   describe("1-stage queries", () => {
@@ -215,120 +227,120 @@ describe("scenarios > dashboard > filters > query stages", () => {
         editDashboard();
 
         cy.log("## date columns");
+        getFilter("Date").click();
         verifyDateMappingOptions();
 
         cy.log("## text columns");
+        getFilter("Text").click();
         verifyTextMappingOptions();
 
         cy.log("## number columns");
+        getFilter("Number").click();
         verifyNumberMappingOptions();
-
-        function verifyDateMappingOptions() {
-          getFilter("Date").click();
-          verifyDashcardMappingOptions(0, [
-            ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
-            ["Review", REVIEWS_DATE_COLUMNS],
-            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_DATE_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(1, [
-            ["M1 Orders Model", ORDERS_DATE_COLUMNS],
-            ["Review", REVIEWS_DATE_COLUMNS],
-            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_DATE_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(2, [
-            [
-              "M2 - Question-based Model",
-              [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
-            ],
-            ["Product", PRODUCTS_DATE_COLUMNS],
-            ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
-            ["User", PEOPLE_DATE_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(3, [
-            [
-              "M2 - Model-based Model",
-              [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
-            ],
-            ["Product", PRODUCTS_DATE_COLUMNS],
-            ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
-            ["User", PEOPLE_DATE_COLUMNS],
-          ]);
-        }
-
-        function verifyTextMappingOptions() {
-          getFilter("Text").click();
-          verifyDashcardMappingOptions(0, [
-            ["Review", REVIEWS_TEXT_COLUMNS],
-            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_TEXT_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(1, [
-            ["Review", REVIEWS_TEXT_COLUMNS],
-            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_TEXT_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(2, [
-            [
-              "M2 - Question-based Model",
-              ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
-            ],
-            ["Product", PRODUCTS_TEXT_COLUMNS],
-            ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
-            ["User", PEOPLE_TEXT_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(3, [
-            [
-              "M2 - Model-based Model",
-              ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
-            ],
-            ["Product", PRODUCTS_TEXT_COLUMNS],
-            ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
-            ["User", PEOPLE_TEXT_COLUMNS],
-          ]);
-        }
-
-        function verifyNumberMappingOptions() {
-          getFilter("Number").click();
-          verifyDashcardMappingOptions(0, [
-            ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-            ["Review", REVIEWS_NUMBER_COLUMNS],
-            [
-              "Product",
-              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-            ],
-            ["User", PEOPLE_NUMBER_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(1, [
-            ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-            ["Review", REVIEWS_NUMBER_COLUMNS],
-            [
-              "Product",
-              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
-            ],
-            ["User", PEOPLE_NUMBER_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(2, [
-            [
-              "M2 - Question-based Model",
-              [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
-            ],
-            ["Product", PRODUCTS_NUMBER_COLUMNS],
-            ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
-            ["User", PEOPLE_NUMBER_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(3, [
-            [
-              "M2 - Model-based Model",
-              [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
-            ],
-            ["Product", PRODUCTS_NUMBER_COLUMNS],
-            ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
-            ["User", PEOPLE_NUMBER_COLUMNS],
-          ]);
-        }
       });
+
+      function verifyDateMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["M1 Orders Model", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(2, [
+          [
+            "M2 - Question-based Model",
+            [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
+          ],
+          ["Product", PRODUCTS_DATE_COLUMNS],
+          ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(3, [
+          [
+            "M2 - Model-based Model",
+            [...ORDERS_DATE_COLUMNS, "Reviews - Product → Created At"],
+          ],
+          ["Product", PRODUCTS_DATE_COLUMNS],
+          ["Reviews - Product → Product", PRODUCTS_DATE_COLUMNS],
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+      }
+
+      function verifyTextMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(2, [
+          [
+            "M2 - Question-based Model",
+            ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
+          ],
+          ["Product", PRODUCTS_TEXT_COLUMNS],
+          ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(3, [
+          [
+            "M2 - Model-based Model",
+            ["Reviews - Product → Reviewer", "Reviews - Product → Body"],
+          ],
+          ["Product", PRODUCTS_TEXT_COLUMNS],
+          ["Reviews - Product → Product", PRODUCTS_TEXT_COLUMNS],
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+      }
+
+      function verifyNumberMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          [
+            "Product",
+            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
+          ],
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          [
+            "Product",
+            [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS], // https://github.com/metabase/metabase/issues/46845
+          ],
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(2, [
+          [
+            "M2 - Question-based Model",
+            [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
+          ],
+          ["Product", PRODUCTS_NUMBER_COLUMNS],
+          ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(3, [
+          [
+            "M2 - Model-based Model",
+            [...ORDERS_NUMBER_COLUMNS, "Reviews - Product → Rating"],
+          ],
+          ["Product", PRODUCTS_NUMBER_COLUMNS],
+          ["Reviews - Product → Product", PRODUCTS_NUMBER_COLUMNS],
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+      }
     });
 
     describe("Q3 - join, custom column, aggregations, no breakouts", () => {
@@ -362,72 +374,66 @@ describe("scenarios > dashboard > filters > query stages", () => {
         editDashboard();
 
         cy.log("## date columns");
+        getFilter("Date").click();
         verifyDateMappingOptions();
 
         cy.log("## text columns");
+        getFilter("Text").click();
         verifyTextMappingOptions();
 
         cy.log("## number columns");
+        getFilter("Number").click();
         verifyNumberMappingOptions();
-
-        function verifyDateMappingOptions() {
-          getFilter("Date").click();
-          verifyDashcardMappingOptions(0, [
-            ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
-            ["Review", REVIEWS_DATE_COLUMNS],
-            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_DATE_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(1, [
-            ["M1 Orders Model", ORDERS_DATE_COLUMNS],
-            ["Review", REVIEWS_DATE_COLUMNS],
-            ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_DATE_COLUMNS],
-          ]);
-          verifyNoDashcardMappingOptions(2);
-          verifyNoDashcardMappingOptions(3);
-        }
-
-        function verifyTextMappingOptions() {
-          getFilter("Text").click();
-          verifyDashcardMappingOptions(0, [
-            ["Review", REVIEWS_TEXT_COLUMNS],
-            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_TEXT_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(1, [
-            ["Review", REVIEWS_TEXT_COLUMNS],
-            ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_TEXT_COLUMNS],
-          ]);
-          verifyNoDashcardMappingOptions(2);
-          verifyNoDashcardMappingOptions(3);
-        }
-
-        function verifyNumberMappingOptions() {
-          getFilter("Number").click();
-          verifyDashcardMappingOptions(0, [
-            ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-            ["Review", REVIEWS_NUMBER_COLUMNS],
-            [
-              "Product",
-              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
-            ], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_NUMBER_COLUMNS],
-          ]);
-          verifyDashcardMappingOptions(1, [
-            ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
-            ["Review", REVIEWS_NUMBER_COLUMNS],
-            [
-              "Product",
-              [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS],
-            ], // https://github.com/metabase/metabase/issues/46845
-            ["User", PEOPLE_NUMBER_COLUMNS],
-          ]);
-          verifyNoDashcardMappingOptions(2);
-          verifyNoDashcardMappingOptions(3);
-        }
       });
+
+      function verifyDateMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["M1 Orders Model", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
+      }
+
+      function verifyTextMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
+      }
+
+      function verifyNumberMappingOptions() {
+        verifyDashcardMappingOptions(0, [
+          ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(1, [
+          ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyNoDashcardMappingOptions(2);
+        verifyNoDashcardMappingOptions(3);
+      }
     });
   });
 });
