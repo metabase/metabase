@@ -8927,7 +8927,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
-  - changeSet:
+- changeSet:
       id: v51.2024-08-23T15:00:00
       author: flavius
       comment: Create table postcheckpoints
@@ -8985,6 +8985,56 @@ databaseChangeLog:
             constraintName: postcheckpoints_pkey
 
 
+- changeSet:
+      id: v51.2024-08-21T14:35:00-1
+      author: jordigiam
+      comment: Enable pgvector extension and create documents table with match_documents function
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: false
+            stripComments: true
+            sql: |
+              -- Enable the pgvector extension to work with embedding vectors
+              create extension if not exists vector;
+
+              -- Create a table to store your documents
+              create table if not exists documents (
+                id bigserial primary key,
+                content text, -- corresponds to Document.pageContent
+                metadata jsonb, -- corresponds to Document.metadata
+                embedding vector(1536) -- 1536 works for OpenAI embeddings, change if needed
+              );
+
+              -- Create a function to search for documents
+              create function match_documents (
+                query_embedding vector(1536),
+                match_count int DEFAULT null,
+                filter jsonb DEFAULT '{}'
+              ) returns table (
+                id bigint,
+                content text,
+                metadata jsonb,
+                embedding jsonb,
+                similarity float
+              )
+              language plpgsql
+              as $$
+              #variable_conflict use_column
+              begin
+                return query
+                select
+                  id,
+                  content,
+                  metadata,
+                  (embedding::text)::jsonb as embedding,
+                  1 - (documents.embedding <=> query_embedding) as similarity
+                from documents
+                where metadata @> filter
+                order by documents.embedding <=> query_embedding
+                limit match_count;
+              end;
+              $$;
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
