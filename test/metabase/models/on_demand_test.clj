@@ -17,7 +17,6 @@
 (defn- do-with-mocked-field-values-updating!
   "Run F the function responsible for updating FieldValues bound to a mock function that instead just records the names
   of Fields that should have been updated. Returns the set of updated Field names."
-  {:style/indent 0}
   [f]
   (let [updated-field-names (atom #{})]
     (with-redefs [field-values/create-or-update-full-field-values! (fn [field]
@@ -41,7 +40,7 @@
                                          :widget-type  "category"
                                          :default      "Widget"}}}})
 
-(defn- do-with-updated-fields-for-card! {:style/indent 1} [options & [f]]
+(defn- do-with-updated-fields-for-card! [options & [f]]
   (mt/with-temp [Database db    (:db options)
                  Table    table (merge {:db_id (u/the-id db)}
                                        (:table options))
@@ -53,7 +52,6 @@
                                                  (:card options))]
          (when f
            (f {:db db :table table :field field :card card :updated-field-names updated-field-names})))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     CARDS                                                      |
@@ -159,7 +157,6 @@
                   (t2/update! Card (u/the-id card)
                               {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   DASHBOARDS                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -233,7 +230,7 @@
                   (reset! updated-field-names #{})
                   ;; ok, now update the parameter mapping to the new field. The new Field should get new values
                   (dashboard/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
-                    [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
+                                               [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
 
 (deftest existing-dashboard-test-4
   (testing "Existing Dashboard"
@@ -260,4 +257,4 @@
               (fn [{:keys [table card dash dashcard]}]
                 (t2.with-temp/with-temp [Field new-field {:table_id (u/the-id table), :has_field_values "list"}]
                   (dashboard/update-dashcards! (t2/hydrate dash [:dashcards :series :card])
-                    [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))
+                                               [(assoc dashcard :parameter_mappings (parameter-mappings-for-card-and-field card new-field))])))))))))

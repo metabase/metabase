@@ -15,10 +15,10 @@ import SnippetCollections from "metabase/entities/snippet-collections";
 import Snippets from "metabase/entities/snippets";
 import { color } from "metabase/lib/colors";
 import {
+  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
+  PLUGIN_SNIPPET_SIDEBAR_MODALS,
   PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS,
   PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS,
-  PLUGIN_SNIPPET_SIDEBAR_MODALS,
-  PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS,
 } from "metabase/plugins";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
@@ -27,13 +27,13 @@ import { Icon } from "metabase/ui";
 import { SnippetRow } from "../SnippetRow";
 
 import {
-  SidebarFooter,
-  SidebarIcon,
   AddSnippetIcon,
+  HideSearchIcon,
   MenuIconContainer,
   SearchSnippetIcon,
+  SidebarFooter,
+  SidebarIcon,
   SnippetTitle,
-  HideSearchIcon,
 } from "./SnippetSidebar.styled";
 
 const ICON_SIZE = 16;

@@ -10,14 +10,14 @@ import Button from "metabase/core/components/Button";
 import FormFooter from "metabase/core/components/FormFooter";
 import Dashboards from "metabase/entities/dashboards";
 import {
+  Form,
+  FormCheckbox,
+  FormErrorMessage,
+  FormObserver,
+  FormProvider,
+  FormSubmitButton,
   FormTextInput,
   FormTextarea,
-  FormSubmitButton,
-  FormErrorMessage,
-  FormCheckbox,
-  Form,
-  FormProvider,
-  FormObserver,
 } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";

@@ -1,18 +1,19 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitDashboard,
-  visitPublicDashboard,
-  filterWidget,
-  popover,
-  openNewPublicLinkDropdown,
-  createPublicDashboardLink,
-  dashboardParametersContainer,
-  goToTab,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
+  createPublicDashboardLink,
+  dashboardParametersContainer,
   describeEE,
+  filterWidget,
+  goToTab,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  popover,
+  restore,
   setTokenFeatures,
+  visitDashboard,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -150,8 +151,7 @@ describe("scenarios > public > dashboard", () => {
 
     cy.signInAsNormalUser().then(() => {
       visitDashboard("@dashboardId");
-
-      cy.icon("share").click();
+      openSharingMenu("Public link");
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");

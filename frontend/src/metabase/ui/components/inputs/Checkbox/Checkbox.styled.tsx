@@ -3,7 +3,7 @@ import type {
   MantineTheme,
   MantineThemeOverride,
 } from "@mantine/core";
-import { getStylesRef, getSize, rem } from "@mantine/core";
+import { getSize, getStylesRef, rem } from "@mantine/core";
 
 import { CheckboxIcon } from "./CheckboxIcon";
 

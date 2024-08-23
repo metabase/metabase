@@ -1,32 +1,32 @@
-import { type PropsWithChildren, useMemo } from "react";
+import type { PropsWithChildren } from "react";
 
-import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
+import {
+  BackButton,
+  Filter,
+  FilterBar,
+  FilterButton,
+  Notebook,
+  NotebookButton,
+  QuestionResetButton,
+  QuestionVisualization,
+  SaveButton,
+  SaveQuestion,
+  Summarize,
+  SummarizeButton,
+  Title,
+} from "embedding-sdk/components/private/InteractiveQuestion/components";
+import { InteractiveQuestionProvider } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import {
+  InteractiveQuestionResult,
+  type InteractiveQuestionResultProps,
+} from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
-import {
-  BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
-  Filter,
-  FilterButton,
-  Summarize,
-  SummarizeButton,
-  Notebook,
-  NotebookButton,
-  QuestionVisualization,
-} from "./components";
-import { InteractiveQuestionProviderWithLocation } from "./context";
-
-type InteractiveQuestionProps = PropsWithChildren<{
-  questionId: CardId;
-  withResetButton?: boolean;
-  withTitle?: boolean;
-  customTitle?: React.ReactNode;
+export type InteractiveQuestionProps = PropsWithChildren<{
+  questionId?: CardId;
   plugins?: SdkPluginsConfig;
-  height?: string | number;
 }>;
 
 export const _InteractiveQuestion = ({
@@ -37,18 +37,10 @@ export const _InteractiveQuestion = ({
   plugins,
   height,
   children = null,
-}: InteractiveQuestionProps): JSX.Element | null => {
-  const { location, params } = useMemo(
-    () => getQuestionParameters(questionId),
-    [questionId],
-  );
-
+}: InteractiveQuestionProps &
+  InteractiveQuestionResultProps): JSX.Element | null => {
   return (
-    <InteractiveQuestionProviderWithLocation
-      location={location}
-      params={params}
-      componentPlugins={plugins}
-    >
+    <InteractiveQuestionProvider cardId={questionId} componentPlugins={plugins}>
       {children ?? (
         <InteractiveQuestionResult
           height={height}
@@ -57,21 +49,8 @@ export const _InteractiveQuestion = ({
           withTitle={withTitle}
         />
       )}
-    </InteractiveQuestionProviderWithLocation>
+    </InteractiveQuestionProvider>
   );
-};
-
-export const getQuestionParameters = (questionId: CardId) => {
-  return {
-    location: {
-      query: {}, // TODO: add here wrapped parameterValues
-      hash: "",
-      pathname: `/question/${questionId}`,
-    },
-    params: {
-      slug: questionId.toString(),
-    },
-  };
 };
 
 const InteractiveQuestion = withPublicComponentWrapper(
@@ -88,6 +67,8 @@ const InteractiveQuestion = withPublicComponentWrapper(
   Notebook: typeof Notebook;
   NotebookButton: typeof NotebookButton;
   QuestionVisualization: typeof QuestionVisualization;
+  SaveQuestionForm: typeof SaveQuestion;
+  SaveButton: typeof SaveButton;
 };
 
 InteractiveQuestion.BackButton = BackButton;
@@ -101,5 +82,7 @@ InteractiveQuestion.SummarizeButton = SummarizeButton;
 InteractiveQuestion.Notebook = Notebook;
 InteractiveQuestion.NotebookButton = NotebookButton;
 InteractiveQuestion.QuestionVisualization = QuestionVisualization;
+InteractiveQuestion.SaveQuestionForm = SaveQuestion;
+InteractiveQuestion.SaveButton = SaveButton;
 
 export { InteractiveQuestion };

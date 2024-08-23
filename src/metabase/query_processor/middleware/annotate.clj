@@ -100,7 +100,6 @@
   (check-driver-native-columns cols rows)
   (annotate-native-cols cols))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Adding :cols info for MBQL queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -198,7 +197,7 @@
     ;; maybe this `infer-expression-type` should takes an `inner-query` and look up the
     ;; source expresison as well?
     (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
-     {:base_type :type/DateTime})
+           {:base_type :type/DateTime})
 
     (mbql.u/is-clause? mbql.s/string-functions expression)
     {:base_type :type/Text}
@@ -315,7 +314,7 @@
       (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 
 (mu/defn- col-info-for-field-clause :- [:map
-                                                 [:field_ref mbql.s/Field]]
+                                        [:field_ref mbql.s/Field]]
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [inner-query :- :map
    clause      :- mbql.s/Field]
@@ -383,7 +382,6 @@
   [inner-query :- LegacyInnerQuery
    ag-clause]
   (lib/column-name (mlv2-query inner-query) (lib.convert/->pMBQL ag-clause)))
-
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
 
@@ -519,7 +517,6 @@
                       results)
     (check-correct-number-of-columns-returned <> results)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Deduplicating names                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -538,7 +535,6 @@
          (assoc col :name unique-name))
        cols
        (mbql.u/uniquify-names (map :name cols))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           add-column-info middleware                                           |

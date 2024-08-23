@@ -86,7 +86,6 @@
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get metric1 :definition)
                                                                           :after  (get metric2 :definition)})))))
 
-
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 
 (defmethod serdes/hash-fields LegacyMetric
@@ -118,7 +117,6 @@
         serdes/table->path
         serdes/storage-table-path-prefix
         (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
-
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 

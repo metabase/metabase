@@ -2,30 +2,13 @@ import { useEffect, useState } from "react";
 import { t } from "ttag";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { Flex, Button, Modal, type ModalProps, Stack, Text } from "metabase/ui";
+import { Button, Flex, Modal, type ModalProps, Stack, Text } from "metabase/ui";
 import { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
 import { CopyScimInput } from "./ScimInputs";
 import { ScimTextWarning } from "./ScimTextWarning";
 
 type BaseUserProvisiongModalProps = Pick<ModalProps, "opened" | "onClose">;
-
-interface ScimModalProps extends BaseUserProvisiongModalProps {
-  title: string;
-  children: React.ReactNode;
-}
-
-const ScimModal = ({ opened, onClose, title, children }: ScimModalProps) => (
-  <Modal.Root opened={opened} onClose={onClose} size="35rem">
-    <Modal.Overlay />
-    <Modal.Content p="md">
-      <Modal.Header mb="sm">
-        <Modal.Title>{title}</Modal.Title>
-      </Modal.Header>
-      <Modal.Body>{children}</Modal.Body>
-    </Modal.Content>
-  </Modal.Root>
-);
 
 interface UserProvisioningFirstEnabledModalProps
   extends BaseUserProvisiongModalProps {
@@ -42,7 +25,9 @@ export const UserProvisioningFirstEnabledModal = ({
   scimError,
 }: UserProvisioningFirstEnabledModalProps) => {
   return (
-    <ScimModal
+    <Modal
+      padding="2rem"
+      size="35rem"
       opened={opened}
       onClose={onClose}
       title={t`Here's what you'll need to set SCIM up`}
@@ -70,7 +55,7 @@ export const UserProvisioningFirstEnabledModal = ({
           </Button>
         </Flex>
       </Stack>
-    </ScimModal>
+    </Modal>
   );
 };
 
@@ -99,7 +84,13 @@ export const UserProvisioningRegenerateTokenModal = ({
 
   if (!confirmed) {
     return (
-      <ScimModal opened={opened} onClose={onClose} title={t`Regenerate token?`}>
+      <Modal
+        size="35rem"
+        padding="2rem"
+        opened={opened}
+        onClose={onClose}
+        title={t`Regenerate token?`}
+      >
         <Stack spacing="lg">
           <Text>
             {/* eslint-disable-next-line no-literal-metabase-strings -- in admin settings */}
@@ -112,19 +103,21 @@ export const UserProvisioningRegenerateTokenModal = ({
             </Button>
           </Flex>
         </Stack>
-      </ScimModal>
+      </Modal>
     );
   }
 
   const scimTokenInputText = regenerateTokenReq.data?.unmasked_key ?? "";
 
   return (
-    <ScimModal
+    <Modal
+      size="35rem"
+      padding="2rem"
       opened={opened}
       onClose={onClose}
       title={t`Copy and save the SCIM token`}
     >
-      <Stack spacing="lg">
+      <Stack spacing="lg" mt="0.5rem">
         <LoadingAndErrorWrapper
           error={regenerateTokenReq.error}
           loading={regenerateTokenReq.isLoading}
@@ -148,6 +141,6 @@ export const UserProvisioningRegenerateTokenModal = ({
           )}
         </Flex>
       </Stack>
-    </ScimModal>
+    </Modal>
   );
 };

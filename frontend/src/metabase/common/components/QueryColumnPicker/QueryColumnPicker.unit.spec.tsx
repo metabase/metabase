@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, within, fireEvent, renderWithProviders } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
-import { createQuery, columnFinder } from "metabase-lib/test-helpers";
+import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 
 import type { QueryColumnPickerProps } from "./QueryColumnPicker";
 import { QueryColumnPicker } from "./QueryColumnPicker";

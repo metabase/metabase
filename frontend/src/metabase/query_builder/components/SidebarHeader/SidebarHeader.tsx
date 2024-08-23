@@ -5,10 +5,10 @@ import { Icon } from "metabase/ui";
 
 import type { HeaderTitleContainerVariant } from "./SidebarHeader.styled";
 import {
-  HeaderRoot,
-  HeaderIcon,
-  HeaderTitleContainer,
   CloseButton,
+  HeaderIcon,
+  HeaderRoot,
+  HeaderTitleContainer,
 } from "./SidebarHeader.styled";
 
 type Props = {

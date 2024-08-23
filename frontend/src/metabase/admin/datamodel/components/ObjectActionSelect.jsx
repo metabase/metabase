@@ -1,6 +1,6 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { t } from "ttag";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -10,7 +10,7 @@ import CS from "metabase/css/core/index.css";
 import { capitalize } from "metabase/lib/formatting";
 import { Icon } from "metabase/ui";
 
-import { TriggerIconContainer, ActionLink } from "./ObjectActionSelect.styled";
+import { ActionLink, TriggerIconContainer } from "./ObjectActionSelect.styled";
 import ObjectRetireModal from "./ObjectRetireModal";
 
 export default class ObjectActionsSelect extends Component {

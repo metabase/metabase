@@ -9,7 +9,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.connection :as t2.connection]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (java.sql Connection PreparedStatement ResultSet Types)))
@@ -56,14 +56,13 @@
         (.close stmt)
         (throw e)))))
 
-
 (defn fetch-cache-stmt-ttl
   "Make a prepared statement for :ttl caching strategy"
   ^PreparedStatement [strategy query-hash ^Connection conn]
   (if-not (:avg-execution-ms strategy)
     (log/debugf "Caching strategy %s needs :avg-execution-ms to work" (pr-str strategy))
     (let [max-age-ms     (* (:multiplier strategy)
-                        (:avg-execution-ms strategy))
+                            (:avg-execution-ms strategy))
           invalidated-at (t/max (ms-ago max-age-ms) (:invalidated-at strategy))]
       (prepare-statement conn query-hash invalidated-at))))
 

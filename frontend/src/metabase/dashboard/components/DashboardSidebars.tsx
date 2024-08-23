@@ -7,19 +7,18 @@ import {
   getEditingParameter,
   getParameters,
 } from "metabase/dashboard/selectors";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import type {
   CardId,
-  Dashboard as IDashboard,
+  DashCardId,
+  DashCardVisualizationSettings,
   DashboardCard,
   DashboardId,
   DashboardTabId,
-  DashCardId,
-  DashCardVisualizationSettings,
+  Dashboard as IDashboard,
   ParameterId,
   TemporalUnit,
   ValuesQueryType,
@@ -126,7 +125,6 @@ export function DashboardSidebars({
         cardId: cardId,
         tabId: selectedTabId,
       });
-      MetabaseAnalytics.trackStructEvent("Dashboard", "Add Card");
     },
     [addCardToDashboard, dashboard.id, selectedTabId],
   );

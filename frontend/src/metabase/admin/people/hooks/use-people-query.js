@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";

@@ -206,6 +206,10 @@
   color: var(--mb-color-text-secondary);
 }
 
+.textTertiary {
+  color: var(--mb-color-text-tertiary);
+}
+
 .bgLight,
 .bgLightHover:hover {
   background-color: var(--mb-color-bg-light);

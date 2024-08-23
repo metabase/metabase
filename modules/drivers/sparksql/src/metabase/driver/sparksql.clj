@@ -86,7 +86,6 @@
     (sql.helpers/from honeysql-form [(sql.qp/->honeysql driver (h2x/identifier :table schema table-name))
                                      [(sql.qp/->honeysql driver (h2x/identifier :table-alias source-table-alias))]])))
 
-
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
 (defrecord SparkSQLDataSource [url properties]

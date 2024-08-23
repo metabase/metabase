@@ -130,13 +130,22 @@
            (when (= :default (:strategy binning-value))
              {:default true}))))
 
+(mu/defn binning= :- boolean?
+  "Given binning values (as returned by [[binning]]), check if they match."
+  [x :- [:maybe ::lib.schema.binning/binning]
+   y :- [:maybe ::lib.schema.binning/binning]]
+  (let [binning-keys (case (:strategy x)
+                       :num-bins  [:strategy :num-bins]
+                       :bin-width [:strategy :bin-width]
+                       [:strategy])]
+    (= (select-keys x binning-keys) (select-keys y binning-keys))))
+
 (mu/defn strategy= :- boolean?
   "Given a binning option (as returned by [[available-binning-strategies]]) and the binning value (possibly nil) from
   a column, check if they match."
   [binning-option :- ::lib.schema.binning/binning-option
    column-binning :- [:maybe ::lib.schema.binning/binning]]
-  (= (:mbql binning-option)
-     (select-keys column-binning [:strategy :num-bins :bin-width])))
+  (binning= (:mbql binning-option) column-binning))
 
 (mu/defn resolve-bin-width :- [:maybe [:map
                                        [:bin-width ::lib.schema.binning/bin-width]
@@ -154,8 +163,8 @@
   (when-let [binning-options (binning column-metadata)]
     (case (:strategy binning-options)
       :num-bins
-      (or ;; If the column is already binned, compute the width of this single bin based on its bounds and width.
-          (when-let [bin-width (:bin-width binning-options)]
+      ;;   If the column is already binned, compute the width of this single bin based on its bounds and width.
+      (or (when-let [bin-width (:bin-width binning-options)]
             {:bin-width bin-width
              :min-value value
              :max-value (+ value bin-width)})

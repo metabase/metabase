@@ -1,8 +1,8 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
   describeEE,
-  restore,
   mockCurrentUserProperty,
+  restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
 

@@ -3,7 +3,12 @@ import {
   ORDERS_BY_YEAR_QUESTION_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import { restore, setupSMTP, visitQuestion } from "e2e/support/helpers";
+import {
+  openSharingMenu,
+  restore,
+  setupSMTP,
+  visitQuestion,
+} from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -45,6 +50,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
     restore();
     cy.signInAsAdmin();
+    cy.setCookie("metabase.SEEN_ALERT_SPLASH", "true");
 
     setupSMTP();
   });
@@ -54,7 +60,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       it(`should be supported for ${questionType}`, () => {
         visitQuestion(questionId);
 
-        openAlertModal();
+        openSharingMenu("Create alert");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
@@ -81,7 +87,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       visitQuestion(timeSeriesQuestionId);
       cy.findByTestId("chart-container").should("contain", "Goal");
 
-      openAlertModal();
+      openSharingMenu("Create alert");
       cy.findByTestId("alert-create").within(() => {
         cy.findByText("Reaches the goal line").click();
         cy.findByText("The first time").click();
@@ -99,7 +105,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     it("should not be possible to create goal based alert for a multi-series question", () => {
       cy.createQuestion(multiSeriesQuestionWithGoal, { visitQuestion: true });
 
-      openAlertModal();
+      openSharingMenu("Create alert");
 
       // *** The warning below is not showing when we try to make an alert (Issue #???)
       // cy.contains(
@@ -117,8 +123,3 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
     });
   });
 });
-
-function openAlertModal() {
-  cy.icon("bell").click();
-  cy.findByText("Set up an alert").should("be.visible").click();
-}

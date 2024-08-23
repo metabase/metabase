@@ -374,18 +374,18 @@
                 (= (:short agg-op) op)
                 (-> (assoc :selected? true)
                     (m/update-existing
-                      :columns
-                      (fn [cols]
-                        (if (lib.util/ref-clause? agg-col)
-                          (let [cols (lib.equality/mark-selected-columns
-                                       cols
-                                       [(lib.options/update-options agg-col dissoc :temporal-unit)])]
-                            (mapv (fn [c]
-                                    (cond-> c
-                                      (some? agg-temporal-unit)
-                                      (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
-                                  cols))
-                          cols))))))
+                     :columns
+                     (fn [cols]
+                       (if (lib.util/ref-clause? agg-col)
+                         (let [cols (lib.equality/mark-selected-columns
+                                     cols
+                                     [(lib.options/update-options agg-col dissoc :temporal-unit)])]
+                           (mapv (fn [c]
+                                   (cond-> c
+                                     (some? agg-temporal-unit)
+                                     (lib.temporal-bucket/with-temporal-bucket agg-temporal-unit)))
+                                 cols))
+                         cols))))))
             agg-operators))))
 
 (mu/defn aggregation-ref :- :mbql.clause/aggregation

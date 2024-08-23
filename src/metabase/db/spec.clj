@@ -51,7 +51,6 @@
     :subname     (make-subname host (or port 3306) db)}
    (dissoc opts :host :port :db)))
 
-
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
 ;; !!   Don't put database spec functions for new drivers in this namespace. These ones are only here because they  !!

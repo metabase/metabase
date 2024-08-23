@@ -50,9 +50,9 @@
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
-               (if (validate-reply-to-addresses new-value)
-                 (setting/set-value-of-type! :json :email-reply-to new-value)
-                 (throw (ex-info "Invalid reply-to address" {:value new-value})))))
+                (if (validate-reply-to-addresses new-value)
+                  (setting/set-value-of-type! :json :email-reply-to new-value)
+                  (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
@@ -146,7 +146,6 @@
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
   the caller has its own retry logic."
-  {:style/indent 0}
   [{:keys [subject recipients message-type message] :as email}]
   (try
     (when-not (email-smtp-host)

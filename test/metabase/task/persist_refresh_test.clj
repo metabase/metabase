@@ -82,7 +82,7 @@
      (select-keys (task.persist-refresh/job-info-by-db-id) ids))))
 
 (deftest reschedule-refresh-test
-  (mt/with-temp-scheduler
+  (mt/with-temp-scheduler!
     (mt/with-temp [Database db-1 {:settings {:persist-models-enabled true}}
                    Database db-2 {:settings {:persist-models-enabled true}}]
       (#'task.persist-refresh/job-init!)
@@ -249,9 +249,9 @@
 
     (testing "send an email if persist-refresh fails"
       (let [email-sent (atom false)]
-       (with-redefs [task.persist-refresh/send-persist-refresh-email-if-error! (fn [& _args]
-                                                                                 (reset! email-sent true))]
-         (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
-                                                    (fn []
-                                                      {:error-details ["some-error"]}))
-         (is (true? @email-sent)))))))
+        (with-redefs [task.persist-refresh/send-persist-refresh-email-if-error! (fn [& _args]
+                                                                                  (reset! email-sent true))]
+          (#'task.persist-refresh/save-task-history! "persist-refresh" (mt/id)
+                                                     (fn []
+                                                       {:error-details ["some-error"]}))
+          (is (true? @email-sent)))))))

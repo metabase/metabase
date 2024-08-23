@@ -2,13 +2,13 @@ import type { IconProps } from "metabase/ui";
 import { Icon } from "metabase/ui";
 
 import {
-  ColumnItemIcon,
-  ColumnItemSpan,
-  ColumnItemContent,
-  ColumnItemContainer,
-  ColumnItemRoot,
-  ColumnItemDragHandle,
   ColumnItemColorPicker,
+  ColumnItemContainer,
+  ColumnItemContent,
+  ColumnItemDragHandle,
+  ColumnItemIcon,
+  ColumnItemRoot,
+  ColumnItemSpan,
 } from "./ColumnItem.styled";
 
 interface ColumnItemProps {

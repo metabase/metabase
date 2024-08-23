@@ -1,6 +1,6 @@
 (ns metabase.query-processor.streaming.csv
   (:require
-   [clojure.data.csv :as csv]
+   [clojure.data.csv]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter :as formatter]
@@ -8,7 +8,8 @@
    [metabase.query-processor.streaming.common :as common]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.shared.models.visualization-settings :as mb.viz]
-   [metabase.util.date-2 :as u.date])
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.performance :as perf])
   (:import
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
@@ -35,6 +36,38 @@
   "Flag to enable/disable export post-processing of pivot tables.
   Disabled by default and should remain disabled until Issue #44556 is resolved and a clear plan is made."
   false)
+
+(defn- write-csv
+  "Custom implementation of `clojure.data.csv/write-csv` with a more efficient quote? predicate and no support for
+  options (we don't use them)."
+  [writer data]
+  (let [separator \,
+        quote \"
+        quote? (fn [^String s]
+                 (let [n (.length s)]
+                   (loop [i 0]
+                     (if (>= i n) false
+                         (let [ch (.charAt s (unchecked-int i))]
+                           (if (or (= ch \,) ;; separator
+                                   (= ch \") ;; quote
+                                   (= ch \return)
+                                   (= ch \newline))
+                             true
+                             (recur (unchecked-inc i))))))))
+        newline "\n"]
+    (#'clojure.data.csv/write-csv* writer data separator quote quote? newline)))
+
+;; Rebind write-cell to avoid using clojure.core/escape. Instead, use String.replace with known arguments (we never
+;; change quote symbol anyway).
+(.bindRoot #'clojure.data.csv/write-cell
+           (fn [^java.io.Writer writer obj _ _ quote?]
+             (let [^String string (str obj)
+                   must-quote (quote? string)]
+               (when must-quote (.write writer "\""))
+               (.write writer (if must-quote
+                                (.replace string "\"" "\"\"")
+                                string))
+               (when must-quote (.write writer "\"")))))
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]

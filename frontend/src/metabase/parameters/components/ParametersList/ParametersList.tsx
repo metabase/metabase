@@ -1,4 +1,4 @@
-import { useSensor, PointerSensor } from "@dnd-kit/core";
+import { PointerSensor, useSensor } from "@dnd-kit/core";
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 

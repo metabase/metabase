@@ -1,6 +1,6 @@
 import Knex from "knex";
 
-import { WRITABLE_DB_CONFIG, QA_DB_CONFIG } from "./cypress_data";
+import { QA_DB_CONFIG, WRITABLE_DB_CONFIG } from "./cypress_data";
 import { Roles } from "./test_roles";
 import * as testTables from "./test_tables";
 

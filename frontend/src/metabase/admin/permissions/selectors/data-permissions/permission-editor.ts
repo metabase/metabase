@@ -23,16 +23,16 @@ import type { State } from "metabase-types/store";
 
 import type {
   DataRouteParams,
-  RawGroupRouteParams,
-  PermissionSectionConfig,
   EntityId,
+  PermissionSectionConfig,
   PermissionSubject,
+  RawGroupRouteParams,
 } from "../../types";
-import { DataPermissionValue, DataPermission } from "../../types";
+import { DataPermission, DataPermissionValue } from "../../types";
 import {
-  getTableEntityId,
-  getSchemaEntityId,
   getDatabaseEntityId,
+  getSchemaEntityId,
+  getTableEntityId,
 } from "../../utils/data-entity-id";
 import { hasPermissionValueInEntityGraphs } from "../../utils/graph";
 
@@ -223,7 +223,7 @@ export const getDatabasesPermissionEditor = createSelector(
             ),
           };
         });
-    } else if (databaseId != null) {
+    } else if (database && databaseId != null) {
       const maybeDbEntities = metadata
         ?.database(databaseId)
         ?.getSchemas()
@@ -242,6 +242,7 @@ export const getDatabasesPermissionEditor = createSelector(
               permissions,
               originalPermissions,
               defaultGroup,
+              database,
             ),
           };
         });
@@ -401,6 +402,7 @@ export const getGroupsDataPermissionEditor: GetGroupsDataPermissionEditorSelecto
             permissions,
             originalPermissions,
             defaultGroup,
+            database,
           );
         } else if (databaseId != null) {
           groupPermissions = buildSchemasPermissions(

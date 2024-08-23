@@ -185,28 +185,28 @@
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
         (t2.with-temp/with-temp
-         [Card orders-model {:name    "Orders Model"
-                             :dataset_query
-                             {:database (mt/id)
-                              :type     :query
-                              :query    {:source-table (mt/id :orders)}}
-                             :type :model}]
-         (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
-           (is (= 9 (count (re-seq #"\s+AS\s+" column_aliases))))
-           (is (= 10 (count (re-seq #"\s+AS\s+" inner_query))))
-           (is (= (mdb.query/format-sql
-                   (str/join
-                    [(format "CREATE TABLE \"%s\" (" sql_name)
-                     "'ID' BIGINTEGER,"
-                     "'USER_ID' INTEGER,"
-                     "'PRODUCT_ID' INTEGER,"
-                     "'SUBTOTAL' FLOAT,"
-                     "'TAX' FLOAT,"
-                     "'TOTAL' FLOAT,"
-                     "'DISCOUNT' FLOAT,"
-                     "'CREATED_AT' DATETIMEWITHLOCALTZ,"
-                     "'QUANTITY' INTEGER)"]))
-                  create_table_ddl))))))))
+          [Card orders-model {:name    "Orders Model"
+                              :dataset_query
+                              {:database (mt/id)
+                               :type     :query
+                               :query    {:source-table (mt/id :orders)}}
+                              :type :model}]
+          (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model orders-model)]
+            (is (= 9 (count (re-seq #"\s+AS\s+" column_aliases))))
+            (is (= 10 (count (re-seq #"\s+AS\s+" inner_query))))
+            (is (= (mdb.query/format-sql
+                    (str/join
+                     [(format "CREATE TABLE \"%s\" (" sql_name)
+                      "'ID' BIGINTEGER,"
+                      "'USER_ID' INTEGER,"
+                      "'PRODUCT_ID' INTEGER,"
+                      "'SUBTOTAL' FLOAT,"
+                      "'TAX' FLOAT,"
+                      "'TOTAL' FLOAT,"
+                      "'DISCOUNT' FLOAT,"
+                      "'CREATED_AT' DATETIMEWITHLOCALTZ,"
+                      "'QUANTITY' INTEGER)"]))
+                   create_table_ddl))))))))
 
 (deftest native-inner-query-test
   (testing "A SELECT * will produce column all column names in th resulting DDLs"
@@ -286,90 +286,90 @@
   (testing "Models with joins work"
     (mt/dataset test-data
       (t2.with-temp/with-temp
-       [Card joined-model {:type        :model
-                           :database_id (mt/id)
-                           :query_type  :query
-                           :dataset_query
-                           (mt/mbql-query orders
-                                          {:fields [$total &products.products.category]
-                                           :joins  [{:source-table $$products
-                                                     :condition    [:= $product_id &products.products.id]
-                                                     :strategy     :left-join
-                                                     :alias        "products"}]})}]
-       (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
-         (is (= "\"TOTAL\" AS TOTAL, \"products__CATEGORY\" AS PRODUCTS_CATEGORY"
-                column_aliases))
-         (is (= (mdb.query/format-sql
-                 (str/join
-                  ["create type PRODUCTS_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"
-                   (format "CREATE TABLE \"%s\" (" sql_name)
-                   "'TOTAL' FLOAT,"
-                   "'PRODUCTS_CATEGORY' 'PRODUCTS_CATEGORY_t')"]))
-                (mdb.query/format-sql create_table_ddl)))))))
+        [Card joined-model {:type        :model
+                            :database_id (mt/id)
+                            :query_type  :query
+                            :dataset_query
+                            (mt/mbql-query orders
+                              {:fields [$total &products.products.category]
+                               :joins  [{:source-table $$products
+                                         :condition    [:= $product_id &products.products.id]
+                                         :strategy     :left-join
+                                         :alias        "products"}]})}]
+        (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
+          (is (= "\"TOTAL\" AS TOTAL, \"products__CATEGORY\" AS PRODUCTS_CATEGORY"
+                 column_aliases))
+          (is (= (mdb.query/format-sql
+                  (str/join
+                   ["create type PRODUCTS_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"
+                    (format "CREATE TABLE \"%s\" (" sql_name)
+                    "'TOTAL' FLOAT,"
+                    "'PRODUCTS_CATEGORY' 'PRODUCTS_CATEGORY_t')"]))
+                 (mdb.query/format-sql create_table_ddl)))))))
   (testing "A model with joins on the same table will produce distinct aliases"
     (mt/dataset test-data
       (t2.with-temp/with-temp
-       [Card joined-model {:type        :model
-                           :database_id (mt/id)
-                           :query_type  :query
-                           :dataset_query
-                           (mt/mbql-query products
-                                          {:fields [$id $category &self.products.category]
-                                           :joins  [{:source-table $$products
-                                                     :condition    [:= $id &self.products.id]
-                                                     :strategy     :left-join
-                                                     :alias        "self"}]})}]
-       (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
-         (is (= "\"ID\" AS ID, \"CATEGORY\" AS CATEGORY, \"self__CATEGORY\" AS SELF_CATEGORY"
-                column_aliases))
-         (is (= (mdb.query/format-sql
-                 (str/join
-                  ["create type CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"
-                   "create type SELF_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"
-                   (format "CREATE TABLE \"%s\" (" sql_name)
-                   "'ID' BIGINTEGER,"
-                   "'CATEGORY' 'CATEGORY_t',"
-                   "'SELF_CATEGORY' 'SELF_CATEGORY_t')"]))
-                (mdb.query/format-sql create_table_ddl))))))))
+        [Card joined-model {:type        :model
+                            :database_id (mt/id)
+                            :query_type  :query
+                            :dataset_query
+                            (mt/mbql-query products
+                              {:fields [$id $category &self.products.category]
+                               :joins  [{:source-table $$products
+                                         :condition    [:= $id &self.products.id]
+                                         :strategy     :left-join
+                                         :alias        "self"}]})}]
+        (let [{:keys [column_aliases create_table_ddl sql_name]} (metabot-util/denormalize-model joined-model)]
+          (is (= "\"ID\" AS ID, \"CATEGORY\" AS CATEGORY, \"self__CATEGORY\" AS SELF_CATEGORY"
+                 column_aliases))
+          (is (= (mdb.query/format-sql
+                  (str/join
+                   ["create type CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"
+                    "create type SELF_CATEGORY_t as enum 'Doohickey', 'Gadget', 'Gizmo', 'Widget';"
+                    (format "CREATE TABLE \"%s\" (" sql_name)
+                    "'ID' BIGINTEGER,"
+                    "'CATEGORY' 'CATEGORY_t',"
+                    "'SELF_CATEGORY' 'SELF_CATEGORY_t')"]))
+                 (mdb.query/format-sql create_table_ddl))))))))
 
 (deftest inner-query-with-aggregations-test
   (testing "A model with aggregations will produce column names only (no AS aliases)"
     (mt/dataset test-data
       (t2.with-temp/with-temp
-       [Card aggregated-model {:type        :model
-                               :database_id (mt/id)
-                               :query_type  :query
-                               :dataset_query
-                               (mt/mbql-query orders
-                                              {:aggregation [[:sum $total]]
-                                               :breakout    [$user_id]})}]
-       (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model aggregated-model)]
-         (is (= (mdb.query/format-sql
-                 (format "SELECT USER_ID, SUM_OF_TOTAL FROM {{#%s}} AS INNER_QUERY" (:id aggregated-model)))
-                inner_query))
-         (is (= "USER_ID, SUM_OF_TOTAL" column_aliases))
-         (is (= (format "CREATE TABLE \"%s\" ('USER_ID' INTEGER, 'SUM_OF_TOTAL' FLOAT)" sql_name)
-                create_table_ddl))
-         create_table_ddl)))))
+        [Card aggregated-model {:type        :model
+                                :database_id (mt/id)
+                                :query_type  :query
+                                :dataset_query
+                                (mt/mbql-query orders
+                                  {:aggregation [[:sum $total]]
+                                   :breakout    [$user_id]})}]
+        (let [{:keys [column_aliases inner_query create_table_ddl sql_name]} (metabot-util/denormalize-model aggregated-model)]
+          (is (= (mdb.query/format-sql
+                  (format "SELECT USER_ID, SUM_OF_TOTAL FROM {{#%s}} AS INNER_QUERY" (:id aggregated-model)))
+                 inner_query))
+          (is (= "USER_ID, SUM_OF_TOTAL" column_aliases))
+          (is (= (format "CREATE TABLE \"%s\" ('USER_ID' INTEGER, 'SUM_OF_TOTAL' FLOAT)" sql_name)
+                 create_table_ddl))
+          create_table_ddl)))))
 
 (deftest inner-query-name-collisions-test
   (testing "When column names collide, each conflict is disambiguated with an _X postfix"
     (mt/dataset test-data
       (tu/with-temporary-setting-values [metabot-settings/enum-cardinality-threshold 0]
         (t2.with-temp/with-temp
-         [Card orders-model {:name    "Orders Model"
-                             :dataset_query
-                             {:database (mt/id)
-                              :type     :query
-                              :query    {:source-table (mt/id :orders)}}
-                             :type :model}]
-         (let [orders-model (update orders-model :result_metadata
-                                    (fn [v]
-                                      (map #(assoc % :display_name "ABC") v)))
-               {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
-           (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
+          [Card orders-model {:name    "Orders Model"
+                              :dataset_query
+                              {:database (mt/id)
+                               :type     :query
+                               :query    {:source-table (mt/id :orders)}}
+                              :type :model}]
+          (let [orders-model (update orders-model :result_metadata
+                                     (fn [v]
+                                       (map #(assoc % :display_name "ABC") v)))
+                {:keys [column_aliases create_table_ddl]} (metabot-util/denormalize-model orders-model)]
+            (is (= 9 (count (re-seq #"ABC(?:_\d+)?" column_aliases))))
            ;; Ensure that the same aliases are used in the create table ddl
-           (is (= 9 (count (re-seq #"ABC" create_table_ddl))))))))))
+            (is (= 9 (count (re-seq #"ABC" create_table_ddl))))))))))
 
 (deftest inner-query-name-collisions-with-joins-test
   (testing "Models with name collisions across joins are also correctly disambiguated"

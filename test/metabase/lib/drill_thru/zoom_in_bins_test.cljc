@@ -1,26 +1,26 @@
 (ns metabase.lib.drill-thru.zoom-in-bins-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
-   [metabase.lib.test-metadata :as meta]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel zoom-in-bins-available-test
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"
     (canned/canned-test
-      :drill-thru/zoom-in.binning
-      (fn [test-case context {:keys [click]}]
-        (and (#{:cell :pivot :legend} click)
-             (not (:native? test-case))
-             (seq (for [dim (:dimensions context)
-                        :when (and (isa? (:effective-type (:column dim)) :type/Number)
-                                   (lib/binning (:column dim)))]
-                    dim)))))))
+     :drill-thru/zoom-in.binning
+     (fn [test-case context {:keys [click]}]
+       (and (#{:cell :pivot :legend} click)
+            (not (:native? test-case))
+            (seq (for [dim (:dimensions context)
+                       :when (and (isa? (:effective-type (:column dim)) :type/Number)
+                                  (lib/binning (:column dim)))]
+                   dim)))))))
 
 (deftest ^:parallel num-bins->default-test
   (testing ":num-bins binning => :default binning + between filter"
@@ -141,34 +141,34 @@
                     (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                       (lib/with-temporal-bucket :month))))]
       (lib.drill-thru.tu/test-drill-application
-        {:click-type     :cell
-         :query-type     :aggregated
-         :custom-query   query
-         :custom-row     {"count"      100
-                          "QUANTITY"   10
-                          "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
+       {:click-type     :cell
+        :query-type     :aggregated
+        :custom-query   query
+        :custom-row     {"count"      100
+                         "QUANTITY"   10
+                         "CREATED_AT" "2024-09-08T22:03:20.239+03:00"}
          ;; TODO: Clicking on breakout columns in table views doesn't work properly.
-         :column-name    "count"
-         :drill-type     :drill-thru/zoom-in.binning
-         :expected       {:type        :drill-thru/zoom-in.binning
-                          :column      {:name "QUANTITY"}
-                          :min-value   10
-                          :max-value   20.0
-                          :new-binning {:strategy :default}}
-         :expected-query {:stages [{:source-table (meta/id :orders)
-                                    :aggregation  [[:count {}]]
-                                    :breakout     [[:field
-                                                    {:binning {:strategy :default}}
-                                                    (meta/id :orders :quantity)]
-                                                   [:field
-                                                    {:temporal-unit :month}
-                                                    (meta/id :orders :created-at)]]
-                                    :filters      [[:>= {}
-                                                    [:field {} (meta/id :orders :quantity)]
-                                                    10]
-                                                   [:< {}
-                                                    [:field {} (meta/id :orders :quantity)]
-                                                    20.0]]}]}}))))
+        :column-name    "count"
+        :drill-type     :drill-thru/zoom-in.binning
+        :expected       {:type        :drill-thru/zoom-in.binning
+                         :column      {:name "QUANTITY"}
+                         :min-value   10
+                         :max-value   20.0
+                         :new-binning {:strategy :default}}
+        :expected-query {:stages [{:source-table (meta/id :orders)
+                                   :aggregation  [[:count {}]]
+                                   :breakout     [[:field
+                                                   {:binning {:strategy :default}}
+                                                   (meta/id :orders :quantity)]
+                                                  [:field
+                                                   {:temporal-unit :month}
+                                                   (meta/id :orders :created-at)]]
+                                   :filters      [[:>= {}
+                                                   [:field {} (meta/id :orders :quantity)]
+                                                   10]
+                                                  [:< {}
+                                                   [:field {} (meta/id :orders :quantity)]
+                                                   20.0]]}]}}))))
 
 (deftest ^:parallel legend-zoom-binning-numeric-test
   ;; Sum of Subtotal by month and Product->Rating with binning, then click a rating to zoom in.
@@ -265,32 +265,32 @@
                   (lib/filter $q (lib/<  (meta/field-metadata :orders :subtotal) 60))
                   (lib/aggregate $q (lib/count))
                   (lib/breakout $q (lib/with-binning (meta/field-metadata :orders :subtotal)
-                                     {:strategy  :num-bins
-                                      :num-bins  8
-                                      :bin-width 2.5
-                                      :min-value 40
-                                      :max-value 60})))]
+                                                     {:strategy  :num-bins
+                                                      :num-bins  8
+                                                      :bin-width 2.5
+                                                      :min-value 40
+                                                      :max-value 60})))]
       (lib.drill-thru.tu/test-drill-application
-        {:click-type     :cell
-         :query-type     :aggregated
-         :custom-query   query
-         :custom-row     {"count" 100
-                          "SUBTOTAL" 50} ;; Clicking the 50-52.5 bin
-         :column-name    "count"
-         :drill-type     :drill-thru/zoom-in.binning
-         :expected       {:type        :drill-thru/zoom-in.binning
-                          :column      {:name "SUBTOTAL"}
-                          :min-value   50
-                          :max-value   52.5
-                          :new-binning {:strategy :default}}
-         :expected-query {:stages [{:source-table (meta/id :orders)
-                                    :aggregation  [[:count {}]]
-                                    :breakout     [[:field
-                                                    {:binning {:strategy :default}}
-                                                    (meta/id :orders :subtotal)]]
-                                    :filters      [[:>= {}
-                                                    [:field {} (meta/id :orders :subtotal)]
-                                                    50]
-                                                   [:< {}
-                                                    [:field {} (meta/id :orders :subtotal)]
-                                                    52.5]]}]}}))))
+       {:click-type     :cell
+        :query-type     :aggregated
+        :custom-query   query
+        :custom-row     {"count" 100
+                         "SUBTOTAL" 50} ;; Clicking the 50-52.5 bin
+        :column-name    "count"
+        :drill-type     :drill-thru/zoom-in.binning
+        :expected       {:type        :drill-thru/zoom-in.binning
+                         :column      {:name "SUBTOTAL"}
+                         :min-value   50
+                         :max-value   52.5
+                         :new-binning {:strategy :default}}
+        :expected-query {:stages [{:source-table (meta/id :orders)
+                                   :aggregation  [[:count {}]]
+                                   :breakout     [[:field
+                                                   {:binning {:strategy :default}}
+                                                   (meta/id :orders :subtotal)]]
+                                   :filters      [[:>= {}
+                                                   [:field {} (meta/id :orders :subtotal)]
+                                                   50]
+                                                  [:< {}
+                                                   [:field {} (meta/id :orders :subtotal)]
+                                                   52.5]]}]}}))))

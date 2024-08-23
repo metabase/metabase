@@ -6,19 +6,23 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  cartesianChartCircle,
   chartPathWithFillColor,
   createDashboardWithTabs,
   dashboardHeader,
   editDashboard,
+  entityPickerModal,
+  filterWidget,
   getActionCardDetails,
   getDashboardCard,
   getHeadingCardDetails,
   getLinkCardDetails,
   getTextCardDetails,
-  cartesianChartCircle,
   modal,
   openStaticEmbeddingModal,
   popover,
+  queryBuilderHeader,
+  removeMultiAutocompleteValue,
   restore,
   saveDashboard,
   setTokenFeatures,
@@ -26,10 +30,6 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitIframe,
-  entityPickerModal,
-  filterWidget,
-  queryBuilderHeader,
-  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 import { b64hash_to_utf8 } from "metabase/lib/encoding";
 import {

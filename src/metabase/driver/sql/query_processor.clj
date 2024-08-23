@@ -56,9 +56,9 @@
       str/trimr
       (as-> trimmed
         ;; Query could potentially end with a comment.
-        (if (re-find #"--.*$" trimmed)
-          (str trimmed "\n")
-          trimmed))))
+            (if (re-find #"--.*$" trimmed)
+              (str trimmed "\n")
+              trimmed))))
 
 (defn make-nestable-sql
   "Do best effort edit to the `sql`, to make it nestable in subselect.
@@ -301,7 +301,7 @@
                                                        :instance nil)]
                                              (days-till-start-of-first-full-week driver honeysql-expr))
         total-full-week-days               (h2x/- (date driver :day-of-year honeysql-expr)
-                                                 days-till-start-of-first-full-week)
+                                                  days-till-start-of-first-full-week)
         total-full-weeks                   (->honeysql driver [:ceil (compiled (h2x// total-full-week-days 7.0))])]
     (->integer driver (h2x/+ 1 total-full-weeks))))
 
@@ -518,7 +518,6 @@
 (defmethod inline-value [:sql ZonedDateTime]
   [driver t]
   (inline-value driver (t/offset-date-time t)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Low-Level ->honeysql impls                                           |
@@ -1243,7 +1242,6 @@
             honeysql-form
             honeysql-ags)))
 
-
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :breakout]
@@ -1266,7 +1264,6 @@
          honeysql-form
          (for [field-clause fields]
            (as driver field-clause))))
-
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
@@ -1318,14 +1315,14 @@
   [driver field arg]
   (if (and (uuid-field? field)
              ;; If the arg is a uuid we are happy especially for joins (#46558)
-             (not (uuid-field? arg))
+           (not (uuid-field? arg))
              ;; If we could not convert the arg to a UUID then we have to cast the Field.
              ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
-             (not (uuid? (->honeysql driver arg)))
+           (not (uuid? (->honeysql driver arg)))
              ;; Check for inlined values
-             (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-      [::cast field "varchar"]
-      field))
+           (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
+    [::cast field "varchar"]
+    field))
 
 (mu/defn- maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
@@ -1422,7 +1419,6 @@
   [driver _ honeysql-form {clause :filter}]
   (sql.helpers/where honeysql-form (->honeysql driver clause)))
 
-
 ;;; -------------------------------------------------- join tables ---------------------------------------------------
 
 (declare mbql->honeysql)
@@ -1487,7 +1483,6 @@
   (let [f apply-joins-honey-sql-2]
     (f driver honeysql-form joins)))
 
-
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (defmethod ->honeysql [:sql :asc]
@@ -1513,7 +1508,6 @@
   (-> honeysql-form
       (sql.helpers/limit (inline-num items))
       (sql.helpers/offset (inline-num (* items (dec page))))))
-
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
 
@@ -1547,7 +1541,6 @@
   (let [table (lib.metadata/table (qp.store/metadata-provider) source-table-id)
         expr  (->honeysql driver table)]
     (sql.helpers/from honeysql-form [expr])))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Building the HoneySQL Form                                           |
@@ -1694,14 +1687,14 @@
                             (apply distinct? desired-aliases)
                             (every? string? desired-aliases))]
     (merge
-      honeysql-form
-      (if needs-columns?
+     honeysql-form
+     (if needs-columns?
         ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
         ;; This is ok since we control the alias.
-        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
-                 source-clause]]
-         :from [[table-alias]]}
-        {:from [[source-clause [table-alias]]]}))))
+       {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
+                source-clause]]
+        :from [[table-alias]]}
+       {:from [[source-clause [table-alias]]]}))))
 
 (defn- apply-clauses
   "Like [[apply-top-level-clauses]], but handles `source-query` as well, which needs to be handled in a special way

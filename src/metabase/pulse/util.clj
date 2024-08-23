@@ -88,11 +88,11 @@
                                                                      :add-default-userland-constraints? false}
                                                      :make-run      (fn make-run [qp _export-format]
                                                                       (^:once fn* [query info]
-                                                                       (qp
-                                                                        (qp/userland-query query info)
-                                                                        nil))))})
+                                                                        (qp
+                                                                         (qp/userland-query query info)
+                                                                         nil))))})
           result                       (result-fn card-id)
-          series-results               (map (comp result-fn :id) multi-cards)]
+          series-results               (mapv (comp result-fn :id) multi-cards)]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
                      (is-card-empty? (assoc card :result (:result result))))
         (update result :dashcard assoc :series-results series-results)))

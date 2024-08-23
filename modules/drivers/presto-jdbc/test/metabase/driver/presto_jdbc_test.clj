@@ -82,20 +82,20 @@
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
            (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                  [(t2/select-one Field :id (mt/id :venues :id))
-                   (t2/select-one Field :id (mt/id :venues :name))]
-                  (constantly conj))
+                                                    [(t2/select-one Field :id (mt/id :venues :id))
+                                                     (t2/select-one Field :id (mt/id :venues :name))]
+                                                    (constantly conj))
                 (sort-by first)
                 (take 5))))))
 
 (deftest ^:parallel page-test
   (testing ":page clause"
     (let [honeysql (sql.qp/apply-top-level-clause :presto-jdbc :page
-                     {:select   [[:default.categories.name :name] [:default.categories.id :id]]
-                      :from     [:default.categories]
-                      :order-by [[:default.categories.id :asc]]}
-                     {:page {:page  2
-                             :items 5}})]
+                                                  {:select   [[:default.categories.name :name] [:default.categories.id :id]]
+                                                   :from     [:default.categories]
+                                                   :order-by [[:default.categories.id :asc]]}
+                                                  {:page {:page  2
+                                                          :items 5}})]
       (is (= [["SELECT"
                "  \"name\","
                "  \"id\""
@@ -132,15 +132,15 @@
         (is (= [[(t/local-date "2014-08-02")
                  (t/local-date "2014-08-02")]]
                (mt/rows
-                 (qp/process-query
-                   {:database     (mt/id)
-                    :type         :native
-                    :middleware   {:format-rows? false} ; turn off formatting so we can check the raw local date objs
-                    :native       {:query         "SELECT {{date}}, cast({{date}} AS date)"
-                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
-                    :parameters   [{:type   "date/single"
-                                    :target ["variable" ["template-tag" "date"]]
-                                    :value  "2014-08-02"}]}))))))))
+                (qp/process-query
+                 {:database     (mt/id)
+                  :type         :native
+                  :middleware   {:format-rows? false} ; turn off formatting so we can check the raw local date objs
+                  :native       {:query         "SELECT {{date}}, cast({{date}} AS date)"
+                                 :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
+                  :parameters   [{:type   "date/single"
+                                  :target ["variable" ["template-tag" "date"]]
+                                  :value  "2014-08-02"}]}))))))))
 
 (deftest ^:parallel splice-strings-test
   (mt/test-driver :presto-jdbc

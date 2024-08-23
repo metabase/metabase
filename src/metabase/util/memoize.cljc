@@ -6,16 +6,16 @@
 
   There are also some extra memoization tools here, like [[fast-memo]] and [[fast-bounded]]."
   (:require
-   [metabase.shared.util.namespaces :as shared.ns]
-   [metabase.util.memoize.impl.bounded :as bounded]
    #?@(:clj  ([clojure.core.memoize :as memoize])
-       :cljs ([metabase.util.memoize.impl.js :as memoize]))))
+       :cljs ([metabase.util.memoize.impl.js :as memoize]))
+   [metabase.shared.util.namespaces :as shared.ns]
+   [metabase.util.memoize.impl.bounded :as bounded]))
 
 (shared.ns/import-fns
-  [memoize
-   lru
-   memoizer
-   memo])
+ [memoize
+  lru
+  memoizer
+  memo])
 
 (defn bounded
   "Memoizes a function with zero overhead on a *hit*, but keeping to a bounded size.

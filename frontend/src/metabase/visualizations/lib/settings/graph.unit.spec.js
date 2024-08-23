@@ -1,15 +1,15 @@
 import {
-  createMockSingleSeries,
   createMockCard,
+  createMockColumn,
   createMockDataset,
   createMockDatasetData,
-  createMockColumn,
+  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 import {
-  STACKABLE_SETTINGS,
   GRAPH_AXIS_SETTINGS,
   GRAPH_DISPLAY_VALUES_SETTINGS,
+  STACKABLE_SETTINGS,
   getDefaultDimensionLabel,
 } from "./graph";
 

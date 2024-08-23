@@ -1,6 +1,6 @@
 import type { Query } from "history";
 import type React from "react";
-import { connect, type ConnectedProps } from "react-redux";
+import { type ConnectedProps, connect } from "react-redux";
 import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
@@ -13,8 +13,8 @@ import {
   getDashboardComplete,
   getDocumentTitle,
   getFavicon,
-  getIsAdditionalInfoVisible,
   getIsAddParameterPopoverOpen,
+  getIsAdditionalInfoVisible,
   getIsDashCardsLoadingComplete,
   getIsDashCardsRunning,
   getIsDirty,

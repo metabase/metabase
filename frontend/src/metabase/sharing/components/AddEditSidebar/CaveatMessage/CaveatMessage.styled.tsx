@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import Text from "metabase/components/type/Text";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 export const CaveatText = styled(Text)`
   margin-left: 2rem;
