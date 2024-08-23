@@ -29,7 +29,6 @@ export default class ParameterTargetWidget extends Component {
 
     const disabled = mappingOptions.length === 0;
     const selected = _.find(mappingOptions, o => _.isEqual(o.target, target));
-    console.log({ selected, mappingOptions, target });
 
     return (
       <PopoverWithTrigger

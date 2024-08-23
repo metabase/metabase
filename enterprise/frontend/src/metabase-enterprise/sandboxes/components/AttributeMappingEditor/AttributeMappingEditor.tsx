@@ -66,16 +66,8 @@ const AttributeMappingEditor = ({
         {shouldUseSavedQuestion ? t`Parameter or variable` : t`Column`}
       </div>
     }
-    renderValueInput={({ value, onChange }) => {
-      console.log({
-        value,
-        shouldUseSavedQuestion,
-        policy,
-        questionObject: policyTable
-          ? getRawDataQuestionForTable(policyTable)
-          : null,
-      });
-      return !shouldUseSavedQuestion && policy.table_id != null ? (
+    renderValueInput={({ value, onChange }) =>
+      !shouldUseSavedQuestion && policy.table_id != null ? (
         <div style={{ minWidth: 200 }}>
           <QuestionParameterTargetWidget
             questionObject={
@@ -95,8 +87,8 @@ const AttributeMappingEditor = ({
             placeholder={t`Pick a parameter`}
           />
         </div>
-      ) : null;
-    }}
+      ) : null
+    }
     divider={<span className={cx(CS.px2, CS.textBold)}>{t`equals`}</span>}
     addText={t`Add a filter`}
     canAdd={attributesOptions.length > 0}
