@@ -50,7 +50,6 @@
   [db table-name field-name]
   (t2/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
 
-
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
 (def ^:private extracted-db-path-regex #"^file:.*plugins/sample-database.db;USER=GUEST;PASSWORD=guest.*")

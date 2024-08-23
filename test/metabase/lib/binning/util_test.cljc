@@ -52,6 +52,6 @@
 
 (deftest ^:parallel resolve-default-strategy-test
   (let [column (assoc (meta/field-metadata :orders :total)
-                        :semantic-type :type/Income)]
+                      :semantic-type :type/Income)]
     (is (= [:num-bins {:num-bins 8, :bin-width 28.28321}]
            (#'lib.binning.util/resolve-default-strategy meta/metadata-provider column 12.061602936923117 238.32732001721533)))))

@@ -1115,6 +1115,7 @@
   [include archived]
   {include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check collection/root-collection)
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
 
@@ -1124,6 +1125,7 @@
   {id       ms/PositiveInt
    include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check (t2/select-one :model/Collection :id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 

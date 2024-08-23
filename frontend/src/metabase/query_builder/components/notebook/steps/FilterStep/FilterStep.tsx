@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { FilterPicker } from "metabase/querying";
+import { FilterPicker } from "metabase/querying/filters";
 import * as Lib from "metabase-lib";
 
 import type { NotebookStepUiComponentProps } from "../../types";

@@ -1,5 +1,6 @@
 import {
   canonicalCollectionId,
+  getCollectionPathAsString,
   isItemCollection,
   isReadOnlyCollection,
   isRootCollection,
@@ -123,6 +124,32 @@ describe("Collections > utils", () => {
           createMockCollectionItem({ model: "card", can_write: false }),
         ),
       ).toBe(false);
+    });
+  });
+
+  describe("getCollectionPathAsString", () => {
+    it("should return path for collection without ancestors", () => {
+      const collection = createMockCollection({
+        id: 0,
+        name: "Documents",
+        effective_ancestors: [],
+      });
+      const pathString = getCollectionPathAsString(collection);
+      expect(pathString).toBe("Documents");
+    });
+
+    it("should return path for collection with multiple ancestors", () => {
+      const ancestors = [
+        createMockCollection({ name: "Home" }),
+        createMockCollection({ name: "User" }),
+        createMockCollection({ name: "Files" }),
+      ];
+      const collection = createMockCollection({
+        name: "Documents",
+        effective_ancestors: ancestors,
+      });
+      const pathString = getCollectionPathAsString(collection);
+      expect(pathString).toBe("Home / User / Files / Documents");
     });
   });
 });

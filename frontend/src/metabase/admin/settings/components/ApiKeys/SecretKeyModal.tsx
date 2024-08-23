@@ -16,7 +16,6 @@ export const SecretKeyModal = ({
 }) => (
   <Modal
     size="30rem"
-    padding="xl"
     zIndex={DEFAULT_Z_INDEX} // prevents CopyWidgetButton's Tippy popover from being obscured
     opened
     onClose={onClose}
