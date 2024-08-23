@@ -38,9 +38,9 @@
                   [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
                   [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
                (mt/rows
-                 (mt/run-mbql-query users
-                   {:order-by [[:asc $id]]
-                    :limit    5})))))
+                (mt/run-mbql-query users
+                  {:order-by [[:asc $id]]
+                   :limit    5})))))
       (testing "with report timezone"
         (mt/with-report-timezone-id! "America/Los_Angeles"
           (is (= (cond
@@ -66,9 +66,9 @@
                     [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
                     [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
                  (mt/rows
-                   (mt/run-mbql-query users
-                     {:order-by [[:asc $id]]
-                      :limit    5})))))))))
+                  (mt/run-mbql-query users
+                    {:order-by [[:asc $id]]
+                     :limit    5})))))))))
 
 (deftest ^:parallel format-value-test
   ;; `t` = original value
@@ -189,7 +189,7 @@
                          (t/local-date 2011 4 18)
                          (t/offset-date-time "2011-04-18T10:12:47.232Z")]]]
               (is (= expected-rows
-                     (format-rows rows {:cols [{}{}{}]}))))))))
+                     (format-rows rows {:cols [{} {} {}]}))))))))
 
     (testing "Make sure ISO-8601 timestamps respects the converted_timezone metadata"
       (doseq [timezone-id ["UTC" "Asia/Tokyo"]]

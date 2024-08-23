@@ -40,8 +40,8 @@
   "Columns of Field or Table that classifiers are allowed to be set."
   [model]
   (case model
-   :model/Field #{:semantic_type :preview_display :has_field_values}
-   :model/Table #{:entity_type}))
+    :model/Field #{:semantic_type :preview_display :has_field_values}
+    :model/Table #{:entity_type}))
 
 (def ^:private FieldOrTableInstance
   [:or
@@ -82,7 +82,6 @@
      (let [updated-field (classifiers/run-classifiers field fingerprint)]
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))))))
-
 
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |

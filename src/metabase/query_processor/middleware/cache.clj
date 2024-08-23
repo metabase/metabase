@@ -38,7 +38,6 @@
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
 
-
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
 (defn- purge! [backend]
@@ -119,7 +118,6 @@
        (vreset! has-rows? true)
        (rf acc row)))))
 
-
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
 (defn- cached-results-rff
@@ -181,7 +179,6 @@
                   (i/short-hex-hash query-hash)
                   (ex-message e))
       [::miss nil])))
-
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 

@@ -81,7 +81,7 @@
                                     :stage-number -1})
         columns       (lib.filter/filterable-columns (:query base) (:stage-number base))
         filter-column (or (lib.equality/find-matching-column
-                            (:query base) (:stage-number base) column-ref columns)
+                           (:query base) (:stage-number base) column-ref columns)
                           (and (:lib/source-uuid column)
                                (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
                                              columns)))]
@@ -107,11 +107,11 @@
                            (assoc :lib/type :operator/filter)))]
 
       (merge
-        {:lib/type   :metabase.lib.drill-thru/drill-thru
-         :type       :drill-thru/column-filter
-         :initial-op initial-op}
+       {:lib/type   :metabase.lib.drill-thru/drill-thru
+        :type       :drill-thru/column-filter
+        :initial-op initial-op}
         ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
-        (prepare-query-for-drill-addition query stage-number column column-ref :filter)))))
+       (prepare-query-for-drill-addition query stage-number column column-ref :filter)))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-filter
   [_query _stage-number {:keys [initial-op]}]

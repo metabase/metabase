@@ -167,13 +167,13 @@
    unique-name-fn                :- ::lib.metadata.calculation/unique-name-fn
    {:keys [include-late-exprs?]} :- [:map [:include-late-exprs? {:optional true} :boolean]]]
   (not-empty
-    (for [[clause metadata] (map vector
-                                 (:expressions (lib.util/query-stage query stage-number))
-                                 (lib.expression/expressions-metadata query stage-number))
+   (for [[clause metadata] (map vector
+                                (:expressions (lib.util/query-stage query stage-number))
+                                (lib.expression/expressions-metadata query stage-number))
           ;; Only include "late" expressions when required.
           ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
-          :when (or include-late-exprs?
-                    (not (lib.util.match/match-one clause :offset)))]
+         :when (or include-late-exprs?
+                   (not (lib.util.match/match-one clause :offset)))]
      (let [base-type (:base-type metadata)]
        (-> (assoc metadata
                   :lib/source               :source/expressions
@@ -251,10 +251,10 @@
   (let [query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
     (->> (concat
-           existing-columns
+          existing-columns
            ;; add implicitly joinable columns if desired
-           (when include-implicitly-joinable?
-             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
+          (when include-implicitly-joinable?
+            (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has

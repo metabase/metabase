@@ -205,7 +205,6 @@
                (update 0 (partial driver/prettify-native-form :oracle))
                (update 0 str/split-lines))))))
 
-
 ;;; Clear out the session schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
@@ -225,7 +224,7 @@
 
 (defn drop-user! [username]
   (u/ignore-exceptions
-   (execute! "DROP USER \"%s\" CASCADE" username)))
+    (execute! "DROP USER \"%s\" CASCADE" username)))
 
 (defmethod tx/before-run :oracle
   [_]

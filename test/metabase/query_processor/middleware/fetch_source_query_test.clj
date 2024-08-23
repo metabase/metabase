@@ -206,10 +206,10 @@
   tests the actual contents of the metadata."
   [results]
   (letfn [(clean [sm] (map #(select-keys % [:field_ref]) sm))]
-   (update-in results [:query :joins]
-              (fn [joins]
-                (map (fn [join] (update join :source-metadata clean))
-                     joins)))))
+    (update-in results [:query :joins]
+               (fn [joins]
+                 (map (fn [join] (update join :source-metadata clean))
+                      joins)))))
 
 (def ^:private joins-metadata
   [{:name         "ID"

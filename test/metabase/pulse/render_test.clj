@@ -46,7 +46,7 @@
                                           :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                    :graph.metrics    ["count"]}}]
         (is (some? (lib.util.match/match-one
-                       (render-pulse-card card)
+                     (render-pulse-card card)
                      [:img _])))))))
 
 (deftest render-error-test
@@ -154,12 +154,12 @@
                           Dashboard           dashboard {}
                           DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
                           DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
-           (render/detect-pulse-chart-type card1
-                                           dc1
-                                           {:cols [{:base_type :type/Temporal}
-                                                   {:base_type :type/Number}]
-                                            :rows [[#t "2020" 2]
-                                                   [#t "2021" 3]]}))))))
+             (render/detect-pulse-chart-type card1
+                                             dc1
+                                             {:cols [{:base_type :type/Temporal}
+                                                     {:base_type :type/Number}]
+                                              :rows [[#t "2020" 2]
+                                                     [#t "2021" 3]]}))))))
 
 (deftest make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
@@ -201,20 +201,20 @@
                            model-query    :dataset_query
                            model-metadata :result_metadata
                            :as            model-card} {:type            :model
-                           :dataset_query   {:type     :query
-                                             :database (mt/id)
-                                             :query    {:source-table (format "card__%s" base-card-id)}}
-                           :result_metadata [{:name         "TAX"
-                                              :display_name "Tax"
-                                              :base_type    :type/Float}
-                                             {:name         "TOTAL"
-                                              :display_name "Total"
-                                              :base_type    :type/Float}
-                                             {:name          "Tax Rate"
-                                              :display_name  "Tax Rate"
-                                              :base_type     :type/Float
-                                              :semantic_type :type/Percentage
-                                              :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
+                                                       :dataset_query   {:type     :query
+                                                                         :database (mt/id)
+                                                                         :query    {:source-table (format "card__%s" base-card-id)}}
+                                                       :result_metadata [{:name         "TAX"
+                                                                          :display_name "Tax"
+                                                                          :base_type    :type/Float}
+                                                                         {:name         "TOTAL"
+                                                                          :display_name "Total"
+                                                                          :base_type    :type/Float}
+                                                                         {:name          "Tax Rate"
+                                                                          :display_name  "Tax Rate"
+                                                                          :base_type     :type/Float
+                                                                          :semantic_type :type/Percentage
+                                                                          :field_ref     [:field "Tax Rate" {:base-type :type/Float}]}]}
                      Card {question-query :dataset_query
                            :as            question-card} {:dataset_query {:type     :query
                                                                           :database (mt/id)
@@ -252,4 +252,4 @@
         (let [rendered-card-content (:content (binding [render/*include-title* true]
                                                 (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
           (is (some? (lib.util.match/match-one rendered-card-content
-                                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
+                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))

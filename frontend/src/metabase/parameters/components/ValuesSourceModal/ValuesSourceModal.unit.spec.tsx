@@ -9,7 +9,7 @@ import {
   setupDatabasesEndpoints,
   setupErrorParameterValuesEndpoints,
   setupParameterValuesEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
   setupTableQueryMetadataEndpoint,
   setupUnauthorizedCardsEndpoints,
@@ -422,7 +422,7 @@ const setup = async ({
 
   setupDatabasesEndpoints(databases);
   setupSearchEndpoints([]);
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   setupCollectionByIdEndpoint({
     collections: [personalCollection],
   });

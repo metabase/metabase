@@ -35,7 +35,7 @@
 #?(:clj (set! *warn-on-reflection* true))
 
 (u.ns/import-fns
-  [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
+ [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
@@ -234,7 +234,6 @@
   (memoize/fast-bounded (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*)
                         :bounded/threshold 10000))
 
-
 (def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
   "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
   keywords with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
@@ -251,7 +250,12 @@
          (subs s 1))))
 
 (defn snake-keys
-  "Convert the keys in a map from `kebab-case` to `snake_case`."
+  "Convert the top-level keys in a map to `snake_case`."
+  [m]
+  (update-keys m ->snake_case_en))
+
+(defn deep-snake-keys
+  "Recursively convert the keys in a map to `snake_case`."
   [m]
   (recursive-map-keys ->snake_case_en m))
 
@@ -634,18 +638,18 @@
      (pprint-to-str 'green some-obj)"
   (^String [x]
    (#?@
-    (:clj
-     (with-out-str
-       #_{:clj-kondo/ignore [:discouraged-var]}
-       (pp/pprint x {:max-width 120}))
+     (:clj
+      (with-out-str
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (pp/pprint x {:max-width 120}))
 
-     :cljs
+      :cljs
      ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
      ;; default value wastes too much space, 120 is a little easier to read actually.
-     (binding [pprint/*print-right-margin* 120]
-       (with-out-str
-         #_{:clj-kondo/ignore [:discouraged-var]}
-         (pprint/pprint x))))))
+      (binding [pprint/*print-right-margin* 120]
+        (with-out-str
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          (pprint/pprint x))))))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
@@ -950,9 +954,9 @@
 
 #?(:clj
    (let [sym->enum (fn ^Enum [sym]
-                    (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
-                                                  "valueOf"
-                                                  (to-array [(name sym)])))
+                     (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
+                                                   "valueOf"
+                                                   (to-array [(name sym)])))
          ordinal (fn [^Enum e] (.ordinal e))]
      (defmacro case-enum
        "Like `case`, but explicitly dispatch on Java enum ordinals.

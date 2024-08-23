@@ -36,7 +36,6 @@
       (google/google-auth-client-id! "")
       (is (= nil (google/google-auth-client-id))))))
 
-
 ;;; --------------------------------------------- account autocreation -----------------------------------------------
 
 (defmacro ^:private with-no-sso-google-token [& body]
@@ -78,7 +77,6 @@
                                                                :email      "rasta@sf-toucannery.com"})]
               (is (= {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
                      (select-keys user [:first_name :last_name :email]))))))))))
-
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
 
@@ -130,7 +128,6 @@
                                      token-1
                                      token-2)}
                     token-1)))))))
-
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 

@@ -66,18 +66,18 @@
     (let [html-body  (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
           doc        (-> html-body hik/parse hik/as-hickory)
           data-tables (hik.s/select
-                        (hik.s/class "pulse-body")
-                        doc)]
+                       (hik.s/class "pulse-body")
+                       doc)]
       (map
-        (fn [data-table]
-          (->> (hik.s/select
-                 (hik.s/child
-                   (hik.s/tag :tbody)
-                   (hik.s/tag :tr)
-                   hik.s/last-child)
-                 data-table)
-               (map (comp first :content))))
-        data-tables))))
+       (fn [data-table]
+         (->> (hik.s/select
+               (hik.s/child
+                (hik.s/tag :tbody)
+                (hik.s/tag :tr)
+                hik.s/last-child)
+               data-table)
+              (map (comp first :content))))
+       data-tables))))
 
 (def ^:private all-pct-2d?
   "Is every element in the sequence percent formatted with 2 significant digits?"
@@ -281,7 +281,7 @@
   (e.g. no attachments if less than 10 rows for an email)."
   [date-str n]
   (format
-    "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
+   "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
           \"SAMPLE\" AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
                             T.example_timestamp AT TIME ZONE 'US/Pacific'         AS full_datetime_pacific,
                             CAST(T.example_timestamp AS TIMESTAMP)                AS example_timestamp,
@@ -301,7 +301,7 @@
      FROM \"SAMPLE\"
               CROSS JOIN
           generate_series(1, %s);"
-    date-str n))
+   date-str n))
 
 (defn- model-query [base-card-id]
   {:fields       [[:field "FULL_DATETIME_UTC" {:base-type :type/DateTimeWithLocalTZ}]
@@ -501,15 +501,15 @@
                                                                           :query    {:source-table
                                                                                      (format "card__%s" model-card-id)}}
                                                         :result_metadata (mapv
-                                                                           (fn [{column-name :name :as col}]
-                                                                             (cond-> col
-                                                                               (= "DISCOUNT" column-name)
-                                                                               (assoc :display_name "Amount of Discount")
-                                                                               (= "TOTAL" column-name)
-                                                                               (assoc :display_name "Grand Total")
-                                                                               (= "QUANTITY" column-name)
-                                                                               (assoc :display_name "N")))
-                                                                           model-metadata)}
+                                                                          (fn [{column-name :name :as col}]
+                                                                            (cond-> col
+                                                                              (= "DISCOUNT" column-name)
+                                                                              (assoc :display_name "Amount of Discount")
+                                                                              (= "TOTAL" column-name)
+                                                                              (assoc :display_name "Grand Total")
+                                                                              (= "QUANTITY" column-name)
+                                                                              (assoc :display_name "N")))
+                                                                          model-metadata)}
                        Card {question-card-name :name
                              question-card-id   :id} {:name                   "FINAL_QUESTION"
                                                       :dataset_query          {:database (mt/id)
@@ -519,12 +519,12 @@
                                                       :visualization_settings {:table.pivot_column "DISCOUNT",
                                                                                :table.cell_column  "TAX",
                                                                                :column_settings    {(format
-                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                                                                      (mt/id :orders :quantity))
+                                                                                                     "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                     (mt/id :orders :quantity))
                                                                                                     {:column_title "Count"}
                                                                                                     (format
-                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
-                                                                                                      (mt/id :orders :id))
+                                                                                                     "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                     (mt/id :orders :id))
                                                                                                     {:column_title "IDENTIFIER"}}}}
                        Dashboard {dash-id :id} {:name "The Dashboard"}
                        DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
@@ -563,15 +563,15 @@
                                           (mt/with-test-user nil
                                             (metabase.pulse/send-pulse! pulse)))
                                         (->>
-                                          (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
-                                          (keep
-                                            (fn [{:keys [type content-type file-name content]}]
-                                              (when (and
-                                                      (= :attachment type)
-                                                      (= "text/csv" content-type))
-                                                [(strip-timestamp file-name)
-                                                 (first (csv/read-csv (slurp content)))])))
-                                          (into {})))]
+                                         (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+                                         (keep
+                                          (fn [{:keys [type content-type file-name content]}]
+                                            (when (and
+                                                   (= :attachment type)
+                                                   (= "text/csv" content-type))
+                                              [(strip-timestamp file-name)
+                                               (first (csv/read-csv (slurp content)))])))
+                                         (into {})))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
                      (attachment-name->cols (format "%s.csv" base-card-name)))))
@@ -608,7 +608,7 @@
 (deftest number-viz-shows-correct-value
   (testing "Static Viz. Render of 'Number' Visualization shows the correct column's first value #32362."
     (mt/dataset test-data
-      (let [ ;; test card 1 'narrows' the query to a single column (the "TAX" field)
+      (let [;; test card 1 'narrows' the query to a single column (the "TAX" field)
             test-card1 {:visualization_settings {:scalar.field "TAX"}
                         :display                :scalar
                         :dataset_query          {:database (mt/id)
@@ -657,17 +657,17 @@
     (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
       (let [doc         (-> html-body hik/parse hik/as-hickory)
             data-tables (hik.s/select
-                          (hik.s/class "pulse-body")
-                          doc)]
+                         (hik.s/class "pulse-body")
+                         doc)]
         (mapv
-          (fn [data-table]
-            (->> (hik.s/select
-                   (hik.s/child
-                     (hik.s/tag :tbody)
-                     (hik.s/tag :tr))
-                   data-table)
-                 (mapv (comp (partial mapv (comp first :content)) :content))))
-          data-tables)))))
+         (fn [data-table]
+           (->> (hik.s/select
+                 (hik.s/child
+                  (hik.s/tag :tbody)
+                  (hik.s/tag :tr))
+                 data-table)
+                (mapv (comp (partial mapv (comp first :content)) :content))))
+         data-tables)))))
 
 (defmacro with-skip-if-empty-pulse-result
   "Provide a fixture that runs body using the provided pulse results (symbol), the value of `:skip_if_empty` for the
@@ -807,8 +807,8 @@
                   (metabase.pulse/send-pulse! pulse)))
               (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (let [data-tables (hik.s/select
-                                    (hik.s/class "pulse-body")
-                                    (-> html-body hik/parse hik/as-hickory))]
+                                   (hik.s/class "pulse-body")
+                                   (-> html-body hik/parse hik/as-hickory))]
                   (testing "The expected count will change if empty tables are skipped."
                     (is (= expected-count (count data-tables))))
                   (testing "The text card should always be present"

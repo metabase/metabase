@@ -139,7 +139,6 @@
           :let    [metadata-provider (table-id->warmed-metadata-provider (:table_id metric))]]
       (assoc metric :definition_description (definition-description metadata-provider metric)))))
 
-
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------
 
 (defmethod revision/serialize-instance LegacyMetric
@@ -162,7 +161,6 @@
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get metric1 :definition)
                                                                           :after  (get metric2 :definition)})))))
-
 
 ;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
 
@@ -195,7 +193,6 @@
         serdes/table->path
         serdes/storage-table-path-prefix
         (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
-
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 

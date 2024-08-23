@@ -154,7 +154,7 @@
                     (is (not= (#'sql-jdbc.conn/jdbc-spec-hash db)
                               (#'sql-jdbc.conn/jdbc-spec-hash db-perturbed))))
                   (t2/update! Database (mt/id) {:details (:details db-perturbed)})
-                  (let [ ;; this call should result in the connection pool becoming invalidated, and the new hash value
+                  (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
                         pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
                         db-hash-2    (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]

@@ -30,6 +30,7 @@
             User]]
    [metabase.models.action :as action]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
@@ -569,32 +570,32 @@
 (deftest dashboard-card-series-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc
-        [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
-         :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
-         :model/Card {c2-id :id, c2-eid :entity_id} {:name "Series Question A", :collection_id coll-id}
-         :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
-         :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
-         :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
-         :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
-         :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
-         :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
-        (testing "Inlined dashcards include their series' card entity IDs"
-          (let [ser (t2/with-call-count [q]
-                      (u/prog1 (ts/extract-one "Dashboard" dash-id)
-                        (is (< (q) 13))))]
-            (is (=? {:entity_id dash-eid
-                     :dashcards [{:entity_id dc1-eid
-                                  :series (mt/exactly=? [{:card_id c2-eid :position 0}
-                                                         {:card_id c3-eid :position 1}])}
-                                 {:entity_id dc2-eid, :series []}]}
-                    ser))
+      [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
+       :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
+       :model/Card {c2-id :id, c2-eid :entity_id} {:name "Series Question A", :collection_id coll-id}
+       :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
+       :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
+       :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
+       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
+       :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
+       :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
+      (testing "Inlined dashcards include their series' card entity IDs"
+        (let [ser (t2/with-call-count [q]
+                    (u/prog1 (ts/extract-one "Dashboard" dash-id)
+                      (is (< (q) 13))))]
+          (is (=? {:entity_id dash-eid
+                   :dashcards [{:entity_id dc1-eid
+                                :series (mt/exactly=? [{:card_id c2-eid :position 0}
+                                                       {:card_id c3-eid :position 1}])}
+                               {:entity_id dc2-eid, :series []}]}
+                  ser))
 
-            (testing "and depend on all referenced cards, including cards from dashboard cards' series"
-              (is (= #{[{:model "Card"       :id c1-eid}]
-                       [{:model "Card"       :id c2-eid}]
-                       [{:model "Card"       :id c3-eid}]
-                       [{:model "Collection" :id coll-eid}]}
-                     (set (serdes/dependencies ser))))))))))
+          (testing "and depend on all referenced cards, including cards from dashboard cards' series"
+            (is (= #{[{:model "Card"       :id c1-eid}]
+                     [{:model "Card"       :id c2-eid}]
+                     [{:model "Card"       :id c3-eid}]
+                     [{:model "Collection" :id coll-eid}]}
+                   (set (serdes/dependencies ser))))))))))
 
 (deftest dimensions-test
   (mt/with-empty-h2-app-db
@@ -1299,7 +1300,6 @@
         coll-eid-2 :entity_id}
        {:name "2nd collection"}
 
-
        Card
        {card-id-1  :id
         card-eid-1 :entity_id}
@@ -1582,9 +1582,9 @@
                     [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                     ;; card that the card on dashboard linked to
                     [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-               (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true})
-                    (map serdes/path)
-                    set)))))
+                  (->> (extract/extract {:targets [["Dashboard" dash4-id]] :no-settings true :no-data-model true})
+                       (map serdes/path)
+                       set)))))
 
       (testing "selecting a dashboard gets any dashboards or cards it links to when clicked"
         (is (=? #{[{:model "Dashboard"       :id clickdash-eid :label "dashboard_with_click_behavior"}]
@@ -1641,9 +1641,9 @@
                       [{:model "Card"          :id c1-1-eid  :label "question_1_1"}]
                       ;; card that the card on dashboard linked to
                       [{:model "Card"          :id c1-2-eid  :label "question_1_2"}]}
-                 (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
-                      (map serdes/path)
-                      set)))))))))
+                    (->> (extract/extract {:targets [["Collection" coll4-id]] :no-settings true :no-data-model true})
+                         (map serdes/path)
+                         set)))))))))
 
 (deftest field-references-test
   (mt/with-empty-h2-app-db
@@ -1808,3 +1808,19 @@
           ;; - 1 for dashcards, there are 7
           ;; - 2 for series (7 dashcards / 5 -> 2 batches)
           (is (= 5 (qc))))))))
+
+(deftest result-metadata-test
+  (mt/with-temp [:model/Card c {:dataset_query (mt/query venues)}]
+    (let [res (qp/process-query
+               (qp/userland-query
+                (:dataset_query c)
+                {:card-id (:id c)}))]
+      (when-not (= (:status res) :completed)
+        (throw (ex-info "Query failed" res)))
+      (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+        (is (=? {:base_type          :type/Integer
+                 :id                 [string? "PUBLIC" "VENUES" "CATEGORY_ID"]
+                 :fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]
+                 :field_ref          [:field [string? "PUBLIC" "VENUES" "CATEGORY_ID"] nil]}
+                (->> (:result_metadata ser)
+                     (u/seek #(= (:display_name %) "Category ID")))))))))

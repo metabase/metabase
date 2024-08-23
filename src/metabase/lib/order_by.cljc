@@ -156,7 +156,7 @@
                             (comp (map lib.ref/ref)
                                   (keep-indexed (fn [index an-order-by]
                                                   (when-let [col (lib.equality/find-matching-column
-                                                                   query stage-number an-order-by columns)]
+                                                                  query stage-number an-order-by columns)]
                                                     [col index]))))
                             existing-order-bys)]
          (mapv #(let [pos (matching %)]

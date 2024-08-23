@@ -103,7 +103,7 @@
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case [:= :type nil] 0 :else 1]] :asc]
                           [:%lower.name :asc]]})
-   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -302,7 +302,6 @@
     always-false-hsql-expr
     always-true-hsql-expr))
 
-
 (defmulti ^:private post-process-collection-children
   {:arglists '([model collection rows])}
   (fn [model _ _]
@@ -376,29 +375,29 @@
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
-                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                     :c.dataset_query
-                     [(h2x/literal (case card-type
-                                     :model "dataset"
-                                     :metric  "metric"
-                                     "card"))
-                      :model]
-                     [:u.id :last_edit_user]
-                     [:u.email :last_edit_email]
-                     [:u.first_name :last_edit_first_name]
-                     [:u.last_name :last_edit_last_name]
-                     [:r.timestamp :last_edit_timestamp]
-                     [{:select   [:status]
-                       :from     [:moderation_review]
-                       :where    [:and
-                                  [:= :moderated_item_type "card"]
-                                  [:= :moderated_item_id :c.id]
-                                  [:= :most_recent true]]
+                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                    :c.dataset_query
+                    [(h2x/literal (case card-type
+                                    :model "dataset"
+                                    :metric  "metric"
+                                    "card"))
+                     :model]
+                    [:u.id :last_edit_user]
+                    [:u.email :last_edit_email]
+                    [:u.first_name :last_edit_first_name]
+                    [:u.last_name :last_edit_last_name]
+                    [:r.timestamp :last_edit_timestamp]
+                    [{:select   [:status]
+                      :from     [:moderation_review]
+                      :where    [:and
+                                 [:= :moderated_item_type "card"]
+                                 [:= :moderated_item_id :c.id]
+                                 [:= :most_recent true]]
                        ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
                        ;; protecting against potential bugs
-                       :order-by [[:id :desc]]
-                       :limit    1}
-                      :moderated_status]]
+                      :order-by [[:id :desc]]
+                      :limit    1}
+                     :moderated_status]]
                     (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
@@ -725,7 +724,6 @@
         (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
-
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
@@ -851,6 +849,7 @@
   [include archived]
   {include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check collection/root-collection)
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
 
@@ -860,6 +859,7 @@
   {id       ms/PositiveInt
    include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check (t2/select-one :model/Collection :id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 
@@ -887,7 +887,6 @@
                                    :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                                                   (or (some-> sort_direction normalize-sort-choice) :asc)]})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
-
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
@@ -947,7 +946,6 @@
       :pinned-state (keyword pinned_state)
       :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
                      (or (some-> sort_direction normalize-sort-choice) :asc)]})))
-
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -1012,7 +1010,7 @@
         ;; ok, make sure we have perms to do this operation
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-           (collection/perms-for-moving collection-before-update new-parent)))
+                                                  (collection/perms-for-moving collection-before-update new-parent)))
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -1026,7 +1024,7 @@
     ;; Check that we have approprate perms
     (api/check-403
      (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-       (collection/perms-for-archiving collection-before-update)))))
+                                              (collection/perms-for-archiving collection-before-update)))))
 
 (defn- maybe-send-archived-notifications!
   "When a collection is archived, all of it's cards are also marked as archived, but this is down in the model layer

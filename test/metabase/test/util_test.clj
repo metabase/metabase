@@ -26,8 +26,8 @@
 
   (testing "if an Exception is thrown, original value should be restored"
     (u/ignore-exceptions
-     (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
-       (throw (Exception.))))
+      (mt/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
+        (throw (Exception.))))
     (is (= 5
            (t2/select-one-fn :position Field :id (data/id :venues :price))))))
 
@@ -73,7 +73,7 @@
         (is (= "original" (clump "o" "riginal"))))
 
       (future
-       (testing "A thread that minds its own business"
+        (testing "A thread that minds its own business"
           (log/debug "Starting no-op thread, thread-id:" (thread-id))
           (is (= "123" (clump 12 3)))
           (take-latch)

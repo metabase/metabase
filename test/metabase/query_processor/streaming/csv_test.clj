@@ -67,16 +67,16 @@
 (deftest geographic-coordinates-test
   (testing "Ensure CSV longitude and latitude values are correctly exported"
     (let [result (mt/user-http-request
-                   :rasta :post 200 "dataset/csv" :query
-                   (json/generate-string
-                     {:database (mt/id)
-                      :type     :query
-                      :query    {:source-table (mt/id :venues)
-                                 :fields       [[:field (mt/id :venues :id) {:base-type :type/Integer}]
-                                                [:field (mt/id :venues :longitude) {:base-type :type/Float}]
-                                                [:field (mt/id :venues :latitude) {:base-type :type/Float}]]
-                                 :order-by     [[:asc (mt/id :venues :id)]]
-                                 :limit        5}}))]
+                  :rasta :post 200 "dataset/csv" :query
+                  (json/generate-string
+                   {:database (mt/id)
+                    :type     :query
+                    :query    {:source-table (mt/id :venues)
+                               :fields       [[:field (mt/id :venues :id) {:base-type :type/Integer}]
+                                              [:field (mt/id :venues :longitude) {:base-type :type/Float}]
+                                              [:field (mt/id :venues :latitude) {:base-type :type/Float}]]
+                               :order-by     [[:asc (mt/id :venues :id)]]
+                               :limit        5}}))]
       (is (= [["1" "165.37400000° W" "10.06460000° N"]
               ["2" "118.32900000° W" "34.09960000° N"]
               ["3" "118.42800000° W" "34.04060000° N"]

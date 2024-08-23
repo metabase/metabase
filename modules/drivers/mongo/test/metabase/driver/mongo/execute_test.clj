@@ -69,63 +69,63 @@
 
 (deftest kill-an-in-flight-query-test
   (mt/test-driver
-   :mongo
-   (mt/dataset
-    test-data
+    :mongo
+    (mt/dataset
+      test-data
     ;; Dummy query execution here. If the dataset was not initialized before running this test, the timing gets out of
     ;; sync and test fails. I suspect dataset initialization happens after (or while) the future is executed.
     ;; To overcome that next line is executed - and dataset initialization forced - before the test code runs.
-    (mt/run-mbql-query people {:limit 10})
-    (let [canceled-chan (a/chan)]
-      (binding [qp.pipeline/*canceled-chan* canceled-chan]
-        (let [query (mt/mbql-query orders
-                                   {:aggregation [[:sum $total]],
-                                    :breakout [!month.created_at],
-                                    :order-by [[:asc !month.created_at]],
-                                    :joins [{:alias "People_User",
-                                             :strategy :left-join,
-                                             :condition
-                                             [:!= $user_id &People_User.people.id],
-                                             :source-table $$people}]})]
-          (future (Thread/sleep 500)
-                  (a/>!! canceled-chan ::streaming-response/request-canceled))
-          (testing "Cancel signal kills the in progress query"
-            (is (thrown-with-msg? Throwable
-                                  #"Command failed with error 11601.*operation was interrupted"
-                                  (qp/process-query query))))))))))
+      (mt/run-mbql-query people {:limit 10})
+      (let [canceled-chan (a/chan)]
+        (binding [qp.pipeline/*canceled-chan* canceled-chan]
+          (let [query (mt/mbql-query orders
+                        {:aggregation [[:sum $total]],
+                         :breakout [!month.created_at],
+                         :order-by [[:asc !month.created_at]],
+                         :joins [{:alias "People_User",
+                                  :strategy :left-join,
+                                  :condition
+                                  [:!= $user_id &People_User.people.id],
+                                  :source-table $$people}]})]
+            (future (Thread/sleep 500)
+                    (a/>!! canceled-chan ::streaming-response/request-canceled))
+            (testing "Cancel signal kills the in progress query"
+              (is (thrown-with-msg? Throwable
+                                    #"Command failed with error 11601.*operation was interrupted"
+                                    (qp/process-query query))))))))))
 
 (deftest ^:synchronized question-base-on-native-model-cache-test
   (testing "Question based on native model is cacheable (#43901)"
     (mt/test-drivers
-     #{:mongo}
-     (t2.with-temp/with-temp
-       [:model/Card c {:type :model
-                       :dataset_query {:database (mt/id)
-                                       :type     :native
-                                       :native   {:template_tags {}
-                                                  :collection "orders"
-                                                  :query (str "[{\"$addFields\": {}}\n"
-                                                              " {\"$limit\":1}]")}}}]
-       (mt/with-temporary-setting-values [enable-query-caching true]
-         (let [orig-freeze! @#'middleware.cache.impl/freeze!
-               freeze-started (atom false)
-               thrown-data (atom [])]
-           (with-redefs [middleware.cache.impl/freeze! (fn [& args]
-                                                         (reset! freeze-started true)
-                                                         (try
-                                                           (apply orig-freeze! args)
-                                                           (catch Throwable t
-                                                             (swap! thrown-data conj t)
-                                                             (throw t))))]
-             (let [model-based-query (-> (mt/mbql-query orders {:source-table (str "card__" (:id c))})
-                                         (update :cache_strategy assoc
+      #{:mongo}
+      (t2.with-temp/with-temp
+        [:model/Card c {:type :model
+                        :dataset_query {:database (mt/id)
+                                        :type     :native
+                                        :native   {:template_tags {}
+                                                   :collection "orders"
+                                                   :query (str "[{\"$addFields\": {}}\n"
+                                                               " {\"$limit\":1}]")}}}]
+        (mt/with-temporary-setting-values [enable-query-caching true]
+          (let [orig-freeze! @#'middleware.cache.impl/freeze!
+                freeze-started (atom false)
+                thrown-data (atom [])]
+            (with-redefs [middleware.cache.impl/freeze! (fn [& args]
+                                                          (reset! freeze-started true)
+                                                          (try
+                                                            (apply orig-freeze! args)
+                                                            (catch Throwable t
+                                                              (swap! thrown-data conj t)
+                                                              (throw t))))]
+              (let [model-based-query (-> (mt/mbql-query orders {:source-table (str "card__" (:id c))})
+                                          (update :cache_strategy assoc
                                                  ;; Enable caching for current query
-                                                 :avg-execution-time 5000
-                                                 :min_duration_ms 1
-                                                 :multiplier 100000
-                                                 :type :ttl))]
-               (qp/process-query model-based-query)
-               (testing "Sanity: freeze! caching function ran"
-                 (is (true? @freeze-started)))
-               (testing "No exception was thrown during results cache serialization"
-                 (is (zero? (count @thrown-data))))))))))))
+                                                  :avg-execution-time 5000
+                                                  :min_duration_ms 1
+                                                  :multiplier 100000
+                                                  :type :ttl))]
+                (qp/process-query model-based-query)
+                (testing "Sanity: freeze! caching function ran"
+                  (is (true? @freeze-started)))
+                (testing "No exception was thrown during results cache serialization"
+                  (is (zero? (count @thrown-data))))))))))))

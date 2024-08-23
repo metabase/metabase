@@ -201,7 +201,6 @@
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
-
 ;;; --------------------------------------------------- Assertions ---------------------------------------------------
 
 (defn- assert-not-admin-group
@@ -210,7 +209,7 @@
   (when (and (= group_id (:id (perms-group/admin)))
              (not *allow-admin-permissions-changes*))
     (throw (ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
-             {:status-code 400}))))
+                    {:status-code 400}))))
 
 (defn- assert-valid-object
   "Check to make sure the value of `:object` for `permissions` entry is valid."
@@ -220,7 +219,7 @@
              (or (not= object "/")
                  (not *allow-root-entries*)))
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
-             {:status-code 400, :path object}))))
+                    {:status-code 400, :path object}))))
 
 (defn- assert-valid
   "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
@@ -229,7 +228,6 @@
   (doseq [f [assert-not-admin-group
              assert-valid-object]]
     (f permissions)))
-
 
 ;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
@@ -249,7 +247,6 @@
   "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
-
 
 (mu/defn application-perms-path :- perms.u/PathSchema
   "Returns the permissions path for *full* access a application permission."
@@ -334,7 +331,6 @@
   [instance read-or-write]
   (perms-objects-set-for-parent-collection instance read-or-write))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -362,7 +358,6 @@
   [permissions]
   (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
-
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 

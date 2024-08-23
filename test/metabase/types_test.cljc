@@ -99,8 +99,8 @@
   (testing a-type
     (testing (str "should derive from one of" required)
       (is (some
-             (partial isa? a-type)
-             required)))
+           (partial isa? a-type)
+           required)))
     (doseq [t disallowed]
       (testing (str "should NOT derive from " t)
         (is (not (isa? a-type t)))))))

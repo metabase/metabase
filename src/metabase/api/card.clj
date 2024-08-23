@@ -192,7 +192,7 @@
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details])
         (cond->                                             ; card
-          (card/model? card) (t2/hydrate :persisted)))))
+         (card/model? card) (t2/hydrate :persisted)))))
 
 (defn get-card
   "Get `Card` with ID."
@@ -208,13 +208,17 @@
 
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
-  [id ignore_view]
+  [id ignore_view context]
   {id ms/PositiveInt
-   ignore_view [:maybe :boolean]}
+   ignore_view [:maybe :boolean]
+   context [:maybe [:enum :collection]]}
   (let [card (get-card id)]
     (u/prog1 card
       (when-not ignore_view
-        (events/publish-event! :event/card-read {:object-id (:id <>) :user-id api/*current-user-id* :context :question})))))
+        (events/publish-event! :event/card-read
+                               {:object-id (:id <>)
+                                :user-id api/*current-user-id*
+                                :context (or context :question)})))))
 
 (defn- card-columns-from-names
   [card names]
@@ -229,17 +233,17 @@
   [first-card second-card]
   (and (#{:area :line :bar} (:display second-card))
        (let [initial-dimensions (cols->kebab-case
-                                  (card-columns-from-names
-                                    first-card
-                                    (get-in first-card [:visualization_settings :graph.dimensions])))
+                                 (card-columns-from-names
+                                  first-card
+                                  (get-in first-card [:visualization_settings :graph.dimensions])))
              new-dimensions     (cols->kebab-case
-                                  (card-columns-from-names
-                                    second-card
-                                    (get-in second-card [:visualization_settings :graph.dimensions])))
+                                 (card-columns-from-names
+                                  second-card
+                                  (get-in second-card [:visualization_settings :graph.dimensions])))
              new-metrics        (cols->kebab-case
-                                  (card-columns-from-names
-                                    second-card
-                                    (get-in second-card [:visualization_settings :graph.metrics])))]
+                                 (card-columns-from-names
+                                  second-card
+                                  (get-in second-card [:visualization_settings :graph.metrics])))]
          (cond
            ;; must have at least one dimension and one metric
            (or (zero? (count new-dimensions))
@@ -269,7 +273,7 @@
 (defmulti series-are-compatible?
   "Check if the `second-card` is compatible to be used as series of `card`."
   (fn [card _second-card]
-   (:display card)))
+    (:display card)))
 
 (defmethod series-are-compatible? :area
   [first-card second-card]
@@ -325,8 +329,8 @@
                                          ;; columns name on native query are not match with the column name in viz-settings. why??
                                          ;; so we can't use series-are-compatible? to filter out incompatible native cards.
                                          ;; => we assume all native queries are compatible and FE will figure it out later
-                                         (= (:query_type %) :native)
-                                         (series-are-compatible? card %))))]
+                                        (= (:query_type %) :native)
+                                        (series-are-compatible? card %))))]
     (if page-size
       (take page-size compatible-cards)
       compatible-cards)))
@@ -400,7 +404,6 @@
                                        {:timeline/events? (= include "events")
                                         :events/start     (when start (u.date/parse start))
                                         :events/end       (when end (u.date/parse end))})))
-
 
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
@@ -572,7 +575,7 @@
   ;; Sorting by `:collection_position` to ensure lower position cards are appended first
   (let [sorted-cards        (sort-by :collection_position cards)
         max-position-result (t2/select-one [Card [:%max.collection_position :max_position]]
-                              :collection_id new-collection-id-or-nil)
+                                           :collection_id new-collection-id-or-nil)
         ;; collection_position for the next card in the collection
         starting-position   (inc (get max-position-result :max_position 0))]
 
@@ -602,10 +605,10 @@
   ;; for each affected card...
   (when (seq card-ids)
     (let [cards (t2/select [Card :id :collection_id :collection_position :dataset_query]
-                  {:where [:and [:in :id (set card-ids)]
-                                [:or [:not= :collection_id new-collection-id-or-nil]
-                                  (when new-collection-id-or-nil
-                                    [:= :collection_id nil])]]})] ; poisioned NULLs = ick
+                           {:where [:and [:in :id (set card-ids)]
+                                    [:or [:not= :collection_id new-collection-id-or-nil]
+                                     (when new-collection-id-or-nil
+                                       [:= :collection_id nil])]]})] ; poisioned NULLs = ick
       ;; ...check that we have write permissions for it...
       (doseq [card cards]
         (api/write-check card))
@@ -642,9 +645,7 @@
   (move-cards-to-collection! collection_id card_ids)
   {:status :ok})
 
-
 ;;; ------------------------------------------------ Running a Query -------------------------------------------------
-
 
 (api/defendpoint POST "/:card-id/query"
   "Run the query associated with a Card."
@@ -750,9 +751,9 @@
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
   (qp.card/process-query-for-card card-id :api
-                                    :parameters   parameters
-                                    :qp           qp.pivot/run-pivot-query
-                                    :ignore-cache ignore_cache))
+                                  :parameters   parameters
+                                  :qp           qp.pivot/run-pivot-query
+                                  :ignore-cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this

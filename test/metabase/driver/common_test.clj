@@ -28,16 +28,16 @@
     (let [realized-lazy-seq? (atom false)]
       (is (= [:type/Integer true]
              [(transduce identity (driver.common/values->base-type) (lazy-cat [nil nil nil]
-                                                                            (do (reset! realized-lazy-seq? true)
-                                                                                [4 5 6])))
+                                                                              (do (reset! realized-lazy-seq? true)
+                                                                                  [4 5 6])))
               @realized-lazy-seq?]))))
   (testing "Base type inference should respect laziness and not keep scanning after it finds 100 values"
     (let [realized-lazy-seq? (atom false)]
       (is (= [:type/Integer true]
              [(transduce identity (driver.common/values->base-type) (lazy-cat [1 2 3]
-                                                                            (repeat 1000 nil)
-                                                                            (do (reset! realized-lazy-seq? true)
-                                                                                [4 5 6])))
+                                                                              (repeat 1000 nil)
+                                                                              (do (reset! realized-lazy-seq? true)
+                                                                                  [4 5 6])))
               @realized-lazy-seq?])))))
 
 (defn- test-start-of-week-offset

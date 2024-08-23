@@ -100,7 +100,6 @@
             (is (= "2 tablas"
                    (f 2)))))))))
 
-
 (deftest trsn-test
   (mt/with-mock-i18n-bundles {"es" {:headers {"Plural-Forms" "nplurals=2; plural=(n != 1);\n"}
                                     :messages {"{0} table" ["{0} tabla" "{0} tablas"]}}}
@@ -127,7 +126,6 @@
 
             (is (= "2 tables"
                    (f 2)))))
-
 
         (testing "Should use system locale if set"
           (mt/with-temporary-setting-values [site-locale "es"]
@@ -186,13 +184,13 @@
              (#'i18n/validate-number-of-args "{1}" [0 1]))))))
 
   (testing "The number of args is still validated if the first argument is a `str` form"
-      (is (thrown?
-           clojure.lang.Compiler$CompilerException
-           (walk/macroexpand-all `(i18n/trs (~'str "{0}" "{1}") 0))))
-      (is (thrown-with-msg?
-           AssertionError
-           #"expects 2 args, got 1"
-           (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0]))))
+    (is (thrown?
+         clojure.lang.Compiler$CompilerException
+         (walk/macroexpand-all `(i18n/trs (~'str "{0}" "{1}") 0))))
+    (is (thrown-with-msg?
+         AssertionError
+         #"expects 2 args, got 1"
+         (#'i18n/validate-number-of-args '(str "{0}" "{1}") [0]))))
 
   (testing "`trsn` and `trun` should validate that they are being called with at most one arg\n"
     (is (thrown?

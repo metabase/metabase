@@ -44,8 +44,8 @@
                   (lib/order-by (meta/field-metadata :venues :price))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :categories)
                                                  [(lib/=
-                                                    (meta/field-metadata :venues :category-id)
-                                                    (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                                   (meta/field-metadata :venues :category-id)
+                                                   (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                                 (lib/with-join-fields [(meta/field-metadata :categories :id)])))
                   (lib/append-stage)
                   (lib/with-fields [(meta/field-metadata :venues :price)])
@@ -427,15 +427,15 @@
                      :base-type :type/Integer}
                     name-col))
             (let [query' (lib/breakout query name-col)]
-               (is (=? {:stages
-                        [{:source-card 1
-                          :breakout    [[:field {:base-type :type/Integer} "USER_ID"]]}]}
-                       query'))
-               (is (= "My Card, Grouped by User ID"
-                      (lib/describe-query query')))
-               (is (= ["User ID"]
-                      (for [breakout (lib/breakouts query')]
-                        (lib/display-name query' breakout)))))))))))
+              (is (=? {:stages
+                       [{:source-card 1
+                         :breakout    [[:field {:base-type :type/Integer} "USER_ID"]]}]}
+                      query'))
+              (is (= "My Card, Grouped by User ID"
+                     (lib/describe-query query')))
+              (is (= ["User ID"]
+                     (for [breakout (lib/breakouts query')]
+                       (lib/display-name query' breakout)))))))))))
 
 (deftest ^:parallel breakoutable-columns-expression-e2e-test
   (let [query (-> lib.tu/venues-query
@@ -568,7 +568,7 @@
     (is (=? {:stages [{:aggregation [[:count {}]]
                        :breakout    [[:field
                                       {:binning {:strategy :bin-width, :bin-width 1}}
-                                   (meta/id :people :latitude)]]}]}
+                                      (meta/id :people :latitude)]]}]}
             (-> (lib/query meta/metadata-provider (meta/table-metadata :people))
                 (lib/aggregate (lib/count))
                 (lib/breakout (lib/with-binning (meta/field-metadata :people :latitude) {:strategy :bin-width, :bin-width 1})))))))

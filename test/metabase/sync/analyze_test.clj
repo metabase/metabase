@@ -146,7 +146,6 @@
         (is (= (when expected :type/Email)
                (classified-semantic-type values)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Tests to avoid analyzing hidden tables                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -159,9 +158,9 @@
 
 (defn- latest-sync-time [table]
   (t2/select-one-fn :last_analyzed Field
-    :last_analyzed [:not= nil]
-    :table_id      (u/the-id table)
-    {:order-by [[:last_analyzed :desc]]}))
+                    :last_analyzed [:not= nil]
+                    :table_id      (u/the-id table)
+                    {:order-by [[:last_analyzed :desc]]}))
 
 (defn- set-table-visibility-type-via-api!
   "Change the `visibility-type` of `table` via an API call. (This is done via the API so we can see which, if any, side

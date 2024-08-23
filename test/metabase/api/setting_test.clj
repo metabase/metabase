@@ -305,16 +305,16 @@
 
     (testing "non-admin setting managers should only be able to update multiple settings at once if they have `:visibility :settings-manager`"
       (with-mocked-settings-manager-access
-       (is (= nil
-              (mt/user-http-request :rasta :put 204 "setting" {:test-settings-manager-visibility "ABC"})))
-       (is (= "ABC"
-              (test-settings-manager-visibility)))
-       (is (= "You don't have permissions to do that."
-              (mt/user-http-request :rasta :put 403 "setting" {:test-settings-manager-visibility "GHI", :test-setting-1 "JKL"})))
-       (is (= "ABC"
-              (test-settings-manager-visibility)))
-       (is (= "ABC"
-              (models.setting-test/test-setting-1)))))
+        (is (= nil
+               (mt/user-http-request :rasta :put 204 "setting" {:test-settings-manager-visibility "ABC"})))
+        (is (= "ABC"
+               (test-settings-manager-visibility)))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :put 403 "setting" {:test-settings-manager-visibility "GHI", :test-setting-1 "JKL"})))
+        (is (= "ABC"
+               (test-settings-manager-visibility)))
+        (is (= "ABC"
+               (models.setting-test/test-setting-1)))))
 
     (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."

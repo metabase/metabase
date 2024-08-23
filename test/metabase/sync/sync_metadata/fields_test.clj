@@ -71,12 +71,12 @@
 (deftest renaming-fields-test
   (testing "make sure we can identify case changes on a field (#7923)"
     (let [db-state (with-test-db-before-and-after-altering
-                    "ALTER TABLE \"birds\" RENAME COLUMN \"example_name\" to \"Example_Name\";"
-                    (fn [database]
-                      (set
-                       (map (partial into {})
-                            (t2/select [Field :id :name :active]
-                              :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
+                     "ALTER TABLE \"birds\" RENAME COLUMN \"example_name\" to \"Example_Name\";"
+                     (fn [database]
+                       (set
+                        (map (partial into {})
+                             (t2/select [Field :id :name :active]
+                                        :table_id [:in (t2/select-pks-set Table :db_id (u/the-id database))])))))]
       (is (= {:before-sync #{{:name "species",      :active true}
                              {:name "example_name", :active true}}
               :after-sync #{{:name "species",      :active true}
@@ -170,7 +170,6 @@
                    :native_form
                    :query)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PK & FK Syncing                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -259,7 +258,7 @@
                 (let [{:keys                  [step-info]
                        {:keys [task_details]} :task-history}     (sync.util-test/sync-database! "sync-fks" (mt/db))
                       {:keys [semantic_type fk_target_field_id]} (t2/select-one [Field :semantic_type :fk_target_field_id]
-                                                                   :id (mt/id :checkins :user_id))]
+                                                                                :id (mt/id :checkins :user_id))]
                   {:step-info         (sync.util-test/only-step-keys step-info)
                    :task-details      task_details
                    :semantic-type     semantic_type

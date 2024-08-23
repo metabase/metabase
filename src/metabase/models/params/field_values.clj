@@ -126,7 +126,7 @@
    (let [hash-key   (hash-key-for-advanced-field-values fv-type (:id field) constraints)
          select-kvs {:field_id (:id field) :type fv-type :hash_key hash-key}
          fv         (mdb.query/select-or-insert! :model/FieldValues select-kvs
-                      #(prepare-advanced-field-values fv-type field hash-key constraints))]
+                                                 #(prepare-advanced-field-values fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil
 

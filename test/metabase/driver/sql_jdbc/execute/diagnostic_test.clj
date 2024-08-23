@@ -15,7 +15,7 @@
         ;; sanity check
         (is (= 1
                (-> (mt/formatted-rows [int]
-                     (mt/run-mbql-query checkins
+                                      (mt/run-mbql-query checkins
                                         {:fields [$id]
                                          :filter [:= $id 1]}))
                    ffirst)))

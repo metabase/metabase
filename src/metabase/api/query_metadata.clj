@@ -1,12 +1,12 @@
 (ns metabase.api.query-metadata
   (:require
-    [metabase.api.field :as api.field]
-    [metabase.api.table :as api.table]
-    [metabase.legacy-mbql.normalize :as mbql.normalize]
-    [metabase.lib.util :as lib.util]
-    [metabase.models.interface :as mi]
-    [metabase.util :as u]
-    [toucan2.core :as t2]))
+   [metabase.api.field :as api.field]
+   [metabase.api.table :as api.table]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.util :as lib.util]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (defn- get-databases
   [ids]
@@ -61,10 +61,10 @@
                                         tables)]
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
     ;; since they tend to query only a handful of databases at most.
-      :databases (sort-by :id (get-databases database-ids))
-      :tables    (sort-by (comp str :id) tables)
-      :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
-                     [])}))
+     :databases (sort-by :id (get-databases database-ids))
+     :tables    (sort-by (comp str :id) tables)
+     :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
+                    [])}))
 
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."

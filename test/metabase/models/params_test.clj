@@ -18,7 +18,6 @@
       (is (= expected
              (mbql.u/wrap-field-id-if-needed x))))))
 
-
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------
 
 (deftest ^:parallel hydrate-name-field-test
@@ -62,7 +61,6 @@
            (-> (t2/select-one [Field :name :table_id :semantic_type], :id (mt/id :checkins :id))
                (t2/hydrate :name_field)
                mt/derecordize)))))
-
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 

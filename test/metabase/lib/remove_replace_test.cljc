@@ -58,11 +58,11 @@
                  first
                  lib/join-conditions)))
       (is (thrown-with-msg?
-            #?(:clj Exception :cljs js/Error)
-            #"Cannot remove the final join condition"
-            (-> query
-                (lib/remove-clause (first conditions))
-                (lib/remove-clause (second conditions)))))))
+           #?(:clj Exception :cljs js/Error)
+           #"Cannot remove the final join condition"
+           (-> query
+               (lib/remove-clause (first conditions))
+               (lib/remove-clause (second conditions)))))))
 
   (testing "a cascading delete that removes the final join condition should remove the whole join (#36690)"
     (let [base   (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -105,10 +105,10 @@
       (is (= 1 (-> query' lib/breakouts count)))
       (is (=? [{:display-name "Name"}
                {:display-name "Count"}]
-            (lib/returned-columns query')))
+              (lib/returned-columns query')))
       (is (nil? (lib/breakouts query'')))
       (is (=? [{:display-name "Count"}]
-            (lib/returned-columns query''))))
+              (lib/returned-columns query''))))
     (testing "removing with dependent should cascade"
       (is (=? {:stages [{:breakout [(second breakouts)]} (complement :filters)]}
               (-> query
@@ -148,24 +148,24 @@
     (testing "removing with dependent should cascade"
       (is (=? {:stages [{:fields (rest fields)} (complement :filters)]}
               (-> query
-                (lib/append-stage)
-                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
-                (lib/remove-clause 0 (first fields)))))
+                  (lib/append-stage)
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                  (lib/remove-clause 0 (first fields)))))
       (is (=? {:stages [{:fields (rest fields)}
                         (complement :fields)
                         (complement :filters)]}
               (-> query
-                (lib/append-stage)
-                (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"]])
-                (lib/append-stage)
-                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
-                (lib/remove-clause 0 (first fields)))))
+                  (lib/append-stage)
+                  (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"]])
+                  (lib/append-stage)
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                  (lib/remove-clause 0 (first fields)))))
       (is (nil? (-> query
-                   (lib/remove-clause 0 (second fields))
-                   (lib/append-stage)
-                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
-                   (lib/remove-clause 0 (first fields))
-                   (lib/fields 0)))))))
+                    (lib/remove-clause 0 (second fields))
+                    (lib/append-stage)
+                    (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
+                    (lib/remove-clause 0 (first fields))
+                    (lib/fields 0)))))))
 
 (deftest ^:parallel remove-clause-join-fields-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :categories))
@@ -194,12 +194,12 @@
                   (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
                   (lib/remove-clause 0 (first fields)))))
       (is (=? {:stages [{:joins [{:fields [(second fields)]}]} (complement :fields) (complement :filters)]}
-            (-> query
-                (lib/append-stage)
-                (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"]])
-                (lib/append-stage)
-                (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
-                (lib/remove-clause 0 (first fields))))))))
+              (-> query
+                  (lib/append-stage)
+                  (lib/with-fields [[:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"]])
+                  (lib/append-stage)
+                  (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "Venues__PRICE"] 1))
+                  (lib/remove-clause 0 (first fields))))))))
 
 (deftest ^:parallel replace-clause-join-with-all-fields-test
   (testing "Joins with :all fields selected can be handled (#31858)"
@@ -389,10 +389,10 @@
 (deftest ^:parallel replace-clause-join-fields-test
   (let [query (-> lib.tu/venues-query
                   (lib/join
-                    (-> (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories))
-                                         [(lib/= (meta/field-metadata :venues :price) 4)])
-                        (lib/with-join-fields
-                          [(meta/field-metadata :categories :id)]))))
+                   (-> (lib/join-clause (lib/query meta/metadata-provider (meta/table-metadata :categories))
+                                        [(lib/= (meta/field-metadata :venues :price) 4)])
+                       (lib/with-join-fields
+                         [(meta/field-metadata :categories :id)]))))
         fields (lib/join-fields (first (lib/joins query)))]
     (is (= 1 (count fields)))
     (let [replaced (-> query
@@ -496,8 +496,8 @@
                                                                  (lib/filterable-columns <>)))
                                           1))
                     (lib/replace-clause <> 0
-                                          (second (lib/aggregations <> 0))
-                                          (lib/max (meta/field-metadata :products :price))))))))))
+                                        (second (lib/aggregations <> 0))
+                                        (lib/max (meta/field-metadata :products :price))))))))))
 
 (deftest ^:parallel replace-metric-test
   (testing "replacing with metric should work"
@@ -527,24 +527,24 @@
 (deftest ^:parallel replace-segment-test
   (testing "replacing with segment should work"
     (let [metadata-provider (lib.tu/mock-metadata-provider
-                              meta/metadata-provider
-                              {:segments  [{:id          100
-                                            :name        "Price is 4"
-                                            :definition  {:filter
-                                                          [:= [:field (meta/id :venues :price) nil] 4]}
-                                            :table-id    (meta/id :venues)}
-                                           {:id          200
-                                            :name        "Price is 5"
-                                            :definition  {:filter
-                                                          [:= [:field (meta/id :venues :price) nil] 5]}
-                                            :table-id    (meta/id :venues)}]})
+                             meta/metadata-provider
+                             {:segments  [{:id          100
+                                           :name        "Price is 4"
+                                           :definition  {:filter
+                                                         [:= [:field (meta/id :venues :price) nil] 4]}
+                                           :table-id    (meta/id :venues)}
+                                          {:id          200
+                                           :name        "Price is 5"
+                                           :definition  {:filter
+                                                         [:= [:field (meta/id :venues :price) nil] 5]}
+                                           :table-id    (meta/id :venues)}]})
           query (-> (lib/query metadata-provider (meta/table-metadata :venues))
                     (lib/filter (lib/segment 100)))]
       (is (=? {:stages [{:filters [[:segment {:lib/uuid string?} 200]]}]}
               (lib/replace-clause
-                query
-                (first (lib/filters query))
-                (second (lib/available-segments query))))))))
+               query
+               (first (lib/filters query))
+               (second (lib/available-segments query))))))))
 
 (deftest ^:parallel replace-clause-expression-test
   (let [query (-> lib.tu/venues-query
@@ -671,9 +671,9 @@
                    (lib/order-by (first cols)))
             ten-breakout (first (lib/breakouts q3))]
         (is (nil?
-              (-> q3
-                  (lib/replace-clause ten-breakout new-breakout-col)
-                  lib/order-bys)))))
+             (-> q3
+                 (lib/replace-clause ten-breakout new-breakout-col)
+                 lib/order-bys)))))
     (testing "Removing a breakout should remove the order by"
       (let [query lib.tu/venues-query
             breakout-col (->> (lib/breakoutable-columns query)
@@ -685,9 +685,9 @@
                    (lib/order-by (first cols)))
             ten-breakout (first (lib/breakouts q3))]
         (is (nil?
-              (-> q3
-                  (lib/remove-clause ten-breakout)
-                  lib/order-bys)))))))
+             (-> q3
+                 (lib/remove-clause ten-breakout)
+                 lib/order-bys)))))))
 
 (deftest ^:parallel rename-join-test
   (let [joined-column (-> (meta/field-metadata :venues :id)
@@ -704,9 +704,9 @@
                  (lib/rename-join query "old-name" "new-name"))))
         (testing "by index"
           (are [idx]
-              (= query
-                 (lib/rename-join query idx "new-name"))
-              -1 0 1))
+               (= query
+                  (lib/rename-join query idx "new-name"))
+            -1 0 1))
         (testing "by join clause"
           (is (= query
                  (lib/rename-join query join-clause "new-name"))))))
@@ -809,7 +809,6 @@
           (testing "by join clause"
             (is (=? renamed
                     (lib/rename-join query' (second (lib/joins query')) "alias")))))))))
-
 
 (deftest ^:parallel remove-join-test
   (testing "Missing join"
@@ -1017,8 +1016,8 @@
   (let [filter-1   #(lib/= (meta/field-metadata :orders :product-id)
                            (meta/field-metadata :products :id))
         filter-2   #(lib/=
-                      (meta/field-metadata :orders :created-at)
-                      (meta/field-metadata :products :created-at))
+                     (meta/field-metadata :orders :created-at)
+                     (meta/field-metadata :products :created-at))
         query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                        (lib/join (lib/join-clause (meta/table-metadata :products) [(filter-1)])))
         new-clause (lib/join-clause (meta/table-metadata :products) [(filter-2)])]
@@ -1062,8 +1061,8 @@
                                                                                      (lib/with-join-alias (meta/field-metadata :orders :product-id) "Orders"))]))
                     (lib/join (meta/table-metadata :people)))]
       (is (=?
-            {:stages [(complement :joins)]}
-            (lib/remove-clause query -1 (first (lib/joins query))))))))
+           {:stages [(complement :joins)]}
+           (lib/remove-clause query -1 (first (lib/joins query))))))))
 
 (deftest ^:parallel removing-aggregation-leaves-breakouts
   (testing "Removing aggregation leaves breakouts (#28609)"
@@ -1273,18 +1272,18 @@
       (lib/expression "double price" (lib/* (meta/field-metadata :venues :price) 2))
       (lib/expression "name length" (lib/length (meta/field-metadata :venues :name)))
       (as-> q
-          (lib/filter q (lib/< (lib/expression-ref q "double price") 5))
-          (lib/filter q (lib/> (lib/expression-ref q "name length") 9))
-          (lib/breakout q (lib/expression-ref q "name length"))
-          (lib/aggregate q (lib/sum (lib/expression-ref q "double price"))))
+            (lib/filter q (lib/< (lib/expression-ref q "double price") 5))
+        (lib/filter q (lib/> (lib/expression-ref q "name length") 9))
+        (lib/breakout q (lib/expression-ref q "name length"))
+        (lib/aggregate q (lib/sum (lib/expression-ref q "double price"))))
       lib/append-stage
       (as-> q
-          (lib/filter q (lib/> (by-name (lib/filterable-columns q) "sum") 20))
-          (lib/order-by q (by-name (lib/orderable-columns q) "sum") :desc)
-          (lib/order-by q (by-name (lib/orderable-columns q) "name length")))
+            (lib/filter q (lib/> (by-name (lib/filterable-columns q) "sum") 20))
+        (lib/order-by q (by-name (lib/orderable-columns q) "sum") :desc)
+        (lib/order-by q (by-name (lib/orderable-columns q) "name length")))
       lib/append-stage
       (as-> q
-          (lib/breakout q (by-name (lib/breakoutable-columns q) "name length")))
+            (lib/breakout q (by-name (lib/breakoutable-columns q) "name length")))
       lib/append-stage
       lib/append-stage
       (as-> q
@@ -1427,31 +1426,31 @@
                                       "id"))))))))
 
 (def ^:private join-query
-   (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
-         created-at-col (meta/field-metadata :products :created-at)
-         products-summarized (-> products-query
-                                 (lib/breakout (meta/field-metadata :products :category))
-                                 (lib/breakout (->> (lib/available-temporal-buckets products-query created-at-col)
-                                                    (m/find-first (comp #{:month} :unit))
-                                                    (lib/with-temporal-bucket created-at-col)))
-                                 (lib/aggregate (lib/min created-at-col))
-                                 (lib/aggregate (lib/avg (meta/field-metadata :products :price)))
-                                 (lib/aggregate (lib/with-expression-name
-                                                  (lib/distinct (meta/field-metadata :products :id))
-                                                  "product count"))
-                                 lib/append-stage)
-         summarized-cols (lib/returned-columns products-summarized)
-         orders-join (-> (lib/join-clause (meta/table-metadata :orders)
-                                          [(lib/< (by-desired-alias summarized-cols "min")
-                                                  (meta/field-metadata :orders :created-at))])
-                         (lib/with-join-fields [(meta/field-metadata :orders :created-at)
-                                                (meta/field-metadata :orders :quantity)]))
-         joined-query (lib/join products-summarized orders-join)
-         joined-query-cols (lib/visible-columns joined-query)]
-     (-> joined-query
-         (lib/filter (lib/< (by-desired-alias joined-query-cols "Orders - Min of Created At__TOTAL") 100))
-         (lib/filter (lib/> (lib/get-month (by-desired-alias joined-query-cols "min")) 6))
-         (lib/filter (lib/= (by-desired-alias joined-query-cols "product count") 3)))))
+  (let [products-query (lib/query meta/metadata-provider (meta/table-metadata :products))
+        created-at-col (meta/field-metadata :products :created-at)
+        products-summarized (-> products-query
+                                (lib/breakout (meta/field-metadata :products :category))
+                                (lib/breakout (->> (lib/available-temporal-buckets products-query created-at-col)
+                                                   (m/find-first (comp #{:month} :unit))
+                                                   (lib/with-temporal-bucket created-at-col)))
+                                (lib/aggregate (lib/min created-at-col))
+                                (lib/aggregate (lib/avg (meta/field-metadata :products :price)))
+                                (lib/aggregate (lib/with-expression-name
+                                                 (lib/distinct (meta/field-metadata :products :id))
+                                                 "product count"))
+                                lib/append-stage)
+        summarized-cols (lib/returned-columns products-summarized)
+        orders-join (-> (lib/join-clause (meta/table-metadata :orders)
+                                         [(lib/< (by-desired-alias summarized-cols "min")
+                                                 (meta/field-metadata :orders :created-at))])
+                        (lib/with-join-fields [(meta/field-metadata :orders :created-at)
+                                               (meta/field-metadata :orders :quantity)]))
+        joined-query (lib/join products-summarized orders-join)
+        joined-query-cols (lib/visible-columns joined-query)]
+    (-> joined-query
+        (lib/filter (lib/< (by-desired-alias joined-query-cols "Orders - Min of Created At__TOTAL") 100))
+        (lib/filter (lib/> (lib/get-month (by-desired-alias joined-query-cols "min")) 6))
+        (lib/filter (lib/= (by-desired-alias joined-query-cols "product count") 3)))))
 
 ;; TODO: do something about automagic join aliases getting out of date
 (deftest ^:parallel replace-unrelated-type-affecting-join-test
@@ -1519,50 +1518,50 @@
     (testing "should rename alias"
       (doseq [[description query] [["when Replacing Join"
                                     (lib/replace-clause
-                                      query
-                                      second-join
-                                      (lib/join-clause (meta/table-metadata :products)
-                                                       [(lib/= (meta/field-metadata :orders :user-id)
-                                                               (meta/field-metadata :products :id))]))]
+                                     query
+                                     second-join
+                                     (lib/join-clause (meta/table-metadata :products)
+                                                      [(lib/= (meta/field-metadata :orders :user-id)
+                                                              (meta/field-metadata :products :id))]))]
                                    ["when Replacing Join using old join"
                                     (lib/replace-clause
-                                      query
-                                      second-join
-                                      (lib/with-join-conditions second-join
-                                                                [(lib/= (meta/field-metadata :orders :user-id)
-                                                                        (meta/field-metadata :products :id))]))]
+                                     query
+                                     second-join
+                                     (lib/with-join-conditions second-join
+                                                               [(lib/= (meta/field-metadata :orders :user-id)
+                                                                       (meta/field-metadata :products :id))]))]
                                    ["when Replacing Condition"
                                     (lib/replace-clause
-                                      query
-                                      second-joins-condition
-                                      (lib/= (meta/field-metadata :orders :user-id)
-                                             (meta/field-metadata :products :id)))]]]
+                                     query
+                                     second-joins-condition
+                                     (lib/= (meta/field-metadata :orders :user-id)
+                                            (meta/field-metadata :products :id)))]]]
         (testing description
           (is (= ["Products" "Products - User"]
                  (map :alias (lib/joins query)))))))
     (testing "should not rename alias"
       (doseq [[description new-query] [["when Replacing Join"
-                                            (lib/replace-clause
-                                              query
-                                              second-join
-                                              (-> (meta/table-metadata :products)
-                                                  (lib/join-clause [(lib/= (meta/field-metadata :orders :product-id)
-                                                                           (meta/field-metadata :products :id))])
-                                                  (lib/with-join-fields
-                                                    [(meta/field-metadata :products :category)])
-                                                  (lib/with-join-alias "Products_II")))]
-                                         ["when Replacing Join using old join"
-                                          (lib/replace-clause
-                                            query
-                                            second-join
-                                            (lib/with-join-fields second-join
-                                                                  [(meta/field-metadata :products :id)]))]
+                                        (lib/replace-clause
+                                         query
+                                         second-join
+                                         (-> (meta/table-metadata :products)
+                                             (lib/join-clause [(lib/= (meta/field-metadata :orders :product-id)
+                                                                      (meta/field-metadata :products :id))])
+                                             (lib/with-join-fields
+                                               [(meta/field-metadata :products :category)])
+                                             (lib/with-join-alias "Products_II")))]
+                                       ["when Replacing Join using old join"
+                                        (lib/replace-clause
+                                         query
+                                         second-join
+                                         (lib/with-join-fields second-join
+                                           [(meta/field-metadata :products :id)]))]
                                        ["when Replacing same condition"
                                         (lib/replace-clause
-                                          query
-                                          second-joins-condition
-                                          (lib/= (meta/field-metadata :orders :product-id)
-                                                 (meta/field-metadata :products :id)))]]]
+                                         query
+                                         second-joins-condition
+                                         (lib/= (meta/field-metadata :orders :product-id)
+                                                (meta/field-metadata :products :id)))]]]
         (testing description
           (is (= ["Products" "Products_II"]
                  (map :alias (lib/joins new-query)))))))))

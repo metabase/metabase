@@ -22,8 +22,8 @@
            :card-id      card-id
            :dashcard-id  dashcard-id
            :make-run     (constantly
-                           (fn run [query info]
-                             (qp/process-query (assoc query :info info))))
+                          (fn run [query info]
+                            (qp/process-query (assoc query :info info))))
            options)))
 
 (deftest resolve-parameters-validation-test
@@ -97,27 +97,27 @@
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-1))))))
 
     (testing "A 404 error should be thrown if the card-id is not valid for the dashboard"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id (* card-id-1 2) dashcard-id-1))))
 
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the dashboard"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-1 (* dashcard-id-1 2)))))
 
     (testing "A 404 error should be thrown if the dashcard-id is not valid for the card"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-1 dashcard-id-2))))
 
     (testing "Sanity check that a card-id in a dashboard card series executes successfully"
       (is (= 100 (count (mt/rows (run-query-for-dashcard dashboard-id card-id-3 dashcard-id-3))))))
 
     (testing "A 404 error should be thrown if the card-id is not valid for the dashcard series"
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                              #"Not found"
-                              (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Not found"
+                            (run-query-for-dashcard dashboard-id card-id-2 dashcard-id-3))))))
 
 (deftest ^:parallel default-value-precedence-test-field-filters
   (testing "If both Dashboard and Card have default values for a Field filter parameter, Card defaults should take precedence\n"
@@ -362,9 +362,9 @@
     (mt/dataset test-data
       (mt/with-temp [Card {card-id :id} {:name          "Orders"
                                          :dataset_query (mt/mbql-query products
-                                                                       {:fields   [$id $title $category]
-                                                                        :order-by [[:asc $id]]
-                                                                        :limit    2})}
+                                                          {:fields   [$id $title $category]
+                                                           :order-by [[:asc $id]]
+                                                           :limit    2})}
                      Dashboard {dashboard-id :id} {:name       "20516 Dashboard"
                                                    :parameters [{:name    "Category"
                                                                  :slug    "category"

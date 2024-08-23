@@ -50,10 +50,10 @@
              clojure.lang.ExceptionInfo
              #"A NativeQuerySnippet can only go in Collections in the :snippets namespace"
              (t2/insert! NativeQuerySnippet
-               {:name          (mt/random-name)
-                :content       "1 = 1"
-                :creator_id    (mt/user->id :rasta)
-                :collection_id collection-id})))))
+                         {:name          (mt/random-name)
+                          :content       "1 = 1"
+                          :creator_id    (mt/user->id :rasta)
+                          :collection_id collection-id})))))
 
     (testing (format "Should *not* be allowed to move snippets into a Collection in the namespace %s" (pr-str collection-namespace))
       (mt/with-temp [Collection         {source-collection-id :id} {:namespace "snippets"}

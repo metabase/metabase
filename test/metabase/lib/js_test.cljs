@@ -425,11 +425,11 @@
 
   (testing "normalizes recursively"
     (is (=?
-          [:time-interval {} [:field {} int?]
-           [:interval {} 10 :day]
-           :day]
-          (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at)
-                                                     (lib.js/expression-clause "interval" [10 "day"] nil) "day"] nil)))))
+         [:time-interval {} [:field {} int?]
+          [:interval {} 10 :day]
+          :day]
+         (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at)
+                                                    (lib.js/expression-clause "interval" [10 "day"] nil) "day"] nil)))))
 
 (defn- js= [a b]
   (cond
@@ -454,53 +454,53 @@
   (testing "check js= works correctly (who tests the tests?)"
     (testing "should be true"
       (are [a b] (= true (js= a b))
-           7 7
-           0 0
-           -1 -1
-           nil nil
-           js/undefined nil
-           nil js/undefined
-           "foo" "foo"
-           true true
-           false false
+        7 7
+        0 0
+        -1 -1
+        nil nil
+        js/undefined nil
+        nil js/undefined
+        "foo" "foo"
+        true true
+        false false
 
            ;; Objects
-           #js {:foo "bar"}
-           #js {:foo "bar"}
-           #js {:foo "bar", :baz "quux"}
-           #js {:foo "bar", :baz "quux"}
+        #js {:foo "bar"}
+        #js {:foo "bar"}
+        #js {:foo "bar", :baz "quux"}
+        #js {:foo "bar", :baz "quux"}
            ;; Arrays
-           #js ["foo" #js [1 2 3]]
-           #js ["foo" #js [1 2 3]]
+        #js ["foo" #js [1 2 3]]
+        #js ["foo" #js [1 2 3]]
            ;; Nesting
-           #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]
-           #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))
+        #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]
+        #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))
 
     (testing "should be false"
       (are [a b] (= false (js= a b))
-           7 8
-           0 1
-           -1 1
-           nil {}
-           "foo" "bar"
-           true false
-           false 7
+        7 8
+        0 1
+        -1 1
+        nil {}
+        "foo" "bar"
+        true false
+        false 7
 
            ;; Objects
-           #js {:foo "bar"} #js {:foo "baz"} ; Different value
-           #js {:foo "bar"} #js {}           ; Missing an a key in b
-           #js {}           #js {:foo "bar"} ; Missing a b key in a
-           #js {:foo nil}   #js {}           ; Missing is not the same as present-but-nil
-           #js {}           #js {:foo nil}   ; And likewise in reverse
+        #js {:foo "bar"} #js {:foo "baz"} ; Different value
+        #js {:foo "bar"} #js {}           ; Missing an a key in b
+        #js {}           #js {:foo "bar"} ; Missing a b key in a
+        #js {:foo nil}   #js {}           ; Missing is not the same as present-but-nil
+        #js {}           #js {:foo nil}   ; And likewise in reverse
 
            ;; Arrays
-           #js ["foo" "bar"] #js ["foo" "baz"] ; Different values
-           #js ["foo" "bar"] #js ["foo"]       ; Different lengths
-           #js ["foo"]       #js ["foo" "bar"]
+        #js ["foo" "bar"] #js ["foo" "baz"] ; Different values
+        #js ["foo" "bar"] #js ["foo"]       ; Different lengths
+        #js ["foo"]       #js ["foo" "bar"]
 
            ;; Nesting
-           #js [#js {:foo "bar", :baz #js [4 5 6]}, #js [1 2 3]]
-           #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))))
+        #js [#js {:foo "bar", :baz #js [4 5 6]}, #js [1 2 3]]
+        #js [#js {:foo "bar", :baz #js [4 5]}, #js [1 2 3]]))))
 
 (deftest ^:parallel display-info-test
   (let [query    (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -555,7 +555,7 @@
                     (lib/join (lib/join-clause (meta/table-metadata :orders)
                                                [(lib/= (meta/field-metadata :orders :id)
                                                        (lib/with-join-alias (meta/field-metadata :orders :id)
-                                                         "Orders"))])))]
+                                                                            "Orders"))])))]
       (is (= #{1}
              (->> (lib.js/returned-columns query -1)
                   (map :name)

@@ -98,7 +98,6 @@
     (is (partial= {:valid false, :status "Token does not exist."}
                   (#'premium-features/fetch-token-status* random-fake-token)))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro Tests                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -123,9 +122,9 @@
 
 (deftest defenterprise-test
   (when-not config/ee-available?
-   (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
-     (is (= "Hi rasta, you're an OSS customer!"
-            (greeting :rasta)))))
+    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
+      (is (= "Hi rasta, you're an OSS customer!"
+             (greeting :rasta)))))
 
   (when config/ee-available?
     (testing "When EE code is available"
@@ -184,7 +183,7 @@
                             #"Invalid input: \[\"should be a keyword, got: \\\"rasta\\\".*"
                             (greeting-with-schema "rasta"))))
 
-   (testing "Return schemas are validated for OSS implementations"
+    (testing "Return schemas are validated for OSS implementations"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Invalid output: \[\"should be a keyword, got: \\\"Hi rasta.*"
                             (greeting-with-invalid-oss-return-schema :rasta)))))

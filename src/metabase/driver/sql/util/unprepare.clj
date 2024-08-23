@@ -77,7 +77,6 @@
   [driver t]
   (unprepare-value driver (t/offset-date-time t (t/zone-offset 0))))
 
-
 ;; TODO - I think a name like `deparameterize` would be more appropriate here
 (defmulti ^String unprepare
   "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement.

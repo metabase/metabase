@@ -99,11 +99,11 @@
 
 (defn- ssl-spec [details spec host port sid service-name]
   (-> (assoc spec :subname
-                  (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
-                          host
-                          port
-                          (if sid (str "(SID=" sid ")") "")
-                          (if service-name (str "(SERVICE_NAME=" service-name ")") "")))
+             (format "@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcps)(HOST=%s)(PORT=%d))(CONNECT_DATA=%s%s))"
+                     host
+                     port
+                     (if sid (str "(SID=" sid ")") "")
+                     (if service-name (str "(SERVICE_NAME=" service-name ")") "")))
       (sql-jdbc.common/handle-additional-options details)))
 
 (def ^:private ^:const prog-name-property
@@ -376,8 +376,8 @@
    if `x` is a timestamp with time zone."
   [unit x]
   (let [x (cond-> x
-             (h2x/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
-             (h2x/at-time-zone (qp.timezone/results-timezone-id)))]
+            (h2x/is-of-type? x #"(?i)timestamp(\(\d\))? with time zone")
+            (h2x/at-time-zone (qp.timezone/results-timezone-id)))]
     (trunc unit x)))
 
 (defmethod sql.qp/datetime-diff [:oracle :year]
@@ -474,7 +474,6 @@
                            :__table__]]
                  :where  [:<= [:raw "rownum"] [:inline (+ offset items)]]}]
        :where  [:> :__rownum__ offset]})))
-
 
 ;; Oracle doesn't support `TRUE`/`FALSE`; use `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:oracle Boolean]

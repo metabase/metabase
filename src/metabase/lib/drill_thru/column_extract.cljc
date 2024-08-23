@@ -49,7 +49,7 @@
              {:lib/type :metabase.lib.drill-thru/drill-thru
               :type     :drill-thru/column-extract}
              (lib.drill-thru.column-filter/prepare-query-for-drill-addition
-               query stage-number column column-ref :expression)))))
+              query stage-number column column-ref :expression)))))
 
 (mu/defn extractions-for-drill :- [:sequential ::lib.schema.extraction/extraction]
   "Returns the extractions from a given drill."

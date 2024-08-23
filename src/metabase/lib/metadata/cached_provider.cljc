@@ -1,12 +1,12 @@
 (ns metabase.lib.metadata.cached-provider
   (:require
+   #?@(:clj ([pretty.core :as pretty]))
    [clojure.set :as set]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   #?@(:clj ([pretty.core :as pretty]))))
+   [metabase.util.malli :as mu]))
 
 #?(:clj (set! *warn-on-reflection* true))
 

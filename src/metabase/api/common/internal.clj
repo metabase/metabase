@@ -92,14 +92,14 @@
     ;; we can ignore the warning printed by umd/describe when schema is `nil`.
     (binding [*out* (new java.io.StringWriter)]
       (umd/describe schema))
-       (catch Exception _
-         (ex-data
-          (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
-            (log/warn
-             (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
-                             (u/pprint-to-str schema)
-                             (u/add-period route-str)))))
-         "")))
+    (catch Exception _
+      (ex-data
+       (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
+         (log/warn
+          (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
+                          (u/pprint-to-str schema)
+                          (u/add-period route-str)))))
+      "")))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -223,7 +223,7 @@
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
   (let [schema      (try #_:clj-kondo/ignore
-                         (eval schema)
+                     (eval schema)
                          (catch Exception _ #_:clj-kondo/ignore
                                 (requiring-resolve-form schema)))
         schema-type (mc/type schema)]

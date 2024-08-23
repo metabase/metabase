@@ -11,11 +11,11 @@
 
 (defn- time-query [filter-type & filter-args]
   (mt/formatted-rows [int identity identity]
-    (mt/dataset time-test-data
-      (mt/run-mbql-query users
-        {:fields   [$id $name $last_login_time]
-         :order-by [[:asc $id]]
-         :filter   (into [filter-type $last_login_time] filter-args)}))))
+                     (mt/dataset time-test-data
+                       (mt/run-mbql-query users
+                         {:fields   [$id $name $last_login_time]
+                          :order-by [[:asc $id]]
+                          :filter   (into [filter-type $last_login_time] filter-args)}))))
 
 (defn- normal-drivers-that-support-time-type []
   (filter mt/supports-time-type? (mt/normal-drivers)))
@@ -100,7 +100,7 @@
             (is (=? [[#"00:23:18(?:\.331)?Z?" #"07:23:18(?:\.331)?Z?" #"07:23:18(?:\.331)?Z?"]
                      [#"00:14:14(?:\.246)?Z?" #"07:14:14(?:\.246)?Z?" #"07:14:14(?:\.246)?Z?"]]
                     (mt/formatted-rows [str str str]
-                      (qp/process-query query))))))))))
+                                       (qp/process-query query))))))))))
 
 (defn- test-time-bucketing [time-column unit f]
   (testing "#21269"
@@ -116,7 +116,7 @@
                            (lib/limit 2))]
           (mt/with-native-query-testing-context query
             (f (mt/formatted-rows [int str]
-                 (qp/process-query query)))))))))
+                                  (qp/process-query query)))))))))
 
 (deftest ^:parallel bucket-time-column-hour-test
   (test-time-bucketing

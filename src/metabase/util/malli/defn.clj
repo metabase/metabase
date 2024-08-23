@@ -14,7 +14,7 @@
   (-> (malli.destructure/parse args)
       :arglist
       (with-meta (macros/case
-                  :cljs
+                   :cljs
                    (meta args)
 
                    ;; make sure we resolve classnames e.g. `java.sql.Connection` intstead of `Connection`, otherwise the

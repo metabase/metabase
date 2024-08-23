@@ -224,7 +224,6 @@
                                                              :type   "id",
                                                              :value  nil}]}))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           FETCHING CARDS & FILTERING                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -453,8 +452,8 @@
 (deftest get-series-check-compatibility-test
   (let [simple-mbql-chart-query (fn [attrs]
                                   (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
-                                                                  :breakout    [$venues.category_id]}))
+                                          (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                 :breakout    [$venues.category_id]}))
                                          {:visualization_settings {:graph.metrics    ["sum"]
                                                                    :graph.dimensions ["CATEGORY_ID"]}}
                                          attrs))]
@@ -464,11 +463,11 @@
        :model/Card bar     (simple-mbql-chart-query {:name "A Bar"    :display :bar})
        :model/Card area    (simple-mbql-chart-query {:name "An Area"  :display :area})
        :model/Card scalar  (merge (mt/card-with-source-metadata-for-query
-                                    (mt/mbql-query venues {:aggregation [[:count]]}))
+                                   (mt/mbql-query venues {:aggregation [[:count]]}))
                                   {:name "A Scalar 1" :display :scalar})
-       :model/Card scalar-2(merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues {:aggregation [[:count]]}))
-                                  {:name "A Scalar 2" :display :scalar})
+       :model/Card scalar-2 (merge (mt/card-with-source-metadata-for-query
+                                    (mt/mbql-query venues {:aggregation [[:count]]}))
+                                   {:name "A Scalar 2" :display :scalar})
 
        :model/Card native  (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
                                   {:name       "A Native query"
@@ -480,26 +479,26 @@
        ;; incomptabile cards
        :model/Card pie     (simple-mbql-chart-query {:name "A pie" :display :pie})
        :model/Card table   (simple-mbql-chart-query {:name "A table" :display :table})
-       :model/Card native-2(merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
-                                  {:name       "A Native query table"
-                                   :display    :table
-                                   :query_type "native"})]
+       :model/Card native-2 (merge (mt/card-with-source-metadata-for-query (mt/native-query {:query "select sum(price) from venues;"}))
+                                   {:name       "A Native query table"
+                                    :display    :table
+                                    :query_type "native"})]
       (with-cards-in-readable-collection [line bar area scalar scalar-2 native pie table native-2]
-       (doseq [[card-id display-type expected]
-               [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}]
-                [(:id bar)    :bar    #{"A Native query" "An Area" "A Line"}]
-                [(:id area)   :area   #{"A Native query" "A Bar" "A Line"}]
-                [(:id scalar) :scalar #{"A Native query" "A Scalar 2"}]]]
-         (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
-           (let [returned-card-names (set (map :name (mt/user-http-request :rasta :get 200 (format "/card/%d/series" card-id))))]
-             (is (set/subset? expected returned-card-names))
-             (is (not (contains? returned-card-names #{"A pie" "A table" "A Line with no access"}))))))))))
+        (doseq [[card-id display-type expected]
+                [[(:id line)   :line   #{"A Native query" "An Area" "A Bar"}]
+                 [(:id bar)    :bar    #{"A Native query" "An Area" "A Line"}]
+                 [(:id area)   :area   #{"A Native query" "A Bar" "A Line"}]
+                 [(:id scalar) :scalar #{"A Native query" "A Scalar 2"}]]]
+          (testing (format "Card with display-type=%s should have compatible cards correctly returned" display-type)
+            (let [returned-card-names (set (map :name (mt/user-http-request :rasta :get 200 (format "/card/%d/series" card-id))))]
+              (is (set/subset? expected returned-card-names))
+              (is (not (contains? returned-card-names #{"A pie" "A table" "A Line with no access"}))))))))))
 
 (deftest paging-and-filtering-works-for-series-card-test
   (let [simple-mbql-chart-query (fn [attrs]
                                   (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
-                                                                  :breakout    [$venues.category_id]}))
+                                          (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                 :breakout    [$venues.category_id]}))
                                          {:visualization_settings {:graph.metrics    ["sum"]
                                                                    :graph.dimensions ["CATEGORY_ID"]}}
                                          attrs))]
@@ -515,24 +514,24 @@
        :model/Card card8  (simple-mbql-chart-query {:name "Luigi 8"  :display :line})]
       (testing "filter by name works"
         (is (true? (every? #(str/includes? % "Toad")
-                         (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
-                              (map :name)))))
+                           (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card)) :query "toad")
+                                (map :name)))))
 
         (testing "exclude ids works"
           (testing "with single id"
             (is (true?
-                  (every?
-                    #(not (#{(:id card) (:id card8)} %))
-                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                               :query "luigi" :exclude_ids (:id card8))
-                         (map :id))))))
+                 (every?
+                  #(not (#{(:id card) (:id card8)} %))
+                  (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                             :query "luigi" :exclude_ids (:id card8))
+                       (map :id))))))
           (testing "with multiple ids"
             (is (true?
-                  (every?
-                    #(not (#{(:id card) (:id card7) (:id card8)} %))
-                    (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
-                                               :query "luigi" :exclude_ids (:id card7) :exclude_ids (:id card8))
-                         (map :id)))))))
+                 (every?
+                  #(not (#{(:id card) (:id card7) (:id card8)} %))
+                  (->> (mt/user-http-request :crowberto :get 200 (format "/card/%d/series" (:id card))
+                                             :query "luigi" :exclude_ids (:id card7) :exclude_ids (:id card8))
+                       (map :id)))))))
 
         (testing "with limit and sort by id descending"
           (is (= ["Luigi 8" "Luigi 7" "Luigi 6" "Luigi 5"]
@@ -574,27 +573,27 @@
     (testing "area-line-bar charts"
       (t2.with-temp/with-temp
         [:model/Card datetime-card       (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
-                                                                         :breakout    [!month.orders.created_at]}))
+                                                 (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                        :breakout    [!month.orders.created_at]}))
                                                 {:visualization_settings {:graph.metrics    ["sum"]
                                                                           :graph.dimensions ["CREATED_AT"]}}
                                                 {:name    "datetime card"
                                                  :display :line})
          :model/Card number-card         (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:aggregation [:count]
-                                                                         :breakout    [$orders.quantity]}))
+                                                 (mt/mbql-query orders {:aggregation [:count]
+                                                                        :breakout    [$orders.quantity]}))
                                                 {:visualization_settings {:graph.metrics    ["count"]
                                                                           :graph.dimensions ["QUANTITY"]}}
                                                 {:name    "number card"
                                                  :display :line})
          :model/Card without-metric-card (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
+                                                 (mt/mbql-query orders {:breakout    [!month.orders.created_at]}))
                                                 {:visualization_settings {:graph.dimensions ["CREATED_AT"]}}
                                                 {:name    "card has no metric"
                                                  :display :line})
          :model/Card combo-card          (merge (mt/card-with-source-metadata-for-query
-                                                  (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
-                                                                         :breakout    [!month.orders.created_at]}))
+                                                 (mt/mbql-query orders {:aggregation [[:sum $orders.total]]
+                                                                        :breakout    [!month.orders.created_at]}))
                                                 {:visualization_settings {:graph.metrics    ["sum"]
                                                                           :graph.dimensions ["CREATED_AT"]}}
                                                 {:name    "table card"
@@ -626,19 +625,19 @@
   (testing "scalar test"
     (t2.with-temp/with-temp
       [:model/Card scalar-1       (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                          (mt/mbql-query venues {:aggregation [[:count]]}))
                                          {:name "A Scalar 1" :display :scalar})
        :model/Card scalar-2       (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues {:aggregation [[:count]]}))
+                                          (mt/mbql-query venues {:aggregation [[:count]]}))
                                          {:name "A Scalar 2" :display :scalar})
 
        :model/Card scalar-2-cols  (merge (mt/card-with-source-metadata-for-query
-                                           (mt/mbql-query venues {:aggregation [[:count]
-                                                                                [:sum $venues.price]]}))
+                                          (mt/mbql-query venues {:aggregation [[:count]
+                                                                               [:sum $venues.price]]}))
                                          {:name "A Scalar with 2 columns" :display :scalar})
        :model/Card line-card       (merge (mt/card-with-source-metadata-for-query
-                                            (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
-                                                                   :breakout    [$venues.category_id]}))
+                                           (mt/mbql-query venues {:aggregation [[:sum $venues.price]]
+                                                                  :breakout    [$venues.category_id]}))
                                           {:visualization_settings {:graph.metrics    ["sum"]
                                                                     :graph.dimensions ["CATEGORY_ID"]}}
                                           {:name "Line card" :display :line})]
@@ -665,10 +664,10 @@
             (mt/with-model-cleanup [:model/Card]
               (let [card (assoc (card-with-name-and-query (mt/random-name)
                                                           (mbql-count-query (mt/id) (mt/id :venues)))
-                           :collection_id (u/the-id collection)
-                           :parameters [{:id "abc123", :name "test", :type "date"}]
-                           :parameter_mappings [{:parameter_id "abc123", :card_id 10,
-                                                 :target       [:dimension [:template-tags "category"]]}])]
+                                :collection_id (u/the-id collection)
+                                :parameters [{:id "abc123", :name "test", :type "date"}]
+                                :parameter_mappings [{:parameter_id "abc123", :card_id 10,
+                                                      :target       [:dimension [:template-tags "category"]]}])]
                 (is (=? (merge
                          card-defaults
                          {:name                   (:name card)
@@ -690,12 +689,12 @@
                           :last-edit-info         {:timestamp true :id true :first_name "Rasta"
                                                    :last_name "Toucan" :email "rasta@metabase.com"}
                           :creator                (merge
-                                                    (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
-                                                    {:common_name  "Rasta Toucan"
-                                                     :is_superuser false
-                                                     :last_name    "Toucan"
-                                                     :first_name   "Rasta"
-                                                     :email        "rasta@metabase.com"})
+                                                   (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
+                                                   {:common_name  "Rasta Toucan"
+                                                    :is_superuser false
+                                                    :last_name    "Toucan"
+                                                    :first_name   "Rasta"
+                                                    :email        "rasta@metabase.com"})
                           :metabase_version       config/mb-version-string})
                         (-> (mt/user-http-request :rasta :post 200 "card" card)
                             (dissoc :created_at :updated_at :id)
@@ -746,19 +745,19 @@
                                                                                          :type         :card}}}}}
                 {card-id :id
                  :as     created} (mt/user-http-request :rasta :post 200 "card"
-                                              (merge
-                                                (mt/with-temp-defaults :model/Card)
-                                                dataset-query))
+                                                        (merge
+                                                         (mt/with-temp-defaults :model/Card)
+                                                         dataset-query))
                 retrieved     (mt/user-http-request :rasta :get 200 (str "card/" card-id))]
             (is (pos-int? card-id))
             (testing "A POST returns the newly created object, so no follow-on GET is required (#34828)"
               (is (=
-                    (-> created
-                        (update :last-edit-info dissoc :timestamp)
-                        (dissoc :collection))
-                    (-> retrieved
-                        (update :last-edit-info dissoc :timestamp)
-                        (dissoc :collection)))))))))))
+                   (-> created
+                       (update :last-edit-info dissoc :timestamp)
+                       (dissoc :collection))
+                   (-> retrieved
+                       (update :last-edit-info dissoc :timestamp)
+                       (dissoc :collection)))))))))))
 
 (deftest create-card-disallow-setting-enable-embedding-test
   (testing "POST /api/card"
@@ -881,26 +880,26 @@
           (mt/with-model-cleanup [:model/Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
-                                            :crowberto :post 200
-                                            "card"
-                                            (card-with-name-and-query "card-name"
-                                                                      query))
+                                           :crowberto :post 200
+                                           "card"
+                                           (card-with-name-and-query "card-name"
+                                                                     query))
                   ;; simulate a user changing the query without rerunning the query
                   updated   (mt/user-http-request
-                              :crowberto :put 200 (str "card/" card-id)
-                              (assoc card :dataset_query modified-query))
+                             :crowberto :put 200 (str "card/" card-id)
+                             (assoc card :dataset_query modified-query))
                   retrieved (mt/user-http-request :crowberto :get 200 (str "card/" card-id))]
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["ID" "NAME" "PRICE"]
                      (map norm (t2/select-one-fn :result_metadata :model/Card :id card-id))))
               (testing "A PUT returns the updated object, so no follow-on GET is required (#34828)"
                 (is (=
-                      (-> updated
-                          (update :last-edit-info dissoc :timestamp)
-                          (dissoc :collection))
-                      (-> retrieved
-                          (update :last-edit-info dissoc :timestamp)
-                          (dissoc :collection))))))))))))
+                     (-> updated
+                         (update :last-edit-info dissoc :timestamp)
+                         (dissoc :collection))
+                     (-> retrieved
+                         (update :last-edit-info dissoc :timestamp)
+                         (dissoc :collection))))))))))))
 
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
@@ -1079,7 +1078,6 @@
       (is (=? {:type "question"}
               (mt/user-http-request :crowberto :put 200 (str "card/" (:id card)) {:type "question"}))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    COPYING A CARD (POST /api/card/:id/copy)                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1100,7 +1098,6 @@
                 (is (= (:name newcard) (str "Copy of " (:name card))))
                 (is (= (:display newcard) (:display card)))
                 (is (not= (:id newcard) (:id card)))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
@@ -1172,14 +1169,12 @@
 
 (deftest ^:parallel fetch-card-404-test
   (testing "GET /api/card/:id"
-   (is (= "Not found."
-          (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
-
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :get 404 (format "card/%d" Integer/MAX_VALUE))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       UPDATING A CARD (PUT /api/card/:id)
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 
 (deftest ^:parallel updating-a-card-that-doesnt-exist-should-give-a-404
   (is (= "Not found."
@@ -1225,7 +1220,7 @@
                    :model/Card card {:collection_id (u/the-id collection) :archived true}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (is (= "You don't have permissions to do that."
-              (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
+             (mt/user-http-request :rasta :put 403 (str "card/" (u/the-id card)) {:archived false}))))))
 
 (deftest clear-description-test
   (testing "Can we clear the description of a Card? (#4738)"
@@ -1632,7 +1627,6 @@
                          :dataset_query (mt/obj->json->obj (mt/mbql-query checkins))}
                         (update-card! :rasta 200 {:name "Another new name", :dataset_query (mt/mbql-query checkins)})))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1991,15 +1985,15 @@
                                                                                   :query    {:source-table
                                                                                              (format "card__%s" model-card-id)}}
                                                                 :result_metadata (mapv
-                                                                                   (fn [{column-name :name :as col}]
-                                                                                     (cond-> col
-                                                                                       (= "DISCOUNT" column-name)
-                                                                                       (assoc :display_name "Amount of Discount")
-                                                                                       (= "TOTAL" column-name)
-                                                                                       (assoc :display_name "Grand Total")
-                                                                                       (= "QUANTITY" column-name)
-                                                                                       (assoc :display_name "N")))
-                                                                                   model-metadata)}
+                                                                                  (fn [{column-name :name :as col}]
+                                                                                    (cond-> col
+                                                                                      (= "DISCOUNT" column-name)
+                                                                                      (assoc :display_name "Amount of Discount")
+                                                                                      (= "TOTAL" column-name)
+                                                                                      (assoc :display_name "Grand Total")
+                                                                                      (= "QUANTITY" column-name)
+                                                                                      (assoc :display_name "N")))
+                                                                                  model-metadata)}
                                  Card {question-card-id :id} {:dataset_query          {:database (mt/id)
                                                                                        :type     :query
                                                                                        :query    {:source-table
@@ -2007,12 +2001,12 @@
                                                               :visualization_settings {:table.pivot_column "DISCOUNT",
                                                                                        :table.cell_column  "TAX",
                                                                                        :column_settings    {(format
-                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                                                                              (mt/id :orders :quantity))
+                                                                                                             "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                             (mt/id :orders :quantity))
                                                                                                             {:column_title "Count"}
                                                                                                             (format
-                                                                                                              "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
-                                                                                                              (mt/id :orders :id))
+                                                                                                             "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                             (mt/id :orders :id))
                                                                                                             {:column_title "IDENTIFIER"}}}}]
           (letfn [(col-names [card-id]
                     (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/json" card-id)) first keys (map name) set))]
@@ -2076,7 +2070,7 @@
       (testing "Removing the time portion of the timestamp should only show the date"
         (is (= [["T"] ["2023-1-1"]]
                (parse-xlsx-results-to-strings
-                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
 
 (deftest xlsx-default-currency-formatting-test
   (testing "The default currency is USD"
@@ -2090,7 +2084,7 @@
       (is (= [["MONEY"]
               ["[$$]123.45"]]
              (parse-xlsx-results-to-strings
-               (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
+              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))
 
 (deftest xlsx-default-currency-formatting-test-2
   (testing "Default localization settings take effect"
@@ -2106,7 +2100,7 @@
         (is (= [["MONEY"]
                 ["[$€]123.45"]]
                (parse-xlsx-results-to-strings
-                 (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
 
 (deftest xlsx-currency-formatting-test
   (testing "Currencies are applied correctly in Excel files"
@@ -2114,9 +2108,9 @@
           q (format "SELECT %s" (str/join "," (map (partial format "123.45 as %s") currencies)))
           settings (reduce (fn [acc currency]
                              (assoc acc (format "[\"name\",\"%s\"]" currency)
-                                        {:number_style       "currency"
-                                         :currency           currency
-                                         :currency_in_header false}))
+                                    {:number_style       "currency"
+                                     :currency           currency
+                                     :currency_in_header false}))
                            {}
                            currencies)]
       (t2.with-temp/with-temp [Card card {:dataset_query          {:database (mt/id)
@@ -2128,12 +2122,12 @@
           (is (= [currencies
                   ["[$$]123.45" "[$CA$]123.45" "[$€]123.45" "[$¥]123.45"]]
                  (parse-xlsx-results-to-strings
-                   (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
+                  (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))))))
 
 (deftest xlsx-full-formatting-test
   (testing "Formatting should be applied correctly for all types, including numbers, currencies, exponents, and times. (relates to #14393)"
     (let [excel-data-query
-                       "with t1 as (
+          "with t1 as (
                       select *
                       FROM (
                        VALUES
@@ -2266,7 +2260,7 @@
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$$]2,345.30" "[$USD] 3456.30" "2,931.30 US dollars" "1.71806E+4" "8.02%" "0.000%"]
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$$]3,456.00" "[$USD] 2300.00" "2,250.00 US dollars" "12.7181E+4" "95.40%" "11.580%"]]
                      (parse-xlsx-results-to-strings
-                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
       (testing "Global currency settings are applied correctly"
         (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_abbreviate true}
                                                               :type/Currency {:currency "EUR", :currency_style "symbol"}}]
@@ -2281,9 +2275,9 @@
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "2,345.30" "[$€]2,345.30" "[$EUR] 3456.30" "2,931.30 euros" "1.71806E+4" "8.02%" "0.000%"]
                       ["Jan 1, 2023, 12:34 PM" "2023-1-1" "1-1-2023, 12:34:56.000" "Jan 1, 2023" "12:34 PM" "3,456.00" "[$€]3,456.00" "[$EUR] 2300.00" "2,250.00 euros" "12.7181E+4" "95.40%" "11.580%"]]
                      (parse-xlsx-results-to-strings
-                       (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))
+                      (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card)))))))
             (parse-xlsx-results-to-strings
-              (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
+             (mt/user-http-request :rasta :post 200 (format "card/%d/query/xlsx" (u/the-id card))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -2346,7 +2340,6 @@
               "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
               "X-Accel-Buffering"   "no"}
              (test-download-response-headers (format "card/%d/query/xlsx" (u/the-id card))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  COLLECTIONS                                                   |
@@ -2416,7 +2409,6 @@
               (is (= (t2/select-one-fn :collection_id :model/Card :id (u/the-id card))
                      (u/the-id new-collection))))))))))
 
-
 ;;; ------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------
 
 (defn- collection-names
@@ -2447,87 +2439,87 @@
 
 (deftest update-verified-card-test
   (tools.macro/macrolet
-      [(with-card [verified & body]
-         `(mt/with-temp ~(cond-> `[Collection  ~'collection  {}
-                                   Collection  ~'collection2 {}
-                                   :model/Card ~'card        {:collection_id (u/the-id ~'collection)
-                                                              :dataset_query (mt/mbql-query ~'venues)}]
-                           (= verified :verified)
-                           (into
-                            `[ModerationReview
-                              ~'review {:moderated_item_id   (:id ~'card)
-                                        :moderated_item_type "card"
-                                        :moderator_id        (mt/user->id :crowberto)
-                                        :most_recent         true
-                                        :status              "verified"
-                                        :text                "lookin good"}]))
-            ~@body))]
-      (letfn [(verified? [card]
-                (-> card (t2/hydrate [:moderation_reviews :moderator_details])
-                    :moderation_reviews first :status #{"verified"} boolean))
-              (reviews [card]
-                (t2/select ModerationReview
-                           :moderated_item_type "card"
-                           :moderated_item_id (u/the-id card)
-                           {:order-by [[:id :desc]]}))
-              (update-card [card diff]
-                (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
-        (testing "Changing core attributes un-verifies the card"
-          (with-card :verified
-            (is (verified? card))
-            (update-card card (update-in card [:dataset_query :query :source-table] inc))
-            (is (not (verified? card)))
-            (testing "The unverification edit has explanatory text"
-              (is (= "Unverified due to edit"
-                     (-> (reviews card) first :text))))))
-        (testing "Changing some attributes does not unverify"
-          (tools.macro/macrolet [(remains-verified [& body]
-                                   `(~'with-card :verified
-                                     (is (~'verified? ~'card) "Not verified initially")
-                                     ~@body
-                                     (is (~'verified? ~'card) "Not verified after action")))]
-            (testing "changing collection"
-              (remains-verified
-               (update-card card {:collection_id (u/the-id collection2)})))
-            (testing "pinning"
-              (remains-verified
-               (update-card card {:collection_position 1})))
-            (testing "making public"
-              (remains-verified
-               (update-card card {:made_public_by_id (mt/user->id :rasta)
-                                  :public_uuid (random-uuid)})))
-            (testing "Changing description"
-              (remains-verified
-               (update-card card {:description "foo"})))
-            (testing "Changing name"
-              (remains-verified
-               (update-card card {:name "foo"})))
-            (testing "Changing archived"
-              (remains-verified
-               (update-card card {:archived true})))
-            (testing "Changing display"
-              (remains-verified
-               (update-card card {:display :line})))
-            (testing "Changing visualization settings"
-              (remains-verified
-               (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
-        (testing "Does not add a new nil moderation review when not verified"
-          (with-card :not-verified
-            (is (empty? (reviews card)))
-            (update-card card {:description "a new description"})
-            (is (empty? (reviews card)))))
-        (testing "Does not add nil moderation reviews when there are reviews but not verified"
+   [(with-card [verified & body]
+      `(mt/with-temp ~(cond-> `[Collection  ~'collection  {}
+                                Collection  ~'collection2 {}
+                                :model/Card ~'card        {:collection_id (u/the-id ~'collection)
+                                                           :dataset_query (mt/mbql-query ~'venues)}]
+                        (= verified :verified)
+                        (into
+                         `[ModerationReview
+                           ~'review {:moderated_item_id   (:id ~'card)
+                                     :moderated_item_type "card"
+                                     :moderator_id        (mt/user->id :crowberto)
+                                     :most_recent         true
+                                     :status              "verified"
+                                     :text                "lookin good"}]))
+         ~@body))]
+    (letfn [(verified? [card]
+              (-> card (t2/hydrate [:moderation_reviews :moderator_details])
+                  :moderation_reviews first :status #{"verified"} boolean))
+            (reviews [card]
+              (t2/select ModerationReview
+                         :moderated_item_type "card"
+                         :moderated_item_id (u/the-id card)
+                         {:order-by [[:id :desc]]}))
+            (update-card [card diff]
+              (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) (merge card diff)))]
+      (testing "Changing core attributes un-verifies the card"
+        (with-card :verified
+          (is (verified? card))
+          (update-card card (update-in card [:dataset_query :query :source-table] inc))
+          (is (not (verified? card)))
+          (testing "The unverification edit has explanatory text"
+            (is (= "Unverified due to edit"
+                   (-> (reviews card) first :text))))))
+      (testing "Changing some attributes does not unverify"
+        (tools.macro/macrolet [(remains-verified [& body]
+                                 `(~'with-card :verified
+                                               (is (~'verified? ~'card) "Not verified initially")
+                                               ~@body
+                                               (is (~'verified? ~'card) "Not verified after action")))]
+          (testing "changing collection"
+            (remains-verified
+             (update-card card {:collection_id (u/the-id collection2)})))
+          (testing "pinning"
+            (remains-verified
+             (update-card card {:collection_position 1})))
+          (testing "making public"
+            (remains-verified
+             (update-card card {:made_public_by_id (mt/user->id :rasta)
+                                :public_uuid (random-uuid)})))
+          (testing "Changing description"
+            (remains-verified
+             (update-card card {:description "foo"})))
+          (testing "Changing name"
+            (remains-verified
+             (update-card card {:name "foo"})))
+          (testing "Changing archived"
+            (remains-verified
+             (update-card card {:archived true})))
+          (testing "Changing display"
+            (remains-verified
+             (update-card card {:display :line})))
+          (testing "Changing visualization settings"
+            (remains-verified
+             (update-card card {:visualization_settings {:table.cell_column "FOO"}})))))
+      (testing "Does not add a new nil moderation review when not verified"
+        (with-card :not-verified
+          (is (empty? (reviews card)))
+          (update-card card {:description "a new description"})
+          (is (empty? (reviews card)))))
+      (testing "Does not add nil moderation reviews when there are reviews but not verified"
           ;; testing that we aren't just adding a nil moderation each time we update a card
-          (with-card :verified
-            (is (verified? card))
-            (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
-                                               :moderated_item_type "card"
-                                               :moderator_id        (mt/user->id :rasta)
-                                               :status              nil})
-            (is (not (verified? card)))
-            (is (= 2 (count (reviews card))))
-            (update-card card {:description "a new description"})
-            (is (= 2 (count (reviews card)))))))))
+        (with-card :verified
+          (is (verified? card))
+          (moderation-review/create-review! {:moderated_item_id   (u/the-id card)
+                                             :moderated_item_type "card"
+                                             :moderator_id        (mt/user->id :rasta)
+                                             :status              nil})
+          (is (not (verified? card)))
+          (is (= 2 (count (reviews card))))
+          (update-card card {:description "a new description"})
+          (is (= 2 (count (reviews card)))))))))
 
 (deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
   (mt/with-temp [Collection  collection {:name "Pog Collection"}
@@ -2892,8 +2884,8 @@
 (deftest dataset-card-4
   (testing "Cards preserve edits to `visibility_type` (#22520)"
     (mt/with-temp [:model/Card model {:dataset_query (mt/mbql-query venues
-                                                                    {:fields [$id $name]
-                                                                     :limit 2})
+                                                       {:fields [$id $name]
+                                                        :limit 2})
                                       :type          :model}]
       (let [updated-metadata (-> model :result_metadata vec
                                  (assoc-in [1 :visibility_type]
@@ -3329,8 +3321,8 @@
                                                                             :table.cell_column "sum"}}]
           (with-cards-in-readable-collection [model card]
             (is (=?
-                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
-                  (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
+                 {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
+                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card))))))))
 
       (testing "visualization_settings references field by name"
         (t2.with-temp/with-temp [:model/Card model {:dataset_query (mt/mbql-query orders)
@@ -3347,8 +3339,8 @@
                                                                             :table.cell_column "sum"}}]
           (with-cards-in-readable-collection [model card]
             (is (=?
-                  {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
-                  (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
+                 {:data {:cols [{:name "USER_ID"} {:name "pivot-grouping"} {:name "sum"}]}}
+                 (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))))))))))
 
 (defn run-based-on-upload-test!
   "Runs tests for based-on-upload `request` is a function that takes a card and returns a map which may have {:based_on_upload <table-id>}]
@@ -3487,11 +3479,11 @@
                                                             [:json false [["NUMBER" "DATE"]
                                                                           [2000 "2024-03-26"]]]]]
           (testing (format "export_format %s yields expected output for %s exports." apply-formatting? export-format)
-              (is (= expected
-                     (->> (mt/user-http-request
-                           :crowberto :post 200
-                           (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
-                          ((get output-helper export-format)))))))))))
+            (is (= expected
+                   (->> (mt/user-http-request
+                         :crowberto :post 200
+                         (format "card/%s/query/%s?format_rows=%s" card-id (name export-format) apply-formatting?))
+                        ((get output-helper export-format)))))))))))
 
 (deftest ^:parallel can-run-adhoc-query-test
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -3688,35 +3680,35 @@
                            :database_id (mt/id)}]
     (testing "Simple card"
       (is (=?
-            {:fields empty?
-             :tables (sort-by :id [{:id (mt/id :products)}])
-             :databases [{:id (mt/id) :engine string?}]}
-            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
+           {:fields empty?
+            :tables (sort-by :id [{:id (mt/id :products)}])
+            :databases [{:id (mt/id) :engine string?}]}
+           (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-1 "/query_metadata"))
                 ;; The output is so large, these help debugging
-                (update :fields #(map (fn [x] (select-keys x [:id])) %))
-                (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-                (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
+               (update :fields #(map (fn [x] (select-keys x [:id])) %))
+               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+               (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))
     (testing "Parameterized native query"
       (is (=?
-            {:fields (sort-by :id
-                              [{:id (mt/id :people :id)}
-                               {:id (mt/id :orders :user_id)}
-                               {:id (mt/id :people :source)}
-                               {:id (mt/id :people :name)}])
-             :tables empty?
-             :databases [{:id (mt/id) :engine string?}]}
-            (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
+           {:fields (sort-by :id
+                             [{:id (mt/id :people :id)}
+                              {:id (mt/id :orders :user_id)}
+                              {:id (mt/id :people :source)}
+                              {:id (mt/id :people :name)}])
+            :tables empty?
+            :databases [{:id (mt/id) :engine string?}]}
+           (-> (mt/user-http-request :crowberto :get 200 (str "card/" card-id-2 "/query_metadata"))
                 ;; The output is so large, these help debugging
-                (update :fields #(map (fn [x] (select-keys x [:id])) %))
-                (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
-                (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))
+               (update :fields #(map (fn [x] (select-keys x [:id])) %))
+               (update :databases #(map (fn [x] (select-keys x [:id :engine])) %))
+               (update :tables #(map (fn [x] (select-keys x [:id :name])) %))))))))
 
 (deftest card-query-metadata-no-tables-test
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
     (let [original-can-read? mi/can-read?]
       (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
-       (with-redefs [mi/can-read? (fn [& args]
-                                    (if (= :model/Table (apply mi/dispatch-on-model args))
-                                      false
-                                      (apply original-can-read? args)))]
-         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
+        (with-redefs [mi/can-read? (fn [& args]
+                                     (if (= :model/Table (apply mi/dispatch-on-model args))
+                                       false
+                                       (apply original-can-read? args)))]
+          (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))

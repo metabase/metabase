@@ -44,32 +44,32 @@
 (defn- table-default [table]
   (letfn [(with-timestamped [props]
             (merge props {:created_at :%now :updated_at :%now}))]
-   (case table
-     :core_user         {:first_name  (mt/random-name)
-                         :last_name   (mt/random-name)
-                         :email       (mt/random-email)
-                         :password    "superstrong"
-                         :date_joined :%now}
-     :metabase_database (with-timestamped
-                          {:name       (mt/random-name)
-                           :engine     "h2"
-                           :details    "{}"})
+    (case table
+      :core_user         {:first_name  (mt/random-name)
+                          :last_name   (mt/random-name)
+                          :email       (mt/random-email)
+                          :password    "superstrong"
+                          :date_joined :%now}
+      :metabase_database (with-timestamped
+                           {:name       (mt/random-name)
+                            :engine     "h2"
+                            :details    "{}"})
 
-     :report_card       (with-timestamped
-                         {:name                   (mt/random-name)
-                          :dataset_query          "{}"
-                          :display                "table"
-                          :visualization_settings "{}"})
-     :revision          {:timestamp :%now}
-     :pulse             (with-timestamped
-                         {:name       (mt/random-name)
-                          :parameters "{}"})
-     :pulse_channel     (with-timestamped
-                          {:channel_type  "slack"
-                           :details       (json/generate-string {:channel "general"})
-                           :schedule_type "daily"
-                           :schedule_hour 15})
-     {})))
+      :report_card       (with-timestamped
+                           {:name                   (mt/random-name)
+                            :dataset_query          "{}"
+                            :display                "table"
+                            :visualization_settings "{}"})
+      :revision          {:timestamp :%now}
+      :pulse             (with-timestamped
+                           {:name       (mt/random-name)
+                            :parameters "{}"})
+      :pulse_channel     (with-timestamped
+                           {:channel_type  "slack"
+                            :details       (json/generate-string {:channel "general"})
+                            :schedule_type "daily"
+                            :schedule_hour 15})
+      {})))
 
 (defn- new-instance-with-default
   ([table]
@@ -91,7 +91,7 @@
                               (triggers/with-identity (triggers/key abandonment-emails-trigger-key))
                               (triggers/start-now)
                               (triggers/with-schedule
-                                (cron/cron-schedule "0 0 12 * * ? *")))]
+                               (cron/cron-schedule "0 0 12 * * ? *")))]
                  (task/schedule-task! job trigger)
                  (testing "before the migration, the job and trigger exist"
                    (is (some? (qs/get-job (@#'task/scheduler) (jobs/key abandonment-emails-job-key))))
@@ -394,69 +394,69 @@
                           :visualization_settings {:virtual_card {:display "text"}
                                                    :text         "A text card"}}
             tab1-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                  default-card
-                                                                                  {:dashboard_tab_id tab1-id
-                                                                                   :row              0
-                                                                                   :col              0
-                                                                                   :size_x           4
-                                                                                   :size_y           4})))
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab1-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
 
             tab1-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                  default-card
-                                                                                  {:dashboard_tab_id tab1-id
-                                                                                   :row              2
-                                                                                   :col              0
-                                                                                   :size_x           2
-                                                                                   :size_y           6})))
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab1-id
+                                                                                  :row              2
+                                                                                  :col              0
+                                                                                  :size_x           2
+                                                                                  :size_y           6})))
 
             tab2-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                  default-card
-                                                                                  {:dashboard_tab_id tab2-id
-                                                                                   :row              0
-                                                                                   :col              0
-                                                                                   :size_x           4
-                                                                                   :size_y           4})))
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab2-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
 
             tab2-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                  default-card
-                                                                                  {:dashboard_tab_id tab2-id
-                                                                                   :row              4
-                                                                                   :col              0
-                                                                                   :size_x           4
-                                                                                   :size_y           2})))
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab2-id
+                                                                                  :row              4
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           2})))
             tab4-card1-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                  default-card
-                                                                                  {:dashboard_tab_id tab4-id
-                                                                                   :row              0
-                                                                                   :col              0
-                                                                                   :size_x           4
-                                                                                   :size_y           4})))
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab4-id
+                                                                                  :row              0
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           4})))
             tab4-card2-id (first (t2/insert-returning-pks! :model/DashboardCard (merge
-                                                                                  default-card
-                                                                                  {:dashboard_tab_id tab4-id
-                                                                                   :row              4
-                                                                                   :col              0
-                                                                                   :size_x           4
-                                                                                   :size_y           2})))]
-       (migrate! :down 46)
-       (is (= [;; tab 1
-               {:id  tab1-card1-id
-                :row 0}
-               {:id  tab1-card2-id
-                :row 2}
+                                                                                 default-card
+                                                                                 {:dashboard_tab_id tab4-id
+                                                                                  :row              4
+                                                                                  :col              0
+                                                                                  :size_x           4
+                                                                                  :size_y           2})))]
+        (migrate! :down 46)
+        (is (= [;; tab 1
+                {:id  tab1-card1-id
+                 :row 0}
+                {:id  tab1-card2-id
+                 :row 2}
 
                ;; tab 2
-               {:id  tab2-card1-id
-                :row 8}
-               {:id  tab2-card2-id
-                :row 12}
+                {:id  tab2-card1-id
+                 :row 8}
+                {:id  tab2-card2-id
+                 :row 12}
 
                ;; tab 3
-               {:id  tab4-card1-id
-                :row 14}
-               {:id  tab4-card2-id
-                :row 18}]
-              (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
+                {:id  tab4-card1-id
+                 :row 14}
+                {:id  tab4-card2-id
+                 :row 18}]
+               (t2/select-fn-vec #(select-keys % [:id :row]) :model/DashboardCard :dashboard_id dashboard-id)))))))
 
 (deftest migrate-dashboard-revision-grid-from-18-to-24-test
   (impl/test-migrations ["v47.00-032" "v47.00-033"] [migrate!]
@@ -589,20 +589,20 @@
               (if (> i num-rows)
                 acc
                 (recur
-                  (inc i)
-                  (+ row size-y)
-                  (concat acc
-                          (loop [col     0
-                                 acc-row []]
-                            (let [size-x  (inc (math/round (* 9 (math/random))))
-                                  new-col (+ col size-x)]
+                 (inc i)
+                 (+ row size-y)
+                 (concat acc
+                         (loop [col     0
+                                acc-row []]
+                           (let [size-x  (inc (math/round (* 9 (math/random))))
+                                 new-col (+ col size-x)]
                               ;; we want to ensure we have a card at the end of the row
-                              (if (>= new-col 18)
-                                (cons [col row (- 18 col) size-y] acc-row)
+                             (if (>= new-col 18)
+                               (cons [col row (- 18 col) size-y] acc-row)
                                 ;; probability of skipping is 5%
-                                (if (> (math/random) 0.95)
-                                  (recur (+ col size-x) acc-row)
-                                  (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
+                               (if (> (math/random) 0.95)
+                                 (recur (+ col size-x) acc-row)
+                                 (recur (+ col size-x) (cons [col row size-x size-y] acc-row)))))))))))]
       {:row    row
        :col    col
        :size_x size_x
@@ -1041,25 +1041,25 @@
                                                    :user_id   user-id
                                                    :object    (json/generate-string dashboard)
                                                    :timestamp :%now})]
-       (migrate!)
-       (testing "column_settings field refs are updated"
-         (is (= expected
-                (-> (t2/query-one {:select [:object]
-                                   :from   [:revision]
-                                   :where  [:= :id revision-id]})
-                    :object
-                    json/parse-string
-                    (get-in ["cards" 0 "visualization_settings"])))))
-       (migrate! :down 46)
-       (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
-         (is (= (m/dissoc-in visualization-settings
-                             ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
-                (-> (t2/query-one {:select [:object]
-                                   :from   [:revision]
-                                   :where  [:= :id revision-id]})
-                    :object
-                    json/parse-string
-                    (get-in ["cards" 0 "visualization_settings"])))))))))
+        (migrate!)
+        (testing "column_settings field refs are updated"
+          (is (= expected
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))
+        (migrate! :down 46)
+        (testing "down migration restores original visualization_settings, except it's okay if join-alias are missing"
+          (is (= (m/dissoc-in visualization-settings
+                              ["column_settings" (json/generate-string ["ref" ["field" 1 {"join-alias" "Joined table"}]])])
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))))))
 
 (deftest migrate-database-options-to-database-settings-test
   (let [do-test
@@ -1069,69 +1069,69 @@
           ;; model name, so they don't hit the post-insert hook, but here we're relying on the transformations being
           ;; applied so we can't do that.
           (with-redefs [database/set-new-database-permissions! (constantly nil)]
-           (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
-             (let [default-db                {:name       "DB"
-                                              :engine     "postgres"
-                                              :created_at :%now
-                                              :updated_at :%now}
-                   success-id                (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  (json/generate-string {:persist-models-enabled true})
-                                                             :settings {:database-enable-actions true}})))
-                   options-nil-settings-id   (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  (json/generate-string {:persist-models-enabled true})
-                                                             :settings nil})))
-                   options-empty-settings-id (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  (json/generate-string {:persist-models-enabled true})
-                                                             :settings {}})))
-                   nil-options-id            (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  nil
-                                                             :settings {:database-enable-actions true}})))
-                   empty-options-id          (first (t2/insert-returning-pks!
-                                                     :model/Database
-                                                     (merge default-db
-                                                            {:options  "{}"
-                                                             :settings {:database-enable-actions true}})))]
-               (testing "fowward migration\n"
-                 (when encrypted?
-                   (testing "make sure the settings is encrypted before the migration"
-                     (is (true? (encryption/possibly-encrypted-string?
+            (impl/test-migrations ["v48.00-001" "v48.00-002"] [migrate!]
+              (let [default-db                {:name       "DB"
+                                               :engine     "postgres"
+                                               :created_at :%now
+                                               :updated_at :%now}
+                    success-id                (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                              :settings {:database-enable-actions true}})))
+                    options-nil-settings-id   (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                              :settings nil})))
+                    options-empty-settings-id (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  (json/generate-string {:persist-models-enabled true})
+                                                              :settings {}})))
+                    nil-options-id            (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  nil
+                                                              :settings {:database-enable-actions true}})))
+                    empty-options-id          (first (t2/insert-returning-pks!
+                                                      :model/Database
+                                                      (merge default-db
+                                                             {:options  "{}"
+                                                              :settings {:database-enable-actions true}})))]
+                (testing "fowward migration\n"
+                  (when encrypted?
+                    (testing "make sure the settings is encrypted before the migration"
+                      (is (true? (encryption/possibly-encrypted-string?
                                   (:settings (t2/query-one {:select [:settings]
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
-                 (migrate!)
-                 (when encrypted?
-                   (testing "make sure the settings is encrypted after the migration"
-                     (is (true? (encryption/possibly-encrypted-string?
+                  (migrate!)
+                  (when encrypted?
+                    (testing "make sure the settings is encrypted after the migration"
+                      (is (true? (encryption/possibly-encrypted-string?
                                   (:settings (t2/query-one {:select [:settings]
                                                             :from [:metabase_database]
                                                             :where [[:= :id success-id]]})))))))
 
-                 (testing "the options is merged into settings correctly"
-                   (is (= {:persist-models-enabled true
-                           :database-enable-actions true}
-                          (t2/select-one-fn :settings :model/Database success-id)))
-                   (testing "even when settings is nil"
-                     (is (= {:persist-models-enabled true}
-                            (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
-                   (testing "even when settings is empty"
-                     (is (= {:persist-models-enabled true}
-                            (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
+                  (testing "the options is merged into settings correctly"
+                    (is (= {:persist-models-enabled true
+                            :database-enable-actions true}
+                           (t2/select-one-fn :settings :model/Database success-id)))
+                    (testing "even when settings is nil"
+                      (is (= {:persist-models-enabled true}
+                             (t2/select-one-fn :settings :model/Database options-nil-settings-id))))
+                    (testing "even when settings is empty"
+                      (is (= {:persist-models-enabled true}
+                             (t2/select-one-fn :settings :model/Database options-empty-settings-id)))))
 
-                 (testing "nil or empty options doesn't break migration"
-                   (is (= {:database-enable-actions true}
-                          (t2/select-one-fn :settings :model/Database nil-options-id)))
-                   (is (= {:database-enable-actions true}
-                          (t2/select-one-fn :settings :model/Database empty-options-id)))))
+                  (testing "nil or empty options doesn't break migration"
+                    (is (= {:database-enable-actions true}
+                           (t2/select-one-fn :settings :model/Database nil-options-id)))
+                    (is (= {:database-enable-actions true}
+                           (t2/select-one-fn :settings :model/Database empty-options-id)))))
 
-              (testing "rollback migration"
+                (testing "rollback migration"
                   (migrate! :down 46)
                   (testing "the persist-models-enabled is assoced back to options"
                     (is (= {:options  "{\"persist-models-enabled\":true}"
@@ -1604,36 +1604,36 @@
                           :postgres "timestamp without time zone"
                           :h2       "TIMESTAMP"
                           :mysql    "datetime")]
-        (testing "Sanity check"
-          (is (true? (set/subset?
-                      (set (#'custom-migrations/db-type->to-unified-columns db-type))
-                      (table-and-column-of-type datetime-type)))))
+      (testing "Sanity check"
+        (is (true? (set/subset?
+                    (set (#'custom-migrations/db-type->to-unified-columns db-type))
+                    (table-and-column-of-type datetime-type)))))
 
-        (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
-          (migrate!)
-          (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
-                 (set (table-and-column-of-type datetime-type)))))
+      (testing "all of our time columns are now converted to timestamp-tz type, only changelog tables are intact"
+        (migrate!)
+        (is (= #{[:databasechangelog :dateexecuted false] [:databasechangeloglock :lockgranted true]}
+               (set (table-and-column-of-type datetime-type)))))
 
-        (testing "downgrade should revert all converted columns to its original type"
-          (migrate! :down 48)
-          (is (true? (set/subset?
-                      (set (#'custom-migrations/db-type->to-unified-columns db-type))
-                      (table-and-column-of-type datetime-type)))))
+      (testing "downgrade should revert all converted columns to its original type"
+        (migrate! :down 48)
+        (is (true? (set/subset?
+                    (set (#'custom-migrations/db-type->to-unified-columns db-type))
+                    (table-and-column-of-type datetime-type)))))
 
         ;; this is a weird behavior on mariadb that I can only find on CI, but it's nice to have this test anw
-        (testing "not nullable timestamp column should not have extra on update"
-          (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
-                                                             :last_name   "Hughes"
-                                                             :email       "howard@aircraft.com"
-                                                             :password    "superstrong"
-                                                             :date_joined :%now})
-                session (t2/insert-returning-instance! :core_session {:user_id    user-id
-                                                                      :id         (str (random-uuid))
-                                                                      :created_at :%now})]
-            (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
-            (testing "created_at shouldn't change if there is an update"
-              (is (= (:created_at session)
-                     (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
+      (testing "not nullable timestamp column should not have extra on update"
+        (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Howard"
+                                                           :last_name   "Hughes"
+                                                           :email       "howard@aircraft.com"
+                                                           :password    "superstrong"
+                                                           :date_joined :%now})
+              session (t2/insert-returning-instance! :core_session {:user_id    user-id
+                                                                    :id         (str (random-uuid))
+                                                                    :created_at :%now})]
+          (t2/update! :core_session (:id session) {:anti_csrf_token "normal"})
+          (testing "created_at shouldn't change if there is an update"
+            (is (= (:created_at session)
+                   (t2/select-one-fn :created_at :core_session :id (:id session))))))))))
 
 (def ^:private deep-nested-map
   "A 35 level nested map to test for mariadb"
@@ -1784,9 +1784,9 @@
         (testing "after migrate up, db details should still be encrypted"
           (migrate!)
           (is (true? (encryption/possibly-encrypted-string? (db-detail)))))
-       (migrate! :down 48)
-       (testing "after migrate down, db details should still be encrypted"
-         (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
+        (migrate! :down 48)
+        (testing "after migrate down, db details should still be encrypted"
+          (is (true? (encryption/possibly-encrypted-string? (db-detail)))))))))
 
 (defn scheduler-job-keys
   []

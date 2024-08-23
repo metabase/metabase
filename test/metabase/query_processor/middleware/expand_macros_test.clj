@@ -221,9 +221,9 @@
                 [3  39]
                 [4  24]]
                (mt/formatted-rows [int int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:metric 1]]
-                    :breakout    [$price]}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:metric 1]]
+                                     :breakout    [$price]}))))))))
 
 (deftest ^:parallel named-metrics-test
   (testing "make sure we can name a :metric"

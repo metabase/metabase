@@ -55,7 +55,7 @@
                               [:table_id             [:= (mt/id :venues)]]
                               [:card_id              nil?]
                               [:attribute_remappings nil?]]]
-                      (t2/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
+                            (t2/select GroupTableAccessPolicy :group_id (u/the-id &group))))))
             (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
                   graph'   (assoc-in graph (db-graph-keypath &group) (updated-db-perms))
                   response (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')]
@@ -117,9 +117,9 @@
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
     (t2/update! PersistedInfo {:card_id (u/the-id card)}
                 {:definition (json/encode
-                               (persisted-info/metadata->definition
-                                 (:result_metadata card)
-                                 (:table_name persisted-info)))
+                              (persisted-info/metadata->definition
+                               (:result_metadata card)
+                               (:table_name persisted-info)))
                  :active true
                  :state "persisted"
                  :query_hash (persisted-info/query-hash (:dataset_query card))})))

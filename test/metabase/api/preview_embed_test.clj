@@ -28,7 +28,7 @@
         (testing "it should be possible to use this endpoint successfully if all the conditions are met"
           (is (= embed-test/successful-card-info
                  (embed-test/dissoc-id-and-name
-                   (mt/user-http-request :crowberto :get 200 (card-url card))))))
+                  (mt/user-http-request :crowberto :get 200 (card-url card))))))
 
         (testing "if the user is not an admin this endpoint should fail"
           (is (= "You don't have permissions to do that."
@@ -60,10 +60,10 @@
                      :default  nil
                      :required false}]
                    (-> (mt/user-http-request :crowberto :get 200 (card-url card {:_embedding_params {:a "locked"
-                                                                                                      :b "disabled"
-                                                                                                      :c "enabled"
-                                                                                                      :d "enabled"}
-                                                                                  :params            {:c 100}}))
+                                                                                                     :b "disabled"
+                                                                                                     :c "enabled"
+                                                                                                     :d "enabled"}
+                                                                                 :params            {:c 100}}))
                        :parameters)))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/card/:token/query ------------------------------------
@@ -164,11 +164,11 @@
             (testing "check this is the same result as when a default value is provided"
               (is (= [[107]]
                      (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                         "?date=Q1-2014")))))))
+                                                                             "?date=Q1-2014")))))))
           (testing "an empty value should apply if provided as an empty string in the query params"
             (is (= [[1000]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                       "?date="))))))
+                                                                           "?date="))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}
@@ -321,7 +321,7 @@
           (testing "check that if embedding is enabled globally and for the object requests fail if they pass a `:disabled` parameter"
             (is (= "You're not allowed to specify a value for :venue_id."
                    (mt/user-http-request :crowberto :get 400 (dashcard-url dashcard
-                                                               {:_embedding_params {:venue_id "disabled"}, :params {:venue_id 100}})))))
+                                                                           {:_embedding_params {:venue_id "disabled"}, :params {:venue_id 100}})))))
 
           (testing "If a `:disabled` param is passed in the URL the request should fail"
             (is (= "You're not allowed to specify a value for :venue_id."
@@ -367,9 +367,9 @@
                                                                            :type "number"}]}}]
         (is (=? {:status "completed"}
                 (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard
-                                                                 {:_embedding_params {:num_birds     :locked
-                                                                                      :2nd_date_seen :enabled}
-                                                                  :params            {:num_birds 2}})
+                                                                             {:_embedding_params {:num_birds     :locked
+                                                                                                  :2nd_date_seen :enabled}
+                                                                              :params            {:num_birds 2}})
                                                                "?2nd_date_seen=2018-02-14"))))))))
 
 (deftest editable-params-should-not-be-invalid-test
@@ -418,7 +418,6 @@
             (is (= [[1]]
                    (mt/rows (mt/user-http-request :crowberto :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
                                                                        "?venue_id=1")))))))))))
-
 
 ;; pivot tables
 
@@ -645,11 +644,11 @@
     (embed-test/with-embedding-enabled-and-new-secret-key
       (mt/dataset airports
         (mt/with-temp [:model/Card {card-id :id} {:dataset_query
-                                                           {:database (mt/id)
-                                                            :type :query
-                                                            :query
-                                                            {:source-table (mt/id :airport)
-                                                             :fields       [[:field (mt/id :airport :name) nil]]}}}
+                                                  {:database (mt/id)
+                                                   :type :query
+                                                   :query
+                                                   {:source-table (mt/id :airport)
+                                                    :fields       [[:field (mt/id :airport :name) nil]]}}}
                        :model/Dashboard {dashboard-id :id} {:parameters
                                                             [{:name      "NAME"
                                                               :slug      "NAME"

@@ -99,21 +99,21 @@
 (defn- metrics-for-table
   [table]
   (filter-visible (t2/select :model/LegacyMetric
-                    :table_id (:id table)
-                    :archived false)))
+                             :table_id (:id table)
+                             :archived false)))
 
 (defn- segments-for-table
   [table]
   (filter-visible (t2/select :model/Segment
-                    :table_id (:id table)
-                    :archived false)))
+                             :table_id (:id table)
+                             :archived false)))
 
 (defn- linking-to
   [table]
   (->> (t2/select-fn-set :fk_target_field_id :model/Field
-         :table_id           (:id table)
-         :fk_target_field_id [:not= nil]
-         :active             true)
+                         :table_id           (:id table)
+                         :fk_target_field_id [:not= nil]
+                         :active             true)
        (map (comp (partial t2/select-one :model/Table :id)
                   :table_id
                   (partial t2/select-one :model/Field :id)))
@@ -127,8 +127,8 @@
                                                :table_id (:id table)
                                                :active   true))]
     (->> (t2/select-fn-set :table_id :model/Field
-           :fk_target_field_id [:in fields]
-           :active             true)
+                           :fk_target_field_id [:in fields]
+                           :active             true)
          (map (partial t2/select-one :model/Table :id))
          filter-visible
          (take max-matches))
@@ -149,8 +149,8 @@
 (defn- similar-questions
   [card]
   (->> (t2/select :model/Card
-         :table_id (:table_id card)
-         :archived false)
+                  :table_id (:table_id card)
+                  :archived false)
        filter-visible
        (rank-by-similarity card)
        (filter (comp pos? :similarity))))
@@ -158,8 +158,8 @@
 (defn- canonical-metric
   [card]
   (->> (t2/select :model/LegacyMetric
-         :table_id (:table_id card)
-         :archived false)
+                  :table_id (:table_id card)
+                  :archived false)
        filter-visible
        (m/find-first (comp #{(-> card :dataset_query :query :aggregation)}
                            :aggregation
@@ -268,11 +268,11 @@
      :linking-to  linking-to
      :linked-from linked-from
      :tables      (->> (t2/select :model/Table
-                         :db_id           (:db_id table)
-                         :schema          (:schema table)
-                         :id              [:not= (:id table)]
-                         :visibility_type nil
-                         :active          true)
+                                  :db_id           (:db_id table)
+                                  :schema          (:schema table)
+                                  :id              [:not= (:id table)]
+                                  :visibility_type nil
+                                  :active          true)
                        (remove (set (concat linking-to linked-from)))
                        filter-visible
                        interesting-mix)}))
@@ -291,10 +291,10 @@
                     (filter (comp pos? :similarity))
                     interesting-mix)
      :fields   (->> (t2/select :model/Field
-                      :table_id        (:id table)
-                      :id              [:not= (:id field)]
-                      :visibility_type "normal"
-                      :active          true)
+                               :table_id        (:id table)
+                               :id              [:not= (:id field)]
+                               :visibility_type "normal"
+                               :active          true)
                     filter-visible
                     interesting-mix)}))
 

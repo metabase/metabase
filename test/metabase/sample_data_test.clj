@@ -50,7 +50,6 @@
   [db table-name field-name]
   (t2/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
 
-
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
 (def ^:private extracted-db-path-regex #"^file:.*plugins/sample-database.db;USER=GUEST;PASSWORD=guest.*")
@@ -171,16 +170,16 @@
             (is (not (contains? (get-tables) "NEW_TABLE")))
             (jdbc/execute! conn-spec "CREATE TABLE NEW_TABLE (id INTEGER);")
             (is (contains? (get-tables) "NEW_TABLE"))
-           (testing "add column"
-             (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-             (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
-             (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
-            (testing "remove column"
-              (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+            (testing "add column"
               (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-             (testing "drop table"
-                 (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
-                 (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
+              (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
+              (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
+              (testing "remove column"
+                (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+                (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+                (testing "drop table"
+                  (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
+                  (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
 
 (deftest sample-database-schedule-sync-test
   (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
