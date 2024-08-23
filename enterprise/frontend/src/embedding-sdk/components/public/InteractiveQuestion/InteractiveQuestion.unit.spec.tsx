@@ -1,5 +1,4 @@
 import { within } from "@testing-library/react";
-import type { FC, ReactNode } from "react";
 
 import {
   setupAlertsEndpoints,
@@ -67,10 +66,8 @@ function InteractiveQuestionTestResult() {
 
 const setup = ({
   isValidCard = true,
-  wrapper: Wrapper = props => props.children,
 }: {
   isValidCard?: boolean;
-  wrapper?: FC<{ children: ReactNode }>;
 } = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
@@ -96,11 +93,9 @@ const setup = ({
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
   return renderWithProviders(
-    <Wrapper>
-      <InteractiveQuestion questionId={TEST_CARD.id}>
-        <InteractiveQuestionTestResult />
-      </InteractiveQuestion>
-    </Wrapper>,
+    <InteractiveQuestion questionId={TEST_CARD.id}>
+      <InteractiveQuestionTestResult />
+    </InteractiveQuestion>,
     {
       mode: "sdk",
       sdkProviderProps: {
