@@ -1,5 +1,5 @@
+import type { LoadingProps } from "metabase/components/Loading";
 import { DelayedLoading } from "metabase/components/Loading/DelayedLoading";
-import type { LoadingAndErrorWrapperProps } from "metabase/components/Loading/Loading";
 import { Flex, Loader, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
@@ -22,6 +22,6 @@ export const DelayedLoadingSpinner = ({
   ...props
 }: {
   text?: string;
-} & LoadingAndErrorWrapperProps) => {
+} & LoadingProps) => {
   return <DelayedLoading {...props} loader={<LoadingSpinner text={text} />} />;
 };

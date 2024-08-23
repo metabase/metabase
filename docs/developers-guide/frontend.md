@@ -99,7 +99,7 @@ Similar to the object loader's `id` argument you can also pass a `query` object 
 
 ### Control over loading and error states
 
-By default both `EntityObject` and `EntityList` loaders will handle loading state for you by using `LoadingAndErrorWrapper` under the hood. If for some reason you want to handle loading on your own you can disable this behavior by setting `loadingAndErrorWrapper: false`.
+By default both `EntityObject` and `EntityList` loaders will handle loading state for you by using `Loading` under the hood. If for some reason you want to handle loading on your own you can disable this behavior by setting `loadingAndErrorWrapper: false`.
 
 ### Wrapped objects
 

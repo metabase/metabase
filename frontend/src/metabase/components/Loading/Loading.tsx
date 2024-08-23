@@ -21,7 +21,7 @@ type DelayProps =
     }
   | { delay: false; delayLength: never };
 
-export type LoadingAndErrorWrapperProps = {
+export type LoadingProps = {
   /** Component that indicates that data is loading, for example a spinner */
   loader?: ReactNode;
   /** Component to show when the loading indicator is hidden. The default value
@@ -54,7 +54,7 @@ export const Loading = ({
   noBackground,
   children,
   ...props
-}: LoadingAndErrorWrapperProps) => {
+}: LoadingProps) => {
   const [error, loading] = getErrorAndLoading(props);
 
   // If there is no delay, show the wrapper immediately. Otherwise, apply a timeout
