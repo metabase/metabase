@@ -2,8 +2,8 @@ import styled from "@emotion/styled";
 
 export const OuterCircle = styled.div`
   position: absolute;
-  top: 4px;
-  left: 4px;
+  top: 0;
+  left: 0;
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -13,8 +13,8 @@ export const OuterCircle = styled.div`
 
 export const InnerCircle = styled.div<{ isVisible: boolean }>`
   position: absolute;
-  top: 4px;
-  left: 4px;
+  top: 0;
+  left: 0;
   width: 12px;
   height: 12px;
   border-radius: 50%;
@@ -28,8 +28,8 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
 
 export const Button = styled.button`
   position: relative;
-  width: 20px;
-  height: 20px;
+  width: 12px;
+  height: 12px;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
 
   &:hover {

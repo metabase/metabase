@@ -19,6 +19,7 @@ const propTypes = {
   index: PropTypes.number,
   isMuted: PropTypes.bool,
   isVertical: PropTypes.bool,
+  isInsidePopover: PropTypes.bool,
   isReversed: PropTypes.bool,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
@@ -31,6 +32,7 @@ const LegendItem = ({
   index,
   isMuted,
   isVertical,
+  isInsidePopover,
   isReversed,
   onHoverChange,
   onSelectSeries,
@@ -75,6 +77,7 @@ const LegendItem = ({
             DashboardS.fullscreenNightText,
             EmbedFrameS.fullscreenNightText,
           )}
+          isInsidePopover={isInsidePopover}
           onClick={onSelectSeries && handleItemClick}
         >
           <Ellipsified>{item.name}</Ellipsified>
