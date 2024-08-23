@@ -1,3 +1,4 @@
+import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
   fillWithDefaultValue,
   getCommonStaticVizSettings,
@@ -12,6 +13,8 @@ import {
   getDefaultShowLegend,
   getDefaultShowTotal,
   getDefaultSliceThreshold,
+  getDefaultSortRows,
+  getPieRows,
 } from "metabase/visualizations/shared/settings/pie";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
@@ -40,6 +43,15 @@ export function computeStaticPieChartSettings(
     dimensionIsValid,
   );
   fillWithDefaultValue(settings, "pie.metric", defaultMetric, metricIsValid);
+
+  fillWithDefaultValue(settings, "pie.sort_rows", getDefaultSortRows);
+
+  settings["pie.colors"] = getColors(rawSeries, settings);
+
+  settings["pie.rows"] = getPieRows(rawSeries, settings, (value, options) =>
+    formatStaticValue(value, options ?? {}),
+  );
+
   fillWithDefaultValue(settings, "pie.show_legend", getDefaultShowLegend());
   fillWithDefaultValue(settings, "pie.show_total", getDefaultShowTotal());
   fillWithDefaultValue(
@@ -52,7 +64,6 @@ export function computeStaticPieChartSettings(
     "pie.slice_threshold",
     getDefaultSliceThreshold(),
   );
-  settings["pie.colors"] = getColors(rawSeries, settings);
 
   return settings;
 }
