@@ -575,12 +575,12 @@
                                                                  [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
           (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
                             csv/read-csv)]
-            (is (= [["Category" "Created At" "pivot-grouping" "Sum of Price"]
-                    ["Doohickey" "2016-05-01T00:00:00Z" "0" "144.12"]
-                    ["Doohickey" "2016-06-01T00:00:00Z" "0" "82.92"]
-                    ["Doohickey" "2016-07-01T00:00:00Z" "0" "78.22"]
-                    ["Doohickey" "2016-08-01T00:00:00Z" "0" "71.09"]
-                    ["Doohickey" "2016-09-01T00:00:00Z" "0" "45.65"]]
+            (is (= [["Category" "Created At" "Sum of Price"]
+                    ["Doohickey" "2016-05-01T00:00:00Z" "144.12"]
+                    ["Doohickey" "2016-06-01T00:00:00Z" "82.92"]
+                    ["Doohickey" "2016-07-01T00:00:00Z" "78.22"]
+                    ["Doohickey" "2016-08-01T00:00:00Z" "71.09"]
+                    ["Doohickey" "2016-09-01T00:00:00Z" "45.65"]]
                    (take 6 result)))))))
     (testing "for xlsx"
       (mt/dataset test-data
