@@ -493,7 +493,6 @@
 
 ;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
 
-
 (def ^:private api-models
   "The models that we will service for entity-id transformations."
   (->> (descendants :metabase/model)
@@ -549,8 +548,8 @@
   [model-key->entity-ids]
   (when-not (mc/validate ModelToEntityIds model-key->entity-ids)
     (throw (ex-info "Invalid format." {:explanation (me/humanize
-                                                      (me/with-spell-checking
-                                                        (mc/explain ModelToEntityIds model-key->entity-ids)))
+                                                     (me/with-spell-checking
+                                                       (mc/explain ModelToEntityIds model-key->entity-ids)))
                                        :allowed-models (sort (keys api-name->model))
                                        :status-code 400})))
   (into {}
