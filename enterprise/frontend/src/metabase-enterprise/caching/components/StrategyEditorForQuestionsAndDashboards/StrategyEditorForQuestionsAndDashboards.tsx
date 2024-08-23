@@ -11,7 +11,6 @@ import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfig
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
 import { skipToken, useSearchQuery } from "metabase/api";
-import { Table } from "metabase/common/components/Table";
 import { ClientSortableTable } from "metabase/common/components/Table/ClientSortableTable";
 import type { ColumnItem } from "metabase/common/components/Table/types";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
@@ -341,7 +340,7 @@ export const StrategyEditorForQuestionsAndDashboards = withRouter(
 );
 
 const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
-  <Table<{ id: number }>
+  <ClientSortableTable<{ id: number }>
     columns={columns}
     rows={[{ id: 0 }, { id: 1 }, { id: 2 }]}
     rowRenderer={() => (
@@ -354,6 +353,7 @@ const TableSkeleton = ({ columns }: { columns: ColumnItem[] }) => (
       </tr>
     )}
     className={StrategyEditorForQuestionsAndDashboardsC.CacheableItemTable}
+    locale="en-US"
   />
 );
 

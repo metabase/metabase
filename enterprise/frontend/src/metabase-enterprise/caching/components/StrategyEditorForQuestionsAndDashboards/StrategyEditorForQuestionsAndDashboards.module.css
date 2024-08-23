@@ -20,6 +20,10 @@
   tbody > tr:hover {
     background-color: var(--mb-color-brand-alpha-04) !important;
   }
+
+  tbody > tr.currentTarget {
+    background-color: var(--mb-color-brand-lighter) !important;
+  }
 }
 
 .StrategyFormPanel {

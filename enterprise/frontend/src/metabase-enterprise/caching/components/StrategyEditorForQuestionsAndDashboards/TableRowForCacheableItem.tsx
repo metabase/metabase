@@ -15,6 +15,7 @@ import StrategyEditorForQuestionsAndDashboardsS from "./StrategyEditorForQuestio
 
 export const TableRowForCacheableItem = ({
   item,
+  forId,
   currentTargetId,
   currentTargetModel,
   updateTarget,
@@ -43,8 +44,15 @@ export const TableRowForCacheableItem = ({
       updateTarget({ id, model }, isFormDirty);
     }
   };
+
   return (
-    <tr>
+    <tr
+      className={
+        currentTargetId !== null && currentTargetId === forId
+          ? StrategyEditorForQuestionsAndDashboardsS.currentTarget
+          : undefined
+      }
+    >
       <td>
         <MaybeLink
           className={StrategyEditorForQuestionsAndDashboardsS.ItemLink}
