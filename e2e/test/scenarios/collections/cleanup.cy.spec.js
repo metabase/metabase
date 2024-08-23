@@ -203,7 +203,7 @@ describe("scenarios > collections > clean up", () => {
 
     it("show empty and error states correctly", () => {
       cy.log("should handle empty state");
-      cy.intercept("GET", "/api/collection/**/stale?**").as("stale-items");
+      cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
 
       // visit collection w/ items but no stale items
       createCollection({ name: "Not empty w/ not stale items" })
@@ -231,7 +231,7 @@ describe("scenarios > collections > clean up", () => {
       });
 
       cy.log("should handle error state");
-      cy.intercept("GET", "/api/collection/**/stale?**", {
+      cy.intercept("GET", "/api/ee/stale/**?**", {
         statusCode: 500,
       }).as("stale-items");
 
