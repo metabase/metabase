@@ -1,12 +1,11 @@
 import cx from "classnames";
-import { type ReactElement, type ReactNode, useMemo, useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
@@ -72,14 +71,6 @@ export const InteractiveQuestionResult = ({
   const { question, queryResults, isQuestionLoading } =
     useInteractiveQuestionContext();
 
-  const card = question?.card();
-
-  const defaultHeight = useMemo(() => {
-    if (questionView === "visualization" && card) {
-      return getDefaultVizHeight(card.display);
-    }
-  }, [questionView, card]);
-
   let content;
 
   if (isQuestionLoading) {
@@ -135,7 +126,7 @@ export const InteractiveQuestionResult = ({
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
-      h={height ?? defaultHeight}
+      h={height}
       bg="var(--mb-color-bg-question)"
     >
       {content}
