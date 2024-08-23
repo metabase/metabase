@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.card-test :as api.card-test]
+   [metabase.api.channel-test :as api.channel-test]
    [metabase.api.pulse :as api.pulse]
    [metabase.channel.http-test :as channel.http-test]
    [metabase.http-client :as client]
@@ -599,6 +600,85 @@
         (is (t2/exists? PulseChannel :id (u/the-id pc)))
         (is (t2/exists? PulseChannelRecipient :id (u/the-id pcr)))))))
 
+(def pulse-channel-email-default
+  {:enabled        true
+   :channel_type   "email"
+   :channel_id     nil
+   :schedule_type  "hourly"})
+
+(deftest update-channels-no-op-test
+  (testing "PUT /api/pulse/:id"
+    (testing "If we PUT a Pulse with the same Channels, it should be a no-op"
+      (mt/with-temp
+        [:model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc             (assoc pulse-channel-email-default :pulse_id pulse-id)]
+        (is (=? [(assoc pulse-channel-email-default :id (:id pc))]
+                (:channels (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                                 {:channels [pc]}))))))))
+
+(deftest update-channels-change-existing-channel-test
+  (testing "PUT /api/pulse/:id"
+    (testing "update the schedule of existing pulse channel"
+      (mt/with-temp
+        [:model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc             (assoc pulse-channel-email-default :pulse_id pulse-id)]
+        (let [new-channel (assoc pulse-channel-email-default :id (:id pc) :schedule_type "daily" :schedule_hour 7)]
+          (is (=? [new-channel]
+                  (:channels (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                                   {:channels [new-channel]})))))))))
+
+(def pulse-channel-slack-test
+  {:enabled        true
+   :channel_type   "slack"
+   :channel_id     nil
+   :schedule_type  "hourly"
+   :details        {:channels "#general"}})
+
+(deftest update-channels-add-new-channel-test
+  (testing "PUT /api/pulse/:id"
+    (testing "add a new pulse channel"
+      (mt/with-temp
+        [:model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc             (assoc pulse-channel-email-default :pulse_id pulse-id)]
+        (is (=? [(assoc pulse-channel-email-default :id (:id pc))
+                 pulse-channel-slack-test]
+                (->> (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                           {:channels [pulse-channel-slack-test pc]})
+                     :channels
+                     (sort-by :channel_type))))))))
+
+(deftest update-channels-add-multiple-channels-of-the-same-type-test
+  (testing "PUT /api/pulse/:id"
+    (testing "add multiple pulse channels of the same type and disable an existing channel"
+      (mt/with-temp
+        [:model/Channel      {chn-1 :id}    api.channel-test/default-test-channel
+         :model/Channel      {chn-2 :id}    (assoc api.channel-test/default-test-channel :name "Test channel 2")
+         :model/Pulse        {pulse-id :id} {}
+         :model/PulseChannel pc-email       (assoc pulse-channel-email-default :pulse_id pulse-id)
+         :model/PulseChannel pc-slack       (assoc pulse-channel-slack-test :pulse_id pulse-id)]
+        (is (=? [(assoc pulse-channel-email-default :enabled false)
+                 {:channel_type "http"
+                  :channel_id   chn-1
+                  :enabled      true
+                  :schedule_type "hourly"}
+                 {:channel_type "http"
+                  :channel_id   chn-2
+                  :enabled      true
+                  :schedule_type "hourly"}
+                 pulse-channel-slack-test]
+                (->> (mt/user-http-request :rasta :put 200 (str "pulse/" pulse-id)
+                                           {:channels [(assoc pc-email :enabled false)
+                                                       pc-slack
+                                                       {:channel_type "http"
+                                                        :channel_id   chn-1
+                                                        :enabled      true
+                                                        :schedule_type "hourly"}
+                                                       {:channel_type "http"
+                                                        :channel_id   chn-2
+                                                        :enabled      true
+                                                        :schedule_type "hourly"}]})
+                     :channels
+                     (sort-by (juxt :channel_type :channel_id)))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   UPDATING PULSE COLLECTION POSITIONS                                          |
