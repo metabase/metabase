@@ -143,9 +143,8 @@ export function assertDatasetReqIsSandboxed(options = {}) {
       const assertionFn = _.isFunction(columnAssertion)
         ? columnAssertion
         : val => val === columnAssertion;
-      const allMatch = values.every(assertionFn);
       const errMsg = `Expected every result in column to be equal to: ${columnAssertion}`;
-      expect(allMatch).to.equal(true, errMsg);
+      expect(values.every(assertionFn)).to.equal(true, errMsg);
     }
   });
 }
