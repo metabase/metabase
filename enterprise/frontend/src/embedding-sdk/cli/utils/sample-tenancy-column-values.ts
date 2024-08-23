@@ -23,13 +23,15 @@ interface SampleFromTableOptions {
   instanceUrl: string;
 }
 
+type TenantId = string | number;
+
 /**
  * Sample tenant IDs from multiple chosen tables.
  * If a table doesn't have enough rows, we look up from the next one.
  */
 export async function sampleTenantIdsFromTables(
   options: SampleFromTableOptions,
-) {
+): Promise<TenantId[] | null> {
   const { chosenTables, databaseId, cookie, instanceUrl, tenancyColumnNames } =
     options;
 
@@ -58,7 +60,9 @@ export async function sampleTenantIdsFromTables(
  * Sample a random tenancy column.
  * This is used to assign the user attribute of `customer_id`
  */
-export async function sampleTenantIds(options: Options) {
+export async function sampleTenantIds(
+  options: Options,
+): Promise<TenantId[] | null> {
   const { limit, table, columnName, databaseId, instanceUrl, cookie } = options;
 
   const field = table.fields?.find(f => f.name === columnName);
@@ -95,5 +99,5 @@ export async function sampleTenantIds(options: Options) {
 
   const dataset = (await res.json()) as Dataset;
 
-  return dataset.data.rows.flat();
+  return dataset.data.rows.flat().filter(value => value !== null) as TenantId[];
 }
