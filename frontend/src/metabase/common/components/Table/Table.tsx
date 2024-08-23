@@ -1,3 +1,4 @@
+import cx from "classnames";
 import React from "react";
 
 import {
@@ -51,11 +52,12 @@ export function Table<Row extends BaseRow>({
   paginationProps,
   emptyBody,
   cols,
+  className,
   ...rest
 }: TableProps<Row>) {
   return (
     <>
-      <table className={CS.Table} {...rest}>
+      <table className={cx(CS.Table, className)} {...rest}>
         {cols && <colgroup>{cols}</colgroup>}
         <thead>
           <tr>
