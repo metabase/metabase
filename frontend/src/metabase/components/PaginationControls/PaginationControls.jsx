@@ -32,6 +32,7 @@ export default function PaginationControls({
     <div
       className={cx(CS.flex, CS.alignCenter, CS.textBold)}
       aria-label="pagination"
+      role="navigation"
     >
       <span className={CS.mr1}>
         {page * pageSize + 1} - {page * pageSize + itemsLength}
