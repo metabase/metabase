@@ -1748,6 +1748,12 @@
               (client/client :get 202 (dashcard-url dashcard))
               (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
 
+(deftest entity-id-single-card-translations-test
+  (mt/with-temp
+    [:model/Card {id   :id eid   :entity_id} {}]
+    (is (= {eid   {:id id   :type :card}}
+           (api.embed.common/model->entity-ids->ids {:card [eid]})))))
+
 (deftest entity-id-card-translations-test
   (mt/with-temp
     [:model/Card {id   :id eid   :entity_id} {}
@@ -1757,16 +1763,16 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid   id
-            eid-0 id-0
-            eid-1 id-1
-            eid-2 id-2
-            eid-3 id-3
-            eid-4 id-4
-            eid-5 id-5}
-           (api.embed.common/table->entity-ids->ids {:report_card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
+    (is (= {eid   {:id id   :type :card}
+            eid-0 {:id id-0 :type :card}
+            eid-1 {:id id-1 :type :card}
+            eid-2 {:id id-2 :type :card}
+            eid-3 {:id id-3 :type :card}
+            eid-4 {:id id-4 :type :card}
+            eid-5 {:id id-5 :type :card}}
+           (api.embed.common/model->entity-ids->ids {:card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
-(deftest ^:this entity-id-mixed-translations-test
+(deftest entity-id-mixed-translations-test
   (mt/with-temp
     [;; prereqs to create the eid-able entities:
      :model/Card  {model-id :id} {:type :model}
@@ -1777,7 +1783,7 @@
      :model/Action             {action_id               :id action_eid               :entity_id} {:name "model for creating action" :model_id model-id :type :http}
      :model/Collection         {collection_id           :id collection_eid           :entity_id} {}
      ;; filling entity id for User doesn't work: do it manually below.
-     :model/User               {core_user_id            :id #_#_core_user_eid            :entity_id} {}
+     :model/User               {core_user_id            :id #_#_core_user_eid        :entity_id} {}
      :model/Dimension          {dimension_id            :id dimension_eid            :entity_id} {:field_id field-id}
      :model/NativeQuerySnippet {native_query_snippet_id :id native_query_snippet_eid :entity_id} {:creator_id core_user_id}
      :model/PermissionsGroup   {permissions_group_id    :id permissions_group_eid    :entity_id} {}
@@ -1792,34 +1798,38 @@
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
-      (is (= {action_eid action_id
-              collection_eid collection_id
-              core_user_eid core_user_id
-              dashboard_tab_eid dashboard_tab_id
-              dimension_eid dimension_id
-              native_query_snippet_eid native_query_snippet_id
-              permissions_group_eid permissions_group_id
-              pulse_eid pulse_id
-              pulse_card_eid pulse_card_id
-              pulse_channel_eid pulse_channel_id
-              report_card_eid report_card_id
-              report_dashboard_eid report_dashboard_id
-              report_dashboardcard_eid report_dashboardcard_id
-              segment_eid segment_id
-              timeline_eid timeline_id}
-             (api.embed.common/table->entity-ids->ids
-              {:Action [action_eid]
-               :Card [report_card_eid]
-               :Collection [collection_eid]
-               :Dashboard [report_dashboard_eid]
-               :DashboardCard [report_dashboardcard_eid]
-               :DashboardTab [dashboard_tab_eid]
-               :Dimension [dimension_eid]
-               :NativeQuerySnippet [native_query_snippet_eid]
-               :PermissionsGroup [permissions_group_eid]
-               :Pulse [pulse_eid]
-               :PulseCard [pulse_card_eid]
-               :PulseChannel [pulse_channel_eid]
-               :Segment [segment_eid]
-               :Timeline [timeline_eid]
-               :User [core_user_eid]}))))))
+      (is (= {action_eid               {:id action_id :type :action}
+              collection_eid           {:id collection_id :type :collection}
+              core_user_eid            {:id core_user_id :type :user}
+              dashboard_tab_eid        {:id dashboard_tab_id :type :dashboard-tab}
+              dimension_eid            {:id dimension_id :type :dimension}
+              native_query_snippet_eid {:id native_query_snippet_id :type :snippet}
+              permissions_group_eid    {:id permissions_group_id :type :permissions-group}
+              pulse_eid                {:id pulse_id :type :pulse}
+              pulse_card_eid           {:id pulse_card_id :type :pulse-card}
+              pulse_channel_eid        {:id pulse_channel_id :type :pulse-channel}
+              report_card_eid          {:id report_card_id :type :card}
+              report_dashboard_eid     {:id report_dashboard_id :type :dashboard}
+              report_dashboardcard_eid {:id report_dashboardcard_id :type :dashboard-card}
+              segment_eid              {:id segment_id :type :segment}
+              timeline_eid             {:id timeline_id :type :timeline}}
+             (api.embed.common/model->entity-ids->ids
+              {:action            [action_eid]
+               :card              [report_card_eid]
+               :collection        [collection_eid]
+               :dashboard         [report_dashboard_eid]
+               :dashboard-card    [report_dashboardcard_eid]
+               :dashboard-tab     [dashboard_tab_eid]
+               :dimension         [dimension_eid]
+               :permissions-group [permissions_group_eid]
+               :pulse             [pulse_eid]
+               :pulse-card        [pulse_card_eid]
+               :pulse-channel     [pulse_channel_eid]
+               :segment           [segment_eid]
+               :snippet           [native_query_snippet_eid]
+               :timeline          [timeline_eid]
+               :user              [core_user_eid]}))))))
+
+(deftest missing-entity-translations-test
+  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status "not-found"}}
+         (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))

@@ -96,8 +96,7 @@
 (api/defendpoint POST "/entity_id"
   "Translate entity IDs to model IDs."
   [:as {{:keys [entity_ids]} :body}]
-  {}
-  {:entity_ids
-   (api.embed.common/table->entity-ids->ids entity_ids)})
+  {entity_ids :map}
+  {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
 
 (api/define-routes)
