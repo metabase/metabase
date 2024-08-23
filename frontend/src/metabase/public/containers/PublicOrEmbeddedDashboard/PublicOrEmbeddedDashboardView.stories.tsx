@@ -1,6 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
+import { userEvent, within } from "@storybook/testing-library";
 import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
@@ -192,6 +193,16 @@ const defaultArgs: Partial<
 export const LightThemeDefault = Template.bind({});
 LightThemeDefault.args = defaultArgs;
 
+export const LightThemePDFExport = Template.bind({});
+LightThemePDFExport.args = {
+  ...defaultArgs,
+  theme: "light",
+};
+LightThemePDFExport.play = async ({ canvasElement }) => {
+  const asyncCallback = createAsyncCallback();
+  await downloadDashboardAsPdf(canvasElement, asyncCallback);
+};
+
 export const LightThemeScroll = Template.bind({});
 LightThemeScroll.args = {
   ...defaultArgs,
@@ -220,6 +231,16 @@ DarkThemeDefault.args = {
   theme: "night",
 };
 DarkThemeDefault.decorators = [DarkBackgroundDecorator];
+
+export const DarkThemePDFExport = Template.bind({});
+DarkThemePDFExport.args = {
+  ...defaultArgs,
+  theme: "night",
+};
+DarkThemePDFExport.play = async ({ canvasElement }) => {
+  const asyncCallback = createAsyncCallback();
+  await downloadDashboardAsPdf(canvasElement, asyncCallback);
+};
 
 export const DarkThemeScroll = Template.bind({});
 DarkThemeScroll.args = {
@@ -418,3 +439,16 @@ function LightBackgroundDecorator(Story: Story) {
     </Box>
   );
 }
+
+const downloadDashboardAsPdf = async (
+  canvasElement: HTMLElement,
+  asyncCallback: () => void,
+) => {
+  const canvas = within(canvasElement);
+
+  const downloadButton = await canvas.findByText("Export as PDF");
+  await userEvent.click(downloadButton!);
+
+  await canvas.findByTestId("image-downloaded");
+  asyncCallback();
+};

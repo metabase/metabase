@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { isStorybookActive } from "metabase/env";
 import type { Dashboard } from "metabase-types/api";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
@@ -45,7 +46,29 @@ export const saveDashboardPdf = async (
 
   pdf.addImage(image, "JPEG", 0, 0, imageWidth, imageHeight, "", "FAST", 0);
 
-  pdf.save(fileName);
+  if (isStorybookActive) {
+    // if we're running storybook we open the PDF in place
+    // so we can test the export result with loki
+    image.toBlob(blob => {
+      if (blob) {
+        const imgElement = document.createElement("img");
+        imgElement.src = URL.createObjectURL(blob);
+        // scale to /2 to compensate `scale:2` in html2canvas
+        imgElement.width = image.width / 2;
+        imgElement.height = image.height / 2;
+
+        const root: HTMLElement = window.document.querySelector("#root")!;
+        const imageDownloaded = document.createElement("div");
+        imageDownloaded.setAttribute("data-testid", "image-downloaded");
+        root.replaceChildren(imgElement);
+        root.appendChild(imageDownloaded);
+
+        window.document.body.style.height = "initial";
+      }
+    });
+  } else {
+    pdf.save(fileName);
+  }
 };
 
 export const getExportTabAsPdfButtonText = (tabs: Dashboard["tabs"]) => {
