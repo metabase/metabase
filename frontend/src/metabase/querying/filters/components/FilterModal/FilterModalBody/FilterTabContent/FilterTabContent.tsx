@@ -5,7 +5,7 @@ import type * as Lib from "metabase-lib";
 import { FilterTabList } from "../FilterTabList";
 import { FilterTabPanel } from "../FilterTabPanel";
 
-export interface FilterModalTabContentProps {
+export interface FilterTabContentProps {
   query: Lib.Query;
   groupItems: GroupItem[];
   tab: string | null;
@@ -25,7 +25,7 @@ export function FilterTabContent({
   onChange,
   onInput,
   onTabChange,
-}: FilterModalTabContentProps) {
+}: FilterTabContentProps) {
   return (
     <Tabs value={tab} onTabChange={onTabChange} orientation="vertical" h="100%">
       <Flex direction="row" w="100%">

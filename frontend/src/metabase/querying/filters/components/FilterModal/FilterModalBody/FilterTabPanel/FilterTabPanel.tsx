@@ -6,7 +6,7 @@ import { SegmentFilterItem } from "../SegmentFilterItem";
 
 import { TabPanelRoot } from "./FilterTabPanel.styled";
 
-export interface TabPanelProps {
+export interface FilterTabPanelProps {
   query: Lib.Query;
   groupItem: GroupItem;
   isSearching: boolean;
@@ -20,7 +20,7 @@ export function FilterTabPanel({
   isSearching,
   onChange,
   onInput,
-}: TabPanelProps) {
+}: FilterTabPanelProps) {
   return (
     <TabPanelRoot value={groupItem.key}>
       <ul>
