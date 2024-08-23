@@ -78,13 +78,13 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
       await propagateErrorResponse(res);
 
-      const { tables } = (await res.json()) as { tables: Table[] };
+      const metadataResult = (await res.json()) as { tables: Table[] };
 
-      if (tables.length === 0) {
+      if (metadataResult.tables.length === 0) {
         throw new Error(`Cannot find table "${table.name}" in database.`);
       }
 
-      tables.push(tables[0]);
+      tables.push(...metadataResult.tables);
     }
   }
 
