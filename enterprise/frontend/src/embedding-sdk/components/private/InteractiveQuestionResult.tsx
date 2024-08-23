@@ -126,7 +126,7 @@ export const InteractiveQuestionResult = ({
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
-      h={height}
+      h={height ?? "100%"}
       bg="var(--mb-color-bg-question)"
     >
       {content}
