@@ -25,12 +25,32 @@ export const askForTenancyColumns: CliStepMethod = async state => {
   }
 
   const tenancyColumnNames: Record<string, string> = {};
+  let lastTenancyColumnName: string;
 
   for (const table of state.chosenTables) {
     const fieldChoices = [
+      // if the user's table of choice does not have any tenant id column, they can skip.
       { name: "(no multi-tenancy column for this table)", value: null },
-      ...(table.fields?.map(f => ({ name: f.name, value: f.name })) ?? []),
+
+      // We only select the fields that have a foreign key.
+      // We exclude the last tenant id field.
+      ...(table.fields
+        ?.filter(field => field.name !== lastTenancyColumnName)
+        ?.map(f => ({ name: f.name, value: f.name })) ?? []),
     ];
+
+    const lastTenantField = table.fields?.find(
+      field => field.name === lastTenancyColumnName,
+    );
+
+    // if we found the same column name in the previous table,
+    // we select it as the default value.
+    if (lastTenantField) {
+      fieldChoices.unshift({
+        name: lastTenantField.name,
+        value: lastTenantField.name,
+      });
+    }
 
     const columnName = await search({
       pageSize: 10,
@@ -44,6 +64,7 @@ export const askForTenancyColumns: CliStepMethod = async state => {
 
     if (columnName) {
       tenancyColumnNames[table.id] = columnName;
+      lastTenancyColumnName = columnName;
     }
   }
 
