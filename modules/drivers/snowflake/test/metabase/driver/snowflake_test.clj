@@ -401,15 +401,24 @@
 
         (when (and pk-key pk-user)
           (mt/with-temp-file [pk-path]
-            (testing "private key authentication"
-              (spit pk-path pk-key)
-              (doseq [to-merge [{:private-key-value pk-key} ;; uploaded string
-                                {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array
-                                {:private-key-path pk-path}]] ;; local file path
-                (let [details (-> (:details (mt/db))
-                                  (dissoc :password)
-                                  (merge {:db pk-db :user pk-user} to-merge))]
-                  (is (can-connect? details)))))))))))
+            (mt/with-temp [:model/Secret {secret-id :id} {:name   "Private key for Snowflake"
+                                                          :kind   :pem-cert
+                                                          :source "file-path"
+                                                          :value  pk-path}]
+              (testing "private key authentication via uploaded keys or local key with path stored in a secret"
+                (spit pk-path pk-key)
+                (doseq [to-merge [{:private-key-value pk-key                      ;; uploaded string
+                                   :private-key-options "uploaded"}
+                                  {:private-key-value (.getBytes pk-key "UTF-8")
+                                   :private-key-options "uploaded"}               ;; uploaded byte array
+                                  {:private-key-value (.getBytes pk-key "UTF-8")} ;; uploaded byte array without private-key-options
+                                  {:private-key-options "local"
+                                   :private-key-source "file-path"
+                                   :private-key-id secret-id}]]              ;; local file path
+                  (let [details (-> (:details (mt/db))
+                                    (dissoc :password)
+                                    (merge {:db pk-db :user pk-user} to-merge))]
+                    (is (can-connect? details))))))))))))
 
 (deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
