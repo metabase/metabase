@@ -1,5 +1,5 @@
 import type { CoreLoadingProps } from "./types";
-import { or, getErrorAndLoading } from "./utils";
+import { getErrorAndLoading, or } from "./utils";
 
 describe("getErrorAndLoading", () => {
   it("returns [false, false] by default", () => {
