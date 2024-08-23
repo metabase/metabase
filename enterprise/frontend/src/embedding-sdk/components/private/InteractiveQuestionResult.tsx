@@ -1,6 +1,5 @@
 import cx from "classnames";
-import type { ReactElement, ReactNode } from "react";
-import { useState } from "react";
+import { type ReactElement, type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -74,7 +73,12 @@ export const InteractiveQuestionResult = ({
     useInteractiveQuestionContext();
 
   const card = question?.card();
-  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
+
+  const defaultHeight = useMemo(() => {
+    if (questionView === "visualization" && card) {
+      return getDefaultVizHeight(card.display);
+    }
+  }, [questionView, card]);
 
   let content;
 
