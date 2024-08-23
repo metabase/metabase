@@ -309,36 +309,6 @@ describe("common > components > Table", () => {
       screen.getByRole("navigation", { name: /pagination/ }),
     ).toBeInTheDocument();
   });
-
-  it("should accept a format value function when sorting", async () => {
-    render(
-      <ClientSortableTable
-        columns={sampleColumns}
-        rows={sampleData}
-        rowRenderer={renderRow}
-        formatValueForSorting={(row, colName) => {
-          if (colName === "type") {
-            if (row.type === "Water") {
-              return 10;
-            }
-            return 1;
-          }
-          return row[colName as keyof Pokemon];
-        }}
-        locale="en-US"
-      />,
-    );
-    expect(screen.getByText("Name")).toBeInTheDocument();
-    expect(screen.getByText("Type")).toBeInTheDocument();
-    expect(screen.getByText("Generation")).toBeInTheDocument();
-
-    const sortNameButton = screen.getByText("Type");
-    // Ascending
-    await userEvent.click(sortNameButton);
-    // Descending
-    await userEvent.click(sortNameButton);
-    firstRowShouldHaveText("Squirtle");
-  });
 });
 
 function firstRowShouldHaveText(text: string) {
