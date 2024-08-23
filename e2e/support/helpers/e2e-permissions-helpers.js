@@ -156,7 +156,7 @@ export function blockUserGroupPermissions(
 ) {
   cy.updatePermissionsGraph({
     [groupName]: {
-      [SAMPLE_DB_ID]: {
+      [databaseId]: {
         "view-data": "blocked",
         "create-queries": "no",
       },
