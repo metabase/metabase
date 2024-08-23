@@ -54,7 +54,7 @@ function EmbeddingOption({
 export const StaticEmbeddingOptionCard = () => {
   const enabled = useSetting("enable-embedding");
   const upgradeUrl = useSelector(state =>
-    getUpgradeUrl(state, { utm_media: "embed-settings" }),
+    getUpgradeUrl(state, { utm_content: "embed-settings" }),
   );
   const shouldPromptToUpgrade = !PLUGIN_EMBEDDING.isEnabled();
 

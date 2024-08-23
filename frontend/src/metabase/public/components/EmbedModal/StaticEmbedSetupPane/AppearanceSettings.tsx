@@ -47,8 +47,17 @@ export const AppearanceSettings = ({
       page: "embedding/static-embedding",
     }),
   );
-  const upgradePageUrl = useSelector(state =>
-    getUpgradeUrl(state, { utm_media: "static-embed-settings-appearance" }),
+  const fontUpgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, {
+      utm_campaign: "embedding-static-font",
+      utm_content: "static-embed-settings-look-and-feel",
+    }),
+  );
+  const metabaseBannerUpgradeUrl = useSelector(state =>
+    getUpgradeUrl(state, {
+      utm_campaign: "remove-mb-branding",
+      utm_content: "static-embed-settings-look-and-feel",
+    }),
   );
   const plan = useSelector(state =>
     getPlan(getSetting(state, "token-features")),
@@ -57,7 +66,6 @@ export const AppearanceSettings = ({
   const availableFonts = useSelector(state =>
     getSetting(state, "available-fonts"),
   );
-  const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
 
   const fontControlLabelId = useUniqueId("display-option");
   const downloadDataId = useUniqueId("download-data");
@@ -70,7 +78,13 @@ export const AppearanceSettings = ({
         <Text>{jt`These cosmetic options requiring changing the server code. You can play around with and preview the options here, and check out the ${(
           <ExternalLink
             key="doc"
-            href={`${docsUrl}${utmTags}#customizing-the-appearance-of-static-embeds`}
+            href={`${docsUrl}?${new URLSearchParams({
+              utm_source: "product",
+              utm_medium: "docs",
+              utm_campaign: "embedding-static",
+              utm_content: "static-embed-settings-look-and-feel",
+              source_plan: plan,
+            })}#customizing-the-appearance-of-static-embeds`}
           >{t`documentation`}</ExternalLink>
         )} for more.`}</Text>
       </StaticEmbedSetupPaneSettingsContentSection>
@@ -151,7 +165,7 @@ export const AppearanceSettings = ({
               <Text>{jt`You can change the font with ${(
                 <ExternalLink
                   key="fontPlan"
-                  href={upgradePageUrl}
+                  href={fontUpgradeUrl}
                 >{t`a paid plan`}</ExternalLink>
               )}.`}</Text>
             )}
@@ -193,7 +207,7 @@ export const AppearanceSettings = ({
             <Text>{jt`This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to ${(
               <ExternalLink
                 key="bannerPlan"
-                href={upgradePageUrl}
+                href={metabaseBannerUpgradeUrl}
               >{t`a paid plan`}</ExternalLink>
             )} to remove the banner.`}</Text>
           </StaticEmbedSetupPaneSettingsContentSection>
