@@ -14,7 +14,7 @@ import {
   NotebookCell,
   NotebookCellAdd,
   NotebookCellItem,
-} from "../../components/NotebookCell";
+} from "../NotebookCell";
 
 import { ClausePopover } from "./ClausePopover";
 

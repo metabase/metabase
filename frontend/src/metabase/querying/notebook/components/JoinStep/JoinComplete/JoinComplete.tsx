@@ -4,10 +4,7 @@ import { t } from "ttag";
 import { Box, Flex, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import {
-  NotebookCellAdd,
-  NotebookCellItem,
-} from "../../../components/NotebookCell";
+import { NotebookCellAdd, NotebookCellItem } from "../../NotebookCell";
 import { JoinCondition } from "../JoinCondition";
 import { JoinConditionDraft } from "../JoinConditionDraft";
 import { JoinStrategyPicker } from "../JoinStrategyPicker";

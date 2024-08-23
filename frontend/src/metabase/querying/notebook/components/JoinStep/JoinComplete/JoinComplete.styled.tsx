@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import { NotebookCell } from "../../../components/NotebookCell";
+import { NotebookCell } from "../../NotebookCell";
 
 export const JoinCell = styled(NotebookCell)`
   flex: 1;

@@ -5,8 +5,8 @@ import { t } from "ttag";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { NotebookCellItem } from "../../../components/NotebookCell";
-import { NotebookDataPicker } from "../../../components/NotebookDataPicker";
+import { NotebookCellItem } from "../../NotebookCell";
+import { NotebookDataPicker } from "../../NotebookDataPicker";
 
 import { ColumnPickerButton } from "./JoinTablePicker.styled";
 

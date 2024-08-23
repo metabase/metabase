@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper/IconButtonWrapper";
 
-import { NotebookCell } from "../../../components/NotebookCell";
+import { NotebookCell } from "../../NotebookCell";
 
 export const ColumnPickerButton = styled(IconButtonWrapper)`
   padding: ${NotebookCell.CONTAINER_PADDING};

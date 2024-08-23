@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
-import { NotebookCell } from "../../components/NotebookCell";
+import { NotebookCell } from "../NotebookCell";
 
 export const DataStepIconButton = styled(IconButtonWrapper)`
   color: var(--mb-color-text-white);

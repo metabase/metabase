@@ -6,8 +6,8 @@ import CS from "metabase/css/core/index.css";
 import LimitInput from "metabase/query_builder/components/LimitInput";
 import * as Lib from "metabase-lib";
 
-import { NotebookCell } from "../../components/NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
+import { NotebookCell } from "../NotebookCell";
 
 export function LimitStep({
   query,
