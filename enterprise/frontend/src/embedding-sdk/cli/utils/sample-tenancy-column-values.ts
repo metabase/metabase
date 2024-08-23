@@ -29,7 +29,7 @@ interface SampleFromTableOptions {
  */
 export async function sampleTenantIdsFromTables(
   options: SampleFromTableOptions,
-) {
+): Promise<(string | number)[] | null> {
   const { chosenTables, databaseId, cookie, instanceUrl, tenancyColumnNames } =
     options;
 
