@@ -90,12 +90,6 @@ const REVIEWS_TEXT_COLUMNS = ["Reviewer", "Body"];
 const REVIEWS_NUMBER_COLUMNS = ["Rating"];
 
 /**
- * "Questions" tab - dashcards are questions
- * "Models" tab - dashcards are models
- *
- * Left column (col = 0): data source is a question
- * Right column (col = 12): data source is a model
- *
  * q = question, m = model
  * qb = question-based, mb = model-based
  */
