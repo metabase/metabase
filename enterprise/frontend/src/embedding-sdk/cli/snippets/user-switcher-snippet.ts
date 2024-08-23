@@ -19,7 +19,12 @@ export const UserSwitcher = () => {
   return (
     <select
       value={email}
-      onChange={(e) => switchUser(e.target.value)}
+      onChange={(e) => {
+        switchUser(e.target.value)
+
+        // temporary workaround: reload the page to sign in as the new user
+        window.location.reload()
+      }}
       className="dashboard-select"
     >
       {USERS.map((user) => (

@@ -34,6 +34,8 @@ export const AnalyticsProvider = ({children}) => {
   const [themeKey, setThemeKey] = useState('light')
 
   const switchUser = useCallback(async (email) => {
+    localStorage.setItem('user-email', email)
+
     try {
       const res = await fetch(\`\${BASE_SSO_API}/switch-user\`, {
         method: 'POST',
@@ -64,7 +66,7 @@ export const AnalyticsProvider = ({children}) => {
 
   useEffect(() => {
     if (!email) {
-      switchUser('alice@example.com')
+      switchUser(localStorage.get('user-email') || 'alice@example.com')
     }
   }, [email, switchUser])
 
