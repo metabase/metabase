@@ -104,7 +104,7 @@ export const pickDatabaseTables: CliStepMethod = async state => {
     };
 
     // The table's fields may still be syncing, so we retry a few times.
-    await retry(
+    const table = await retry(
       async () => {
         // Get the query metadata from a table
         const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
@@ -122,10 +122,12 @@ export const pickDatabaseTables: CliStepMethod = async state => {
           throw new Error(`Table "${table.name}" has no fields.`);
         }
 
-        chosenTables.push(table);
+        return table;
       },
       { retries: 5, delay: 1000 },
     );
+
+    chosenTables.push(table);
   }
 
   return [
