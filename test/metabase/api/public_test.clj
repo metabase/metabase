@@ -537,7 +537,6 @@
               (client/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv)
               (is (= :public-csv-download (:context (qe)))))))))))
 
-
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
 
 (deftest get-public-dashboard-errors-test
