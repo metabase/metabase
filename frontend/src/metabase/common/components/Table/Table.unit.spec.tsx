@@ -282,7 +282,7 @@ describe("common > components > Table", () => {
 
     await userEvent.click(screen.getByText("Type"));
 
-    expect(onSort).toHaveBeenCalledWith({ name: "type", direction: "asc" });
+    expect(onSort).toHaveBeenCalledWith("type", "asc");
   });
 
   it("should render the pagination controller if pagination props are passed", async () => {
