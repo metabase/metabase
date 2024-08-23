@@ -179,7 +179,7 @@ Eg. if Dashboard B includes a Card A that is derived from a
                             (select-keys models)
                             (update-vals #(set (map second %))))
             extract-ids (fn [[model ids]]
-                          (serdes/extract-all model {:where [:in :id ids]}))]
+                          (serdes/extract-all model (merge opts {:where [:in :id ids]})))]
         (eduction cat
                   [(eduction (map extract-ids) cat by-model)
                    ;; extract all non-content entities like data model and settings if necessary
