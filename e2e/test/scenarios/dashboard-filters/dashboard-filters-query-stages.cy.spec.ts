@@ -104,16 +104,15 @@ describe("scenarios > dashboard > filters > query stages", () => {
     createQ0("q0");
 
     cy.then(function () {
-      createQ1("q1", this.q0, {
-        type: "question",
+      createQuestion({
         name: "Q1 Orders Question",
-        description: "Question based on a question",
-      });
-      createQ1("m1", this.q0, {
-        type: "model",
+        query: createQ1uery(this.q0),
+      }).then(response => cy.wrap(response.body).as("q1"));
+      createQuestion({
         name: "M1 Orders Model",
-        description: "Model based on a question",
-      });
+        query: createQ1uery(this.q0),
+        type: "model",
+      }).then(response => cy.wrap(response.body).as("m1"));
     });
   });
 
@@ -442,17 +441,6 @@ function createQ0(alias: string) {
     query: {
       "source-table": ORDERS_ID,
     },
-  }).then(response => cy.wrap(response.body).as(alias));
-}
-
-function createQ1(
-  alias: string,
-  source: Card,
-  questionDetails?: Partial<StructuredQuestionDetails>,
-) {
-  return createQuestion({
-    query: createQ1uery(source),
-    ...questionDetails,
   }).then(response => cy.wrap(response.body).as(alias));
 }
 
