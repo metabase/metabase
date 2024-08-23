@@ -1,18 +1,18 @@
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
+  modal,
+  openStaticEmbeddingModal,
   popover,
+  restore,
+  setTokenFeatures,
   visitDashboard,
   visitQuestion,
-  setTokenFeatures,
-  openStaticEmbeddingModal,
-  modal,
 } from "e2e/support/helpers";
 
-import { getEmbeddingJsCode, IFRAME_CODE } from "./shared/embedding-snippets";
+import { IFRAME_CODE, getEmbeddingJsCode } from "./shared/embedding-snippets";
 
 const features = ["none", "all"];
 
@@ -93,9 +93,7 @@ features.forEach(feature => {
           );
 
         if (feature === "all") {
-          cy.findByText(
-            "Enable users to download data from this embed",
-          ).click();
+          cy.findByText("Download buttons").click();
 
           cy.get(".ace_content")
             .first()
@@ -142,9 +140,7 @@ features.forEach(feature => {
 
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
-          cy.findByText(
-            "Enable users to download data from this embed",
-          ).click();
+          cy.findByText("Download buttons").click();
 
           cy.get(".ace_content")
             .first()

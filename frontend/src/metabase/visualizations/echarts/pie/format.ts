@@ -8,7 +8,7 @@ import type { PieChartModel } from "./model/types";
 
 export interface PieChartFormatters {
   formatDimension: (value: unknown) => string;
-  formatMetric: (value: unknown) => string;
+  formatMetric: (value: unknown, isCompact?: boolean) => string;
   formatPercent: (value: unknown, location: "legend" | "chart") => string;
 }
 
@@ -34,24 +34,31 @@ export function getPieChartFormatters(
       ...dimensionColSettings,
     });
 
-  const formatMetric = (value: unknown) =>
+  const formatMetric = (value: unknown, isCompact: boolean = false) =>
     renderingContext.formatValue(value, {
       ...metricColSettings,
+      compact: isCompact,
     });
 
-  const formatPercent = (value: unknown, location: "legend" | "chart") =>
-    renderingContext.formatValue(value, {
-      column: metricColSettings.column,
-      number_separators: metricColSettings.number_separators as string,
-      number_style: "percent",
-      decimals: computeMaxDecimalsForValues(
+  const formatPercent = (value: unknown, location: "legend" | "chart") => {
+    let decimals = settings["pie.decimal_places"];
+    if (decimals == null) {
+      decimals = computeMaxDecimalsForValues(
         chartModel.slices.map(s => s.data.normalizedPercentage),
         {
           style: "percent",
           maximumSignificantDigits: location === "legend" ? 3 : 2,
         },
-      ),
+      );
+    }
+
+    return renderingContext.formatValue(value, {
+      column: metricColSettings.column,
+      number_separators: metricColSettings.number_separators as string,
+      number_style: "percent",
+      decimals,
     });
+  };
 
   return { formatDimension, formatMetric, formatPercent };
 }

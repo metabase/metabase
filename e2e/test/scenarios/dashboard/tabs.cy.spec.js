@@ -1,54 +1,54 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
-  ORDERS_BY_YEAR_QUESTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   NORMAL_PERSONAL_COLLECTION_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  saveDashboard,
-  openQuestionsSidebar,
-  undo,
-  dashboardCards,
-  sidebar,
-  visitDashboardAndCreateTab,
-  describeWithSnowplow,
-  resetSnowplow,
-  expectNoBadSnowplowEvents,
-  visitDashboard,
-  editDashboard,
+  addHeadingWhileEditing,
+  addLinkWhileEditing,
+  createDashboardWithTabs,
   createNewTab,
-  expectGoodSnowplowEvents,
-  enableTracking,
+  dashboardCards,
+  dashboardGrid,
   deleteTab,
-  visitCollection,
-  main,
+  describeWithSnowplow,
+  duplicateTab,
+  editDashboard,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectGoodSnowplowEvents,
+  expectNoBadSnowplowEvents,
+  filterWidget,
   getDashboardCard,
   getDashboardCards,
-  getTextCardDetails,
   getHeadingCardDetails,
   getLinkCardDetails,
-  updateDashboardCards,
+  getTextCardDetails,
   goToTab,
-  moveDashCardToTab,
-  addLinkWhileEditing,
-  expectGoodSnowplowEvent,
-  selectDashboardFilter,
-  filterWidget,
-  popover,
-  createDashboardWithTabs,
-  dashboardGrid,
+  main,
   modal,
-  addHeadingWhileEditing,
-  setFilter,
+  moveDashCardToTab,
+  openQuestionsSidebar,
   openStaticEmbeddingModal,
+  popover,
   publishChanges,
+  resetSnowplow,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  sidebar,
+  undo,
+  updateDashboardCards,
+  visitCollection,
+  visitDashboard,
+  visitDashboardAndCreateTab,
   visitIframe,
-  duplicateTab,
 } from "e2e/support/helpers";
 import { createMockDashboardCard } from "metabase-types/api/mocks";
 
@@ -683,7 +683,7 @@ describe("scenarios > dashboard > tabs", () => {
       cy.findByText("Orders, Count").click();
     });
 
-    setFilter("Time", "Relative Date");
+    setFilter("Date picker", "Relative Date");
 
     selectDashboardFilter(getDashboardCard(0), "Created At");
     saveDashboard();
@@ -725,51 +725,41 @@ describe("scenarios > dashboard > tabs", () => {
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 3");
 
     // Prior to this bugfix, tab containing this text would be too long to drag to the left of either of the other tabs.
-    const longName =
-      "This is a really, really, really, really, really long tab name";
+    const longName = "This is a really really long tab name";
 
-    // Set the long tab name
     cy.findByRole("tab", { name: "Tab 3" })
       .dblclick()
-      .type(`${longName}{enter}`);
+      .type(`${longName}{enter}`)
+      .trigger("mousedown", { button: 0, force: true })
+      .trigger("mousemove", {
+        button: 0,
+        // You have to move the mouse at least 10 pixels to satisfy the
+        // activationConstraint: { distance: 10 } in the mouseSensor. If you
+        // remove that activationConstraint while still having the mouseSensor
+        // (required to make this pass), then the tests in
+        // DashboardTabs.unit.spec.tsx will fail.
+        clientX: 11,
+        clientY: 0,
+        force: true,
+      })
+      .trigger("mousemove", {
+        button: 0,
+        clientX: 11,
+        clientY: 0,
+        force: true,
+      })
+      .trigger("mouseup");
 
-    // Drag the long tab to the beginning of the tab row
-    cy.findByRole("button", { name: "Tab 1" }).as("Tab 1");
-    cy.findByRole("button", { name: longName }).as("LongTab");
-
-    cy.get("@LongTab").then(target => {
-      cy.get("@Tab 1").then(tab1Element => {
-        const coordsDrag = tab1Element[0].getBoundingClientRect();
-        cy.wrap(target)
-          .should("exist")
-          .trigger("mousedown", { button: 0, force: true })
-          // You have to move the mouse at least 10 pixels to satisfy the
-          // activationConstraint: { distance: 10 } in the mouseSensor.
-          // If you remove that activationConstraint while still having the
-          // mouseSensor (required to make this pass), then the tests in
-          // DashboardTabs.unit.spec.tsx will fail.
-          .trigger("mousemove", {
-            button: 0,
-            clientX: 11,
-            clientY: 0,
-            force: true,
-          })
-          .trigger("mousemove", {
-            button: 0,
-            clientX: coordsDrag.x,
-            clientY: 0,
-            force: true,
-          })
-          .trigger("mouseup");
-      });
-    });
-
-    // Ensure the tab name has reverted to the long name after the drag has completed
-    cy.findByRole("button", { name: longName }).should("be.visible");
+    // After the long tab is dragged, it is now in the first position. We need
+    // to assert this before saving, to make sure the dragging animation
+    // finishes before trying to click "Save"
+    cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
+    cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
+    cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");
 
     saveDashboard();
 
-    // After the long tab is dragged, it is now in the first position
+    // Confirm positions are the same after saving
     cy.findAllByTestId("tab-button-input-wrapper").eq(0).findByText(longName);
     cy.findAllByTestId("tab-button-input-wrapper").eq(1).findByText("Tab 1");
     cy.findAllByTestId("tab-button-input-wrapper").eq(2).findByText("Tab 2");

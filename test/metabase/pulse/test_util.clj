@@ -61,26 +61,23 @@
   [data]
   (walk/postwalk identity data))
 
-(defn do-with-site-url
+(defn do-with-site-url!
   [f]
   (mt/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
     (f)))
 
-(defmacro email-test-setup
+(defmacro email-test-setup!
   "Macro that ensures test-data is present and will use a fake inbox for emails"
   [& body]
   `(mt/with-fake-inbox
-     (do-with-site-url (fn [] ~@body))))
+     (do-with-site-url! (fn [] ~@body))))
 
 (defmacro slack-test-setup!
   "Macro that ensures test-data is present and disables sending of all notifications"
   [& body]
-  `(with-redefs [channel/send!       (fn [& _args#]
-                                       :noop)
+  `(with-redefs [channel/send!       (constantly :noop)
                  slack/files-channel (constantly "FOO")]
-     (do-with-site-url (fn [] ~@body))))
-
-(def ^:dynamic *channel-messages* nil)
+     (do-with-site-url! (fn [] ~@body))))
 
 (defn do-with-captured-channel-send-messages!
   [thunk]

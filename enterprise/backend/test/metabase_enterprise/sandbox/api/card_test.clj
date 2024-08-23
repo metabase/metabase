@@ -102,56 +102,87 @@
                                                                                      (api.card-test/mbql-count-query db table))
                                              :collection_id (u/the-id collection)))))))))))
 
+(deftest users-with-data-access-and-query-create-may-access-cards
+  (mt/with-temp [:model/User                       {user-id :id} {}
+                 :model/PermissionsGroup           group         {}
+                 :model/PermissionsGroupMembership _             {:user_id  user-id
+                                                                  :group_id (u/the-id group)}
+                 :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
+                                                                                                    :type :query,
+                                                                                                    :query {:source-table (mt/id :venues)}}}]
+    (let [cases [[:unrestricted           :query-builder-and-native "Request Permitted"]
+                 [:unrestricted           :query-builder            "Request Permitted"]
+                 [:unrestricted           :no                       "Request Permitted"]
+                 [:legacy-no-self-service :no                       "You do not have permissions to run this query."]
+                 [:blocked                :no                       "You do not have permissions to run this query."]]
+          ;; These are invalid permission combinations, so we don't test them:
+          invalid-cases [[:legacy-no-self-service :query-builder-and-native]
+                         [:legacy-no-self-service :query-builder]
+                         [:blocked :query-builder-and-native]
+                         [:blocked :query-builder]]]
+      (is (= (count cases)
+             (- (* (-> data-perms/Permissions :perms/view-data :values count)
+                   (-> data-perms/Permissions :perms/create-queries :values count))
+                (count invalid-cases)))
+          "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
+      (mt/with-no-data-perms-for-all-users!
+        (doseq [[view-perm create-perm expected] cases]
+          (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
+          (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
+          (testing (str "view-data: " view-perm ", create-queries: " create-perm)
+            (is (= expected (:error (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))
+                                    "Request Permitted")))))))))
+
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"
     (mt/with-temp [:model/Collection collection {}]
       (mt/with-model-cleanup [:model/Card]
         (met/with-gtaps! (mt/$ids orders
-                                  {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
-                                   :attributes {"user_id" 1}})
+                           {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                            :attributes {"user_id" 1}})
           (perms/grant-collection-readwrite-permissions! &group collection)
           (data-perms/set-table-permission! &group (mt/id :products) :perms/view-data :legacy-no-self-service)
           (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :no)
           (let [query (mt/mbql-query orders
-                                     {:limit 5
-                                      :aggregation [:count]
-                                      :joins [{:source-table $$products
-                                               :fields       :all
-                                               :alias        "Products"
-                                               :condition    [:= $product_id &Products.products.id]}]})]
+                        {:limit 5
+                         :aggregation [:count]
+                         :joins [{:source-table $$products
+                                  :fields       :all
+                                  :alias        "Products"
+                                  :condition    [:= $product_id &Products.products.id]}]})]
             (mt/user-http-request :rasta :post 403 "card"
                                   (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
                                          :collection_id (u/the-id collection))))
 
           (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products)}]
             (let [query (mt/mbql-query orders
-                                       {:limit 5
-                                        :aggregation [:count]
-                                        :joins [{:source-table (str "card__" (:id card))
-                                                 :fields       :all
-                                                 :strategy     :left-join
-                                                 :alias        "Products"
-                                                 :condition    [:= $product_id &Products.products.id]}]})]
-             (mt/user-http-request :rasta :post 403 "card"
-                                   (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
-                                          :collection_id (u/the-id collection))))))))))
+                          {:limit 5
+                           :aggregation [:count]
+                           :joins [{:source-table (str "card__" (:id card))
+                                    :fields       :all
+                                    :strategy     :left-join
+                                    :alias        "Products"
+                                    :condition    [:= $product_id &Products.products.id]}]})]
+              (mt/user-http-request :rasta :post 403 "card"
+                                    (assoc (api.card-test/card-with-name-and-query (mt/random-name) query)
+                                           :collection_id (u/the-id collection))))))))))
 
 (deftest parameters-with-source-is-card-test
   (testing "a card with a parameter whose source is a card should respect sandboxing"
     (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (mt/with-temp
-          [:model/Card {source-card-id :id} {:database_id   (mt/id)
-                                             :table_id      (mt/id :categories)
-                                             :dataset_query (mt/mbql-query categories)}
-           :model/Card {card-id         :id} {:database_id     (mt/id)
-                                              :dataset_query   (mt/mbql-query categories)
-                                              :parameters      [{:id                   "abc"
-                                                                 :type                 "category"
-                                                                 :name                 "CATEGORY"
-                                                                 :values_source_type   "card"
-                                                                 :values_source_config {:card_id     source-card-id
-                                                                                        :value_field (mt/$ids $categories.name)}}]
-                                              :table_id        (mt/id :venues)}]
+        [:model/Card {source-card-id :id} {:database_id   (mt/id)
+                                           :table_id      (mt/id :categories)
+                                           :dataset_query (mt/mbql-query categories)}
+         :model/Card {card-id         :id} {:database_id     (mt/id)
+                                            :dataset_query   (mt/mbql-query categories)
+                                            :parameters      [{:id                   "abc"
+                                                               :type                 "category"
+                                                               :name                 "CATEGORY"
+                                                               :values_source_type   "card"
+                                                               :values_source_config {:card_id     source-card-id
+                                                                                      :value_field (mt/$ids $categories.name)}}]
+                                            :table_id        (mt/id :venues)}]
 
         (testing "when getting values"
           (let [get-values (fn [user]

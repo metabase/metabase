@@ -121,6 +121,8 @@ export const createMockTokenFeatures = (
   snippet_collections: false,
   email_allow_list: false,
   email_restrict_recipients: false,
+  collection_cleanup: false,
+  upload_management: false,
   ...opts,
 });
 
@@ -160,7 +162,7 @@ export const createMockSettings = (
   "email-configured?": false,
   "email-smtp-host": null,
   "email-smtp-port": null,
-  "email-smtp-security": "None",
+  "email-smtp-security": "none",
   "email-smtp-username": null,
   "email-smtp-password": null,
   "embedding-app-origin": "",

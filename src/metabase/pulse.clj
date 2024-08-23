@@ -42,7 +42,6 @@
        {:value default-value})
      (dissoc parameter :default))))
 
-
 (defn virtual-card-of-type?
   "Check if dashcard is a virtual with type `ttype`, if `true` returns the dashcard, else returns `nil`.
 
@@ -65,9 +64,9 @@
   [{:keys [entity url] :as _link-card}]
   (let [url-link-card? (some? url)]
     {:text (str (format
-                  "### [%s](%s)"
-                  (if url-link-card? url (:name entity))
-                  (if url-link-card? url (link-card-entity->url entity)))
+                 "### [%s](%s)"
+                 (if url-link-card? url (:name entity))
+                 (if url-link-card? url (link-card-entity->url entity)))
                 (when-let [description (if url-link-card? nil (:description entity))]
                   (format "\n%s" description)))
      :type :text}))
@@ -88,8 +87,8 @@
       (some? (:entity link-card))
       (let [{:keys [model id]} (:entity link-card)
             instance           (t2/select-one
-                                 (serdes/link-card-model->toucan-model model)
-                                 (dashboard-card/link-card-info-query-for-model model id))]
+                                (serdes/link-card-model->toucan-model model)
+                                (dashboard-card/link-card-info-query-for-model model id))]
         (when (mi/can-read? instance)
           (link-card->text-part (assoc link-card :entity instance)))))))
 
@@ -175,8 +174,8 @@
           ;; Remove cards that have no results when empty results aren't wanted
           (remove (fn [{part-type :type :as part}]
                     (and
-                      (= part-type :card)
-                      (zero? (get-in part [:result :row_count] 0))))
+                     (= part-type :card)
+                     (zero? (get-in part [:result :row_count] 0))))
                   parts)
           parts)))))
 
@@ -199,7 +198,7 @@
   (let [goal-comparison      (if alert_above_goal >= <)
         goal-val             (ui-logic/find-goal-value first-result)
         comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card first-result)
-                                                            (get-in first-result [:result :data]))]
+                                                                  (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
       (throw (ex-info (tru "Unable to compare results to goal for alert.")
@@ -209,7 +208,6 @@
      (some (fn [row]
              (goal-comparison (comparison-col-rowfn row) goal-val))
            (get-in first-result [:result :data :rows])))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Creating Notifications To Send                                         |
@@ -328,7 +326,7 @@
 
   Only supports HTTP channels for now, returns a map with type key for slack and email"
   [{channel-type :channel_type :as pulse-channel}]
-  (if (= :http channel-type)
+  (if (= :http (keyword channel-type))
     (t2/select-one :model/Channel :id (:channel_id pulse-channel))
     {:type (keyword "channel" (name channel-type))}))
 

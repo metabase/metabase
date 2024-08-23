@@ -9,11 +9,11 @@ import Question from "metabase-lib/v1/Question";
 import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
-  createSampleDatabase,
-  SAMPLE_DB_ID,
-  ORDERS_ID,
   ORDERS,
+  ORDERS_ID,
   PRODUCTS,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { FilterPopover } from "./FilterPopover";
@@ -76,7 +76,7 @@ describe("FilterPopover", () => {
     describe("filter operator selection", () => {
       it("should have an operator selector", () => {
         setup({ filter: NUMERIC_FILTER });
-        expect(screen.getByText("Equal to")).toBeInTheDocument();
+        expect(screen.getByTestId("operator-select")).toHaveValue("Equal to");
         expect(screen.getByText("1234")).toBeInTheDocument();
       });
     });

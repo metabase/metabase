@@ -1,11 +1,13 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import type { OnMoveWithOneItem } from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
-  CollectionPickerModal,
   type CollectionPickerItem,
+  CollectionPickerModal,
+  type CollectionPickerValueItem,
 } from "metabase/common/components/CollectionPicker";
 import type {
   CollectionId,
@@ -61,6 +63,12 @@ export const MoveModal = ({
   const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
   const recentFilter = makeRecentFilter(shouldDisableItem);
 
+  const handleMove = useCallback(
+    async (newCollection: CollectionPickerValueItem) =>
+      await onMove({ id: newCollection.id }),
+    [onMove],
+  );
+
   return (
     <CollectionPickerModal
       title={title}
@@ -68,7 +76,7 @@ export const MoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={async newCollection => await onMove({ id: newCollection.id })}
+      onChange={handleMove}
       options={{
         showSearch: true,
         allowCreateNew: true,

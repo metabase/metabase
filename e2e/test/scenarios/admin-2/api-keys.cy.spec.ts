@@ -1,18 +1,18 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ALL_USERS_GROUP_ID,
-  READONLY_GROUP_ID,
-  NOSQL_GROUP_ID,
   ADMINISTRATORS_GROUP_ID,
-  ORDERS_QUESTION_ID,
+  ALL_USERS_GROUP_ID,
+  NOSQL_GROUP_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+  READONLY_GROUP_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  createApiKey,
   restore,
   visitDashboard,
   visitQuestion,
-  createApiKey,
 } from "e2e/support/helpers";
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 

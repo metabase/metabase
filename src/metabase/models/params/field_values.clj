@@ -51,7 +51,7 @@
                             (field/readable-fields-only)
                             (t2/hydrate :values))
            field-values (->> (map #(select-keys (field-values/get-latest-full-field-values (:id %))
-                                    [:field_id :human_readable_values :values])
+                                                [:field_id :human_readable_values :values])
                                   fields)
                              (keep not-empty))]
        (m/index-by :field_id field-values)))))
@@ -130,7 +130,7 @@
    (let [hash-key   (hash-key-for-advanced-field-values fv-type (:id field) constraints)
          select-kvs {:field_id (:id field) :type fv-type :hash_key hash-key}
          fv         (mdb.query/select-or-insert! :model/FieldValues select-kvs
-                      #(prepare-advanced-field-values fv-type field hash-key constraints))]
+                                                 #(prepare-advanced-field-values fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil
 

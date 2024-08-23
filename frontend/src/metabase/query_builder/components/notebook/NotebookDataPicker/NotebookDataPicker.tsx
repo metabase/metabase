@@ -1,20 +1,26 @@
-import { useMemo, useState } from "react";
+import { type MouseEvent, useMemo, useState } from "react";
 import { useLatest } from "react-use";
+import { t } from "ttag";
 
 import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
-import { useDispatch, useStore } from "metabase/lib/redux";
+import { METAKEY } from "metabase/lib/browser";
+import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
-import { Group, Icon, UnstyledButton } from "metabase/ui";
+import { Group, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
+
+import { getUrl } from "./utils";
 
 interface NotebookDataPickerProps {
   title: string;
@@ -47,6 +53,8 @@ export function NotebookDataPicker({
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
 
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+
   const tableInfo = useMemo(
     () => table && Lib.displayInfo(query, stageIndex, table),
     [query, stageIndex, table],
@@ -66,21 +74,60 @@ export function NotebookDataPicker({
     onChangeRef.current?.(table, metadataProvider);
   };
 
+  const openDataSourceInNewTab = () => {
+    const url = getUrl({ query, table, stageIndex });
+
+    if (!url) {
+      return;
+    }
+
+    const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+    Urls.openInNewTab(subpathSafeUrl);
+  };
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isCtrlOrMetaClick =
+      (event.ctrlKey || event.metaKey) && event.button === 0;
+
+    isCtrlOrMetaClick && !isEmbeddingSdk
+      ? openDataSourceInNewTab()
+      : setIsOpen(true);
+  };
+
+  const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isMiddleClick = event.button === 1;
+
+    isMiddleClick && !isEmbeddingSdk
+      ? openDataSourceInNewTab()
+      : setIsOpen(true);
+  };
+
   return (
     <>
-      <UnstyledButton
-        c="inherit"
-        fz="inherit"
-        fw="inherit"
-        p={NotebookCell.CONTAINER_PADDING}
-        disabled={isDisabled}
-        onClick={() => setIsOpen(true)}
+      <Tooltip
+        label={t`${METAKEY}+click to open in new tab`}
+        hidden={!table || isEmbeddingSdk}
+        events={{
+          hover: true,
+          focus: false,
+          touch: false,
+        }}
       >
-        <Group spacing="xs">
-          {tableInfo && <Icon name={getTableIcon(tableInfo)} />}
-          {tableInfo?.displayName ?? placeholder}
-        </Group>
-      </UnstyledButton>
+        <UnstyledButton
+          c="inherit"
+          fz="inherit"
+          fw="inherit"
+          p={NotebookCell.CONTAINER_PADDING}
+          disabled={isDisabled}
+          onClick={handleClick}
+          onAuxClick={handleAuxClick}
+        >
+          <Group spacing="xs">
+            {tableInfo && <Icon name={getTableIcon(tableInfo)} />}
+            {tableInfo?.displayName ?? placeholder}
+          </Group>
+        </UnstyledButton>
+      </Tooltip>
       {isOpen && (
         <DataPickerModal
           title={title}

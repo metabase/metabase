@@ -13,7 +13,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.query-processor.test-util :as qp.test-util]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (defn- optional [& args] (params/->Optional args))
 (defn- param [param-name] (params/->Param param-name))
@@ -91,8 +92,9 @@
     (testing "non-optional"
       (let [query ["select * from orders where " (param "created_at")]]
         (testing "param is present"
-          (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
-                  [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
+          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
+                  [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
+                   (t/zoned-date-time "2019-09-20T19:53:00" (t/zone-id "UTC"))]]
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing"
           (is (= ["select * from orders where 1 = 1" []]
@@ -101,187 +103,190 @@
     (testing "optional"
       (let [query ["select * from orders " (optional "where " (param "created_at"))]]
         (testing "param is present"
-          (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
-                  [#t "2019-09-20T19:52:00.000-07:00"]]
+          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
+                  [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
+                   (t/zoned-date-time "2019-09-20T19:53:00" (t/zone-id "UTC"))]]
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from orders" nil]
                  (substitute query {"created_at" (assoc (date-field-filter-value) :value params/no-value)}))))))))
 
+(def ^:private substitute-field-filter-test-2-test-cases
+  (partition-all
+   2
+   [:string/contains         {:field    :name
+                              :value    ["foo"]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
+                                         ["%foo%"]]}
+    :string/contains         {:field    :name
+                              :value    ["FOO"]
+                              :options  {:case-sensitive false}
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"]
+                                         ["%foo%"]]}
+    :string/does-not-contain {:field    :name
+                              :value    ["foo"]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  ("
+                                          "    NOT (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                          "  )"]
+                                         ["%foo%"]]}
+    :string/does-not-contain {:field    :name
+                              :value    ["FOO"]
+                              :options  {:case-sensitive false}
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  ("
+                                          "    NOT (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                          "  )"]
+                                         ["%foo%"]]}
+    :string/starts-with      {:field    :name
+                              :value    ["foo"]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
+                                         ["foo%"]]}
+    :string/=                {:field    :name
+                              :value    ["foo"]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"]
+                                         ["foo"]]}
+    :string/=                {:field    :name
+                              :value    ["foo" "bar" "baz"]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  ("
+                                          "    (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
+                                          "  )"]
+                                         ["foo" "bar" "baz"]]}
+    :string/!=               {:field    :name
+                              :value    ["foo" "bar"]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  ("
+                                          "    ("
+                                          "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
+                                          "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                          "    )"
+                                          "    AND ("
+                                          "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
+                                          "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
+                                          "    )"
+                                          "  )"]
+                                         ["foo" "bar"]]}
+    :number/=                {:field    :price
+                              :value    [1]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1)"]
+                                         []]}
+    :number/=                {:field    :price
+                              :value    [1 2 3]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  ("
+                                          "    (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1)"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 2)"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3)"
+                                          "  )"]
+                                         []]}
+    :number/!=               {:field    :price
+                              :value    [1]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  ("
+                                          "    (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1)"
+                                          "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                          "  )"]
+                                         []]}
+    :number/!=               {:field    :price
+                              :value    [1 2 3]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  ("
+                                          "    ("
+                                          "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1)"
+                                          "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                          "    )"
+                                          "    AND ("
+                                          "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2)"
+                                          "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                          "    )"
+                                          "    AND ("
+                                          "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3)"
+                                          "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
+                                          "    )"
+                                          "  )"]
+                                         []]}
+    :number/>=               {:field    :price
+                              :value    [1]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  (\"PUBLIC\".\"VENUES\".\"PRICE\" >= 1)"]
+                                         []]}
+    :number/between          {:field    :price
+                              :value    [1 3]
+                              :expected [["select"
+                                          "  *"
+                                          "from"
+                                          "  venues"
+                                          "where"
+                                          "  \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3"]
+                                         []]}]))
+
 (deftest ^:parallel substitute-field-filter-test-2
   (testing "new operators"
     (testing "string operators"
       (let [query ["select * from venues where " (param "param")]]
-        (doseq [[operator {:keys [field value expected options]}]
-                (partition-all
-                 2
-                 [:string/contains         {:field    :name
-                                            :value    ["foo"]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
-                                                       ["%foo%"]]}
-                  :string/contains         {:field    :name
-                                            :value    ["FOO"]
-                                            :options  {:case-sensitive false}
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"]
-                                                       ["%foo%"]]}
-                  :string/does-not-contain {:field    :name
-                                            :value    ["foo"]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  ("
-                                                        "    NOT (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"
-                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
-                                                        "  )"]
-                                                       ["%foo%"]]}
-                  :string/does-not-contain {:field    :name
-                                            :value    ["FOO"]
-                                            :options  {:case-sensitive false}
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  ("
-                                                        "    NOT (LOWER(\"PUBLIC\".\"VENUES\".\"NAME\") LIKE ?)"
-                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
-                                                        "  )"]
-                                                       ["%foo%"]]}
-                  :string/starts-with      {:field    :name
-                                            :value    ["foo"]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  (\"PUBLIC\".\"VENUES\".\"NAME\" LIKE ?)"]
-                                                       ["foo%"]]}
-                  :string/=                {:field    :name
-                                            :value    ["foo"]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"]
-                                                       ["foo"]]}
-                  :string/=                {:field    :name
-                                            :value    ["foo" "bar" "baz"]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  ("
-                                                        "    (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
-                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
-                                                        "    OR (\"PUBLIC\".\"VENUES\".\"NAME\" = ?)"
-                                                        "  )"]
-                                                       ["foo" "bar" "baz"]]}
-                  :string/!=               {:field    :name
-                                            :value    ["foo" "bar"]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  ("
-                                                        "    ("
-                                                        "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
-                                                        "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
-                                                        "    )"
-                                                        "    AND ("
-                                                        "      (\"PUBLIC\".\"VENUES\".\"NAME\" <> ?)"
-                                                        "      OR (\"PUBLIC\".\"VENUES\".\"NAME\" IS NULL)"
-                                                        "    )"
-                                                        "  )"]
-                                                       ["foo" "bar"]]}
-                  :number/=                {:field    :price
-                                            :value    [1]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1)"]
-                                                       []]}
-                  :number/=                {:field    :price
-                                            :value    [1 2 3]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  ("
-                                                        "    (\"PUBLIC\".\"VENUES\".\"PRICE\" = 1)"
-                                                        "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 2)"
-                                                        "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3)"
-                                                        "  )"]
-                                                       []]}
-                  :number/!=               {:field    :price
-                                            :value    [1]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  ("
-                                                        "    (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1)"
-                                                        "    OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
-                                                        "  )"]
-                                                       []]}
-                  :number/!=               {:field    :price
-                                            :value    [1 2 3]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  ("
-                                                        "    ("
-                                                        "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 1)"
-                                                        "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
-                                                        "    )"
-                                                        "    AND ("
-                                                        "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 2)"
-                                                        "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
-                                                        "    )"
-                                                        "    AND ("
-                                                        "      (\"PUBLIC\".\"VENUES\".\"PRICE\" <> 3)"
-                                                        "      OR (\"PUBLIC\".\"VENUES\".\"PRICE\" IS NULL)"
-                                                        "    )"
-                                                        "  )"]
-                                                       []]}
-                  :number/>=               {:field    :price
-                                            :value    [1]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  (\"PUBLIC\".\"VENUES\".\"PRICE\" >= 1)"]
-                                                       []]}
-                  :number/between          {:field    :price
-                                            :value    [1 3]
-                                            :expected [["select"
-                                                        "  *"
-                                                        "from"
-                                                        "  venues"
-                                                        "where"
-                                                        "  \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3"]
-                                                       []]}])]
+        (doseq [[operator {:keys [field value expected options]}] substitute-field-filter-test-2-test-cases]
           (testing operator
             (is (= expected
                    (-> (substitute query {"param" (params/map->FieldFilter
@@ -319,7 +324,7 @@
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
-(defn- substitute-e2e {:style/indent 1} [sql params]
+(defn- substitute-e2e [sql params]
   (let [[query params] (driver/with-driver :h2
                          (mt/with-metadata-provider meta/metadata-provider
                            (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]
@@ -808,9 +813,17 @@
                                 :target [:dimension [:template-tag "checkin_date"]]
                                 :value  "thismonth"}]))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::e2e-exclude-date-parts-test]
+  [driver _feature _database]
+  (contains? (sql-parameters-engines) driver))
+
+;;; Exclude bigquery from this test, because there's a bug with bigquery and exclusion of date parts (metabase#30790)
+(defmethod driver/database-supports? [:bigquery-cloud-sdk ::e2e-exclude-date-parts-test]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel e2e-exclude-date-parts-test
-  ;; Exclude bigquery from this test, because there's a bug with bigquery and exclusion of date parts (metabase#30790)
-  (mt/test-drivers (disj (sql-parameters-engines) :bigquery-cloud-sdk)
+  (mt/test-drivers (mt/normal-drivers-with-feature ::e2e-exclude-date-parts-test)
     (testing (str "test that excluding date parts work correctly. It should be enough to try just one type of exclusion "
                   "here, since handling them gets delegated to the functions in `metabase.driver.common.parameters.dates`, "
                   "which is fully-tested :D")
@@ -820,18 +833,19 @@
         (testing (format "test that excluding dates with %s works correctly" exclusion-string)
           (is (= [expected]
                  (mt/first-row
-                  (mt/format-rows-by [int]
-                    (process-native
-                      :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{last_login_date}}"
-                                                          (table-identifier :users))
-                                   :template-tags {"last_login_date" {:name         "last_login_date"
-                                                                      :display-name "Last Login Date"
-                                                                      :type         :dimension
-                                                                      :widget-type  :date/all-options
-                                                                      :dimension    [:field (mt/id :users :last_login) nil]}}}
-                      :parameters [{:type   :date/all-options
-                                    :target [:dimension [:template-tag "last_login_date"]]
-                                    :value  exclusion-string}]))))))))))
+                  (mt/format-rows-by
+                   [int]
+                   (process-native
+                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{last_login_date}}"
+                                                        (table-identifier :users))
+                                 :template-tags {"last_login_date" {:name         "last_login_date"
+                                                                    :display-name "Last Login Date"
+                                                                    :type         :dimension
+                                                                    :widget-type  :date/all-options
+                                                                    :dimension    [:field (mt/id :users :last_login) nil]}}}
+                    :parameters [{:type   :date/all-options
+                                  :target [:dimension [:template-tag "last_login_date"]]
+                                  :value  exclusion-string}]))))))))))
 
 (deftest ^:parallel e2e-combine-multiple-filters-test
   (mt/test-drivers (sql-parameters-engines)
@@ -854,15 +868,35 @@
                                 :target [:dimension [:template-tag "checkin_date"]]
                                 :value  "2015-07-01"}]))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::e2e-parse-native-dates-test]
+  [driver _feature _database]
+  (contains? (sql-parameters-engines) driver))
+
+;;; TODO -- not clear why SQLite is getting skipped here, there was no comment explaining why in the code I migrated.
+(defmethod driver/database-supports? [:sqlite ::e2e-parse-native-dates-test]
+  [_driver _feature _database]
+  false)
+
+(defmulti e2e-parse-native-dates-test-sql
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod e2e-parse-native-dates-test-sql ::driver/driver
+  [_driver]
+  "SELECT cast({{date}} as date)")
+
+(defmethod e2e-parse-native-dates-test-sql :oracle
+  [_driver]
+  "SELECT cast({{date}} as date) from dual")
+
 (deftest e2e-parse-native-dates-test
   (testing "Native dates should be parsed with the report timezone"
-    (mt/test-drivers (disj (sql-parameters-engines) :sqlite)
+    (mt/test-drivers (mt/normal-drivers-with-feature ::e2e-parse-native-dates-test)
       (mt/with-report-timezone-id! "America/Los_Angeles"
         (let [query {:database   (mt/id)
                      :type       :native
-                     :native     {:query         (if (= driver/*driver* :oracle)
-                                                   "SELECT cast({{date}} as date) from dual"
-                                                   "SELECT cast({{date}} as date)")
+                     :native     {:query         (e2e-parse-native-dates-test-sql driver/*driver*)
                                   :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
                      :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]}]
           (mt/with-native-query-testing-context query

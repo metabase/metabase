@@ -3,6 +3,7 @@ import {
   createQuestion,
   getNotebookStep,
   modal,
+  openNotebook,
   popover,
   restore,
   tableHeaderClick,
@@ -54,7 +55,7 @@ describe("issue 39487", () => {
     checkSingleDateFilter();
 
     cy.log("notebook editor");
-    cy.icon("notebook").click();
+    openNotebook();
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .first()
@@ -96,7 +97,7 @@ describe("issue 39487", () => {
     checkDateRangeFilter();
 
     cy.log("notebook editor");
-    cy.icon("notebook").click();
+    openNotebook();
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .first()
@@ -112,7 +113,7 @@ describe("issue 39487", () => {
       "2015-03-01", // 6 day rows
     ]);
 
-    cy.icon("notebook").click();
+    openNotebook();
     getNotebookStep("filter")
       .findAllByTestId("notebook-cell-item")
       .first()

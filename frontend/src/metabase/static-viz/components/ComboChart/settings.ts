@@ -11,6 +11,7 @@ import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echa
 import {
   getAreDimensionsAndMetricsValid,
   getDefaultBubbleSizeCol,
+  getDefaultDataLabelsFormatting,
   getDefaultDataLabelsFrequency,
   getDefaultDimensions,
   getDefaultGoalLabel,
@@ -28,27 +29,26 @@ import {
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   getYAxisUnpinFromZeroDefault,
-  getSeriesOrderDimensionSetting,
+  isShowStackValuesValid,
   isStackingValueValid,
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
-  isShowStackValuesValid,
-  getDefaultDataLabelsFormatting,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   SERIES_COLORS_SETTING_KEY,
+  SERIES_SETTING_KEY,
   getSeriesColors,
   getSeriesDefaultDisplay,
-  getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
   getSeriesDefaultLineSize,
   getSeriesDefaultLineStyle,
+  getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesValues,
-  SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
 import type {
   ComputedVisualizationSettings,
@@ -134,7 +134,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "graph.metrics",
-    getDefaultMetrics(rawSeries),
+    getDefaultMetrics(rawSeries, settings),
     areDimensionsAndMetricsValid,
   );
 

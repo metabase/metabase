@@ -1,9 +1,9 @@
 import {
   getApplicationName,
+  getCanWhitelabel,
   getIsWhiteLabeling,
   getShowMetabaseLinks,
   getWhiteLabeledLoadingMessageFactory,
-  getCanWhitelabel,
 } from "..";
 
 import { setup } from "./setup";

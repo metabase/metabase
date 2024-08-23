@@ -102,7 +102,6 @@
   "Focuses the given resultset to columns that return true when passed to `columns-pred`. Typically this would be done
   as part of the query, however there's a bug currently preventing that from working when remapped. This allows the
   data compared to be smaller and avoid that bug."
-  {:style/indent 1}
   [columns-pred results]
   (let [results-data (qp.test-util/data results)
         col-indexes  (keep-indexed (fn [idx col]
@@ -198,14 +197,22 @@
                        {:order-by [[:asc $name]], :limit 4}))
                     (map second))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::self-referencing-fks]
+  [_driver _feature _database]
+  true)
+
+;;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
+;;; this is https://github.com/metabase/metabase/issues/8510
+(doseq [driver [:redshift :oracle :vertica]]
+  (defmethod driver/database-supports? [driver ::self-referencing-fks]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel self-referencing-test
   ;; Test out a self referencing column. This has a users table like the one that is in `test-data`, but also includes a
   ;; `created_by` column which references the PK column in that same table. This tests that remapping table aliases are
   ;; handled correctly
-  ;;
-  ;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
-  ;; this is https://github.com/metabase/metabase/issues/8510
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join) :redshift :oracle :vertica)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join ::self-referencing-fks)
     (mt/dataset test-data-self-referencing-user
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                            (lib.tu/remap-metadata-provider (mt/id :users :created_by)
@@ -288,10 +295,17 @@
                       [3 3 2 "Coo"             "Peter Pelican"   "Lucky Pigeon"]]
                      (mt/rows results))))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::remapped-columns-in-joined-source-queries-test]
+  [_driver _feature _database]
+  true)
+
+;;; mongodb doesn't support foreign keys required by this test
+(defmethod driver/database-supports? [:mongo ::remapped-columns-in-joined-source-queries-test]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join)
-                         ;; mongodb doesn't support foreign keys required by this test
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join ::remapped-columns-in-joined-source-queries-test)
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset test-data
         (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))

@@ -4,7 +4,7 @@ import { getIsNightMode } from "metabase/dashboard/selectors";
 import { usePalette } from "metabase/hooks/use-palette";
 import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting/value";
-import { measureTextWidth, measureTextHeight } from "metabase/lib/measure-text";
+import { measureTextHeight, measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { useMantineTheme } from "metabase/ui";
 import { getVisualizationTheme } from "metabase/visualizations/shared/utils/theme";
@@ -26,11 +26,11 @@ export const useBrowserRenderingContext = (
   const isNightMode = useSelector(getIsNightMode);
 
   return useMemo(() => {
-    const style = getVisualizationTheme(
-      theme.other,
+    const style = getVisualizationTheme({
+      theme: theme.other,
       isDashboard,
-      isNightMode && isFullscreen,
-    );
+      isNightMode: isNightMode && isFullscreen,
+    });
 
     return {
       getColor: name => color(name, palette),

@@ -1,25 +1,25 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  popover,
-  sidebar,
-  visitQuestion,
-  visitDashboard,
-  visitIframe,
-  dragField,
-  leftSidebar,
-  main,
-  getIframeBody,
-  openPublicLinkPopoverFromMenu,
-  openStaticEmbeddingModal,
-  modal,
   createQuestion,
   dashboardCards,
-  queryBuilderMain,
-  openNotebook,
+  dragField,
+  getIframeBody,
   getNotebookStep,
+  leftSidebar,
+  main,
+  modal,
+  openNotebook,
+  openSharingMenu,
+  openStaticEmbeddingModal,
+  popover,
+  queryBuilderMain,
+  restore,
+  sidebar,
+  visitDashboard,
+  visitIframe,
+  visitQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
@@ -577,7 +577,30 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   describe("dashboards", () => {
-    beforeEach(() => {
+    it("should be scrollable even when tiny (metabase#24678)", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 3,
+          size_y: 3,
+        },
+      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
+
+      dashboardCards()
+        .eq(0)
+        .within(() => {
+          cy.findByText("Doohickey").scrollIntoView().should("be.visible");
+        });
+    });
+
+    it("should allow filtering drill through (metabase#14632) (metabase#14465)", () => {
       cy.createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
@@ -592,13 +615,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           size_y: 8,
         },
       }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
-    });
 
-    it("should display a pivot table on a dashboard (metabase#14465)", () => {
-      assertOnPivotFields();
-    });
-
-    it("should allow filtering drill through (metabase#14632)", () => {
       assertOnPivotFields();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Google").click(); // open drill-through menu
@@ -663,13 +680,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in a public link", () => {
+          cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            cy.icon("share").click();
+            openSharingMenu();
             modal().within(() => {
               cy.findByText("Save").click();
             });
           }
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
             .invoke("val")
@@ -691,8 +709,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
+          cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            cy.icon("share").click();
+            openSharingMenu();
             modal().within(() => {
               cy.findByText("Save").click();
             });
@@ -1000,7 +1019,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     assertTopMostRowTotalValue("149");
 
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.findByTextEnsureVisible("Sort").click();
 
@@ -1150,7 +1169,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // confirm that it's loading
     main().findByText("Doing science...").should("be.visible");
 
-    cy.icon("notebook").click();
+    openNotebook();
 
     main().findByText("User → Source").click();
 
@@ -1390,7 +1409,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       .and("contain", "Sum of Total");
 
     // Close the notebook editor
-    cy.findByTestId("qb-header-action-panel").icon("notebook").click();
+    openNotebook();
     cy.findByTestId("pivot-table")
       .should("contain", "User → Source")
       .and("contain", "Sum of Subtotal")

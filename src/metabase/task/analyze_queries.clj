@@ -40,17 +40,22 @@
 (defn- analyzer-loop* [stop-after next-card-id-fn]
   (loop [remaining stop-after]
     (when (public-settings/query-analysis-enabled)
-      (let [card-id (next-card-id-fn)
-            timer   (u/start-timer)
-            card    (query-analysis/->analyzable card-id)]
+      (let [card-or-id (next-card-id-fn)
+            card-id    (u/the-id card-or-id)
+            timer      (u/start-timer)
+            card       (query-analysis/->analyzable card-or-id)]
         (if (failure-map/non-retryable? card)
-          (log/warnf "Skipping analysis of Card % as its query has caused failures in the past." card-id)
+          (log/warnf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
           (try
             (query-analysis/analyze-card! card)
             (failure-map/track-success! card)
-            (Thread/sleep (wait-proportional (u/since-ms timer)))
+            (let [taken-ms (Math/ceil (u/since-ms timer))
+                  sleep-ms (wait-proportional taken-ms)]
+              (log/debugf "Query analysis for Card %s took %sms (incl. persisting)" card-id taken-ms)
+              (log/debugf "Waiting %sms before analysing further cards" sleep-ms)
+              (Thread/sleep sleep-ms))
             (catch Exception e
-              (log/errorf e "Error analysing and updating query for Card %" card-id)
+              (log/errorf e "Error analysing and updating query for Card %s" card-id)
               (failure-map/track-failure! card)
               (Thread/sleep (wait-fail (u/since-ms timer))))))
         (cond
@@ -61,11 +66,11 @@
   ([]
    (analyzer-loop! nil))
   ([stop-after]
-   (analyzer-loop* stop-after query-analysis/next-card-id!))
+   (analyzer-loop* stop-after query-analysis/next-card-or-id!))
   ([stop-after queue]
    (analyzer-loop! stop-after queue Long/MAX_VALUE))
   ([stop-after queue timeout]
-   (analyzer-loop* stop-after (partial query-analysis/next-card-id! queue timeout))))
+   (analyzer-loop* stop-after (partial query-analysis/next-card-or-id! queue timeout))))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Analyze "}

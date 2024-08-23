@@ -1,22 +1,23 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
+  assertQueryBuilderRowCount,
+  chartPathWithFillColor,
+  createNativeQuestion,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
+  filterField,
+  getDimensionByName,
+  openNotebook,
   popover,
   remapDisplayValueToFK,
+  restore,
+  summarize,
+  tableHeaderClick,
   visitQuestion,
   visitQuestionAdhoc,
   visualize,
-  getDimensionByName,
-  summarize,
-  filter,
-  filterField,
-  chartPathWithFillColor,
-  assertQueryBuilderRowCount,
-  entityPickerModal,
-  entityPickerModalTab,
-  tableHeaderClick,
-  createNativeQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -279,7 +280,7 @@ describe("scenarios > question > nested", () => {
 
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
-    cy.icon("notebook").click();
+    openNotebook();
     cy.findAllByTestId("notebook-cell-item")
       .contains(/^Products → Category$/) /* [1] */
       .click();
@@ -558,7 +559,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
-    cy.icon("notebook").click();
+    openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
 
     function saveQuestion() {

@@ -1,12 +1,13 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  popover,
-  tableHeaderClick,
-  pieSlices,
+  chartPathWithFillColor,
   leftSidebar,
+  pieSlices,
+  popover,
+  restore,
+  tableHeaderClick,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -84,6 +85,34 @@ describe("scenarios > visualizations > pie chart", () => {
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("TOTAL").should("be.visible");
     });
+  });
+
+  it("should truncate the center dimension label if it overflows", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            category_foo: [
+              "concat",
+              ["field", PRODUCTS.CATEGORY, null],
+              " the quick brown fox jumps over the lazy dog",
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [["expression", "category_foo"]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    chartPathWithFillColor("#F9D45C").trigger("mousemove");
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
+      .should("be.visible");
   });
 });
 

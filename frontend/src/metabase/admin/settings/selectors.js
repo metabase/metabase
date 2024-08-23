@@ -7,8 +7,8 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
@@ -253,7 +253,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`SMTP Security`,
         description: null,
         type: "radio",
-        options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
+        options: [
+          { value: "none", name: "None" },
+          { value: "ssl", name: "SSL" },
+          { value: "tls", name: "TLS" },
+          { value: "starttls", name: "STARTTLS" },
+        ],
         defaultValue: "none",
       },
       {
@@ -383,6 +388,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "uploads-settings",
       },
     ],
+    getHidden: settings => settings["token-features"]?.attached_dwh === true,
   },
 
   "public-sharing": {

@@ -1,21 +1,21 @@
 import { isa as cljs_isa } from "cljs/metabase.types";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
-  TYPE,
-  TYPE_HIERARCHIES,
-  TEMPORAL,
-  LOCATION,
+  BOOLEAN,
+  CATEGORY,
   COORDINATE,
   FOREIGN_KEY,
+  INTEGER,
+  LOCATION,
+  NUMBER,
   PRIMARY_KEY,
+  SCOPE,
   STRING,
   STRING_LIKE,
-  NUMBER,
-  INTEGER,
-  BOOLEAN,
   SUMMABLE,
-  SCOPE,
-  CATEGORY,
+  TEMPORAL,
+  TYPE,
+  TYPE_HIERARCHIES,
 } from "metabase-lib/v1/types/constants";
 
 /**

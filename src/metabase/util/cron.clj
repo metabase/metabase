@@ -57,7 +57,6 @@
   "Schema for a frontend-parsable schedule map. Used for Pulses and DB scheduling."
   [:ref ::ScheduleMap])
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SCHEDULE MAP -> CRON STRING                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -86,15 +85,15 @@
   (if day-of-week
     ;; specific days of week like Mon or Fri
     (assoc {:day-of-month "?"}
-      :day-of-week (case frame
-                     "first" (str (day-of-week->cron day-of-week) "#1")
-                     "last"  (str (day-of-week->cron day-of-week) "L")))
+           :day-of-week (case frame
+                          "first" (str (day-of-week->cron day-of-week) "#1")
+                          "last"  (str (day-of-week->cron day-of-week) "L")))
     ;; specific CALENDAR DAYS like 1st or 15th
     (assoc {:day-of-week "?"}
-      :day-of-month (case frame
-                      "first" "1"
-                      "mid"   "15"
-                      "last"  "L"))))
+           :day-of-month (case frame
+                           "first" "1"
+                           "mid"   "15"
+                           "last"  "L"))))
 
 (mu/defn schedule-map->cron-string :- CronScheduleString
   "Convert the frontend schedule map into a cron string."
@@ -107,7 +106,7 @@
                            :day-of-week (day-of-week->cron day-of-week)
                            :day-of-month "?"}
                  :monthly (assoc (frame->cron frame day-of-week)
-                            :hours hour))))
+                                 :hours hour))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          CRON STRING -> SCHEDULE MAP                                           |
@@ -151,7 +150,7 @@
          (not= hours "*"))                        "daily"
     :else                                         "hourly"))
 
-(mu/defn ^{:style/indent 0} cron-string->schedule-map :- ScheduleMap
+(mu/defn cron-string->schedule-map :- ScheduleMap
   "Convert a normal `cron-string` into the expanded ScheduleMap format used by the frontend."
   [cron-string :- CronScheduleString]
   (let [[_ mins hours day-of-month _ day-of-week _] (str/split cron-string #"\s+")]

@@ -1,7 +1,7 @@
 import { STANDARD_AGGREGATIONS } from "metabase-lib/v1/expressions";
 
 import * as FieldRef from "./field-ref";
-import { add, update, remove } from "./util";
+import { add, remove, update } from "./util";
 
 /**
  * Returns canonical list of Aggregations, i.e. with deprecated "rows" removed

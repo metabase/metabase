@@ -1,26 +1,26 @@
 import type {
   CardId,
-  DatasetColumn,
   DatabaseId,
+  DatasetColumn,
   FieldId,
   FieldValuesType,
   RowValue,
-  TableId,
   SchemaId,
+  TableId,
   TemporalUnit,
 } from "metabase-types/api";
 
 import type {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
-  NUMBER_FILTER_OPERATORS,
-  STRING_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  SPECIFIC_DATE_FILTER_OPERATORS,
+  NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
+  SPECIFIC_DATE_FILTER_OPERATORS,
+  STRING_FILTER_OPERATORS,
   TIME_FILTER_OPERATORS,
-  DEFAULT_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
@@ -160,7 +160,7 @@ export type ColumnDisplayInfo = {
   table?: TableInlineDisplayInfo;
   fingerprint?: FingerprintDisplayInfo;
 
-  breakoutPosition?: number;
+  breakoutPositions?: number[];
   filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
@@ -190,13 +190,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
+// We're setting the values here as unknown even though
+// the API will return numbers most of the time, because
+// sometimes it doesn't!
 export type NumberFingerprintDisplayInfo = {
-  avg: number;
-  max: number;
-  min: number;
-  q1: number;
-  q3: number;
-  sd: number;
+  avg: unknown;
+  max: unknown;
+  min: unknown;
+  q1: unknown;
+  q3: unknown;
+  sd: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {
@@ -275,6 +278,7 @@ export type ExpressionOperatorName =
   | "concat"
   | "interval"
   | "time-interval"
+  | "relative-time-interval"
   | "relative-datetime"
   | "inside"
   | "segment"

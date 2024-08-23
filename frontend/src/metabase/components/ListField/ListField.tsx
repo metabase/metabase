@@ -1,22 +1,22 @@
 import type * as React from "react";
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
+import { waitTimeContext } from "metabase/context/wait-time";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Checkbox } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
-  OptionContainer,
-  LabelWrapper,
-  OptionsList,
   EmptyStateContainer,
   FilterInputContainer,
+  LabelWrapper,
+  OptionContainer,
+  OptionsList,
 } from "./ListField.styled";
 import type { ListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
@@ -60,7 +60,8 @@ export const ListField = ({
   }, [augmentedOptions.length]);
 
   const [filter, setFilter] = useState("");
-  const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
+  const waitTime = useContext(waitTimeContext);
+  const debouncedFilter = useDebouncedValue(filter, waitTime);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();

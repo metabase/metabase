@@ -1,8 +1,8 @@
 (ns metabase.shared.util.namespaces
   "Potemkin is Java-only, so here's a basic function-importing macro that works for both CLJS and CLJ."
   (:require
-    [net.cgrand.macrovich :as macros]
-    [potemkin :as p]))
+   [net.cgrand.macrovich :as macros]
+   [potemkin :as p]))
 
 (defn- redef [target sym]
   (let [defn-name (or sym (symbol (name target)))]

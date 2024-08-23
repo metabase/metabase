@@ -53,7 +53,7 @@
               (#'sql.qp/add-default-select :redshift)
               (sql.qp/format-honeysql :redshift)))))
 
-(defn- query->native [query]
+(defn- query->native! [query]
   (let [native-query (atom nil)
         check-sql-fn (fn [_ _ sql & _]
                        (reset! native-query sql)
@@ -94,7 +94,7 @@
                            (str/replace #"\Q{{schema}}\E" (redshift.test/unique-session-schema))))]
         (is (= expected
                (sql->lines
-                (query->native
+                (query->native!
                  (assoc
                   (mt/mbql-query users {:limit 2000})
                   :parameters [{:type   "id"
@@ -187,22 +187,22 @@
     (testing "Native query parameters should work with filters. (#12984)"
       (is (= [[693 "2015-12-29T00:00:00Z" 10 90]]
              (mt/rows
-               (qp/process-query
-                {:database   (mt/id)
-                 :type       :native
-                 :native     {:query         (str "select * "
-                                                  (format "from \"%s\".test_data_checkins " (redshift.test/unique-session-schema))
-                                                  "where {{date}} "
-                                                  "order by date desc "
-                                                  "limit 1;")
-                              :template-tags {"date" {:name         "date"
-                                                      :display-name "date"
-                                                      :type         :dimension
-                                                      :widget-type  :date/all-options
-                                                      :dimension    [:field (mt/id :checkins :date) nil]}}}
-                 :parameters [{:type   :date/all-options
-                               :target [:dimension [:template-tag "date"]]
-                               :value  "past30years"}]})))))))
+              (qp/process-query
+               {:database   (mt/id)
+                :type       :native
+                :native     {:query         (str "select * "
+                                                 (format "from \"%s\".test_data_checkins " (redshift.test/unique-session-schema))
+                                                 "where {{date}} "
+                                                 "order by date desc "
+                                                 "limit 1;")
+                             :template-tags {"date" {:name         "date"
+                                                     :display-name "date"
+                                                     :type         :dimension
+                                                     :widget-type  :date/all-options
+                                                     :dimension    [:field (mt/id :checkins :date) nil]}}}
+                :parameters [{:type   :date/all-options
+                              :target [:dimension [:template-tag "date"]]
+                              :value  "past30years"}]})))))))
 
 (defn- execute! [format-string & args]
   (let [sql  (apply format format-string args)
@@ -287,28 +287,28 @@
             revoke-schema-usage (format "REVOKE USAGE ON SCHEMA \"%s\" FROM %s;%n" schema user-name)]
         (try (execute! (str (format "CREATE USER %s PASSWORD '%s';%n" user-name user-pw)
                             (format "CREATE TABLE %s (i INTEGER);%n" schema+table)))
-               (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
-                 (let [table-is-in-results? (fn []
-                                              (binding [redshift.test/*override-describe-database-to-filter-by-db-name?* false]
-                                                (->> (:tables (driver/describe-database :redshift db))
-                                                     (map :name)
-                                                     (some #{table-name})
-                                                     boolean)))
-                       grant-schema-usage   (format "GRANT USAGE ON SCHEMA \"%s\" TO %s;%n" schema user-name)
-                       revoke-table-select  (format "REVOKE SELECT ON TABLE %s FROM %s;%n" schema+table user-name)
-                       grant-table-select   (format "GRANT SELECT ON TABLE %s TO %s;%n" schema+table user-name)]
-                   (testing "with schema usage and table select grants, table should be in results"
-                     (execute! (str grant-schema-usage grant-table-select))
-                     (is (true? (table-is-in-results?))))
-                   (testing "with no schema usage and no table select grants, table should not be in results"
-                     (execute! (str revoke-schema-usage revoke-table-select))
-                     (is (false? (table-is-in-results?))))
-                   (testing "with no schema usage but table select grants, table should not be in results"
-                     (execute! (str revoke-schema-usage grant-table-select))
-                     (is (false? (table-is-in-results?))))
-                   (testing "with schema usage but no table select grants, table should not be in results"
-                     (execute! (str grant-schema-usage revoke-table-select))
-                     (is (false? (table-is-in-results?))))))
+             (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
+               (let [table-is-in-results? (fn []
+                                            (binding [redshift.test/*override-describe-database-to-filter-by-db-name?* false]
+                                              (->> (:tables (driver/describe-database :redshift db))
+                                                   (map :name)
+                                                   (some #{table-name})
+                                                   boolean)))
+                     grant-schema-usage   (format "GRANT USAGE ON SCHEMA \"%s\" TO %s;%n" schema user-name)
+                     revoke-table-select  (format "REVOKE SELECT ON TABLE %s FROM %s;%n" schema+table user-name)
+                     grant-table-select   (format "GRANT SELECT ON TABLE %s TO %s;%n" schema+table user-name)]
+                 (testing "with schema usage and table select grants, table should be in results"
+                   (execute! (str grant-schema-usage grant-table-select))
+                   (is (true? (table-is-in-results?))))
+                 (testing "with no schema usage and no table select grants, table should not be in results"
+                   (execute! (str revoke-schema-usage revoke-table-select))
+                   (is (false? (table-is-in-results?))))
+                 (testing "with no schema usage but table select grants, table should not be in results"
+                   (execute! (str revoke-schema-usage grant-table-select))
+                   (is (false? (table-is-in-results?))))
+                 (testing "with schema usage but no table select grants, table should not be in results"
+                   (execute! (str grant-schema-usage revoke-table-select))
+                   (is (false? (table-is-in-results?))))))
              (finally
                (execute! (str revoke-schema-usage
                               (format "DROP USER IF EXISTS %s;%n" user-name)))))))))
@@ -317,7 +317,7 @@
   (mt/test-driver :redshift
     (testing "metabase_cache tables should be excluded from the describe-database results"
       (mt/dataset avian-singles
-        (mt/with-persistence-enabled [persist-models!]
+        (mt/with-persistence-enabled! [persist-models!]
           (let [details (assoc (:details (mt/db))
                                :schema-filters-type "inclusion"
                                :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas
@@ -386,99 +386,99 @@
     (testing "Redshift Interval values should behave the same as postgres (#19501)"
       (is (= ["0 years 0 mons 5 days 0 hours 0 mins 0.0 secs"]
              (mt/first-row
-               (qp/process-query
-                 (mt/native-query {:query "select interval '5 days'"}))))))))
+              (qp/process-query
+               (mt/native-query {:query "select interval '5 days'"}))))))))
 
 ;; Cal 2024-04-10: Commented this out instead of deleting it. We used to use this for `driver/describe-database` (see metabase#37439)
 ;; We might use it again in the future for getting privileges for actions.
 #_(deftest table-privileges-test
-  (mt/test-driver :redshift
-    (testing "`table-privileges` should return the correct data for current_user and role privileges"
-      (mt/with-temp [Database database {:engine :redshift :details (tx/dbdef->connection-details :redshift nil nil)}]
-        (let [schema-name                  (redshift.test/unique-session-schema)
-              username                     (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
-              db-name                      (:name database)
-              table-name                   (tx/db-qualified-table-name db-name "table")
-              qual-tbl-name                (format "\"%s\".\"%s\"" schema-name table-name)
-              table-partial-select-name    (tx/db-qualified-table-name db-name "tbl_sel")
-              qual-tbl-partial-select-name (format "\"%s\".\"%s\"" schema-name table-partial-select-name)
-              table-partial-update-name    (tx/db-qualified-table-name db-name "tbl_upd")
-              qual-tbl-partial-update-name (format "\"%s\".\"%s\"" schema-name table-partial-update-name)
-              view-nm                      (tx/db-qualified-table-name db-name "view")
-              qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
-              mview-name                   (tx/db-qualified-table-name db-name "mview")
-              qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
-              conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
-              get-privileges               (fn []
-                                             (sql-jdbc.conn/with-connection-spec-for-testing-connection
-                                               [spec [:redshift (assoc (:details database) :user username)]]
-                                               (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
-                                                 (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
-          (try
-           (execute! (format
-                      (str
-                       "CREATE TABLE %1$s (id INTEGER);\n"
-                       "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
-                       "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
-                       "CREATE TABLE %4$s (id INTEGER);\n"
-                       "CREATE TABLE %5$s (id INTEGER);\n"
-                       "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
-                       "GRANT SELECT ON %1$s TO \"%6$s\";\n"
-                       "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
-                       "GRANT SELECT ON %2$s TO \"%6$s\";\n"
-                       "GRANT SELECT ON %3$s TO \"%6$s\";\n"
-                       "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
-                       "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
-                      qual-tbl-name
-                      qual-view-name
-                      qual-mview-name
-                      qual-tbl-partial-select-name
-                      qual-tbl-partial-update-name
-                      username
-                      (get-in database [:details :password])))
-           (testing "check that without USAGE privileges on the schema, nothing is returned"
-             (is (= #{}
-                    (get-privileges))))
-           (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-             (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
-             (is (= (into #{} (map #(merge {:schema schema-name
-                                            :role   nil
-                                            :select false
-                                            :update false
-                                            :insert false
-                                            :delete false}
-                                           %)
-                                   [{:table  table-name
-                                     :update true
-                                     :select true}
-                                    {:table  table-partial-select-name
-                                     :select true}
-                                    {:table  table-partial-update-name
-                                     :update true}
-                                    {:table  view-nm
-                                     :select true}
-                                    {:table  mview-name
-                                     :select true}]))
-                    (get-privileges))))
-           (finally
-            (execute! (format
-                       (str
-                        "DROP TABLE IF EXISTS %2$s CASCADE;\n"
-                        "DROP VIEW IF EXISTS %3$s CASCADE;\n"
-                        "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
-                        "DROP TABLE IF EXISTS %5$s CASCADE;\n"
-                        "DROP TABLE IF EXISTS %6$s CASCADE;\n"
-                        "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                        "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                        "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
-                        "DROP USER IF EXISTS \"%7$s\";")
-                       schema-name
-                       qual-tbl-name
-                       qual-view-name
-                       qual-mview-name
-                       qual-tbl-partial-select-name
-                       qual-tbl-partial-update-name
-                       username)))))))))
+    (mt/test-driver :redshift
+      (testing "`table-privileges` should return the correct data for current_user and role privileges"
+        (mt/with-temp [Database database {:engine :redshift :details (tx/dbdef->connection-details :redshift nil nil)}]
+          (let [schema-name                  (redshift.test/unique-session-schema)
+                username                     (str (sql.tu.unique-prefix/unique-prefix) "privilege_rows_test_role")
+                db-name                      (:name database)
+                table-name                   (tx/db-qualified-table-name db-name "table")
+                qual-tbl-name                (format "\"%s\".\"%s\"" schema-name table-name)
+                table-partial-select-name    (tx/db-qualified-table-name db-name "tbl_sel")
+                qual-tbl-partial-select-name (format "\"%s\".\"%s\"" schema-name table-partial-select-name)
+                table-partial-update-name    (tx/db-qualified-table-name db-name "tbl_upd")
+                qual-tbl-partial-update-name (format "\"%s\".\"%s\"" schema-name table-partial-update-name)
+                view-nm                      (tx/db-qualified-table-name db-name "view")
+                qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
+                mview-name                   (tx/db-qualified-table-name db-name "mview")
+                qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
+                conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
+                get-privileges               (fn []
+                                               (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                                                [spec [:redshift (assoc (:details database) :user username)]]
+                                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                                   (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
+            (try
+              (execute! (format
+                         (str
+                          "CREATE TABLE %1$s (id INTEGER);\n"
+                          "CREATE VIEW %2$s AS SELECT * from %1$s;\n"
+                          "CREATE MATERIALIZED VIEW %3$s AS SELECT * from %1$s;\n"
+                          "CREATE TABLE %4$s (id INTEGER);\n"
+                          "CREATE TABLE %5$s (id INTEGER);\n"
+                          "CREATE USER \"%6$s\" WITH PASSWORD '%7$s';\n"
+                          "GRANT SELECT ON %1$s TO \"%6$s\";\n"
+                          "GRANT UPDATE ON %1$s TO \"%6$s\";\n"
+                          "GRANT SELECT ON %2$s TO \"%6$s\";\n"
+                          "GRANT SELECT ON %3$s TO \"%6$s\";\n"
+                          "GRANT SELECT (id) ON %4$s TO \"%6$s\";\n"
+                          "GRANT UPDATE (id) ON %5$s TO \"%6$s\";")
+                         qual-tbl-name
+                         qual-view-name
+                         qual-mview-name
+                         qual-tbl-partial-select-name
+                         qual-tbl-partial-update-name
+                         username
+                         (get-in database [:details :password])))
+              (testing "check that without USAGE privileges on the schema, nothing is returned"
+                (is (= #{}
+                       (get-privileges))))
+              (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
+                (jdbc/execute! conn-spec (format "GRANT USAGE ON SCHEMA \"%s\" TO \"%s\";" schema-name username))
+                (is (= (into #{} (map #(merge {:schema schema-name
+                                               :role   nil
+                                               :select false
+                                               :update false
+                                               :insert false
+                                               :delete false}
+                                              %)
+                                      [{:table  table-name
+                                        :update true
+                                        :select true}
+                                       {:table  table-partial-select-name
+                                        :select true}
+                                       {:table  table-partial-update-name
+                                        :update true}
+                                       {:table  view-nm
+                                        :select true}
+                                       {:table  mview-name
+                                        :select true}]))
+                       (get-privileges))))
+              (finally
+                (execute! (format
+                           (str
+                            "DROP TABLE IF EXISTS %2$s CASCADE;\n"
+                            "DROP VIEW IF EXISTS %3$s CASCADE;\n"
+                            "DROP MATERIALIZED VIEW IF EXISTS %4$s CASCADE;\n"
+                            "DROP TABLE IF EXISTS %5$s CASCADE;\n"
+                            "DROP TABLE IF EXISTS %6$s CASCADE;\n"
+                            "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                            "REVOKE ALL PRIVILEGES ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                            "REVOKE USAGE ON SCHEMA \"%1$s\" FROM \"%7$s\";\n"
+                            "DROP USER IF EXISTS \"%7$s\";")
+                           schema-name
+                           qual-tbl-name
+                           qual-view-name
+                           qual-mview-name
+                           qual-tbl-partial-select-name
+                           qual-tbl-partial-update-name
+                           username)))))))))
 
 (deftest ^:parallel date-plus-integer-test
   (testing "Can we add a {{date}} template tag parameter to an integer in SQL queries? (#40755)"

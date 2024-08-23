@@ -14,7 +14,7 @@
    cache entry key. `results` are passed as a compressed byte array.
 
   The implementation is responsible for purging old cache entries when appropriate."
-  (^{:style/indent 3} cached-results [this ^bytes query-hash strategy respond]
+  (cached-results [this ^bytes query-hash strategy respond]
     "Call `respond` with cached results for the query (as an `InputStream` to the raw bytes) if present and not
   expired; otherwise, call `respond` with `nil.
 
@@ -42,7 +42,7 @@
   {:style/indent 4}
   [backend query-hash strategy [is-binding] & body]
   `(cached-results ~backend ~query-hash ~strategy (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
-                                                           ~@body)))
+                                                    ~@body)))
 
 (defmulti cache-backend
   "Return an instance of a cache backend, which is any object that implements `QueryProcessorCacheBackend`.

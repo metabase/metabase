@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Button, TextInput, Icon, type ButtonProps } from "metabase/ui";
+import { Button, Icon, TextInput, type ButtonProps } from "metabase/ui";
 
 type DefaultRenderInputProps = {
   value: MappingValue;

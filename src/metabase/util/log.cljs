@@ -4,7 +4,8 @@
    [goog.string :as gstring]
    [goog.string.format :as gstring.format]
    [lambdaisland.glogi :as log]
-   [lambdaisland.glogi.console :as glogi-console])
+   [lambdaisland.glogi.console :as glogi-console]
+   [metabase.util.log.capture])
   (:require-macros
    [metabase.util.log]))
 

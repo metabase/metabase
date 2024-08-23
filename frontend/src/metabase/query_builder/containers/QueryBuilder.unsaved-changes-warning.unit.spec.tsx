@@ -23,6 +23,7 @@ import {
 
 import {
   TEST_COLLECTION,
+  TEST_DB,
   TEST_MODEL_CARD,
   TEST_MODEL_CARD_SLUG,
   TEST_MODEL_DATASET,
@@ -40,7 +41,6 @@ import {
   waitForSaveChangesToBeDisabled,
   waitForSaveChangesToBeEnabled,
   waitForSaveToBeEnabled,
-  TEST_DB,
 } from "./test-utils";
 
 registerVisualizations();
@@ -435,7 +435,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByTestId("notebook-button"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();
@@ -782,7 +782,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByTestId("notebook-button"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();

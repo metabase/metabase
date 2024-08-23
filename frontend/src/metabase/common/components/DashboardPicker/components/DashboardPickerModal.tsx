@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
@@ -11,11 +11,12 @@ import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
+import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
+  DashboardPickerInitialValueItem,
   DashboardPickerItem,
   DashboardPickerOptions,
   DashboardPickerValueItem,
-  DashboardPickerInitialValueItem,
 } from "../types";
 import { getCollectionId } from "../utils";
 
@@ -66,6 +67,16 @@ export const DashboardPickerModal = ({
     canSelectItem(value) ? value : null,
   );
 
+  const { tryLogRecentItem } = useLogRecentItem();
+
+  const handleOnChange = useCallback(
+    (item: DashboardPickerValueItem) => {
+      onChange(item);
+      tryLogRecentItem(item);
+    },
+    [onChange, tryLogRecentItem],
+  );
+
   const [
     isCreateDialogOpen,
     { turnOn: openCreateDialog, turnOff: closeCreateDialog },
@@ -80,15 +91,15 @@ export const DashboardPickerModal = ({
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else if (canSelectItem(item)) {
-        onChange(item);
+        handleOnChange(item);
       }
     },
-    [onChange, options],
+    [handleOnChange, options],
   );
 
   const handleConfirm = () => {
     if (selectedItem && canSelectItem(selectedItem)) {
-      onChange(selectedItem);
+      handleOnChange(selectedItem);
     }
   };
 

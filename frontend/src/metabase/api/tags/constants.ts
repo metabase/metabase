@@ -24,6 +24,7 @@ export const TAG_TYPES = [
   "segment",
   "snippet",
   "subscription",
+  "subscription-channel",
   "table",
   "task",
   "timeline",

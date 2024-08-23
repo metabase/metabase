@@ -1,10 +1,10 @@
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  editDashboard,
   restore,
   selectDashboardFilter,
-  visitDashboard,
-  editDashboard,
   setFilter,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 function filterDashboard(suggests = true) {

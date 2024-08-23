@@ -7,7 +7,7 @@
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
-(defn- tests {:style/indent 2} [f-symb f group->input->expected]
+(defn- tests [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
     (t/testing group
       (doseq [[input expected] input->expected]
@@ -195,6 +195,10 @@
     "but amount should not get normalized if it's an integer"
     {{:query {"FILTER" ["time-interval" 10 -10 "day"]}}
      {:query {:filter [:time-interval 10 -10 :day]}}}
+
+    "relative-time-interval is correctly normalized"
+    {{:query {"FILTER" ["relative-time-interval" 10 "week" -10 "week"]}}
+     {:query {:filter [:relative-time-interval 10 :week -10 :week]}}}
 
     "make sure we support time-interval options"
     {["TIME_INTERVAL" 10 -30 "DAY" {"include_current" true}]
@@ -601,7 +605,7 @@
 ;;; |                                                  CANONICALIZE                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- canonicalize-tests {:style/indent 0} [& {:as group->input->expected}]
+(defn- canonicalize-tests [& {:as group->input->expected}]
   (tests 'canonicalize #'mbql.normalize/canonicalize group->input->expected))
 
 (t/deftest ^:parallel wrap-implicit-field-id-test

@@ -5,6 +5,7 @@
    [clojure.math :as math]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -1092,189 +1093,202 @@
     (encryption-test/with-secret-key "dont-tell-anyone-about-this"
       (do-test true))))
 
-(deftest fix-click-through-test
-  (let [migrate (fn [card dash]
-                  (:visualization_settings
-                   (#'custom-migrations/fix-click-through {:id                     1
-                                                           :dashcard_visualization dash
-                                                           :card_visualization     card})))]
-    (testing "toplevel"
-      (let [card {"some_setting:"       {"foo" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "link"}
-            dash {"other_setting" {"bar" 123}}]
-        (is (= {"other_setting"  {"bar" 123}
-                "click_behavior" {"type"         "link"
-                                  "linkType"     "url"
-                                  "linkTemplate" "http://example.com/{{col_name}}"}}
-               (migrate card dash)))))
+(defn- fix-click-thru [card dash]
+  (:visualization_settings
+   (#'custom-migrations/fix-click-through {:id                     1
+                                           :dashcard_visualization dash
+                                           :card_visualization     card})))
 
-    (testing "top level disabled"
-      (let [card {"some_setting:"       {"foo" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "link"}
-            dash {"other_setting"       {"bar" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "menu"}]
-        ;;click: "menu" turned off the custom drill through so it's not migrated. Dropping click and click_link_template would be fine but isn't needed.
-        (is (nil? (migrate card dash)))))
-    (testing "column settings"
-      (let [card {"some_setting" {"foo" 123}
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]"
-                   {"view_as"       "link"
-                    "link_template" "http://example.com/{{id}}"
-                    "link_text"     "here is my id: {{id}}"}}}
-            dash {"other_setting" {"bar" 123}
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]" {"fun_formatting" "foo"}
-                   "[\"ref\",[\"field-id\",2]]" {"other_fun_formatting" 123}}}]
-        (is (= {"other_setting" {"bar" 123}
+(deftest ^:parallel fix-click-through-test
+  (testing "toplevel"
+    (let [card {"some_setting:"       {"foo" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "link"}
+          dash {"other_setting" {"bar" 123}}]
+      (is (= {"other_setting"  {"bar" 123}
+              "click_behavior" {"type"         "link"
+                                "linkType"     "url"
+                                "linkTemplate" "http://example.com/{{col_name}}"}}
+             (fix-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-through-test-2
+  (testing "top level disabled"
+    (let [card {"some_setting:"       {"foo" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "link"}
+          dash {"other_setting"       {"bar" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "menu"}]
+      ;; click: "menu" turned off the custom drill through so it's not migrated. Dropping click and click_link_template
+      ;; would be fine but isn't needed.
+      (is (nil? (fix-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-through-test-3
+  (testing "column settings"
+    (let [card {"some_setting" {"foo" 123}
                 "column_settings"
                 {"[\"ref\",[\"field-id\",1]]"
-                 {"fun_formatting" "foo"
-                  "click_behavior" {"type"             "link"
-                                    "linkType"         "url"
-                                    "linkTemplate"     "http://example.com/{{id}}"
-                                    "linkTextTemplate" "here is my id: {{id}}"}}
+                 {"view_as"       "link"
+                  "link_template" "http://example.com/{{id}}"
+                  "link_text"     "here is my id: {{id}}"}}}
+          dash {"other_setting" {"bar" 123}
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]" {"fun_formatting" "foo"}
+                 "[\"ref\",[\"field-id\",2]]" {"other_fun_formatting" 123}}}]
+      (is (= {"other_setting" {"bar" 123}
+              "column_settings"
+              {"[\"ref\",[\"field-id\",1]]"
+               {"fun_formatting" "foo"
+                "click_behavior" {"type"             "link"
+                                  "linkType"         "url"
+                                  "linkTemplate"     "http://example.com/{{id}}"
+                                  "linkTextTemplate" "here is my id: {{id}}"}}
+               "[\"ref\",[\"field-id\",2]]"
+               {"other_fun_formatting" 123}}}
+             (fix-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-through-test-4
+  (testing "manually updated new behavior"
+    (let [card {"some_setting"        {"foo" 123}
+                "click_link_template" "http://example.com/{{col_name}}"
+                "click"               "link"}
+          dash {"other_setting"  {"bar" 123}
+                "click_behavior" {"type"         "link"
+                                  "linkType"     "url"
+                                  "linkTemplate" "http://example.com/{{other_col_name}}"}}]
+      (is (nil? (fix-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-through-test-5
+  (testing "Manually updated to new behavior on Column"
+    (let [card {"some_setting" {"foo" 123},
+                "column_settings"
+                {"[\"ref\",[\"field-id\",1]]"
+                 {"view_as"                  "link"
+                  "link_template"            "http://example.com/{{id}}"
+                  "other_special_formatting" "currency"}
                  "[\"ref\",[\"field-id\",2]]"
-                 {"other_fun_formatting" 123}}}
-               (migrate card dash)))))
-    (testing "manually updated new behavior"
-      (let [card {"some_setting"        {"foo" 123}
-                  "click_link_template" "http://example.com/{{col_name}}"
-                  "click"               "link"}
-            dash {"other_setting"  {"bar" 123}
-                  "click_behavior" {"type"         "link"
-                                    "linkType"     "url"
-                                    "linkTemplate" "http://example.com/{{other_col_name}}"}}]
-        (is (nil? (migrate card dash)))))
-    (testing "Manually updated to new behavior on Column"
-      (let [card {"some_setting" {"foo" 123},
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]"
-                   {"view_as"                  "link"
-                    "link_template"            "http://example.com/{{id}}"
-                    "other_special_formatting" "currency"}
-                   "[\"ref\",[\"field-id\",2]]"
-                   {"view_as"              "link",
-                    "link_template"        "http://example.com/{{something_else}}",
-                    "other_fun_formatting" 0}}}
-            dash {"other_setting" {"bar" 123}
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",1]]"
-                   {"click_behavior"
-                    {"type"         "link"
-                     "linkType"     "url"
-                     "linkTemplate" "http://example.com/{{id}}"}}
-                   "[\"ref\",[\"field-id\",2]]"
-                   {"other_fun_formatting" 123}}}]
-        (is (= {"other_setting" {"bar" 123}
+                 {"view_as"              "link",
+                  "link_template"        "http://example.com/{{something_else}}",
+                  "other_fun_formatting" 0}}}
+          dash {"other_setting" {"bar" 123}
                 "column_settings"
                 {"[\"ref\",[\"field-id\",1]]"
                  {"click_behavior"
-                  {"type"         "link",
-                   "linkType"     "url",
+                  {"type"         "link"
+                   "linkType"     "url"
                    "linkTemplate" "http://example.com/{{id}}"}}
                  "[\"ref\",[\"field-id\",2]]"
-                 {"other_fun_formatting" 123,
-                  "click_behavior"
-                  {"type"         "link",
-                   "linkType"     "url",
-                   "linkTemplate" "http://example.com/{{something_else}}"}}}}
-               (migrate card dash)))))
-    (testing "If there is migration eligible on dash but also new style on dash, new style wins"
-      (let [dash {"column_settings"
-                  {"[\"ref\",[\"field-id\",4]]"
-                   {"view_as"       "link"
-                    "link_template" "http://old" ;; this stuff could be migrated
-                    "link_text"     "old"
-                    "column_title"  "column title"
-                    "click_behavior"
-                    {"type"             "link",
-                     "linkType"         "url", ;; but there is already a new style and it wins
-                     "linkTemplate"     "http://new",
-                     "linkTextTemplate" "new"}}}}]
-        ;; no change
-        (is (nil? (migrate nil dash)))))
-    (testing "flamber case"
-      (let [card {"column_settings"
-                  {"[\"ref\",[\"field-id\",4]]"
-                   {"view_as"       "link"
-                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
-                    "link_text"     "MyQCDT {{CATEGORY}}"
-                    "column_title"  "QCDT Category"}
-                   "[\"ref\",[\"field-id\",6]]"
-                   {"view_as"       "link"
-                    "column_title"  "QCDT Rating"
-                    "link_text"     "Rating {{RATING}}"
-                    "link_template" "http//localhost/?QCDT&{{RATING}}"
-                    "prefix"        "prefix-"
-                    "suffix"        "-suffix"}
-                   "[\"ref\",[\"field-id\",5]]"
-                   {"view_as"       nil
-                    "link_text"     "QCDT was disabled"
-                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
-                    "column_title"  "(QCDT disabled) Title"}}
-                  "table.pivot_column" "CATEGORY"
-                  "table.cell_column"  "PRICE"}
-            dash {"table.cell_column"  "PRICE"
-                  "table.pivot_column" "CATEGORY"
-                  "column_settings"
-                  {"[\"ref\",[\"field-id\",5]]"
-                   {"view_as"       nil
-                    "link_text"     "QCDT was disabled"
-                    "link_template" "http//localhost/?QCDT&{{TITLE}}"
-                    "column_title"  "(QCDT disabled) Title"}
-                   "[\"ref\",[\"field-id\",4]]"
-                   {"view_as"       "link"
-                    "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
-                    "link_text"     "MyQCDT {{CATEGORY}}"
-                    "column_title"  "QCDT Category"
-                    "click_behavior"
-                    {"type"             "link"
-                     "linkType"         "url"
-                     "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
-                     "linkTextTemplate" "MyCB {{CATEGORY}}"}}
-                   "[\"ref\",[\"field-id\",6]]"
-                   {"view_as"       "link"
-                    "column_title"  "QCDT Rating"
-                    "link_text"     "Rating {{RATING}}"
-                    "link_template" "http//localhost/?QCDT&{{RATING}}"
-                    "prefix"        "prefix-"
-                    "suffix"        "-suffix"}}
-                  "card.title"         "Table with QCDT - MANUALLY ADDED CB 37"}]
-        (is (= {"card.title"         "Table with QCDT - MANUALLY ADDED CB 37"
-                "column_settings"
+                 {"other_fun_formatting" 123}}}]
+      (is (= {"other_setting" {"bar" 123}
+              "column_settings"
+              {"[\"ref\",[\"field-id\",1]]"
+               {"click_behavior"
+                {"type"         "link",
+                 "linkType"     "url",
+                 "linkTemplate" "http://example.com/{{id}}"}}
+               "[\"ref\",[\"field-id\",2]]"
+               {"other_fun_formatting" 123,
+                "click_behavior"
+                {"type"         "link",
+                 "linkType"     "url",
+                 "linkTemplate" "http://example.com/{{something_else}}"}}}}
+             (fix-click-thru card dash))))))
+
+(deftest ^:parallel fix-click-through-test-6
+  (testing "If there is migration eligible on dash but also new style on dash, new style wins"
+    (let [dash {"column_settings"
                 {"[\"ref\",[\"field-id\",4]]"
-                 {"column_title"  "QCDT Category"
-                  "view_as"       "link"
+                 {"view_as"       "link"
+                  "link_template" "http://old" ;; this stuff could be migrated
+                  "link_text"     "old"
+                  "column_title"  "column title"
+                  "click_behavior"
+                  {"type"             "link",
+                   "linkType"         "url", ;; but there is already a new style and it wins
+                   "linkTemplate"     "http://new",
+                   "linkTextTemplate" "new"}}}}]
+      ;; no change
+      (is (nil? (fix-click-thru nil dash))))))
+
+(deftest ^:parallel fix-click-through-test-7
+  (testing "flamber case"
+    (let [card {"column_settings"
+                {"[\"ref\",[\"field-id\",4]]"
+                 {"view_as"       "link"
                   "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
                   "link_text"     "MyQCDT {{CATEGORY}}"
+                  "column_title"  "QCDT Category"}
+                 "[\"ref\",[\"field-id\",6]]"
+                 {"view_as"       "link"
+                  "column_title"  "QCDT Rating"
+                  "link_text"     "Rating {{RATING}}"
+                  "link_template" "http//localhost/?QCDT&{{RATING}}"
+                  "prefix"        "prefix-"
+                  "suffix"        "-suffix"}
+                 "[\"ref\",[\"field-id\",5]]"
+                 {"view_as"       nil
+                  "link_text"     "QCDT was disabled"
+                  "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                  "column_title"  "(QCDT disabled) Title"}}
+                "table.pivot_column" "CATEGORY"
+                "table.cell_column"  "PRICE"}
+          dash {"table.cell_column"  "PRICE"
+                "table.pivot_column" "CATEGORY"
+                "column_settings"
+                {"[\"ref\",[\"field-id\",5]]"
+                 {"view_as"       nil
+                  "link_text"     "QCDT was disabled"
+                  "link_template" "http//localhost/?QCDT&{{TITLE}}"
+                  "column_title"  "(QCDT disabled) Title"}
+                 "[\"ref\",[\"field-id\",4]]"
+                 {"view_as"       "link"
+                  "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                  "link_text"     "MyQCDT {{CATEGORY}}"
+                  "column_title"  "QCDT Category"
                   "click_behavior"
                   {"type"             "link"
                    "linkType"         "url"
                    "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
                    "linkTextTemplate" "MyCB {{CATEGORY}}"}}
-                 "[\"ref\",[\"field-id\",5]]"
-                 {"link_text"     "QCDT was disabled"
-                  "column_title"  "(QCDT disabled) Title"
-                  "link_template" "http//localhost/?QCDT&{{TITLE}}"}
                  "[\"ref\",[\"field-id\",6]]"
-                 {"prefix"        "prefix-"
-                  "suffix"        "-suffix"
+                 {"view_as"       "link"
                   "column_title"  "QCDT Rating"
-                  "view_as"       "link"
                   "link_text"     "Rating {{RATING}}"
                   "link_template" "http//localhost/?QCDT&{{RATING}}"
-                  "click_behavior"
-                  {"type"             "link"
-                   "linkType"         "url"
-                   "linkTemplate"     "http//localhost/?QCDT&{{RATING}}"
-                   "linkTextTemplate" "Rating {{RATING}}"}}}
-                "table.cell_column"  "PRICE"
-                "table.pivot_column" "CATEGORY"}
-               (migrate card dash)))))))
+                  "prefix"        "prefix-"
+                  "suffix"        "-suffix"}}
+                "card.title"         "Table with QCDT - MANUALLY ADDED CB 37"}]
+      (is (= {"card.title"         "Table with QCDT - MANUALLY ADDED CB 37"
+              "column_settings"
+              {"[\"ref\",[\"field-id\",4]]"
+               {"column_title"  "QCDT Category"
+                "view_as"       "link"
+                "link_template" "http//localhost/?QCDT&{{CATEGORY}}"
+                "link_text"     "MyQCDT {{CATEGORY}}"
+                "click_behavior"
+                {"type"             "link"
+                 "linkType"         "url"
+                 "linkTemplate"     "http//localhost/?CB&{{CATEGORY}}"
+                 "linkTextTemplate" "MyCB {{CATEGORY}}"}}
+               "[\"ref\",[\"field-id\",5]]"
+               {"link_text"     "QCDT was disabled"
+                "column_title"  "(QCDT disabled) Title"
+                "link_template" "http//localhost/?QCDT&{{TITLE}}"}
+               "[\"ref\",[\"field-id\",6]]"
+               {"prefix"        "prefix-"
+                "suffix"        "-suffix"
+                "column_title"  "QCDT Rating"
+                "view_as"       "link"
+                "link_text"     "Rating {{RATING}}"
+                "link_template" "http//localhost/?QCDT&{{RATING}}"
+                "click_behavior"
+                {"type"             "link"
+                 "linkType"         "url"
+                 "linkTemplate"     "http//localhost/?QCDT&{{RATING}}"
+                 "linkTextTemplate" "Rating {{RATING}}"}}}
+              "table.cell_column"  "PRICE"
+              "table.pivot_column" "CATEGORY"}
+             (fix-click-thru card dash))))))
 
 (deftest fix-click-through-general-test
   (testing "general case"
@@ -1452,7 +1466,7 @@
   [setting-k]
   (json/parse-string (t2/select-one-fn :value :setting :key (name setting-k))))
 
-(defn- call-with-ldap-and-sso-configured [ldap-group-mappings sso-group-mappings f]
+(defn- call-with-ldap-and-sso-configured! [ldap-group-mappings sso-group-mappings f]
   (mt/with-temporary-raw-setting-values
     [ldap-group-mappings    (json/generate-string ldap-group-mappings)
      saml-group-mappings    (json/generate-string sso-group-mappings)
@@ -1462,11 +1476,11 @@
      jwt-enabled            "true"]
     (f)))
 
-(defmacro ^:private with-ldap-and-sso-configured
+(defmacro ^:private with-ldap-and-sso-configured!
   "Run body with ldap and SSO configured, in which SSO will only be configured if enterprise is available"
   [ldap-group-mappings sso-group-mappings & body]
   (binding [setting/*allow-retired-setting-names* true]
-    `(call-with-ldap-and-sso-configured ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
+    `(call-with-ldap-and-sso-configured! ~ldap-group-mappings ~sso-group-mappings (fn [] ~@body))))
 
 ;; The `remove-admin-from-group-mapping-if-needed` migration is written to run in OSS version
 ;; even though it might make changes to some enterprise-only settings.
@@ -1484,14 +1498,14 @@
         ldap-expected-mapping {"dc=metabase,dc=com" [(+ 1 admin-group-id)]}]
 
     (testing "Remove admin from group mapping for LDAP, SAML, JWT if they are enabled"
-      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
         (is (= ldap-expected-mapping (get-json-setting :ldap-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :jwt-group-mappings)))
         (is (= sso-expected-mapping (get-json-setting :saml-group-mappings)))))
 
     (testing "remove admin from group mapping for LDAP, SAML, JWT even if they are disabled"
-      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
           [ldap-enabled "false"
            saml-enabled "false"
@@ -1502,7 +1516,7 @@
           (is (= sso-expected-mapping (get-json-setting :saml-group-mappings))))))
 
     (testing "Don't remove admin group if `ldap-sync-admin-group` is enabled"
-      (with-ldap-and-sso-configured ldap-group-mappings sso-group-mappings
+      (with-ldap-and-sso-configured! ldap-group-mappings sso-group-mappings
         (mt/with-temporary-raw-setting-values
           [ldap-sync-admin-group "true"]
           (#'custom-migrations/migrate-remove-admin-from-group-mapping-if-needed)
@@ -1664,7 +1678,7 @@
   (testing "We should delete the triggers for DBs that are configured not to scan their field values\n"
     (impl/test-migrations "v49.2024-04-09T10:00:03" [migrate!]
       (letfn [(do-test []
-                (api.database-test/with-db-scheduler-setup
+                (api.database-test/with-db-scheduler-setup!
                   (let [db-with-full-schedules (new-instance-with-default :metabase_database
                                                                           {:metadata_sync_schedule      "0 0 * * * ? *"
                                                                            :cache_field_values_schedule "0 0 1 * * ? *"
@@ -2017,3 +2031,138 @@
       (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
       (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))
+
+(def ^:private result-metadata-for-viz-settings
+  [{:name "C1"    :field_ref [:field 1 nil]}
+   {:name "C2"    :field_ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]}
+   {:name "C3"    :field_ref [:field 3 {:base-type :type/BigInteger :source-field 10}]}
+   {:name "C4"    :field_ref [:expression "Exp"]}
+   {:name "C5"    :field_ref [:field 5 {:temporal-unit :month}]}
+   {:name "C6"    :field_ref [:field 6 {:base-type :type/Float :binning {:strategy :num-bins :min-value 0 :max-value 160 :num-bins 8 :bin-width 20}}]}
+   {:name "C7"    :field_ref [:field "C7" {:base-type :type/BigInteger}]}
+   {:name "count" :field_ref [:aggregation 0]}])
+
+(def ^:private viz-settings-with-field-ref-keys
+  {:column_settings (-> {[:ref [:field 1 nil]]                                                  {:column_title "1"}
+                         [:ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]] {:column_title "2"}
+                         [:ref [:field 3 {:base-type :type/BigInteger :source-field 10}]]       {:column_title "3"}
+                         [:ref [:expression "Exp"]]                                             {:column_title "4"}
+                         [:ref [:field 5 nil]]                                                  {:column_title "5"}
+                         [:ref [:field 6 {:base-type :type/Float}]]                             {:column_title "6"}
+                         [:name "C7"]                                                           {:column_title "7"}
+                         [:name "count"]                                                        {:column_title "8"}
+                         ;; unmatched column
+                         [:ref [:field 9 nil]]                                                  {:column_title "9"}}
+                        (update-keys json/generate-string))})
+
+(def ^:private viz-settings-with-name-keys
+  {:column_settings (-> {[:name "C1"]           {:column_title "1"}
+                         [:name "C2"]           {:column_title "2"}
+                         [:name "C3"]           {:column_title "3"}
+                         [:name "C4"]           {:column_title "4"}
+                         [:name "C5"]           {:column_title "5"}
+                         [:name "C6"]           {:column_title "6"}
+                         [:name "C7"]           {:column_title "7"}
+                         [:name "count"]        {:column_title "8"}
+                         ;; unmatched column
+                         [:ref [:field 9 nil]]  {:column_title "9"}}
+                        (update-keys json/generate-string))})
+
+(defn- keyword-except-column-key [key]
+  (if (str/starts-with? key "[") key (keyword key)))
+
+(deftest update-legacy-column-keys-in-card-viz-settings-test
+  (testing "v51.2024-08-07T10:00:00"
+    (impl/test-migrations ["v51.2024-08-07T10:00:00"] [migrate!]
+      (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
+                                              {:first_name  "Howard"
+                                               :last_name   "Hughes"
+                                               :email       "howard@aircraft.com"
+                                               :password    "superstrong"
+                                               :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                              {:name                   "My Saved Question"
+                                               :created_at             :%now
+                                               :updated_at             :%now
+                                               :creator_id             user-id
+                                               :display                "table"
+                                               :dataset_query          "{}"
+                                               :result_metadata        (json/generate-string result-metadata-for-viz-settings)
+                                               :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
+                                               :database_id            database-id
+                                               :collection_id          nil})]
+        (migrate!)
+        (testing "After the migration, column_settings are migrated to name-based keys"
+          (is (= viz-settings-with-name-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings are restored to field ref-based keys"
+          (is (= viz-settings-with-field-ref-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))))))
+
+(deftest update-legacy-column-keys-in-dashboard-card-viz-settings-test
+  (testing "v51.2024-08-07T11:00:00"
+    (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+      (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
+                                              {:first_name  "Howard"
+                                               :last_name   "Hughes"
+                                               :email       "howard@aircraft.com"
+                                               :password    "superstrong"
+                                               :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                              {:name                   "My Saved Question"
+                                               :created_at             :%now
+                                               :updated_at             :%now
+                                               :creator_id             user-id
+                                               :display                "table"
+                                               :dataset_query          "{}"
+                                               :result_metadata        (json/generate-string result-metadata-for-viz-settings)
+                                               :visualization_settings "{}"
+                                               :database_id            database-id
+                                               :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                        :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
+                                                                        :card_id      card-id
+                                                                        :size_x       4
+                                                                        :size_y       4
+                                                                        :col          1
+                                                                        :row          1})]
+        (migrate!)
+        (testing "After the migration, column_settings are migrated to name-based keys"
+          (is (= viz-settings-with-name-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings are restored to field ref-based keys"
+          (is (= viz-settings-with-field-ref-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))))))

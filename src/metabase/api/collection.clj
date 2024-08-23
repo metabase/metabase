@@ -121,7 +121,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -222,9 +222,9 @@
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                                           (update acc (case (keyword card-type)
-                                                       :model :dataset
-                                                       :metric :metric
-                                                       :card) conj collection-id))
+                                                        :model :dataset
+                                                        :metric :metric
+                                                        :card) conj collection-id))
                                         {:dataset #{}
                                          :metric  #{}
                                          :card    #{}}
@@ -326,7 +326,6 @@
     always-false-hsql-expr
     always-true-hsql-expr))
 
-
 (defmulti ^:private post-process-collection-children
   {:arglists '([model collection rows])}
   (fn [model _ _]
@@ -401,33 +400,33 @@
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
-                    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
-                     :last_used_at
-                     :c.collection_id
-                     :c.archived_directly
-                     :c.archived
-                     :c.dataset_query
-                     [(h2x/literal (case card-type
-                                     :model "dataset"
-                                     :metric  "metric"
-                                     "card"))
-                      :model]
-                     [:u.id :last_edit_user]
-                     [:u.email :last_edit_email]
-                     [:u.first_name :last_edit_first_name]
-                     [:u.last_name :last_edit_last_name]
-                     [:r.timestamp :last_edit_timestamp]
-                     [{:select   [:status]
-                       :from     [:moderation_review]
-                       :where    [:and
-                                  [:= :moderated_item_type "card"]
-                                  [:= :moderated_item_id :c.id]
-                                  [:= :most_recent true]]
+                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                    :last_used_at
+                    :c.collection_id
+                    :c.archived_directly
+                    :c.archived
+                    :c.dataset_query
+                    [(h2x/literal (case card-type
+                                    :model "dataset"
+                                    :metric  "metric"
+                                    "card"))
+                     :model]
+                    [:u.id :last_edit_user]
+                    [:u.email :last_edit_email]
+                    [:u.first_name :last_edit_first_name]
+                    [:u.last_name :last_edit_last_name]
+                    [:r.timestamp :last_edit_timestamp]
+                    [{:select   [:status]
+                      :from     [:moderation_review]
+                      :where    [:and
+                                 [:= :moderated_item_type "card"]
+                                 [:= :moderated_item_id :c.id]
+                                 [:= :most_recent true]]
                        ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
                        ;; protecting against potential bugs
-                       :order-by [[:id :desc]]
-                       :limit    1}
-                      :moderated_status]]
+                      :order-by [[:id :desc]]
+                      :limit    1}
+                     :moderated_status]]
                     (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
@@ -656,9 +655,9 @@
         child-type->coll-id-set
         (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
                   (update acc (case (keyword card-type)
-                               :model :dataset
-                               :metric :metric
-                               :card) conj collection-id))
+                                :model :dataset
+                                :metric :metric
+                                :card) conj collection-id))
                 {:dataset #{}
                  :metric  #{}
                  :card    #{}}
@@ -839,43 +838,43 @@
   [sort-info db-type]
   (->> (into [(official-collections-first-sort-clause sort-info)
               normal-collections-first-sort-clause]
-        (case ((juxt :sort-column :sort-direction) sort-info)
-          [nil nil]               [[:%lower.name :asc]]
-          [:name :asc]            [[:%lower.name :asc]]
-          [:name :desc]           [[:%lower.name :desc]]
-          [:last-edited-at :asc]  [(if (= db-type :mysql)
-                                     [:%isnull.last_edit_timestamp]
-                                     [:last_edit_timestamp :nulls-last])
-                                   [:last_edit_timestamp :asc]
-                                   [:%lower.name :asc]]
-          [:last-edited-at :desc] [(case db-type
-                                     :mysql    [:%isnull.last_edit_timestamp]
-                                     :postgres [:last_edit_timestamp :desc-nulls-last]
-                                     :h2       nil)
-                                   [:last_edit_timestamp :desc]
-                                   [:%lower.name :asc]]
-          [:last-edited-by :asc]  [(if (= db-type :mysql)
-                                     [:%isnull.last_edit_last_name]
-                                     [:last_edit_last_name :nulls-last])
-                                   [:last_edit_last_name :asc]
-                                   (if (= db-type :mysql)
-                                     [:%isnull.last_edit_first_name]
-                                     [:last_edit_first_name :nulls-last])
-                                   [:last_edit_first_name :asc]
-                                   [:%lower.name :asc]]
-          [:last-edited-by :desc] [(case db-type
-                                     :mysql    [:%isnull.last_edit_last_name]
-                                     :postgres [:last_edit_last_name :desc-nulls-last]
-                                     :h2       nil)
-                                   [:last_edit_last_name :desc]
-                                   (case db-type
-                                     :mysql    [:%isnull.last_edit_first_name]
-                                     :postgres [:last_edit_last_name :desc-nulls-last]
-                                     :h2       nil)
-                                   [:last_edit_first_name :desc]
-                                   [:%lower.name :asc]]
-          [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
+             (case ((juxt :sort-column :sort-direction) sort-info)
+               [nil nil]               [[:%lower.name :asc]]
+               [:name :asc]            [[:%lower.name :asc]]
+               [:name :desc]           [[:%lower.name :desc]]
+               [:last-edited-at :asc]  [(if (= db-type :mysql)
+                                          [:%isnull.last_edit_timestamp]
+                                          [:last_edit_timestamp :nulls-last])
+                                        [:last_edit_timestamp :asc]
+                                        [:%lower.name :asc]]
+               [:last-edited-at :desc] [(case db-type
+                                          :mysql    [:%isnull.last_edit_timestamp]
+                                          :postgres [:last_edit_timestamp :desc-nulls-last]
+                                          :h2       nil)
+                                        [:last_edit_timestamp :desc]
+                                        [:%lower.name :asc]]
+               [:last-edited-by :asc]  [(if (= db-type :mysql)
+                                          [:%isnull.last_edit_last_name]
+                                          [:last_edit_last_name :nulls-last])
+                                        [:last_edit_last_name :asc]
+                                        (if (= db-type :mysql)
+                                          [:%isnull.last_edit_first_name]
+                                          [:last_edit_first_name :nulls-last])
+                                        [:last_edit_first_name :asc]
+                                        [:%lower.name :asc]]
+               [:last-edited-by :desc] [(case db-type
+                                          :mysql    [:%isnull.last_edit_last_name]
+                                          :postgres [:last_edit_last_name :desc-nulls-last]
+                                          :h2       nil)
+                                        [:last_edit_last_name :desc]
+                                        (case db-type
+                                          :mysql    [:%isnull.last_edit_first_name]
+                                          :postgres [:last_edit_last_name :desc-nulls-last]
+                                          :h2       nil)
+                                        [:last_edit_first_name :desc]
+                                        [:%lower.name :asc]]
+               [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
+               [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
        (remove nil?)
        (into [])))
 
@@ -961,7 +960,9 @@
 (defn- effective-children-ids
   "Returns effective children ids for collection."
   [collection permissions-set]
-  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids permissions-set))
+  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids
+                                     permissions-set
+                                     {:permission-level :write}))
         all-descendants (map :id (collection/descendants-flat collection))]
     (filterv visible-collection-ids all-descendants)))
 
@@ -972,10 +973,10 @@
 
 (defn- present-collections [rows]
   (let [coll-id->coll (into {} (for [{coll :collection} rows
-                                        :when (some? coll)] [(:id coll) coll]))
+                                     :when (some? coll)] [(:id coll) coll]))
         to-fetch (into #{} (comp (keep :effective_location)
-                                    (mapcat collection/location-path->ids)
-                                    (remove coll-id->coll))
+                                 (mapcat collection/location-path->ids)
+                                 (remove coll-id->coll))
                        (vals coll-id->coll))
         coll-id->coll (merge (if (seq to-fetch)
                                (t2/select-pk->fn identity :model/Collection :id [:in to-fetch])
@@ -1103,7 +1104,6 @@
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
-
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
   []
@@ -1157,7 +1157,6 @@
                                                                                  true
                                                                                  (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
-
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
 
@@ -1221,7 +1220,6 @@
                        ;; default to sorting official collections first, but provide the option not to
                        :official-collections-first? (or (nil? official_collections_first)
                                                         (boolean official_collections_first))}})))
-
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
 
@@ -1295,7 +1293,7 @@
         ;; ok, make sure we have perms to do this operation
         (api/check-403
          (perms/set-has-full-permissions-for-set? @api/*current-user-permissions-set*
-           (collection/perms-for-moving collection-before-update new-parent)))
+                                                  (collection/perms-for-moving collection-before-update new-parent)))
 
         ;; We can't move a collection to the Trash
         (api/check
@@ -1423,6 +1421,5 @@
    namespace
    (decode-graph {:revision revision :groups groups})
    skip_graph))
-
 
 (api/define-routes)

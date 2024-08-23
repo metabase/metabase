@@ -1,16 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
-  visitQuestion,
-  saveQuestion,
-  downloadAndAssert,
   assertSheetRowsCount,
-  openNewPublicLinkDropdown,
   createPublicQuestionLink,
+  downloadAndAssert,
+  filterWidget,
   modal,
   openNativeEditor,
-  dismissDownloadStatus,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  restore,
+  saveQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -92,7 +92,6 @@ describe("scenarios > public > question", () => {
           { fileType: "xlsx", questionId: id, publicUuid },
           assertSheetRowsCount(5),
         );
-        dismissDownloadStatus();
       });
     });
   });
@@ -104,7 +103,7 @@ describe("scenarios > public > question", () => {
       cy.signInAsNormalUser().then(() => {
         visitQuestion(id);
 
-        cy.icon("share").click();
+        openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");

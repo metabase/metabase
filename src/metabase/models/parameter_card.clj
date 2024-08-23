@@ -21,7 +21,7 @@
   (derive :hook/timestamped?))
 
 (t2/deftransforms :model/ParameterCard
- {:parameterized_object_type mi/transform-keyword})
+  {:parameterized_object_type mi/transform-keyword})
 
 (defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
   valid-parameterized-object-type #{"dashboard" "card"})

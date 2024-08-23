@@ -72,7 +72,7 @@
                                         (-> card :dataset_query :query))]
                  ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
                  (-> inner-mbql
-                     (dissoc :aggregation)
+                     (dissoc :aggregation :order-by)
                      (assoc :breakout [value-field-ref])
                      (update :limit (fnil min *max-rows*) *max-rows*)
                      (update :filter (fn [old]
@@ -123,8 +123,8 @@
 (defn- can-get-card-values?
   [card value-field]
   (boolean
-    (and (not (:archived card))
-         (some? (qp.util/field->field-info value-field (:result_metadata card))))))
+   (and (not (:archived card))
+        (some? (qp.util/field->field-info value-field (:result_metadata card))))))
 
 ;;; --------------------------------------------- Putting it together ----------------------------------------------
 

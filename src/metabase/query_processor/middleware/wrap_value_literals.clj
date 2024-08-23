@@ -21,6 +21,12 @@
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
+(def ^:private ^:dynamic *inner-query*
+  "To be bound in [[metabase.query-processor.middleware.wrap-value-literals/wrap-value-literals-in-mbql-query]].
+  Original motivation is to provide metadata required for computation of _type info_. See the
+  [[metabase.query-processor.middleware.wrap-value-literals/str-id-field->type-info]] docstring for details."
+  nil)
+
 (defmulti ^:private type-info
   "Get information about database, base, and semantic types for an object. This is passed to along to various
   `->honeysql` method implementations so drivers have the information they need to handle raw values like Strings,
@@ -43,12 +49,27 @@
      (when (types/temporal-field? field-info)
        {:unit :default}))))
 
-(defmethod type-info :field [[_ id-or-name opts]]
+(defn- str-id-field->type-info
+  "Return _type info_ for `_field` with string `field-name`, coming from the source query or joins."
+  [[_tag field-name {:keys [join-alias] :as _opts} :as _field] inner-query]
+  (when (string? field-name)
+    ;; Use corresponding source-metadata from joins or `inner-query`.
+    (let [source-metadatas (if join-alias
+                             (some #(when (= join-alias (:alias %))
+                                      (:source-metadata %))
+                                   (:joins inner-query))
+                             (:source-metadata inner-query))]
+      (some #(when (= (:name %) field-name)
+               (select-keys % [:base_type :effective_type :database_type]))
+            source-metadatas))))
+
+(defmethod type-info :field [[_ id-or-name opts :as field]]
   (merge
    ;; With Mlv2 queries, this could be combined with `:expression` below and use the column from the
    ;; query rather than metadata/field
-   (when (integer? id-or-name)
-     (type-info (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
+   (if (integer? id-or-name)
+     (type-info (lib.metadata/field (qp.store/metadata-provider) id-or-name))
+     (str-id-field->type-info field *inner-query*))
    (when (:temporal-unit opts)
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)
@@ -246,7 +267,6 @@
       (parse-temporal-string-literal effective-type s unit))
     [:value s info]))
 
-
 ;;; -------------------------------------------- wrap-literals-in-clause ---------------------------------------------
 
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))
@@ -296,7 +316,8 @@
   [{:keys [source-query], :as inner-query} options]
   (let [inner-query (cond-> inner-query
                       source-query (update :source-query wrap-value-literals-in-mbql-query options))]
-    (wrap-value-literals-in-mbql inner-query)))
+    (binding [*inner-query* inner-query]
+      (wrap-value-literals-in-mbql inner-query))))
 
 (mu/defn wrap-value-literals :- mbql.s/Query
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for

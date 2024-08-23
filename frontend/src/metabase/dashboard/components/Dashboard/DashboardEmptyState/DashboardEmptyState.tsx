@@ -5,6 +5,7 @@ import EmptyState from "metabase/components/EmptyState";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
+import { isEmbeddingSdk } from "metabase/env";
 import * as Urls from "metabase/lib/urls";
 import type { Dashboard } from "metabase-types/api";
 
@@ -37,20 +38,24 @@ export function DashboardEmptyState({
             <Button onlyText onClick={addQuestion}>
               {t`Add a saved question`}
             </Button>
-            {t`, or `}
-            <Link
-              variant="brandBold"
-              to={Urls.newQuestion({
-                mode: "notebook",
-                creationType: "custom_question",
-                collectionId: dashboard.collection_id ?? undefined,
-                cardType: "question",
-              })}
-              className={cx(CS.textBold, CS.textBrand)}
-              onClick={closeNavbar}
-            >
-              {t`ask a new one`}
-            </Link>
+            {!isEmbeddingSdk ? (
+              <>
+                {t`, or `}
+                <Link
+                  variant="brandBold"
+                  to={Urls.newQuestion({
+                    mode: "notebook",
+                    creationType: "custom_question",
+                    collectionId: dashboard.collection_id ?? undefined,
+                    cardType: "question",
+                  })}
+                  className={cx(CS.textBold, CS.textBrand)}
+                  onClick={closeNavbar}
+                >
+                  {t`ask a new one`}
+                </Link>
+              </>
+            ) : null}
           </>
         }
       />

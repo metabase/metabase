@@ -1,7 +1,6 @@
 import type { Location } from "history";
 import _ from "underscore";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
@@ -9,19 +8,25 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import {
+  areParameterValuesIdentical,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
   CacheableDashboard,
   Card,
   CardId,
+  DashCardDataMap,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
-  DashCardDataMap,
   Database,
   Dataset,
   EmbedDataset,
+  ParameterId,
   QuestionDashboardCard,
   VirtualCard,
   VirtualCardDisplay,
@@ -201,7 +206,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   const isAccessRestricted = datasets.some(
     s =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      s.error?.status === 403,
+      (typeof s.error === "object" && s.error?.status === 403),
   );
 
   if (isAccessRestricted) {
@@ -211,14 +216,16 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     };
   }
 
-  const errors = datasets.map(s => s.error).filter(Boolean);
-  if (errors.length > 0) {
-    if (IS_EMBED_PREVIEW) {
-      const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" as const };
-    }
+  if (datasets.some(dataset => dataset.error)) {
+    const curatedErrorDataset = datasets.find(
+      dataset => dataset.error && dataset.error_is_curated,
+    );
+
     return {
-      message: getGenericErrorMessage(),
+      message:
+        typeof curatedErrorDataset?.error === "string"
+          ? curatedErrorDataset.error
+          : getGenericErrorMessage(),
       icon: "warning" as const,
     };
   }
@@ -367,4 +374,34 @@ export function createTabSlug({
     return "";
   }
   return [id, ...name.toLowerCase().split(" ")].join("-");
+}
+
+export function canResetFilter(parameter: UiParameter): boolean {
+  const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
+  const hasValue = !parameterHasNoDisplayValue(parameter.value);
+
+  if (hasDefaultValue) {
+    return !areParameterValuesIdentical(
+      wrapArray(parameter.value),
+      wrapArray(parameter.default),
+    );
+  }
+
+  return hasValue;
+}
+
+function wrapArray<T>(value: T | T[]): T[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
+}
+
+export function getMappedParametersIds(
+  dashcards: DashboardCard[],
+): ParameterId[] {
+  return dashcards.flatMap((dashcard: DashboardCard) => {
+    const mappings = dashcard.parameter_mappings ?? [];
+    return mappings.map(parameter => parameter.parameter_id);
+  });
 }

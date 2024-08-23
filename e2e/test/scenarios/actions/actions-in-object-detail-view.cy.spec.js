@@ -2,15 +2,15 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 
 import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
+  createImplicitActions,
+  createModelFromTableName,
   popover,
   resetTestTable,
   restore,
   resyncDatabase,
+  undoToastList,
   visitDashboard,
   visitModel,
-  createModelFromTableName,
-  createImplicitActions,
-  undoToastList,
 } from "e2e/support/helpers";
 
 const WRITABLE_TEST_TABLE = "scoreboard_actions";

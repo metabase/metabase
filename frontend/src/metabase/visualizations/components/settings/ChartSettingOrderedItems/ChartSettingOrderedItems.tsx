@@ -1,4 +1,4 @@
-import { useSensor, PointerSensor } from "@dnd-kit/core";
+import { PointerSensor, useSensor } from "@dnd-kit/core";
 import { useCallback } from "react";
 
 import type { DragEndEvent } from "metabase/core/components/Sortable";

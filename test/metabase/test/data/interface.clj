@@ -431,21 +431,13 @@
 
 (defmethod sorts-nil-first? ::test-extensions [_ _] true)
 
-(defmulti supports-time-type?
-  "Whether this database supports a `TIME` data type or equivalent."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
+(defmethod driver/database-supports? [::driver/driver :test/time-type]
+  [_driver _feature _database]
+  true)
 
-(defmethod supports-time-type? ::test-extensions [_driver] true)
-
-(defmulti supports-timestamptz-type?
-  "Whether this database supports a `timestamp with time zone` data type or equivalent."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod supports-timestamptz-type? ::test-extensions [_driver] true)
+(defmethod driver/database-supports? [::driver/driver :test/timestamptz-type]
+  [_driver _feature _database]
+  true)
 
 (defmulti aggregate-column-info
   "Return the expected type information that should come back for QP results as part of `:cols` for an aggregation of a
@@ -650,7 +642,6 @@
 (defn transform-dataset-update-table
   "Create a function to transform a single table, for use with `transformed-dataset-definition`. Pass `:table`, `:rows`
   or both functions to transform the entire table definition, or just the rows, respectively."
-  {:style/indent 1}
   [table-name & {:keys [table rows], :or {table identity, rows identity}}]
   (transform-dataset-update-tabledefs
    (fn [tabledefs]

@@ -1,16 +1,22 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
-import { useEffect, type ComponentProps } from "react";
+import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { explicitSizeRefreshModeContext } from "metabase/components/ExplicitSize/context";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { waitTimeContext } from "metabase/context/wait-time";
+import LegacyTooltip from "metabase/core/components/Tooltip";
 import { publicReducers } from "metabase/reducers-public";
-import { Box } from "metabase/ui";
+import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
+import { registerVisualization } from "metabase/visualizations";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import ObjectDetail from "metabase/visualizations/visualizations/ObjectDetail";
+import type { DashboardCard } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -52,9 +58,9 @@ function ReduxDecorator(Story: Story) {
 
 function FasterExplicitSizeUpdateDecorator(Story: Story) {
   return (
-    <explicitSizeRefreshModeContext.Provider value="none">
+    <waitTimeContext.Provider value={0}>
       <Story />
-    </explicitSizeRefreshModeContext.Provider>
+    </waitTimeContext.Provider>
   );
 }
 
@@ -91,6 +97,7 @@ const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
 const PARAMETER_ID = "param-hex";
 const initialState = createMockState({
+  currentUser: null,
   settings: createMockSettingsState({
     "hide-embed-branding?": false,
   }),
@@ -122,13 +129,14 @@ const store = getStore(publicReducers, initialState);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
+  dashcards?: DashboardCard[];
 }
-function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
+function createDashboard({ hasScroll, dashcards }: CreateDashboardOpts = {}) {
   return createMockDashboard({
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
-    dashcards: [
+    dashcards: dashcards ?? [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
         dashboard_tab_id: TAB_ID,
@@ -167,6 +175,7 @@ const defaultArgs: Partial<
   ComponentProps<typeof PublicOrEmbeddedDashboardView>
 > = {
   dashboard: createDashboard(),
+  downloadsEnabled: true,
   titled: true,
   bordered: true,
   background: true,
@@ -275,6 +284,114 @@ TransparentThemeNoBackgroundScroll.decorators = [
   LightBackgroundDecorator,
   ScrollDecorator,
 ];
+
+// Other components compatibility test
+export function ComponentCompatibility() {
+  return (
+    // Loki doesn't take into account the tooltips and dropdowns dimensions.
+    // This padding is to make sure we cover the area of all of them.
+    <Box pb="50px">
+      <Tooltip
+        label={
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Label
+          </Text>
+        }
+        opened
+      >
+        <Card withBorder display="inline-block">
+          Mantine Tooltip
+        </Card>
+      </Tooltip>
+      <LegacyTooltip
+        tooltip={
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Label
+          </Text>
+        }
+        isOpen
+      >
+        <Card withBorder display="inline-block">
+          Legacy Tooltip
+        </Card>
+      </LegacyTooltip>
+      <Popover withArrow shadow="md" opened>
+        <Popover.Target>
+          <Card withBorder display="inline-block">
+            Mantine Popover
+          </Card>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Dropdown
+          </Text>
+        </Popover.Dropdown>
+      </Popover>
+      <TippyPopoverWithTrigger
+        isInitiallyVisible
+        triggerContent={
+          <Card withBorder display="inline-block">
+            Tippy Popover
+          </Card>
+        }
+        popoverContent={
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Dropdown
+          </Text>
+        }
+      />
+      <PopoverWithTrigger
+        isInitiallyOpen
+        triggerElement={
+          <Card withBorder display="inline-block">
+            Legacy Popover
+          </Card>
+        }
+      >
+        {() =>
+          function Inner({ maxHeight, ...props }: { maxHeight: number }) {
+            return (
+              <Text size="sm" c="var(--mb-color-text-primary)" {...props}>
+                Dropdownnnnn
+              </Text>
+            );
+          }
+        }
+      </PopoverWithTrigger>
+    </Box>
+  );
+}
+
+// Card visualizations
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(ObjectDetail);
+
+export const CardVisualizationsLightTheme = Template.bind({});
+CardVisualizationsLightTheme.args = {
+  ...defaultArgs,
+  dashboard: createDashboard({
+    dashcards: [
+      createMockDashboardCard({
+        id: DASHCARD_TABLE_ID,
+        dashboard_tab_id: TAB_ID,
+        card: createMockCard({
+          id: CARD_TABLE_ID,
+          name: "Table detail",
+          display: "object",
+        }),
+        size_x: 12,
+        size_y: 8,
+      }),
+    ],
+  }),
+};
+
+export const CardVisualizationsDarkTheme = Template.bind({});
+CardVisualizationsDarkTheme.args = {
+  ...CardVisualizationsLightTheme.args,
+  theme: "night",
+};
 
 const EXPLICIT_SIZE_WAIT_TIME = 300;
 function ScrollDecorator(Story: Story) {

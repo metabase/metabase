@@ -24,6 +24,7 @@ import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 import type { State } from "metabase-types/store";
 import {
   createMockAppState,
+  createMockEmbedOptions,
   createMockEmbedState,
   createMockState,
 } from "metabase-types/store/mocks";
@@ -54,7 +55,9 @@ async function setup({
     app: createMockAppState({
       isNavbarOpen: isOpen ?? isNavbarOpenForPathname(pathname, true),
     }),
-    embed: createMockEmbedState(embedOptions),
+    embed: createMockEmbedState({
+      options: createMockEmbedOptions(embedOptions),
+    }),
     currentUser: user,
   });
 

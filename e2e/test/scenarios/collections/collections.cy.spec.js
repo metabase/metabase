@@ -4,33 +4,33 @@ import _ from "underscore";
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
-  FIRST_COLLECTION_ID,
-  SECOND_COLLECTION_ID,
-  THIRD_COLLECTION_ID,
   ADMIN_PERSONAL_COLLECTION_ID,
   ALL_USERS_GROUP_ID,
+  FIRST_COLLECTION_ID,
+  ORDERS_QUESTION_ID,
+  SECOND_COLLECTION_ID,
+  THIRD_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
-  openOrdersTable,
-  navigationSidebar,
-  openNavigationSidebar,
   closeNavigationSidebar,
-  visitCollection,
+  createCollection,
+  createQuestion,
   dragAndDrop,
-  openUnpinnedItemMenu,
+  entityPickerModal,
+  entityPickerModalItem,
+  entityPickerModalTab,
   getPinnedSection,
   moveOpenedCollectionTo,
-  pickEntity,
-  entityPickerModal,
-  openCollectionMenu,
-  createQuestion,
-  entityPickerModalItem,
-  createCollection,
+  navigationSidebar,
   openCollectionItemMenu,
-  entityPickerModalTab,
+  openCollectionMenu,
+  openNavigationSidebar,
+  openOrdersTable,
+  openUnpinnedItemMenu,
+  pickEntity,
+  popover,
+  restore,
+  visitCollection,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -548,6 +548,24 @@ describe("scenarios > collection defaults", () => {
         ensureCollectionIsExpanded(NEW_COLLECTION, {
           children: ["Third collection"],
         });
+      });
+
+      cy.log(
+        "the collection picker should show an error if we are unable to move a collection (metabase#40700)",
+      );
+      cy.intercept("PUT", `/api/collection/${THIRD_COLLECTION_ID}`, {
+        statusCode: 500,
+        body: { message: "Ryan said no" },
+      });
+      openCollectionMenu();
+      popover().findByText("Move").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        entityPickerModalItem(0, "Our analytics").click();
+        cy.button("Move").click();
+        cy.log("Entity picker should show an error message");
+        cy.findByText("Ryan said no").should("exist");
       });
     });
 

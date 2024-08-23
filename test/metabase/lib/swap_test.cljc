@@ -8,7 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.test-metadata :as meta]
-   [metabase.test.util.log :as tu.log]
+   [metabase.util.log.capture :as log.capture]
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -96,9 +96,10 @@
                           (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
                           (lib/aggregate (lib/min (meta/field-metadata :orders :total))))
           [a1 a2 _a3] (lib/aggregations query)]
-      (is (=? [[:warn nil #"No matching clause in swap-clauses \[:count .*"]]
-              (tu.log/with-log-messages-for-level ['metabase.lib.swap :warn]
-                (lib/swap-clauses query -1 a2 (lib.options/update-options a1 assoc :lib/uuid (str (random-uuid))))))))))
+      (log.capture/with-log-messages-for-level [messages [metabase.lib.swap :warn]]
+        (lib/swap-clauses query -1 a2 (lib.options/update-options a1 assoc :lib/uuid (str (random-uuid))))
+        (is (=? [{:level :warn, :message #"No matching clause in swap-clauses \[:count .*"}]
+                (messages)))))))
 
 (deftest ^:synchronized swap-clauses-ambiguous-test
   (testing "swap-clauses emits a warning if multiple matching clauses are found"
@@ -109,6 +110,7 @@
                           (lib/aggregate (lib/min (meta/field-metadata :orders :total))))
           [a1 a2 _a3] (lib/aggregations query)
           query       (update-in query [:stages 0 :aggregation] conj a2)]
-      (is (=? [[:warn nil #"Ambiguous match for clause in swap-clauses \[:sum .*"]]
-              (tu.log/with-log-messages-for-level ['metabase.lib.swap :warn]
-                (lib/swap-clauses query -1 a1 a2)))))))
+      (log.capture/with-log-messages-for-level [messages [metabase.lib.swap :warn]]
+        (lib/swap-clauses query -1 a1 a2)
+        (is (=? [{:level :warn, :message #"Ambiguous match for clause in swap-clauses \[:sum .*"}]
+                (messages)))))))

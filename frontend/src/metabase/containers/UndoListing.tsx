@@ -5,7 +5,7 @@ import { t } from "ttag";
 import BodyComponent from "metabase/components/BodyComponent";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { capitalize, inflect } from "metabase/lib/formatting";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   dismissUndo,
   pauseUndo,
@@ -65,7 +65,7 @@ interface UndoToastProps {
   onDismiss: () => void;
 }
 
-function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
+export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
   const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
   const [paused, setPaused] = useState(false);

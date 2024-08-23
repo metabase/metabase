@@ -38,12 +38,12 @@
 ;; flatland.ordered.map.OrderedMap gets encoded and decoded incorrectly, for some reason. See #25915
 
 (nippy/extend-freeze flatland.ordered.map.OrderedMap :flatland/ordered-map
-                     [x data-output]
-                     (nippy/freeze-to-out! data-output (vec x)))
+  [x data-output]
+  (nippy/freeze-to-out! data-output (vec x)))
 
 (nippy/extend-thaw :flatland/ordered-map
-                   [data-input]
-                   (ordered-map/ordered-map-reader-clj (nippy/thaw-from-in! data-input)))
+  [data-input]
+  (ordered-map/ordered-map-reader-clj (nippy/thaw-from-in! data-input)))
 
 (defn- freeze!
   [^OutputStream os obj]

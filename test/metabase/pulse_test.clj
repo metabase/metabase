@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.http-test :as channel.http-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -13,11 +14,11 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.pulse :as pulse]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse]
    [metabase.pulse.render :as render]
    [metabase.pulse.render.body :as body]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.test :as mt]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -152,7 +153,6 @@
      ;; override just the :display property of the Card
      {:card   {:display \"table\"}
       :assert {:email (fn [_ _] (is ...))}})"
-  {:style/indent 1}
   [common & {:as message->m}]
   (doseq [[message m] message->m]
     (testing message
@@ -350,8 +350,7 @@
 
       :fixture
       (fn [_ thunk]
-        (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results           10000
-                                                                            :max-results-bare-rows 30})]
+        (mt/with-temporary-setting-values [public-settings/download-row-limit 30]
           (thunk)))
       :pulse-card {:include_csv true}
       :assert
@@ -717,7 +716,7 @@
                                                       :details  {:emails ["nonuser@metabase.com"]}}
                    PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                             :pulse_channel_id pc-id}]
-      (pulse.test-util/email-test-setup
+      (pulse.test-util/email-test-setup!
        (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
        (is (mt/received-email-body? :rasta #"Manage your subscriptions"))
        (is (mt/received-email-body? "nonuser@metabase.com" #"Unsubscribe"))))))
@@ -975,3 +974,36 @@
                  (pulse.test-util/with-captured-channel-send-messages!
                    (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                  count))))))))
+
+(deftest alert-send-to-channel-e2e-test
+  (testing "Send alert to http channel works e2e"
+    (let [requests (atom [])
+          endpoint (channel.http-test/make-route
+                    :post "/test"
+                    (fn [req]
+                      (swap! requests conj req)))]
+      (channel.http-test/with-server [url [endpoint]]
+        (mt/with-temp
+          [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+           :model/Channel      channel        {:type    :channel/http
+                                               :details {:url         (str url "/test")
+                                                         :auth-method :none}}
+           :model/Pulse        {pulse-id :id} {:name "Test Pulse"
+                                               :alert_condition "rows"}
+           :model/PulseCard    _              {:pulse_id pulse-id
+                                               :card_id  (:id card)}
+           :model/PulseChannel _              {:pulse_id pulse-id
+                                               :channel_type "http"
+                                               :channel_id   (:id channel)}]
+          (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id))
+          (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                          :alert_creator_name "Rasta Toucan"
+                          :alert_id           pulse-id
+                          :data               {:question_id   (:id card)
+                                               :question_name (mt/malli=? string?)
+                                               :question_url  (mt/malli=? string?)
+                                               :raw_data      {:cols ["count"], :rows [[18760]]},
+                                               :type          "question"
+                                               :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                          :type               "alert"}}
+                  (first @requests))))))))

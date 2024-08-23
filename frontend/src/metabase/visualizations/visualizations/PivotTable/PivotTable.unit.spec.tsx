@@ -5,8 +5,8 @@ import { renderWithProviders } from "__support__/ui";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import {
-  PivotTableTestWrapper,
   PIVOT_TABLE_MOCK_DATA,
+  PivotTableTestWrapper,
 } from "./pivot-table-test-mocks";
 
 const { rows, cols, settings } = PIVOT_TABLE_MOCK_DATA;

@@ -85,6 +85,6 @@
     (perms.u/check-revision-numbers old-graph new-graph)
     (when (seq changes)
       (t2/with-transaction [_conn]
-       (doseq [[group-id changes] changes]
-         (update-application-permissions! group-id changes))
-       (perms.u/save-perms-revision! ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes)))))
+        (doseq [[group-id changes] changes]
+          (update-application-permissions! group-id changes))
+        (perms.u/save-perms-revision! ApplicationPermissionsRevision (:revision old-graph) (:groups old-graph) changes)))))

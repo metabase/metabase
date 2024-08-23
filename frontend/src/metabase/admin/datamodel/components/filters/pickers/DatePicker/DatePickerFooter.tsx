@@ -6,18 +6,17 @@ import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
+  TIME_SELECTOR_DEFAULT_HOUR,
+  TIME_SELECTOR_DEFAULT_MINUTE,
   computeFilterTimeRange,
   getTimeComponent,
   isStartingFrom,
   setTimeComponent,
-  TIME_SELECTOR_DEFAULT_HOUR,
-  TIME_SELECTOR_DEFAULT_MINUTE,
 } from "metabase-lib/v1/queries/utils/query-time";
 
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 
 type Props = {
-  primaryColor?: string;
   hideTimeSelectors?: boolean;
 
   filter: Filter;
@@ -37,7 +36,6 @@ const getIntervalString = (filter: Filter) => {
 
 const DatePickerFooter: React.FC<React.PropsWithChildren<Props>> = ({
   filter,
-  primaryColor,
   onFilterChange,
   hideTimeSelectors,
   children,
@@ -87,11 +85,7 @@ const DatePickerFooter: React.FC<React.PropsWithChildren<Props>> = ({
     !isStartingFrom(filter)
   ) {
     content = (
-      <ToggleButton
-        primaryColor={primaryColor}
-        onClick={enableTimeSelectors}
-        icon="clock"
-      >
+      <ToggleButton onClick={enableTimeSelectors} icon="clock">
         {t`Add a time`}
       </ToggleButton>
     );
