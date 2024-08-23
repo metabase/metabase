@@ -39,16 +39,16 @@
 (defn- build-query-string
   [query-parameters]
   (str/join \& (letfn [(url-encode [s]
-                                  (cond-> s
-                                    (keyword? s) u/qualified-name
-                                    (some? s)    codec/url-encode))
+                         (cond-> s
+                           (keyword? s) u/qualified-name
+                           (some? s)    codec/url-encode))
                        (encode-key-value [k v]
                          (str (url-encode k) \= (url-encode v)))]
-                      (flatten (for [[k value-or-values] query-parameters]
-                                 (if (sequential? value-or-values)
-                                   (for [v value-or-values]
-                                     (encode-key-value k v))
-                                   [(encode-key-value k value-or-values)]))))))
+                 (flatten (for [[k value-or-values] query-parameters]
+                            (if (sequential? value-or-values)
+                              (for [v value-or-values]
+                                (encode-key-value k v))
+                              [(encode-key-value k value-or-values)]))))))
 
 (defn build-url
   "Build an API URL for `localhost` and `MB_JETTY_PORT` with `query-parameters`.
@@ -168,7 +168,6 @@
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))
-
 
 ;;; client
 
@@ -331,16 +330,16 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                       (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
-                       (catch clojure.lang.ExceptionInfo e
-                         (log/debug e method-name url)
-                         (ex-data e))
-                       (catch Exception e
-                         (throw (ex-info (.getMessage e)
-                                         {:method  method-name
-                                          :url     url
-                                          :request request}
-                                         e)))))
+                        (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
+                        (catch clojure.lang.ExceptionInfo e
+                          (log/debug e method-name url)
+                          (ex-data e))
+                        (catch Exception e
+                          (throw (ex-info (.getMessage e)
+                                          {:method  method-name
+                                           :url     url
+                                           :request request}
+                                          e)))))
         ;; Now perform the HTTP request
         {:keys [status body] :as response} (thunk)]
     (log/debug :mock-request method-name url status)

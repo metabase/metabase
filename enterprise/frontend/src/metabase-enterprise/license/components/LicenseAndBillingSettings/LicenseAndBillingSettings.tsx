@@ -173,7 +173,7 @@ const LicenseAndBillingSettings = ({
 export default connect(
   (state: State): StateProps => ({
     settingValues: state.admin.settings.settings,
-    upgradeUrl: getUpgradeUrl(state, { utm_media: "license" }),
+    upgradeUrl: getUpgradeUrl(state, { utm_content: "license" }),
   }),
   {
     showLicenseAcceptedToast,

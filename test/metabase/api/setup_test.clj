@@ -285,14 +285,14 @@
           (is (not (setup/has-user-setup)))
           (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
             (is (malli= [:map {:closed true} [:id ms/NonBlankString]]
-                  (client/client :post 200 "setup" body))))
+                        (client/client :post 200 "setup" body))))
           ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
           (reset! has-user-setup true)
           (is (setup/has-user-setup))
           ;; use do-with-setup!* to delete the random user that was created
           (do-with-setup!* body
-            #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
-                   (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
+                           #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
+                                   (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"
@@ -364,7 +364,6 @@
                 :collection        true
                 :model             true
                 :embedded-resource false}})
-
 
 (defn get-embedding-step
   [checklist]

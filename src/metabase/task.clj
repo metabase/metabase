@@ -39,7 +39,6 @@
   ^Scheduler []
   @*quartz-scheduler*)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -107,7 +106,6 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Quartz Scheduler Class Load Helper                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -127,7 +125,6 @@
 
 (when-not *compile-files*
   (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          STARTING/STOPPING SCHEDULER                                           |
@@ -188,7 +185,6 @@
     (when old-scheduler
       (qs/shutdown old-scheduler))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -229,9 +225,9 @@
   [job-key :- (ms/InstanceOfClass JobKey)]
   (try
     (when-let [scheduler (scheduler)]
-        (.triggerJob scheduler job-key))
-      (catch Throwable e
-        (log/errorf e "Failed to trigger immediate execution of task %s" job-key))))
+      (.triggerJob scheduler job-key))
+    (catch Throwable e
+      (log/errorf e "Failed to trigger immediate execution of task %s" job-key))))
 
 (mu/defn delete-task!
   "Delete a task from the scheduler"
@@ -257,7 +253,6 @@
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |

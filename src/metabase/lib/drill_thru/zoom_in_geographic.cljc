@@ -106,12 +106,12 @@
   (let [stage (lib.util/query-stage query stage-number)
         ;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
         [lat-column lon-column] (some
-                                  (fn [columns]
-                                    (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
-                                      (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
-                                        [lat-column lon-column])))
-                                  [(lib.metadata.calculation/returned-columns query stage-number stage)
-                                   (lib.metadata.calculation/visible-columns query stage-number stage)])]
+                                 (fn [columns]
+                                   (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
+                                     (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
+                                       [lat-column lon-column])))
+                                 [(lib.metadata.calculation/returned-columns query stage-number stage)
+                                  (lib.metadata.calculation/visible-columns query stage-number stage)])]
     (when (and lat-column lon-column)
       (letfn [(same-column? [col-x col-y]
                 (if (:id col-x)
@@ -119,10 +119,10 @@
                   (= (:lib/desired-column-alias col-x) (:lib/desired-column-alias col-y))))
               (column-value [column]
                 (some
-                  (fn [row-value]
-                    (when (same-column? column (:column row-value))
-                      (:value row-value)))
-                  row))]
+                 (fn [row-value]
+                   (when (same-column? column (:column row-value))
+                     (:value row-value)))
+                 row))]
         (assoc context
                :lat-column lat-column
                :lon-column lon-column

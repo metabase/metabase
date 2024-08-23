@@ -90,9 +90,9 @@
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row})
-                                               (tree-seq vector? rest)
-                                               (filter #(= :th (first %)))
-                                               (map last))]
+                                                   (tree-seq vector? rest)
+                                                   (filter #(= :th (first %)))
+                                                   (map last))]
     (testing "Table Headers are truncated if they are really long."
       (is (= normal-heading normal-rendered))
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))

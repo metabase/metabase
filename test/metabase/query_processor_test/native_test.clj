@@ -60,11 +60,11 @@
                                                                     :semantic_type :type/PK}]}]
         (is (=? {:columns ["ID" "ID_2"]}
                 (mt/rows+column-names
-                  (qp/process-query
-                    {:query {:source-table (str "card__" (:id card))
-                             :fields [[:field "ID" {:base-type :type/Integer}] [:field "ID_2" {:base-type :type/Integer}]]}
-                     :database (mt/id)
-                     :type :query}))))))))
+                 (qp/process-query
+                  {:query {:source-table (str "card__" (:id card))
+                           :fields [[:field "ID" {:base-type :type/Integer}] [:field "ID_2" {:base-type :type/Integer}]]}
+                   :database (mt/id)
+                   :type :query}))))))))
 
 (deftest ^:parallel native-referring-question-referring-question-test
   (testing "Should be able to run native query referring a question referring a question (#25988)"

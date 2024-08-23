@@ -47,14 +47,13 @@
                       (t2/select-one :model/Dashboard :id (:dashboard_id dashtab)))]
     (mi/perms-objects-set dashboard read-or-write)))
 
-
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 (defmethod serdes/hash-fields :model/DashboardTab
   [_dashboard-tab]
   [:name
    (comp serdes/identity-hash
-        #(t2/select-one :model/Dashboard :id %)
-        :dashboard_id)
+         #(t2/select-one :model/Dashboard :id %)
+         :dashboard_id)
    :position
    :created_at])
 
@@ -87,12 +86,12 @@
         id->current-tab (m/index-by :id current-tabs)
         to-update-tabs  (filter
                           ;; filter out tabs that haven't changed
-                          (fn [new-tab]
-                            (let [current-tab (get id->current-tab (:id new-tab))]
-                              (not= (select-keys current-tab update-ks)
-                                    (select-keys new-tab update-ks))))
+                         (fn [new-tab]
+                           (let [current-tab (get id->current-tab (:id new-tab))]
+                             (not= (select-keys current-tab update-ks)
+                                   (select-keys new-tab update-ks))))
 
-                          new-tabs)]
+                         new-tabs)]
     (doseq [tab to-update-tabs]
       (t2/update! :model/DashboardTab (:id tab) (select-keys tab update-ks)))
     nil))

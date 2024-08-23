@@ -100,13 +100,13 @@
 (defn- maybe-add-joins
   [bindings {context-source :source joins :joins} query]
   (m/assoc-some query :joins
-    (not-empty
-     (for [{:keys [source condition strategy]} joins]
-       (-> {:condition    (de/resolve-dimension-clauses bindings context-source condition)
-            :source-table (-> source bindings :entity ->source-table-reference)
-            :alias        source
-            :fields       :all}
-           (m/assoc-some :strategy strategy))))))
+                (not-empty
+                 (for [{:keys [source condition strategy]} joins]
+                   (-> {:condition    (de/resolve-dimension-clauses bindings context-source condition)
+                        :source-table (-> source bindings :entity ->source-table-reference)
+                        :alias        source
+                        :fields       :all}
+                       (m/assoc-some :strategy strategy))))))
 
 (defn- maybe-add-filter
   [bindings {:keys [name filter]} query]
@@ -169,8 +169,8 @@
   (doseq [domain-entity-name provides]
     (assert (de/satisfies-requierments? (get-in bindings [domain-entity-name :entity])
                                         (@domain-entity-specs domain-entity-name))
-      (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
-                domain-entity-name))))
+            (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
+                      domain-entity-name))))
   bindings)
 
 (mu/defn- tables-matching-requirements :- [:maybe Tableset]

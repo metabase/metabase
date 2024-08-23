@@ -23,7 +23,6 @@
 (def ^:private number-type      #{:type/Number})
 (def ^:private any-type         #{:type/*})
 
-
 (def ^:private pattern+base-types+semantic-type
   "Tuples of `[name-pattern set-of-valid-base-types semantic-type]`.
    Fields whose name matches the pattern and one of the base types should be given the semantic type.

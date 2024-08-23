@@ -15,7 +15,6 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 
 (def ^:private remapped-field
@@ -169,7 +168,6 @@
                                                   {:source-field %category-id
                                                    ::qp.add-dimension-projections/new-field-dimension-id integer?}]]}})
                 query))))))
-
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
 
@@ -468,41 +466,40 @@
 ;;; update [[metabase.query-processor.middleware.add-dimension-projections/remap-column-infos]] not to ignore `:field`
 ;;; clauses with a `:join-alias`, altho the implicit joins don't get added by this middleware.
 
-#_
-(deftest ^:parallel add-remappings-inside-joins-test
-  (testing "Remappings should work inside joins (#15578)"
-    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
-                                      meta/metadata-provider
-                                      (meta/field-metadata :orders :product-id)
-                                      (meta/field-metadata :products :title))
-      (is (=? (lib.tu.macros/mbql-query products
-                {:joins  [{:source-query {:source-table $$orders}
-                           :alias        "Q1"
-                           :fields       [&Q1.orders.id
-                                          &Q1.orders.product-id
-                                          &PRODUCTS__via__PRODUCT_ID.orders.product-id->title]
-                           :condition    [:= $id &Q1.orders.product-id]
-                           :strategy     :left-join}
-                          {:source-table $$products
-                           :alias        "PRODUCTS__via__PRODUCT_ID"
-                           :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.products.id]
-                           :strategy     :left-join
-                           :fk-field-id  %orders.product-id}]
-                 :fields [&Q1.orders.id
-                          &Q1.orders.product-id
-                          $orders.product-id->products.title
-                          &PRODUCTS__via__PRODUCT_ID.orders.product-id->products.title]
-                 :limit  2})
-              (qp.add-dimension-projections/add-remapped-columns
-               (lib.tu.macros/mbql-query products
-                 {:joins  [{:strategy     :left-join
-                            :source-query {:source-table $$orders}
-                            :alias        "Q1"
-                            :condition    [:= $id &Q1.orders.product-id]
-                            :fields       [&Q1.orders.id
-                                           &Q1.orders.product-id]}]
-                  :fields [&Q1.orders.id &Q1.orders.product-id]
-                  :limit  2})))))))
+#_(deftest ^:parallel add-remappings-inside-joins-test
+    (testing "Remappings should work inside joins (#15578)"
+      (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                        meta/metadata-provider
+                                        (meta/field-metadata :orders :product-id)
+                                        (meta/field-metadata :products :title))
+        (is (=? (lib.tu.macros/mbql-query products
+                  {:joins  [{:source-query {:source-table $$orders}
+                             :alias        "Q1"
+                             :fields       [&Q1.orders.id
+                                            &Q1.orders.product-id
+                                            &PRODUCTS__via__PRODUCT_ID.orders.product-id->title]
+                             :condition    [:= $id &Q1.orders.product-id]
+                             :strategy     :left-join}
+                            {:source-table $$products
+                             :alias        "PRODUCTS__via__PRODUCT_ID"
+                             :condition    [:= $orders.product-id &PRODUCTS__via__PRODUCT_ID.products.id]
+                             :strategy     :left-join
+                             :fk-field-id  %orders.product-id}]
+                   :fields [&Q1.orders.id
+                            &Q1.orders.product-id
+                            $orders.product-id->products.title
+                            &PRODUCTS__via__PRODUCT_ID.orders.product-id->products.title]
+                   :limit  2})
+                (qp.add-dimension-projections/add-remapped-columns
+                 (lib.tu.macros/mbql-query products
+                   {:joins  [{:strategy     :left-join
+                              :source-query {:source-table $$orders}
+                              :alias        "Q1"
+                              :condition    [:= $id &Q1.orders.product-id]
+                              :fields       [&Q1.orders.id
+                                             &Q1.orders.product-id]}]
+                    :fields [&Q1.orders.id &Q1.orders.product-id]
+                    :limit  2})))))))
 
 (deftest internal-remap-e2e-test
   (mt/with-column-remappings [venues.category_id (values-of categories.name)]

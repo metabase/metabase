@@ -1,0 +1,11 @@
+<script src="http://localhost:4000/app/iframeResizer.js"></script>
+<iframe
+  id="iframe"
+  onload="iFrameResize({checkOrigin: false}, this)"
+  style="width: 100%; border: 0"
+></iframe>
+<script>
+  document.getElementById("iframe").src = new URLSearchParams(
+    location.search,
+  ).get("iframeUrl");
+</script>

@@ -213,7 +213,7 @@
        (log/debug "LDAP connection test successful")
        {:status :SUCCESS}))
     (catch LDAPException e
-       (log/debug "LDAP connection test failed: " (.getMessage e))
+      (log/debug "LDAP connection test failed: " (.getMessage e))
       {:status :ERROR, :message (.getMessage e), :code (.getResultCode e)})
     (catch Exception e
       (log/debug "LDAP connection test failed: " (.getMessage e))

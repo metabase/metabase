@@ -328,7 +328,7 @@
           "REVIEWS"
           "USERS"
           "VENUES"]
-       (-> (mt/db)
-           (t2/hydrate :tables)
-           :tables
-           (#(map :name %))))))
+         (-> (mt/db)
+             (t2/hydrate :tables)
+             :tables
+             (#(map :name %))))))

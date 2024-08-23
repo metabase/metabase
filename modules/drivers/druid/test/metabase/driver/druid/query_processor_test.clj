@@ -640,19 +640,19 @@
       (tqpt/with-flattened-dbdef
         (mt/with-metadata-provider (mt/id)
           (tools.macro/macrolet [(parse-filter [filter-clause]
-                                               `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
-                                (testing "normal non-compound filters should work as expected"
-                                  (is (= {:type :selector, :dimension "venue_price", :value 2}
-                                         (parse-filter [:= $venue_price [:value 2 {:base_type :type/Integer}]]))))
-                                (testing "temporal filters should get stripped out"
-                                  (is (= nil
-                                         (parse-filter [:>= !default.timestamp [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
-                                  (is (= {:type :selector, :dimension "venue_category_name", :value "Mexican"}
-                                         (parse-filter
-                                          [:and
-                                           [:= $venue_category_name [:value "Mexican" {:base_type :type/Text}]]
+                                   `(#'druid.qp/parse-filter (mt/$ids ~'checkins ~filter-clause)))]
+            (testing "normal non-compound filters should work as expected"
+              (is (= {:type :selector, :dimension "venue_price", :value 2}
+                     (parse-filter [:= $venue_price [:value 2 {:base_type :type/Integer}]]))))
+            (testing "temporal filters should get stripped out"
+              (is (= nil
+                     (parse-filter [:>= !default.timestamp [:absolute-datetime #t "2015-09-01T00:00Z[UTC]" :default]])))
+              (is (= {:type :selector, :dimension "venue_category_name", :value "Mexican"}
+                     (parse-filter
+                      [:and
+                       [:= $venue_category_name [:value "Mexican" {:base_type :type/Text}]]
 
-                                           [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
+                       [:< !default.timestamp [:absolute-datetime #t "2015-10-01T00:00Z[UTC]" :default]]]))))))))))
 
 (deftest multiple-filters-test
   (mt/test-driver :druid
