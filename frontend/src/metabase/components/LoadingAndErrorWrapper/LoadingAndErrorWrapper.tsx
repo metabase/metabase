@@ -7,7 +7,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { Box, Title } from "metabase/ui";
 
-import type { CoreLoadingProps } from "./types";
+import type { CoreLoadingPropsVariant } from "./types";
 import { getErrorAndLoading, getErrorMessage } from "./utils";
 
 type DelayProps =
@@ -37,7 +37,7 @@ export type LoadingAndErrorWrapperProps = {
   noBackground?: boolean;
   children?: ReactNode | (() => ReactNode);
 } & DelayProps &
-  CoreLoadingProps;
+  CoreLoadingPropsVariant;
 
 /** Show a loading indicator, error message, or - if both loading and error are falsy - the children */
 export const LoadingAndErrorWrapper = ({

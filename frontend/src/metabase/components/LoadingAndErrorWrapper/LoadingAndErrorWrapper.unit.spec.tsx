@@ -38,6 +38,32 @@ describe("Loading", () => {
         render(<LoadingAndErrorWrapper loading={false} />),
       ).not.toThrow();
     });
+
+    it("can receive a result object", () => {
+      const result = { isLoading: true, error: null };
+      render(
+        <LoadingAndErrorWrapper result={result}>
+          <Data />
+        </LoadingAndErrorWrapper>,
+      );
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByText("Data")).not.toBeInTheDocument();
+    });
+
+    it("can receive a results array", () => {
+      const results = [
+        { isLoading: true, error: null },
+        { isLoading: false, error },
+      ];
+      render(
+        <LoadingAndErrorWrapper result={results}>
+          <Data />
+        </LoadingAndErrorWrapper>,
+      );
+      expect(screen.getByText(error.message)).toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      expect(screen.queryByText("Data")).not.toBeInTheDocument();
+    });
   });
 
   describe("error condition", () => {
