@@ -183,9 +183,6 @@ describe("scenarios > notebook > data source", () => {
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
           cy.findByText(dbName).click();
-          entityPickerModalLevel(1)
-            .findByTestId("scroll-container")
-            .scrollTo("bottom");
           cy.findByText(schemaName).click();
           cy.findByText(tableName).click();
         });
@@ -215,9 +212,6 @@ describe("scenarios > notebook > data source", () => {
         join();
         entityPickerModal().within(() => {
           entityPickerModalTab("Tables").click();
-          entityPickerModalLevel(1)
-            .findByTestId("scroll-container")
-            .scrollTo("bottom");
           cy.findByText("Public").click();
           cy.findByText("Many Data Types").click();
         });
