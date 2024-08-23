@@ -34,6 +34,7 @@ import {
   setModelMetadata,
   sidebar,
   tableHeaderClick,
+  tableInteractive,
   undoToast,
   updateDashboardCards,
   visitDashboard,
@@ -240,7 +241,7 @@ describe("issue 8030 + 32444", () => {
   });
 });
 
-describe("issue 12720", () => {
+describe("issue 12720, issue 47172", () => {
   function clickThrough(title) {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("dashcard-container").contains(title).click();
@@ -291,7 +292,7 @@ describe("issue 12720", () => {
             {
               card_id: SQL_ID,
               row: 0,
-              col: 6, // making sure it doesn't overlap the existing card
+              col: 8, // making sure it doesn't overlap the existing card
               size_x: 7,
               size_y: 5,
               parameter_mappings: [
@@ -329,6 +330,31 @@ describe("issue 12720", () => {
 
     clickThrough("12720_SQL");
     clickThrough("Orders");
+  });
+
+  it("should apply yhe specific (before|after) filter on a native question with field filter (metabase#47172)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    getDashboardCard(1).within(() => {
+      cy.findByTestId("TableFooter").should("exist");
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
+
+      cy.log("Drill down to the question");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.findByText(questionDetails.name).click();
+    });
+
+    cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
+    cy.wait("@cardQuery").then(({ response }) => {
+      expect(response.body.status).to.eq("completed");
+    });
+    tableInteractive().should("be.visible").and("not.be.empty");
+    cy.findByTestId("question-row-count").should(
+      "not.have.text",
+      "Showing 0 rows",
+    );
   });
 });
 
