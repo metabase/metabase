@@ -8927,6 +8927,65 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
+  - changeSet:
+      id: v51.2024-08-23T15:00:00
+      author: flavius
+      comment: Create table postcheckpoints
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: postcheckpoints
+      changes:
+        - createTable:
+            tableName: postcheckpoints
+            remarks: Table to track checkpoints in threads
+            columns:
+              - column:
+                  name: thread_id
+                  type: text
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: checkpoint_id
+                  type: text
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: parent_id
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: checkpoint
+                  type: jsonb
+                  constraints:
+                    nullable: true
+              - column:
+                  name: metadata
+                  type: jsonb
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: "now() at time zone 'utc'::text"
+                  constraints:
+                    nullable: true
+              - column:
+                  name: step
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: postcheckpoints
+            columnNames: thread_id, checkpoint_id
+            constraintName: postcheckpoints_pkey
+
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -324,6 +324,33 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
+  describe("browse insights link", () => {
+    it("should render", async () => {
+      await setup();
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse insights/i,
+      });
+      const link = within(listItem).getByRole("link");
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/browse/insights");
+    });
+
+    it("should not render when a user has no data access", async () => {
+      await setup({ hasDataAccess: false });
+      expect(
+        screen.queryByRole("listitem", { name: /Browse chat/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be highlighted if selected", async () => {
+      await setup({ pathname: "/browse/insights" });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse insights/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
   describe("collection tree", () => {
     it("should show collections", async () => {
       const {

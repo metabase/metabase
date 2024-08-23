@@ -30,6 +30,7 @@ export const TAG_TYPES = [
   "user",
   "cubedata",
   "company-name",
+  "checkpoints",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -46,5 +47,6 @@ export const TAG_TYPE_MAPPING = {
   snippet: "snippet",
   pulse: "subscription",
   cubedata: "cubedata",
-  "company-name": "company-name"
+  "company-name": "company-name",
+  checkpoints: "checkpoints",
 } as const;

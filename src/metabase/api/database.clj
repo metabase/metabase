@@ -19,6 +19,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.checkpoints :as checkpoints]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database
     :as database

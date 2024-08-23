@@ -389,6 +389,7 @@
     metabase.api.card                                             api.card
     metabase.api.card-test                                        api.card-test
     metabase.api.collection                                       api.collection
+    metabase.api.checkpoints                                      api.checkpoints
     metabase.api.common                                           api
     metabase.api.dashboard                                        api.dashboard
     metabase.api.dashboard-test                                   api.dashboard-test
@@ -479,6 +480,7 @@
     metabase.models.application-permissions-revision              a-perm-revision
     metabase.models.bookmark                                      bookmark
     metabase.models.collection                                    collection
+    metabase.models.checkpoints                                   checkpoints
     metabase.models.collection.graph                              graph
     metabase.models.collection-permission-graph-revision          c-perm-revision
     metabase.models.dashboard-card                                dashboard-card

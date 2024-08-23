@@ -72,7 +72,8 @@ const BROWSE_DATA_URL = "/browse/databases";
 const BROWSE_MODELS_URL = "/browse/models";
 const BROWSE_CHAT = "/browse/chat";
 const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
-const BROWSE_LIBRARY = "/collection/2-library"
+const BROWSE_LIBRARY = "/collection/2-library";
+const BROWSE_INSIGHTS = "/browse/insights";
 
 function MainNavbarView({
   isAdmin,
@@ -165,7 +166,9 @@ function MainNavbarView({
               <PaddedSidebarLink
                 icon="semantic_layer"
                 url={BROWSE_SEMANTIC_LAYER}
-                isSelected={nonEntityItem?.url?.startsWith(BROWSE_SEMANTIC_LAYER)}
+                isSelected={nonEntityItem?.url?.startsWith(
+                  BROWSE_SEMANTIC_LAYER,
+                )}
                 onClick={onItemSelect}
                 aria-label={t`Browse semantic layer`}
               >
@@ -182,6 +185,15 @@ function MainNavbarView({
               {t`Library`}
             </PaddedSidebarLink>
             <PaddedSidebarLink
+              icon="lightbulb"
+              url={BROWSE_INSIGHTS}
+              isSelected={nonEntityItem?.url?.startsWith(BROWSE_INSIGHTS)}
+              onClick={onItemSelect}
+              aria-label={t`Insights`}
+            >
+              {t`Insights`}
+            </PaddedSidebarLink>
+            <PaddedSidebarLink
               icon="chat"
               url={BROWSE_CHAT}
               isSelected={nonEntityItem?.url?.startsWith(BROWSE_CHAT)}
@@ -190,11 +202,7 @@ function MainNavbarView({
             >
               {t`Ask Omni`}
             </PaddedSidebarLink>
-            <>
-
-
-
-            </>
+            <></>
           </SidebarSection>
           {bookmarks.length > 0 && (
             <SidebarSection>
@@ -218,18 +226,18 @@ function MainNavbarView({
                 handleCreateNewCollection={handleCreateNewCollection}
               />
               <>
-                {dashboards && dashboards.map((dashboard) => (
-                  <PaddedSidebarLink
-                    key={dashboard.id}
-                    icon="dashboard"
-                    url={`/dashboard/${dashboard.id}`}
-                    onClick={onItemSelect}
-                    isSelected={dashboardItem?.id === dashboard.id} // Seleccionar si es el dashboard actual
-                  >
-                    {dashboard.name}
-                  </PaddedSidebarLink>
-                ))}
-
+                {dashboards &&
+                  dashboards.map(dashboard => (
+                    <PaddedSidebarLink
+                      key={dashboard.id}
+                      icon="dashboard"
+                      url={`/dashboard/${dashboard.id}`}
+                      onClick={onItemSelect}
+                      isSelected={dashboardItem?.id === dashboard.id} // Seleccionar si es el dashboard actual
+                    >
+                      {dashboard.name}
+                    </PaddedSidebarLink>
+                  ))}
               </>
               {/*<Tree
                 data={collectionsWithoutTrash}
@@ -295,24 +303,22 @@ function CollectionSectionHeading({
         >
           {t`New Dashboard`}
         </SidebarLink>
-        {
-      currentUser.is_superuser && (
-        <SidebarLink
-          icon={
-            getCollectionIcon(
-              PERSONAL_COLLECTIONS as Collection,
-            ) as unknown as IconName
-          }
-          url={OTHER_USERS_COLLECTIONS_URL}
-          onClick={closePopover}
-        >
-          {t`Other users' personal collections`}
-        </SidebarLink>
-      )
-    }
-      </CollectionMenuList >
+        {currentUser.is_superuser && (
+          <SidebarLink
+            icon={
+              getCollectionIcon(
+                PERSONAL_COLLECTIONS as Collection,
+              ) as unknown as IconName
+            }
+            url={OTHER_USERS_COLLECTIONS_URL}
+            onClick={closePopover}
+          >
+            {t`Other users' personal collections`}
+          </SidebarLink>
+        )}
+      </CollectionMenuList>
     ),
-  [currentUser, handleCreateNewCollection],
+    [currentUser, handleCreateNewCollection],
   );
 
   return (

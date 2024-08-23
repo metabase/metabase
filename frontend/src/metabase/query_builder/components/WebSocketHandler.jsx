@@ -20,7 +20,10 @@ import {
     adhocQuestionHash
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 
-const WebSocketHandler = () => {
+
+const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
+
+
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -44,6 +47,22 @@ const WebSocketHandler = () => {
     const [id, setId] = useState(0);
     const [useTextArea, setUseTextArea] = useState(false);
     const [error, setError] = useState(null);
+
+    useEffect(() => {
+        if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
+            const parsedMessages = selectedMessages.flatMap((messageGroup) => {
+                return messageGroup.text.map(([senderType, messageText]) => ({
+                    id: generateRandomId(),
+                    text: messageText,
+                    sender: senderType === "human" ? "user" : "server",
+                    type: "text",
+                    thread_id: selectedThreadId,
+                }));
+            });
+
+            setMessages(parsedMessages);
+        }
+    }, [selectedMessages]);
 
     useLayoutEffect(() => {
         if (inputRef.current) {
