@@ -1,5 +1,5 @@
 import { useFormikContext } from "formik";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { c, t } from "ttag";
 
 import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
@@ -8,7 +8,10 @@ import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPend
 import { Form, FormProvider } from "metabase/forms";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { color } from "metabase/lib/colors";
-import type { InvalidateNowButtonProps } from "metabase/plugins";
+import type {
+  InvalidatableModel,
+  InvalidateNowButtonProps,
+} from "metabase/plugins";
 import { Group, Icon, Loader, Text } from "metabase/ui";
 
 import { StyledInvalidateNowButton } from "./InvalidateNowButton.styled";
@@ -21,12 +24,21 @@ export const InvalidateNowButton = ({
   const invalidateTarget = useInvalidateTarget(targetId, targetModel);
   return (
     <FormProvider initialValues={{}} onSubmit={invalidateTarget}>
-      <InvalidateNowFormBody targetName={targetName} />
+      <InvalidateNowFormBody
+        targetModel={targetModel}
+        targetName={targetName}
+      />
     </FormProvider>
   );
 };
 
-const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
+const InvalidateNowFormBody = ({
+  targetName,
+  targetModel,
+}: {
+  targetName?: string;
+  targetModel: InvalidatableModel;
+}) => {
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
   const { submitForm } = useFormikContext();
@@ -45,6 +57,15 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
     [askConfirmation, targetName, submitForm],
   );
 
+  const buttonText = useMemo(() => {
+    const map: Record<InvalidatableModel, string> = {
+      dashboard: t`Clear cache for this dashboard`,
+      question: t`Clear cache for this question`,
+      database: t`Clear cache for this database`,
+    };
+    return map[targetModel];
+  }, [targetModel]);
+
   return (
     <>
       <Form>
@@ -57,8 +78,8 @@ const InvalidateNowFormBody = ({ targetName }: { targetName?: string }) => {
           disabled={wasFormRecentlyPending}
           label={
             <Group spacing="sm">
-              <Icon color={color("danger")} name="trash" />
-              <Text>{t`Clear cache`}</Text>
+              <Icon color="var(--mb-color-danger)" name="trash" />
+              <Text>{buttonText}</Text>
             </Group>
           }
           activeLabel={

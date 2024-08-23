@@ -54,4 +54,22 @@ describeEE("scenarios > question > caching", () => {
       cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
     });
   });
+
+  it("can click 'Clear cache' for a question", () => {
+    interceptPerformanceRoutes();
+    visitQuestion(ORDERS_QUESTION_ID);
+
+    openSidebarCacheStrategyForm();
+
+    rightSidebar().within(() => {
+      cy.findByRole("heading", { name: /Caching settings/ }).should(
+        "be.visible",
+      );
+      cy.findByRole("button", {
+        name: /Clear cache for this question/,
+      }).click();
+      cy.wait("@invalidateCache");
+      cy.findByText("Cache cleared").should("be.visible");
+    });
+  });
 });

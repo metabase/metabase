@@ -374,9 +374,14 @@ export const PLUGIN_MODERATION = {
   ) => [],
 };
 
+export type InvalidatableModel = Exclude<CacheableModel, "root">;
+export const isInvalidatableModel = (
+  model: CacheableModel,
+): model is InvalidatableModel => model !== "root";
+
 export type InvalidateNowButtonProps = {
   targetId: number;
-  targetModel: CacheableModel;
+  targetModel: InvalidatableModel;
   targetName: string;
 };
 

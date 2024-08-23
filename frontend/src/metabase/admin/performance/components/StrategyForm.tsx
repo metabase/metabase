@@ -15,7 +15,7 @@ import {
   useFormContext,
 } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_CACHING } from "metabase/plugins";
+import { PLUGIN_CACHING, isInvalidatableModel } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -276,10 +276,6 @@ const FormButtons = ({
 }: FormButtonsProps) => {
   const { dirty } = useFormikContext<CacheStrategy>();
 
-  if (targetId === rootId) {
-    shouldAllowInvalidation = false;
-  }
-
   const { isFormPending, wasFormRecentlyPending } = useIsFormPending();
 
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
@@ -297,7 +293,12 @@ const FormButtons = ({
     );
   }
 
-  if (shouldAllowInvalidation && targetId && targetName) {
+  if (
+    shouldAllowInvalidation &&
+    isInvalidatableModel(targetModel) &&
+    targetId &&
+    targetName
+  ) {
     return (
       <FormButtonsGroup isInSidebar={isInSidebar}>
         <PLUGIN_CACHING.InvalidateNowButton
