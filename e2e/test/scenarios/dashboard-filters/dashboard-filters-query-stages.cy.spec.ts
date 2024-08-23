@@ -90,8 +90,11 @@ const REVIEWS_TEXT_COLUMNS = ["Reviewer", "Body"];
 const REVIEWS_NUMBER_COLUMNS = ["Rating"];
 
 /**
- * q = question, m = model
- * qb = question-based, mb = model-based
+ * Abbreviations used for card aliases in this test suite:
+ *  q = question
+ *  m = model
+ *  qb = question-based (i.e. data source is a question)
+ *  mb = model-based (i.e. data source is a model)
  */
 describe("scenarios > dashboard > filters > query stages", () => {
   beforeEach(() => {
