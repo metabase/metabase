@@ -207,13 +207,9 @@
                               csv/read-csv)]
               (is (= [["Category" "2016-01-01T00:00:00Z" "2017-01-01T00:00:00Z" "2018-01-01T00:00:00Z" "2019-01-01T00:00:00Z" "Row totals"]
                       ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
-                      ["Totals for Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
                       ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
-                      ["Totals for Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.20"]
                       ["Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
-                      ["Totals for Gizmo" "529.7" "1080.18" "997.94" "227.06" "2834.88"]
                       ["Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
-                      ["Totals for Widget" "987.39" "1014.68" "912.2" "195.04" "3109.31"]
                       ["Grand totals" "2829.06" "4008.16" "3251.08" "1060.98" "11149.28"]]
                      result))))
           (testing "formatted"
@@ -221,13 +217,9 @@
                               csv/read-csv)]
               (is (= [["Category" "2016" "2017" "2018" "2019" "Row totals"]
                       ["Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
-                      ["Totals for Doohickey" "$632.14" "$854.19" "$496.43" "$203.13" "$2,185.89"]
                       ["Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
-                      ["Totals for Gadget" "$679.83" "$1,059.11" "$844.51" "$435.75" "$3,019.20"]
                       ["Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
-                      ["Totals for Gizmo" "$529.70" "$1,080.18" "$997.94" "$227.06" "$2,834.88"]
                       ["Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
-                      ["Totals for Widget" "$987.39" "$1,014.68" "$912.20" "$195.04" "$3,109.31"]
                       ["Grand totals" "$2,829.06" "$4,008.16" "$3,251.08" "$1,060.98" "$11,149.28"]]
                      result)))))))))
 
@@ -341,8 +333,8 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
-                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
                                                 :values  [[:aggregation 0]
                                                           [:aggregation 1]]}}
                       :dataset_query          {:database (mt/id)
@@ -350,11 +342,11 @@
                                                :query
                                                {:source-table (mt/id :products)
                                                 :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]
-                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]],
+                                                               [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
-                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]]}}}]
+                                                               [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :year}]]}}}]
         (binding [qp.csv/*pivot-export-post-processing-enabled* true]
-          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=true" pivot-card-id))
                             csv/read-csv)]
             (is (= [["Created At"
                      "Doohickey" "Doohickey"
@@ -442,30 +434,30 @@
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime
                                                                                                       :temporal-unit :year}]]}}}]
         (binding [qp.csv/*pivot-export-post-processing-enabled* true]
-          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=false" pivot-card-id))
+          (let [result (->> (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv?format_rows=true" pivot-card-id))
                             csv/read-csv)]
             (is (= [["Category" "Created At" "Sum of Price" "Count"]
-                    ["Doohickey" "2016-01-01T00:00Z" "632.14" "13"]
-                    ["Doohickey" "2017-01-01T00:00Z" "854.19" "17"]
-                    ["Doohickey" "2018-01-01T00:00Z" "496.43" "8"]
-                    ["Doohickey" "2019-01-01T00:00Z" "203.13" "4"]
-                    ["Totals for Doohickey" "" "2185.89" "42"]
-                    ["Gadget" "2016-01-01T00:00Z" "679.83" "13"]
-                    ["Gadget" "2017-01-01T00:00Z" "1059.11" "19"]
-                    ["Gadget" "2018-01-01T00:00Z" "844.51" "14"]
-                    ["Gadget" "2019-01-01T00:00Z" "435.75" "7"]
-                    ["Totals for Gadget" "" "3019.20" "53"]
-                    ["Gizmo" "2016-01-01T00:00Z" "529.7" "9"]
-                    ["Gizmo" "2017-01-01T00:00Z" "1080.18" "21"]
-                    ["Gizmo" "2018-01-01T00:00Z" "997.94" "17"]
-                    ["Gizmo" "2019-01-01T00:00Z" "227.06" "4"]
-                    ["Totals for Gizmo" "" "2834.88" "51"]
-                    ["Widget" "2016-01-01T00:00Z" "987.39" "19"]
-                    ["Widget" "2017-01-01T00:00Z" "1014.68" "18"]
-                    ["Widget" "2018-01-01T00:00Z" "912.2" "14"]
-                    ["Widget" "2019-01-01T00:00Z" "195.04" "3"]
-                    ["Totals for Widget" "" "3109.31" "54"]
-                    ["Grand totals" "" "11149.28" "200"]]
+                    ["Doohickey" "2016" "632.14" "13"]
+                    ["Doohickey" "2017" "854.19" "17"]
+                    ["Doohickey" "2018" "496.43" "8"]
+                    ["Doohickey" "2019" "203.13" "4"]
+                    ["Totals for Doohickey" "" "2,185.89" "42"]
+                    ["Gadget" "2016" "679.83" "13"]
+                    ["Gadget" "2017" "1,059.11" "19"]
+                    ["Gadget" "2018" "844.51" "14"]
+                    ["Gadget" "2019" "435.75" "7"]
+                    ["Totals for Gadget" "" "3,019.2" "53"]
+                    ["Gizmo" "2016" "529.7" "9"]
+                    ["Gizmo" "2017" "1,080.18" "21"]
+                    ["Gizmo" "2018" "997.94" "17"]
+                    ["Gizmo" "2019" "227.06" "4"]
+                    ["Totals for Gizmo" "" "2,834.88" "51"]
+                    ["Widget" "2016" "987.39" "19"]
+                    ["Widget" "2017" "1,014.68" "18"]
+                    ["Widget" "2018" "912.2" "14"]
+                    ["Widget" "2019" "195.04" "3"]
+                    ["Totals for Widget" "" "3,109.31" "54"]
+                    ["Grand totals" "" "11,149.28" "200"]]
                    result))))))))
 
 (deftest pivot-table-native-pivot-in-xlsx-test
@@ -474,8 +466,8 @@
       (mt/with-temp [:model/Card {pivot-card-id :id}
                      {:display                :pivot
                       :visualization_settings {:pivot_table.column_split
-                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime, :temporal-unit :month}]],
-                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]],
+                                               {:rows    [[:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]
+                                                :columns [[:field (mt/id :products :category) {:base-type :type/Text}]]
                                                 :values  [[:aggregation 0]
                                                           [:aggregation 1]]}}
                       :dataset_query          {:database (mt/id)

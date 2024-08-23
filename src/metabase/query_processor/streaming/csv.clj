@@ -33,7 +33,7 @@
 (def ^:dynamic *pivot-export-post-processing-enabled*
   "Flag to enable/disable export post-processing of pivot tables.
   Disabled by default and should remain disabled until Issue #44556 is resolved and a clear plan is made."
-  true)
+  false)
 
 (defmethod qp.si/streaming-results-writer :csv
   [_ ^OutputStream os]
