@@ -226,8 +226,8 @@
     {:replacement-snippet     (str/join " AND " (remove nil? [start-expr-native end-expr-native]))
      :prepared-statement-args (into []
                                     (comp (keep :param-values)
-                                              cat)
-                                     [start end])}))
+                                          cat)
+                                    [start end])}))
 
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
