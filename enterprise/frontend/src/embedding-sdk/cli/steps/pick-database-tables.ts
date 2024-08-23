@@ -4,7 +4,10 @@ import ora from "ora";
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import type { Table } from "metabase-types/api";
 
-import { propagateErrorResponse } from "../utils/propagate-error-response";
+import {
+  cliError,
+  propagateErrorResponse,
+} from "../utils/propagate-error-response";
 import { retry } from "../utils/retry";
 
 export const pickDatabaseTables: CliStepMethod = async state => {
@@ -45,47 +48,49 @@ export const pickDatabaseTables: CliStepMethod = async state => {
 
   const tables: Table[] = [];
 
-  // Fetch the database tables
-  for (const schemaKey of schemas) {
-    const url = `${instanceUrl}/api/database/${databaseId}/schema/${schemaKey}?include_hidden=true`;
+  try {
+    // Scan the database tables in each schemas
+    for (const schemaKey of schemas) {
+      const url = `${instanceUrl}/api/database/${databaseId}/schema/${schemaKey}?include_hidden=true`;
 
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { "content-type": "application/json", cookie },
-    });
-
-    if (!res.ok) {
-      const message = `Cannot fetch database table from schema ${schemaKey}.`;
-
-      return [{ type: "error", message }, state];
-    }
-
-    const schemaTablesWithoutMetadata: Table[] = await res.json();
-
-    for (const table of schemaTablesWithoutMetadata) {
-      const datasetQuery = {
-        type: "query",
-        database: databaseId,
-        query: { "source-table": table.id },
-      };
-
-      // Get the query metadata from a table
-      const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
-        method: "POST",
+      const res = await fetch(url, {
+        method: "GET",
         headers: { "content-type": "application/json", cookie },
-        body: JSON.stringify(datasetQuery),
       });
 
       await propagateErrorResponse(res);
 
-      const metadataResult = (await res.json()) as { tables: Table[] };
+      const schemaTablesWithoutMetadata: Table[] = await res.json();
 
-      if (metadataResult.tables.length === 0) {
-        throw new Error(`Cannot find table "${table.name}" in database.`);
+      for (const table of schemaTablesWithoutMetadata) {
+        const datasetQuery = {
+          type: "query",
+          database: databaseId,
+          query: { "source-table": table.id },
+        };
+
+        // Get the query metadata from a table
+        const res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
+          method: "POST",
+          headers: { "content-type": "application/json", cookie },
+          body: JSON.stringify(datasetQuery),
+        });
+
+        await propagateErrorResponse(res);
+
+        const metadataResult = (await res.json()) as { tables: Table[] };
+
+        if (metadataResult.tables.length === 0) {
+          const message = `Cannot scan table "${table.name}"`;
+
+          return [{ type: "error", message }, state];
+        }
+
+        tables.push(...metadataResult.tables);
       }
-
-      tables.push(...metadataResult.tables);
     }
+  } catch (error) {
+    return [cliError("Cannot scan database tables", error), state];
   }
 
   if (tables.length === 0) {
