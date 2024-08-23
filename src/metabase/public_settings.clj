@@ -212,7 +212,6 @@
                 (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :encryption :never
   :visibility :public
   :audit      :getter)
 

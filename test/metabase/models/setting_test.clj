@@ -16,6 +16,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
@@ -95,6 +96,13 @@
   :visibility :internal
   :type       :string
   :default    "setting-default"
+  :feature    :test-feature)
+
+(defsetting test-never-encrypted-setting
+  "Setting to test the `:encryption` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :encryption :never
   :feature    :test-feature)
 
 ;; ## HELPER FUNCTIONS
@@ -1528,3 +1536,23 @@
         ;; We operate on trust that tests are added along with this var
         (testing (format "We have defined a setting for the %s validation tests" format)
           (is (var? (resolve (ns-validation-setting-symbol format)))))))))
+
+(deftest migrate-encrypted-settings!-works
+  (testing "It works when a secret key is set"
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
+      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")})
+      ;; Sanity check: the value is encrypted
+      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
+      (setting/migrate-encrypted-settings!)
+      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
+      (setting/migrate-encrypted-settings!)
+      (is (= "foobar" (actual-value-in-db :test-never-encrypted-setting)))))
+  (testing "It doesn't do anything when the secret key is not set"
+    (encryption-test/with-secret-key "ABCDEFGH12345678"
+      (t2/delete! :model/Setting :key "test-never-encrypted-setting")
+      (t2/insert! :setting {:key "test-never-encrypted-setting" :value (encryption/maybe-encrypt "foobar")}))
+    (encryption-test/with-secret-key nil
+      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
+      (setting/migrate-encrypted-settings!)
+      (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting))))))
