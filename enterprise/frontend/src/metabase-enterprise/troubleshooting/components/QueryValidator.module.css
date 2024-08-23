@@ -1,16 +1,15 @@
 .table {
-  width: 100%;
-  border: 1px solid var(--mb-color-border);
-  border-collapse: separate;
-  border-radius: 1rem;
-  border-spacing: 0;
-
-  tr {
-    padding: 1rem;
+  td {
+    white-space: nowrap;
   }
 
-  tr:not(:last-child) > td,
-  tr > th {
-    border-bottom: 1px solid var(--mb-color-border);
+  th {
+    white-space: nowrap;
+  }
+}
+
+.collectionLink {
+  :hover {
+    color: var(--mb-color-brand) !important;
   }
 }

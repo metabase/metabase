@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { CardError } from "metabase-enterprise/api/query-validation";
+import type { CardError } from "metabase-types/api";
 
 export const formatErrorString = (errors: CardError[]) => {
   const messages = [];

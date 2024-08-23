@@ -4,29 +4,34 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
+import { getCollectionPathString } from "metabase/browse/components/utils";
+import { getCollectionName } from "metabase/collections/utils";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
 } from "metabase/common/components/CollectionPicker";
+import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
 import { Table } from "metabase/common/components/Table";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import * as Urls from "metabase/lib/urls";
-import { Box, Button, Flex, Icon, Title } from "metabase/ui";
+import { Box, Button, FixedSizeIcon, Flex, Icon, Title } from "metabase/ui";
 import { useGetInvalidCardsQuery } from "metabase-enterprise/api";
-import type { RegularCollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
 
 import { formatErrorString } from "../utils";
 
+import S from "./QueryValidator.module.css";
+
 const COLUMNS = [
-  { name: "Question", key: "name", sortable: true },
-  { name: "Error", key: "error" },
-  { name: "Collection", key: "collection", sortable: true },
-  { name: "Created by", key: "created_by", sortable: true },
-  { name: "Last edited", key: "last_edited_at", sortable: true },
+  { name: "Question", key: "name" },
+  { name: "Error", key: "error", sortable: false },
+  { name: "Collection", key: "collection" },
+  { name: "Created by", key: "created_by" },
+  { name: "Last edited", key: "last_edited_at" },
 ];
 
 const PAGE_SIZE = 15;
@@ -37,9 +42,8 @@ export const QueryValidator = () => {
     SortDirection.Asc,
   );
   const [collectionPickerOpen, setCollectionPickerOpen] = useState(false);
-  const [collectionId, setCollectionId] = useState<
-    RegularCollectionId | undefined
-  >(undefined);
+  const [collectionId, setCollectionId] = useState<CollectionId>("root");
+  const isRootCollection = collectionId === "root";
 
   const { setPage, page } = usePagination();
 
@@ -49,7 +53,7 @@ export const QueryValidator = () => {
         id: collectionId,
       },
       {
-        skip: collectionId === undefined,
+        skip: isRootCollection,
       },
     );
 
@@ -59,7 +63,7 @@ export const QueryValidator = () => {
       sort_direction: sortDirection,
       limit: PAGE_SIZE,
       offset: PAGE_SIZE * page,
-      collection_id: collectionId,
+      collection_id: isRootCollection ? undefined : collectionId,
     },
     {
       refetchOnMountOrArgChange: true,
@@ -67,11 +71,7 @@ export const QueryValidator = () => {
   );
 
   const handleCollectionChange = (collection: CollectionPickerValueItem) => {
-    if (collection.id === "root") {
-      setCollectionId(undefined);
-    } else {
-      setCollectionId(collection.id as RegularCollectionId);
-    }
+    setCollectionId(collection.id);
     setCollectionPickerOpen(false);
   };
 
@@ -80,13 +80,17 @@ export const QueryValidator = () => {
       invalidCards?.data.map(d => ({
         name: d.name,
         created_by: d.creator?.common_name,
-        collection: d.collection?.name || "root",
-        collection_path: d.collection?.effective_ancestors,
+        collectionTooltip: getCollectionPathString(d.collection),
+        collection_path: [
+          ...(d.collection?.effective_ancestors || []),
+          d.collection,
+        ].map(c => getCollectionName(c)),
         error: formatErrorString(d.errors),
         last_edited_at: d.updated_at,
-        id: _.uniqueId("broken_card"),
+        id: d.id,
         icon: d.display,
-        link: Urls.question(d),
+        questionLink: Urls.question(d),
+        collectionLink: Urls.collection(d.collection),
       })) || [],
     [invalidCards],
   );
@@ -109,12 +113,13 @@ export const QueryValidator = () => {
             }}
             onClick={() => setCollectionPickerOpen(true)}
           >
-            {collectionId === undefined || loadingCollection
+            {isRootCollection || loadingCollection
               ? t`All Collections`
               : collection?.name}
           </Button>
         </Flex>
         <Table
+          className={S.table}
           columns={COLUMNS}
           rows={processedData}
           rowRenderer={row => <QueryValidatorRow row={row} />}
@@ -154,7 +159,7 @@ const QueryValidatorRow = ({ row }: { row: any }) => {
   return (
     <tr>
       <td className={`${CS.textBold} ${CS.py2}`}>
-        <Link to={row.link}>
+        <Link to={row.questionLink}>
           <Ellipsified style={{ color: "var(--mb-color-brand)" }}>
             {row.icon && (
               <Icon
@@ -167,7 +172,19 @@ const QueryValidatorRow = ({ row }: { row: any }) => {
         </Link>
       </td>
       <td>{row.error}</td>
-      <td>{row.collection}</td>
+      <td width="100%">
+        <Link to={row.collectionLink} className={S.collectionLink}>
+          <Flex gap="sm">
+            <FixedSizeIcon name="folder" />
+            <Box w="calc(100% - 1.5rem)">
+              <EllipsifiedPath
+                items={row.collection_path}
+                tooltip={row.collectionTooltip}
+              />
+            </Box>
+          </Flex>
+        </Link>
+      </td>
       <td>{row.created_by}</td>
       <td>{formatDateTimeWithUnit(row.last_edited_at, "day")}</td>
     </tr>
