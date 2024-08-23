@@ -1,6 +1,7 @@
 import { css } from "@emotion/react";
 
 import { isStorybookActive } from "metabase/env";
+import { openImageBlobOnStorybook } from "metabase/lib/loki-utils";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
@@ -45,19 +46,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
       if (isStorybookActive) {
         // if we're running storybook we open the image in place
         // so we can test the export result with loki
-        const imgElement = document.createElement("img");
-        imgElement.src = URL.createObjectURL(blob);
-        // scale to /2 to compensate `scale:2` in html2canvas
-        imgElement.width = canvas.width / 2;
-        imgElement.height = canvas.height / 2;
-
-        const root: HTMLElement = window.document.querySelector("#root")!;
-        const imageDownloaded = document.createElement("div");
-        imageDownloaded.setAttribute("data-testid", "image-downloaded");
-        root.replaceChildren(imgElement);
-        root.appendChild(imageDownloaded);
-
-        window.document.body.style.height = "initial";
+        openImageBlobOnStorybook({ canvas, blob });
       } else {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
