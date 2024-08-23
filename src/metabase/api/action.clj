@@ -68,7 +68,7 @@
                                      [:= :type "model"]
                                      [:= :archived false]
                                      ;; action permission keyed off of model permission
-                                     (collection/honeysql-filter-clause)]}))]
+                                     (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
 (api/defendpoint GET "/public"

@@ -104,7 +104,7 @@
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
-                       (collection/honeysql-filter-clause
+                       (collection/visible-collection-filter-clause
                         :id
                         {:include-archived-items (if archived
                                                    :only
@@ -432,12 +432,12 @@
                                    [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/honeysql-filter-clause :collection_id
-                                                      {:include-archived-items :all
-                                                       :permission-level (if archived?
-                                                                           :write
-                                                                           :read)
-                                                       :archive-operation-id nil})
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)
+                                                                 :archive-operation-id nil})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -559,12 +559,12 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/honeysql-filter-clause :collection_id
-                                                      {:include-archived-items :all
-                                                       :archive-operation-id nil
-                                                       :permission-level (if archived?
-                                                                           :write
-                                                                           :read)})
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :archive-operation-id nil
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -634,7 +634,7 @@
 (defn- annotate-collections
   [parent-coll colls]
   (let [visible-collection-ids (collection/visible-collection-ids {:include-archived-items :all})
-        descendant-collections (collection/descendants-flat parent-coll (collection/honeysql-filter-clause
+        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
                                                                          :id
                                                                          {:include-archived-items :all}))
 

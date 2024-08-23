@@ -115,7 +115,7 @@
   (let [collection-id-col        (if (= model "collection")
                                    :collection.id
                                    :collection_id)
-        collection-filter-clause (collection/honeysql-filter-clause
+        collection-filter-clause (collection/visible-collection-filter-clause
                                   collection-id-col
                                   {:include-archived-items :all
                                    :include-trash-collection? true
@@ -284,7 +284,7 @@
   [query _current-user-perms]
   (sql.helpers/where
    query
-   (collection/honeysql-filter-clause)))
+   (collection/visible-collection-filter-clause)))
 
 (defmethod search-query-for-model "indexed-entity"
   [model {:keys [current-user-perms] :as search-ctx}]

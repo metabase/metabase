@@ -536,12 +536,12 @@
    ;; we're not looking for the children of a collection (root definitely isn't a child!)
    (not (:effective-child-of visibility-config))))
 
-(mu/defn honeysql-filter-clause
-  "Given a permissions-set and a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
+(mu/defn visible-collection-filter-clause
+  "Given a `CollectionVisibilityConfig`, return a honeysql filter clause ready for use in queries."
   ([]
-   (honeysql-filter-clause :collection_id))
+   (visible-collection-filter-clause :collection_id))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]]
-   (honeysql-filter-clause collection-id-field {}))
+   (visible-collection-filter-clause collection-id-field {}))
   ([collection-id-field :- [:or [:tuple [:= :coalesce] :keyword :keyword] :keyword]
     visibility-config :- CollectionVisibilityConfig]
    (let [visibility-config (merge default-visibility-config visibility-config)]
@@ -585,7 +585,6 @@
                                          [:= :p.perm_value "read-and-write"]
                                          (when (= :read (:permission-level visibility-config))
                                            [:= :p.perm_value "read"])]]}
-                               ;; second, the user's personal collection and all its descendants
                                (when-let [personal-collection-and-descendant-ids (user->personal-collection-and-descendant-ids api/*current-user-id*)]
                                  {:select [:c.*]
                                   :from [[:collection :c]]
@@ -626,7 +625,7 @@
                      [:not [:exists {:select 1
                                      :from [[:collection :c2]]
                                      :where [:and
-                                             (honeysql-filter-clause :c2.id (dissoc visibility-config :effective-child-of))
+                                             (visible-collection-filter-clause :c2.id (dissoc visibility-config :effective-child-of))
                                              [:= :c.location [:concat :c2.location :c2.id (h2x/literal "/")]]
                                              (when-not (collection.root/is-root-collection? parent-coll)
                                                [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}]])))
@@ -634,9 +633,9 @@
 (mu/defn visible-collection-ids :- VisibleCollections
   "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
   toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
-  probably try to use `honeysql-filter-clause` instead."
+  probably try to use `visible-collection-filter-clause` instead."
   [visibility-config]
-  (cond-> (t2/select-pks-set :model/Collection {:where (honeysql-filter-clause :id visibility-config)})
+  (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
     (should-display-root-collection? visibility-config)
     (conj "root")))
 
@@ -837,18 +836,18 @@
   (into
    [:and
     ;; it is a visible effective child of the collection.
-    (honeysql-filter-clause :id
-                            {:include-archived-items    (if (or (:archived collection)
-                                                                (is-trash? collection))
-                                                          :only
-                                                          :exclude)
-                             :include-trash-collection? true
-                             :effective-child-of        collection
-                             :archive-operation-id      (:archive_operation_id collection)
-                             :permission-level          (if (or (:archived collection)
-                                                                (is-trash? collection))
-                                                          :write
-                                                          :read)})
+    (visible-collection-filter-clause :id
+                                      {:include-archived-items    (if (or (:archived collection)
+                                                                          (is-trash? collection))
+                                                                    :only
+                                                                    :exclude)
+                                       :include-trash-collection? true
+                                       :effective-child-of        collection
+                                       :archive-operation-id      (:archive_operation_id collection)
+                                       :permission-level          (if (or (:archived collection)
+                                                                          (is-trash? collection))
+                                                                    :write
+                                                                    :read)})
     ;; don't want personal collections in collection items. Only on the sidebar
     [:= :personal_owner_id nil]]
    ;; (any additional conditions)
