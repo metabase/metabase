@@ -343,5 +343,8 @@ describe("BrowseModels", () => {
       name: /Recents/,
     });
     expect(recentModelsGrid).not.toBeInTheDocument();
+
+    // Make this test fail, to test out jest's github-actions feature
+    expect(recentModelsGrid).toBeInTheDocument();
   });
 });
