@@ -84,8 +84,8 @@ export async function sampleTenantIds(options: Options) {
         limit,
         "source-table": table.id,
 
-        // ensure that the tenancy column values are not null
-        filter: ["not-null", fieldRef],
+        // list the tenant ids (e.g. [[1], [2], [3]])
+        breakout: fieldRef,
       },
       parameters: [],
     }),
@@ -95,24 +95,5 @@ export async function sampleTenantIds(options: Options) {
 
   const dataset = (await res.json()) as Dataset;
 
-  const columnIndex = dataset.data.cols.findIndex(
-    column => column.id === field.id,
-  );
-
-  const rowValues: (string | number)[] = [];
-
-  for (const row of dataset.data.rows) {
-    const rowValue = row[columnIndex];
-
-    const isValidRowValue =
-      rowValue !== null &&
-      rowValue !== undefined &&
-      typeof rowValue !== "boolean";
-
-    if (isValidRowValue) {
-      rowValues.push(rowValue);
-    }
-  }
-
-  return Array.from(new Set(rowValues));
+  return dataset.data.rows.flat();
 }
