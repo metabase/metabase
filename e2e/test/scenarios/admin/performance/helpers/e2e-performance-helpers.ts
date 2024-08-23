@@ -100,7 +100,7 @@ export const reloadItem = ({
 export const reloadQuestion = () =>
   reloadItem({ model: "question", endpointAlias: "@cardQuery" });
 export const reloadDashboard = () =>
-  reloadItem({ model: "dashboard", endpointAlias: "@dashcardQuery65" });
+  reloadItem({ model: "dashboard", endpointAlias: "@dashcardQuery" });
 
 export const resultIsCached = (previousResult: string, nextResult: string) =>
   previousResult === nextResult;
