@@ -82,7 +82,7 @@
                                    (-> (merge {:pivot-rows []
                                                :pivot-cols []}
                                               pivot-export-options)
-                                       (assoc :column-titles (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+                                       (assoc :column-titles (mapv :display_name ordered-cols))
                                        qp.pivot.postprocess/add-pivot-measures))
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
               col-names          (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
@@ -99,7 +99,7 @@
           ;; write the column names for non-pivot tables
           (when col-names
             (let [row (m/remove-nth pivot-grouping-key col-names)]
-              (csv/write-csv writer [row])
+              (write-csv writer [row])
               (.flush writer)))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
@@ -119,14 +119,14 @@
                                                      (formatter (common/format-value r)))
                                                    @ordered-formatters ordered-row)
                                       pivot-grouping-key (m/remove-nth pivot-grouping-key))]
-                  (csv/write-csv writer [formatted-row])
+                  (write-csv writer [formatted-row])
                   (.flush writer)))))))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
         (when @pivot-data
           (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data @ordered-formatters)]
-            (csv/write-csv writer [xf-row])))
+            (write-csv writer [xf-row])))
         (.flush writer)
         (.flush os)
         (.close writer)))))
