@@ -296,6 +296,18 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_DATE_COLUMNS],
         ]);
+        verifyDashcardMappingOptions(2, [
+          ["Q1 Orders Question", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(3, [
+          ["M1 Orders Model", ORDERS_DATE_COLUMNS],
+          ["Review", REVIEWS_DATE_COLUMNS],
+          ["Product", [...PRODUCTS_DATE_COLUMNS, ...PRODUCTS_DATE_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_DATE_COLUMNS],
+        ]);
 
         cy.log("## text columns");
         getFilter("Text").click();
@@ -309,17 +321,39 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_TEXT_COLUMNS],
         ]);
+        verifyDashcardMappingOptions(2, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(3, [
+          ["Review", REVIEWS_TEXT_COLUMNS],
+          ["Product", [...PRODUCTS_TEXT_COLUMNS, ...PRODUCTS_TEXT_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_TEXT_COLUMNS],
+        ]);
 
         cy.log("## number columns");
         getFilter("Number").click();
         verifyDashcardMappingOptions(0, [
-          ["Q1 Orders Question", ORDERS_NUMBER_COLUMNS],
+          ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Review", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
         verifyDashcardMappingOptions(1, [
-          ["M1 Orders Model", ORDERS_NUMBER_COLUMNS],
+          ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(2, [
+          ["Q1 Orders Question", [...ORDERS_NUMBER_COLUMNS, "Net"]],
+          ["Review", REVIEWS_NUMBER_COLUMNS],
+          ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
+          ["User", PEOPLE_NUMBER_COLUMNS],
+        ]);
+        verifyDashcardMappingOptions(3, [
+          ["M1 Orders Model", [...ORDERS_NUMBER_COLUMNS, "Net"]],
           ["Review", REVIEWS_NUMBER_COLUMNS],
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
