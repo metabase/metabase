@@ -26,10 +26,10 @@ import {
   StepRoot,
 } from "./NotebookStep.styled";
 import { NotebookStepPreview } from "./NotebookStepPreview";
-import { getStepActionConfig, getStepConfig } from "./utils";
+import { getStepConfig } from "./utils";
 
 function hasLargeButton(step: INotebookStep, action: NotebookStepAction) {
-  return !getStepActionConfig(step, action).compact;
+  return !getStepConfig(action.type, step.question.type()).compact;
 }
 
 interface NotebookStepProps {
@@ -61,7 +61,7 @@ export function NotebookStep({
 
     actions.push(
       ...step.actions.map(action => {
-        const stepUi = getStepActionConfig(step, action);
+        const stepUi = getStepConfig(action.type, step.question.type());
         const title = stepUi.title;
         return {
           priority: stepUi.priority,
@@ -103,7 +103,7 @@ export function NotebookStep({
     title,
     color,
     component: NotebookStepComponent,
-  } = getStepConfig(step);
+  } = getStepConfig(step.type, step.question.type());
 
   const canPreview = step.previewQuery != null;
   const hasPreviewButton = !isPreviewOpen && canPreview;
