@@ -35,6 +35,7 @@
  :extra-indents
  {;; clojure.core stuff
   fn*                                                                                  [[:inner 0]]
+  let*                                                                                 [[:block 1]]
   with-meta                                                                            [[:default]]
   ;; library stuff. Libraries that specify their own `:style/indent` specs are included in the section after this
   ;; since it is generated automatically.
