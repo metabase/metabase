@@ -1041,7 +1041,6 @@ saved later when it is ready."
    {:created_at             (serdes/date)
     :database_id            (serdes/fk :model/Database :name)
     :table_id               (serdes/fk :model/Table)
-    :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
     :creator_id             (serdes/fk :model/User)
     :made_public_by_id      (serdes/fk :model/User)

@@ -334,7 +334,8 @@
                         :let  [res ((:export transform) (get instance k))]
                         :when (not= res ::skip)]
                     (do
-                      (when-not (contains? instance k)
+                      (when (and (not (contains? instance k))
+                                 (::nested transform))
                         (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
                                         {:model    model-name
                                          :key      k

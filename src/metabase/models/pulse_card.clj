@@ -49,4 +49,3 @@
                  :include_csv       (boolean include_csv)
                  :include_xls       (boolean include_xls)
                  :format_rows       (boolean format_rows)})))
-
