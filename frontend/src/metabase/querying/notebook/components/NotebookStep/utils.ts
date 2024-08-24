@@ -5,6 +5,8 @@ import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 
 import type {
+  NotebookStep,
+  NotebookStepAction,
   NotebookStepType,
   NotebookStepUiComponentProps,
 } from "../../types";
@@ -28,7 +30,7 @@ type StepUIItem = {
   component: React.ComponentType<NotebookStepUiComponentProps>;
 };
 
-const STEP_UI: Record<NotebookStepType, StepUIItem> = {
+const STEPS: Record<NotebookStepType, StepUIItem> = {
   data: {
     title: t`Data`,
     component: DataStep,
@@ -94,7 +96,23 @@ const STEP_UI: Record<NotebookStepType, StepUIItem> = {
   },
 };
 
-export const getStepUIConfig = (type: NotebookStepType) => ({
-  ...STEP_UI[type],
-  color: STEP_UI[type].color(),
-});
+export const getStepConfig = (step: NotebookStep) => {
+  const config = STEPS[step.type];
+
+  return {
+    ...config,
+    color: config.color(),
+  };
+};
+
+export const getStepActionConfig = (
+  step: NotebookStep,
+  action: NotebookStepAction,
+) => {
+  const config = STEPS[action.type];
+
+  return {
+    ...config,
+    color: config.color(),
+  };
+};

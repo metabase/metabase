@@ -26,10 +26,10 @@ import {
   StepRoot,
 } from "./NotebookStep.styled";
 import { NotebookStepPreview } from "./NotebookStepPreview";
-import { getStepUIConfig } from "./utils";
+import { getStepActionConfig, getStepConfig } from "./utils";
 
-function hasLargeButton(action: NotebookStepAction) {
-  return !getStepUIConfig(action.type).compact;
+function hasLargeButton(step: INotebookStep, action: NotebookStepAction) {
+  return !getStepActionConfig(step, action).compact;
 }
 
 interface NotebookStepProps {
@@ -57,11 +57,11 @@ export function NotebookStep({
   const actionButtons = useMemo(() => {
     const actions = [];
     const hasLargeActionButtons =
-      isLastStep && step.actions.some(hasLargeButton);
+      isLastStep && step.actions.some(action => hasLargeButton(step, action));
 
     actions.push(
       ...step.actions.map(action => {
-        const stepUi = getStepUIConfig(action.type);
+        const stepUi = getStepActionConfig(step, action);
         const title = stepUi.title;
         return {
           priority: stepUi.priority,
@@ -86,7 +86,7 @@ export function NotebookStep({
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     return actions.map(action => action.button);
-  }, [step.actions, isLastStep, openStep]);
+  }, [step, isLastStep, openStep]);
 
   const handleClickRevert = useCallback(() => {
     if (step.revert) {
@@ -103,7 +103,7 @@ export function NotebookStep({
     title,
     color,
     component: NotebookStepComponent,
-  } = getStepUIConfig(step.type) || {};
+  } = getStepConfig(step);
 
   const canPreview = step.previewQuery != null;
   const hasPreviewButton = !isPreviewOpen && canPreview;
