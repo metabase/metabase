@@ -1,3 +1,4 @@
+import Color from "color";
 import _ from "underscore";
 
 import { getColorsForValues } from "metabase/lib/colors/charts";
@@ -109,31 +110,6 @@ export function getSortedRows(rows: RowValues[], metricIndex: number) {
   });
 }
 
-// TODO delete this function, replace with calls to getSortedRows, getAggregatedRows
-export function getSortedAggregatedRows(
-  rows: RowValues[],
-  dimensionIndex: number,
-  metricIndex: number,
-) {
-  const aggregatedRows = getAggregatedRows(rows, dimensionIndex, metricIndex);
-
-  return aggregatedRows.sort((rowA, rowB) => {
-    const valueA = rowA[metricIndex];
-    const valueB = rowB[metricIndex];
-
-    if (!isNumber(valueA) && !isNumber(valueB)) {
-      return 0;
-    }
-    if (!isNumber(valueA)) {
-      return 1;
-    }
-    if (!isNumber(valueB)) {
-      return -1;
-    }
-    return valueB - valueA;
-  });
-}
-
 export function getColors(
   rawSeries: RawSeries,
   currentSettings: Partial<ComputedVisualizationSettings>,
@@ -150,7 +126,10 @@ export function getColors(
   const metricIndex = cols.findIndex(
     col => col.name === currentSettings["pie.metric"],
   );
-  const sortedRows = getSortedAggregatedRows(rows, dimensionIndex, metricIndex);
+  const sortedRows = getSortedRows(
+    getAggregatedRows(rows, dimensionIndex, metricIndex),
+    metricIndex,
+  );
 
   const dimensionValues = sortedRows.map(r => String(r[dimensionIndex]));
 
@@ -165,7 +144,6 @@ export function getColors(
   return { ...defaultColors, ...currentSettings["pie.colors"] };
 }
 
-// TODO fix non hex colors in static viz
 export function getPieRows(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -235,36 +213,36 @@ export function getPieRows(
     return key;
   });
 
-  const added = _.difference(currentDataKeys, savedPieKeys);
   const removed = _.difference(savedPieKeys, currentDataKeys);
-  const kept = _.intersection(savedPieKeys, currentDataKeys);
 
   let newPieRows: PieRow[] = [];
-  // Case 1: Auto sorted
+  // Case 1: Auto sorted, sort existing and new rows together
   if (settings["pie.sort_rows"]) {
     const sortedCurrentDataRows = getSortedRows(currentDataRows, metricIndex);
 
     newPieRows = sortedCurrentDataRows.map(dataRow => {
       const dimensionValue = dataRow[dimensionIndex];
       const key = getKeyFromDimensionValue(dimensionValue);
+      // Historically we have used the dimension value in the `pie.colors`
+      // setting instead of the key computed above. For compatibility with
+      // existing questions we will continue to use the dimension value.
+      //
+      // Additionally, some older questions have non-hex color values such as
+      // hsl strings so we need to convert everything to hsl for compatibilty
+      // with Batik in the backend static viz rendering pipeline.
+      const color = Color(colors[String(dimensionValue)]).hex();
 
       const savedRow = keyToSavedPieRow.get(key);
       if (savedRow != null) {
         const newRow = { ...savedRow, hidden: false };
 
         if (savedRow.defaultColor) {
-          // Historically we have used the dimension value in the `pie.colors`
-          // setting instead of the key computed above, e.g. `null` instead of
-          // `(empty)`. For compatibility with existing questions we will
-          // continue to use the dimension value.
-          newRow.color = colors[String(dimensionValue)];
+          newRow.color = color;
         }
 
         return newRow;
       }
 
-      // TODO I think these two conditions can be merged
-      const color = colors[String(dimensionValue)];
       const name = formatDimensionValue(dimensionValue);
 
       return {
@@ -279,6 +257,9 @@ export function getPieRows(
     });
     // Case 2: Preserve manual sort for existing rows, sort `added` rows
   } else {
+    const added = _.difference(currentDataKeys, savedPieKeys);
+    const kept = _.intersection(savedPieKeys, currentDataKeys);
+
     newPieRows = kept.map(keptKey => {
       const savedPieRow = keyToSavedPieRow.get(keptKey);
       if (savedPieRow == null) {
@@ -305,8 +286,7 @@ export function getPieRows(
       ...sortedAddedRows.map(addedDataRow => {
         const dimensionValue = addedDataRow[dimensionIndex];
 
-        // TODO create common func for creating pieRow objects?
-        const color = colors[String(dimensionValue)];
+        const color = Color(colors[String(dimensionValue)]).hex();
         const key = getKeyFromDimensionValue(dimensionValue);
         const name = formatDimensionValue(dimensionValue);
 

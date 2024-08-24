@@ -71,7 +71,6 @@ export function getPieChartModel(
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
-  // TODO consider making this a hidden viz setting like _aggregatedRows to avoid recomputation?
   const aggregatedRows = getAggregatedRows(
     dataRows,
     colDescs.dimensionDesc.index,
