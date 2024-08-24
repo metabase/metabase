@@ -4,7 +4,7 @@ import { withRouter } from "react-router";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import {
   getGroupTableAccessPolicy,
@@ -71,10 +71,7 @@ const EditSandboxingModalContainer = ({
   };
 
   return (
-    <LoadingAndErrorWrapper
-      loading={isLoading}
-      error={policyRequestState?.error}
-    >
+    <Loading loading={isLoading} error={policyRequestState?.error}>
       <EditSandboxingModal
         policy={policy}
         attributes={attributes}
@@ -82,7 +79,7 @@ const EditSandboxingModalContainer = ({
         onCancel={close}
         onSave={handleSave}
       />
-    </LoadingAndErrorWrapper>
+    </Loading>
   );
 };
 

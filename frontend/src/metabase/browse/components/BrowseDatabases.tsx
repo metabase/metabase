@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import NoResults from "assets/img/no_results.svg";
 import { useListDatabasesQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
@@ -26,11 +26,11 @@ export const BrowseDatabases = () => {
   const databases = data?.data;
 
   if (error) {
-    return <LoadingAndErrorWrapper error />;
+    return <Loading error />;
   }
 
   if (!databases && isLoading) {
-    return <LoadingAndErrorWrapper loading />;
+    return <Loading loading />;
   }
 
   if (!databases?.length) {

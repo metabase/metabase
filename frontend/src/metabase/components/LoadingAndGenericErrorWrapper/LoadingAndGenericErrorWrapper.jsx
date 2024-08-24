@@ -1,9 +1,9 @@
 import { GenericError } from "metabase/components/ErrorPages";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 
 export default function LoadingAndGenericErrorWrapper(props) {
   return (
-    <LoadingAndErrorWrapper
+    <Loading
       {...props}
       renderError={details => <GenericError details={details} />}
     />

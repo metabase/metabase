@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { skipToken, useListDatabaseXraysQuery } from "metabase/api";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Select from "metabase/core/components/Select";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
@@ -38,7 +38,7 @@ export const HomeXraySection = () => {
   const error = databaseListState.error ?? candidateListState.error;
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   if (!database) {

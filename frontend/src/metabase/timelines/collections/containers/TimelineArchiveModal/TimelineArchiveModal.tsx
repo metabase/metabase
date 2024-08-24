@@ -8,7 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import Loading from "../../components/Loading";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import type { ModalParams } from "../../types";
 
@@ -20,7 +20,7 @@ const timelineProps = {
   id: (state: State, props: TimelineArchiveModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events", archived: true },
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const mapStateToProps = () => ({

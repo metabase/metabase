@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useListPopularItemsQuery, useListRecentsQuery } from "metabase/api";
 import { useDatabaseListQuery, useSetting } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { useSelector } from "metabase/lib/redux";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { getUser } from "metabase/selectors/user";
@@ -35,11 +35,11 @@ export const HomeContent = (): JSX.Element | null => {
   );
 
   if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
+    return <Loading error={error} />;
   }
 
   if (!user || isLoading(user, databases, recentItems, popularItems)) {
-    return <LoadingAndErrorWrapper loading />;
+    return <Loading loading />;
   }
 
   if (embeddingHomepage === "visible" && user.is_superuser) {

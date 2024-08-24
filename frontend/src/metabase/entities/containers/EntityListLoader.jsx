@@ -5,7 +5,7 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import paginationState from "metabase/hoc/PaginationState";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -21,7 +21,7 @@ const propTypes = {
   wrapped: PropTypes.bool,
   debounced: PropTypes.bool,
   loadingAndErrorWrapper: PropTypes.bool,
-  LoadingAndErrorWrapper: PropTypes.elementType,
+  Loading: PropTypes.elementType,
   keepListWhileLoading: PropTypes.bool,
   listName: PropTypes.string,
   selectorName: PropTypes.string,
@@ -47,7 +47,7 @@ const propTypes = {
 
 const defaultProps = {
   loadingAndErrorWrapper: true,
-  LoadingAndErrorWrapper: LoadingAndErrorWrapper,
+  Loading: Loading,
   keepListWhileLoading: false,
   reload: false,
   wrapped: false,
@@ -63,7 +63,7 @@ const CONSUMED_PROPS = [
   "wrapped",
   "debounced",
   "loadingAndErrorWrapper",
-  "LoadingAndErrorWrapper",
+  "Loading",
   "selectorName",
 ];
 
@@ -210,22 +210,14 @@ class EntityListLoaderInner extends Component {
   };
 
   render() {
-    const {
-      allFetched,
-      allError,
-      loadingAndErrorWrapper,
-      LoadingAndErrorWrapper,
-    } = this.props;
+    const { allFetched, allError, loadingAndErrorWrapper, Loading } =
+      this.props;
     const { isReloading } = this.state;
 
     return loadingAndErrorWrapper ? (
-      <LoadingAndErrorWrapper
-        loading={!allFetched || isReloading}
-        error={allError}
-        noWrapper
-      >
+      <Loading loading={!allFetched || isReloading} error={allError}>
         {this.renderChildren}
-      </LoadingAndErrorWrapper>
+      </Loading>
     ) : (
       this.renderChildren()
     );

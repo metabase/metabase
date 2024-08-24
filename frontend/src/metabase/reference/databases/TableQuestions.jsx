@@ -10,7 +10,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
@@ -72,10 +72,7 @@ class TableQuestions extends Component {
           type="questions"
           headerIcon="table2"
         />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
-        >
+        <Loading loading={!loadingError && loading} error={loadingError}>
           {() =>
             Object.keys(entities).length > 0 ? (
               <div className={cx(CS.wrapper, CS.wrapperTrim)}>
@@ -104,7 +101,7 @@ class TableQuestions extends Component {
               </div>
             )
           }
-        </LoadingAndErrorWrapper>
+        </Loading>
       </div>
     );
   }

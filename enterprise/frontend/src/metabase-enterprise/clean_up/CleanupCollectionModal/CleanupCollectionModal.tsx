@@ -4,7 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useListStaleCollectionItemsQuery } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoading } from "metabase/components/Loading/DelayedLoading";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
 import { useListSelect } from "metabase/hooks/use-list-select";
@@ -144,7 +144,7 @@ const _CleanupCollectionModal = ({
             onDateFilterChange={handleChangeDateFilter}
             onRecursiveFilterChange={handleChangeRecursiveFilter}
           />
-          <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
+          <DelayedLoading loading={isLoading} error={error}>
             {items.length === 0 ? (
               <CleanupEmptyState duration={getDateFilterLabel(dateFilter)} />
             ) : (
@@ -160,7 +160,7 @@ const _CleanupCollectionModal = ({
                 onSelectNone={selection.clear}
               />
             )}
-          </DelayedLoadingAndErrorWrapper>
+          </DelayedLoading>
         </Modal.Body>
         <Flex
           px="2.5rem"

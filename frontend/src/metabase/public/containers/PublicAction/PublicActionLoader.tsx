@@ -10,10 +10,7 @@ import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor } from "metabase-types/store";
 
 import PublicAction from "./PublicAction";
-import {
-  ContentContainer,
-  LoadingAndErrorWrapper,
-} from "./PublicAction.styled";
+import { ContentContainer, Loading } from "./PublicAction.styled";
 
 interface OwnProps {
   params: { uuid: string };
@@ -62,9 +59,7 @@ function PublicActionLoader({ params, setErrorPage }: Props) {
 
   return (
     <SyncedEmbedFrame footerVariant="large">
-      <LoadingAndErrorWrapper loading={!action}>
-        {renderContent}
-      </LoadingAndErrorWrapper>
+      <Loading loading={!action}>{renderContent}</Loading>
     </SyncedEmbedFrame>
   );
 }

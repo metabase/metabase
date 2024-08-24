@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useListApiKeysQuery } from "metabase/api";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoading } from "metabase/components/Loading/DelayedLoading";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
@@ -70,7 +70,7 @@ function ApiKeysTable({
   const locale = useLocale();
 
   if (loading || error) {
-    return <DelayedLoadingAndErrorWrapper loading={loading} error={error} />;
+    return <DelayedLoading loading={loading} error={error} />;
   }
 
   if (apiKeys?.length === 0 || !apiKeys || !flatApiKeys) {

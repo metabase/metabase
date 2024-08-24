@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { Params } from "react-router/lib/Router";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import ModalContent from "metabase/components/ModalContent";
 import Users from "metabase/entities/users";
 import { useDispatch } from "metabase/lib/redux";
@@ -37,7 +37,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
 
   return (
     <ModalContent title="Edit user" onClose={onClose}>
-      <LoadingAndErrorWrapper loading={isLoading}>
+      <Loading loading={isLoading}>
         {() => {
           return (
             <UserForm
@@ -47,7 +47,7 @@ export const EditUserModal = ({ onClose, params }: EditUserModalProps) => {
             />
           );
         }}
-      </LoadingAndErrorWrapper>
+      </Loading>
     </ModalContent>
   );
 };

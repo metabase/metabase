@@ -4,7 +4,8 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
+import { unready } from "metabase/components/Loading/utils";
 import { createMockDatabase } from "metabase-types/api/mocks";
 
 import { useDatabaseListQuery } from "./use-database-list-query";
@@ -12,10 +13,10 @@ import { useDatabaseListQuery } from "./use-database-list-query";
 const TEST_DB = createMockDatabase();
 
 const TestComponent = () => {
-  const { data = [], isLoading, error } = useDatabaseListQuery();
+  const { data = [], ...result } = useDatabaseListQuery();
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  if (unready(result)) {
+    return <Loading result={result} />;
   }
 
   return (

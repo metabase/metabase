@@ -5,7 +5,7 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
 import {
@@ -342,7 +342,7 @@ class SharingSidebarInner extends Component {
     if (isLoading) {
       return (
         <Sidebar>
-          <LoadingAndErrorWrapper loading />
+          <Loading loading />
         </Sidebar>
       );
     }

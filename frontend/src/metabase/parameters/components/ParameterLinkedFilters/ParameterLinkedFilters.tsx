@@ -2,7 +2,7 @@ import type { ChangeEventHandler } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { jt, t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
 import { Box, Switch } from "metabase/ui";
@@ -248,7 +248,7 @@ const LinkedFieldList = ({
   const { data, error, loading } = useFilterFields(parameter, otherParameter);
 
   return (
-    <LoadingAndErrorWrapper loading={loading} error={error}>
+    <Loading loading={loading} error={error}>
       <FieldListRoot>
         {data && data.length > 0 && (
           <FieldListHeader>
@@ -263,7 +263,7 @@ const LinkedFieldList = ({
           </FieldListItem>
         ))}
       </FieldListRoot>
-    </LoadingAndErrorWrapper>
+    </Loading>
   );
 };
 

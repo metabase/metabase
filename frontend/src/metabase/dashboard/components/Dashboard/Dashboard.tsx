@@ -53,7 +53,7 @@ import {
   CardsContainer,
   DashboardBody,
   DashboardHeaderContainer,
-  DashboardLoadingAndErrorWrapper,
+  DashboardLoading,
   DashboardStyled,
   ParametersAndCardsContainer,
 } from "./Dashboard.styled";
@@ -386,7 +386,7 @@ function Dashboard(props: DashboardProps) {
   };
 
   return (
-    <DashboardLoadingAndErrorWrapper
+    <DashboardLoading
       isFullHeight={isEditing || isSharing}
       isFullscreen={isFullscreen}
       isNightMode={shouldRenderAsNightMode}
@@ -504,7 +504,7 @@ function Dashboard(props: DashboardProps) {
           </DashboardStyled>
         );
       }}
-    </DashboardLoadingAndErrorWrapper>
+    </DashboardLoading>
   );
 }
 

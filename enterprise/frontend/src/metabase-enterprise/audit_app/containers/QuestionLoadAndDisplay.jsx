@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import { useEffect, useImperativeHandle, useRef } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import QuestionResultLoader from "metabase/containers/QuestionResultLoader";
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -40,13 +40,12 @@ const QuestionLoadAndDisplay = ({
         reloadFnRef.current = reload;
 
         return (
-          <LoadingAndErrorWrapper
+          <Loading
             loading={shouldShowLoader}
             error={error || resultProps?.result?.error}
-            noWrapper
           >
             <Visualization {...props} {...resultProps} />
-          </LoadingAndErrorWrapper>
+          </Loading>
         );
       }}
     </QuestionResultLoader>

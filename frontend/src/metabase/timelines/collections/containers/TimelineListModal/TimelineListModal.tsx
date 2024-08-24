@@ -5,7 +5,7 @@ import Timelines from "metabase/entities/timelines";
 import * as Urls from "metabase/lib/urls";
 import type { State } from "metabase-types/store";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import Loading from "../../components/Loading";
 import TimelineListModal from "../../components/TimelineListModal";
 import type { ModalParams } from "../../types";
 
@@ -18,13 +18,13 @@ const timelineProps = {
     collectionId: Urls.extractCollectionId(props.params.slug),
     include: "events",
   }),
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const collectionProps = {
   id: (state: State, props: TimelineListModalProps) =>
     Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

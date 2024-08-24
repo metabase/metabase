@@ -60,7 +60,7 @@ export default _.compose(
   Database.loadList({
     reloadInterval: getReloadInterval,
     query,
-    LoadingAndErrorWrapper: LoadingAndGenericErrorWrapper,
+    Loading: LoadingAndGenericErrorWrapper,
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(DatabaseList);

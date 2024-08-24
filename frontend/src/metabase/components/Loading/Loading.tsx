@@ -40,7 +40,7 @@ export type LoadingAndErrorWrapperProps = {
   CoreLoadingPropsVariant;
 
 /** Show a loading indicator, error message, or - if both loading and error are falsy - the children */
-export const LoadingAndErrorWrapper = ({
+export const Loading = ({
   blankComponent = <span data-testid="loading-indicator" />,
   className,
   delay,
@@ -155,4 +155,4 @@ const DefaultLoadingIndicator = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default LoadingAndErrorWrapper;
+export default Loading;

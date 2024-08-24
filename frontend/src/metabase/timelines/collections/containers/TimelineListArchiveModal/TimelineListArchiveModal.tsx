@@ -8,7 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import type { Collection, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import Loading from "../../components/Loading";
 import TimelineListModal from "../../components/TimelineListModal";
 import type { ModalParams } from "../../types";
 
@@ -22,13 +22,13 @@ const timelineProps = {
     archived: true,
     include: "events",
   }),
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const collectionProps = {
   id: (state: State, props: TimelineListArchiveModalProps) =>
     Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const mapStateToProps = () => ({

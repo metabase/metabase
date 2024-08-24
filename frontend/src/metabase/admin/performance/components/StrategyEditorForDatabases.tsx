@@ -6,7 +6,7 @@ import { findWhere } from "underscore";
 
 import { UpsellCacheConfig } from "metabase/admin/upsells";
 import { useListDatabasesQuery } from "metabase/api";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Flex, Stack } from "metabase/ui";
 import type { CacheableModel } from "metabase-types/api";
@@ -53,8 +53,7 @@ const StrategyEditorForDatabases_Base = ({
     setConfigs,
     rootStrategyOverriddenOnce,
     rootStrategyRecentlyOverridden,
-    error: configsError,
-    loading: areConfigsLoading,
+    ...cacheConfigsResult
   } = useCacheConfigs({ configurableModels });
 
   const databasesResult = useListDatabasesQuery();
@@ -120,12 +119,6 @@ const StrategyEditorForDatabases_Base = ({
     "database",
   );
 
-  const error = configsError || databasesResult.error;
-  const loading = areConfigsLoading || databasesResult.isLoading;
-  if (error || loading) {
-    return <DelayedLoadingAndErrorWrapper error={error} loading={loading} />;
-  }
-
   return (
     <TabWrapper role="region" aria-label={t`Data caching settings`}>
       <Stack spacing="xl" lh="1.5rem" maw="32rem" mb="1.5rem">
@@ -135,36 +128,38 @@ const StrategyEditorForDatabases_Base = ({
         </aside>
       </Stack>
       {confirmationModal}
-      <Flex gap="xl" style={{ overflow: "hidden" }}>
-        <RoundedBox twoColumns={canOverrideRootStrategy}>
-          {canOverrideRootStrategy && (
-            <PLUGIN_CACHING.StrategyFormLauncherPanel
-              configs={configs}
-              setConfigs={setConfigs}
-              targetId={targetId}
-              updateTargetId={updateTargetId}
-              databases={databases}
-              isStrategyFormDirty={isStrategyFormDirty}
-              shouldShowResetButton={shouldShowResetButton}
-            />
-          )}
-          <Panel hasLeftBorder={canOverrideRootStrategy}>
-            {targetId !== null && (
-              <StrategyForm
+      <Loading delay result={[cacheConfigsResult, databasesResult]}>
+        <Flex gap="xl" style={{ overflow: "hidden" }}>
+          <RoundedBox twoColumns={canOverrideRootStrategy}>
+            {canOverrideRootStrategy && (
+              <PLUGIN_CACHING.StrategyFormLauncherPanel
+                configs={configs}
+                setConfigs={setConfigs}
                 targetId={targetId}
-                targetModel="database"
-                targetName={targetDatabase?.name || t`Untitled database`}
-                setIsDirty={setIsStrategyFormDirty}
-                saveStrategy={saveStrategy}
-                savedStrategy={savedStrategy}
-                shouldAllowInvalidation={shouldAllowInvalidation}
-                shouldShowName={targetId !== rootId}
+                updateTargetId={updateTargetId}
+                databases={databases}
+                isStrategyFormDirty={isStrategyFormDirty}
+                shouldShowResetButton={shouldShowResetButton}
               />
             )}
-          </Panel>
-        </RoundedBox>
-        <UpsellCacheConfig source="performance-data_cache" />
-      </Flex>
+            <Panel hasLeftBorder={canOverrideRootStrategy}>
+              {targetId !== null && (
+                <StrategyForm
+                  targetId={targetId}
+                  targetModel="database"
+                  targetName={targetDatabase?.name || t`Untitled database`}
+                  setIsDirty={setIsStrategyFormDirty}
+                  saveStrategy={saveStrategy}
+                  savedStrategy={savedStrategy}
+                  shouldAllowInvalidation={shouldAllowInvalidation}
+                  shouldShowName={targetId !== rootId}
+                />
+              )}
+            </Panel>
+          </RoundedBox>
+          <UpsellCacheConfig source="performance-data_cache" />
+        </Flex>
+      </Loading>
     </TabWrapper>
   );
 };

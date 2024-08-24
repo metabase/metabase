@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import ModalContent from "metabase/components/ModalContent";
 import Alert from "metabase/core/components/Alert";
 import Button from "metabase/core/components/Button";
@@ -102,7 +102,7 @@ const DeleteDatabaseModal = ({
       title={t`Delete the ${database.name} database?`}
       onClose={onClose}
     >
-      <LoadingAndErrorWrapper loading={loading}>
+      <Loading loading={loading}>
         <DeleteDatabaseModalRoot
           onSubmit={canDelete ? handleSubmit : undefined}
         >
@@ -168,7 +168,7 @@ const DeleteDatabaseModal = ({
             </Button>
           </DeleteDatabaseModalFooter>
         </DeleteDatabaseModalRoot>
-      </LoadingAndErrorWrapper>
+      </Loading>
     </ModalContent>
   );
 };

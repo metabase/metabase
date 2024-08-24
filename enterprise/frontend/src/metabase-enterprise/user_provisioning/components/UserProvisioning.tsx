@@ -7,7 +7,7 @@ import { AuthTabs } from "metabase/admin/settings/components/AuthTabs";
 import SettingToggle from "metabase/admin/settings/components/widgets/SettingToggle";
 import type { SettingElement } from "metabase/admin/settings/types";
 import { useSetting } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { useModal } from "metabase/hooks/use-modal";
 import {
   Box,
@@ -134,10 +134,7 @@ export const UserProvisioning = ({
     <>
       <AuthTabs activeKey="user-provisioning" />
 
-      <LoadingAndErrorWrapper
-        loading={maskedTokenRequest.isLoading}
-        error={scimTokenError}
-      >
+      <Loading loading={maskedTokenRequest.isLoading} error={scimTokenError}>
         <Stack pl="md" spacing="2.5rem">
           <Box maw="35rem">
             <div>
@@ -240,7 +237,7 @@ export const UserProvisioning = ({
             </div>
           </Box>
         </Stack>
-      </LoadingAndErrorWrapper>
+      </Loading>
 
       <UserProvisioningFirstEnabledModal
         opened={firstEnabledModal.opened}

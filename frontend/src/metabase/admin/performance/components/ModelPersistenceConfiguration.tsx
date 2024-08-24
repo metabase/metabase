@@ -4,7 +4,7 @@ import { c, t } from "ttag";
 
 import { ModelCachingScheduleWidget } from "metabase/admin/settings/components/widgets/ModelCachingScheduleWidget/ModelCachingScheduleWidget";
 import { useSetting } from "metabase/common/hooks";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -161,10 +161,7 @@ export const ModelPersistenceConfiguration = () => {
             </>
           )}
         </p>
-        <DelayedLoadingAndErrorWrapper
-          error={null}
-          loading={modelPersistenceEnabled === undefined}
-        >
+        <Loading loading={modelPersistenceEnabled === undefined}>
           <Switch
             mt="sm"
             label={
@@ -175,7 +172,7 @@ export const ModelPersistenceConfiguration = () => {
             onChange={onSwitchChanged}
             checked={modelPersistenceEnabled}
           />
-        </DelayedLoadingAndErrorWrapper>
+        </Loading>
       </Box>
       {modelPersistenceEnabled && (
         <div>

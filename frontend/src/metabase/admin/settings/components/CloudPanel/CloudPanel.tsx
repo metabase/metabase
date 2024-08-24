@@ -6,7 +6,7 @@ import {
   useGetCloudMigrationQuery,
 } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { useDispatch } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { Box, Text } from "metabase/ui";
@@ -87,7 +87,7 @@ export const CloudPanel = ({
   };
 
   return (
-    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+    <Loading loading={isLoading} error={error}>
       <Box maw="36rem">
         <Text fw="bold" size="1.5rem" mb="2rem">{t`Migrate to Cloud`}</Text>
 
@@ -124,6 +124,6 @@ export const CloudPanel = ({
           )}
         </Box>
       </Box>
-    </LoadingAndErrorWrapper>
+    </Loading>
   );
 };

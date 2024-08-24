@@ -6,7 +6,8 @@ import _ from "underscore";
 
 import { useListDatabasesQuery, useListTasksQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading/Loading";
+import { unready } from "metabase/components/Loading/utils";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
@@ -30,32 +31,19 @@ export const TasksApp = ({ children }: TasksAppProps) => {
   const [page, setPage] = useState(0);
   const pageSize = 50;
 
-  const {
-    data: tasksData,
-    isFetching: isLoadingTasks,
-    error: tasksError,
-  } = useListTasksQuery({
+  const { data: tasksData, ...tasksResult } = useListTasksQuery({
     limit: pageSize,
     offset: page * pageSize,
   });
 
-  const {
-    data: databasesData,
-    isFetching: isLoadingDatabases,
-    error: databasesError,
-  } = useListDatabasesQuery();
+  const databasesResult = useListDatabasesQuery();
+
+  if (unready([tasksResult, databasesResult])) {
+    return <Loading result={[tasksResult, databasesResult]} />;
+  }
 
   const tasks = tasksData?.data;
-  const databases = databasesData?.data;
-
-  if (isLoadingTasks || isLoadingDatabases || tasksError || databasesError) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoadingTasks || isLoadingDatabases}
-        error={tasksError || databasesError}
-      />
-    );
-  }
+  const databases = databasesResult.data?.data;
 
   if (!tasks || !databases) {
     return null;

@@ -7,7 +7,7 @@ import { StrategyForm } from "metabase/admin/performance/components/StrategyForm
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import type { DashboardSidebarPageProps } from "metabase/dashboard/components/DashboardInfoSidebar";
 import { color } from "metabase/lib/colors";
 import { Button, Flex, Icon, Title } from "metabase/ui";
@@ -30,7 +30,7 @@ const DashboardStrategySidebar_Base = ({
     throw new Error("This dashboard has an invalid id");
   }
   const dashboardId: number = dashboard.id;
-  const { configs, setConfigs, loading, error } = useCacheConfigs({
+  const { configs, setConfigs, ...cacheConfigsResult } = useCacheConfigs({
     configurableModels,
     id: dashboardId,
   });
@@ -87,7 +87,7 @@ const DashboardStrategySidebar_Base = ({
           Caching settings
         </Title>
       </Flex>
-      <DelayedLoadingAndErrorWrapper loading={loading} error={error}>
+      <Loading delay result={cacheConfigsResult}>
         <StrategyForm
           targetId={dashboardId}
           targetModel="dashboard"
@@ -100,7 +100,7 @@ const DashboardStrategySidebar_Base = ({
           shouldShowName={false}
           onReset={closeSidebar}
         />
-      </DelayedLoadingAndErrorWrapper>
+      </Loading>
       {confirmationModal}
     </DashboardStrategySidebarBody>
   );

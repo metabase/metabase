@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { useGetTasksInfoQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
@@ -60,7 +60,7 @@ export const JobInfoApp = ({ children }) => {
   const { data, error, isFetching } = useGetTasksInfoQuery();
 
   return (
-    <LoadingAndErrorWrapper loading={isFetching} error={error}>
+    <Loading loading={isFetching} error={error}>
       <Box pl="md">
         <Flex align="center">
           <AdminHeader title={t`Scheduler Info`} />
@@ -72,6 +72,6 @@ export const JobInfoApp = ({ children }) => {
           children
         }
       </Box>
-    </LoadingAndErrorWrapper>
+    </Loading>
   );
 };

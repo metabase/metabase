@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 
 export const ModalBody = styled.div`
   height: 50vh;
 `;
 
-export const ModalLoadingAndErrorWrapper = styled(LoadingAndErrorWrapper)`
+export const ModalLoading = styled(Loading)`
   display: flex;
   justify-content: center;
   align-items: center;

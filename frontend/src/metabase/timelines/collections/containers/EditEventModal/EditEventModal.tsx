@@ -9,7 +9,7 @@ import EditEventModal from "metabase/timelines/common/components/EditEventModal"
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import Loading from "../../components/Loading";
 import type { ModalParams } from "../../types";
 
 interface EditEventModalProps {
@@ -20,14 +20,14 @@ const timelineProps = {
   id: (state: State, props: EditEventModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const timelineEventProps = {
   id: (state: State, props: EditEventModalProps) =>
     Urls.extractEntityId(props.params.timelineEventId),
   entityAlias: "event",
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

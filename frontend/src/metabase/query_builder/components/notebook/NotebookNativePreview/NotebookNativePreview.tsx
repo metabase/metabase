@@ -3,7 +3,7 @@ import AceEditor from "react-ace";
 import { t } from "ttag";
 
 import { useGetNativeDatasetQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
+import Loading from "metabase/components/Loading";
 import { color } from "metabase/lib/colors";
 import { formatNativeQuery, getEngineNativeType } from "metabase/lib/engine";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -86,7 +86,10 @@ export const NotebookNativePreview = (): JSX.Element => {
       <Box
         style={{ flex: 1, borderTop: borderStyle, borderBottom: borderStyle }}
       >
-        {showLoader && <DelayedLoadingSpinner delay={1000} />}
+        {
+          // FIXME: Should this be DelayedLoadingSpinner?
+          showLoader && <Loading loading delay delayLength={1000} />
+        }
         {showEmptySidebar}
         {showError && (
           <Flex align="center" justify="center" h="100%" direction="column">

@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Confirm from "metabase/components/Confirm";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import AdminS from "metabase/css/admin.module.css";
@@ -60,7 +60,7 @@ class PublicLinksListing extends Component {
     }
 
     return (
-      <LoadingAndErrorWrapper loading={!list} error={error}>
+      <Loading loading={!list} error={error}>
         {() => (
           <table
             data-testId={this.props["data-testId"]}
@@ -121,7 +121,7 @@ class PublicLinksListing extends Component {
             </tbody>
           </table>
         )}
-      </LoadingAndErrorWrapper>
+      </Loading>
     );
   }
 }

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { Schedule } from "metabase/components/Schedule/Schedule";
 import type { FormTextInputProps } from "metabase/forms";
 import {
@@ -332,7 +332,7 @@ const ScheduleStrategyFormFields = () => {
   );
   if (!initialSchedule) {
     return (
-      <LoadingAndErrorWrapper
+      <Loading
         error={t`Error: Cannot interpret schedule: ${scheduleInCronFormat}`}
       />
     );

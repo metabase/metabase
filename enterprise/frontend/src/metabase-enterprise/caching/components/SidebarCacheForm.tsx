@@ -7,7 +7,7 @@ import { StrategyForm } from "metabase/admin/performance/components/StrategyForm
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoading } from "metabase/components/Loading/DelayedLoading";
 import { color } from "metabase/lib/colors";
 import type { SidebarCacheFormProps } from "metabase/plugins";
 import { Button, Flex, Icon, Title } from "metabase/ui";
@@ -24,7 +24,7 @@ const SidebarCacheForm_Base = ({
 }: SidebarCacheFormProps) => {
   const configurableModels = useMemo(() => [model], [model]);
   const id: number = getItemId(model, item);
-  const { configs, setConfigs, loading, error } = useCacheConfigs({
+  const { configs, setConfigs, ...cacheConfigsResult } = useCacheConfigs({
     configurableModels,
     id,
   });
@@ -77,7 +77,7 @@ const SidebarCacheForm_Base = ({
           Caching settings
         </Title>
       </Flex>
-      <DelayedLoadingAndErrorWrapper loading={loading} error={error}>
+      <DelayedLoading result={cacheConfigsResult}>
         <StrategyForm
           targetId={id}
           targetModel={model}
@@ -91,7 +91,7 @@ const SidebarCacheForm_Base = ({
           buttonLabels={{ save: t`Save`, discard: t`Cancel` }}
           isInSidebar
         />
-      </DelayedLoadingAndErrorWrapper>
+      </DelayedLoading>
       {confirmationModal}
     </SidebarCacheFormBody>
   );

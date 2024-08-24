@@ -5,7 +5,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { createMockTable } from "metabase-types/api/mocks";
 
 import { useTableListQuery } from "./use-table-list-query";
@@ -16,7 +16,7 @@ const TestComponent = () => {
   const { data = [], metadata, isLoading, error } = useTableListQuery();
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (

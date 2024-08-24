@@ -1,9 +1,9 @@
 import styled from "@emotion/styled";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Input from "metabase/core/components/Input";
 
-export const QuestionListWrapper = styled(LoadingAndErrorWrapper)`
+export const QuestionListWrapper = styled(Loading)`
   flex: 1;
   margin: 0;
   padding: 0;

@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { UpsellHosting } from "metabase/admin/upsells";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import { isSameOrSiteUrlOrigin } from "metabase/lib/dom";
@@ -133,10 +133,7 @@ class SetupCheckList extends Component {
             <p
               className={CS.mt1}
             >{t`A few things you can do to get the most out of Metabase.`}</p>
-            <LoadingAndErrorWrapper
-              loading={!this.state.tasks}
-              error={this.state.error}
-            >
+            <Loading loading={!this.state.tasks} error={this.state.error}>
               {() => (
                 <div style={{ maxWidth: 468 }}>
                   {nextTask && (
@@ -150,7 +147,7 @@ class SetupCheckList extends Component {
                   ))}
                 </div>
               )}
-            </LoadingAndErrorWrapper>
+            </Loading>
           </div>
         </SetupListRoot>
         <Box>

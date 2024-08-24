@@ -3,7 +3,7 @@ import { c, t } from "ttag";
 import { useUserSetting } from "metabase/common/hooks";
 import { useHasModels } from "metabase/common/hooks/use-has-models";
 import CollapseSection from "metabase/components/CollapseSection";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { Flex, Skeleton } from "metabase/ui";
 
@@ -49,7 +49,7 @@ export const BrowseNavSection = ({
       headerClass={CS.mb1}
       onToggle={setExpandBrowse}
     >
-      <LoadingAndErrorWrapper
+      <Loading
         loading={areModelsLoading}
         error={modelsError}
         loader={
@@ -70,7 +70,7 @@ export const BrowseNavSection = ({
             {t`Models`}
           </PaddedSidebarLink>
         )}
-      </LoadingAndErrorWrapper>
+      </Loading>
       {hasDataAccess && (
         <PaddedSidebarLink
           icon="database"

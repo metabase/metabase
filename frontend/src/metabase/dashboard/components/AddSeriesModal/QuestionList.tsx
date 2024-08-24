@@ -108,7 +108,6 @@ export const QuestionList = memo(function QuestionList({
       <QuestionListWrapper
         className={cx(CS.flex, CS.flexFull, CS.overflowAuto)}
         error={error}
-        noBackground
       >
         <QuestionListContainer>
           {hasQuestionsToShow && (

@@ -3,7 +3,7 @@ import { assoc } from "icepick";
 import type { HandleThunkActionCreator } from "react-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -161,7 +161,7 @@ export function PublicOrEmbeddedDashboardView({
       hide_parameters={hideParameters}
       downloadsEnabled={downloadsEnabled}
     >
-      <LoadingAndErrorWrapper
+      <Loading
         className={cx({
           [DashboardS.DashboardFullscreen]: isFullscreen,
           [DashboardS.DashboardNight]: isNightMode,
@@ -204,7 +204,7 @@ export function PublicOrEmbeddedDashboardView({
             </DashboardContainer>
           );
         }}
-      </LoadingAndErrorWrapper>
+      </Loading>
     </EmbedFrame>
   );
 }

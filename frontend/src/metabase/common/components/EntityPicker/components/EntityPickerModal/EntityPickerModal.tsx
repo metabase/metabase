@@ -95,6 +95,8 @@ export function EntityPickerModal<
   recentsContext = ["selections", "views"],
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // FIXME: Does an error need to be handled here?
   const { data: recentItems, isLoading: isLoadingRecentItems } =
     useListRecentsQuery(
       { context: recentsContext },

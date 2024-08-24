@@ -4,7 +4,7 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import { useListRecentsQuery } from "metabase/api";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -126,7 +126,7 @@ export const BrowseModels = () => {
             ) : (
               <>
                 <ModelExplanationBanner />
-                <LoadingAndErrorWrapper
+                <Loading
                   error={recentModelsResult.error}
                   loading={
                     // If the main models result is still pending, the list of recently viewed
@@ -138,15 +138,15 @@ export const BrowseModels = () => {
                   loader={<RecentModels skeleton />}
                 >
                   <RecentModels models={recentModels} />
-                </LoadingAndErrorWrapper>
-                <LoadingAndErrorWrapper
+                </Loading>
+                <Loading
                   error={modelsResult.error}
                   loading={modelsResult.isLoading}
                   style={{ flex: 1 }}
                   loader={<ModelsTable skeleton />}
                 >
                   <ModelsTable models={filteredModels} />
-                </LoadingAndErrorWrapper>
+                </Loading>
               </>
             )}
           </Stack>

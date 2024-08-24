@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetTasksInfoQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import ModalContent from "metabase/components/ModalContent";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
@@ -64,9 +64,9 @@ export const JobTriggersModal = props => {
       title={t`Triggers for ${jobKey}`}
       onClose={() => dispatch(goBack())}
     >
-      <LoadingAndErrorWrapper loading={isFetching} error={error}>
+      <Loading loading={isFetching} error={error}>
         {() => renderTriggersTable(job?.triggers)}
-      </LoadingAndErrorWrapper>
+      </Loading>
     </ModalContent>
   );
 };

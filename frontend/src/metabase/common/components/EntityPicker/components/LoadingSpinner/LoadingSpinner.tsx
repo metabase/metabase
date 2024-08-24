@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { useMount } from "react-use";
-
+import { DelayedLoading } from "metabase/components/Loading/DelayedLoading";
+import type { LoadingAndErrorWrapperProps } from "metabase/components/Loading/Loading";
 import { Flex, Loader, Text } from "metabase/ui";
 
 export const LoadingSpinner = ({ text }: { text?: string }) => (
@@ -20,24 +19,9 @@ export const LoadingSpinner = ({ text }: { text?: string }) => (
 // will only appear if the component is still loading after a certain delay
 export const DelayedLoadingSpinner = ({
   text,
-  delay = 100,
+  ...props
 }: {
   text?: string;
-  delay?: number;
-}) => {
-  const [show, setShow] = useState(false);
-
-  useMount(() => {
-    const timeout = setTimeout(() => {
-      setShow(true);
-    }, delay);
-    return () => clearTimeout(timeout);
-  });
-
-  if (!show) {
-    // make tests aware that things are loading
-    return <span data-testid="loading-indicator" />;
-  }
-
-  return <LoadingSpinner text={text} />;
+} & LoadingAndErrorWrapperProps) => {
+  return <DelayedLoading {...props} loader={<LoadingSpinner text={text} />} />;
 };

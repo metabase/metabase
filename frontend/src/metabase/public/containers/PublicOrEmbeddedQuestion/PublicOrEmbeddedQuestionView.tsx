@@ -2,7 +2,7 @@ import cx from "classnames";
 import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type { DisplayTheme } from "metabase/public/lib/types";
@@ -86,11 +86,10 @@ export function PublicOrEmbeddedQuestionView({
       theme={theme}
       titled={titled}
     >
-      <LoadingAndErrorWrapper
+      <Loading
         className={CS.flexFull}
         loading={!result}
         error={typeof result === "string" ? result : null}
-        noWrapper
       >
         {() => (
           <Visualization
@@ -117,7 +116,7 @@ export function PublicOrEmbeddedQuestionView({
             onChangeCardAndRun={() => {}}
           />
         )}
-      </LoadingAndErrorWrapper>
+      </Loading>
     </EmbedFrame>
   );
 }

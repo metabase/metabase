@@ -10,7 +10,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading/Loading";
 import { createMockUserListResult } from "metabase-types/api/mocks";
 
 import { useUserListQuery } from "./use-user-list-query";
@@ -32,7 +32,7 @@ function TestComponent({ getRecipients = false }: TestComponentProps) {
   });
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (

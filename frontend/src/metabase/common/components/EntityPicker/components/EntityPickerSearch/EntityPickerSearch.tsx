@@ -88,7 +88,7 @@ export const EntityPickerSearchResults = <
   selectedItem: Item | null;
 }) => {
   if (!searchResults) {
-    return <DelayedLoadingSpinner text={t`Loading…`} />;
+    return <DelayedLoadingSpinner />;
   }
 
   return (

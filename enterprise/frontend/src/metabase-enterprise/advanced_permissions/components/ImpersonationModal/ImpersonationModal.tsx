@@ -11,7 +11,7 @@ import {
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import { useDatabaseQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading/Loading";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch } from "metabase/lib/redux";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
@@ -136,12 +136,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
     isDatabaseLoading || isImpersonationLoading || !attributes || !database;
 
   if (isLoading) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={error ?? impersonationError}
-      />
-    );
+    return <Loading loading={isLoading} error={error ?? impersonationError} />;
   }
 
   return (

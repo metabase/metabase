@@ -5,7 +5,7 @@ import { Component, memo } from "react";
 import { t } from "ttag";
 
 import Confirm from "metabase/components/Confirm";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Select, { Option } from "metabase/core/components/Select";
@@ -424,7 +424,7 @@ const EditMap = ({
         )}
       >
         {geoJson || geoJsonLoading || geoJsonError ? (
-          <LoadingAndErrorWrapper
+          <Loading
             className={cx(CS.flex, CS.fullHeight, CS.fullWidth)}
             loading={geoJsonLoading}
             error={geoJsonError}
@@ -434,7 +434,7 @@ const EditMap = ({
                 <ChoroplethPreview geoJson={geoJson} />
               </div>
             )}
-          </LoadingAndErrorWrapper>
+          </Loading>
         ) : (
           <div
             className={cx(

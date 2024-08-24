@@ -9,7 +9,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -40,7 +40,7 @@ const TestComponent = () => {
   );
 
   if (isLoading || error || !database) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (
@@ -70,7 +70,7 @@ const TestInnerComponent = () => {
   );
 
   if (isLoading || error || !table) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return <div>{table.name}</div>;

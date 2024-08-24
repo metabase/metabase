@@ -14,7 +14,7 @@ import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { GenericError } from "metabase/components/ErrorPages";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
 import title from "metabase/hoc/Title";
@@ -164,10 +164,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
         <ErrorBoundary errorComponent={GenericError as ComponentType}>
           <div>
             <div className={CS.pt0}>
-              <LoadingAndErrorWrapper
-                loading={!database}
-                error={initializeError}
-              >
+              <Loading loading={!database} error={initializeError}>
                 <DatabaseEditContent>
                   <DatabaseEditForm>
                     <DatabaseForm
@@ -180,7 +177,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                   </DatabaseEditForm>
                   <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
                 </DatabaseEditContent>
-              </LoadingAndErrorWrapper>
+              </Loading>
             </div>
           </div>
         </ErrorBoundary>

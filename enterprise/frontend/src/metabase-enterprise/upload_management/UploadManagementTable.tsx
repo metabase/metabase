@@ -8,7 +8,7 @@ import {
   BulkActionBar,
   BulkActionButton,
 } from "metabase/components/BulkActionBar";
-import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { DelayedLoading } from "metabase/components/Loading/DelayedLoading";
 import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -86,7 +86,7 @@ export function UploadManagementTable() {
   );
 
   if (isLoading || error) {
-    return <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <DelayedLoading loading={isLoading} error={error} />;
   }
 
   if (!uploadTables?.length) {

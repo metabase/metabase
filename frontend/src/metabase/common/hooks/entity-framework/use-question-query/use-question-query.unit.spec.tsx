@@ -4,7 +4,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { useQuestionQuery } from "./use-question-query";
@@ -17,7 +17,7 @@ const TestComponent = () => {
   });
 
   if (isLoading || error || !data) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return <div>{data.displayName()}</div>;

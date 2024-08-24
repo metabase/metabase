@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
 import { useRevisionListQuery, useUserListQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading/Loading";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { revertToRevision } from "metabase/query_builder/actions";
@@ -52,7 +52,7 @@ export function QuestionActivityTimeline({
   }, [moderationReviews, revisions, usersById, currentUser]);
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (

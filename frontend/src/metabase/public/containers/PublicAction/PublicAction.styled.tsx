@@ -1,11 +1,11 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import BaseLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import BaseLoading from "metabase/components/Loading";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
-export const LoadingAndErrorWrapper = styled(BaseLoadingAndErrorWrapper)`
+export const Loading = styled(BaseLoading)`
   display: flex;
   flex: 1 0 auto;
 `;

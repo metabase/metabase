@@ -5,7 +5,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading/Loading";
 import { createMockRevision } from "metabase-types/api/mocks/revision";
 
 import { useRevisionListQuery } from "./use-revision-list-query";
@@ -16,7 +16,7 @@ function TestComponent() {
   const { data = [], metadata, isLoading, error } = useRevisionListQuery();
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (

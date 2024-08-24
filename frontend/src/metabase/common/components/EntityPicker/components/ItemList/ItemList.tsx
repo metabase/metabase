@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { VirtualizedList } from "metabase/components/VirtualizedList";
-import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
+import { Loading } from "metabase/public/containers/PublicAction/PublicAction.styled";
 import { Box, Center, Icon, NavLink } from "metabase/ui";
 
 import type { TypeWithModel } from "../../types";
@@ -54,14 +54,14 @@ export const ItemList = <
   }, [filteredItems, selectedItem]);
 
   if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
+    return <Loading error={error} />;
   }
 
   if (isLoading && !filteredItems) {
     return (
       <Box miw={310} h="100%" aria-label={t`Loading...`}>
         <Center p="lg" h="100%">
-          <DelayedLoadingSpinner delay={300} />
+          <DelayedLoadingSpinner />
         </Center>
       </Box>
     );

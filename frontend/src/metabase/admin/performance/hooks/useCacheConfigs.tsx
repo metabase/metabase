@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { useAsync } from "react-use";
 import _ from "underscore";
 
+import type { LoadableResult } from "metabase/components/Loading/types";
 import { CacheConfigApi } from "metabase/services";
 import type {
   CacheConfig,
@@ -14,13 +15,21 @@ import { translateConfigFromAPI } from "../utils";
 
 import { useRecentlyTrue } from "./useRecentlyTrue";
 
+type CacheConfigsData = LoadableResult & {
+  configs: CacheConfig[];
+  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>;
+  configsFromAPI?: CacheConfig[];
+  rootStrategyOverriddenOnce: boolean;
+  rootStrategyRecentlyOverridden: boolean;
+};
+
 export const useCacheConfigs = ({
   configurableModels,
   id,
 }: {
   configurableModels: CacheableModel[];
   id?: number;
-}) => {
+}): CacheConfigsData => {
   const configsApiResult = useAsync(async () => {
     const configsForEachModel = await Promise.all(
       configurableModels.map(model =>
@@ -53,7 +62,7 @@ export const useCacheConfigs = ({
   // has been loaded from the API _and_ has been copied into local state
   const [areConfigsInitialized, setAreConfigsInitialized] =
     useState<boolean>(false);
-  const loading = configsApiResult.loading || !areConfigsInitialized;
+  const isLoading = configsApiResult.loading || !areConfigsInitialized;
 
   useEffect(() => {
     if (configsFromAPI) {
@@ -64,7 +73,7 @@ export const useCacheConfigs = ({
 
   return {
     error,
-    loading,
+    isLoading,
     configs,
     setConfigs,
     configsFromAPI,

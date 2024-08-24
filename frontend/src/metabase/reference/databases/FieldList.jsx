@@ -9,7 +9,7 @@ import { t } from "ttag";
 import EmptyState from "metabase/components/EmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
@@ -133,10 +133,7 @@ const FieldList = props => {
         isEditing={isEditing}
         startEditing={startEditing}
       />
-      <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
-      >
+      <Loading loading={!loadingError && loading} error={loadingError}>
         {() =>
           Object.keys(entities).length > 0 ? (
             <div className={CS.wrapper}>
@@ -193,7 +190,7 @@ const FieldList = props => {
             </div>
           )
         }
-      </LoadingAndErrorWrapper>
+      </Loading>
     </form>
   );
 };

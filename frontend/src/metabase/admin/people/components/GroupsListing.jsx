@@ -8,7 +8,7 @@ import { useListApiKeysQuery } from "metabase/api";
 import AdminContentTable from "metabase/components/AdminContentTable";
 import { AdminPaneLayout } from "metabase/components/AdminPaneLayout";
 import Alert from "metabase/components/Alert";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import ModalContent from "metabase/components/ModalContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -278,7 +278,7 @@ function GroupsTable({
   const { isLoading, data: apiKeys } = useListApiKeysQuery();
 
   if (isLoading) {
-    return <LoadingAndErrorWrapper loading={isLoading} />;
+    return <Loading loading={isLoading} />;
   }
 
   return (

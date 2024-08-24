@@ -4,7 +4,7 @@ import { Component } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 
 import entityType from "./EntityType";
 
@@ -18,7 +18,7 @@ const CONSUMED_PROPS = [
   "wrapped",
   "properties",
   "loadingAndErrorWrapper",
-  "LoadingAndErrorWrapper",
+  "Loading",
   "selectorName",
   "requestType",
   "fetchType",
@@ -41,7 +41,7 @@ class EntityObjectLoaderInner extends Component {
     fetchType: "fetch",
     requestType: "fetch",
     loadingAndErrorWrapper: true,
-    LoadingAndErrorWrapper: LoadingAndErrorWrapper,
+    Loading: Loading,
     reload: false,
     wrapped: false,
     dispatchApiErrorEvent: true,
@@ -115,22 +115,13 @@ class EntityObjectLoaderInner extends Component {
     });
   };
   render() {
-    const {
-      entityId,
-      fetched,
-      error,
-      loadingAndErrorWrapper,
-      LoadingAndErrorWrapper,
-    } = this.props;
+    const { entityId, fetched, error, loadingAndErrorWrapper, Loading } =
+      this.props;
 
     return loadingAndErrorWrapper ? (
-      <LoadingAndErrorWrapper
-        loading={!fetched && entityId != null}
-        error={error}
-        noWrapper
-      >
+      <Loading loading={!fetched && entityId != null} error={error}>
         {this.renderChildren}
-      </LoadingAndErrorWrapper>
+      </Loading>
     ) : (
       this.renderChildren()
     );

@@ -4,7 +4,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { createMockImplicitQueryAction } from "metabase-types/api/mocks";
 
 import { useActionQuery } from "./use-action-query";
@@ -19,7 +19,7 @@ const TestComponent = () => {
   } = useActionQuery({ id: IMPLICIT_ACTION.id });
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (

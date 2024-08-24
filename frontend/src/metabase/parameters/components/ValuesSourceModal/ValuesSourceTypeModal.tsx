@@ -41,7 +41,7 @@ import type { State } from "metabase-types/store";
 import type { FetchParameterValuesOpts } from "../../actions";
 import { fetchParameterValues } from "../../actions";
 
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+import { ModalLoading } from "./ValuesSourceModal.styled";
 import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalBodyWithPane,
@@ -565,11 +565,11 @@ export default _.compose(
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
     fetchType: "fetchMetadataDeprecated",
     requestType: "fetchMetadataDeprecated",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
+    Loading: ModalLoading,
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
+    Loading: ModalLoading,
   }),
   connect(null, mapDispatchToProps),
 )(ValuesSourceTypeModal);

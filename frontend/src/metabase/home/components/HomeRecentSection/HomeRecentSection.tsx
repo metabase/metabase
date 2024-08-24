@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { useListRecentsQuery } from "metabase/api";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useSelector } from "metabase/lib/redux";
@@ -23,7 +23,7 @@ export const HomeRecentSection = () => {
     user != null && user.is_installer && isWithinWeeks(user.first_login, 2);
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (

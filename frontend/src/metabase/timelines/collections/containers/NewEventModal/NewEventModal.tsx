@@ -9,7 +9,7 @@ import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import Loading from "../../components/Loading";
 import type { ModalParams } from "../../types";
 
 interface NewEventModalProps {
@@ -21,7 +21,7 @@ const timelineProps = {
   id: (state: State, props: NewEventModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const mapStateToProps = (state: State, { timeline }: NewEventModalProps) => ({

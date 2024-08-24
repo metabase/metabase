@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useGetTaskQuery } from "metabase/api";
 import Code from "metabase/components/Code";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading/Loading";
 import ModalContent from "metabase/components/ModalContent";
 import { useDispatch } from "metabase/lib/redux";
 
@@ -16,7 +16,7 @@ export const TaskModal = ({ params }: TaskModalProps) => {
   const { data, isLoading, error } = useGetTaskQuery(params.taskId);
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   if (!data) {

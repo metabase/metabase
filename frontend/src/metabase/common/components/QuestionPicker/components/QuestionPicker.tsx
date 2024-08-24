@@ -56,15 +56,16 @@ const useGetInitialCollection = (
       : "root"
     : undefined;
 
-  const { data: currentCollection, isLoading: isCollectionLoading } =
+  const { data: currentCollection, ...collectionResult } =
     useGetCollectionQuery(collectionId ? { id: collectionId } : skipToken);
 
-  const { data: currentQuestion, isLoading: isQuestionLoading } =
-    useGetCardQuery(cardId ? { id: cardId } : skipToken);
+  const { data: currentQuestion, ...currentQuestionResult } = useGetCardQuery(
+    cardId ? { id: cardId } : skipToken,
+  );
 
   const {
     data: currentQuestionCollection,
-    isLoading: isCurrentQuestionCollectionLoading,
+    ...currentQuestionCollectionResult
   } = useGetCollectionQuery(
     currentQuestion
       ? { id: currentQuestion.collection_id ?? "root" }
@@ -74,10 +75,11 @@ const useGetInitialCollection = (
   return {
     currentQuestion: currentQuestion,
     currentCollection: currentQuestionCollection ?? currentCollection,
-    isLoading:
-      isCollectionLoading ||
-      isQuestionLoading ||
-      isCurrentQuestionCollectionLoading,
+    results: [
+      collectionResult,
+      currentQuestionResult,
+      currentQuestionCollectionResult,
+    ],
   };
 };
 
@@ -97,7 +99,7 @@ export const QuestionPicker = ({
     }),
   );
 
-  const { currentCollection, currentQuestion, isLoading } =
+  const { currentCollection, currentQuestion, results } =
     useGetInitialCollection(initialValue);
 
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
@@ -161,19 +163,17 @@ export const QuestionPicker = ({
     [currentCollection, userPersonalCollectionId],
   );
 
-  if (isLoading) {
-    return <DelayedLoadingSpinner />;
-  }
-
   return (
-    <NestedItemPicker
-      isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
-      options={options}
-      onFolderSelect={onFolderSelect}
-      onItemSelect={handleItemSelect}
-      path={path}
-      listResolver={CollectionItemPickerResolver}
-      shouldShowItem={shouldShowItem}
-    />
+    <DelayedLoadingSpinner result={results}>
+      <NestedItemPicker
+        isFolder={(item: QuestionPickerItem) => isFolder(item, models)}
+        options={options}
+        onFolderSelect={onFolderSelect}
+        onItemSelect={handleItemSelect}
+        path={path}
+        listResolver={CollectionItemPickerResolver}
+        shouldShowItem={shouldShowItem}
+      />
+    </DelayedLoadingSpinner>
   );
 };

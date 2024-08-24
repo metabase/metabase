@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import List from "metabase/components/List";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Link from "metabase/core/components/Link";
 import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
@@ -175,10 +175,7 @@ const SegmentDetail = props => {
         displayNameFormField={getFormField("display_name")}
         nameFormField={getFormField("name")}
       />
-      <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
-      >
+      <Loading loading={!loadingError && loading} error={loadingError}>
         {() => (
           <div className={CS.wrapper}>
             <div
@@ -274,7 +271,7 @@ const SegmentDetail = props => {
             </div>
           </div>
         )}
-      </LoadingAndErrorWrapper>
+      </Loading>
     </form>
   );
 };

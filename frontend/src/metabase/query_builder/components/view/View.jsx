@@ -7,7 +7,7 @@ import _ from "underscore";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import ExplicitSize from "metabase/components/ExplicitSize";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Toaster from "metabase/components/Toaster";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
@@ -386,7 +386,7 @@ class View extends Component {
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
     if (!question || !databases) {
-      return <LoadingAndErrorWrapper className={CS.fullHeight} loading />;
+      return <Loading className={CS.fullHeight} loading />;
     }
 
     const query = question.query();

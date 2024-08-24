@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import type { SidebarCacheSectionProps } from "metabase/plugins";
 import { Flex } from "metabase/ui";
 
@@ -20,7 +20,7 @@ export const SidebarCacheSection = ({
   const id = useMemo(() => getItemId(model, item), [model, item]);
   const configurableModels = useMemo(() => [model], [model]);
 
-  const { configs, loading, error } = useCacheConfigs({
+  const { configs, ...cacheConfigsResult } = useCacheConfigs({
     configurableModels,
     id,
   });
@@ -36,7 +36,7 @@ export const SidebarCacheSection = ({
   const labelId = "question-caching-policy-label";
 
   return (
-    <LoadingAndErrorWrapper loading={loading} error={error}>
+    <Loading result={cacheConfigsResult}>
       <Flex align="center" justify="space-between">
         <span id={labelId}>{t`Caching policy`}</span>
         <FormLauncher
@@ -47,6 +47,6 @@ export const SidebarCacheSection = ({
           {shortStrategyLabel}
         </FormLauncher>
       </Flex>
-    </LoadingAndErrorWrapper>
+    </Loading>
   );
 };

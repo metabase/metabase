@@ -6,7 +6,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
@@ -41,10 +41,7 @@ export function SegmentList({ style }: SegmentListProps) {
   return (
     <div style={style} className={CS.full}>
       <ReferenceHeader name={t`Segments`} />
-      <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
-      >
+      <Loading loading={!loadingError && loading} error={loadingError}>
         {() =>
           Object.keys(entities).length > 0 ? (
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
@@ -74,7 +71,7 @@ export function SegmentList({ style }: SegmentListProps) {
             </div>
           )
         }
-      </LoadingAndErrorWrapper>
+      </Loading>
     </div>
   );
 }

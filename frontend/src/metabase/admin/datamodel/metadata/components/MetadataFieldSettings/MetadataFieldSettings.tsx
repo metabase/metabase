@@ -6,7 +6,7 @@ import _ from "underscore";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
 import Fields from "metabase/entities/fields";
@@ -92,7 +92,7 @@ const MetadataFieldSettings = ({
 }: MetadataFieldSettingsProps) => {
   const schema = schemas.find(schema => schema.id === schemaId);
   if (!schema || (!fetched && loading)) {
-    return <LoadingAndErrorWrapper loading />;
+    return <Loading loading />;
   }
 
   return (

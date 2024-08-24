@@ -7,7 +7,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import List from "metabase/components/List";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import S from "metabase/reference/Reference.module.css";
@@ -166,10 +166,7 @@ const TableDetail = props => {
         displayNameFormField={getFormField("display_name")}
         nameFormField={getFormField("name")}
       />
-      <LoadingAndErrorWrapper
-        loading={!loadingError && loading}
-        error={loadingError}
-      >
+      <Loading loading={!loadingError && loading} error={loadingError}>
         {() => (
           <div className={CS.wrapper}>
             <div
@@ -236,7 +233,7 @@ const TableDetail = props => {
             </div>
           </div>
         )}
-      </LoadingAndErrorWrapper>
+      </Loading>
     </form>
   );
 };

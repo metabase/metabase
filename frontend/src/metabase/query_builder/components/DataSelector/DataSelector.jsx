@@ -8,7 +8,7 @@ import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
 import ListSearchField from "metabase/components/ListSearchField";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
@@ -1008,7 +1008,7 @@ export class UnconnectedDataSelector extends Component {
       isSavedEntityPickerShown || selectedDataBucketId === DATA_BUCKET.MODELS;
 
     if (this.isLoadingDatasets()) {
-      return <LoadingAndErrorWrapper loading />;
+      return <Loading loading />;
     }
 
     if (this.hasDataAccess()) {

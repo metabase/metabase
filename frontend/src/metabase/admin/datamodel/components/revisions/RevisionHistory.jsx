@@ -5,7 +5,7 @@ import { Component } from "react";
 import { t } from "ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 
@@ -29,7 +29,7 @@ export default class RevisionHistory extends Component {
     }
 
     return (
-      <LoadingAndErrorWrapper loading={!segment || !revisions}>
+      <Loading loading={!segment || !revisions}>
         {() => (
           <div className={CS.wrapper}>
             <Breadcrumbs
@@ -64,7 +64,7 @@ export default class RevisionHistory extends Component {
             </div>
           </div>
         )}
-      </LoadingAndErrorWrapper>
+      </Loading>
     );
   }
 }

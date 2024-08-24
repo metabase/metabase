@@ -9,7 +9,7 @@ import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import type { Collection, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import Loading from "../../components/Loading";
 import type { ModalParams } from "../../types";
 
 interface NewEventWithTimelineModalProps {
@@ -19,7 +19,7 @@ interface NewEventWithTimelineModalProps {
 const collectionProps = {
   id: (state: State, props: NewEventWithTimelineModalProps) =>
     Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const mapDispatchToProps = (dispatch: any) => ({

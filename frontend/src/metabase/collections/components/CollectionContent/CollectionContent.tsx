@@ -6,7 +6,7 @@ import {
   useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Bookmark from "metabase/entities/bookmarks";
 import Databases from "metabase/entities/databases";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -76,11 +76,11 @@ export function CollectionContent({
     bookmarksError || databasesError || collectionsError || collectionError;
 
   if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
+    return <Loading error={error} />;
   }
 
   if (!bookmarks || !databases || !collections || !collection) {
-    return <LoadingAndErrorWrapper loading />;
+    return <Loading loading />;
   }
 
   return (

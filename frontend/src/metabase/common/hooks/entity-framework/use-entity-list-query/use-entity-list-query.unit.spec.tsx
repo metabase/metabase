@@ -12,7 +12,7 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import { delay } from "metabase/lib/promise";
@@ -48,13 +48,7 @@ const TestComponent = ({ testId }: { testId?: string }) => {
   const handleInvalidate = () => dispatch(Databases.actions.invalidateLists());
 
   if (isLoading || error) {
-    return (
-      <LoadingAndErrorWrapper
-        loading={isLoading}
-        error={error}
-        data-testid={testId}
-      />
-    );
+    return <Loading loading={isLoading} error={error} testId={testId} />;
   }
 
   return (
@@ -91,7 +85,7 @@ const TestInnerComponent = () => {
   const handleInvalidate = () => dispatch(Tables.actions.invalidateLists());
 
   if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+    return <Loading loading={isLoading} error={error} />;
   }
 
   return (
@@ -114,7 +108,9 @@ describe("useEntityListQuery", () => {
   it("should be initially loading", () => {
     setup();
 
-    expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+    expect(screen.getAllByTestId("loading-indicator").length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("should initially load data only once the reload flag in a nested component tree", async () => {
@@ -204,8 +200,12 @@ describe("useEntityListQuery", () => {
     expect(fetchMock.calls("path:/api/database")).toHaveLength(1);
 
     expect(
-      within(screen.getByTestId("test2")).getByTestId("loading-indicator"),
-    ).toBeInTheDocument();
+      (
+        await within(screen.getByTestId("test2")).findAllByTestId(
+          "loading-indicator",
+        )
+      ).length,
+    ).toBeGreaterThan(0);
 
     await delay(100); // trigger fetch request to be resolved
 

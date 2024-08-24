@@ -8,7 +8,7 @@ import * as Urls from "metabase/lib/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import Loading from "../../components/Loading";
 import TimelineDetailsModal from "../../components/TimelineDetailsModal";
 import type { ModalParams } from "../../types";
 
@@ -21,7 +21,7 @@ const timelineProps = {
   id: (state: State, props: TimelineDetailsModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const timelinesProps = {
@@ -29,7 +29,7 @@ const timelinesProps = {
     collectionId: Urls.extractCollectionId(props.params.slug),
     include: "events",
   }),
-  LoadingAndErrorWrapper,
+  Loading,
 };
 
 const mapStateToProps = (state: State, props: TimelineDetailsModalProps) => ({

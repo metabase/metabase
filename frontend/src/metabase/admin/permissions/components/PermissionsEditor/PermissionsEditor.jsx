@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 
 import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
 import {
@@ -17,9 +17,9 @@ export const permissionEditorPropTypes = {
 export const PermissionsEditor = ({ isLoading, error, ...contentProps }) => {
   return (
     <PermissionsEditorRoot>
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper>
+      <Loading loading={isLoading} error={error}>
         <PermissionsEditorContent {...contentProps} />
-      </LoadingAndErrorWrapper>
+      </Loading>
     </PermissionsEditorRoot>
   );
 };

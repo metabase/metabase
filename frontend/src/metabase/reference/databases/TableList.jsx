@@ -10,7 +10,7 @@ import EmptyState from "metabase/components/EmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
@@ -109,10 +109,7 @@ class TableList extends Component {
           type="tables"
           headerIcon="database"
         />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
-        >
+        <Loading loading={!loadingError && loading} error={loadingError}>
           {() =>
             tables.length > 0 ? (
               <div className={cx(CS.wrapper, CS.wrapperTrim)}>
@@ -138,7 +135,7 @@ class TableList extends Component {
               </div>
             )
           }
-        </LoadingAndErrorWrapper>
+        </Loading>
       </div>
     );
   }

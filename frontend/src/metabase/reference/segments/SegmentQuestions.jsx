@@ -9,7 +9,7 @@ import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import List from "metabase/components/List";
 import S from "metabase/components/List/List.module.css";
 import ListItem from "metabase/components/ListItem";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import * as Urls from "metabase/lib/urls";
 import * as metadataActions from "metabase/redux/metadata";
@@ -59,7 +59,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
         type="questions"
         headerIcon="segment"
       />
-      <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
+      <Loading loading={!error && isLoading} error={error}>
         {() =>
           data.length > 0 ? (
             <div className={cx(CS.wrapper, CS.wrapperTrim)}>
@@ -87,7 +87,7 @@ export const SegmentQuestions = ({ style, table, segment, metadata }) => {
             </div>
           )
         }
-      </LoadingAndErrorWrapper>
+      </Loading>
     </div>
   );
 };

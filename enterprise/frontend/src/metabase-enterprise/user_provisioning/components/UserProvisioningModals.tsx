@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { Button, Flex, Modal, type ModalProps, Stack, Text } from "metabase/ui";
 import { useRegenerateScimTokenMutation } from "metabase-enterprise/api";
 
@@ -118,7 +118,7 @@ export const UserProvisioningRegenerateTokenModal = ({
       title={t`Copy and save the SCIM token`}
     >
       <Stack spacing="lg" mt="0.5rem">
-        <LoadingAndErrorWrapper
+        <Loading
           error={regenerateTokenReq.error}
           loading={regenerateTokenReq.isLoading}
         >
@@ -130,7 +130,7 @@ export const UserProvisioningRegenerateTokenModal = ({
           <ScimTextWarning>
             {t`Please copy the token and save it somewhere safe. For security reasons, we can't show the token to you again.`}
           </ScimTextWarning>
-        </LoadingAndErrorWrapper>
+        </Loading>
         <Flex justify="end">
           {!regenerateTokenReq.error ? (
             <Button variant="filled" onClick={onClose}>

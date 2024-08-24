@@ -8,7 +8,7 @@ import {
   useGetDashboardQuery,
 } from "metabase/api";
 import { isValidCollectionId } from "metabase/collections/utils";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
@@ -202,7 +202,7 @@ const DashboardPickerInner = (
   );
 
   if (error) {
-    return <LoadingAndErrorWrapper error={error} />;
+    return <Loading error={error} />;
   }
 
   if (loadingCurrentCollection) {

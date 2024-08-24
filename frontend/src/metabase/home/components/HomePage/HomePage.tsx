@@ -7,7 +7,7 @@ import {
   useSearchListQuery,
 } from "metabase/common/hooks";
 import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { updateUserSetting } from "metabase/redux/settings";
@@ -23,27 +23,17 @@ import { HomeLayout } from "../HomeLayout";
 const SEARCH_QUERY = { models: ["dataset" as const], limit: 1 };
 
 export const HomePage = (): JSX.Element => {
-  const {
-    databases,
-    models,
-    isMetabotEnabled,
-    isLoading: isLoadingMetabot,
-    error,
-  } = useMetabot();
-  const { isLoadingDash } = useDashboardRedirect();
-
-  if ((isLoadingMetabot || error) && isMetabotEnabled) {
-    return <LoadingAndErrorWrapper loading={isLoadingMetabot} error={error} />;
-  }
-
-  if (isLoadingDash) {
-    return <LoadingAndErrorWrapper loading={isLoadingDash} error={error} />;
-  }
-
+  const { databases, models, isMetabotEnabled, ...metabotResult } =
+    useMetabot();
+  const dashboardResult = useDashboardRedirect();
   return (
-    <HomeLayout hasMetabot={getHasMetabot(databases, models, isMetabotEnabled)}>
-      <HomeContent />
-    </HomeLayout>
+    <Loading result={[metabotResult, dashboardResult]}>
+      <HomeLayout
+        hasMetabot={getHasMetabot(databases, models, isMetabotEnabled)}
+      >
+        <HomeContent />
+      </HomeLayout>
+    </Loading>
   );
 };
 
@@ -116,7 +106,5 @@ const useDashboardRedirect = () => {
     isLoading,
   ]);
 
-  return {
-    isLoadingDash: isLoading,
-  };
+  return { isLoading };
 };

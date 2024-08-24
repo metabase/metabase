@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import SelectList from "metabase/components/SelectList";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
@@ -24,7 +24,7 @@ export const SavedEntityListEmptyState = styled.div`
   margin: 7.5rem 0;
 `;
 
-export const LoadingWrapper = styled(LoadingAndErrorWrapper)`
+export const LoadingWrapper = styled(Loading)`
   min-height: unset;
   height: 100%;
 `;

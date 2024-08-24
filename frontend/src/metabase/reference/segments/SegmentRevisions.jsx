@@ -8,7 +8,7 @@ import { t } from "ttag";
 import Revision from "metabase/admin/datamodel/components/revisions/Revision";
 import EmptyState from "metabase/components/EmptyState";
 import S from "metabase/components/List/List.module.css";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import CS from "metabase/css/core/index.css";
 import { assignUserColors } from "metabase/lib/formatting";
 import * as metadataActions from "metabase/redux/metadata";
@@ -75,10 +75,7 @@ class SegmentRevisions extends Component {
           name={t`Revision history for ${this.props.segment.name}`}
           headerIcon="segment"
         />
-        <LoadingAndErrorWrapper
-          loading={!loadingError && loading}
-          error={loadingError}
-        >
+        <Loading loading={!loadingError && loading} error={loadingError}>
           {() =>
             Object.keys(revisions).length > 0 && tables[entity.table_id] ? (
               <div className={CS.wrapper}>
@@ -119,7 +116,7 @@ class SegmentRevisions extends Component {
               </div>
             )
           }
-        </LoadingAndErrorWrapper>
+        </Loading>
       </div>
     );
   }

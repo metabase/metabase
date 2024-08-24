@@ -4,7 +4,7 @@ import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import { NotFound } from "metabase/components/ErrorPages";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Loading from "metabase/components/Loading";
 import LogoIcon from "metabase/components/LogoIcon";
 import {
   CheckmarkIcon,
@@ -67,7 +67,7 @@ export const UnsubscribePage = ({
   if (isLoading) {
     return (
       <UnsubscribeRoot>
-        <LoadingAndErrorWrapper loading={isLoading} />
+        <Loading loading={isLoading} />
       </UnsubscribeRoot>
     );
   }
