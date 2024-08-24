@@ -569,25 +569,25 @@
 (deftest dashboard-card-series-test
   (mt/with-empty-h2-app-db
     (ts/with-temp-dpc
-      [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
-       :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
-       :model/Card {c2-id :id, c2-eid :entity_id} {:name "Series Question A", :collection_id coll-id}
-       :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
-       :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
-       :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
-       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
-       :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
-       :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
-      (testing "Inlined dashcards include their series' card entity IDs"
-        (let [ser (t2/with-call-count [q]
-                    (u/prog1 (ts/extract-one "Dashboard" dash-id)
-                      (is (< (q) 13))))]
-          (is (=? {:entity_id dash-eid
-                   :dashcards [{:entity_id dc1-eid
-                                :series (mt/exactly=? [{:card_id c2-eid :position 0}
-                                                       {:card_id c3-eid :position 1}])}
-                               {:entity_id dc2-eid, :series []}]}
-                  ser))
+        [:model/Collection {coll-id :id, coll-eid :entity_id} {:name "Some Collection"}
+         :model/Card {c1-id :id, c1-eid :entity_id} {:name "Some Question", :collection_id coll-id}
+         :model/Card {c2-id :id, c2-eid :entity_id} {:name "Series Question A", :collection_id coll-id}
+         :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
+         :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
+         :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
+         :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
+         :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
+         :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
+        (testing "Inlined dashcards include their series' card entity IDs"
+          (let [ser (t2/with-call-count [q]
+                      (u/prog1 (ts/extract-one "Dashboard" dash-id)
+                        (is (< (q) 13))))]
+            (is (=? {:entity_id dash-eid
+                     :dashcards [{:entity_id dc1-eid
+                                  :series (mt/exactly=? [{:card_id c2-eid :position 0}
+                                                         {:card_id c3-eid :position 1}])}
+                                 {:entity_id dc2-eid}]}
+                    ser))
 
           (testing "and depend on all referenced cards, including cards from dashboard cards' series"
             (is (= #{[{:model "Card"       :id c1-eid}]
@@ -888,9 +888,9 @@
 
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User     {ann-id       :id} {:first_name "Ann"
-                                                    :last_name  "Wilson"
-                                                    :email      "ann@heart.band"}
+    (ts/with-temp-dpc [User     {ann-id :id} {:first_name "Ann"
+                                              :last_name  "Wilson"
+                                              :email      "ann@heart.band"}
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -903,20 +903,20 @@
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
-                          {:name          "My Action"
-                           :type          :implicit
-                           :kind          "row/update"
-                           :creator_id    ann-id
-                           :model_id      card-id-1}]
+                          {:name       "My Action"
+                           :type       :implicit
+                           :kind       "row/update"
+                           :creator_id ann-id
+                           :model_id   card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "implicit action"
-              (let [ser (serdes/extract-one "Action" {} action)]
+              (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        "implicit"
-                         :kind        "row/update"
-                         :created_at  OffsetDateTime
-                         :model_id    card-eid-1}
+                         :type        :implicit
+                         :created_at  string?
+                         :model_id    card-eid-1
+                         :implicit    [{:kind "row/update"}]}
                         ser))
                 (is (not (contains? ser :id)))
 
@@ -926,9 +926,9 @@
 
 (deftest http-action-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User     {ann-id       :id} {:first_name "Ann"
-                                                    :last_name  "Wilson"
-                                                    :email      "ann@heart.band"}
+    (ts/with-temp-dpc [User     {ann-id :id} {:first_name "Ann"
+                                              :last_name  "Wilson"
+                                              :email      "ann@heart.band"}
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -941,20 +941,20 @@
                            :creator_id    ann-id}
 
                           {:keys [action-id]}
-                          {:name          "My Action"
-                           :type          :http
-                           :template      {}
-                           :creator_id    ann-id
-                           :model_id      card-id-1}]
+                          {:name       "My Action"
+                           :type       :http
+                           :template   {}
+                           :creator_id ann-id
+                           :model_id   card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
-              (let [ser (serdes/extract-one "Action" {} action)]
+              (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        "http"
-                         :created_at  OffsetDateTime
-                         :template    {}
-                         :model_id    card-eid-1}
+                         :type        :http
+                         :created_at  string?
+                         :model_id    card-eid-1
+                         :http        [{:template {}}]}
                         ser))
                 (is (not (contains? ser :id)))
 
@@ -964,9 +964,9 @@
 
 (deftest query-action-test
   (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [User     {ann-id       :id} {:first_name "Ann"
-                                                    :last_name  "Wilson"
-                                                    :email      "ann@heart.band"}
+    (ts/with-temp-dpc [User     {ann-id :id} {:first_name "Ann"
+                                              :last_name  "Wilson"
+                                              :email      "ann@heart.band"}
                        Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
@@ -987,15 +987,17 @@
                            :model_id      card-id-1}]
           (let [action (action/select-action :id action-id)]
             (testing "action"
-              (let [ser (serdes/extract-one "Action" {} action)]
-                (is (=? {:serdes/meta   [{:model "Action"
-                                          :id    (:entity_id action)
-                                          :label "my_action"}]
-                         :type          "query"
-                         :creator_id    "ann@heart.band"
-                         :created_at    OffsetDateTime
-                         :dataset_query {:type "native", :native {:native "select 1"}, :database db-id}
-                         :model_id      card-eid-1}
+              (let [ser (ts/extract-one "Action" action-id)]
+                (is (=? {:serdes/meta [{:model "Action"
+                                        :id    (:entity_id action)
+                                        :label "my_action"}]
+                         :type        "query"
+                         :creator_id  "ann@heart.band"
+                         :created_at  string?
+                         :query       [{:dataset_query {:database "My Database"
+                                                        :type     "native"
+                                                        :native   {:native "select 1"}}}]
+                         :model_id    card-eid-1}
                         ser))
                 (is (not (contains? ser :id)))
 
