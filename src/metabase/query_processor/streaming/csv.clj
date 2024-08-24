@@ -98,7 +98,7 @@
                      (vec (repeat (count ordered-cols) identity))))
           ;; write the column names for non-pivot tables
           (when col-names
-            (let [row (m/remove-nth pivot-grouping-key col-names)]
+            (let [row (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
               (write-csv writer [row])
               (.flush writer)))))
 
@@ -112,15 +112,20 @@
             ;; so that we can post process the data in finish!
             (when (= 0 (nth ordered-row (get-in @pivot-data [:config :pivot-grouping])))
               (swap! pivot-data (fn [a] (qp.pivot.postprocess/add-row a ordered-row))))
-            (let [pivot-grouping-key @pivot-grouping
-                  group              (get ordered-row pivot-grouping-key)]
-              (when (= 0 group)
-                (let [formatted-row (cond->> (perf/mapv (fn [formatter r]
-                                                          (formatter (common/format-value r)))
-                                                        @ordered-formatters ordered-row)
-                                      pivot-grouping-key (m/remove-nth pivot-grouping-key))]
-                  (write-csv writer [formatted-row])
-                  (.flush writer)))))))
+            (if-let [pivot-grouping-key @pivot-grouping]
+              (let [group (get ordered-row pivot-grouping-key)]
+                (when (= 0 group)
+                  (let [formatted-row (cond->> (perf/mapv (fn [formatter r]
+                                                            (formatter (common/format-value r)))
+                                                          @ordered-formatters ordered-row)
+                                        pivot-grouping-key (m/remove-nth pivot-grouping-key))]
+                    (write-csv writer [formatted-row])
+                    (.flush writer))))
+              (let [formatted-row (cond->> (perf/mapv (fn [formatter r]
+                                                        (formatter (common/format-value r)))
+                                                      @ordered-formatters ordered-row))]
+                (write-csv writer [formatted-row])
+                (.flush writer))))))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
