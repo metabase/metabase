@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Box, Flex } from "metabase/ui";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type { NotebookStepProps } from "../../types";
 import { AggregateStep } from "../AggregateStep";
 import { BreakoutStep } from "../BreakoutStep";
 
@@ -11,7 +11,7 @@ export function SummarizeStep({
   color,
   isLastOpened,
   ...props
-}: NotebookStepUiComponentProps) {
+}: NotebookStepProps) {
   const isMetric = step.question.type() === "metric";
 
   return (
@@ -27,16 +27,8 @@ export function SummarizeStep({
       {!isMetric && <Box c={color} fw="bold">{t`by`}</Box>}
       <Box w={{ base: "100%", md: "50%" }}>
         {isMetric && (
-          <Box pos="relative">
-            <Box
-              pos={{ md: "absolute" }}
-              bottom={0}
-              mb="sm"
-              c="summarize"
-              fw="bold"
-            >
-              {t`Default time dimension`}
-            </Box>
+          <Box display={{ md: "none" }} c="summarize" fw="bold" mb="sm">
+            {t`Default time dimension`}
           </Box>
         )}
         <BreakoutStep

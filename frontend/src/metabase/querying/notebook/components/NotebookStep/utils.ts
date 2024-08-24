@@ -3,11 +3,11 @@ import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
-import type { CardType } from "metabase-types/api";
 
 import type {
+  NotebookStepHeaderProps,
+  NotebookStepProps,
   NotebookStepType,
-  NotebookStepUiComponentProps,
 } from "../../types";
 import { AggregateStep } from "../AggregateStep";
 import { BreakoutStep } from "../BreakoutStep";
@@ -18,92 +18,101 @@ import { JoinStep } from "../JoinStep";
 import { LimitStep } from "../LimitStep";
 import { SortStep } from "../SortStep";
 import { SummarizeStep } from "../SummarizeStep";
+import { SummarizeStepHeader } from "../SummarizeStep/SummarizeStepHeader";
+
+import { NotebookStepHeader } from "./NotebookStepHeader";
 
 type StepUIItem = {
-  title: { base: string } & Partial<Record<CardType, string>>;
+  title: string;
   icon?: IconName;
   priority?: number;
   transparent?: boolean;
   compact?: boolean;
   color: () => string;
-  component: ComponentType<NotebookStepUiComponentProps>;
+  Step: ComponentType<NotebookStepProps>;
+  StepHeader: ComponentType<NotebookStepHeaderProps>;
 };
 
 const STEPS: Record<NotebookStepType, StepUIItem> = {
   data: {
-    title: { base: t`Data` },
-    component: DataStep,
+    title: t`Data`,
     color: () => color("brand"),
+    Step: DataStep,
+    StepHeader: NotebookStepHeader,
   },
   join: {
-    title: { base: t`Join data` },
+    title: t`Join data`,
     icon: "join_left_outer",
     priority: 1,
     color: () => color("brand"),
-    component: JoinStep,
+    Step: JoinStep,
+    StepHeader: NotebookStepHeader,
   },
   expression: {
-    title: { base: t`Custom column` },
+    title: t`Custom column`,
     icon: "add_data",
-    component: ExpressionStep,
     transparent: true,
     color: () => color("bg-dark"),
+    Step: ExpressionStep,
+    StepHeader: NotebookStepHeader,
   },
   filter: {
-    title: { base: t`Filter` },
+    title: t`Filter`,
     icon: "filter",
-    component: FilterStep,
     priority: 10,
     color: () => color("filter"),
+    Step: FilterStep,
+    StepHeader: NotebookStepHeader,
   },
   summarize: {
-    title: { base: t`Summarize`, metric: t`Formula` },
+    title: t`Summarize`,
     icon: "sum",
-    component: SummarizeStep,
     priority: 5,
     color: () => color("summarize"),
+    Step: SummarizeStep,
+    StepHeader: SummarizeStepHeader,
   },
   aggregate: {
-    title: { base: t`Aggregate` },
+    title: t`Aggregate`,
     icon: "sum",
-    component: AggregateStep,
     priority: 5,
     color: () => color("summarize"),
+    Step: AggregateStep,
+    StepHeader: NotebookStepHeader,
   },
   breakout: {
-    title: { base: t`Breakout` },
+    title: t`Breakout`,
     icon: "segment",
-    component: BreakoutStep,
     priority: 1,
     color: () => color("accent4"),
+    Step: BreakoutStep,
+    StepHeader: NotebookStepHeader,
   },
   sort: {
-    title: { base: t`Sort` },
+    title: t`Sort`,
     icon: "sort",
-    component: SortStep,
     compact: true,
     transparent: true,
     color: () => color("bg-dark"),
+    Step: SortStep,
+    StepHeader: NotebookStepHeader,
   },
   limit: {
-    title: { base: t`Row limit` },
+    title: t`Row limit`,
     icon: "list",
-    component: LimitStep,
     compact: true,
     transparent: true,
     color: () => color("bg-dark"),
+    Step: LimitStep,
+    StepHeader: NotebookStepHeader,
   },
 };
 
-export const getStepConfig = (
-  stepType: NotebookStepType,
-  cardType: CardType,
-) => {
-  const stepConfig = STEPS[stepType];
+export const getStepConfig = (type: NotebookStepType) => {
+  const config = STEPS[type];
 
   return {
-    ...stepConfig,
-    title: stepConfig.title[cardType] ?? stepConfig.title.base,
-    color: stepConfig.color(),
+    ...config,
+    color: config.color(),
   };
 };
