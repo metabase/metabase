@@ -147,7 +147,7 @@ const DefaultLoadingIndicator = ({
   contentClassName?: string;
 }) => {
   return (
-    <div className={contentClassName} data-testid="loading-indicator">
+    <div className={contentClassName} data-testid="loading-indicator-wrapper">
       {showSpinner && <LoadingSpinner />}
       <h2 className={cx(CS.textNormal, CS.textLight, CS.mt1)}>{message}</h2>
     </div>
