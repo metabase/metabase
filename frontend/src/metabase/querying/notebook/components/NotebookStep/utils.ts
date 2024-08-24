@@ -4,7 +4,10 @@ import { t } from "ttag";
 import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type {
+  NotebookStepType,
+  NotebookStepUiComponentProps,
+} from "../../types";
 import { AggregateStep } from "../AggregateStep";
 import { BreakoutStep } from "../BreakoutStep";
 import { DataStep } from "../DataStep";
@@ -25,7 +28,7 @@ type StepUIItem = {
   component: React.ComponentType<NotebookStepUiComponentProps>;
 };
 
-const STEP_UI: Record<string, StepUIItem> = {
+const STEP_UI: Record<NotebookStepType, StepUIItem> = {
   data: {
     title: t`Data`,
     component: DataStep,
@@ -91,7 +94,7 @@ const STEP_UI: Record<string, StepUIItem> = {
   },
 };
 
-export const getStepUIConfig = (type: string) => ({
+export const getStepUIConfig = (type: NotebookStepType) => ({
   ...STEP_UI[type],
-  color: STEP_UI[type]?.color(),
+  color: STEP_UI[type].color(),
 });

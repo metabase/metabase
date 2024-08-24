@@ -29,7 +29,7 @@ import { NotebookStepPreview } from "./NotebookStepPreview";
 import { getStepUIConfig } from "./utils";
 
 function hasLargeButton(action: NotebookStepAction) {
-  return !getStepUIConfig(action.type)?.compact;
+  return !getStepUIConfig(action.type).compact;
 }
 
 interface NotebookStepProps {
@@ -42,7 +42,7 @@ interface NotebookStepProps {
   updateQuery: (query: Query) => Promise<void>;
 }
 
-function NotebookStep({
+export function NotebookStep({
   step,
   isLastStep,
   isLastOpened,
@@ -180,6 +180,3 @@ function NotebookStep({
     </ExpandingContent>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NotebookStep;
