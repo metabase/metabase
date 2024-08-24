@@ -23,7 +23,7 @@ type NotebookStepDef = Pick<NotebookStep, "type" | "clauseType"> & {
     stageIndex: number,
     itemIndex?: number,
   ) => Lib.Query;
-  canRevert: (cardType: CardType) => boolean;
+  canRevert: (type: CardType) => boolean;
 };
 
 const STEPS: NotebookStepDef[] = [
@@ -123,7 +123,7 @@ const STEPS: NotebookStepDef[] = [
         return Lib.removeClause(query, stageIndex, clause);
       }, query);
     },
-    canRevert: cardType => cardType !== "metric",
+    canRevert: type => type !== "metric",
   },
   {
     type: "sort",
