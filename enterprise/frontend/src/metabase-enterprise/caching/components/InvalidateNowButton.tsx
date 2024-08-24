@@ -1,5 +1,6 @@
 import { useFormikContext } from "formik";
 import { useCallback, useMemo } from "react";
+import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import { IconInButton } from "metabase/admin/performance/components/StrategyForm.styled";
@@ -56,14 +57,15 @@ const InvalidateNowFormBody = ({
     [askConfirmation, targetName, submitForm],
   );
 
-  const buttonText = useMemo(() => {
-    const map: Record<ModelWithClearableCache, string> = {
-      dashboard: t`Clear cache for this dashboard`,
-      question: t`Clear cache for this question`,
-      database: t`Clear cache for this database`,
-    };
-    return map[targetModel];
-  }, [targetModel]);
+  const buttonText = useMemo(
+    () =>
+      match(targetModel)
+        .with("dashboard", () => t`Clear cache for this dashboard`)
+        .with("question", () => t`Clear cache for this question`)
+        .with("database", () => t`Clear cache for this database`)
+        .exhaustive(),
+    [targetModel],
+  );
 
   return (
     <>
