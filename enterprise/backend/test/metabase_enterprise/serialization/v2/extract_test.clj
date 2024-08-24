@@ -913,7 +913,7 @@
               (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        :implicit
+                         :type        "implicit"
                          :created_at  string?
                          :model_id    card-eid-1
                          :implicit    [{:kind "row/update"}]}
@@ -951,7 +951,7 @@
               (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        :http
+                         :type        "http"
                          :created_at  string?
                          :model_id    card-eid-1
                          :http        [{:template {}}]}
