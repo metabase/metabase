@@ -9,6 +9,7 @@ import { getPieColumns } from "metabase/visualizations/echarts/pie/model";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import { getDefaultDimensionsAndMetrics } from "metabase/visualizations/lib/utils";
 import { unaggregatedDataWarningPie } from "metabase/visualizations/lib/warnings";
 import type {
   ComputedVisualizationSettings,
@@ -21,9 +22,40 @@ import type {
   RowValues,
 } from "metabase-types/api";
 
+export function getPieDimensions(settings: ComputedVisualizationSettings) {
+  const dimensionSetting = settings["pie.dimension"];
+
+  if (dimensionSetting == null) {
+    throw new Error("`pie.dimension` is undefined");
+  }
+  if (Array.isArray(dimensionSetting)) {
+    return dimensionSetting;
+  }
+  return [dimensionSetting];
+}
+
+export function getDefaultPieColumns(rawSeries: RawSeries) {
+  const { dimensions, metrics } = getDefaultDimensionsAndMetrics(
+    rawSeries,
+    3,
+    1,
+  );
+  return {
+    dimension: dimensions,
+    metric: metrics[0],
+  };
+}
+
 export const getDefaultShowLegend = () => true;
 
 export const getDefaultShowTotal = () => true;
+
+export function getDefaultShowLabels(settings: ComputedVisualizationSettings) {
+  if (getPieDimensions(settings).length <= 1) {
+    return false;
+  }
+  return true;
+}
 
 export const getDefaultPercentVisibility = () => "legend";
 
@@ -117,10 +149,9 @@ export function getColors(
       data: { rows, cols },
     },
   ] = rawSeries;
+  const dimensionName = getPieDimensions(currentSettings)[0];
 
-  const dimensionIndex = cols.findIndex(
-    col => col.name === currentSettings["pie.dimension"],
-  );
+  const dimensionIndex = cols.findIndex(col => col.name === dimensionName);
   const metricIndex = cols.findIndex(
     col => col.name === currentSettings["pie.metric"],
   );
@@ -202,7 +233,7 @@ export function getPieRows(
 
   const savedPieRows = hasSortDimensionChanged
     ? []
-    : (settings["pie.rows"] ?? []);
+    : settings["pie.rows"] ?? [];
 
   const savedPieKeys = savedPieRows.map(pieRow => pieRow.key);
 

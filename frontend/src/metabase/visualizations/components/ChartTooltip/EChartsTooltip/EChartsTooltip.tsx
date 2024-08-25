@@ -13,6 +13,7 @@ export interface EChartsTooltipRow {
   isFocused?: boolean;
   isSecondary?: boolean;
   values: React.ReactNode[];
+  key?: string;
 }
 
 export interface EChartsTooltipFooter {
@@ -68,9 +69,9 @@ export const EChartsTooltip = ({
         <tbody>
           {paddedRows.map((row, index) => {
             return !row.isSecondary ? (
-              <TooltipRow key={index} {...row} />
+              <TooltipRow key={String(index)} {...row} />
             ) : (
-              <SecondaryRow key={index} {...row} />
+              <SecondaryRow key={String(index)} {...row} />
             );
           })}
         </tbody>

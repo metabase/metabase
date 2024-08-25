@@ -11,6 +11,7 @@ interface ChartSettingColorPickerProps {
   title?: string;
   pillSize?: PillSize;
   onChange?: (newValue: string) => void;
+  includeLightAndDarkColors?: boolean;
 }
 
 export const ChartSettingColorPicker = ({
@@ -19,12 +20,17 @@ export const ChartSettingColorPicker = ({
   title,
   pillSize,
   onChange,
+  includeLightAndDarkColors = true,
 }: ChartSettingColorPickerProps) => {
   return (
     <div className={cx(CS.flex, CS.alignCenter, CS.mb1, className)}>
       <ColorSelector
         value={value}
-        colors={getAccentColors()}
+        colors={getAccentColors(
+          includeLightAndDarkColors
+            ? { main: true, light: true, dark: true, harmony: false }
+            : { main: true, light: false, dark: false, harmony: false },
+        )}
         onChange={onChange}
         pillSize={pillSize}
       />

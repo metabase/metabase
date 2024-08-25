@@ -1,8 +1,12 @@
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { computeMaxDecimalsForValues } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
+  Formatter,
+  RemappingHydratedDatasetColumn,
   RenderingContext,
 } from "metabase/visualizations/types";
+import type { RowValue } from "metabase-types/api";
 
 import type { PieChartModel } from "./model/types";
 
@@ -35,7 +39,10 @@ export function getPieChartFormatters(
     let decimals = settings["pie.decimal_places"];
     if (decimals == null) {
       decimals = computeMaxDecimalsForValues(
-        chartModel.slices.map(s => s.data.normalizedPercentage),
+        // TODO update this to include all values
+        Array(...chartModel.sliceTree.values()).map(
+          s => s.normalizedPercentage,
+        ),
         {
           style: "percent",
           maximumSignificantDigits: location === "legend" ? 3 : 2,
@@ -52,4 +59,25 @@ export function getPieChartFormatters(
   };
 
   return { formatMetric, formatPercent };
+}
+
+export function getDimensionFormatter(
+  settings: ComputedVisualizationSettings,
+  dimensionColumn: RemappingHydratedDatasetColumn,
+  formatter: Formatter,
+) {
+  const getColumnSettings = settings["column"];
+  if (!getColumnSettings) {
+    throw Error("`settings.column` is undefined");
+  }
+
+  const dimensionColSettings = getColumnSettings(dimensionColumn);
+
+  return (value: RowValue) => {
+    if (value == null) {
+      return NULL_DISPLAY_VALUE;
+    }
+
+    return formatter(value, dimensionColSettings);
+  };
 }

@@ -1,29 +1,18 @@
 import Color from "color";
-import type { EChartsOption } from "echarts";
+import type { EChartsOption, SunburstSeriesOption } from "echarts";
 
 import { getTextColorForBackground } from "metabase/lib/colors";
+import { checkNotNull } from "metabase/lib/types";
 import { truncateText } from "metabase/visualizations/lib/text";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 
-import { DIMENSIONS, TOTAL_TEXT } from "./constants";
+import { DIMENSIONS, OPTION_NAME_SEPERATOR, TOTAL_TEXT } from "./constants";
 import type { PieChartFormatters } from "./format";
-import type { PieChartModel, PieSlice, PieSliceData } from "./model/types";
-
-function getSliceByKey(key: PieSliceData["key"], slices: PieSlice[]) {
-  const slice = slices.find(s => s.data.key === key);
-  if (!slice) {
-    throw Error(
-      `Could not find slice with key ${key} in slices: ${JSON.stringify(
-        slices,
-      )}`,
-    );
-  }
-
-  return slice;
-}
+import type { PieChartModel, SliceTreeNode } from "./model/types";
+import { getInnerRingSlices, getSliceTreeNodesFromPath } from "./util";
 
 function getTotalGraphicOption(
   settings: ComputedVisualizationSettings,
@@ -31,6 +20,7 @@ function getTotalGraphicOption(
   formatters: PieChartFormatters,
   renderingContext: RenderingContext,
   hoveredIndex: number | undefined,
+  hoveredSliceKeyPath: string[] | undefined,
   outerRadius: number,
 ) {
   let valueText = "";
@@ -40,10 +30,28 @@ function getTotalGraphicOption(
   const hasSufficientWidth = outerRadius * 2 >= DIMENSIONS.total.minWidth;
 
   if (hasSufficientWidth && settings["pie.show_total"]) {
-    const sliceValueOrTotal =
-      hoveredIndex != null
-        ? chartModel.slices[hoveredIndex].data.displayValue
-        : chartModel.total;
+    let sliceValueOrTotal = 0;
+
+    // chart hovered
+    if (hoveredSliceKeyPath != null) {
+      const { sliceTreeNode } = getSliceTreeNodesFromPath(
+        chartModel.sliceTree,
+        hoveredSliceKeyPath,
+      );
+
+      sliceValueOrTotal = checkNotNull(sliceTreeNode).displayValue;
+      labelText = checkNotNull(sliceTreeNode?.name);
+
+      // legend hovered
+    } else if (hoveredIndex != null) {
+      const slice = getInnerRingSlices(chartModel)[hoveredIndex];
+
+      sliceValueOrTotal = slice.displayValue;
+      labelText = slice.name.toUpperCase();
+    } else {
+      sliceValueOrTotal = chartModel.total;
+      labelText = TOTAL_TEXT;
+    }
 
     const valueWillOverflow =
       renderingContext.measureText(formatters.formatMetric(sliceValueOrTotal), {
@@ -65,9 +73,7 @@ function getTotalGraphicOption(
       fontStyle,
     );
     labelText = truncateText(
-      hoveredIndex != null
-        ? chartModel.slices[hoveredIndex].data.name.toUpperCase()
-        : TOTAL_TEXT,
+      labelText,
       outerRadius,
       renderingContext.measureText,
       fontStyle,
@@ -110,20 +116,53 @@ function getTotalGraphicOption(
   };
 }
 
-function getRadiusOption(sideLength: number) {
+function getRadiusOption(sideLength: number, chartModel: PieChartModel) {
+  let innerRadiusRatio = DIMENSIONS.slice.innerRadiusRatio;
+  if (chartModel.numRings === 2) {
+    innerRadiusRatio = DIMENSIONS.slice.twoRingInnerRadiusRatio;
+  } else if (chartModel.numRings === 3) {
+    innerRadiusRatio = DIMENSIONS.slice.threeRingInnerRadiusRatio;
+  }
+
   const outerRadius = sideLength / 2;
-  const innerRadius = outerRadius * DIMENSIONS.slice.innerRadiusRatio;
+  const innerRadius = outerRadius * innerRadiusRatio;
 
   return { outerRadius, innerRadius };
 }
 
+function getSliceLabel(
+  slice: SliceTreeNode,
+  settings: ComputedVisualizationSettings,
+  formatters: PieChartFormatters,
+) {
+  const name = settings["pie.show_labels"] ? slice.name : undefined;
+  const percent =
+    settings["pie.percent_visibility"] === "inside" ||
+    settings["pie.percent_visibility"] === "both"
+      ? formatters.formatPercent(slice.normalizedPercentage, "chart")
+      : undefined;
+
+  if (name != null && percent != null) {
+    return `${name}: ${percent}`;
+  }
+  if (name != null) {
+    return name;
+  }
+  if (percent != null) {
+    return percent;
+  }
+  return " ";
+}
+
 function getIsLabelVisible(
   label: string,
-  slice: PieSlice,
+  slice: SliceTreeNode,
   innerRadius: number,
   outerRadius: number,
   fontSize: number,
   renderingContext: RenderingContext,
+  ring: number,
+  numRings: number,
 ) {
   // We use the law of cosines to determine the length of the chord with the
   // same endpoints as the arc. The label should be shorter than this chord, and
@@ -134,11 +173,13 @@ function getIsLabelVisible(
   let arcAngle = slice.startAngle - slice.endAngle;
   arcAngle = Math.min(Math.abs(arcAngle), Math.PI - 0.001);
 
+  const donutWidth = (outerRadius - innerRadius) / numRings;
+  const ringInnerRadius = innerRadius + donutWidth * (ring - 1);
+
   const innerCircleChordLength = Math.sqrt(
-    2 * innerRadius * innerRadius -
-      2 * innerRadius * innerRadius * Math.cos(arcAngle),
+    2 * ringInnerRadius * ringInnerRadius -
+      2 * ringInnerRadius * ringInnerRadius * Math.cos(arcAngle),
   );
-  const donutWidth = outerRadius - innerRadius;
   const maxLabelDimension = Math.min(innerCircleChordLength, donutWidth);
 
   const fontStyle = {
@@ -149,9 +190,16 @@ function getIsLabelVisible(
   const labelWidth = renderingContext.measureText(label, fontStyle);
   const labelHeight = renderingContext.measureTextHeight(label, fontStyle);
 
+  if (ring === 1) {
+    return (
+      labelWidth + DIMENSIONS.slice.label.padding <= maxLabelDimension &&
+      labelHeight + DIMENSIONS.slice.label.padding <= maxLabelDimension
+    );
+  }
+
   return (
-    labelWidth + DIMENSIONS.slice.label.padding <= maxLabelDimension &&
-    labelHeight + DIMENSIONS.slice.label.padding <= maxLabelDimension
+    labelWidth + DIMENSIONS.slice.label.padding <= donutWidth &&
+    labelHeight + DIMENSIONS.slice.label.padding <= innerCircleChordLength
   );
 }
 
@@ -162,21 +210,29 @@ export function getPieChartOption(
   renderingContext: RenderingContext,
   sideLength: number,
   hoveredIndex?: number,
+  hoveredSliceKeyPath?: string[],
 ): EChartsOption {
   // Sizing
   const innerSideLength = Math.min(
     sideLength - DIMENSIONS.padding.side * 2,
     DIMENSIONS.maxSideLength,
   );
-  const { outerRadius, innerRadius } = getRadiusOption(innerSideLength);
+  const { outerRadius, innerRadius } = getRadiusOption(
+    innerSideLength,
+    chartModel,
+  );
 
   const borderWidth =
     (Math.PI * innerSideLength) / DIMENSIONS.slice.borderProportion; // arc length formula: s = 2πr(θ/360°), we want border to be 1 degree
 
-  const fontSize = Math.max(
-    DIMENSIONS.slice.maxFontSize * (innerSideLength / DIMENSIONS.maxSideLength),
-    DIMENSIONS.slice.minFontSize,
-  );
+  const fontSize =
+    chartModel.numRings > 1
+      ? DIMENSIONS.slice.multiRingFontSize
+      : Math.max(
+          DIMENSIONS.slice.maxFontSize *
+            (innerSideLength / DIMENSIONS.maxSideLength),
+          DIMENSIONS.slice.minFontSize,
+        );
 
   // "Show total" setting
   const graphicOption = getTotalGraphicOption(
@@ -185,34 +241,34 @@ export function getPieChartOption(
     formatters,
     renderingContext,
     hoveredIndex,
+    hoveredSliceKeyPath,
     outerRadius,
   );
 
-  // "Show percentages: On the chart" setting
-  const formatSlicePercent = (key: PieSliceData["key"]) => {
-    if (
-      settings["pie.percent_visibility"] == null ||
-      settings["pie.percent_visibility"] === "off" ||
-      settings["pie.percent_visibility"] === "legend"
-    ) {
-      return " ";
+  // Series data
+  function getSeriesDataFromSlices(
+    slices: SliceTreeNode[],
+    ring = 1,
+    parentName: string | null = null,
+  ): SunburstSeriesOption["data"] {
+    if (slices.length === 0) {
+      return [];
     }
 
-    return formatters.formatPercent(
-      getSliceByKey(key, chartModel.slices).data.normalizedPercentage,
-      "chart",
-    );
-  };
+    let ringBorderWidth = borderWidth;
+    if (ring === 2) {
+      ringBorderWidth = DIMENSIONS.slice.twoRingBorderWidth;
+    }
+    if (ring === 3) {
+      ringBorderWidth = DIMENSIONS.slice.threeRingBorderWidth;
+    }
 
-  // Series data
-  const data = chartModel.slices
-    .filter(s => s.data.visible)
-    .map(s => {
+    return slices.map(s => {
       const labelColor = getTextColorForBackground(
-        s.data.color,
+        s.color,
         renderingContext.getColor,
       );
-      const label = formatSlicePercent(s.data.key);
+      const label = getSliceLabel(s, settings, formatters);
       const isLabelVisible = getIsLabelVisible(
         label,
         s,
@@ -220,19 +276,34 @@ export function getPieChartOption(
         outerRadius,
         fontSize,
         renderingContext,
+        ring,
+        chartModel.numRings,
       );
 
+      const name =
+        parentName != null
+          ? `${parentName}${OPTION_NAME_SEPERATOR}${s.key}`
+          : s.key;
+
       return {
-        value: s.data.value,
-        name: s.data.name,
-        itemStyle: { color: s.data.color },
+        children: !s.isOther
+          ? getSeriesDataFromSlices(
+              Array(...s.children.values()),
+              ring + 1,
+              name,
+            )
+          : undefined,
+        value: s.value,
+        name,
+        itemStyle: { color: s.color, borderWidth: ringBorderWidth },
         label: {
           color: labelColor,
           formatter: () => (isLabelVisible ? label : " "),
+          rotate: ring === 1 ? 0 : "radial",
         },
         emphasis: {
           itemStyle: {
-            color: s.data.color,
+            color: s.color,
             borderColor: renderingContext.theme.pie.borderColor,
           },
         },
@@ -243,7 +314,7 @@ export function getPieChartOption(
             // causing the underlying color to leak. It is safe to use non-hex
             // values here, since this value will never be used in batik
             // (there's no emphasis/blur for static viz).
-            color: Color(s.data.color).fade(0.7).rgb().string(),
+            color: Color(s.color).fade(0.7).rgb().string(),
             opacity: 1,
           },
           label: {
@@ -253,6 +324,10 @@ export function getPieChartOption(
         },
       };
     });
+  }
+  const data = getSeriesDataFromSlices(
+    getInnerRingSlices(chartModel).filter(s => s.visible),
+  );
 
   return {
     // Unlike the cartesian chart, `animationDuration: 0` does not prevent the
@@ -269,17 +344,18 @@ export function getPieChartOption(
       nodeClick: false,
       radius: [innerRadius, outerRadius],
       itemStyle: {
-        borderWidth,
         borderColor: renderingContext.theme.pie.borderColor,
       },
       label: {
-        rotate: 0,
         overflow: "none",
         fontSize,
         fontWeight: DIMENSIONS.slice.label.fontWeight,
       },
       labelLayout: {
         hideOverlap: true,
+      },
+      emphasis: {
+        focus: "ancestor",
       },
       data,
     },

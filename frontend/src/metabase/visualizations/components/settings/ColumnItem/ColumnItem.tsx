@@ -25,6 +25,7 @@ interface ColumnItemProps {
   onEdit?: (target: HTMLElement) => void;
   onEnable?: (target: HTMLElement) => void;
   onColorChange?: (newColor: string) => void;
+  includeLightAndDarkColors?: boolean;
 }
 
 const BaseColumnItem = ({
@@ -41,6 +42,7 @@ const BaseColumnItem = ({
   onEdit,
   onEnable,
   onColorChange,
+  includeLightAndDarkColors = true,
 }: ColumnItemProps) => {
   return (
     <ColumnItemRoot
@@ -59,6 +61,7 @@ const BaseColumnItem = ({
             value={color}
             onChange={onColorChange}
             pillSize="small"
+            includeLightAndDarkColors={includeLightAndDarkColors}
           />
         )}
         <ColumnItemContent>

@@ -22,6 +22,7 @@ interface SortableColumnFunctions<T> {
   onEnable?: (item: T) => void;
   getItemName: (item: T) => string;
   onColorChange?: (item: T, color: string) => void;
+  includeLightAndDarkColors?: boolean;
 }
 interface ChartSettingOrderedItemsProps<T extends SortableItem>
   extends SortableColumnFunctions<T> {
@@ -43,6 +44,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   onColorChange,
   getId,
   removeIcon,
+  includeLightAndDarkColors = true,
 }: ChartSettingOrderedItemsProps<T>) {
   const isDragDisabled = items.length < 1;
   const pointerSensor = useSensor(PointerSensor, {
@@ -83,6 +85,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
             icon={item.icon}
             removeIcon={removeIcon}
             role="listitem"
+            includeLightAndDarkColors={includeLightAndDarkColors}
           />
         </Sortable>
       ) : null,
@@ -96,6 +99,7 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
       onAdd,
       onEnable,
       onColorChange,
+      includeLightAndDarkColors,
     ],
   );
 

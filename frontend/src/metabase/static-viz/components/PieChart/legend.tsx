@@ -1,6 +1,7 @@
 import { DIMENSIONS } from "metabase/visualizations/echarts/pie/constants";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
+import { getInnerRingSlices } from "metabase/visualizations/echarts/pie/util";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import { Legend } from "../Legend";
@@ -17,18 +18,20 @@ export function getPieChartLegend(
     width: legendWidth,
     items,
   } = calculateLegendRowsWithColumns({
-    items: chartModel.slices
-      .filter(s => s.data.includeInLegend)
-      .map(s => ({
-        name: s.data.name,
-        percent:
-          settings["pie.percent_visibility"] === "legend" ||
-          settings["pie.percent_visibility"] === "both"
-            ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
-            : undefined,
-        color: s.data.color,
-        key: String(s.data.key),
-      })),
+    items: getInnerRingSlices(chartModel)
+      .filter(s => s.includeInLegend)
+      .map(s => {
+        return {
+          name: s.name,
+          percent:
+            settings["pie.percent_visibility"] === "legend" ||
+            settings["pie.percent_visibility"] === "both"
+              ? formatters.formatPercent(s.normalizedPercentage, "legend")
+              : undefined,
+          color: s.color,
+          key: String(s.key),
+        };
+      }),
     width: DIMENSIONS.maxSideLength,
     horizontalPadding: DIMENSIONS.padding.side,
   });
