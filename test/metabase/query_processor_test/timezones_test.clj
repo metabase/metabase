@@ -26,11 +26,7 @@
     :oracle
     :redshift
     :sparksql
-    :vertica
-    ;; TODO: Modify tests so databricks-jdbc does not have to be here.
-    ;;       `timezones-test/filter-test`
-    ;;       `timezones-test/sql-time-timezone-handling-test`
-    :databricks-jdbc})
+    :vertica})
 
 (defn- set-timezone-drivers
   "Drivers that support setting a Session timezone."
