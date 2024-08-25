@@ -57,7 +57,7 @@
     :pwd              token
     :UseNativeQuery 1}
    ;; TODO: There's an exception on logging thrown when attempting to create a database for a first time.
-   ;;       Following has no effect in that regards.
+   ;;       Following has no effect.
    (when-some [log-level (:log-level details)]
      {:LogLevel log-level})))
 
@@ -150,6 +150,7 @@
                         (h2x/literal "yyyy-MM-dd")
                         (h2x/literal "yyyy-MM-dd HH:mm:ss"))]])
 
+;; TODO: Which type, zone to use if any.
 (defmethod sql-jdbc.execute/read-column-thunk [:databricks-jdbc java.sql.Types/TIMESTAMP]
   [_driver ^ResultSet rs _rsmeta ^Integer i]
   (fn []
