@@ -1,5 +1,8 @@
 ;; Cljfmt config. See https://github.com/weavejester/cljfmt#formatting-options
-{:sort-ns-references?
+{;; Following is reqired after cljfmt update. Source: https://calva.io/formatting/#indentation-rules
+ :legacy/merge-indents? true
+ 
+ :sort-ns-references?
  true
 
  :function-arguments-indentation
