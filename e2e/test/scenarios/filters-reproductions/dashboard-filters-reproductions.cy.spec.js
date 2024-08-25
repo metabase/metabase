@@ -1237,7 +1237,7 @@ describe("issue 22788", () => {
   function addFilterAndAssert() {
     filterWidget().click();
     popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      cy.findByRole("textbox").type("Gizmo");
       cy.button("Add filter").click();
     });
 
@@ -2135,7 +2135,7 @@ describe("issue 27768", () => {
 
     filterWidget().click();
     popover().within(() => {
-      cy.findByRole("searchbox").type("Gizmo");
+      cy.findByRole("textbox").type("Gizmo");
       cy.button("Add filter").click();
     });
 
