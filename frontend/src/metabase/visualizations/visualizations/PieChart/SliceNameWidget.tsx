@@ -12,6 +12,10 @@ export function SliceNameWidget({
   pieRows: PieRow[];
   updateRowName: (newName: string, key: string | number) => void;
 }) {
+  if (pieRows.length === 0) {
+    return null;
+  }
+
   const row = pieRows.find(row => row.key === initialKey);
   if (row == null) {
     throw Error(`Could not find pieRow with key ${initialKey}`);

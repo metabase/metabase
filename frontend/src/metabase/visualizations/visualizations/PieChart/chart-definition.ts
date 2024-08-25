@@ -92,6 +92,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     "pie.rows": {
       section: t`Data`,
       widget: ChartSettingOrderedSimple,
+      getHidden: (_rawSeries, settings) => settings["pie.dimension"] == null,
       getValue: (rawSeries, settings) => {
         return getPieRows(rawSeries, settings, (value, options) =>
           String(formatValue(value, options)),
@@ -153,7 +154,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         ) => {
           const pieRows = vizSettings["pie.rows"];
           if (pieRows == null) {
-            throw Error("Missing `pie.rows` setting");
+            return { pieRows: [], updateRowName: () => null };
           }
 
           return {
