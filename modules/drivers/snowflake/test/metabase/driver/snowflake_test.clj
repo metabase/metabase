@@ -819,10 +819,11 @@
 ;;;; (In Belize they know no DST anymore.)
 ;;;;
 
+(def ^:private belize-offset (t/zone-offset "-06:00"))
+
 (defn- rows-for-good-datetimes-in-belize
   []
-  (let [belize-offset (t/zone-offset "-06:00")
-        number-of-points (* 4 3)
+  (let [number-of-points (* 4 3)
         today-dt (t/truncate-to (t/offset-date-time belize-offset) :days)
         first-dt-point (t/- today-dt (t/days 2))
         dt-points (for [i (range number-of-points)]
@@ -859,11 +860,11 @@
 (deftest ^:synchronized correct-timestamp-type-querying-test
   (mt/test-driver
     :snowflake
-    (let [original-set-current-user-timezone! @#'test.data.snowflake/set-user-timezone!
+    (let [original-set-current-user-timezone! @#'test.data.snowflake/set-current-user-timezone!
           original-dbdef->connection-details (get-method tx/dbdef->connection-details :snowflake)]
-      (with-redefs [test.data.snowflake/set-user-timezone!
-                    (fn [user _timezone]
-                      (original-set-current-user-timezone! user "America/Belize"))
+      (with-redefs [test.data.snowflake/set-current-user-timezone!
+                    (fn [_timezone]
+                      (original-set-current-user-timezone! "America/Belize"))
                     tx/dbdef->connection-details
                     (fn [driver connection-type database-definition]
                       (-> (original-dbdef->connection-details driver connection-type database-definition)
@@ -871,8 +872,7 @@
         (mt/dataset
           good-datetimes-in-belize
           (testing "Expected data is returned using yesterday filter"
-            (let [belize-offset       (t/zone-offset "-06:00")
-                  yesterday-first     (t/- (t/truncate-to (t/offset-date-time belize-offset) :days) (t/days 1))
+            (let [yesterday-first     (t/- (t/truncate-to (t/offset-date-time belize-offset) :days) (t/days 1))
                   yesterday-last      (t/+ yesterday-first (t/hours 18))
                   yesterday-first-str (t/format :iso-offset-date-time yesterday-first)
                   yesterday-last-str  (t/format :iso-offset-date-time yesterday-last)]

@@ -152,15 +152,15 @@
         (delete-old-datasets!)
         (reset! deleted-old-datasets? true)))))
 
-(defn- set-user-timezone!
-  [user timezone]
+(defn- set-current-user-timezone!
+  [timezone]
   (sql-jdbc.execute/do-with-connection-with-options
    :snowflake
    (no-db-connection-spec)
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (.execute stmt (format "ALTER USER \"%s\" SET TIMEZONE = '%s';" (str/replace user #" " "") timezone))))))
+       (.execute stmt (format "ALTER USER SET TIMEZONE = '%s';" timezone))))))
 
 (defmethod tx/create-db! :snowflake
   [driver db-def & options]
@@ -171,7 +171,7 @@
     ;; Snowflake by default uses America/Los_Angeles timezone. See https://docs.snowflake.com/en/sql-reference/parameters#timezone.
     ;; We expect UTC in tests. Hence fixing [[metabase.query-processor.timezone/database-timezone-id]] (PR #36413)
     ;; produced lot of failures. Following expression addresses that, setting timezone for the test user.
-    (set-user-timezone! (:user (tx/dbdef->connection-details :snowflake :server db-def)) "UTC")
+    (set-current-user-timezone! "UTC")
     ;; now call the default impl for SQL JDBC drivers
     (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
