@@ -114,7 +114,7 @@ export const ChartSettingSeriesOrder = ({
           <ChartSettingOrderedItems
             items={visibleItems}
             getItemName={getItemTitle}
-            onRemove={toggleDisplay}
+            onRemove={visibleItems.length > 1 ? toggleDisplay : undefined}
             onEnable={toggleDisplay}
             onSortEnd={handleSortEnd}
             onEdit={hasEditSettings ? handleOnEdit : undefined}
