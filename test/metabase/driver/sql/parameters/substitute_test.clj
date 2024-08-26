@@ -552,7 +552,7 @@
          expand*
          (dissoc :template-tags)))))
 
-(deftest expand-field-filters-for-datetime-field-test
+(deftest expand-field-filters-for-date-field-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (testing "dimension (date/single)"
       (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
@@ -665,8 +665,8 @@
          expand*
          (dissoc :template-tags)))))
 
-;;;; The following test is [[expand-field-filters-for-datetime-field-test]] adjusted to datetime field.
-(deftest expand-field-filters-for-date-field-test
+;;;; The following test is [[expand-field-filters-for-date-field-test]] adjusted to datetime field.
+(deftest expand-field-filters-for-datetime-field-test
   (mt/with-temporary-setting-values [start-of-week :sunday]
     (testing "dimension (date/all-options) (`on` filter with with time)"
       (is (= {:query "SELECT * FROM orders WHERE \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?;",
