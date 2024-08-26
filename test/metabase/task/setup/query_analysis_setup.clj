@@ -36,7 +36,7 @@
                                   :dataset_query (mt/native-query {:query "SELECT boom, FROM"})}]
 
       ;; Make sure there is no existing analysis for the relevant cards
-      (t2/delete! :model/QueryField :card_id [:in (map :id [c1 c2 c3 c4 archived invalid])])
+      (t2/delete! :model/QueryAnalysis :card_id [:in (map :id [c1 c2 c3 c4 archived invalid])])
 
       ;; Make sure some other card has analysis
       (query-analysis/analyze-card! c3)
