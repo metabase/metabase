@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [clj-http.client :as http]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.session :as api.session]
    [metabase.driver.h2 :as h2]
    [metabase.email.messages :as messages]
@@ -33,7 +34,8 @@
 
 (defn- reset-throttlers! []
   (doseq [throttler (vals @#'api.session/login-throttlers)]
-    (reset! (:attempts throttler) nil)))
+    (reset! (:attempts throttler) nil))
+  (reset! (:attempts (var-get #'api.session/reset-password-throttler)) nil))
 
 (def ^:private SessionResponse
   [:map
@@ -72,12 +74,12 @@
         (is (nil? (get-in response [:cookies session-cookie :expires]))))))
   (testing "failure should log an error(#14317)"
     (t2.with-temp/with-temp [User user]
-      (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
-              (->> (mt/with-log-messages-for-level :error
-                     (mt/client :post 400 "session" {:email (:email user), :password "wooo"}))
-                   ;; geojson can throw errors and we want the authentication error
-                   (filter (fn [[_log-level _error message]] (= message "Authentication endpoint error")))
-                   first))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (mt/client :post 400 "session" {:email (:email user), :password "wooo"})
+        (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+                (->> (messages)
+                     ;; geojson can throw errors and we want the authentication error
+                     (m/find-first #(= (:message %) "Authentication endpoint error")))))))))
 
 (deftest login-validation-test
   (reset-throttlers!)
@@ -114,9 +116,10 @@
         (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                  (login))))
       (testing "Error should be logged (#14317)"
-        (is (=? [:error clojure.lang.ExceptionInfo "Authentication endpoint error"]
-                (first (mt/with-log-messages-for-level :error
-                         (login))))))
+        (mt/with-log-messages-for-level [messages :error]
+          (login)
+          (is (=? {:level :error, :e clojure.lang.ExceptionInfo, :message "Authentication endpoint error"}
+                  (first (messages))))))
       (is (re= #"^Too many attempts! You must wait \d+ seconds before trying again\.$"
                (login))
           "Trying to login immediately again should still return throttling error"))))
@@ -208,7 +211,7 @@
                        [:device_description ms/NonBlankString]
                        [:ip_address         ms/NonBlankString]
                        [:active             [:= false]]]
-                (t2/select-one LoginHistory :id login-history-id))))))))
+                      (t2/select-one LoginHistory :id login-history-id))))))))
 
 (deftest forgot-password-test
   (reset-throttlers!)
@@ -317,13 +320,30 @@
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
-                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))))
+                       (mt/derecordize (t2/select-one [User :reset_token :reset_triggered], :id id))))))))))
+    (testing "Reset password endpoint is throttled on endpoint"
+      (reset-throttlers!)
+      (let [try!      (fn []
+                        (try
+                          (http/post (client/build-url "session/reset_password" {})
+                                     {:form-params {"token" (str (random-uuid))
+                                                    "password" (str (random-uuid))}
+                                      :content-type :json})
+                          ::succeeded
+                          (catch Exception e
+                            (or (some-> (ex-data e) :body (json/parse-string true))
+                                ::unknown-error))))
+            responses (into [] (repeatedly 30 try!))]
+        (is (nil? (some #{::succeeded ::unknown-error} responses)))
+        (is (every? (comp :password :errors) responses))
+        (is (some (comp #(re-find #"Invalid reset token" %) :password :errors) responses))
+        (is (some (comp #(re-find #"Too many attempts!" %) :password :errors) responses))))))
 
 (deftest reset-password-successful-event-test
   (reset-throttlers!)
   (mt/with-premium-features #{:audit-app}
     (testing "Test that a successful password reset creates the correct event"
-      (mt/with-model-cleanup [:model/Activity :model/AuditLog :model/User]
+      (mt/with-model-cleanup [:model/AuditLog :model/User]
         (mt/with-fake-inbox
           (let [password {:old "password"
                           :new "whateverUP12!!"}]
@@ -416,14 +436,14 @@
 
     (testing "Authenticated normal user"
       (mt/with-test-user :lucky
-       (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
-              (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
+        (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated})))
+               (set (keys (mt/user-http-request :lucky :get 200 "session/properties")))))))
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-       (with-redefs [setting/has-advanced-setting-access? (constantly true)]
-         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
-                (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
+        (with-redefs [setting/has-advanced-setting-access? (constantly true)]
+          (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager})))
+                 (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
     (testing "Authenticated super user"
       (mt/with-test-user :crowberto
@@ -446,10 +466,22 @@
   (reset-throttlers!)
   (testing "GET /session/properties"
     (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-      (mt/with-mock-i18n-bundles {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
+      (mt/with-mock-i18n-bundles! {"es" {:messages {"Connection String" "Cadena de conexión !"}}}
         (is (= "Cadena de conexión !"
                (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"x-metabase-locale" "es"}}})
                    :engines :h2 :details-fields first :display-name)))))))
+
+(deftest properties-skip-sensitive-test
+  (reset-throttlers!)
+  (testing "GET /session/properties"
+    (testing "don't return the token for admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :crowberto))
+                 keys #{:premium-embedding-token}))))
+    (testing "don't return the token for non-admins"
+      (is (= nil
+             (-> (mt/client :get 200 "session/properties" (mt/user->credentials :rasta))
+                 keys #{:premium-embedding-token}))))))
 
 ;;; ------------------------------------------- TESTS FOR GOOGLE SIGN-IN ---------------------------------------------
 
@@ -484,7 +516,7 @@
 
 (deftest ldap-login-test
   (reset-throttlers!)
-  (ldap.test/with-ldap-server
+  (ldap.test/with-ldap-server!
     (testing "Test that we can login with LDAP"
       (t2.with-temp/with-temp [User _ {:email    "ngoc@metabase.com"
                                        :password "securedpassword"}]

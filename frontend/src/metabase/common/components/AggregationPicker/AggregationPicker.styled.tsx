@@ -1,12 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import type { ColorName } from "metabase/lib/colors/types";
-
-export const Root = styled.div<{ color: ColorName }>`
-  color: ${props => color(props.color)};
-`;
-
 export const ColumnPickerContainer = styled.div`
   min-width: 300px;
 `;
@@ -15,8 +8,8 @@ export const ColumnPickerHeaderContainer = styled.div`
   display: flex;
   align-items: center;
   padding: 1rem 0.5rem;
-  border-bottom: 1px solid ${color("border")};
-  color: ${color("text-medium")};
+  border-bottom: 1px solid var(--mb-color-border);
+  color: var(--mb-color-text-medium);
 `;
 
 export const ColumnPickerHeaderTitleContainer = styled.a`
@@ -30,15 +23,4 @@ export const ColumnPickerHeaderTitle = styled.span`
   display: inline-block;
   font-weight: 700;
   font-size: 1.17em;
-`;
-
-export const InfoIconContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding-right: 0.5rem;
-
-  opacity: 0.7;
-  cursor: pointer;
 `;

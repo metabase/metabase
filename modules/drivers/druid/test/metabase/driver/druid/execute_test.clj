@@ -15,7 +15,7 @@
         (let [results (mt/run-mbql-query checkins
                         {:limit 1, :order-by [[:asc $timestamp]]})]
           (assert (= (:status results) :completed)
-            (u/pprint-to-str 'red results))
+                  (u/pprint-to-str 'red results))
           (testing "cols"
             (is (=  ["timestamp"
                      "venue_name"
@@ -28,7 +28,7 @@
                      "unique_users"
                      "user_name"
                      "user_last_login"]
-                   (->> results :data :cols (map :name)))))
+                    (->> results :data :cols (map :name)))))
           (testing "rows"
             (is (=  [["2013-01-03T00:00:00Z"
                       "Kinaree Thai Bistro"
@@ -41,9 +41,9 @@
                       "AQAAAQAAAAEBsA=="
                       "Simcha Yan"
                       "2014-01-01T08:30:00"]]
-                   (-> results :data :rows)))))))))
+                    (-> results :data :rows)))))))))
 
-(deftest post-process-select-query-test
+(deftest ^:parallel post-process-select-query-test
   (testing "Test that we can still return results from native :select queries, even if we no longer generate them"
     ;; example results adapted from https://github.com/apache/druid/blob/d00747774208dbbfcb272ee7d1c30cf879887838/docs/querying/select-query.md
     (let [results (with-open [r (io/reader "modules/drivers/druid/test/metabase/driver/druid/execute_test/select_results.json")]

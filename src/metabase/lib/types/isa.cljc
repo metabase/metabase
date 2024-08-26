@@ -80,6 +80,16 @@
   [column]
   (field-type? ::lib.types.constants/string column))
 
+(defn ^:export string-like?
+  "Is `column` of a temporal type?"
+  [column]
+  (field-type? ::lib.types.constants/string_like column))
+
+(defn ^:export string-or-string-like?
+  "Is `column` of a temporal type?"
+  [column]
+  (or (string? column) (string-like? column)))
+
 (defn ^:export summable?
   "Is `column` of a summable type?"
   [column]
@@ -315,7 +325,7 @@
   of `dst-column`."
   [src-column dst-column]
   (or
-    (and (string? src-column)   (string? dst-column))
-    (and (number? src-column)   (number? dst-column))
-    (and (temporal? src-column) (temporal? dst-column))
-    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))
+   (and (string? src-column)   (string? dst-column))
+   (and (number? src-column)   (number? dst-column))
+   (and (temporal? src-column) (temporal? dst-column))
+   (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))

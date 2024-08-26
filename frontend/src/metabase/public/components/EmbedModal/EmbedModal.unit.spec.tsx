@@ -68,20 +68,20 @@ describe("EmbedModal", () => {
     );
   });
 
-  it("should go to the legalese step when `Next` is clicked", () => {
+  it("should go to the legalese step when `Next` is clicked", async () => {
     setup();
 
-    userEvent.click(screen.getByText("Next"));
+    await userEvent.click(screen.getByText("Next"));
 
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
   });
 
-  it("should go to the legalese step then the static embedding step if the user has not accepted the embedding terms", () => {
+  it("should go to the legalese step then the static embedding step if the user has not accepted the embedding terms", async () => {
     setup({ showStaticEmbedTerms: true });
-    userEvent.click(screen.getByText("Next"));
+    await userEvent.click(screen.getByText("Next"));
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
 
-    userEvent.click(screen.getByText("Next"));
+    await userEvent.click(screen.getByText("Next"));
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent(
       "application",
     );
@@ -90,7 +90,7 @@ describe("EmbedModal", () => {
   it("should immediately go to the static embedding step if the user has accepted the terms", async () => {
     setup({ showStaticEmbedTerms: false });
 
-    userEvent.click(screen.getByText("Next"));
+    await userEvent.click(screen.getByText("Next"));
     expect(
       within(screen.getByTestId("modal-header")).getByText("Static embedding"),
     ).toBeInTheDocument();
@@ -99,21 +99,21 @@ describe("EmbedModal", () => {
     );
   });
 
-  it("returns to the initial embed modal landing when the user clicks the modal title", () => {
+  it("returns to the initial embed modal landing when the user clicks the modal title", async () => {
     setup();
 
-    userEvent.click(screen.getByText("Next"));
+    await userEvent.click(screen.getByText("Next"));
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent("legalese");
 
-    userEvent.click(screen.getByText("Static embedding"));
+    await userEvent.click(screen.getByText("Static embedding"));
     expect(screen.getByTestId("test-embed-step")).toHaveTextContent(
       "Embed Landing",
     );
   });
 
-  it("calls onClose when the modal is closed", () => {
+  it("calls onClose when the modal is closed", async () => {
     const { onClose } = setup();
-    userEvent.click(screen.getByLabelText("close icon"));
+    await userEvent.click(screen.getByLabelText("close icon"));
     expect(onClose).toHaveBeenCalled();
   });
 });

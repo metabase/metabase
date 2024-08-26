@@ -1,6 +1,11 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
+import {
+  assertEChartsTooltip,
+  cartesianChartCircle,
+  restore,
+  visitQuestionAdhoc,
+} from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -37,10 +42,21 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    popover().within(() => {
-      cy.findByText("Created At:");
-      cy.findByText("Count:");
-      cy.findByText(/Distinct values of Products? → ID:/);
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "Created At",
+          value: "May 2023",
+        },
+        {
+          name: "Count",
+          value: "271",
+        },
+        {
+          name: "Distinct values of Product → ID",
+          value: "137",
+        },
+      ],
     });
   });
 
@@ -63,10 +79,21 @@ describe("scenarios > visualizations > scatter", () => {
     });
 
     triggerPopoverForBubble();
-    popover().within(() => {
-      cy.findByText("Created At:");
-      cy.findByText("Orders count:");
-      cy.findByText("Products count:");
+    assertEChartsTooltip({
+      rows: [
+        {
+          name: "Created At",
+          value: "May 2023",
+        },
+        {
+          name: "Orders count",
+          value: "271",
+        },
+        {
+          name: "Products count",
+          value: "137",
+        },
+      ],
     });
   });
 
@@ -104,16 +131,12 @@ select 10 as size, 2 as x, 5 as y`,
       },
     });
 
-    cy.get("circle").each((circle, index) => {
-      cy.wrap(circle)
-        .invoke("attr", "r")
-        .then(r => {
-          const rFloat = +r;
-
-          expect(rFloat).to.be.greaterThan(0);
-
-          cy.wrap(r).as("radius" + index);
-        });
+    cartesianChartCircle().each(([circle], index) => {
+      const { width, height } = circle.getBoundingClientRect();
+      const TOLERANCE = 0.1;
+      expect(width).to.be.greaterThan(0);
+      expect(height).to.be.within(width - TOLERANCE, width + TOLERANCE);
+      cy.wrap(width).as("radius" + index);
     });
 
     cy.get("@radius0").then(r0 => {
@@ -132,7 +155,7 @@ function triggerPopoverForBubble(index = 13) {
     cy.findByLabelText("Switch to visualization").click(); // ... and then back to the scatter visualization (that now seems to be stable enough to make assertions about)
   });
 
-  cy.get(".bubble")
+  cartesianChartCircle()
     .eq(index) // Random bubble
     .trigger("mousemove");
 }

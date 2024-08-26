@@ -30,7 +30,7 @@ jobs:
             const prNumber = context.payload.pull_request.number;
 
             if (prAuthor.endsWith('[bot]')) {
-              return false;
+              return null;
             }
 
             // Assign PR author
@@ -44,7 +44,7 @@ jobs:
             const team = teamConfig.teams.find(t => t.members.includes(prAuthor));
             if (!team) {
               console.log('You are not assigned to any team. If you need one, update .github/team.json');
-              return false;
+              return null;
             }
 
             try {
@@ -55,7 +55,7 @@ jobs:
               });
             } catch (e) {
               console.log(`The label ${team.label} does not exist, create it first`);
-              return false;
+              return null;
             }
 
             // Add team label
@@ -66,9 +66,9 @@ jobs:
               labels: [team.label]
             });
 
-            return true;
+            return team.projectUrl || null;
       - uses: actions/add-to-project@v0.5.0
-        if: ${{ fromJSON(steps.auto-assign.outputs.result) }}
+        if: ${{ steps.auto-assign.outputs.result != 'null' }}
         with:
-          project-url: https://github.com/orgs/metabase/projects/50/views/1
+          project-url: ${{ steps.auto-assign.outputs.result }}
           github-token: ${{ steps.generate-token.outputs.token }}

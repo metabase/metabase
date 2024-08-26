@@ -4,12 +4,12 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  nonPersonalOrArchivedCollection,
   isInstanceAnalyticsCollection,
+  nonPersonalOrArchivedCollection,
 } from "metabase/collections/utils";
 import Collections, {
-  getCollectionIcon,
   ROOT_COLLECTION,
+  getCollectionIcon,
 } from "metabase/entities/collections";
 import Group from "metabase/entities/groups";
 import SnippetCollections from "metabase/entities/snippet-collections";
@@ -21,18 +21,19 @@ import {
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type {
   Collection,
-  Group as GroupType,
-  CollectionPermissions,
   CollectionId,
+  CollectionPermissions,
+  Group as GroupType,
 } from "metabase-types/api";
 import type {
-  State,
-  ExpandedCollection,
   CollectionTreeItem,
+  ExpandedCollection,
+  State,
 } from "metabase-types/store";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../constants/messages";
+import type { DataPermissionValue } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
 
@@ -245,7 +246,7 @@ export const getCollectionsPermissionEditor = createSelector(
         collection.id,
       );
 
-      const confirmations = (newValue: string) => [
+      const confirmations = (newValue: DataPermissionValue) => [
         getPermissionWarningModal(
           newValue,
           defaultGroupPermission,

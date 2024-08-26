@@ -71,23 +71,27 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn, merge } from "icepick";
 import inflection from "inflection"; // NOTE: need to use inflection directly here due to circular dependency
-import { normalize, denormalize, schema } from "normalizr";
+import { denormalize, normalize, schema } from "normalizr";
 import createCachedSelector from "re-reselect";
 import _ from "underscore";
 
-import { GET, PUT, POST, DELETE } from "metabase/lib/api";
+import { DELETE, GET, POST, PUT } from "metabase/lib/api";
 import {
   combineReducers,
-  handleEntities,
   compose,
+  handleEntities,
   withAction,
-  withAnalytics,
-  withRequestState,
   withCachedDataAndRequestState,
+  withRequestState,
 } from "metabase/lib/redux";
 import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 import { addUndo } from "metabase/redux/undo";
 
+const EMPTY_ENTITY_QUERY = {};
+
+/**
+ * @deprecated use "metabase/api" instead
+ */
 export function createEntity(def) {
   const entity = { ...def };
 
@@ -190,16 +194,6 @@ export function createEntity(def) {
     ]);
   }
 
-  // same as withRequestState, but with category/label
-  function withEntityAnalytics(action) {
-    return withAnalytics(
-      "entities",
-      entity.name,
-      action,
-      entity.getAnalyticsMetadata,
-    );
-  }
-
   function withEntityActionDecorators(action) {
     return entity.actionDecorators[action] || (_ => _);
   }
@@ -218,23 +212,27 @@ export function createEntity(def) {
     )(
       (entityQuery, options = {}) =>
         async (dispatch, getState) =>
-          entity.normalize(await entity.api.get(entityQuery, options)),
+          entity.normalize(
+            await entity.api.get(entityQuery, options, dispatch, getState),
+          ),
     ),
 
     create: compose(
       withAction(CREATE_ACTION),
-      withEntityAnalytics("create"),
       withEntityRequestState(() => ["create"]),
       withEntityActionDecorators("create"),
     )(entityObject => async (dispatch, getState) => {
       return entity.normalize(
-        await entity.api.create(getWritableProperties(entityObject)),
+        await entity.api.create(
+          getWritableProperties(entityObject),
+          dispatch,
+          getState,
+        ),
       );
     }),
 
     update: compose(
       withAction(UPDATE_ACTION),
-      withEntityAnalytics("update"),
       withEntityRequestState(object => [object.id, "update"]),
       withEntityActionDecorators("update"),
     )(
@@ -253,7 +251,11 @@ export function createEntity(def) {
           }
 
           const result = entity.normalize(
-            await entity.api.update(getWritableProperties(entityObject)),
+            await entity.api.update(
+              getWritableProperties(entityObject),
+              dispatch,
+              getState,
+            ),
           );
 
           if (notify) {
@@ -286,11 +288,10 @@ export function createEntity(def) {
 
     delete: compose(
       withAction(DELETE_ACTION),
-      withEntityAnalytics("delete"),
       withEntityRequestState(object => [object.id, "delete"]),
       withEntityActionDecorators("delete"),
     )(entityObject => async (dispatch, getState) => {
-      await entity.api.delete(entityObject);
+      await entity.api.delete(entityObject, dispatch, getState);
       return {
         entities: { [entity.name]: { [entityObject.id]: null } },
         result: entityObject.id,
@@ -310,7 +311,11 @@ export function createEntity(def) {
         entityQuery => [...getListStatePath(entityQuery), "fetch"],
       ),
     )((entityQuery = null) => async (dispatch, getState) => {
-      const fetched = await entity.api.list(entityQuery || {});
+      const fetched = await entity.api.list(
+        entityQuery || EMPTY_ENTITY_QUERY,
+        dispatch,
+        getState,
+      );
       // for now at least paginated endpoints have a 'data' property that
       // contains the actual entries, if that is on the response we should
       // use that as the 'results'
@@ -454,8 +459,9 @@ export function createEntity(def) {
     requestType,
   ];
 
+  const defaultRequestState = {};
   const getRequestState = (state, props) =>
-    getIn(state, getRequestStatePath(props)) || {};
+    getIn(state, getRequestStatePath(props)) || defaultRequestState;
 
   const getLoading = createSelector(
     [getRequestState],
@@ -661,3 +667,19 @@ export const notify = (opts = {}, subject, verb) =>
 
 export const undo = (opts = {}, subject, verb) =>
   merge({ notify: { subject, verb, undo: true } }, opts || {});
+
+export async function entityCompatibleQuery(
+  entityQuery,
+  dispatch,
+  endpoint,
+  { forceRefetch = true } = {},
+) {
+  const request = entityQuery === EMPTY_ENTITY_QUERY ? undefined : entityQuery;
+  const action = dispatch(endpoint.initiate(request, { forceRefetch }));
+
+  try {
+    return await action.unwrap();
+  } finally {
+    action.unsubscribe?.();
+  }
+}

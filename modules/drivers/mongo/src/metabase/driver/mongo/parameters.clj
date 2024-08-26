@@ -10,8 +10,8 @@
    [metabase.driver.common.parameters.parse :as params.parse]
    [metabase.driver.common.parameters.values :as params.values]
    [metabase.driver.mongo.query-processor :as mongo.qp]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.util :as u]
@@ -65,11 +65,11 @@
     :else
     (pr-str x)))
 
-(mu/defn ^:private field->name
+(mu/defn- field->name
   ([field]
    (field->name field true))
 
-  ([field :- lib.metadata/ColumnMetadata
+  ([field :- ::lib.schema.metadata/column
     pr?]
    ;; for native parameters we serialize and don't need the extra pr
    (cond-> (mongo.qp/field->name field ".")
@@ -109,9 +109,9 @@
     :else
     (format "{%s: %s}" (field->name field) (param-value->str field value))))
 
-(mu/defn ^:private substitute-field-filter
+(mu/defn- substitute-field-filter
   [{field :field, {:keys [value]} :value, :as field-filter} :- [:map
-                                                                [:field lib.metadata/ColumnMetadata]
+                                                                [:field ::lib.schema.metadata/column]
                                                                 [:value [:map [:value :any]]]]]
   (if (sequential? value)
     (format "{%s: %s}" (field->name field) (param-value->str field value))
@@ -191,7 +191,7 @@
 
        :else
        (throw (ex-info (tru "Don''t know how to substitute {0} {1}" (.getName (class x)) (pr-str x))
-                {:type qp.error-type/driver}))))
+                       {:type qp.error-type/driver}))))
    [[] nil]
    xs))
 
@@ -199,7 +199,7 @@
   (let [[replaced missing] (substitute* param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
-               {:type qp.error-type/invalid-query})))
+                      {:type qp.error-type/invalid-query})))
     (when (seq replaced)
       (str/join replaced))))
 
@@ -208,7 +208,7 @@
     x
     (u/prog1 (substitute param->value (params.parse/parse x false))
       (when-not (= x <>)
-        (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
+        (log/debugf "Substituted %s -> %s" (pr-str x) (pr-str <>))))))
 
 (defn substitute-native-parameters
   "Implementation of [[metabase.driver/substitute-native-parameters]] for MongoDB."

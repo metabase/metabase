@@ -41,14 +41,13 @@
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [include archived]
   {include  [:maybe Include]
-   archived [:maybe ms/BooleanString]}
-  (let [archived? (Boolean/parseBoolean archived)
+   archived [:maybe ms/BooleanValue]}
+  (let [archived? archived
         timelines (->> (t2/select Timeline
-                         {:where    [:and
-                                     [:= :archived archived?]
-                                     (collection/visible-collection-ids->honeysql-filter-clause
-                                      (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                          :order-by [[:%lower.name :asc]]})
+                                  {:where    [:and
+                                              [:= :archived archived?]
+                                              (collection/visible-collection-filter-clause)]
+                                   :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write])
       (= include "events")
@@ -60,10 +59,10 @@
   [id include archived start end]
   {id       ms/PositiveInt
    include  [:maybe Include]
-   archived [:maybe ms/BooleanString]
+   archived [:maybe ms/BooleanValue]
    start    [:maybe ms/TemporalString]
    end      [:maybe ms/TemporalString]}
-  (let [archived? (Boolean/parseBoolean archived)
+  (let [archived? archived
         timeline  (api/read-check (t2/select-one Timeline :id id))]
     (cond-> (t2/hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection
@@ -91,9 +90,9 @@
         current-archived (:archived (t2/select-one Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (t2/update! Timeline id
-      (u/select-keys-when timeline-updates
-        :present #{:description :icon :collection_id :default :archived}
-        :non-nil #{:name}))
+                (u/select-keys-when timeline-updates
+                                    :present #{:description :icon :collection_id :default :archived}
+                                    :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (t2/update! TimelineEvent {:timeline_id id} {:archived archived}))
     (t2/hydrate (t2/select-one Timeline :id id) :creator [:collection :can_write])))

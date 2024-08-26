@@ -1,11 +1,13 @@
+import cx from "classnames";
 import { inflect } from "inflection";
 import { jt, t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import CS from "metabase/css/core/index.css";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { Icon } from "metabase/ui";
-import type ForeignKey from "metabase-lib/metadata/ForeignKey";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
 import {
   ObjectRelationContent,
@@ -40,9 +42,9 @@ export function Relationships({
 
   return (
     <ObjectRelationships>
-      <div className="text-bold text-medium">
+      <div className={cx(CS.textBold, CS.textMedium)}>
         {jt`${(
-          <span className="text-dark" key={objectName}>
+          <span className={CS.textDark} key={objectName}>
             {objectName}
           </span>
         )} is connected to:`}
@@ -73,7 +75,10 @@ export function Relationships({
 
 interface RelationshipProps {
   fk: ForeignKey;
-  fkCountInfo: { status: number; value: number } | null;
+  fkCountInfo: {
+    status: number;
+    value: number;
+  } | null;
   fkCount: number;
   foreignKeyClicked: (fk: ForeignKey) => void;
 }
@@ -93,7 +98,7 @@ function Relationship({
 
   const via =
     fkCount > 1 ? (
-      <span className="text-medium text-normal">
+      <span className={cx(CS.textMedium, CS.textNormal)}>
         {" "}
         {t`via ${fk.origin?.displayName()}`}
       </span>
@@ -107,13 +112,13 @@ function Relationship({
       >
         <div>
           <h2>{isLoaded ? fkCountValue : <LoadingSpinner size={25} />}</h2>
-          <h5 className="block">
+          <h5 className={CS.block}>
             {relationName}
             {via}
           </h5>
         </div>
         {fkClickable && (
-          <IconBorder className="flex-align-right">
+          <IconBorder className={CS.flexAlignRight}>
             <Icon name="chevronright" size={10} />
           </IconBorder>
         )}

@@ -8,8 +8,8 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.date-time-zone-functions-test
-    :as qp.datetime-test]
+   [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
+   [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
@@ -106,8 +106,14 @@
                    (qp.compile/compile
                     (mt/mbql-query attempts
                       {:aggregation [[:count]]
-                       :filter      [:time-interval $datetime :last :month]}))))
+                       :filter      [:time-interval $datetime :last :month]}))))))))))
 
+(deftest ^:parallel no-initial-projection-test-2
+  (mt/test-driver :mongo
+    (testing "Don't need to create initial projections anymore (#4216)"
+      (testing "Don't create an initial projection for datetime-fields that use `:default` bucketing (#14838)"
+        (mt/with-clock #t "2021-02-15T17:33:00-08:00[US/Pacific]"
+          (mt/dataset attempted-murders
             (testing "should still work even with bucketing bucketing"
               (let [tz    (qp.timezone/results-timezone-id :mongo mt/db)
                     query (mt/with-metadata-provider (mt/id)
@@ -147,8 +153,7 @@
                                       {"$project" {"_id"        false
                                                    "datetime"   "$_id.datetime"
                                                    "datetime_2" "$_id.datetime_2"
-                                                   "count"      true}}
-                                      {"$sort" {"datetime" 1}}]
+                                                   "count"      true}}]
                         :collection  "attempts"
                         :mbql?       true}
                        query))
@@ -188,7 +193,7 @@
     (testing "Result timezone is respected when grouping by hour (#11149)"
       (mt/dataset attempted-murders
         (testing "Querying in UTC works"
-          (mt/with-system-timezone-id "UTC"
+          (mt/with-system-timezone-id! "UTC"
             (is (= [["2019-11-20T20:00:00Z" 1]
                     ["2019-11-19T00:00:00Z" 1]
                     ["2019-11-18T20:00:00Z" 1]
@@ -199,7 +204,7 @@
                                :order-by [[:desc [:field %datetime {:temporal-unit :hour}]]]
                                :limit 4}))))))
         (testing "Querying in Kathmandu works"
-          (mt/with-system-timezone-id "Asia/Kathmandu"
+          (mt/with-system-timezone-id! "Asia/Kathmandu"
             (is (= [["2019-11-21T01:00:00+05:45" 1]
                     ["2019-11-19T06:00:00+05:45" 1]
                     ["2019-11-19T02:00:00+05:45" 1]
@@ -259,8 +264,8 @@
                                     :condition [:= $tips.source.categories &Tips.$tips.source.categories]}]})
                   compiled (mongo.qp/mbql->native query)
                   let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
-                 (is (and (not (str/includes? let-lhs "."))
-                          (str/includes? let-lhs "source_categories"))))))))))
+              (is (and (not (str/includes? let-lhs "."))
+                       (str/includes? let-lhs "source_categories"))))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
@@ -268,8 +273,9 @@
       (is (= {:projections ["count" "count_2"]
               :query
               [{"$group" {"_id" nil, "count" {"$addToSet" "$name"}, "count_2" {"$addToSet" "$price"}}}
+               {"$addFields" {"count" {"$size" "$count"} "count_2" {"$size" "$count_2"}}}
                {"$sort" {"_id" 1}}
-               {"$project" {"_id" false, "count" {"$size" "$count"}, "count_2" {"$size" "$count_2"}}}
+               {"$project" {"_id" false, "count" true, "count_2" true}}
                {"$limit" 5}],
               :collection  "venues"
               :mbql?       true}
@@ -277,6 +283,32 @@
               (mt/mbql-query venues
                 {:aggregation [[:distinct $name]
                                [:distinct $price]]
+                 :limit       5})))))))
+
+(deftest ^:parallel multiple-aggregations-with-distinct-count-expression-test
+  (mt/test-driver
+    :mongo
+    (testing "Should generate correct queries for `:distinct` in expressions (#35425)"
+      (is (= {:projections ["expression" "expression_2"],
+              :query
+              [{"$group"
+                {"_id"                 nil,
+                 "expression~count"    {"$addToSet" "$name"},
+                 "expression~count1"   {"$addToSet" "$price"},
+                 "expression_2~count"  {"$addToSet" "$name"},
+                 "expression_2~count1" {"$addToSet" "$price"}}}
+               {"$addFields"
+                {"expression"   {"$add" [{"$size" "$expression~count"} {"$size" "$expression~count1"}]},
+                 "expression_2" {"$subtract" [{"$size" "$expression_2~count"} {"$size" "$expression_2~count1"}]}}}
+               {"$sort" {"_id" 1}}
+               {"$project" {"_id" false, "expression" true, "expression_2" true}}
+               {"$limit" 5}],
+              :collection "venues",
+              :mbql? true}
+             (qp.compile/compile
+              (mt/mbql-query venues
+                {:aggregation [[:+ [:distinct $name] [:distinct $price]]
+                               [:- [:distinct $name] [:distinct $price]]]
                  :limit       5})))))))
 
 (defn- extract-projections [projections q]
@@ -438,15 +470,21 @@
                                              [:-
                                               [:absolute-datetime (t/local-date "2008-05-31")]
                                               [:interval -1 :week]
-                                              86400000]]))))))
+                                              86400000]])))))))))
+
+(deftest ^:synchronized temporal-arithmetic-mongo-4-test
+  (mt/test-driver :mongo
+    (mt/with-metadata-provider (mt/id)
       (testing "Date arithmetic fails with Mongo 4-"
         (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo  #"Date arithmetic not supported in versions before 5"
-                                (mongo.qp/compile-filter [:<
-                                                          [:+
-                                                           [:interval 1 :year]
-                                                           [:field "date-field"]]
-                                                          [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Date arithmetic not supported in versions before 5"
+               (mongo.qp/compile-filter [:<
+                                         [:+
+                                          [:interval 1 :year]
+                                          [:field "date-field"]]
+                                         [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
 
 (deftest ^:parallel datetime-math-tests
   (mt/test-driver :mongo
@@ -536,37 +574,57 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
-(deftest uniqe-alias-index-test
+(deftest ^:parallel uniqe-alias-index-test
   (mt/test-driver
-   :mongo
-   (testing "Field aliases have deterministic unique indices"
-     (let [query (mt/mbql-query
-                  nil
-                  {:joins [{:alias "Products"
-                            :source-table $$products
-                            :condition [:= &Products.products.id $orders.product_id]
-                            :fields :all}
-                           {:alias "People"
-                            :source-table $$people
-                            :condition [:= &People.people.id $orders.user_id]
-                            :fields :all}]
-                   :source-query {:source-table $$orders
-                                  :joins [{:alias "Products"
-                                           :source-table $$products
-                                           :condition [:= &Products.products.id $orders.product_id]
-                                           :fields :all}
-                                          {:alias "People"
-                                           :source-table $$people
-                                           :condition [:= &People.people.id $orders.user_id]
-                                           :fields :all}]}})
-           compiled (qp.compile/compile query)
-           indices (reduce (fn [acc lookup-stage]
-                             (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
+    :mongo
+    (testing "Field aliases have deterministic unique indices"
+      (let [query (mt/mbql-query
+                    nil
+                    {:joins [{:alias "Products"
+                              :source-table $$products
+                              :condition [:= &Products.products.id $orders.product_id]
+                              :fields :all}
+                             {:alias "People"
+                              :source-table $$people
+                              :condition [:= &People.people.id $orders.user_id]
+                              :fields :all}]
+                     :source-query {:source-table $$orders
+                                    :joins [{:alias "Products"
+                                             :source-table $$products
+                                             :condition [:= &Products.products.id $orders.product_id]
+                                             :fields :all}
+                                            {:alias "People"
+                                             :source-table $$people
+                                             :condition [:= &People.people.id $orders.user_id]
+                                             :fields :all}]}})
+            compiled (qp.compile/compile query)
+            indices (reduce (fn [acc lookup-stage]
+                              (let [let-var-name (-> (get-in lookup-stage ["$lookup" :let]) keys first)
                                    ;; Following expression ensures index is an integer.
-                                   index (Integer/parseInt (re-find #"\d+$" let-var-name))]
+                                    index (Integer/parseInt (re-find #"\d+$" let-var-name))]
                                ;; Following expression tests that index is unique.
-                               (is (not (contains? acc index)))
-                               (conj acc index)))
-                           #{}
-                           (filter #(contains? % "$lookup") (:query compiled)))]
-       (is (= #{1 2 3 4} indices))))))
+                                (is (not (contains? acc index)))
+                                (conj acc index)))
+                            #{}
+                            (filter #(contains? % "$lookup") (:query compiled)))]
+        (is (= #{1 2 3 4} indices))))))
+
+(deftest ^:parallel parse-query-string-test
+  (testing "`parse-query-string` returns no `Bson...` typed values  (#38181)"
+    ;; ie. parse result does not look as follows: `#object[org.bson.BsonString 0x5f26b3a1 "BsonString{value='1000'}"]`
+    (let [parsed (mongo.qp/parse-query-string "[{\"limit\": \"1000\"}]")]
+      (is (not (instance? org.bson.BsonValue (get-in parsed [0 "limit"])))))))
+
+(deftest ^:parallel parse-query-string-test-2
+  (mt/test-driver :mongo
+    (mt/dataset qp.alternative-date-test/string-times
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
+           (qp/process-query
+            (mt/mbql-query times {:fields [$d]}))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
+           (qp/process-query
+            (mt/mbql-query times {:fields [$t]})))))))

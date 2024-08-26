@@ -28,7 +28,6 @@ async function setup({ folder = {}, onClose = jest.fn() }: SetupOpts = {}) {
     fetchMock.get(
       {
         url: `path:/api/collection/${folder.id}`,
-        query: { namespace: "snippets" },
       },
       folder,
     );
@@ -119,7 +118,7 @@ describe("SnippetCollectionFormModal", () => {
     it("can submit when name is filled in", async () => {
       await setup();
 
-      userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
+      await userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
 
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Create" })).toBeEnabled();
@@ -135,7 +134,7 @@ describe("SnippetCollectionFormModal", () => {
 
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setup();
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       await waitFor(() => {
         expect(onClose).toHaveBeenCalledTimes(1);
       });
@@ -179,7 +178,7 @@ describe("SnippetCollectionFormModal", () => {
 
     it("can't submit if name is empty", async () => {
       await setupEditing();
-      userEvent.clear(screen.getByLabelText(LABEL.NAME));
+      await userEvent.clear(screen.getByLabelText(LABEL.NAME));
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Update" })).toBeDisabled();
       });
@@ -187,7 +186,7 @@ describe("SnippetCollectionFormModal", () => {
 
     it("can submit when have changes", async () => {
       await setupEditing();
-      userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
+      await userEvent.type(screen.getByLabelText(LABEL.NAME), "My folder");
       await waitFor(() => {
         expect(screen.getByRole("button", { name: "Update" })).toBeEnabled();
       });
@@ -202,7 +201,7 @@ describe("SnippetCollectionFormModal", () => {
 
     it("calls onClose when cancel button is clicked", async () => {
       const { onClose } = await setupEditing();
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
       await waitFor(() => {
         expect(onClose).toHaveBeenCalledTimes(1);
       });

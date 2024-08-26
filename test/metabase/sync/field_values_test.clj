@@ -4,7 +4,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.metadata-queries :as metadata-queries]
+   [metabase.analyze :as analyze]
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.field-values :as field-values]
    [metabase.sync :as sync]
@@ -61,26 +61,27 @@
 
 (deftest sync-should-properly-handle-last-used-at
   (testing "Test that syncing will skip updating inactive FieldValues"
-    (t2/update! FieldValues
-                (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
-                {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
-                 :values [1 2 3]})
-    (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
-           (sync-database!' "update-field-values" (data/db))))
-    (is (= [1 2 3] (venues-price-field-values)))
-    (testing "Fetching field values causes an on-demand update and marks Field Values as active"
-      (is (partial= {:values [[1] [2] [3] [4]]}
-                    (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))
-      (is (t/after? (t2/select-one-fn :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
-                    (t/minus (t/offset-date-time) (t/hours 2))))
-      (testing "Field is syncing after usage"
-        (t2/update! FieldValues
-                    (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
-                    {:values [1 2 3]})
-        (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
-               (sync-database!' "update-field-values" (data/db))))
+    (mt/with-full-data-perms-for-all-users!
+      (t2/update! FieldValues
+                  (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
+                  {:last_used_at (t/minus (t/offset-date-time) (t/days 20))
+                   :values [1 2 3]})
+      (is (= (repeat 2 {:errors 0, :created 0, :updated 0, :deleted 0})
+             (sync-database!' "update-field-values" (data/db))))
+      (is (= [1 2 3] (venues-price-field-values)))
+      (testing "Fetching field values causes an on-demand update and marks Field Values as active"
         (is (partial= {:values [[1] [2] [3] [4]]}
-                      (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))
+                      (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))
+        (is (t/after? (t2/select-one-fn :last_used_at FieldValues :field_id (mt/id :venues :price) :type :full)
+                      (t/minus (t/offset-date-time) (t/hours 2))))
+        (testing "Field is syncing after usage"
+          (t2/update! FieldValues
+                      (t2/select-one-pk FieldValues :field_id (mt/id :venues :price) :type :full)
+                      {:values [1 2 3]})
+          (is (= (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
+                 (sync-database!' "update-field-values" (data/db))))
+          (is (partial= {:values [[1] [2] [3] [4]]}
+                        (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price))))))))))
 
 (deftest sync-should-delete-expired-advanced-field-values-test
   (testing "Test that the expired Advanced FieldValues should be removed"
@@ -93,41 +94,41 @@
            valid-linked-filter-id
            old-full-id
            new-full-id]             (t2/insert-returning-pks!
-                                      (t2/table-name FieldValues)
-                                      [;; expired sandbox fieldvalues
-                                       {:field_id   field-id
-                                        :type       "sandbox"
-                                        :hash_key   "random-hash"
-                                        :created_at expired-created-at
-                                        :updated_at expired-created-at}
+                                     (t2/table-name FieldValues)
+                                     [;; expired sandbox fieldvalues
+                                      {:field_id   field-id
+                                       :type       "sandbox"
+                                       :hash_key   "random-hash"
+                                       :created_at expired-created-at
+                                       :updated_at expired-created-at}
                                        ;; expired linked-filter fieldvalues
-                                       {:field_id   field-id
-                                        :type       "linked-filter"
-                                        :hash_key   "random-hash"
-                                        :created_at expired-created-at
-                                        :updated_at expired-created-at}
+                                      {:field_id   field-id
+                                       :type       "linked-filter"
+                                       :hash_key   "random-hash"
+                                       :created_at expired-created-at
+                                       :updated_at expired-created-at}
                                        ;; valid sandbox fieldvalues
-                                       {:field_id   field-id
-                                        :type       "sandbox"
-                                        :hash_key   "random-hash"
-                                        :created_at now
-                                        :updated_at now}
+                                      {:field_id   field-id
+                                       :type       "sandbox"
+                                       :hash_key   "random-hash"
+                                       :created_at now
+                                       :updated_at now}
                                        ;; valid linked-filter fieldvalues
-                                       {:field_id   field-id
-                                        :type       "linked-filter"
-                                        :hash_key   "random-hash"
-                                        :created_at now
-                                        :updated_at now}
+                                      {:field_id   field-id
+                                       :type       "linked-filter"
+                                       :hash_key   "random-hash"
+                                       :created_at now
+                                       :updated_at now}
                                        ;; old full fieldvalues
-                                       {:field_id   field-id
-                                        :type       "full"
-                                        :created_at expired-created-at
-                                        :updated_at expired-created-at}
+                                      {:field_id   field-id
+                                       :type       "full"
+                                       :created_at expired-created-at
+                                       :updated_at expired-created-at}
                                        ;; new full fieldvalues
-                                       {:field_id   field-id
-                                        :type       "full"
-                                        :created_at now
-                                        :updated_at now}])]
+                                      {:field_id   field-id
+                                       :type       "full"
+                                       :created_at now
+                                       :updated_at now}])]
       (is (= (repeat 2 {:deleted 2})
              (sync-database!' "delete-expired-advanced-field-values" (data/db))))
       (testing "The expired Advanced FieldValues should be deleted"
@@ -160,7 +161,7 @@
     (testing (str "if the number grows past the cardinality threshold & we sync again it should get unmarked as auto-list "
                   "and set back to `nil` (#3215)\n")
       ;; now insert enough bloobs to put us over the limit and re-sync.
-      (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/auto-list-cardinality-threshold)))
+      (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 analyze/auto-list-cardinality-threshold)))
       (testing "has_field_values should have been set to nil."
         (is (= nil
                (t2/select-one-fn :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
@@ -211,14 +212,14 @@
                                :type :sandbox
                                :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
-        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
+        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*absolute-max-distinct-values-limit*)))
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values Field
-                                      :id (mt/id :blueberries_consumed :str)))))
+                                   :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
-          (is (= {:values                (take metadata-queries/absolute-max-distinct-values-limit
-                                               (one-off-dbs/range-str (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
+          (is (= {:values                (take field-values/*absolute-max-distinct-values-limit*
+                                               (one-off-dbs/range-str (+ 100 field-values/*absolute-max-distinct-values-limit*)))
                   :human_readable_values []
                   :has_more_values       true}
                  (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
@@ -243,10 +244,10 @@
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values Field
-                                      :id (mt/id :blueberries_consumed :str)))))
+                                   :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list is just a sub-list of all distinct values and `has_more_values` = true"
           (is (= {:values                [(str/join (repeat 50 "A"))]
                   :human_readable_values []
                   :has_more_values       true}
                  (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
-                                        :field_id (mt/id :blueberries_consumed :str))))))))))
+                                         :field_id (mt/id :blueberries_consumed :str))))))))))

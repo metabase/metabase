@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, popover, openTable } from "e2e/support/helpers";
+import { openTable, popover, restore } from "e2e/support/helpers";
 
 const { PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -38,7 +38,7 @@ describe("operators in questions", () => {
       unexpected: ["Is null", "Not null"],
     },
     relativeDates: {
-      expected: ["Past", "Next", "Current"],
+      expected: ["Previous", "Next", "Current"],
       unexpected: ["Is null", "Not null"],
     },
     specificDates: {
@@ -86,7 +86,7 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Price").click();
-        cy.findByDisplayValue("Equal to").click();
+        cy.findByDisplayValue("Between").click();
       });
 
       cy.findByRole("listbox").within(() => {
@@ -101,7 +101,7 @@ describe("operators in questions", () => {
       popover().within(() => {
         cy.findByText("Created At").click();
         cy.findByText("Relative dates…").click();
-        cy.findByText("Past").click();
+        cy.findByText("Previous").click();
       });
 
       popover().within(() => {

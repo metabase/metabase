@@ -202,6 +202,42 @@
                                  (meta/field-metadata :products field))))
               (lib/visible-columns query -1 (lib.util/query-stage query -1)))))))
 
+(deftest ^:parallel visible-columns-excludes-offset-expressions-test
+  (testing "visible-columns should exclude expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:id (meta/id :categories :id) :name "ID"}
+                 {:id (meta/id :categories :name) :name "NAME"}]
+                (lib/visible-columns query)))))))
+
+(deftest ^:parallel returned-columns-includes-offset-expressions-test
+  (testing "returned-columns should include expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:name "Offset col",    :lib/source :source/expressions}
+                 {:name "Nested Offset", :lib/source :source/expressions}]
+                (lib/returned-columns query)))))))
+
 (deftest ^:parallel implicitly-joinable-requires-numeric-id-test
   (testing "implicit join requires real field IDs, so SQL models need to provide that metadata (#37067)"
     (let [model (assoc (lib.tu/mock-cards :orders/native) :type :model)

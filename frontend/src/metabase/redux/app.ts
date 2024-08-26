@@ -1,15 +1,12 @@
-import { push, LOCATION_CHANGE } from "react-router-redux";
+import { createAction } from "@reduxjs/toolkit";
+import { LOCATION_CHANGE, push } from "react-router-redux";
 
 import {
   isSmallScreen,
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/lib/dom";
-import {
-  combineReducers,
-  createAction,
-  handleActions,
-} from "metabase/lib/redux";
+import { combineReducers, handleActions } from "metabase/lib/redux";
 import type { Dispatch } from "metabase-types/store";
 
 interface LocationChangeAction {
@@ -26,6 +23,7 @@ interface LocationChangeAction {
 }
 
 export const SET_ERROR_PAGE = "metabase/app/SET_ERROR_PAGE";
+
 export function setErrorPage(error: any) {
   console.error("Error:", error);
   return {
@@ -99,4 +97,10 @@ const isNavbarOpen = handleActions(
 export default combineReducers({
   errorPage,
   isNavbarOpen,
+  isDndAvailable: (initValue: unknown) => {
+    if (typeof initValue === "boolean") {
+      return initValue;
+    }
+    return true;
+  },
 });

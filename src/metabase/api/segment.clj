@@ -4,13 +4,12 @@
    [compojure.core :refer [DELETE GET POST PUT]]
    [metabase.api.common :as api]
    [metabase.events :as events]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
    [metabase.models.segment :as segment :refer [Segment]]
    [metabase.related :as related]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -35,7 +34,7 @@
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 
-(mu/defn ^:private hydrated-segment [id :- ms/PositiveInt]
+(mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one Segment :id id))
       (t2/hydrate :creator)))
 
@@ -58,12 +57,12 @@
   [id {:keys [revision_message], :as body}]
   (let [existing   (api/write-check Segment id)
         clean-body (u/select-keys-when body
-                     :present #{:description :caveats :points_of_interest}
-                     :non-nil #{:archived :definition :name :show_in_getting_started})
+                                       :present #{:description :caveats :points_of_interest}
+                                       :non-nil #{:archived :definition :name :show_in_getting_started})
         new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
-                     (dissoc clean-body :revision_message)
-                     (when new-def {:definition new-def}))
+                    (dissoc clean-body :revision_message)
+                    (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)
         archive?   (:archived changes)]
@@ -94,8 +93,7 @@
   [id revision_message]
   {id               ms/PositiveInt
    revision_message ms/NonBlankString}
-  (log/warn
-   (trs "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."))
+  (log/warn "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id.")
   (write-check-and-update-segment! id {:archived true, :revision_message revision_message})
   api/generic-204-no-content)
 

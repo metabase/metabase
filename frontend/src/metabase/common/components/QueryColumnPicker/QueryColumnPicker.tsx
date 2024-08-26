@@ -1,13 +1,17 @@
+import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
 import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
-import { getColumnIcon } from "metabase/common/utils/columns";
+import {
+  HoverParent,
+  QueryColumnInfoIcon,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
@@ -25,12 +29,17 @@ export interface QueryColumnPickerProps {
   hasBinning?: boolean;
   hasTemporalBucketing?: boolean;
   withDefaultBucketing?: boolean;
+  withInfoIcons?: boolean;
   maxHeight?: number;
   color?: ColorName;
   checkIsColumnSelected: (item: ColumnListItem) => boolean;
   onSelect: (column: Lib.ColumnMetadata) => void;
   onClose?: () => void;
   "data-testid"?: string;
+  width?: string;
+  hasInitialFocus?: boolean;
+  alwaysExpanded?: boolean;
+  disableSearch?: boolean;
 }
 
 type Sections = {
@@ -47,11 +56,16 @@ export function QueryColumnPicker({
   hasBinning = false,
   hasTemporalBucketing = false,
   withDefaultBucketing = true,
+  withInfoIcons = false,
   color = "brand",
   checkIsColumnSelected,
   onSelect,
   onClose,
+  width,
   "data-testid": dataTestId,
+  hasInitialFocus = true,
+  alwaysExpanded,
+  disableSearch,
 }: QueryColumnPickerProps) {
   const sections: Sections[] = useMemo(
     () =>
@@ -128,7 +142,7 @@ export function QueryColumnPicker({
 
   const renderItemExtra = useCallback(
     (item: ColumnListItem) =>
-      hasBinning || hasTemporalBucketing ? (
+      (hasBinning || hasTemporalBucketing) && (
         <BucketPickerPopover
           query={query}
           stageIndex={stageIndex}
@@ -136,41 +150,62 @@ export function QueryColumnPicker({
           isEditing={checkIsColumnSelected(item)}
           hasBinning={hasBinning}
           hasTemporalBucketing={hasTemporalBucketing}
+          hasChevronDown={withInfoIcons}
           color={color}
           onSelect={handleSelect}
         />
-      ) : null,
+      ),
     [
       query,
       stageIndex,
+      checkIsColumnSelected,
       hasBinning,
       hasTemporalBucketing,
+      withInfoIcons,
       color,
-      checkIsColumnSelected,
       handleSelect,
     ],
   );
 
+  const renderItemIcon = useCallback(
+    (item: ColumnListItem) => (
+      <QueryColumnInfoIcon
+        query={query}
+        stageIndex={stageIndex}
+        column={item.column}
+        position="top-start"
+      />
+    ),
+    [query, stageIndex],
+  );
+
   return (
-    <StyledAccordionList
-      className={className}
-      sections={sections}
-      alwaysExpanded={false}
-      onChange={handleSelectColumn}
-      itemIsSelected={checkIsColumnSelected}
-      renderItemName={renderItemName}
-      renderItemDescription={omitItemDescription}
-      renderItemIcon={renderItemIcon}
-      renderItemExtra={renderItemExtra}
-      color={color}
-      // disable scrollbars inside the list
-      style={{ overflow: "visible" }}
-      maxHeight={Infinity}
-      data-testid={dataTestId}
-      // Compat with E2E tests around MLv1-based components
-      // Prefer using a11y role selectors
-      itemTestId="dimension-list-item"
-    />
+    <DelayGroup>
+      <StyledAccordionList
+        className={className}
+        sections={sections}
+        alwaysExpanded={alwaysExpanded}
+        onChange={handleSelectColumn}
+        itemIsSelected={checkIsColumnSelected}
+        renderItemWrapper={renderItemWrapper}
+        renderItemName={renderItemName}
+        renderItemExtra={renderItemExtra}
+        renderItemDescription={omitItemDescription}
+        renderItemIcon={renderItemIcon}
+        color={color}
+        maxHeight={Infinity}
+        data-testid={dataTestId}
+        searchProp={["name", "displayName"]}
+        // Compat with E2E tests around MLv1-based components
+        // Prefer using a11y role selectors
+        itemTestId="dimension-list-item"
+        withBorders
+        hasInitialFocus={hasInitialFocus}
+        width={width}
+        globalSearch={!disableSearch}
+        searchable={!disableSearch}
+      />
+    </DelayGroup>
   );
 }
 
@@ -178,10 +213,10 @@ function renderItemName(item: ColumnListItem) {
   return item.displayName;
 }
 
-function omitItemDescription() {
-  return null;
+function renderItemWrapper(content: ReactNode) {
+  return <HoverParent>{content}</HoverParent>;
 }
 
-function renderItemIcon(item: ColumnListItem) {
-  return <Icon name={getColumnIcon(item.column)} size={18} />;
+function omitItemDescription() {
+  return null;
 }

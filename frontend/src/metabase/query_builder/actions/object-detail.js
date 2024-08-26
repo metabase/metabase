@@ -4,15 +4,15 @@ import { createThunkAction } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { MetabaseApi } from "metabase/services";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import {
+  getCanZoomNextRow,
+  getCanZoomPreviousRow,
   getCard,
   getFirstQueryResult,
-  getPKColumnIndex,
-  getCanZoomPreviousRow,
-  getCanZoomNextRow,
   getNextRowPKValue,
+  getPKColumnIndex,
   getPreviousRowPKValue,
   getTableForeignKeys,
 } from "../selectors";
@@ -118,7 +118,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
           metadataProvider,
           table,
         );
-        const aggregatedQuery = Lib.aggregateByCount(baseQuery);
+        const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(aggregatedQuery, fk.origin, objectId);
         const finalCard = Question.create({ databaseId, metadata })
           .setQuery(query)

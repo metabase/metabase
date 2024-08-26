@@ -1,6 +1,7 @@
 (ns metabase.util.malli.defn
-  (:refer-clojure :exclude [defn])
+  (:refer-clojure :exclude [defn defn-])
   (:require
+   [clojure.core :as core]
    [clojure.string :as str]
    [malli.destructure]
    [metabase.util :as u]
@@ -10,11 +11,11 @@
 (set! *warn-on-reflection* true)
 
 ;;; TODO -- this should generate type hints from the schemas and from the return type as well.
-(defn- deparameterized-arglist [{:keys [args]}]
+(core/defn- deparameterized-arglist [{:keys [args]}]
   (-> (malli.destructure/parse args)
       :arglist
       (with-meta (macros/case
-                  :cljs
+                   :cljs
                    (meta args)
 
                    ;; make sure we resolve classnames e.g. `java.sql.Connection` intstead of `Connection`, otherwise the
@@ -29,13 +30,13 @@
                      (cond-> args-meta
                        resolved-tag (assoc :tag resolved-tag)))))))
 
-(defn- deparameterized-arglists [{:keys [arities], :as _parsed}]
+(core/defn- deparameterized-arglists [{:keys [arities], :as _parsed}]
   (let [[arities-type arities-value] arities]
     (case arities-type
       :single   (list (deparameterized-arglist arities-value))
       :multiple (map deparameterized-arglist (:arities arities-value)))))
 
-(defn- annotated-docstring
+(core/defn- annotated-docstring
   "Generate a docstring with additional information about inputs and return type using a parsed fn tail (as parsed
   by [[mx/SchematizedParams]])."
   [{original-docstring           :doc
@@ -85,20 +86,28 @@
   to preserve them if you specify them manually. We can fix this in the future."
   [& [fn-name :as fn-tail]]
   (let [parsed           (mu.fn/parse-fn-tail fn-tail)
+        cosmetic-name    (gensym (munge (str fn-name)))
         {attr-map :meta} parsed
         attr-map         (merge
                           {:arglists (list 'quote (deparameterized-arglists parsed))
-                           :schema   (mu.fn/fn-schema parsed)}
+                           :schema   (mu.fn/fn-schema parsed {:target :target/metadata})}
                           attr-map)
         docstring        (annotated-docstring parsed)
         instrument?      (mu.fn/instrument-ns? *ns*)]
     (if-not instrument?
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
-         ~(mu.fn/deparameterized-fn-form parsed))
+         ~(mu.fn/deparameterized-fn-form parsed cosmetic-name))
       `(def ~(vary-meta fn-name merge attr-map)
          ~docstring
          ~(macros/case
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
-                    (mu.fn/instrumented-fn-form error-context parsed))
-            :cljs (mu.fn/deparameterized-fn-form parsed))))))
+                    (mu.fn/instrumented-fn-form error-context parsed cosmetic-name))
+            :cljs (mu.fn/deparameterized-fn-form parsed cosmetic-name))))))
+
+(defmacro defn-
+  "Same as defn, but creates a private def."
+  [fn-name & fn-tail]
+  `(defn
+     ~(with-meta fn-name (assoc (meta fn-name) :private true))
+     ~@fn-tail))

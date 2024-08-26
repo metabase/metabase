@@ -6,11 +6,13 @@ import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
+import { createMockVisualizationSettings } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
+  ORDERS,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 registerVisualizations();
@@ -20,7 +22,9 @@ const metadata = createMockMetadata({
 });
 const ordersTable = metadata.table(ORDERS_ID);
 
-const setup = ({ vizType }) => {
+const setup = ({ display, visualization_settings = {} }) => {
+  const onChange = jest.fn();
+
   const Container = () => {
     const [question, setQuestion] = useState(
       new Question(
@@ -32,14 +36,15 @@ const setup = ({ vizType }) => {
             },
             database: SAMPLE_DB_ID,
           },
-          display: vizType,
-          visualization_settings: {},
+          display,
+          visualization_settings,
         },
         metadata,
       ),
     );
 
-    const onChange = update => {
+    const handleChange = update => {
+      onChange(update);
       setQuestion(q => {
         const newQuestion = q.updateSettings(update);
         return new Question(thaw(newQuestion.card()), metadata);
@@ -48,7 +53,7 @@ const setup = ({ vizType }) => {
 
     return (
       <ChartSettings
-        onChange={onChange}
+        onChange={handleChange}
         series={[
           {
             card: question.card(),
@@ -66,14 +71,16 @@ const setup = ({ vizType }) => {
   };
 
   renderWithProviders(<Container />);
+
+  return { onChange };
 };
 
 // these visualizations share column settings, so all the tests should work for both
-["table", "object"].forEach(vizType => {
-  describe(`${vizType} column settings`, () => {
-    it("should show you related columns in structured queries", () => {
-      setup({ vizType });
-      userEvent.click(screen.getByText("Add or remove columns"));
+["table", "object"].forEach(display => {
+  describe(`${display} column settings`, () => {
+    it("should show you related columns in structured queries", async () => {
+      setup({ display });
+      await userEvent.click(screen.getByText("Add or remove columns"));
 
       expect(screen.getByText("User")).toBeInTheDocument();
       expect(screen.getByText("Product")).toBeInTheDocument();
@@ -84,26 +91,59 @@ const setup = ({ vizType }) => {
       expect(within(userColumList).getByLabelText("State")).not.toBeChecked();
     });
 
-    it("should allow you to show and hide columns", () => {
-      setup({ vizType });
-      userEvent.click(screen.getByTestId("Tax-hide-button"));
+    it("should allow you to show and hide columns", async () => {
+      setup({ display });
+      await userEvent.click(await screen.findByTestId("Tax-hide-button"));
 
-      expect(screen.getByRole("listitem", { name: "Tax" })).toHaveAttribute(
-        "data-enabled",
-        "false",
-      );
+      expect(
+        await screen.findByRole("listitem", { name: "Tax" }),
+      ).toHaveAttribute("data-enabled", "false");
 
-      userEvent.click(screen.getByTestId("Tax-show-button"));
+      await userEvent.click(await screen.findByTestId("Tax-show-button"));
       //If we can see the hide button, then we know it's been added back in.
-      expect(screen.getByTestId("Tax-hide-button")).toBeInTheDocument();
+      expect(await screen.findByTestId("Tax-hide-button")).toBeInTheDocument();
     });
 
     it("should allow you to update a column name", async () => {
-      setup({ vizType });
-      userEvent.click(await screen.findByTestId("Subtotal-settings-button"));
-      userEvent.type(await screen.findByDisplayValue("Subtotal"), " Updated");
-      userEvent.click(await screen.findByText("Tax"));
+      setup({ display });
+      await userEvent.click(
+        await screen.findByTestId("Subtotal-settings-button"),
+      );
+      await userEvent.type(
+        await screen.findByDisplayValue("Subtotal"),
+        " Updated",
+      );
+      await userEvent.click(await screen.findByText("Tax"));
       expect(await screen.findByText("Subtotal Updated")).toBeInTheDocument();
+    });
+
+    it("should rewrite field ref-based column_settings keys to name-based keys on update", async () => {
+      const { onChange } = setup({
+        display,
+        visualization_settings: createMockVisualizationSettings({
+          column_settings: {
+            [JSON.stringify(["ref", ["field", ORDERS.TOTAL, null]])]: {
+              column_title: "Total1",
+            },
+            [JSON.stringify(["ref", ["field", ORDERS.SUBTOTAL, null]])]: {
+              column_title: "Subtotal1",
+            },
+          },
+        }),
+      });
+      await userEvent.click(
+        await screen.findByTestId("Subtotal1-settings-button"),
+      );
+      const input = await screen.findByDisplayValue("Subtotal1");
+      await userEvent.clear(input);
+      await userEvent.type(input, "Subtotal2");
+      await userEvent.click(await screen.findByText("Total1"));
+      expect(onChange).toHaveBeenCalledWith({
+        column_settings: {
+          [JSON.stringify(["name", "TOTAL"])]: { column_title: "Total1" },
+          [JSON.stringify(["name", "SUBTOTAL"])]: { column_title: "Subtotal2" },
+        },
+      });
     });
   });
 });

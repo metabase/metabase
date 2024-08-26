@@ -1,10 +1,8 @@
 import styled from "@emotion/styled";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const FilterRadio = styled(Radio)`
@@ -28,7 +26,7 @@ export const CheckboxContainer = styled.div`
 
 const ToggleButton = styled(Button)`
   margin-left: ${space(0)};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   border: none;
   background-color: transparent;
 
@@ -44,10 +42,6 @@ const ToggleButton = styled(Button)`
 ToggleButton.defaultProps = {
   iconRight: "chevrondown",
   iconSize: 12,
-};
-
-Toggle.propTypes = {
-  onClick: PropTypes.func.isRequired,
 };
 
 export function Toggle({ onClick }: { onClick: () => void }) {

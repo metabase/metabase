@@ -12,6 +12,7 @@
    [metabase.email :as email]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
    [metabase.pulse]
+   [metabase.pulse.test-util :as pulse.test-util]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -55,29 +56,29 @@
                                                                   :query    {:source-table (format "card__%s" ~model-card-id)}}}]
        ~@body)))
 
-(defn- run-pulse-and-return-last-data-columns
+(defn- run-pulse-and-return-last-data-columns!
   "Simulate sending the pulse email, get the html body of the response, then return the last columns of each pulse body
   element. In our test cases that's the Tax Rate column."
   [pulse]
-  (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
-      (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
-    (let [html-body  (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])
-          doc        (-> html-body hik/parse hik/as-hickory)
-          data-tables (hik.s/select
-                        (hik.s/class "pulse-body")
-                        doc)]
-      (map
-        (fn [data-table]
-          (->> (hik.s/select
-                 (hik.s/child
-                   (hik.s/tag :tbody)
-                   (hik.s/tag :tr)
-                   hik.s/last-child)
-                 data-table)
-               (map (comp first :content))))
-        data-tables))))
+  (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                           (with-redefs [email/bcc-enabled? (constantly false)]
+                             (mt/with-test-user nil
+                               (metabase.pulse/send-pulse! pulse))))
+        html-body  (-> channel-messages :channel/email first :message first :content)
+        doc        (-> html-body hik/parse hik/as-hickory)
+        data-tables (hik.s/select
+                     (hik.s/class "pulse-body")
+                     doc)]
+    (map
+     (fn [data-table]
+       (->> (hik.s/select
+             (hik.s/child
+              (hik.s/tag :tbody)
+              (hik.s/tag :tr)
+              hik.s/last-child)
+             data-table)
+            (map (comp first :content))))
+     data-tables)))
 
 (def ^:private all-pct-2d?
   "Is every element in the sequence percent formatted with 2 significant digits?"
@@ -117,7 +118,7 @@
                                               :user_id          (mt/user->id :rasta)}]
         (let [[base-data-row
                model-data-row
-               question-data-row] (run-pulse-and-return-last-data-columns pulse)]
+               question-data-row] (run-pulse-and-return-last-data-columns! pulse)]
           (testing "The data from the first question is just numbers."
             (is (all-float? base-data-row)))
           (testing "The data from the second question (a model) is percent formatted"
@@ -134,7 +135,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The data from the first question is just numbers."
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name            "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  base-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -142,10 +144,11 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-float? (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-float? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  model-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -153,10 +156,11 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse))))))
       (testing "The data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  question-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -164,27 +168,39 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns pulse)))))))))
+          (is (all-pct-2d? (first (run-pulse-and-return-last-data-columns! pulse)))))))))
 
-(defn- run-pulse-and-return-attached-csv-data
+(defn- strip-timestamp
+  "Remove the timestamp portion of attachment filenames.
+  This is useful for creating stable filename keys in tests.
+  For example, see `run-pulse-and-return-attached-csv-data` below.
+
+  Eg. test_card_2024-03-05T22:30:24.077306Z.csv -> test_card.csv"
+  [fname]
+  (let [ext (last (str/split fname #"\."))
+        name-parts (butlast (str/split fname #"_"))]
+    (format "%s.%s" (str/join "_" name-parts) ext)))
+
+(defn- run-pulse-and-return-attached-csv-data!
   "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
   attachment name -> column name -> column data"
   [pulse]
-  (mt/with-fake-inbox
-    (with-redefs [email/bcc-enabled? (constantly false)]
-      (mt/with-test-user nil
-        (metabase.pulse/send-pulse! pulse)))
-    (->>
-      (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
-      (keep
-        (fn [{:keys [type content-type file-name content]}]
-          (when (and
-                  (= :attachment type)
-                  (= "text/csv" content-type))
-            [file-name
-             (let [[h & r] (csv/read-csv (slurp content))]
-               (zipmap h (apply mapv vector r)))])))
-      (into {}))))
+  (with-redefs [email/bcc-enabled? (constantly false)]
+    (->> (mt/with-test-user nil
+           (pulse.test-util/with-captured-channel-send-messages!
+             (metabase.pulse/send-pulse! pulse)))
+         :channel/email
+         first
+         :message
+         (keep
+          (fn [{:keys [type content-type file-name content]}]
+            (when (and
+                   (= :attachment type)
+                   (= "text/csv" content-type))
+              [(strip-timestamp file-name)
+               (let [[h & r] (csv/read-csv (slurp content))]
+                 (zipmap h (apply mapv vector r)))])))
+         (into {}))))
 
 (deftest apply-formatting-in-csv-dashboard-test
   (testing "An exported dashboard should preserve the formatting specified in the column metadata (#36320)"
@@ -213,7 +229,7 @@
                                                           :enabled      true}
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
-        (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+        (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
           (testing "The base model has no special formatting"
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))
           (testing "The model with metadata formats the Tax Rate column with the user-defined semantic type"
@@ -226,7 +242,8 @@
     (with-metadata-data-cards [base-card-id model-card-id question-card-id]
       (testing "The attached data from the first question is just numbers."
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  base-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -234,11 +251,12 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-float? (get-in parsed-data ["Base question - no special metadata.csv" "Tax Rate"]))))))
       (testing "The attached data from the second question (a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  model-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -246,11 +264,12 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Model with percent semantic type.csv" "Tax Rate"]))))))
       (testing "The attached data from the last question (based on a a model) is percent formatted"
         (mt/with-temp [Pulse {pulse-id :id
-                              :as      pulse} {:name "Test Pulse"}
+                              :as      pulse} {:name "Test Pulse"
+                                               :alert_condition "rows"}
                        PulseCard _ {:pulse_id pulse-id
                                     :card_id  question-card-id}
                        PulseChannel {pulse-channel-id :id} {:channel_type :email
@@ -258,7 +277,7 @@
                                                             :enabled      true}
                        PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                 :user_id          (mt/user->id :rasta)}]
-          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data! pulse)]
             (is (all-pct-2d? (get-in parsed-data ["Query based on model.csv" "Tax Rate"])))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Consistent Date Formatting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -270,8 +289,8 @@
   (e.g. no attachments if less than 10 rows for an email)."
   [date-str n]
   (format
-    "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
-          SAMPLE AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
+   "WITH T AS (SELECT CAST('%s' AS TIMESTAMP) AS example_timestamp),
+          \"SAMPLE\" AS (SELECT T.example_timestamp                                   AS full_datetime_utc,
                             T.example_timestamp AT TIME ZONE 'US/Pacific'         AS full_datetime_pacific,
                             CAST(T.example_timestamp AS TIMESTAMP)                AS example_timestamp,
                             CAST(T.example_timestamp AS TIMESTAMP WITH TIME ZONE) AS example_timestamp_with_time_zone,
@@ -280,15 +299,17 @@
                             EXTRACT(YEAR FROM T.example_timestamp)                AS example_year,
                             EXTRACT(MONTH FROM T.example_timestamp)               AS example_month,
                             EXTRACT(DAY FROM T.example_timestamp)                 AS example_day,
+                            EXTRACT(WEEK FROM T.example_timestamp)                AS example_week_number,
+                            T.example_timestamp                                   AS example_week,
                             EXTRACT(HOUR FROM T.example_timestamp)                AS example_hour,
                             EXTRACT(MINUTE FROM T.example_timestamp)              AS example_minute,
                             EXTRACT(SECOND FROM T.example_timestamp)              AS example_second
                      FROM T)
      SELECT *
-     FROM SAMPLE
+     FROM \"SAMPLE\"
               CROSS JOIN
           generate_series(1, %s);"
-    date-str n))
+   date-str n))
 
 (defn- model-query [base-card-id]
   {:fields       [[:field "FULL_DATETIME_UTC" {:base-type :type/DateTimeWithLocalTZ}]
@@ -300,6 +321,8 @@
                   [:field "EXAMPLE_YEAR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MONTH" {:base-type :type/Integer}]
                   [:field "EXAMPLE_DAY" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK_NUMBER" {:base-type :type/Integer}]
+                  [:field "EXAMPLE_WEEK" {:base-type :type/DateTime, :temporal-unit :week}]
                   [:field "EXAMPLE_HOUR" {:base-type :type/Integer}]
                   [:field "EXAMPLE_MINUTE" {:base-type :type/Integer}]
                   [:field "EXAMPLE_SECOND" {:base-type :type/Integer}]]
@@ -325,15 +348,15 @@
                                                                              :query    {:source-table
                                                                                         (format "card__%s" model-card-id)}}
                                                     :result_metadata        (mapv
-                                                                              (fn [{column-name :name :as col}]
-                                                                                (cond-> col
-                                                                                  (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
-                                                                                  (assoc :settings {:date_separator "-"
-                                                                                                    :date_style     "YYYY/M/D"
-                                                                                                    :time_style     "HH:mm"})
-                                                                                  (= "EXAMPLE_TIMESTAMP" column-name)
-                                                                                  (assoc :settings {:time_enabled "seconds"})))
-                                                                              model-metadata)
+                                                                             (fn [{column-name :name :as col}]
+                                                                               (cond-> col
+                                                                                 (= "EXAMPLE_TIMESTAMP_WITH_TIME_ZONE" column-name)
+                                                                                 (assoc :settings {:date_separator "-"
+                                                                                                   :date_style     "YYYY/M/D"
+                                                                                                   :time_style     "HH:mm"})
+                                                                                 (= "EXAMPLE_TIMESTAMP" column-name)
+                                                                                 (assoc :settings {:time_enabled "seconds"})))
+                                                                             model-metadata)
                                                     :visualization_settings {:column_settings {"[\"name\",\"FULL_DATETIME_UTC\"]"
                                                                                                {:date_abbreviate true
                                                                                                 :time_enabled    "milliseconds"
@@ -352,7 +375,8 @@
                      DashboardCard {metamodel-dash-card-id :id} {:dashboard_id dash-id
                                                                  :card_id      meta-model-card-id}
                      Pulse {pulse-id :id
-                            :as      pulse} {:name "Consistent Time Formatting Pulse"}
+                            :as      pulse} {:name "Consistent Time Formatting Pulse"
+                                             :dashboard_id dash-id}
                      PulseCard _ {:pulse_id          pulse-id
                                   :card_id           native-card-id
                                   :dashboard_card_id base-dash-card-id
@@ -370,8 +394,8 @@
                                                           :enabled      true}
                      PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                               :user_id          (mt/user->id :rasta)}]
-        (let [attached-data     (run-pulse-and-return-attached-csv-data pulse)
-              get-res           #(-> attached-data (get %)
+        (let [attached-data     (run-pulse-and-return-attached-csv-data! pulse)
+              get-res           #(-> (get attached-data %)
                                      (update-vals first)
                                      (dissoc "X"))
               native-results    (get-res "NATIVE.csv")
@@ -390,10 +414,14 @@
                     "EXAMPLE_YEAR"                     "2,023"
                     "EXAMPLE_MONTH"                    "12"
                     "EXAMPLE_DAY"                      "11"
+                    "EXAMPLE_WEEK_NUMBER"              "50"
                     "EXAMPLE_HOUR"                     "15"
                     "EXAMPLE_MINUTE"                   "30"
                     "EXAMPLE_SECOND"                   "45"}
-                   native-results)))
+                   ;; the EXAMPLE_WEEK is a normal timestamp.
+                   ;; We care about it in the context of the Model, not the native results
+                   ;; so dissoc it here.
+                   (dissoc native-results "EXAMPLE_WEEK"))))
           (testing "An exported model retains the base format, but does use display names for column names."
             (is (= {"Full Datetime Utc"                "December 11, 2023, 3:30 PM"
                     "Full Datetime Pacific"            "December 11, 2023, 3:30 PM"
@@ -404,6 +432,8 @@
                     "Example Year"                     "2,023"
                     "Example Month"                    "12"
                     "Example Day"                      "11"
+                    "Example Week Number"              "50"
+                    "Example Week"                     "December 10, 2023 - December 16, 2023"
                     "Example Hour"                     "15"
                     "Example Minute"                   "30"
                     "Example Second"                   "45"}
@@ -422,7 +452,10 @@
                    (metamodel-results "Full Datetime Pacific"))))
           (testing "Setting time-enabled to nil for a time column just returns an empty string"
             (is (= ""
-                   (metamodel-results "Example Time")))))))))
+                   (metamodel-results "Example Time"))))
+          (testing "Week Units Are Displayed as a Date Range"
+            (is (= "December 10, 2023 - December 16, 2023"
+                   (metamodel-results "Example Week")))))))))
 
 (deftest renamed-column-names-are-applied-test
   (testing "CSV attachments should have the same columns as displayed in Metabase (#18572)"
@@ -477,15 +510,15 @@
                                                                           :query    {:source-table
                                                                                      (format "card__%s" model-card-id)}}
                                                         :result_metadata (mapv
-                                                                           (fn [{column-name :name :as col}]
-                                                                             (cond-> col
-                                                                               (= "DISCOUNT" column-name)
-                                                                               (assoc :display_name "Amount of Discount")
-                                                                               (= "TOTAL" column-name)
-                                                                               (assoc :display_name "Grand Total")
-                                                                               (= "QUANTITY" column-name)
-                                                                               (assoc :display_name "N")))
-                                                                           model-metadata)}
+                                                                          (fn [{column-name :name :as col}]
+                                                                            (cond-> col
+                                                                              (= "DISCOUNT" column-name)
+                                                                              (assoc :display_name "Amount of Discount")
+                                                                              (= "TOTAL" column-name)
+                                                                              (assoc :display_name "Grand Total")
+                                                                              (= "QUANTITY" column-name)
+                                                                              (assoc :display_name "N")))
+                                                                          model-metadata)}
                        Card {question-card-name :name
                              question-card-id   :id} {:name                   "FINAL_QUESTION"
                                                       :dataset_query          {:database (mt/id)
@@ -495,12 +528,12 @@
                                                       :visualization_settings {:table.pivot_column "DISCOUNT",
                                                                                :table.cell_column  "TAX",
                                                                                :column_settings    {(format
-                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                                                                      (mt/id :orders :quantity))
+                                                                                                     "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
+                                                                                                     (mt/id :orders :quantity))
                                                                                                     {:column_title "Count"}
                                                                                                     (format
-                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
-                                                                                                      (mt/id :orders :id))
+                                                                                                     "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
+                                                                                                     (mt/id :orders :id))
                                                                                                     {:column_title "IDENTIFIER"}}}}
                        Dashboard {dash-id :id} {:name "The Dashboard"}
                        DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
@@ -512,7 +545,8 @@
                        DashboardCard {question-dash-card-id :id} {:dashboard_id dash-id
                                                                   :card_id      question-card-id}
                        Pulse {pulse-id :id
-                              :as      pulse} {:name "Consistent Column Names"}
+                              :as      pulse} {:name "Consistent Column Names"
+                                               :dashboard_id dash-id}
                        PulseCard _ {:pulse_id          pulse-id
                                     :card_id           base-card-id
                                     :dashboard_card_id base-dash-card-id
@@ -539,15 +573,15 @@
                                           (mt/with-test-user nil
                                             (metabase.pulse/send-pulse! pulse)))
                                         (->>
-                                          (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
-                                          (keep
-                                            (fn [{:keys [type content-type file-name content]}]
-                                              (when (and
-                                                      (= :attachment type)
-                                                      (= "text/csv" content-type))
-                                                [file-name
-                                                 (first (csv/read-csv (slurp content)))])))
-                                          (into {})))]
+                                         (get-in @mt/inbox ["rasta@metabase.com" 0 :body])
+                                         (keep
+                                          (fn [{:keys [type content-type file-name content]}]
+                                            (when (and
+                                                   (= :attachment type)
+                                                   (= "text/csv" content-type))
+                                              [(strip-timestamp file-name)
+                                               (first (csv/read-csv (slurp content)))])))
+                                         (into {})))]
             (testing "Renaming columns via viz settings is correctly applied to the CSV export"
               (is (= ["THE_ID" "ORDER TAX" "Total Amount" "Discount Applied ($)" "Amount Ordered" "Effective Tax Rate"]
                      (attachment-name->cols (format "%s.csv" base-card-name)))))
@@ -561,7 +595,7 @@
               (is (= ["IDENTIFIER" "Tax" "Grand Total" "Amount of Discount ($)" "Count" "Tax Rate"]
                      (attachment-name->cols (format "%s.csv" question-card-name)))))))))))
 
-(defn- run-pulse-and-return-scalars
+(defn- run-pulse-and-return-scalars!
   "Simulate sending the pulse email, get the html body of the response and return the scalar value of the card."
   [pulse]
   (mt/with-fake-inbox
@@ -584,7 +618,7 @@
 (deftest number-viz-shows-correct-value
   (testing "Static Viz. Render of 'Number' Visualization shows the correct column's first value #32362."
     (mt/dataset test-data
-      (let [ ;; test card 1 'narrows' the query to a single column (the "TAX" field)
+      (let [;; test card 1 'narrows' the query to a single column (the "TAX" field)
             test-card1 {:visualization_settings {:scalar.field "TAX"}
                         :display                :scalar
                         :dataset_query          {:database (mt/id)
@@ -620,9 +654,9 @@
           ;; First value is the scalar returned from card1 (specified "TAX" field directly in the query)
           ;; Second value is the scalar returned from card2 (scalar field specified only in viz-settings, not the query)
           (is (= ["2.07" "2.07"]
-                 (run-pulse-and-return-scalars pulse))))))))
+                 (run-pulse-and-return-scalars! pulse))))))))
 
-(defn- run-pulse-and-return-data-tables
+(defn- run-pulse-and-return-data-tables!
   "Run the pulse and return the sequence of inlined html tables as data. Empty tables will be [].
   If not pulse is sent, return `nil`."
   [pulse]
@@ -633,19 +667,19 @@
     (when-some [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
       (let [doc         (-> html-body hik/parse hik/as-hickory)
             data-tables (hik.s/select
-                          (hik.s/class "pulse-body")
-                          doc)]
+                         (hik.s/class "pulse-body")
+                         doc)]
         (mapv
-          (fn [data-table]
-            (->> (hik.s/select
-                   (hik.s/child
-                     (hik.s/tag :tbody)
-                     (hik.s/tag :tr))
-                   data-table)
-                 (mapv (comp (partial mapv (comp first :content)) :content))))
-          data-tables)))))
+         (fn [data-table]
+           (->> (hik.s/select
+                 (hik.s/child
+                  (hik.s/tag :tbody)
+                  (hik.s/tag :tr))
+                 data-table)
+                (mapv (comp (partial mapv (comp first :content)) :content))))
+         data-tables)))))
 
-(defmacro with-skip-if-empty-pulse-result
+(defmacro ^:private with-skip-if-empty-pulse-result!
   "Provide a fixture that runs body using the provided pulse results (symbol), the value of `:skip_if_empty` for the
   pulse, and the queries for two cards. This enables a variety of cases to test the behavior of `:skip_if_empty` based
   on the presence or absence of card data."
@@ -669,17 +703,19 @@
                   PulseCard ~'_ {:pulse_id          ~'pulse-id
                                  :card_id           ~'base-card-id
                                  :dashboard_card_id ~'base-dash-card-id
-                                 :include_csv       true}
+                                 :include_csv       true
+                                 :position          1}
                   PulseCard ~'_ {:pulse_id          ~'pulse-id
                                  :card_id           ~'empty-card-id
                                  :dashboard_card_id ~'empty-dash-card-id
-                                 :include_csv       true}
+                                 :include_csv       true
+                                 :position          2}
                   PulseChannel {~'pulse-channel-id :id} {:channel_type :email
                                                          :pulse_id     ~'pulse-id
                                                          :enabled      true}
                   PulseChannelRecipient ~'_ {:pulse_channel_id ~'pulse-channel-id
                                              :user_id          (mt/user->id :rasta)}]
-     (let [~result (run-pulse-and-return-data-tables ~'pulse)]
+     (let [~result (run-pulse-and-return-data-tables! ~'pulse)]
        ~@body)))
 
 (deftest skip-if-empty-test
@@ -696,23 +732,23 @@
         (testing "Cases for when 'Don't send if there aren't results is enabled' is false"
           (let [skip-if-empty? false]
             (testing "Everything has results"
-              (with-skip-if-empty-pulse-result [result skip-if-empty? query query2]
+              (with-skip-if-empty-pulse-result! [result skip-if-empty? query query2]
                 (testing "Show all the data"
                   (is (= [[["1" "2.07"] ["2" "6.1"]]
                           [["1" "2.07"] ["2" "6.1"] ["3" "2.9"]]]
                          result)))))
             (testing "Not everything has results"
-              (with-skip-if-empty-pulse-result [result skip-if-empty? query empty-query]
+              (with-skip-if-empty-pulse-result! [result skip-if-empty? query empty-query]
                 (testing "The second table is empty since there are no results"
                   (is (= [[["1" "2.07"] ["2" "6.1"]] []] result)))))
             (testing "No results"
-              (with-skip-if-empty-pulse-result [result skip-if-empty? empty-query empty-query]
+              (with-skip-if-empty-pulse-result! [result skip-if-empty? empty-query empty-query]
                 (testing "We send the email anyways, despite everything being empty due to no results"
                   (is (= [[] []] result)))))))
         (testing "Cases for when 'Don't send if there aren't results is enabled' is true"
           (let [skip-if-empty? true]
             (testing "Everything has results"
-              (with-skip-if-empty-pulse-result [result skip-if-empty? query query2]
+              (with-skip-if-empty-pulse-result! [result skip-if-empty? query query2]
                 (testing "When everything has results, we see everything"
                   (is (= 2 (count result))))
                 (testing "Show all the data"
@@ -720,13 +756,13 @@
                           [["1" "2.07"] ["2" "6.1"] ["3" "2.9"]]]
                          result)))))
             (testing "Not everything has results"
-              (with-skip-if-empty-pulse-result [result skip-if-empty? query empty-query]
+              (with-skip-if-empty-pulse-result! [result skip-if-empty? query empty-query]
                 (testing "We should only see a single data table in the result"
                   (is (= 1 (count result))))
                 (testing "The single result should contain the card with data in it"
                   (is (= [[["1" "2.07"] ["2" "6.1"]]] result)))))
             (testing "No results"
-              (with-skip-if-empty-pulse-result [result skip-if-empty? empty-query empty-query]
+              (with-skip-if-empty-pulse-result! [result skip-if-empty? empty-query empty-query]
                 (testing "Don't send a pulse if no results at all"
                   (is (nil? result)))))))))))
 
@@ -781,8 +817,8 @@
                   (metabase.pulse/send-pulse! pulse)))
               (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (let [data-tables (hik.s/select
-                                    (hik.s/class "pulse-body")
-                                    (-> html-body hik/parse hik/as-hickory))]
+                                   (hik.s/class "pulse-body")
+                                   (-> html-body hik/parse hik/as-hickory))]
                   (testing "The expected count will change if empty tables are skipped."
                     (is (= expected-count (count data-tables))))
                   (testing "The text card should always be present"
@@ -792,8 +828,8 @@
   (testing "Dashboards produced by generated by X-Rays should not produce bad results (#38350)"
     (mt/dataset test-data
       (mt/with-model-cleanup [Collection Card Dashboard]
-        (let [generated-dashboard (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
-              saved-dashboard     (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)
+        (let [generated-dashboard    (mt/user-http-request :crowberto :get 200 (format "automagic-dashboards/table/%d" (mt/id :orders)))
+              saved-dashboard        (mt/user-http-request :crowberto :post 200 "dashboard/save" generated-dashboard)
               {dash-id   :id
                title     :name
                dashcards :dashcards} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id saved-dashboard)))]
@@ -811,7 +847,7 @@
               (with-redefs [email/bcc-enabled? (constantly false)]
                 (mt/with-test-user nil
                   (metabase.pulse/send-pulse! pulse)))
-              (let [html-body   (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
+              (let [html-body (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content])]
                 (is (false? (str/includes? html-body "An error occurred while displaying this card.")))))))))))
 
 (deftest geographic-coordinates-formatting-test
@@ -837,9 +873,9 @@
                        :result_metadata [{:name "ID"
                                           :id   (mt/id :airport :id)}
                                          {:semantic_type :type/Longitude
-                                          :field_ref     [:field (mt/id :airport :longitude) {:base-type :type/Float}]}
+                                          :name          "LONGITUDE"}
                                          {:semantic_type :type/Latitude
-                                          :field_ref     [:field (mt/id :airport :latitude) {:base-type :type/Float}]}]}]
+                                          :name          "LATITUDE"}]}]
         (mt/with-temp [Card {card-id :id} base-card
                        Card {model-id :id} model
                        Dashboard {dash-id :id} {}
@@ -862,7 +898,7 @@
                                                 :user_id          (mt/user->id :rasta)}]
           (testing "The html output renders the table cells as geographic coordinates"
             (is (= [[["1" "9.85" "57.09"]
-                     ["2" "39.22" "-6.2"]
+                     ["2" "39.22" "-6.22"]
                      ["3" "-2.2" "57.2"]
                      ["4" "-89.68" "39.84"]
                      ["5" "54.65" "24.43"]]
@@ -871,7 +907,7 @@
                      ["3" "2.19777989° W" "57.20190048° N"]
                      ["4" "89.67790222° W" "39.84410095° N"]
                      ["5" "54.65110016° E" "24.43300056° N"]]]
-                   (run-pulse-and-return-data-tables pulse)))))))))
+                   (run-pulse-and-return-data-tables! pulse)))))))))
 
 (deftest empty-dashboard-test
   (testing "A completely empty dashboard should still send an email"

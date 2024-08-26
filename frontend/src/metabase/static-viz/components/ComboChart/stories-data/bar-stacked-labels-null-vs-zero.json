@@ -1,0 +1,375 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-01T01:00:50.952753Z",
+      "parameters": [],
+      "metabase_version": "v0.1.6-SNAPSHOT (295fd34)",
+      "collection": null,
+      "visualization_settings": {
+        "stackable.stack_type": "stacked",
+        "graph.show_values": true,
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y1", "Y2", "Y3"]
+      },
+      "collection_preview": true,
+      "entity_id": "aELXIy9sYQ0SB5FFZfD73",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 364,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 'foo' x, 1 y1, 2 y2, 3 y3\nunion all select 'bar', null, 0, null\nunion all select 'baz', null, null, null\nunion all select 'bnu', -10, null, 0"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-01T01:00:50.952753Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "last_used_at": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "stacks: null vs zero",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 3
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y1",
+          "field_ref": [
+            "field",
+            "Y1",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0.5
+            },
+            "type": {
+              "type/Number": {
+                "min": -10,
+                "q1": -10,
+                "q3": 1,
+                "max": 1,
+                "sd": 7.7781745930520225,
+                "avg": -4.5
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y2",
+          "field_ref": [
+            "field",
+            "Y2",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y2",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0.5
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 0,
+                "q3": 2,
+                "max": 2,
+                "sd": 1.4142135623730951,
+                "avg": 1
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y3",
+          "field_ref": [
+            "field",
+            "Y3",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y3",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0.5
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 0,
+                "q3": 3,
+                "max": 3,
+                "sd": 2.1213203435596424,
+                "avg": 1.5
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["foo", 1, 2, 3],
+        ["bar", null, 0, null],
+        ["baz", null, null, null],
+        ["bnu", -10, null, 0]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "Y1",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y1",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y2",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y2",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y2",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y3",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y3",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y3",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select 'foo' x, 1 y1, 2 y2, 3 y3\nunion all select 'bar', null, 0, null\nunion all select 'baz', null, null, null\nunion all select 'bnu', -10, null, 0"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 3
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y1",
+            "field_ref": [
+              "field",
+              "Y1",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y1",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0.5
+              },
+              "type": {
+                "type/Number": {
+                  "min": -10,
+                  "q1": -10,
+                  "q3": 1,
+                  "max": 1,
+                  "sd": 7.7781745930520225,
+                  "avg": -4.5
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y2",
+            "field_ref": [
+              "field",
+              "Y2",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y2",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0.5
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 0,
+                  "q3": 2,
+                  "max": 2,
+                  "sd": 1.4142135623730951,
+                  "avg": 1
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y3",
+            "field_ref": [
+              "field",
+              "Y3",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y3",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0.5
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 0,
+                  "q3": 3,
+                  "max": 3,
+                  "sd": 2.1213203435596424,
+                  "avg": 1.5
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

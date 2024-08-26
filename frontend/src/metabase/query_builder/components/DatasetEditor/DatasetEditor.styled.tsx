@@ -20,7 +20,7 @@ export const TabHintToastContainer = styled.div<{ isVisible: boolean }>`
 `;
 
 export const DatasetEditBar = styled(EditBar)`
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 `;
 
 export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
@@ -28,29 +28,24 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   flex-direction: row;
   align-items: center;
   min-width: 35px;
-
   margin: 24px 0.75em;
   padding: 3px ${space(1)};
-
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow-x: hidden;
-
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   background-color: transparent;
   font-weight: bold;
   cursor: pointer;
-
-  border: 1px solid ${color("brand")};
+  border: 1px solid var(--mb-color-brand);
   border-radius: 8px;
-
   transition: all 0.25s;
 
   ${props =>
     props.isSelected &&
     css`
-      color: ${color("text-white")};
-      background-color: ${color("brand")};
+      color: var(--mb-color-text-white);
+      background-color: var(--mb-color-brand);
     `}
 
   .Icon {
@@ -59,22 +54,20 @@ export const TableHeaderColumnName = styled.div<{ isSelected: boolean }>`
   }
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
 
     .Icon {
-      background-color: ${color("white")};
-      color: ${color("brand")};
+      background-color: var(--mb-color-bg-white);
+      color: var(--mb-color-brand);
     }
   }
 `;
 
 export const FieldTypeIcon = styled(Icon)<{ isSelected: boolean }>`
   background-color: ${props =>
-    props.isSelected ? color("white") : color("brand")};
-
-  color: ${props => (props.isSelected ? color("brand") : color("white"))};
-
+    props.isSelected ? color("bg-white") : color("brand")};
+  color: ${props => (props.isSelected ? color("brand") : color("text-white"))};
   border-radius: 0.3em;
   padding: 0.2em;
 `;
@@ -89,7 +82,7 @@ export const Root = styled.div`
   display: flex;
   flex: 1 0 auto;
   position: relative;
-  background-color: ${color("bg-white")};
+  background-color: var(--mb-color-bg-white);
   height: calc(100vh - ${EDIT_BAR_HEIGHT});
 `;
 
@@ -109,7 +102,7 @@ export const QueryEditorContainer = styled.div<{ isResizable: boolean }>`
     props.isResizable &&
     css`
       margin-bottom: 1rem;
-      border-bottom: 1px solid ${color("border")};
+      border-bottom: 1px solid var(--mb-color-border);
     `}
 `;
 

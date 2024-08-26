@@ -7,7 +7,11 @@ import {
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
 } from "metabase/admin/permissions/permissions";
-import type { EntityId } from "metabase/admin/permissions/types";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type EntityId,
+} from "metabase/admin/permissions/types";
 import {
   DATABASES_BASE_PATH,
   GROUPS_BASE_PATH,
@@ -62,15 +66,17 @@ export const advancedPermissionsSlice = createSlice({
       .addCase(LOAD_DATA_PERMISSIONS, () => initialState)
       .addCase(SAVE_DATA_PERMISSIONS, () => initialState)
       .addCase(UPDATE_DATA_PERMISSION, (state, { payload }: any) => {
-        if (payload.value === "impersonated") {
+        if (payload?.value === DataPermissionValue.IMPERSONATED) {
           return state;
         }
 
-        state.impersonations = state.impersonations.filter(
-          impersonation =>
-            impersonation.group_id !== payload.groupId &&
-            impersonation.db_id !== payload.entityId.databaseId,
-        );
+        if (payload?.permissionInfo?.permission === DataPermission.VIEW_DATA) {
+          state.impersonations = state.impersonations.filter(
+            impersonation =>
+              impersonation.group_id !== payload.groupId &&
+              impersonation.db_id !== payload.entityId.databaseId,
+          );
+        }
         return state;
       });
   },

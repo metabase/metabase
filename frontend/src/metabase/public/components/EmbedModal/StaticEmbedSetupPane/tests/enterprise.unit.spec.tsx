@@ -13,13 +13,13 @@ describe("Static Embed Setup phase - EE, no token", () => {
       resourceType: "question" as const,
     },
   ])("$resourceType", ({ resourceType }) => {
-    describe("Appearance tab", () => {
-      it("should not render Font selector", () => {
-        setup({
+    describe("Look and Feel tab", () => {
+      it("should not render Font selector", async () => {
+        await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
         });
 
@@ -30,22 +30,18 @@ describe("Static Embed Setup phase - EE, no token", () => {
         ).toBeVisible();
       });
 
-      it('should render "Powered by Metabase" banner caption', () => {
-        setup({
+      it('should render "Powered by Metabase" banner caption', async () => {
+        await setup({
           props: {},
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
         });
 
-        expect(
-          screen.getByText("Removing the “Powered by Metabase” banner"),
-        ).toBeVisible();
+        expect(screen.getByText("Removing the banner")).toBeVisible();
 
         expect(
           screen.getByText(
-            getBrokenUpTextMatcher(
-              "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to a paid plan to remove the banner.",
-            ),
+            "The “Powered by Metabase” banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.",
           ),
         ).toBeVisible();
       });

@@ -4,7 +4,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.sync :as sync]
@@ -26,7 +26,7 @@
       (data/with-db db
         (sql-jdbc.execute/do-with-connection-with-options
          :h2
-         (mdb.spec/spec :h2 details)
+         (mdb/spec :h2 details)
          {:write? true}
          (fn [^java.sql.Connection conn]
            (binding [*conn* {:connection conn}]
@@ -41,7 +41,6 @@
   {:style/indent 0}
   [& body]
   `(do-with-blank-db (fn [] ~@body)))
-
 
 ;;; ------------------------------------------------- Blueberries DB -------------------------------------------------
 
@@ -58,7 +57,6 @@
   [& body]
   `(do-with-blueberries-db (fn [] ~@body)))
 
-
 ;;; ------------------------------------ Helper Fns for Populating Blueberries DB ------------------------------------
 
 (defn range-str
@@ -66,8 +64,8 @@
   We also sort the list because select distinct will also do sort automatically."
   [& args]
   (->> (apply range args)
-      (map str)
-      sort))
+       (map str)
+       sort))
 
 (defn- insert-sql
   "Generate SQL to insert a row for each value in `values`."

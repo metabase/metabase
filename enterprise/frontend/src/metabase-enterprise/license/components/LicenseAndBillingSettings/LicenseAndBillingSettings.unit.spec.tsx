@@ -30,6 +30,7 @@ const setupState = ({
           value: token,
         },
       ],
+      warnings: {},
     },
   });
 
@@ -313,8 +314,8 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    userEvent.type(screen.getByTestId("license-input"), "invalid");
-    userEvent.click(screen.getByTestId("activate-button"));
+    await userEvent.type(screen.getByTestId("license-input"), "invalid");
+    await userEvent.click(screen.getByTestId("activate-button"));
 
     expect(
       await screen.findByText(
@@ -334,7 +335,7 @@ describe("LicenseAndBilling", () => {
       ),
     ).toBeInTheDocument();
 
-    userEvent.type(screen.getByTestId("license-input"), "valid");
-    userEvent.click(screen.getByTestId("activate-button"));
+    await userEvent.type(screen.getByTestId("license-input"), "valid");
+    await userEvent.click(screen.getByTestId("activate-button"));
   });
 });

@@ -52,12 +52,12 @@ describe("CollectionInstanceAnalyticsIcon", () => {
     }
 
     ["collection", "dashboard", "model", "question"].forEach(entity => {
-      it(`displays the correct tooltip for ${entity}`, () => {
+      it(`displays the correct tooltip for ${entity}`, async () => {
         renderInstanceAnalyticsCollection({
           entity: entity,
         });
         expect(queryOfficialIcon()).toBeInTheDocument();
-        userEvent.hover(queryOfficialIcon());
+        await userEvent.hover(queryOfficialIcon());
         expect(screen.getByRole("tooltip")).toHaveTextContent(
           `This is a read-only Metabase Analytics ${entity}`,
         );

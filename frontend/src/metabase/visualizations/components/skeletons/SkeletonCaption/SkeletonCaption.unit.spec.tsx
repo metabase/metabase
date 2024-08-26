@@ -26,10 +26,10 @@ function setup({ description }: { description?: string } = {}) {
 }
 
 describe("SkeletonCaption", () => {
-  it("should show description tooltip with markdown formatting on hover", () => {
+  it("should show description tooltip with markdown formatting on hover", async () => {
     setup({ description: MARKDOWN });
 
-    userEvent.hover(screen.getByTestId("skeleton-description-icon"));
+    await userEvent.hover(screen.getByTestId("skeleton-description-icon"));
 
     const tooltip = screen.getByRole("tooltip");
     expect(tooltip).not.toHaveTextContent(MARKDOWN);

@@ -4,10 +4,11 @@ import _ from "underscore";
 
 import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
 import { isEmpty } from "metabase/lib/validate";
+import { computeChange } from "metabase/visualizations/lib/numeric";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import { formatChange } from "metabase/visualizations/visualizations/SmartScalar/utils";
 import * as Lib from "metabase-lib";
-import { isDate } from "metabase-lib/types/utils/isa";
+import { isDate } from "metabase-lib/v1/types/utils/isa";
 
 export function computeTrend(
   series,
@@ -15,38 +16,46 @@ export function computeTrend(
   settings,
   { formatValue, getColor },
 ) {
-  const comparisons = settings["scalar.comparisons"] || [];
-  const currentMetricData = getCurrentMetricData({
-    series,
-    insights,
-    settings,
-  });
+  try {
+    const comparisons = settings["scalar.comparisons"] || [];
+    const currentMetricData = getCurrentMetricData({
+      series,
+      insights,
+      settings,
+    });
 
-  const { clicked, date, dateUnitSettings, formatOptions, value } =
-    currentMetricData;
+    const { clicked, date, dateUnitSettings, formatOptions, value } =
+      currentMetricData;
 
-  const displayValue = formatValue(value, formatOptions);
-  const displayDate = formatDateStr({ date, dateUnitSettings, formatValue });
+    const displayValue = formatValue(value, formatOptions);
+    const displayDate = formatDateStr({ date, dateUnitSettings, formatValue });
 
-  return {
-    value,
-    clicked,
-    formatOptions,
-    display: {
-      value: displayValue,
-      date: displayDate,
-    },
-    comparisons: comparisons.map(comparison =>
-      buildComparisonObject({
-        comparison,
-        currentMetricData,
-        series,
-        settings,
-        formatValue,
-        getColor,
-      }),
-    ),
-  };
+    return {
+      trend: {
+        value,
+        clicked,
+        formatOptions,
+        display: {
+          value: displayValue,
+          date: displayDate,
+        },
+        comparisons: comparisons.map(comparison =>
+          buildComparisonObject({
+            comparison,
+            currentMetricData,
+            series,
+            settings,
+            formatValue,
+            getColor,
+          }),
+        ),
+      },
+    };
+  } catch (error) {
+    return {
+      error,
+    };
+  }
 }
 
 function buildComparisonObject({
@@ -145,7 +154,7 @@ function computeComparison({
     return computeTrendStaticValue({ comparison });
   }
 
-  throw Error("Invalid comparison type specified");
+  throw Error("Invalid comparison type specified.");
 }
 
 function getCurrentMetricData({ series, insights, settings }) {
@@ -165,22 +174,27 @@ function getCurrentMetricData({ series, insights, settings }) {
   );
 
   if (dimensionColIndex === -1) {
-    throw Error("No date column was found");
+    throw Error("No date column was found.");
   }
 
   if (metricColIndex === -1) {
     throw Error(
-      "There was a problem with the primary number you chose. Check the viz settings and select a valid column for the primary number field",
+      "There was a problem with the primary number you chose. Check the viz settings and select a valid column for the primary number field.",
     );
   }
 
   // get latest value and date
-  const latestRowIndex = rows.length - 1;
+  const latestRowIndex = _.findLastIndex(rows, row => {
+    const date = row[dimensionColIndex];
+    const value = row[metricColIndex];
+
+    return !isEmpty(value) && !isEmpty(date);
+  });
+  if (latestRowIndex === -1) {
+    throw Error("No rows contain a valid value.");
+  }
   const date = rows[latestRowIndex][dimensionColIndex];
   const value = rows[latestRowIndex][metricColIndex];
-  if (isEmpty(value) || isEmpty(date)) {
-    throw Error("The latest data point contains a null value");
-  }
 
   // get metric column metadata
   const metricColumn = cols[metricColIndex];
@@ -302,21 +316,24 @@ function computeComparisonPreviousValue({
   dateUnitSettings,
   formatValue,
 }) {
-  const previousRowIndex = _.findLastIndex(
-    rows,
-    (row, i) =>
-      i < nextValueRowIndex &&
-      !isEmpty(row[metricColIndex]) &&
-      !isEmpty(row[dimensionColIndex]),
-  );
-  const previousRow = rows[previousRowIndex];
+  const previousRowIndex = _.findLastIndex(rows, (row, i) => {
+    if (i >= nextValueRowIndex) {
+      return false;
+    }
+
+    const date = row[dimensionColIndex];
+    const value = row[metricColIndex];
+
+    return !isEmpty(value) && !isEmpty(date);
+  });
+
   // if no row exists with non-null date and non-null value
-  if (isEmpty(previousRow)) {
+  if (previousRowIndex === -1) {
     return null;
   }
 
-  const prevDate = previousRow[dimensionColIndex];
-  const prevValue = previousRow[metricColIndex];
+  const prevDate = rows[previousRowIndex][dimensionColIndex];
+  const prevValue = rows[previousRowIndex][metricColIndex];
 
   const comparisonDescStr = computeComparisonStrPreviousValue({
     nextDate,
@@ -350,12 +367,12 @@ function computeTrendPeriodsAgo({
   } = currentMetricData;
 
   if (isEmpty(dateUnitSettings.dateUnit)) {
-    throw Error("No date unit supplied for periods ago comparison");
+    throw Error("No date unit supplied for periods ago comparison.");
   }
 
   const { type, value } = comparison;
   if (type === COMPARISON_TYPES.PERIODS_AGO && !Number.isInteger(value)) {
-    throw Error("No integer value supplied for periods ago comparison");
+    throw Error("No integer value supplied for periods ago comparison.");
   }
   const dateUnitsAgo = value ?? 1;
 
@@ -534,14 +551,6 @@ function formatDateStr({ date, dateUnitSettings, options, formatValue }) {
     ...options,
     compact: true,
   });
-}
-
-export function computeChange(comparisonVal, currVal) {
-  if (comparisonVal === 0) {
-    return currVal === 0 ? 0 : currVal > 0 ? Infinity : -Infinity;
-  }
-
-  return (currVal - comparisonVal) / Math.abs(comparisonVal);
 }
 
 export const CHANGE_TYPE_OPTIONS = {

@@ -17,7 +17,7 @@ const DEFAULT_OPTIONS = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: o => o,
+  transformResponse: ({ body }) => body,
   raw: {},
   headers: {},
   retry: false,
@@ -31,6 +31,15 @@ const DEFAULT_OPTIONS = {
 
 export class Api extends EventEmitter {
   basename = "";
+  apiKey = "";
+  sessionToken;
+
+  onBeforeRequest;
+
+  /**
+   * @type {string|{name: string, version: string}}
+   */
+  requestClient;
 
   GET;
   POST;
@@ -46,6 +55,8 @@ export class Api extends EventEmitter {
   }
 
   _makeMethod(method, creatorOptions = {}) {
+    const self = this;
+
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
@@ -58,6 +69,10 @@ export class Api extends EventEmitter {
       };
 
       return async (rawData, invocationOptions = {}) => {
+        if (this.onBeforeRequest) {
+          await this.onBeforeRequest();
+        }
+
         const options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         const data = { ...rawData };
@@ -89,9 +104,32 @@ export class Api extends EventEmitter {
           delete headers["Content-Type"];
         }
 
+        if (this.apiKey) {
+          headers["X-Api-Key"] = this.apiKey;
+        }
+
+        if (this.sessionToken) {
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+          headers["X-Metabase-Session"] = this.sessionToken;
+        }
+
         if (isWithinIframe()) {
           // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Embedded"] = "true";
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+          headers["X-Metabase-Client"] = "embedding-iframe";
+        }
+
+        if (self.requestClient) {
+          if (typeof self.requestClient === "object") {
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client"] = self.requestClient.name;
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client-Version"] = self.requestClient.version;
+          } else {
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client"] = self.requestClient;
+          }
         }
 
         if (ANTI_CSRF_TOKEN) {
@@ -201,7 +239,7 @@ export class Api extends EventEmitter {
           }
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
-              body = options.transformResponse(body, { data });
+              body = options.transformResponse({ body, data });
             }
             resolve(body);
           } else {
@@ -235,7 +273,8 @@ export class Api extends EventEmitter {
     data,
     options,
   ) {
-    const controller = new AbortController();
+    const controller = options.controller || new AbortController();
+    const signal = options.signal ?? controller.signal;
     options.cancelled?.then(() => controller.abort());
 
     const requestUrl = new URL(this.basename + url, location.origin);
@@ -243,11 +282,12 @@ export class Api extends EventEmitter {
       method,
       headers,
       body: requestBody,
-      signal: controller.signal,
+      signal,
     });
 
     return fetch(request)
       .then(response => {
+        const unreadResponse = response.clone();
         return response.text().then(body => {
           if (options.json) {
             try {
@@ -271,7 +311,11 @@ export class Api extends EventEmitter {
 
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
-              body = options.transformResponse(body, { data });
+              body = options.transformResponse({
+                body,
+                data,
+                response: unreadResponse,
+              });
             }
             return body;
           } else {
@@ -280,7 +324,7 @@ export class Api extends EventEmitter {
         });
       })
       .catch(error => {
-        if (controller.signal.aborted) {
+        if (signal.aborted) {
           throw { isCancelled: true };
         } else {
           throw error;

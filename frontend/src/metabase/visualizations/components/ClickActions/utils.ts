@@ -2,57 +2,35 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type {
-  RegularClickAction,
   ClickActionSection,
+  RegularClickAction,
 } from "metabase/visualizations/types";
 
 type Section = {
-  icon: string;
   index?: number;
 };
 
 export const SECTIONS: Record<ClickActionSection, Section> = {
-  records: {
-    icon: "table2",
-  },
-  zoom: {
-    icon: "zoom_in",
-  },
-  sort: {
-    icon: "sort",
-  },
-  breakout: {
-    icon: "breakout",
-  },
-  "breakout-popover": {
-    icon: "breakout",
-  },
-  standalone_filter: {
-    icon: "filter",
-  },
-  // There is no such icon as "summarize." This is used to ID and select the actions that we,
-  // want to make larger, like Distribution, Sum over Time, etc.
-  summarize: {
-    icon: "summarize",
-  },
-  sum: {
-    icon: "sum",
-  },
-  auto: {
-    icon: "bolt",
-  },
-  "auto-popover": {
-    icon: "bolt",
-  },
-  info: {
-    icon: "info",
-  },
-  filter: {
-    icon: "funnel_outline",
-  },
-  details: {
-    icon: "document",
-  },
+  records: {},
+  zoom: {},
+  sort: {},
+  breakout: {},
+  "breakout-popover": {},
+  standalone_filter: {},
+  summarize: {},
+  sum: {},
+  combine: {},
+  "combine-popover": {},
+  "compare-aggregations": {},
+  extract: {},
+  "extract-popover": {},
+  auto: {},
+  "auto-popover": {},
+  info: {},
+  filter: {},
+  details: {},
+  custom: {},
+  "new-column": {},
 };
 Object.values(SECTIONS).map((section, index) => {
   section.index = index;
@@ -84,9 +62,6 @@ export const getGroupedAndSortedActions = (
     .value();
 };
 
-export const getGALabelForAction = (action: RegularClickAction) =>
-  action ? `${action.section || ""}:${action.name || ""}` : null;
-
 export const getSectionTitle = (
   sectionKey: string,
   actions: RegularClickAction[],
@@ -103,6 +78,12 @@ export const getSectionTitle = (
 
     case "breakout-popover":
       return t`Break out by…`;
+
+    case "extract-popover":
+      return t`Select a part to extract`;
+
+    case "new-column":
+      return t`New column`;
   }
 
   return null;

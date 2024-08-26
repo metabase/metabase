@@ -1,23 +1,23 @@
 import {
-  ORDERS_DASHBOARD_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
   clearFilterWidget,
-  filterWidget,
-  editDashboard,
-  saveDashboard,
-  setFilter,
-  visitDashboard,
-  toggleRequiredParameter,
-  dashboardSaveButton,
-  selectDashboardFilter,
-  ensureDashboardCardHasText,
-  resetFilterWidgetToDefault,
-  sidebar,
   dashboardParametersDoneButton,
+  dashboardSaveButton,
+  editDashboard,
+  ensureDashboardCardHasText,
+  filterWidget,
+  popover,
+  resetFilterWidgetToDefault,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
+  sidebar,
+  toggleRequiredParameter,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
@@ -40,7 +40,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // Add and connect every single available date filter type
     Object.entries(DASHBOARD_DATE_FILTERS).forEach(([filter]) => {
       cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Time", filter);
+      setFilter("Date picker", filter);
 
       cy.findByText("Select…").click();
       popover().contains("Created At").first().click();
@@ -59,7 +59,7 @@ describe("scenarios > dashboard > filters > date", () => {
         });
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.findByText(representativeResult);
         });
 
@@ -72,7 +72,7 @@ describe("scenarios > dashboard > filters > date", () => {
   // Rather than going through every single filter type,
   // make sure the default filter works for just one of the available options
   it("should work when set as the default filter", () => {
-    setFilter("Time", "Month and Year");
+    setFilter("Date picker", "Month and Year");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
@@ -88,7 +88,7 @@ describe("scenarios > dashboard > filters > date", () => {
     saveDashboard();
 
     // The default value should immediately be applied
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findByText("85.88");
     });
 
@@ -101,7 +101,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should support being required", () => {
-    setFilter("Time", "Month and Year");
+    setFilter("Date picker", "Month and Year", "Month and Year");
 
     // Can't save without a default value
     toggleRequiredParameter();
@@ -130,7 +130,7 @@ describe("scenarios > dashboard > filters > date", () => {
     saveDashboard();
 
     // Updates the filter value
-    filterWidget().click();
+    filterWidget().should("contain.text", "November 2023").click();
     popover().findByText("December").click();
     filterWidget().findByText("December 2023");
     ensureDashboardCardHasText("76.83");
@@ -143,13 +143,9 @@ describe("scenarios > dashboard > filters > date", () => {
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+    editDashboard();
 
-    popover().within(() => {
-      cy.findByText("Time").click();
-      cy.findByText("All Options").click();
-    });
+    setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
@@ -160,8 +156,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
     // click on Days (the default value), which should open the resolution dropdown
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("days").click();
+    cy.findByDisplayValue("days").click();
     // Hours should appear in the selection box (don't click it)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("hours");
@@ -181,13 +176,11 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     visitDashboard(ORDERS_DASHBOARD_ID);
+    // we can't use helpers as they use english words
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
-    popover().within(() => {
-      cy.findByText("Heure").click(); // "Time"
-      cy.findByText("Toutes les options").click(); // "All Options"
-    });
+    popover().icon("calendar").click(); // "Time" -> "All Options"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sélectionner...").click(); // "Select…"

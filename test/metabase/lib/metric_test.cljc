@@ -1,30 +1,57 @@
 (ns metabase.lib.metric-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metric :as lib.metric]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private metric-id 100)
+(def ^:private second-metric-id 101)
 
 (def ^:private metric-definition
-  {:source-table (meta/id :venues)
-   :aggregation  [[:sum [:field (meta/id :venues :price) nil]]]
-   :filter       [:= [:field (meta/id :venues :price) nil] 4]})
+  (-> lib.tu/venues-query
+      (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+      (lib/aggregate (lib/sum (meta/field-metadata :venues :price)))
+      lib.convert/->legacy-MBQL))
 
 (def ^:private metrics-db
-  {:metrics [{:id          metric-id
-              :name        "Sum of Cans"
-              :table-id    (meta/id :venues)
-              :definition  metric-definition
-              :description "Number of toucans plus number of pelicans"}]})
+  {:cards [{:id            metric-id
+            :name          "Sum of Cans"
+            :type          :metric
+            :database-id   (meta/id)
+            :table-id      (meta/id :venues)
+            :dataset-query metric-definition
+            :description   "Number of toucans plus number of pelicans"}]})
+
+(def ^:private multiple-metrics-db
+  {:cards [{:id            metric-id
+            :name          "Sum of Cans"
+            :type          :metric
+            :database-id   (meta/id)
+            :table-id      (meta/id :venues)
+            :dataset-query metric-definition
+            :description   "Number of toucans plus number of pelicans"}
+           {:id            second-metric-id
+            :name          "A Sum of Tigers"
+            :type          :metric
+            :database-id   (meta/id)
+            :table-id      (meta/id :venues)
+            :dataset-query metric-definition
+            :description   "Number of toucans plus number of pelicans"}]})
 
 (def ^:private metadata-provider
   (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db))
+
+(def ^:private metadata-provider-with-multiple-metrics
+  (lib.tu/mock-metadata-provider meta/metadata-provider multiple-metrics-db))
 
 (def ^:private metadata-provider-with-cards
   (lib.tu/mock-metadata-provider lib.tu/metadata-provider-with-mock-cards metrics-db))
@@ -81,11 +108,14 @@
     metric-clause
     metric-metadata))
 
-(deftest ^:parallel display-info-unselected-metric-test
-  (testing "Include `:selected false` in display info for Metrics not in aggregations"
-    (are [metric] (not (:selected (lib/display-info lib.tu/venues-query metric)))
-      metric-clause
-      metric-metadata)))
+(deftest ^:parallel metric-expression-display-info-test
+  (are [metric] (=? {:display-name      "CC"
+                     :long-display-name "CC"
+                     :effective-type    :type/Integer
+                     :description       "Number of toucans plus number of pelicans"}
+                    (lib/display-info query-with-metric metric))
+    (update metric-clause 1 assoc :display-name "CC")
+    (assoc metric-metadata :display-name "CC")))
 
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/*
@@ -103,52 +133,16 @@
   (is (= :type/*
          (lib/type-of query-with-metric [:metric {} 1]))))
 
-(deftest ^:parallel available-metrics-test
-  (let [expected-metric-metadata {:lib/type    :metadata/metric
-                                  :id          metric-id
-                                  :name        "Sum of Cans"
-                                  :table-id    (meta/id :venues)
-                                  :definition  metric-definition
-                                  :description "Number of toucans plus number of pelicans"}]
-    (testing "Should return Metrics with the same Table ID as query's `:source-table`"
-      (is (=? [expected-metric-metadata]
-              (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
-    (testing "Should return the position in the list of aggregations"
-      (let [metrics (lib/available-metrics query-with-metric)]
-        (is (=? [(assoc expected-metric-metadata :aggregation-position 0)]
-                metrics))
-        (testing "Display info should contains aggregation-position"
-          (is (=? [{:name                 "sum_of_cans",
-                    :display-name         "Sum of Cans",
-                    :long-display-name    "Sum of Cans",
-                    :effective-type       :type/Integer,
-                    :description          "Number of toucans plus number of pelicans",
-                    :aggregation-position 0}]
-                  (map #(lib/display-info query-with-metric %)
-                       metrics)))))))
-  (testing "query with different Table -- don't return Metrics"
-    (is (nil? (lib/available-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
-  (testing "for subsequent stages -- don't return Metrics (#37173)"
-    (let [query (lib/append-stage (lib/query metadata-provider (meta/table-metadata :venues)))]
-      (is (nil? (lib/available-metrics query)))
-      (are [stage-number] (nil? (lib/available-metrics query stage-number))
-        1 -1)))
-  (testing "query with different source table joining the metrics table -- don't return Metrics"
-    (let [query (-> (lib/query metadata-provider (meta/table-metadata :categories))
-                    (lib/join (-> (lib/join-clause (lib/query metadata-provider (meta/table-metadata :venues))
-                                                   [(lib/= (meta/field-metadata :venues :price) 4)])
-                                  (lib/with-join-fields :all))))]
-      (is (nil? (lib/available-metrics query)))))
-  (testing "query based on a card -- don't return Metrics"
-    (doseq [card-key [:venues :venues/native]]
-      (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
-        (is (not (lib/uses-metric? query metric-id)))
-        (is (nil? (lib/available-metrics (lib/append-stage query))))))))
+(deftest ^:parallel display-info-unselected-metric-test
+  (testing "Include `:selected false` in display info for Metrics not in aggregations"
+    (are [metric] (not (:selected (lib/display-info lib.tu/venues-query metric)))
+      metric-clause
+      metric-metadata)))
 
 (deftest ^:parallel aggregate-with-metric-test
   (testing "Should be able to pass a Metric metadata to `aggregate`"
     (let [query   (lib/query metadata-provider (meta/table-metadata :venues))
-          metrics (lib/available-metrics query)]
+          metrics (lib.metric/available-metrics query)]
       (is (= 1
              (count metrics)))
       ;; test with both `:metadata/metric` and with a `:metric` ref clause
@@ -179,18 +173,102 @@
     (is (= :type/Integer
            (lib/type-of query [:metric {:lib/uuid (str (random-uuid))} 100])))))
 
-(deftest ^:parallel ga-metric-metadata-test
-  (testing "Make sure we can calculate metadata for FAKE Google Analytics metric clauses"
-    (let [metric-name "ga:totalEvents"
-          query (-> lib.tu/venues-query
-                    (lib/aggregate [:metric {:lib/uuid (str (random-uuid))} metric-name]))]
-      (is (lib/uses-metric? query metric-name))
-      (is (=? [{:base-type                :type/*
-                :display-name             "[Unknown Metric]"
-                :effective-type           :type/*
-                :name                     "metric"
-                :lib/desired-column-alias "metric"
-                :lib/source               :source/aggregations
-                :lib/source-column-alias  "metric"
-                :lib/type                 :metadata/column}]
-              (lib/returned-columns query -1 query))))))
+(deftest ^:parallel metric-visible-columns-test
+  (let [metric-card-query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                              (lib/filter (lib/< (meta/field-metadata :orders :tax) 4))
+                              (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                              (lib/aggregate (lib/avg (meta/field-metadata :orders :total))))
+        meta-provider (lib.tu/mock-metadata-provider
+                       meta/metadata-provider
+                       {:cards [{:id 1
+                                 :name "metric"
+                                 :database-id (meta/id)
+                                 :dataset-query (lib.convert/->legacy-MBQL metric-card-query)
+                                 :type :metric}]})
+        metric-based-query (lib/query meta-provider (lib.metadata/card meta-provider 1))]
+    (testing "Metric aggregation added and breakouts copied on query creation"
+      (is (=? {:lib/type :mbql/query
+               :database (meta/id)
+               :stages
+               [{:lib/type :mbql.stage/mbql
+                 :source-table (meta/id :orders)
+                 :breakout
+                 [[:field
+                   {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
+                   (meta/id :orders :created-at)]]
+                 :aggregation [[:metric {} 1]]}]}
+              metric-based-query)))
+    (testing "The columns of the query underlying the metric are visible in the metric-based query"
+      (is (= (lib/visible-columns metric-card-query 0 (lib.util/query-stage metric-card-query 0))
+             (lib/visible-columns metric-based-query 0 (lib.util/query-stage metric-based-query 0)))))))
+
+(deftest ^:parallel available-metrics-test
+  (let [expected-metric-metadata {:lib/type      :metadata/metric
+                                  :id            metric-id
+                                  :name          "Sum of Cans"
+                                  :table-id      (meta/id :venues)
+                                  :dataset-query metric-definition
+                                  :description   "Number of toucans plus number of pelicans"}]
+    (testing "Should return Metrics with the same Table ID as query's `:source-table`"
+      (is (=? [expected-metric-metadata]
+              (lib.metric/available-metrics (lib/query metadata-provider (meta/table-metadata :venues))))))
+    (testing "Shouldn't return archived Metrics`"
+      (is (nil? (lib.metric/available-metrics
+                 (lib/query (lib.tu/mock-metadata-provider
+                             meta/metadata-provider
+                             (assoc-in metrics-db [:cards 0 :archived] true))
+                            (meta/table-metadata :venues))))))
+    (testing "Should return the position in the list of aggregations"
+      (let [metrics (lib.metric/available-metrics query-with-metric)]
+        (is (=? [(assoc expected-metric-metadata :aggregation-position 0)]
+                metrics))
+        (testing "Display info should contains aggregation-position"
+          (is (=? [{:name                 "sum_of_cans",
+                    :display-name         "Sum of Cans",
+                    :long-display-name    "Sum of Cans",
+                    :effective-type       :type/Integer,
+                    :description          "Number of toucans plus number of pelicans",
+                    :aggregation-position 0}]
+                  (map #(lib/display-info query-with-metric %)
+                       metrics)))))))
+
+  (testing "Should return the available metrics as sorted"
+    (let [query   (lib/query metadata-provider-with-multiple-metrics (meta/table-metadata :venues))
+          metrics (lib.metric/available-metrics query)]
+      (is (=? [{:id second-metric-id} {:id metric-id}] metrics))))
+
+  (testing "Metrics based on cards are available"
+    (let [metric {:name "Metrics"
+                  :id 2
+                  :type :metric
+                  :database-id (meta/id)
+                  :source-card-id 1
+                  :dataset-query {:database (meta/id)
+                                  :type :query
+                                  :query {:source-table "card__1"
+                                          :aggregation [[:count]]}}}
+          mp (lib/composed-metadata-provider
+              lib.tu/metadata-provider-with-model
+              (providers.mock/mock-metadata-provider
+               {:cards [metric]}))]
+      (is (=? [(assoc metric :lib/type :metadata/metric)]
+              (-> (lib/query mp (lib.metadata/card lib.tu/metadata-provider-with-model 1))
+                  lib/available-metrics)))))
+  (testing "query with different Table -- don't return Metrics"
+    (is (nil? (lib.metric/available-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
+  (testing "for subsequent stages -- don't return Metrics (#37173)"
+    (let [query (lib/append-stage (lib/query metadata-provider (meta/table-metadata :venues)))]
+      (is (nil? (lib.metric/available-metrics query)))
+      (are [stage-number] (nil? (lib.metric/available-metrics query stage-number))
+        1 -1)))
+  (testing "query with different source table joining the metrics table -- don't return Metrics"
+    (let [query (-> (lib/query metadata-provider (meta/table-metadata :categories))
+                    (lib/join (-> (lib/join-clause (lib/query metadata-provider (meta/table-metadata :venues))
+                                                   [(lib/= (meta/field-metadata :venues :price) 4)])
+                                  (lib/with-join-fields :all))))]
+      (is (nil? (lib.metric/available-metrics query)))))
+  (testing "query based on a card -- don't return Metrics"
+    (doseq [card-key [:venues :venues/native]]
+      (let [query (lib/query metadata-provider-with-cards (card-key lib.tu/mock-cards))]
+        (is (not (lib/uses-metric? query metric-id)))
+        (is (nil? (lib.metric/available-metrics (lib/append-stage query))))))))

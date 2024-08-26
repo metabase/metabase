@@ -9,7 +9,6 @@ Pivot tables allow you swap rows and columns, group data, and include subtotals 
 Pivot tables are not currently available for the following databases in Metabase:
 
 - Druid
-- Google Analytics
 - MongoDB
 
 Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../../../databases/connecting.md). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.

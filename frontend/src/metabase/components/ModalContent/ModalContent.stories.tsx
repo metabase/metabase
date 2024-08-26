@@ -29,7 +29,7 @@ const Template: ComponentStory<typeof ModalContent> = args => {
     <div
       style={{
         width: 1200,
-        background: color("white"),
+        background: color("bg-white"),
         border: "1px solid black",
       }}
     >

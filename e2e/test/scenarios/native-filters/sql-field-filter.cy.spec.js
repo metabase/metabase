@@ -1,10 +1,12 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openNativeEditor,
   clearFilterWidget,
   filterWidget,
+  multiAutocompleteInput,
+  openNativeEditor,
   popover,
+  removeMultiAutocompleteValue,
+  restore,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -35,7 +37,9 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "ID",
       });
 
-      FieldFilter.setWidgetType("ID");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "ID")
+        .should("be.disabled");
     });
 
     function setDefaultFieldValue(value) {
@@ -48,18 +52,8 @@ describe("scenarios > filters > sql filters > field filter", () => {
       });
     }
 
-    it("needs a default value to run or save the query", () => {
+    it("does not need a default value to run and save the query", () => {
       SQLFilter.toggleRequired();
-      SQLFilter.getRunQueryButton().should("be.disabled");
-      SQLFilter.getSaveQueryButton().should("have.attr", "disabled");
-
-      SQLFilter.getSaveQueryButton().realHover();
-      cy.get("body").findByText(
-        'The "Filter" variable requires a default value but none was provided.',
-      );
-
-      setDefaultFieldValue(4);
-
       SQLFilter.getRunQueryButton().should("not.be.disabled");
       SQLFilter.getSaveQueryButton().should("not.have.attr", "disabled");
     });
@@ -77,7 +71,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       filterWidget().click();
       popover().within(() => {
-        cy.icon("close").click();
+        removeMultiAutocompleteValue(0);
         cy.findByText("Set to default").click();
       });
       filterWidget()
@@ -90,10 +84,10 @@ describe("scenarios > filters > sql filters > field filter", () => {
       SQLFilter.toggleRequired();
       filterWidget().click();
       popover().within(() => {
-        cy.get("input").type("10{enter}");
+        multiAutocompleteInput().type("10,");
         cy.findByText("Update filter").click();
       });
-      filterWidget().icon("time_history").click();
+      filterWidget().icon("revert").click();
       filterWidget().findByTestId("field-set-content").should("have.text", "8");
     });
   });
@@ -113,21 +107,23 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "ID",
       });
 
-      FieldFilter.setWidgetType("ID");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "ID")
+        .should("be.disabled");
     });
 
     it("should work when set initially as default value and then through the filter widget", () => {
       cy.log("the default value should apply");
       FieldFilter.addDefaultStringFilter("2");
       SQLFilter.runQuery();
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Small Marble Shoes");
       });
 
       cy.log("the default value should not apply when the value is cleared");
       clearFilterWidget();
       SQLFilter.runQuery();
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("Small Marble Shoes");
         cy.findByText("Rustic Paper Wallet");
       });
@@ -149,14 +145,15 @@ describe("scenarios > filters > sql filters > field filter", () => {
         field: "Longitude",
       });
 
-      cy.findByTestId("filter-widget-type-select").click();
-      popover().findByText("None").should("be.visible");
+      cy.findByTestId("filter-widget-type-select")
+        .should("have.value", "None")
+        .should("be.disabled");
 
       filterWidget().should("not.exist");
     });
 
     it("should be runnable with the None filter being ignored (metabase#20643)", () => {
-      cy.get(".RunButton").first().click();
+      cy.findAllByTestId("run-button").first().click();
 
       cy.wait("@dataset");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -176,7 +173,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
 
       SQLFilter.runQuery();
 
-      cy.get(".Visualization").within(() => {
+      cy.findByTestId("query-visualization-root").within(() => {
         cy.findByText("111 Leupp Road");
       });
     });

@@ -7,7 +7,7 @@ import { t } from "ttag";
 import { FieldSet } from "metabase/components/FieldSet";
 import Button from "metabase/core/components/Button/Button";
 import { formatValue } from "metabase/lib/formatting";
-import * as Q from "metabase-lib/queries/utils/query";
+import * as Q from "metabase-lib/v1/queries/utils/query";
 import type { Segment, StructuredQuery } from "metabase-types/api";
 
 import FormInput from "../FormInput";
@@ -16,12 +16,12 @@ import FormTextArea from "../FormTextArea";
 import PartialQueryBuilder from "../PartialQueryBuilder";
 
 import {
-  FormRoot,
-  FormSection,
   FormBody,
   FormBodyContent,
   FormFooter,
   FormFooterContent,
+  FormRoot,
+  FormSection,
   FormSubmitButton,
 } from "./SegmentForm.styled";
 

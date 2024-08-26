@@ -1,9 +1,11 @@
+import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import { getEmbedClientCodeExampleOptions } from "metabase/public/lib/code";
 import type {
@@ -74,13 +76,19 @@ export const OverviewSettings = ({
           <Text>{jt`Check out the ${(
             <ExternalLink
               key="doc"
-              href={`${docsUrl}?utm_source=${plan}&utm_media=static-embed-settings-overview`}
+              href={`${docsUrl}?${new URLSearchParams({
+                utm_source: "product",
+                utm_medium: "docs",
+                utm_campaign: "embedding-static",
+                utm_content: "static-embed-settings-overview",
+                source_plan: plan,
+              })}`}
             >{t`documentation`}</ExternalLink>
           )} for more.`}</Text>
         </StaticEmbedSetupPaneSettingsContentSection>
       }
       previewSlot={
-        <Stack spacing="2rem" className="flex-full w-full">
+        <Stack spacing="2rem" className={cx(CS.flexFull, CS.wFull)}>
           {serverEmbedCodeSlot}
 
           <ClientEmbedCodePane

@@ -1,19 +1,19 @@
 import { useMemo } from "react";
-import { ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
-  NodeListItemLink,
-  NodeListItemName,
-  NodeListItemIcon,
-  NodeListTitle,
   NodeListContainer,
   NodeListIcon,
+  NodeListItemIcon,
+  NodeListItemLink,
+  NodeListItemName,
+  NodeListTitle,
   NodeListTitleText,
   QuestionId,
 } from "./NodeList.styled";
@@ -105,7 +105,7 @@ const DatabaseSchemasPane = ({
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Search.loadList({
   query: (_state: State, props: DatabaseSchemasPaneProps) => ({
-    models: "dataset",
+    models: ["dataset"],
     table_db_id: props.database.id,
   }),
   listName: "models",

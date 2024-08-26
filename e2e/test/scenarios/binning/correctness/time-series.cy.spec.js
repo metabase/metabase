@@ -1,10 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
   getBinningButtonForDimension,
-  summarize,
+  popover,
+  restore,
   rightSidebar,
+  summarize,
 } from "e2e/support/helpers";
 
 import { TIME_OPTIONS } from "./shared/constants";
@@ -78,8 +78,8 @@ function getTitle(title) {
 }
 
 function assertOnHeaderCells(bucketSize) {
-  cy.get(".cellData").eq(0).contains(`Created At: ${bucketSize}`);
-  cy.get(".cellData").eq(1).contains("Count");
+  cy.get("[data-testid=cell-data]").eq(0).contains(`Created At: ${bucketSize}`);
+  cy.get("[data-testid=cell-data]").eq(1).contains("Count");
 }
 
 function assertOnTableValues(values) {

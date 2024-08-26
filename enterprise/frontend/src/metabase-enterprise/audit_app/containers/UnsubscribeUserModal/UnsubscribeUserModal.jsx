@@ -4,9 +4,9 @@ import _ from "underscore";
 
 import Users from "metabase/entities/users";
 import { addUndo } from "metabase/redux/undo";
+import { AuditApi } from "metabase-enterprise/services";
 
 import UnsubscribeUserForm from "../../components/UnsubscribeUserForm";
-import { AuditApi } from "../../lib/services";
 
 const mapDispatchToProps = dispatch => ({
   onUnsubscribe: async ({ id }) => {

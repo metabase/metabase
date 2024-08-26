@@ -3,6 +3,7 @@ import cx from "classnames";
 import { Component } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import Snippets from "metabase/entities/snippets";
 import { Icon } from "metabase/ui";
 
@@ -22,12 +23,24 @@ class SnippetRowInner extends Component {
     return (
       <div
         className={cx(
-          { "border-transparent": !isOpen },
-          "border-bottom border-top",
+          { [CS.borderTransparent]: !isOpen },
+          CS.borderBottom,
+          CS.borderTop,
         )}
       >
         <div
-          className="cursor-pointer bg-light-hover text-bold flex align-center justify-between py2 px3 hover-parent hover--display"
+          className={cx(
+            CS.cursorPointer,
+            CS.bgLightHover,
+            CS.textBold,
+            CS.flex,
+            CS.alignCenter,
+            CS.justifyBetween,
+            CS.py2,
+            CS.px3,
+            CS.hoverParent,
+            CS.hoverDisplay,
+          )}
           onClick={() => this.setState({ isOpen: !isOpen })}
         >
           <SnippetContent
@@ -40,23 +53,37 @@ class SnippetRowInner extends Component {
                   }
             }
           >
-            <Icon name="snippet" className="hover-child--hidden text-light" />
+            <Icon
+              name="snippet"
+              className={cx(CS.hoverChildHidden, CS.textLight)}
+            />
             <Icon
               name={insertSnippet ? "arrow_left_to_line" : "snippet"}
-              className="hover-child"
+              className={CS.hoverChild}
             />
-            <span className="flex-full ml1">{snippet.name}</span>
+            <span className={cx(CS.flexFull, CS.ml1)}>{snippet.name}</span>
           </SnippetContent>
           <Icon
             name={isOpen ? "chevronup" : "chevrondown"}
-            className={cx({ "hover-child": !isOpen })}
+            className={cx({ [CS.hoverChild]: !isOpen })}
           />
         </div>
         {isOpen && (
-          <div className="px3 pb2 pt1">
-            {description && <p className="text-medium mt0">{description}</p>}
+          <div className={cx(CS.px3, CS.pb2, CS.pt1)}>
+            {description && (
+              <p className={cx(CS.textMedium, CS.mt0)}>{description}</p>
+            )}
             <pre
-              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-auto"
+              className={cx(
+                CS.bgLight,
+                CS.bordered,
+                CS.rounded,
+                CS.p1,
+                CS.textMonospace,
+                CS.textSmall,
+                CS.textPreWrap,
+                CS.overflowAuto,
+              )}
               style={{ maxHeight: 320 }}
             >
               {content}

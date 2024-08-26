@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { Icon, HoverCard, Stack, Flex, Text, Switch } from "metabase/ui";
+import { Flex, HoverCard, Icon, Stack, Switch, Text } from "metabase/ui";
 
-import { SettingRequiredLabel } from "./RequierParamToggle.styled";
+import { SettingRequiredLabel } from "./RequiredParamToggle.styled";
 
 interface RequiredParamToggleProps {
   disabled?: boolean;

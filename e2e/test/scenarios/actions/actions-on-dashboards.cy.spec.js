@@ -2,32 +2,33 @@ import { assocIn } from "icepick";
 
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  restore,
-  queryWritableDB,
-  resetTestTable,
+  createAction,
+  createImplicitAction,
   createModelFromTableName,
-  fillActionQuery,
-  resyncDatabase,
-  visitDashboard,
+  createPublicDashboardLink,
+  describeWithSnowplow,
+  dragField,
   editDashboard,
-  saveDashboard,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  fillActionQuery,
+  filterWidget,
+  getActionCardDetails,
   modal,
+  multiAutocompleteInput,
+  openStaticEmbeddingModal,
+  popover,
+  queryWritableDB,
+  resetSnowplow,
+  resetTestTable,
+  restore,
+  resyncDatabase,
+  saveDashboard,
   setFilter,
   sidebar,
-  popover,
-  filterWidget,
-  createImplicitAction,
-  dragField,
-  createAction,
-  describeWithSnowplow,
-  enableTracking,
-  resetSnowplow,
-  expectNoBadSnowplowEvents,
-  expectGoodSnowplowEvent,
   updateDashboardCards,
-  getActionCardDetails,
-  createPublicDashboardLink,
-  openStaticEmbeddingModal,
+  visitDashboard,
   visitIframe,
 } from "e2e/support/helpers";
 import { many_data_types_rows } from "e2e/support/test_tables_data";
@@ -792,11 +793,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("JSON").should("not.exist");
             cy.findByPlaceholderText("JSONB").should("not.exist");
             cy.findByPlaceholderText("Binary").should("not.exist");
-
-            if (dialect === "mysql") {
-              // we only have enums in postgres as of Feb 2023
-              cy.findByPlaceholderText("Enum").should("not.exist");
-            }
+            cy.findByPlaceholderText("Enum").should("exist");
           });
         });
 
@@ -1191,7 +1188,9 @@ describe(
         });
 
         filterWidget().click();
-        popover().find("input").first().type("{backspace}10");
+        popover().within(() => {
+          multiAutocompleteInput().type("{backspace}10");
+        });
         cy.button("Update filter").click();
 
         cy.button(actionName).click();

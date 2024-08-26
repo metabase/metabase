@@ -3,7 +3,6 @@
    [cheshire.core :as json]
    [clojure.data :as data]
    [metabase.config :as config]
-   [metabase.db.util :as mdb.u]
    [metabase.models.interface :as mi]
    [metabase.models.revision.diff :refer [diff-strings*]]
    [metabase.util :as u]
@@ -12,6 +11,11 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
+
+(defn toucan-model?
+  "Check if `model` is a toucan model."
+  [model]
+  (isa? model :metabase/model))
 
 (def ^:const max-revisions
   "Maximum number of revisions to keep for each individual object. After this limit is surpassed, the oldest revisions
@@ -32,7 +36,12 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (t2/update! model id serialized-instance))
+  (let [valid-columns   (keys (t2/select-one (t2/table-name model) :id id))
+        ;; Only include fields that we know are on the model in the current version of Metabase! Otherwise we'll get
+        ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
+        ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
+        revert-instance (select-keys serialized-instance valid-columns)]
+    (t2/update! model id revert-instance)))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."
@@ -155,13 +164,14 @@
 
 (mu/defn revisions
   "Get the revisions for `model` with `id` in reverse chronological order."
-  [model :- [:fn mdb.u/toucan-model?]
+  [model :- [:fn toucan-model?]
    id    :- pos-int?]
-  (t2/select Revision :model (name model) :model_id id {:order-by [[:id :desc]]}))
+  (let [model-name (name model)]
+    (t2/select Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
 (mu/defn revisions+details
   "Fetch `revisions` for `model` with `id` and add details."
-  [model :- [:fn mdb.u/toucan-model?]
+  [model :- [:fn toucan-model?]
    id    :- pos-int?]
   (when-let [revisions (revisions model id)]
     (loop [acc [], [r1 r2 & more] revisions]
@@ -178,12 +188,13 @@
     :or   {is-creation? false}}     :- [:map {:closed true}
                                         [:id                            pos-int?]
                                         [:object                        :map]
-                                        [:entity                        [:fn mdb.u/toucan-model?]]
+                                        [:entity                        [:fn toucan-model?]]
                                         [:user-id                       pos-int?]
                                         [:is-creation? {:optional true} [:maybe :boolean]]
                                         [:message      {:optional true} [:maybe :string]]]]
-  (let [serialized-object (serialize-instance entity id (dissoc object :message))
-        last-object       (t2/select-one-fn :object Revision :model (name entity) :model_id id {:order-by [[:id :desc]]})]
+  (let [entity-name (name entity)
+        serialized-object (serialize-instance entity id (dissoc object :message))
+        last-object       (t2/select-one-fn :object Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
     (assert (map? serialized-object))
     ;; the last-object could have nested object, e.g: Dashboard can have multiple Card in it,
@@ -193,7 +204,7 @@
     (when-not (= (json/generate-string serialized-object)
                  (json/generate-string last-object))
       (t2/insert! Revision
-                  :model        (name entity)
+                  :model        entity-name
                   :model_id     id
                   :user_id      user-id
                   :object       serialized-object
@@ -208,16 +219,17 @@
             [:id          pos-int?]
             [:user-id     pos-int?]
             [:revision-id pos-int?]
-            [:entity      [:fn mdb.u/toucan-model?]]]]
+            [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
-        serialized-instance (t2/select-one-fn :object Revision :model (name entity) :model_id id :id revision-id)]
+        model-name (name entity)
+        serialized-instance (t2/select-one-fn :object Revision :model model-name :model_id id :id revision-id)]
     (t2/with-transaction [_conn]
       ;; Do the reversion of the object
       (revert-to-revision! entity id user-id serialized-instance)
       ;; Push a new revision to record this change
-      (let [last-revision (t2/select-one Revision :model (name entity), :model_id id, {:order-by [[:id :desc]]})
+      (let [last-revision (t2/select-one Revision :model model-name, :model_id id, {:order-by [[:id :desc]]})
             new-revision  (first (t2/insert-returning-instances! Revision
-                                                                 :model        (name entity)
+                                                                 :model        model-name
                                                                  :model_id     id
                                                                  :user_id      user-id
                                                                  :object       serialized-instance

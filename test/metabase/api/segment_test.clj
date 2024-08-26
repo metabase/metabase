@@ -4,8 +4,6 @@
    [clojure.test :refer :all]
    [metabase.http-client :as client]
    [metabase.models :refer [Database Revision Table]]
-   [metabase.models.permissions :as perms]
-   [metabase.models.permissions-group :as perms-group]
    [metabase.models.segment :as segment :refer [Segment]]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
@@ -94,7 +92,6 @@
                                                     :table_id                id
                                                     :definition              {:filter [:= [:field 10 nil] 20]}}))))))
 
-
 ;; ## PUT /api/segment
 
 (deftest update-permissions-test
@@ -110,19 +107,19 @@
 (deftest update-input-validation-test
   (testing "PUT /api/segment/:id"
     (is (=? {:errors {:name "nullable value must be a non-blank string."}}
-           (mt/user-http-request :crowberto :put 400 "segment/1" {:name "" :revision_message "abc"})))
+            (mt/user-http-request :crowberto :put 400 "segment/1" {:name "" :revision_message "abc"})))
 
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
-           (mt/user-http-request :crowberto :put 400 "segment/1" {:name "abc"})))
+            (mt/user-http-request :crowberto :put 400 "segment/1" {:name "abc"})))
 
     (is (=? {:errors {:revision_message "value must be a non-blank string."}}
-           (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
-                                                                  :revision_message ""})))
+            (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
+                                                                   :revision_message ""})))
 
     (is (=? {:errors {:definition "nullable map"}}
-           (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
-                                                                  :revision_message "123"
-                                                                  :definition       "foobar"})))))
+            (mt/user-http-request :crowberto :put 400 "segment/1" {:name             "abc"
+                                                                   :revision_message "123"
+                                                                   :definition       "foobar"})))))
 
 (deftest update-test
   (testing "PUT /api/segment/:id"
@@ -182,7 +179,6 @@
         (is (= false
                (t2/select-one-fn :archived Segment :id id)))))))
 
-
 ;; ## DELETE /api/segment/:id
 
 (deftest delete-permissions-test
@@ -224,7 +220,6 @@
                 (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
                     segment-response)))))))
 
-
 ;; ## GET /api/segment/:id
 
 (deftest fetch-segment-permissions-test
@@ -233,9 +228,9 @@
       (mt/with-temp [Database db      {}
                      Table    table   {:db_id (u/the-id db)}
                      Segment  segment {:table_id (u/the-id table)}]
-        (perms/revoke-data-perms! (perms-group/all-users) db)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment)))))))))
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment))))))))))
 
 (deftest fetch-segment-test
   (testing "GET /api/segment/:id"
@@ -244,22 +239,22 @@
                    Segment  {:keys [id]}      {:creator_id (mt/user->id :crowberto)
                                                :table_id   table-id
                                                :definition {:filter [:= [:field 2 nil] "cans"]}}]
-      (is (= {:name                    "Toucans in the rainforest"
-              :description             "Lookin' for a blueberry"
-              :show_in_getting_started false
-              :caveats                 nil
-              :points_of_interest      nil
-              :creator_id              (mt/user->id :crowberto)
-              :creator                 (user-details (mt/fetch-user :crowberto))
-              :created_at              true
-              :updated_at              true
-              :entity_id               true
-              :archived                false
-              :definition              {:filter ["=" ["field" 2 nil] "cans"]}}
-             (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
-                 segment-response
-                 (dissoc :query_description)))))))
-
+      (mt/with-full-data-perms-for-all-users!
+        (is (= {:name                    "Toucans in the rainforest"
+                :description             "Lookin' for a blueberry"
+                :show_in_getting_started false
+                :caveats                 nil
+                :points_of_interest      nil
+                :creator_id              (mt/user->id :crowberto)
+                :creator                 (user-details (mt/fetch-user :crowberto))
+                :created_at              true
+                :updated_at              true
+                :entity_id               true
+                :archived                false
+                :definition              {:filter ["=" ["field" 2 nil] "cans"]}}
+               (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))
+                   segment-response
+                   (dissoc :query_description))))))))
 
 ;; ## GET /api/segment/:id/revisions
 
@@ -269,10 +264,9 @@
       (mt/with-temp [Database db {}
                      Table    table   {:db_id (u/the-id db)}
                      Segment  segment {:table_id (u/the-id table)}]
-        (perms/revoke-data-perms! (perms-group/all-users) db)
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment)))))))))
-
+        (mt/with-no-data-perms-for-all-users!
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment))))))))))
 
 (deftest revisions-test
   (testing "GET /api/segment/:id/revisions"
@@ -294,24 +288,24 @@
                                    :object   {:name       "c"
                                               :definition {:filter [:and [:> 1 25]]}}
                                    :message  "updated"}]
-      (is (=? [{:is_reversion false
-                :is_creation  false
-                :message      "updated"
-                :user         (-> (user-details (mt/fetch-user :crowberto))
-                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-                :diff         {:name {:before "b" :after "c"}}
-                :description  "renamed this Segment from \"b\" to \"c\"."}
-               {:is_reversion false
-                :is_creation  true
-                :message      nil
-                :user         (-> (user-details (mt/fetch-user :rasta))
-                                  (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-                :diff         {:name       {:after "b"}
-                               :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
-                :description  "created this."}]
-             (for [revision (mt/user-http-request :rasta :get 200 (format "segment/%d/revisions" id))]
-               (dissoc revision :timestamp :id)))))))
-
+      (mt/with-full-data-perms-for-all-users!
+        (is (=? [{:is_reversion false
+                  :is_creation  false
+                  :message      "updated"
+                  :user         (-> (user-details (mt/fetch-user :crowberto))
+                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                  :diff         {:name {:before "b" :after "c"}}
+                  :description  "renamed this Segment from \"b\" to \"c\"."}
+                 {:is_reversion false
+                  :is_creation  true
+                  :message      nil
+                  :user         (-> (user-details (mt/fetch-user :rasta))
+                                    (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+                  :diff         {:name       {:after "b"}
+                                 :definition {:after {:filter [">" ["field" 1 nil] 25]}}}
+                  :description  "created this."}]
+                (for [revision (mt/user-http-request :rasta :get 200 (format "segment/%d/revisions" id))]
+                  (dissoc revision :timestamp :id))))))))
 
 ;; ## POST /api/segment/:id/revert
 
@@ -375,8 +369,8 @@
                  :diff         {:name {:before "Changed Segment Name"
                                        :after  "One Segment to rule them all, one segment to define them"}}
                  :description  "reverted to an earlier version."}
-               (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
-                   (dissoc :id :timestamp)))))
+                (-> (mt/user-http-request :crowberto :post 200 (format "segment/%d/revert" id) {:revision_id revision-id})
+                    (dissoc :id :timestamp)))))
 
       (testing "full list of final revisions, first one should be same as the revision returned by the endpoint"
         (is (=? [{:is_reversion true
@@ -404,8 +398,8 @@
                                  :description {:after "One segment to bring them all, and in the DataModel bind them"}
                                  :definition  {:after {:filter ["=" ["field" 2 nil] "cans"]}}}
                   :description  "created this."}]
-               (for [revision (mt/user-http-request :crowberto :get 200 (format "segment/%d/revisions" id))]
-                 (dissoc revision :timestamp :id))))))))
+                (for [revision (mt/user-http-request :crowberto :get 200 (format "segment/%d/revisions" id))]
+                  (dissoc revision :timestamp :id))))))))
 
 (deftest list-test
   (testing "GET /api/segment/"
@@ -419,18 +413,19 @@
                                                                          [:= $category_id->categories.name "BBQ"]]}))}
                              ;; inactive segments shouldn't show up
                              Segment {id-3 :id} {:archived true}]
-      (is (=? [{:id                     id-1
-                :name                   "Segment 1"
-                :creator                {}
-                :definition_description nil}
-               {:id                     id-2
-                :name                   "Segment 2"
-                :definition             {}
-                :creator                {}
-                :definition_description "Filtered by Price is equal to 4 and Category → Name is BBQ"}]
-              (filter (fn [{segment-id :id}]
-                        (contains? #{id-1 id-2 id-3} segment-id))
-                      (mt/user-http-request :rasta :get 200 "segment/")))))))
+      (mt/with-full-data-perms-for-all-users!
+        (is (=? [{:id                     id-1
+                  :name                   "Segment 1"
+                  :creator                {}
+                  :definition_description nil}
+                 {:id                     id-2
+                  :name                   "Segment 2"
+                  :definition             {}
+                  :creator                {}
+                  :definition_description "Filtered by Price is equal to 4 and Category → Name is BBQ"}]
+                (filter (fn [{segment-id :id}]
+                          (contains? #{id-1 id-2 id-3} segment-id))
+                        (mt/user-http-request :rasta :get 200 "segment/"))))))))
 
 (deftest related-entities-test
   (testing "GET /api/segment/:id/related"

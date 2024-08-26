@@ -13,7 +13,7 @@ import {
   getStatusIcon,
   isItemVerified,
 } from "metabase-enterprise/moderation/service";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { State } from "metabase-types/store";
 
 import { getVerifyQuestionTitle } from "../../utils";

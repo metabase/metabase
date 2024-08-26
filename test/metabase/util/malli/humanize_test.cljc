@@ -1,14 +1,14 @@
 (ns metabase.util.malli.humanize-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest are]]
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.join :as lib.schema.join]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.util.malli.humanize :as mu.humanize]
-   [metabase.util.malli.registry :as mr]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -174,16 +174,12 @@
                          (f error))
       ;; not sure why these errors are repeated.
       me/humanize
-      {:stages [{:joins       [{:stages [{:lib/type ["missing required key"
-                                                     "invalid dispatch value"
-                                                     "missing required key"
-                                                     "invalid dispatch value"]}]
-                                :alias  ["missing required key"
-                                         "missing required key"]}]
-                 :source-card ["missing required key"]}]}
+      {:stages [{:joins [{:stages [{:lib/type    ["missing required key"]
+                                    :malli/error ["Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"
+                                                  "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]}]
+                          :alias  ["missing required key"]}]}]}
 
       mu.humanize/humanize
-      {:stages [{:joins       [{:stages [{:lib/type ["missing required key"
-                                                     "invalid dispatch value"]}]
-                                :alias  "missing required key"}]
-                 :source-card "missing required key"}]})))
+      {:stages [{:joins [{:stages
+                          [[{:lib/type "missing required key"} "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]],
+                          :alias "missing required key"}]}]})))

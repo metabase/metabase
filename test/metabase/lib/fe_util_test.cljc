@@ -4,6 +4,8 @@
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.fe-util :as lib.fe-util]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.types.isa :as lib.types.isa]))
@@ -40,13 +42,13 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
                                                  [(lib/=
-                                                    (meta/field-metadata :checkins :user-id)
-                                                    (meta/field-metadata :users :id))])
+                                                   (meta/field-metadata :checkins :user-id)
+                                                   (meta/field-metadata :users :id))])
                                 (lib/with-join-fields :all)))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
                                                  [(lib/=
-                                                    (meta/field-metadata :checkins :venue-id)
-                                                    (meta/field-metadata :venues :id))])
+                                                   (meta/field-metadata :checkins :venue-id)
+                                                   (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
         cols (m/index-by :id (lib/filterable-columns query))
         user-id-col (cols (meta/id :users :id))
@@ -94,11 +96,11 @@
                    :args [{:lib/type :metadata/column}
                           {:lib/type :metadata/column}
                           1]}]}
-        (lib/expression-parts (lib/query meta/metadata-provider (meta/table-metadata :products))
-                              (lib/= (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :day)
-                                     (lib/+ (meta/field-metadata :products :id)
-                                            (meta/field-metadata :products :id)
-                                            1))))))
+          (lib/expression-parts (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                (lib/= (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :day)
+                                       (lib/+ (meta/field-metadata :products :id)
+                                              (meta/field-metadata :products :id)
+                                              1))))))
 
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]
@@ -148,12 +150,13 @@
                                                :widget-type :text
                                                :display-name "foo"
                                                :dimension [:field {:lib/uuid (str (random-uuid))} 1]}})
-               lib/dependent-metadata))))
+               (lib/dependent-metadata nil :question)))))
   (testing "simple query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
-                      {:type :table,    :id (meta/id :venues)}]
-                     (lib/dependent-metadata query))
+                      {:type :table,    :id (meta/id :venues)}
+                      {:type :table,    :id (meta/id :categories)}]
+                     (lib/dependent-metadata query nil :question))
       lib.tu/venues-query
       (lib/append-stage lib.tu/venues-query)))
   (testing "join query"
@@ -161,28 +164,98 @@
                       {:type :schema,   :id (meta/id)}
                       {:type :table,    :id (meta/id :venues)}
                       {:type :table,    :id (meta/id :categories)}]
-                     (lib/dependent-metadata query))
+                     (lib/dependent-metadata query nil :question))
       lib.tu/query-with-join
       (lib/append-stage lib.tu/query-with-join)))
   (testing "source card based query"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
-                      {:type :table,    :id "card__1"}]
-                     (lib/dependent-metadata query))
+                      {:type :table,    :id "card__1"}
+                      {:type :table,    :id (meta/id :users)}]
+                     (lib/dependent-metadata query nil :question))
       lib.tu/query-with-source-card
       (lib/append-stage lib.tu/query-with-source-card)))
   (testing "source card based query with result metadata"
     (are [query] (=? [{:type :database, :id (meta/id)}
                       {:type :schema,   :id (meta/id)}
-                      {:type :table,    :id "card__1"}]
-                     (lib/dependent-metadata query))
+                      {:type :table,    :id "card__1"}
+                      {:type :table,    :id (meta/id :users)}]
+                     (lib/dependent-metadata query nil :question))
       lib.tu/query-with-source-card-with-result-metadata
       (lib/append-stage lib.tu/query-with-source-card-with-result-metadata)))
   (testing "model based query"
     (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-model)]
       (are [query] (=? [{:type :database, :id (meta/id)}
                         {:type :schema,   :id (meta/id)}
+                        {:type :table,    :id "card__1"}
+                        {:type :table,    :id (meta/id :users)}]
+                       (lib/dependent-metadata query nil :question))
+        query
+        (lib/append-stage query))))
+  (testing "metric based query"
+    (let [query (assoc lib.tu/query-with-source-card :lib/metadata lib.tu/metadata-provider-with-metric)]
+      (are [query] (=? [{:type :database, :id (meta/id)}
+                        {:type :schema,   :id (meta/id)}
+                        {:type :table,    :id "card__1"}
+                        {:type :table,    :id (meta/id :users)}
+                        {:type :table,    :id (meta/id :checkins)}
+                        {:type :table,    :id (meta/id :venues)}]
+                       (lib/dependent-metadata query nil :question))
+        query
+        (lib/append-stage query))))
+  (testing "editing a model"
+    (let [metadata-provider lib.tu/metadata-provider-with-model
+          query (->> (lib.metadata/card metadata-provider 1)
+                     :dataset-query
+                     (lib/query metadata-provider))]
+      (are [query] (=? [{:type :database, :id (meta/id)}
+                        {:type :schema,   :id (meta/id)}
+                        {:type :table,    :id (meta/id :checkins)}
+                        {:type :table,    :id (meta/id :users)}
+                        {:type :table,    :id (meta/id :venues)}
                         {:type :table,    :id "card__1"}]
-                       (lib/dependent-metadata query))
+                       (lib/dependent-metadata query 1 :model))
+        query
+        (lib/append-stage query))))
+  (testing "editing a metric"
+    (let [metadata-provider lib.tu/metadata-provider-with-metric
+          query (->> (lib.metadata/card metadata-provider 1)
+                     :dataset-query
+                     (lib/query metadata-provider))]
+      (are [query] (=? [{:type :database, :id (meta/id)}
+                        {:type :schema,   :id (meta/id)}
+                        {:type :table,    :id (meta/id :checkins)}
+                        {:type :table,    :id (meta/id :users)}
+                        {:type :table,    :id (meta/id :venues)}
+                        {:type :table,    :id "card__1"}]
+                       (lib/dependent-metadata query 1 :metric))
         query
         (lib/append-stage query)))))
+
+(deftest ^:parallel table-or-card-dependent-metadata-test
+  (testing "start from table"
+    (is (= [{:type :table, :id (meta/id :checkins)}]
+           (lib/table-or-card-dependent-metadata meta/metadata-provider (meta/id :checkins)))))
+  (testing "start from card"
+    (is (= [{:type :table, :id "card__1"}]
+           (lib/table-or-card-dependent-metadata lib.tu/metadata-provider-with-card "card__1")))))
+
+(deftest ^:parallel maybe-expand-temporal-expression-test
+  (let [update-temporal-unit (fn [expr temporal-type] (update-in expr [2 1] assoc :temporal-unit temporal-type))
+        expr [:=
+              {:lib/uuid "4fcaefe5-5c20-4cbc-98ed-6007b67843a4"}
+              [:field {:lib/uuid "3fcaefe5-5c20-4cbc-98ed-6007b67843a3"} 111]
+              "2024-05-13T16:35"]]
+    (testing "Expandable temporal units"
+      (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
+                                (#'lib.fe-util/maybe-expand-temporal-expression (update-temporal-unit expr unit)))
+        :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
+        :week "2024-05-12" "2024-05-18"
+        :month "2024-05-01" "2024-05-31"
+        :quarter "2024-04-01" "2024-06-30"
+        :year  "2024-01-01" "2024-12-31")
+      (testing "Non-expandable temporal units"
+        (are [unit] (let [expr (update-temporal-unit expr unit)]
+                      (= expr
+                         (#'lib.fe-util/maybe-expand-temporal-expression expr)))
+          :minute :day)))))

@@ -1,6 +1,9 @@
+import cx from "classnames";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
 
 interface QuestionSavedModalProps {
   onClose: () => void;
@@ -15,14 +18,16 @@ const QuestionSavedModal = ({
       id="QuestionSavedModal"
       title={t`Saved! Add this to a dashboard?`}
       onClose={onClose}
-      className="Modal-content Modal-content--small"
     >
       <div>
         <button
-          className="Button Button--primary"
+          className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
           onClick={addToDashboard}
         >{t`Yes please!`}</button>
-        <button className="Button ml3" onClick={onClose}>{t`Not now`}</button>
+        <button
+          className={cx(ButtonsS.Button, CS.ml3)}
+          onClick={onClose}
+        >{t`Not now`}</button>
       </div>
     </ModalContent>
   );

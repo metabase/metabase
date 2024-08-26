@@ -3,18 +3,17 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.mbql.util :as mbql.u]
    [metabase.models.setting :as setting]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
@@ -27,8 +26,18 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.google.cloud.bigquery Field$Mode FieldValue)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (com.google.cloud.bigquery
+    Field
+    Field$Mode
+    FieldValue
+    FieldValueList)
+   (java.time
+    LocalDate
+    LocalDateTime
+    LocalTime
+    OffsetDateTime
+    OffsetTime
+    ZonedDateTime)
    (metabase.driver.common.parameters FieldFilter)))
 
 (set! *warn-on-reflection* true)
@@ -46,7 +55,7 @@
    {:error/message "Valid BigQuery project-id"}
    valid-project-identifier?])
 
-(mu/defn ^:private project-id-for-current-query :- ProjectIdentifierString
+(mu/defn- project-id-for-current-query :- ProjectIdentifierString
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
   []
@@ -76,52 +85,83 @@
 
 (defmulti parse-result-of-type
   "Parse the values that come back in results of a BigQuery query based on their column type."
-  {:added "0.41.0" :arglists '([column-type column-mode timezone-id v])}
-  (fn [column-type _ _ _] column-type))
+  {:added "0.41.0" :arglists '([column-type column-mode timezone-id field v])}
+  (fn [column-type _ _ _ _] column-type))
+
+(defn- repeated-values [column-mode v]
+  (cond
+    (= "REPEATED" column-mode) ; legacy API
+    (for [result v
+          ^java.util.Map$Entry entry result]
+      (.getValue entry))
+
+    (= Field$Mode/REPEATED column-mode) ; newer API
+    (for [^FieldValue arr-v v]
+      (.getValue arr-v))))
 
 (defn- parse-value
   [column-mode v parse-fn]
   ;; For results from a query like `SELECT [1,2]`, BigQuery sets the column-mode to `REPEATED` and wraps the column in an ArrayList,
   ;; with ArrayMap entries, like: `ArrayList(ArrayMap("v", 1), ArrayMap("v", 2))`
-  (cond
-    (= "REPEATED" column-mode) ; legacy API
-    (for [result v
-          ^java.util.Map$Entry entry result]
-      (parse-fn (.getValue entry)))
-
-    (= Field$Mode/REPEATED column-mode) ; newer API
-    (for [^FieldValue arr-v v]
-      (parse-fn (.getValue arr-v)))
-
-    :else
+  (if-let [values (repeated-values column-mode v)]
+    (for [v values]
+      (parse-fn v))
     (parse-fn v)))
 
 (defmethod parse-result-of-type :default
-  [_column-type column-mode _ v]
+  [_column-type column-mode _ _ v]
   (parse-value column-mode v identity))
 
+(defmethod parse-result-of-type "RECORD"
+  [column-type column-mode timezone-id ^Field field ^FieldValueList v]
+  (if-let [values (repeated-values column-mode v)]
+    (for [v values]
+      (parse-result-of-type
+       column-type
+       nil
+       timezone-id
+       field
+       v))
+    (let [subfields (.getSubFields field)]
+      (into
+       {}
+       (keep (fn [[^Long idx ^Field subfield]]
+               (let [subname (.getName subfield)
+                     result (let [parsed-value (when-let [subvalue (some-> v (.get idx) .getValue)]
+                                                 (parse-result-of-type
+                                                  (.. subfield getType name)
+                                                  (.getMode subfield)
+                                                  timezone-id
+                                                  subfield
+                                                  subvalue))]
+                              (cond-> parsed-value
+                                (seq? parsed-value) not-empty))]
+                 (when result
+                   [(keyword subname) result]))))
+       (m/indexed subfields)))))
+
 (defmethod parse-result-of-type "STRING"
-  [_a column-mode _b v]
+  [_a column-mode _b _ v]
   (parse-value column-mode v identity))
 
 (defmethod parse-result-of-type "BOOLEAN"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Boolean/parseBoolean %)))
 
 (defmethod parse-result-of-type "FLOAT"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Double/parseDouble %)))
 
 (defmethod parse-result-of-type "INTEGER"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v #(Long/parseLong %)))
 
 (defmethod parse-result-of-type "NUMERIC"
-  [_ column-mode _ v]
+  [_ column-mode _ _ v]
   (parse-value column-mode v bigdec))
 
 (defmethod parse-result-of-type "BIGNUMERIC"
-  [_column-type column-mode _timezone-id v]
+  [_column-type column-mode _timezone-id _ v]
   (parse-value column-mode v bigdec))
 
 (defn- parse-timestamp-str [timezone-id s]
@@ -132,21 +172,20 @@
     (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ column-mode _timezone-id v]
+  [_ column-mode _timezone-id _ v]
   (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ column-mode _timezone-id v]
+  [_ column-mode _timezone-id _ v]
   (parse-value column-mode v u.date/parse))
 
 (defmethod parse-result-of-type "TIMESTAMP"
-  [_ column-mode timezone-id v]
+  [_ column-mode timezone-id _ v]
   (parse-value column-mode v (partial parse-timestamp-str timezone-id)))
 
 (defmethod parse-result-of-type "TIME"
-  [_ column-mode timezone-id v]
+  [_ column-mode timezone-id _ v]
   (parse-value column-mode v (fn [v] (u.date/parse v timezone-id))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SQL Driver Methods                                               |
@@ -543,7 +582,6 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -597,8 +635,12 @@
       (should-qualify-identifier? identifier) update-identifier-prefix-components
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/nfc-path]
+  [_driver [_ nfc-path]]
+  nfc-path)
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :field]
-  [driver [_field _id-or-name {::add/keys [source-table]} :as field-clause]]
+  [driver [_field _id-or-name {::add/keys [source-table], :as _opts} :as field-clause]]
   (let [parent-method (get-method sql.qp/->honeysql [:sql :field])]
     ;; if the Field is from a join or source table, record this fact so that we know never to qualify it with the
     ;; project ID no matter what
@@ -619,9 +661,9 @@
       t (->temporal-type t))))
 
 (defn- datetime-diff-check-args
-  "Validates the types of the datetime args to a `datetime-diff` clause.
-   This is exactly the same as [[sql.qp/datetime-diff-check-args]] except it uses [[temporal-type]]`
-   to get the type of each arg, not [[h2x/database-type]], which is needed for bigquery."
+  "Validates the types of the datetime args to a `datetime-diff` clause. This is exactly the same
+  as [[sql.qp/datetime-diff-check-args]] except it uses [[temporal-type]]` to get the type of each arg,
+  not [[h2x/database-type]], which is needed for bigquery."
   [x y]
   (doseq [arg [x y]
           :let [db-type (some-> (temporal-type arg) name)]
@@ -698,60 +740,94 @@
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions
 ;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk String]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk String]
   [_ s]
   ;; escape single-quotes like Cam's String -> Cam\'s String
   (str \' (str/replace s "'" "\\\\'") \'))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalTime]
   [_ t]
   (format "time \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalDate]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalDate]
   [_ t]
   (format "date \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk LocalDateTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalDateTime]
   [_ t]
   (format "datetime \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk OffsetTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk OffsetTime]
   [_ t]
   ;; convert to a LocalTime in UTC
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
     (format "time \"%s\"" (u.date/format-sql local-time))))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk OffsetDateTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk OffsetDateTime]
   [_ t]
   (format "timestamp \"%s\"" (u.date/format-sql t)))
 
-(defmethod unprepare/unprepare-value [:bigquery-cloud-sdk ZonedDateTime]
+(defmethod sql.qp/inline-value [:bigquery-cloud-sdk ZonedDateTime]
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
+(def ^:private ^:dynamic *compiling-cumulative-aggregation* false)
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-count]
+  [driver expr]
+  (binding [*compiling-cumulative-aggregation* true]
+    ((get-method sql.qp/->honeysql [:sql :cum-count]) driver expr)))
+
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-sum]
+  [driver expr]
+  (binding [*compiling-cumulative-aggregation* true]
+    ((get-method sql.qp/->honeysql [:sql :cum-sum]) driver expr)))
+
 (defmethod sql.qp/apply-top-level-clause [:bigquery-cloud-sdk :breakout]
   [driver top-level-clause honeysql-form query]
-  ;; If stuff in `:fields` still needs to be qualified like `dataset.table.field`, just the stuff in `:group-by` should
-  ;; not. So we'll actually call the parent method twice, once with the fields as is (i.e., qualifiable) and once with
-  ;; them removed. Then we'll splice the unqualified `:group-by` in
-  (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
-                               driver top-level-clause honeysql-form)
-        qualified     (parent-method query)
-        unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
-    (merge qualified
-           (select-keys unqualified #{:group-by}))))
+  (if *compiling-cumulative-aggregation*
+    ((get-method sql.qp/apply-top-level-clause [:sql :breakout]) driver top-level-clause honeysql-form query)
+    ;; If stuff in `:fields` still needs to be qualified like `dataset.table.field`, just the stuff in `:group-by` should
+    ;; not. So we'll actually call the parent method twice, once with the fields as is (i.e., qualifiable) and once with
+    ;; them removed. Then we'll splice the unqualified `:group-by` in
+    (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                 driver top-level-clause honeysql-form)
+          qualified     (parent-method query)
+          unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
+      (merge qualified
+             (select-keys unqualified #{:group-by})))))
+
+(defn- adjust-order-by-clause
+  [[dir [_clause _id-or-name opts :as clause]]]
+  [dir
+   ;; Following code ensures that only selected columns (with exception of those comming from different source than
+   ;; this source table and having no binning and no bucketing) are forced to use aliases.
+   ;;
+   ;; This solves Bigquery's inability to use expression from group by in order by.
+   ;; ex: `select a + 1, b from T group by a + 1 order by a + 1 asc` would fail.
+   ;; vs: `select a + 1 as asdf, b from T group by a + 1 order by asdf asc` would not fail.
+   ;;
+   ;; Also it handles case as follows: `select b from T join U ... order by a`, where field a is in both T and U
+   ;; tables. Problem is solved by qualifying that order by field.
+   (if (and
+        (::add/desired-alias opts)
+        (or (not (pos-int? (::add/source-table opts)))
+            (:binning opts)
+            (:temporal-unit opts)))
+     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+     clause)])
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :asc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   (adjust-order-by-clause clause)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :desc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   (adjust-order-by-clause clause)))
 
 (defmethod temporal-type ::sql.qp/compiled
   [[_compiled x, :as form]]
@@ -786,7 +862,6 @@
      ((get-method sql.qp/->honeysql [:sql filter-type])
       driver
       clause))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
@@ -923,10 +998,25 @@
         result              (parent-method driver field-filter)]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]
-                                                             (for [arg args]
-                                                               (if (instance? java.time.temporal.Temporal arg)
-                                                                 (->temporal-type field-temporal-type arg)
-                                                                 arg)))))))
+                                                             (let [request-time-zone-id (qp.timezone/requested-timezone-id)]
+                                                               (map (fn [arg]
+                                                                      (if (instance? java.time.temporal.Temporal arg)
+                                                                        ;; Since we add the zone as part of the
+                                                                        ;; LHS of the filter, we need to add the zone to
+                                                                        ;; the RHS as well.
+                                                                        (let [result (->temporal-type field-temporal-type arg)]
+                                                                          (cond
+                                                                            (or (not request-time-zone-id)
+                                                                                (not= :type/DateTimeWithLocalTZ (:base-type field)))
+                                                                            result
+
+                                                                            (instance? java.time.ZonedDateTime result)
+                                                                            (t/with-zone-same-instant result request-time-zone-id)
+
+                                                                            (instance? java.time.OffsetDateTime result)
+                                                                            (t/with-zone-same-instant (t/zoned-date-time result) request-time-zone-id)))
+                                                                        arg))
+                                                                    args)))))))
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

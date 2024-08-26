@@ -11,8 +11,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  createMockAdminState,
   createMockAdminAppState,
+  createMockAdminState,
 } from "metabase-types/store/mocks";
 
 const REGULAR_ITEMS = [
@@ -192,6 +192,6 @@ describe("ProfileLink", () => {
 });
 
 const openMenu = async () => {
-  userEvent.click(screen.getByRole("img", { name: /gear/i }));
+  await userEvent.click(screen.getByRole("img", { name: /gear/i }));
   await screen.findByRole("dialog");
 };

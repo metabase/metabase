@@ -1,15 +1,16 @@
 import { useCallback, useState } from "react";
 
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { hasFields } from "metabase-lib/parameters/utils/parameter-fields";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import {
   getSourceConfig,
   getSourceConfigForType,
   getSourceType,
-} from "metabase-lib/parameters/utils/parameter-source";
+} from "metabase-lib/v1/parameters/utils/parameter-source";
+import { isNumberParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { ValuesSourceConfig, ValuesSourceType } from "metabase-types/api";
 
-import ValuesSourceCardModal from "./ValuesSourceCardModal";
+import { ValuesSourceCardModal } from "./ValuesSourceCardModal";
 import ValuesSourceTypeModal from "./ValuesSourceTypeModal";
 
 type ModalStep = "main" | "card";
@@ -62,7 +63,7 @@ const ValuesSourceModal = ({
       sourceConfig={sourceConfig}
       onChangeSourceConfig={setSourceConfig}
       onSubmit={handlePickerClose}
-      onClose={onClose}
+      onClose={handlePickerClose}
     />
   );
 };
@@ -74,7 +75,14 @@ const ValuesSourceModal = ({
 const getInitialSourceType = (parameter: UiParameter) => {
   const sourceType = getSourceType(parameter);
 
-  return sourceType === null && !hasFields(parameter) ? "card" : sourceType;
+  if (sourceType === null && !hasFields(parameter)) {
+    if (isNumberParameter(parameter)) {
+      return "static-list";
+    }
+    return "card";
+  }
+
+  return sourceType;
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

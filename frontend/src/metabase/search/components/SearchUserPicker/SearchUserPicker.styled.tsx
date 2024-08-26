@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import type { HTMLAttributes } from "react";
 
 import type { ButtonProps } from "metabase/ui";
-import { Stack, Button, Group, TextInput } from "metabase/ui";
+import { Button, Group, Stack, TextInput } from "metabase/ui";
 
 export const SearchUserPickerContainer = styled(Stack)`
   overflow: hidden;
@@ -23,7 +23,7 @@ export const SearchUserPickerContent = styled(Stack)`
 `;
 
 export const SearchUserSelectBox = styled(Stack)`
-  border: ${({ theme }) => theme.fn.themeColor("border")} 1px solid;
+  border: 1px solid var(--mb-color-border);
   border-radius: ${({ theme }) => theme.radius.md};
 `;
 

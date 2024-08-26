@@ -4,7 +4,7 @@ import type {
   Field,
   FieldId,
   FieldValue,
-  FieldValuesResult,
+  GetFieldValuesResponse,
 } from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
@@ -15,7 +15,7 @@ export function setupFieldEndpoints(field: Field) {
   fetchMock.post(`path:/api/field/${field.id}/discard_values`, {});
 }
 
-export function setupFieldValuesEndpoints(fieldValues: FieldValuesResult) {
+export function setupFieldValuesEndpoints(fieldValues: GetFieldValuesResponse) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, fieldValues);
 }
 
@@ -27,7 +27,7 @@ export function setupFieldValuesGeneralEndpoint() {
 }
 
 export function setupUnauthorizedFieldValuesEndpoints(
-  fieldValues: FieldValuesResult,
+  fieldValues: GetFieldValuesResponse,
 ) {
   fetchMock.get(`path:/api/field/${fieldValues.field_id}/values`, {
     status: 403,
@@ -35,18 +35,21 @@ export function setupUnauthorizedFieldValuesEndpoints(
   });
 }
 
-export function setupFieldsValuesEndpoints(fieldsValues: FieldValuesResult[]) {
+export function setupFieldsValuesEndpoints(
+  fieldsValues: GetFieldValuesResponse[],
+) {
   fieldsValues.forEach(fieldValues => setupFieldValuesEndpoints(fieldValues));
 }
 
-export function setupFieldSearchValuesEndpoints(
+export function setupFieldSearchValuesEndpoint(
   fieldId: FieldId,
+  searchFieldId: FieldId,
   searchValue: string,
   result: FieldValue[] = [],
 ) {
   fetchMock.get(
     {
-      url: `path:/api/field/${fieldId}/search/${fieldId}`,
+      url: `path:/api/field/${fieldId}/search/${searchFieldId}`,
       query: {
         value: searchValue,
         limit: 100, // corresponds to MAX_SEARCH_RESULTS in FieldValuesWidget
@@ -55,5 +58,6 @@ export function setupFieldSearchValuesEndpoints(
     {
       body: result,
     },
+    { overwriteRoutes: false },
   );
 }

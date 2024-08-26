@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect } from "react";
 
+import { ThemeProvider } from "metabase/ui";
+
 import TippyPopover from "./TippyPopover";
 
 const defaultTarget = (
@@ -38,7 +40,7 @@ function setup({
 describe("Popover", () => {
   it("should be visible on hover of child target element", async () => {
     setup();
-    userEvent.hover(screen.getByText("child target element"));
+    await userEvent.hover(screen.getByText("child target element"));
     expect(await screen.findByText("popover content")).toBeVisible();
   });
 
@@ -50,12 +52,28 @@ describe("Popover", () => {
     );
   });
 
+  it("should respect the z-index theme setting", async () => {
+    render(
+      <ThemeProvider theme={{ other: { popover: { zIndex: 505 } } }}>
+        <TippyPopover content={<Content />} visible>
+          {defaultTarget}
+        </TippyPopover>
+      </ThemeProvider>,
+    );
+
+    // Tippy's root element is a direct parent, but it has no identifiable role.
+    // eslint-disable-next-line testing-library/no-node-access
+    expect(screen.getByRole("tooltip").parentElement).toHaveStyle({
+      zIndex: 505,
+    });
+  });
+
   describe("lazy", () => {
     it("should by default lazily render content", async () => {
       const contentFn = jest.fn();
       setup({ contentFn });
       expect(contentFn).not.toHaveBeenCalled();
-      userEvent.hover(screen.getByText("child target element"));
+      await userEvent.hover(screen.getByText("child target element"));
 
       await screen.findByText("popover content");
       expect(contentFn).toHaveBeenCalled();

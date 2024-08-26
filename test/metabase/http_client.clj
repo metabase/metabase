@@ -39,16 +39,16 @@
 (defn- build-query-string
   [query-parameters]
   (str/join \& (letfn [(url-encode [s]
-                                  (cond-> s
-                                    (keyword? s) u/qualified-name
-                                    (some? s)    codec/url-encode))
+                         (cond-> s
+                           (keyword? s) u/qualified-name
+                           (some? s)    codec/url-encode))
                        (encode-key-value [k v]
                          (str (url-encode k) \= (url-encode v)))]
-                      (flatten (for [[k value-or-values] query-parameters]
-                                 (if (sequential? value-or-values)
-                                   (for [v value-or-values]
-                                     (encode-key-value k v))
-                                   [(encode-key-value k value-or-values)]))))))
+                 (flatten (for [[k value-or-values] query-parameters]
+                            (if (sequential? value-or-values)
+                              (for [v value-or-values]
+                                (encode-key-value k v))
+                              [(encode-key-value k value-or-values)]))))))
 
 (defn build-url
   "Build an API URL for `localhost` and `MB_JETTY_PORT` with `query-parameters`.
@@ -83,7 +83,7 @@
 ;;; parse-response
 
 (def ^:private auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
+  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed :last_used_at :last_viewed_at})
 
 (defn- auto-deserialize-dates
   "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and
@@ -136,7 +136,12 @@
     body
     (try
       (auto-deserialize-dates (json/parse-string body parse-response-key))
-      (catch Throwable _
+      (catch Throwable e
+        ;; if this actually looked like some sort of JSON response and we failed to parse it, log it so we can debug it
+        ;; more easily in the REPL.
+        (when (or (str/starts-with? body "{")
+                  (str/starts-with? body "["))
+          (log/warnf e "Error parsing string response as JSON: %s\nResponse:\n%s" (ex-message e) body))
         (when-not (str/blank? body)
           body)))))
 
@@ -159,11 +164,10 @@
       (or (:id response)
           (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (log/errorf "Failed to authenticate with credentials %s %s" credentials e)
+      (log/errorf e "Failed to authenticate with credentials %s" credentials)
       (throw (ex-info "Failed to authenticate with credentials"
                       {:credentials credentials}
                       e)))))
-
 
 ;;; client
 
@@ -213,6 +217,7 @@
   {:get    http/get
    :post   http/post
    :put    http/put
+   :patch  http/patch
    :delete http/delete})
 
 (def ^:private ClientParamsMap
@@ -225,7 +230,7 @@
    [:query-parameters {:optional true} [:maybe map?]]
    [:request-options  {:optional true} [:maybe map?]]])
 
-(mu/defn ^:private -client
+(mu/defn- -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
@@ -263,9 +268,10 @@
         (some #(re-find % content-type) [#"json" #"text"])
         (String. "UTF-8")))))
 
-(defn- coerce-mock-req-body
-  [resp]
-  (update resp :body
+(defn- coerce-mock-response-body
+  [response]
+  (update response
+          :body
           (fn [body]
             (cond
               ;; read the text response
@@ -279,7 +285,7 @@
 
               ;; Most APIs that execute a request returns a streaming response
               (instance? StreamingResponse body)
-              (read-streaming-response body (get-in resp [:headers "Content-Type"]))
+              (read-streaming-response body (get-in response [:headers "Content-Type"]))
 
               :else
               body))))
@@ -314,7 +320,7 @@
      request-options
      (build-body-params http-body content-type))))
 
-(mu/defn ^:private -mock-client
+(mu/defn- -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [method expected-status] :as params} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
@@ -324,16 +330,16 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                       (handler/app request coerce-mock-req-body (fn [e] (throw e)))
-                       (catch clojure.lang.ExceptionInfo e
-                         (log/debug e method-name url)
-                         (ex-data e))
-                       (catch Exception e
-                         (throw (ex-info (.getMessage e)
-                                         {:method  method-name
-                                          :url     url
-                                          :request request}
-                                         e)))))
+                        (handler/app request coerce-mock-response-body (fn raise [e] (throw e)))
+                        (catch clojure.lang.ExceptionInfo e
+                          (log/debug e method-name url)
+                          (ex-data e))
+                        (catch Exception e
+                          (throw (ex-info (.getMessage e)
+                                          {:method  method-name
+                                           :url     url
+                                           :request request}
+                                          e)))))
         ;; Now perform the HTTP request
         {:keys [status body] :as response} (thunk)]
     (log/debug :mock-request method-name url status)
@@ -343,7 +349,7 @@
 (def ^:private http-client-args
   [:catn
    [:credentials      [:? [:or string? map?]]]
-   [:method           [:enum :get :put :post :delete]]
+   [:method           [:enum :get :put :post :patch :delete]]
    [:expected-status  [:? integer?]]
    [:url              string?]
    [:request-options  [:? [:fn (every-pred map? :request-options)]]]
@@ -420,7 +426,7 @@
 
    *  `credentials`          Optional map of `:username` and `:password` or Session token of a User who we
                              should perform the request as
-   *  `method`               `:get`, `:post`, `:delete`, or `:put`
+   *  `method`               `:get`, `:post`, `:delete`, `:put`, or `:patch`
    *  `expected-status-code` When passed, throw an exception if the response has a different status code.
    *  `endpoint`             URL minus the `<host>/api/` part e.g. `card/1/favorite`. Appended to `*url-prefix*`.
    *  `request-options`      Optional map of options to pass as part of request to `clj-http.client`, e.g. `:headers`.

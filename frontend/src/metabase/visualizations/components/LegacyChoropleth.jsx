@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import { Component } from "react";
 
+import CS from "metabase/css/core/index.css";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
 const LegacyChoropleth = ({
@@ -14,14 +15,24 @@ const LegacyChoropleth = ({
   onHoverFeature,
   onClickFeature,
 }) => {
-  const geo = d3.geo.path().projection(projection);
+  const geo = d3.geoPath().projection(projection);
 
   const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
   const width = maxX - minX;
   const height = maxY - minY;
 
   return (
-    <div className="absolute top bottom left right flex layout-centered">
+    <div
+      className={cx(
+        CS.absolute,
+        CS.top,
+        CS.bottom,
+        CS.left,
+        CS.right,
+        CS.flex,
+        CS.layoutCentered,
+      )}
+    >
       <ShouldUpdate
         series={series}
         shouldUpdate={(props, nextProps) =>
@@ -30,11 +41,12 @@ const LegacyChoropleth = ({
       >
         {() => (
           <svg
-            className="flex-full m1"
+            className={cx(CS.flexFull, CS.m1)}
             viewBox={`${minX} ${minY} ${width} ${height}`}
           >
             {geoJson.features.map((feature, index) => (
               <path
+                data-testid="choropleth-feature"
                 key={index}
                 d={geo(feature, index)}
                 stroke="white"
@@ -47,7 +59,7 @@ const LegacyChoropleth = ({
                   })
                 }
                 onMouseLeave={() => onHoverFeature(null)}
-                className={cx({ "cursor-pointer": !!onClickFeature })}
+                className={cx({ [CS.cursorPointer]: !!onClickFeature })}
                 onClick={
                   onClickFeature
                     ? e =>

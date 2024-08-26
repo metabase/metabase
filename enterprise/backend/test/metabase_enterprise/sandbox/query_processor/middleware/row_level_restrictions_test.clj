@@ -12,15 +12,19 @@
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Card Collection Field Table]]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.query-processor.middleware.process-userland-query-test
+    :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
@@ -28,12 +32,14 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
-   [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(comment
+  query-perms/keep-me)
 
 (defn- identifier
   ([table-key]
@@ -82,7 +88,7 @@
 
 (defn- venues-category-native-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
+    (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
               {:query
                (format-honeysql
@@ -99,7 +105,7 @@
 
 (defn- parameterized-sql-with-join-gtap-def []
   (driver/with-driver (or driver/*driver* :h2)
-    (assert (driver/database-supports? driver/*driver* :native-parameters (mt/db)))
+    (assert (driver.u/supports? driver/*driver* :native-parameters (mt/db)))
     {:query (mt/native-query
               {:query
                (format-honeysql
@@ -133,17 +139,19 @@
                  :order-by [[(identifier :venues :id) :asc]]})})}))
 
 (defn- run-venues-count-query []
-  (mt/format-rows-by [int]
-    (mt/rows
-     (mt/run-mbql-query venues {:aggregation [[:count]]}))))
+  (mt/format-rows-by
+   [int]
+   (mt/rows
+    (mt/run-mbql-query venues {:aggregation [[:count]]}))))
 
 (defn- run-checkins-count-broken-out-by-price-query []
-  (mt/format-rows-by [#(some-> % int) int]
-    (mt/rows
-      (mt/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :order-by    [[:asc $venue_id->venues.price]]
-         :breakout    [$venue_id->venues.price]}))))
+  (mt/format-rows-by
+   [#(some-> % int) int]
+   (mt/rows
+    (mt/run-mbql-query checkins
+      {:aggregation [[:count]]
+       :order-by    [[:asc $venue_id->venues.price]]
+       :breakout    [$venue_id->venues.price]}))))
 
 (deftest ^:parallel all-table-ids-test
   (testing (str "make sure that `all-table-ids` can properly find all Tables in the query, even in cases where a map "
@@ -159,7 +167,7 @@
 
 ;; TODO -- #19754 adds [[mt/remove-source-metadata]] that can be used here (once it gets merged)
 (defn- remove-metadata [m]
-  (mbql.u/replace m
+  (lib.util.match/replace m
     (_ :guard (every-pred map? :source-metadata))
     (remove-metadata (dissoc &match :source-metadata))))
 
@@ -170,16 +178,18 @@
 
 (deftest middleware-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
-    (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                  :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
-                     :attributes {"user" 5, "price" 1}}
+    (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                   :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
+                      :attributes {"user" 5, "price" 1}}
       (testing "Should add a filter for attributes-only GTAP"
         (is (=? (mt/query checkins
                   {:type  :query
                    :query {:source-query {:source-table                  $$checkins
                                           :fields                        [$id !default.$date $user_id $venue_id]
                                           :filter                        [:and
-                                                                          [:>= !default.date [:absolute-datetime #t "2014-01-02T00:00Z[UTC]" :default]]
+                                                                          [:> !default.date [:absolute-datetime
+                                                                                             #t "2014-01-01"
+                                                                                             :default]]
                                                                           [:=
                                                                            $user_id
                                                                            [:value 5 {:base_type         :type/Integer
@@ -213,8 +223,9 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::qp.perms/perms                           {:gtaps #{(perms/table-query-path (mt/id :checkins))
-                                                                        (perms/table-query-path (mt/id :venues))}}})
+                   ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted}
+                                                                       :perms/create-queries {(mt/id :checkins) :query-builder
+                                                                                              (mt/id :venues) :query-builder}}}})
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -226,8 +237,8 @@
 (deftest middleware-native-query-test
   (testing "Make sure the middleware does the correct transformation given the GTAPs we have"
     (testing "Should substitute appropriate value in native query"
-      (met/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
-                       :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                        :attributes {"cat" 50}}
         (is (=? (mt/query nil
                   {:database (mt/id)
                    :type     :query
@@ -243,11 +254,10 @@
                                                                 :display_name  "Count"
                                                                 :source        :aggregation
                                                                 :field_ref     [:aggregation 0]}]
-                   ::qp.perms/perms                           {:gtaps #{(perms/adhoc-native-query-path (mt/id))}}})
+                   ::query-perms/perms                        {:gtaps {:perms/create-queries :query-builder-and-native}}})
                 (apply-row-level-permissions
                  (mt/mbql-query venues
                    {:aggregation [[:count]]}))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                END-TO-END TESTS                                                |
@@ -262,14 +272,14 @@
 (deftest e2e-test-1
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is a native query"
-      (met/with-gtaps {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-native-gtap-def)}, :attributes {"cat" 50}}
         (is (= [[10]]
                (run-venues-count-query)))))))
 
 (deftest e2e-test-2
   (mt/test-drivers (e2e-test-drivers)
     (testing "Basic test around querying a table by a user with segmented only permissions and a GTAP question that is MBQL"
-      (met/with-gtaps {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" 50}}
         (is (= [[10]]
                (run-venues-count-query)))))))
 
@@ -277,7 +287,7 @@
   (mt/test-drivers (e2e-test-drivers)
     (testing (str "When processing a query that requires a user attribute and that user attribute isn't there, throw an "
                   "exception letting the user know it's missing")
-      (met/with-gtaps {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"something_random" 50}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"something_random" 50}}
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Query requires user attribute `cat`"
@@ -287,7 +297,7 @@
   (mt/test-drivers (e2e-test-drivers)
     (testing (str "When processing a query that requires a user attribute and that user attribute is nil, throw an "
                   "exception letting the user know it's missing")
-      (met/with-gtaps {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" nil}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" nil}}
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Query requires user attribute `cat`"
@@ -296,66 +306,67 @@
 (deftest e2e-test-5
   (mt/test-drivers (e2e-test-drivers)
     (testing "Another basic test, same as above, but with a numeric string that needs to be coerced"
-      (met/with-gtaps {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "50"}}
+      (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}, :attributes {"cat" "50"}}
         (is (= [[10]]
                (run-venues-count-query)))))))
 
 (deftest e2e-test-6
   (mt/test-drivers (e2e-test-drivers)
     (testing "Another basic test, this one uses a stringified float for the login attribute"
-      (met/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                             :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
-                       :attributes {"cat" "34.1018"}}
+      (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
+                                              :remappings {:cat ["variable" [:field (mt/id :venues :latitude) nil]]}}}
+                        :attributes {"cat" "34.1018"}}
         (is (= [[3]]
                (run-venues-count-query)))))))
 
 (deftest e2e-test-7
   (mt/test-drivers (e2e-test-drivers)
     (testing "Tests that users can have a different parameter name in their query than they have in their user attributes"
-      (met/with-gtaps {:gtaps      {:venues {:query      (:query (venues-category-native-gtap-def))
-                                             :remappings {:something.different ["variable" ["template-tag" "cat"]]}}}
-                       :attributes {"something.different" 50}}
+      (met/with-gtaps! {:gtaps      {:venues {:query      (:query (venues-category-native-gtap-def))
+                                              :remappings {:something.different ["variable" ["template-tag" "cat"]]}}}
+                        :attributes {"something.different" 50}}
         (is (= [[10]]
                (run-venues-count-query)))))))
 
 (deftest e2e-test-8
   (mt/test-drivers (e2e-test-drivers)
     (testing "Make sure that you can still use a SQL-based GTAP without needing to have SQL read perms for the Database"
-      (met/with-gtaps {:gtaps {:venues (venue-names-native-gtap-def)}}
+      (met/with-gtaps! {:gtaps {:venues (venue-names-native-gtap-def)}}
         (is (= [[1 "Red Medicine"] [2 "Stout Burgers & Beers"]]
-               (mt/formatted-rows [int str]
-                 (mt/run-mbql-query venues
-                   {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))))
+               (mt/formatted-rows
+                [int str]
+                (mt/run-mbql-query venues
+                  {:limit 2, :order-by [[:asc [:field (mt/id :venues :id)]]]}))))))))
 
 (deftest e2e-test-9
   (mt/test-drivers (e2e-test-drivers)
     (testing "When no card_id is included in the GTAP, should default to a query against the table, with the GTAP criteria applied"
-      (met/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
-                       :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
+                        :attributes {"cat" 50}}
         (is (= [[10]]
                (run-venues-count-query)))))))
 
 (deftest e2e-test-10
   (mt/test-drivers (e2e-test-drivers)
     (testing "Same test as above but make sure we coerce a numeric string correctly"
-      (met/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
-                       :attributes {"cat" "50"}}
+      (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
+                        :attributes {"cat" "50"}}
         (is (= [[10]]
                (run-venues-count-query)))))))
 
 (deftest e2e-test-11
   (mt/test-drivers (e2e-test-drivers)
     (testing "Admins always bypass sandboxes, even if they are in a sandboxed group"
-      (met/with-gtaps-for-user :crowberto {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                                           :attributes {"cat" 50}}
+      (met/with-gtaps-for-user! :crowberto {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                            :attributes {"cat" 50}}
         (is (= [[100]]
                (run-venues-count-query)))))))
 
 (deftest e2e-test-12
   (mt/test-drivers (e2e-test-drivers)
     (testing "A non-admin impersonating an admin (i.e. when running a public or embedded question) should always bypass sandboxes (#30535)"
-      (met/with-gtaps-for-user :rasta {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                                       :attributes {"cat" 50}}
+      (met/with-gtaps-for-user! :rasta {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                                        :attributes {"cat" 50}}
         (mt/with-test-user :rasta
           (mw.session/as-admin
             (is (= [[100]]
@@ -368,16 +379,18 @@
         (mt/with-temp [Collection collection {}
                        Card       card        {:collection_id (u/the-id collection)}]
           (mt/with-group [group]
-            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-            (perms/grant-collection-read-permissions! group collection)
-            (mt/with-test-user :rasta
-              (binding [qp.perms/*card-id* (u/the-id card)]
-                (is (= 1
-                       (count (mt/rows
-                               (qp/process-query {:database (mt/id)
-                                                  :type     :query
-                                                  :query    {:source-table (mt/id :venues)
-                                                             :limit        1}})))))))))))))
+            (mt/with-no-data-perms-for-all-users!
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+              (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
+              (perms/grant-collection-read-permissions! group collection)
+              (mt/with-test-user :rasta
+                (binding [qp.perms/*card-id* (u/the-id card)]
+                  (is (= 1
+                         (count (mt/rows
+                                 (qp/process-query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (mt/id :venues)
+                                                               :limit        1}}))))))))))))))
 
 (deftest e2e-test-14
   (mt/test-drivers (e2e-test-drivers)
@@ -393,21 +406,22 @@
           (mt/with-test-user :rasta
             (mt/with-native-query-testing-context query
               (is (= [[100]]
-                     (mt/format-rows-by [int]
-                       (mt/rows (qp/process-query query))))))))))))
-
+                     (mt/format-rows-by
+                      [int]
+                      (mt/rows (qp/process-query query))))))))))))
 
 ;; Test that we can follow FKs to related tables and breakout by columns on those related tables. This test has
 ;; several things wrapped up which are detailed below
 
 (defn- row-level-restrictions-fk-drivers
-  "Drivers to test row-level restrictions against foreign keys with. Includes BigQuery, which for whatever reason does
-  not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
-  keys from the JDBC metadata, even though we enable the feature in the UI."
+  "Drivers to test row-level restrictions against foreign keys with."
   []
-  (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
-    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)
-    true                                       (disj :presto-jdbc)))
+  (mt/normal-drivers-with-feature :nested-queries :left-join))
+
+(defn- row-level-restrictions-fk-sql-drivers
+  "SQL drivers to test row-level restrictions against foreign keys with."
+  []
+  (into #{} (filter #(isa? driver/hierarchy % :sql)) (row-level-restrictions-fk-drivers)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -415,59 +429,56 @@
                   "2 - Apply the `user` attribute, looking for only our user (i.e. `user_id` =  5)\n"
                   "3 - Checkins are related to Venues, query for checkins, grouping by the Venue's price\n"
                   "4 - Order by the Venue's price to ensure a predictably ordered response")
-      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                    :venues   nil}
-                       :attributes {"user" 5}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= [[1 10] [2 36] [3 4] [4 5]]
-                 (run-checkins-count-broken-out-by-price-query))))))))
+      (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                     :venues   nil}
+                        :attributes {"user" 5}}
+        (is (= [[1 10] [2 36] [3 4] [4 5]]
+               (run-checkins-count-broken-out-by-price-query)))))))
 
 (deftest e2e-fks-test-2
   (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing (str "Test that we're able to use a GTAP for an FK related table. For this test, the user has segmented "
                   "permissions on checkins and venues, so we need to apply a GTAP to the original table (checkins) in "
                   "addition to the related table (venues). This test uses a GTAP question for both tables")
-      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                    :venues   (venues-price-mbql-gtap-def)}
-                       :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil 45] [1 10]}
-                 (set (run-checkins-count-broken-out-by-price-query)))))))))
+      (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                     :venues   (venues-price-mbql-gtap-def)}
+                        :attributes {"user" 5, "price" 1}}
+        (is (= #{[nil 45] [1 10]}
+               (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-3
   (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing "Test that the FK related table can be a \"default\" GTAP, i.e. a GTAP where the `card_id` is nil"
-      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                    :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
-                       :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil 45] [1 10]}
-                 (set (run-checkins-count-broken-out-by-price-query)))))))))
+      (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                     :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
+                        :attributes {"user" 5, "price" 1}}
+        (is (= #{[nil 45] [1 10]}
+               (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-4
   (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing (str "Test that we have multiple FK related, segmented tables. This test has checkins with a GTAP "
                   "question with venues and users having the default GTAP and segmented permissions")
-      (met/with-gtaps {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
-                                    :venues   (dissoc (venues-price-mbql-gtap-def) :query)
-                                    :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
-                       :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
-                 (set
-                  (mt/format-rows-by [#(when % (int %)) str int]
-                    (mt/rows
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :order-by    [[:asc $venue_id->venues.price]]
-                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+      (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
+                                     :venues   (dissoc (venues-price-mbql-gtap-def) :query)
+                                     :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
+                        :attributes {"user" 5, "price" 1}}
+        (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
+               (set
+                (mt/format-rows-by
+                 [#(when % (int %)) str int]
+                 (mt/rows
+                  (mt/run-mbql-query checkins
+                    {:aggregation [[:count]]
+                     :order-by    [[:asc $venue_id->venues.price]]
+                     :breakout    [$venue_id->venues.price $user_id->users.name]}))))))))))
 
-(defn- run-query-returning-remark [run-query-fn]
+(defn- run-query-returning-remark! [run-query-fn]
   (let [remark (atom nil)
         orig   qp.util/query->remark]
     (with-redefs [qp.util/query->remark (fn [driver outer-query]
-                                         (u/prog1 (orig driver outer-query)
-                                           (reset! remark <>)))]
+                                          (u/prog1 (orig driver outer-query)
+                                            (reset! remark <>)))]
       (let [results (run-query-fn)]
         (or (some-> @remark (str/replace #"queryHash: \w+" "queryHash: <hash>"))
             (log/infof "NO REMARK FOUND:\n %s" (u/pprint-to-str 'red results))
@@ -475,52 +486,61 @@
 
 (deftest remark-test
   (testing "make sure GTAP queries still include ID of user who ran them in the remark"
-    (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                     :attributes {"cat" 50}}
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                      :attributes {"cat" 50}}
       (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash>" (mt/user->id :rasta))
-             (run-query-returning-remark
+             (run-query-returning-remark!
               (fn []
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
 
 (deftest breakouts-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
     (testing "Make sure that if a GTAP is in effect we can still do stuff like breakouts (#229)"
-      (met/with-gtaps {:gtaps      {:venues (venues-category-native-gtap-def)}
-                       :attributes {"cat" 50}}
+      (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
+                        :attributes {"cat" 50}}
         (is (= [[1 6] [2 4]]
-               (mt/format-rows-by [int int]
-                 (mt/rows
-                  (mt/run-mbql-query venues
-                    {:aggregation [[:count]]
-                     :breakout    [$price]})))))))))
+               (mt/format-rows-by
+                [int int]
+                (mt/rows
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:count]]
+                    :breakout    [$price]})))))))))
 
 (deftest sql-with-join-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (into #{}
+                         (filter #(driver.u/supports? % :parameterized-sql nil))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
       (is (= [[2  1]
               [72 1]]
-             (mt/format-rows-by [int int identity int]
-               (mt/rows
-                (met/with-gtaps {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
+             (mt/format-rows-by
+              [int int identity int]
+              (mt/rows
+               (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                                  :attributes {"user" 1}}
-                  (mt/run-mbql-query checkins
-                    {:limit 2})))))))))
+                 (mt/run-mbql-query checkins
+                   {:order-by [[:asc $id]]
+                    :limit 2})))))))))
 
 (deftest sql-with-join-test-2
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (into #{}
+                         (filter #(driver.u/supports? % :parameterized-sql nil))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
       (is (= [[2  1]
               [72 1]]
-             (mt/format-rows-by [int int identity int]
-               (mt/rows
-                (met/with-gtaps {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
+             (mt/format-rows-by
+              [int int identity int]
+              (mt/rows
+               (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                                  :attributes {"user" 1}}
-                  (mt/run-mbql-query checkins
-                    {:limit 2})))))))))
+                 (mt/run-mbql-query checkins
+                   {:order-by [[:asc $id]]
+                    :limit 2})))))))))
 
 (deftest correct-metadata-test
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
@@ -531,7 +551,7 @@
                              {:order-by [[:asc $id]]
                               :limit    2})))
           original-cols (cols)
-          ;; `with-gtaps` copies the test DB so this function will update the IDs in `original-cols` so they'll match
+          ;; `with-gtaps!` copies the test DB so this function will update the IDs in `original-cols` so they'll match
           ;; up with the current copy
           expected-cols (fn []
                           (for [col  original-cols
@@ -542,63 +562,63 @@
                                        :field_ref [:field id nil])
                                 (dissoc :fk_target_field_id))))]
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
-        (met/with-gtaps {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
-                         :attributes {"cat" 50}}
+        (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
+                          :attributes {"cat" 50}}
           (is (=? (expected-cols)
                   (cols)))))
 
       (testing "A query with an equivalent MBQL query sandbox should have the same metadata"
-        (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                         :attributes {"cat" 50}}
+        (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                          :attributes {"cat" 50}}
           (is (=? (expected-cols)
                   (cols)))))
 
       (testing "A query with an equivalent native query sandbox should have the same metadata"
-        (met/with-gtaps {:gtaps {:venues {:query (mt/native-query
-                                                   {:query
-                                                    (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
-                                                         "FROM VENUES "
-                                                         "WHERE CATEGORY_ID = {{cat}}")
+        (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
+                                                    {:query
+                                                     (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
+                                                          "FROM VENUES "
+                                                          "WHERE CATEGORY_ID = {{cat}}")
 
-                                                    :template_tags
-                                                    {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
-                                          :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
-                         :attributes {"cat" 50}}
+                                                     :template_tags
+                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                           :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
+                          :attributes {"cat" 50}}
           (is (=? (expected-cols)
                   (cols)))))
 
       (testing (str "If columns are added/removed/reordered we should still merge in metadata for the columns we're "
                     "able to match from the original Table")
-        (met/with-gtaps {:gtaps {:venues {:query (mt/native-query
-                                                   {:query
-                                                    (str "SELECT NAME, ID, LONGITUDE, PRICE, 1 AS ONE "
-                                                         "FROM VENUES "
-                                                         "WHERE CATEGORY_ID = {{cat}}")
+        (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
+                                                    {:query
+                                                     (str "SELECT NAME, ID, LONGITUDE, PRICE, 1 AS ONE "
+                                                          "FROM VENUES "
+                                                          "WHERE CATEGORY_ID = {{cat}}")
 
-                                                    :template_tags
-                                                    {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
-                                          :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
-                         :attributes {"cat" 50}}
+                                                     :template_tags
+                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                           :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
+                          :attributes {"cat" 50}}
           (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
             (is (=? [name-col id-col longitude-col price-col]
                     (cols)))))))))
 
 (deftest sql-with-joins-test
   (testing "Should be able to use a Saved Question with no source Metadata as a GTAP (EE #525)"
-    (met/with-gtaps (mt/$ids
-                      {:gtaps      {:venues   {:query      (mt/native-query
-                                                             {:query         (str "SELECT DISTINCT VENUES.* "
-                                                                                  "FROM VENUES "
-                                                                                  "LEFT JOIN CHECKINS"
-                                                                                  "       ON CHECKINS.VENUE_ID = VENUES.ID "
-                                                                                  "WHERE CHECKINS.USER_ID IN ({{sandbox}})")
-                                                              :template-tags {"sandbox"
-                                                                              {:name         "sandbox"
-                                                                               :display-name "Sandbox"
-                                                                               :type         :text}}})
-                                               :remappings {"user_id" [:variable [:template-tag "sandbox"]]}}
-                                    :checkins {:remappings {"user_id" [:dimension $checkins.user_id]}}}
-                       :attributes {"user_id" 1}})
+    (met/with-gtaps! (mt/$ids
+                       {:gtaps      {:venues   {:query      (mt/native-query
+                                                              {:query         (str "SELECT DISTINCT VENUES.* "
+                                                                                   "FROM VENUES "
+                                                                                   "LEFT JOIN CHECKINS"
+                                                                                   "       ON CHECKINS.VENUE_ID = VENUES.ID "
+                                                                                   "WHERE CHECKINS.USER_ID IN ({{sandbox}})")
+                                                               :template-tags {"sandbox"
+                                                                               {:name         "sandbox"
+                                                                                :display-name "Sandbox"
+                                                                                :type         :text}}})
+                                                :remappings {"user_id" [:variable [:template-tag "sandbox"]]}}
+                                     :checkins {:remappings {"user_id" [:dimension $checkins.user_id]}}}
+                        :attributes {"user_id" 1}})
       (is (= [[2 "2014-09-18T00:00:00Z"  1 31 31 "Bludso's BBQ"         5 33.8894 -118.207 2]
               [72 "2015-04-18T00:00:00Z" 1  1  1 "Red Medicine"         4 10.0646 -165.374 3]
               [80 "2013-12-27T00:00:00Z" 1 99 99 "Golden Road Brewing" 10 34.1505 -118.274 2]]
@@ -614,18 +634,18 @@
 (deftest run-sql-queries-to-infer-columns-test
   (testing "Run SQL queries to infer the columns when used as GTAPS (#13716)\n"
     (testing "Should work with SQL queries that return less columns than there were in the original Table\n"
-      (met/with-gtaps (mt/$ids
-                        {:gtaps      {:venues   {:query      (mt/native-query
-                                                               {:query         (str "SELECT DISTINCT VENUES.ID, VENUES.NAME "
-                                                                                    "FROM VENUES "
-                                                                                    "WHERE VENUES.ID IN ({{sandbox}})")
-                                                                :template-tags {"sandbox"
-                                                                                {:name         "sandbox"
-                                                                                 :display-name "Sandbox"
-                                                                                 :type         :text}}})
-                                                 :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
-                                      :checkins {}}
-                         :attributes {"venue_id" 1}})
+      (met/with-gtaps! (mt/$ids
+                         {:gtaps      {:venues   {:query      (mt/native-query
+                                                                {:query         (str "SELECT DISTINCT VENUES.ID, VENUES.NAME "
+                                                                                     "FROM VENUES "
+                                                                                     "WHERE VENUES.ID IN ({{sandbox}})")
+                                                                 :template-tags {"sandbox"
+                                                                                 {:name         "sandbox"
+                                                                                  :display-name "Sandbox"
+                                                                                  :type         :text}}})
+                                                  :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
+                                       :checkins {}}
+                          :attributes {"venue_id" 1}})
         (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
                                                     :group_id (:id &group)
                                                     :table_id (mt/id :venues))]
@@ -653,17 +673,17 @@
                       :display_name "Name"}]
                     (t2/select-one-fn :result_metadata Card :id venues-gtap-card-id)))))))))
 
-(defn- do-with-sql-gtap [sql f]
-  (met/with-gtaps (mt/$ids
-                    {:gtaps      {:venues   {:query      (mt/native-query
-                                                           {:query         sql
-                                                            :template-tags {"sandbox"
-                                                                            {:name         "sandbox"
-                                                                             :display-name "Sandbox"
-                                                                             :type         :text}}})
-                                             :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
-                                  :checkins {}}
-                     :attributes {"venue_id" 1}})
+(defn- do-with-sql-gtap! [sql f]
+  (met/with-gtaps! (mt/$ids
+                     {:gtaps      {:venues   {:query      (mt/native-query
+                                                            {:query         sql
+                                                             :template-tags {"sandbox"
+                                                                             {:name         "sandbox"
+                                                                              :display-name "Sandbox"
+                                                                              :type         :text}}})
+                                              :remappings {"venue_id" [:variable [:template-tag "sandbox"]]}}
+                                   :checkins {}}
+                      :attributes {"venue_id" 1}})
     (let [venues-gtap-card-id (t2/select-one-fn :card_id GroupTableAccessPolicy
                                                 :group_id (:id &group)
                                                 :table_id (mt/id :venues))]
@@ -684,7 +704,7 @@
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Removing columns should be ok."
-      (do-with-sql-gtap
+      (do-with-sql-gtap!
        (str "SELECT ID, NAME "
             "FROM VENUES "
             "WHERE ID IN ({{sandbox}})")
@@ -696,7 +716,7 @@
 (deftest run-queries-to-infer-columns-error-on-column-type-changes-test-2
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Don't allow people to change the types of columns in the original Table"
-      (do-with-sql-gtap
+      (do-with-sql-gtap!
        (str "SELECT ID, 100 AS NAME "
             "FROM VENUES "
             "WHERE ID IN ({{sandbox}})")
@@ -711,7 +731,7 @@
   (testing "If we have to run a query to infer columns (see above) we should validate column constraints (#14099)\n"
     (testing "Don't allow people to change the types of columns in the original Table"
       (testing "Should be ok if you change the type of the column to a *SUBTYPE* of the original Type"
-        (do-with-sql-gtap
+        (do-with-sql-gtap!
          (str "SELECT cast(ID AS bigint) AS ID, NAME "
               "FROM VENUES "
               "WHERE ID IN ({{sandbox}})")
@@ -721,12 +741,15 @@
                     (mt/rows (run-query)))))))))))
 
 (deftest dont-cache-sandboxes-test
-  (cache-test/with-mock-cache [save-chan]
-    (met/with-gtaps {:gtaps      {:venues (venues-category-mbql-gtap-def)}
-                     :attributes {"cat" 50}}
+  (cache-test/with-mock-cache! [save-chan]
+    (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
+                      :attributes {"cat" 50}}
       (letfn [(run-query []
                 (qp/process-query (assoc (mt/mbql-query venues {:aggregation [[:count]]})
-                                         :cache-ttl 100)))]
+                                         :cache-strategy {:type             :ttl
+                                                          :multiplier       60
+                                                          :avg-execution-ms 10
+                                                          :min-duration-ms  0})))]
         (testing "Run the query, should not be cached"
           (let [result (run-query)]
             (is (= nil
@@ -745,7 +768,7 @@
             (is (= [[10]]
                    (mt/rows result)))))
         (testing "Run the query with different User attributes, should not get the cached result"
-          (met/with-user-attributes :rasta {"cat" 40}
+          (met/with-user-attributes! :rasta {"cat" 40}
             ;; re-bind current user so updated attributes come in to effect
             (mt/with-test-user :rasta
               (is (= {"cat" 40}
@@ -760,14 +783,12 @@
   (testing "Sandboxing should work with remapped FK columns (#14629)"
     (mt/dataset test-data
       ;; set up GTAP against reviews
-      (met/with-gtaps (mt/$ids reviews
-                        {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
-                         :attributes {"user_id" 1}})
+      (met/with-gtaps! (mt/$ids reviews
+                         {:gtaps      {:reviews {:remappings {"user_id" [:dimension $product_id]}}}
+                          :attributes {"user_id" 1}})
         ;; grant full data perms for products
-        (perms/grant-permissions! (perms-group/all-users) (perms/data-perms-path
-                                                           (mt/id)
-                                                           (t2/select-one-fn :schema Table :id (mt/id :products))
-                                                           (mt/id :products)))
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
         (mt/with-test-user :rasta
           (testing "Sanity check: should be able to query products"
             (is (=? {:status :completed}
@@ -805,9 +826,9 @@
   (testing "Sandboxing based on a column in a linked table should work even if the user doesn't have self-service query
            permissions for the linked table (#15105)"
     (mt/dataset test-data
-      (met/with-gtaps (mt/$ids orders
-                        {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
-                         :attributes {"user_id" 1}})
+      (met/with-gtaps! (mt/$ids orders
+                         {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                          :attributes {"user_id" 1}})
         (mt/with-test-user :rasta
           (is (= [11]
                  (-> (mt/run-mbql-query orders {:aggregation [[:count]]})
@@ -818,11 +839,11 @@
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
     ;; Sandbox ORDERS and PRODUCTS
     (mt/dataset test-data
-      (met/with-gtaps (mt/$ids nil
-                        {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
-                                      :products {:remappings {:user_cat [:dimension $products.category]}}}
-                         :attributes {:user_id  "1"
-                                      :user_cat "Widget"}})
+      (met/with-gtaps! (mt/$ids nil
+                         {:gtaps      {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
+                                       :products {:remappings {:user_cat [:dimension $products.category]}}}
+                          :attributes {:user_id  "1"
+                                       :user_cat "Widget"}})
         ;; create query with joins
         (let [query (mt/mbql-query orders
                       {:aggregation [[:count]]
@@ -888,11 +909,12 @@
   (testing "drill-through should work on implicit joined tables with sandboxes should have correct metadata (#13641)"
     (mt/dataset test-data
       ;; create Sandbox on ORDERS
-      (met/with-gtaps (mt/$ids nil
-                        {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
-                         :attributes {:user_id "1"}})
+      (met/with-gtaps! (mt/$ids nil
+                         {:gtaps      {:orders {:remappings {:user_id [:dimension $orders.user_id]}}}
+                          :attributes {:user_id "1"}})
         ;; make sure the sandboxed group can still access the Products table, which is referenced below.
-        (perms/grant-permissions! &group (perms/data-perms-path (mt/id) "PUBLIC" (mt/id :products)))
+        (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :query-builder)
         (letfn [(do-tests []
                   ;; create a query based on the sandboxed Table
                   (testing "should be able to run the query. Results should come back with correct metadata"
@@ -948,10 +970,10 @@
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
     (mt/dataset test-data
-      (let [mbql-sandbox-results (met/with-gtaps {:gtaps      (mt/$ids
-                                                                {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
-                                                                 :products {:remappings {"user_cat" [:dimension $products.category]}}})
-                                                  :attributes {"user_id" 1, "user_cat" "Widget"}}
+      (let [mbql-sandbox-results (met/with-gtaps! {:gtaps      (mt/$ids
+                                                                 {:orders   {:remappings {"user_id" [:dimension $orders.user_id]}}
+                                                                  :products {:remappings {"user_cat" [:dimension $products.category]}}})
+                                                   :attributes {"user_id" 1, "user_cat" "Widget"}}
                                    (mt/with-column-remappings [orders.product_id products.title]
                                      (mt/run-mbql-query orders)))]
         (doseq [orders-gtap-card-has-metadata?   [true false]
@@ -959,21 +981,21 @@
           (testing (format "\nwith GTAP metadata for Orders? %s Products? %s"
                            (pr-str orders-gtap-card-has-metadata?)
                            (pr-str products-gtap-card-has-metadata?))
-            (met/with-gtaps {:gtaps      {:orders   {:query      (mt/native-query
-                                                                   {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
-                                                                    :template-tags {"uid" {:display-name "User ID"
-                                                                                           :id           "1"
-                                                                                           :name         "uid"
-                                                                                           :type         :number}}})
-                                                     :remappings {"user_id" [:variable [:template-tag "uid"]]}}
-                                          :products {:query      (mt/native-query
-                                                                   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
-                                                                    :template-tags {"cat" {:display-name "Category"
-                                                                                           :id           "2"
-                                                                                           :name         "cat"
-                                                                                           :type         :text}}})
-                                                     :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
-                             :attributes {"user_id" "1", "user_cat" "Widget"}}
+            (met/with-gtaps! {:gtaps      {:orders   {:query      (mt/native-query
+                                                                    {:query         "SELECT * FROM ORDERS WHERE USER_ID={{uid}} AND TOTAL > 10"
+                                                                     :template-tags {"uid" {:display-name "User ID"
+                                                                                            :id           "1"
+                                                                                            :name         "uid"
+                                                                                            :type         :number}}})
+                                                      :remappings {"user_id" [:variable [:template-tag "uid"]]}}
+                                           :products {:query      (mt/native-query
+                                                                    {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY={{cat}} AND PRICE > 10"
+                                                                     :template-tags {"cat" {:display-name "Category"
+                                                                                            :id           "2"
+                                                                                            :name         "cat"
+                                                                                            :type         :text}}})
+                                                      :remappings {"user_cat" [:variable [:template-tag "cat"]]}}}
+                              :attributes {"user_id" "1", "user_cat" "Widget"}}
               (when orders-gtap-card-has-metadata?
                 (set-query-metadata-for-gtap-card! &group :orders "uid" 1))
               (when products-gtap-card-has-metadata?
@@ -995,18 +1017,15 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  (mt/test-drivers (disj
-                    (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join)
-                    ;; this test relies on a FK relation between $product_id->products.category, so skip for Presto
-                    ;; JDBC, because that driver doesn't support resolving FKs from the JDBC metadata
-                    :presto-jdbc)
+  (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset test-data
-        (met/with-gtaps {:gtaps      (mt/$ids
-                                       {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
-                                        :products {:remappings {:user_cat [:dimension $products.category]}}})
-                         :attributes {:user_id 1, :user_cat "Widget"}}
-          (perms/grant-permissions! &group (perms/table-query-path (t2/select-one Table :id (mt/id :people))))
+        (met/with-gtaps! {:gtaps      (mt/$ids
+                                        {:orders   {:remappings {:user_id [:dimension $orders.user_id]}}
+                                         :products {:remappings {:user_cat [:dimension $products.category]}}})
+                          :attributes {:user_id 1, :user_cat "Widget"}}
+          (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
+          (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
           (is (= (->> [["Twitter" nil      0 401.51]
                        ["Twitter" "Widget" 0 498.59]
                        [nil       nil      1 401.51]
@@ -1021,38 +1040,38 @@
                                                     :else      "Z"))]
                                  (fn [[x y group]]
                                    [group (sort-str x) (sort-str y)]))))
-                 (mt/formatted-rows [str str int 2.0]
-                   (qp.pivot/run-pivot-query
-                    (mt/mbql-query orders
-                      {:joins       [{:source-table $$people
-                                      :fields       :all
-                                      :condition    [:= $user_id &P.people.id]
-                                      :alias        "P"}]
-                       :aggregation [[:sum $total]]
-                       :breakout    [&P.people.source
-                                     $product_id->products.category]
-                       :limit       5}))))))))))
+                 (mt/formatted-rows
+                  [str str int 2.0]
+                  (qp.pivot/run-pivot-query
+                   (mt/mbql-query orders
+                     {:joins       [{:source-table $$people
+                                     :fields       :all
+                                     :condition    [:= $user_id &P.people.id]
+                                     :alias        "P"}]
+                      :aggregation [[:sum $total]]
+                      :breakout    [&P.people.source
+                                    $product_id->products.category]
+                      :limit       5}))))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"
-    (met/with-gtaps {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
-      (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
-            _         (is (integer? card-id))
-            query     (t2/select-one-fn :dataset_query Card :id card-id)
-            run-query (fn []
-                        (let [results (qp/process-query (assoc query :cache-ttl 100))]
-                          {:cached?  (boolean (:cached (:cache/details results)))
-                           :num-rows (count (mt/rows results))}))]
-        (mt/with-temporary-setting-values [enable-query-caching  true
-                                           query-caching-min-ttl 0]
+    (mt/with-model-cleanup [[:model/QueryCache :updated_at]]
+      (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})}}}
+        (let [card-id   (t2/select-one-fn :card_id GroupTableAccessPolicy :group_id (u/the-id &group))
+              _         (is (integer? card-id))
+              query     (t2/select-one-fn :dataset_query Card :id card-id)
+              run-query (fn []
+                          (let [results (qp/process-query (assoc query :cache-strategy {:type             :ttl
+                                                                                        :multiplier       60
+                                                                                        :avg-execution-ms 10
+                                                                                        :min-duration-ms  0}))]
+                            {:cached?  (boolean (:cached (:cache/details results)))
+                             :num-rows (count (mt/rows results))}))]
           (testing "Make sure the underlying card for the GTAP returns cached results without sandboxing"
             (mt/with-current-user nil
               (testing "First run -- should not be cached"
                 (is (= {:cached? false, :num-rows 5}
                        (run-query))))
-              ;; run a few more times to make sure the cache had time to populate
-              (run-query)
-              (run-query)
               (testing "Should be cached by now"
                 (is (= {:cached? true, :num-rows 5}
                        (run-query))))))
@@ -1064,14 +1083,14 @@
 (deftest persistence-disabled-when-sandboxed
   (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
     (mt/dataset test-data
-      ;; with-gtaps creates a new copy of the database. So make sure to do that before anything else. Gets really
+      ;; with-gtaps! creates a new copy of the database. So make sure to do that before anything else. Gets really
       ;; confusing when `(mt/id)` and friends change value halfway through the test
-      (met/with-gtaps {:gtaps {:products
-                               {:remappings {:category
-                                             ["dimension"
-                                              [:field (mt/id :products :category)
-                                               nil]]}}}}
-        (mt/with-persistence-enabled [persist-models!]
+      (met/with-gtaps! {:gtaps {:products
+                                {:remappings {:category
+                                              ["dimension"
+                                               [:field (mt/id :products :category)
+                                                nil]]}}}}
+        (mt/with-persistence-enabled! [persist-models!]
           (mt/with-temp [Card model {:type          :model
                                      :dataset_query (mt/mbql-query
                                                       products
@@ -1094,7 +1113,7 @@
                                    :database (mt/id)}
                     regular-result (mt/with-test-user :crowberto
                                      (qp/process-query query))
-                    sandboxed-result (met/with-user-attributes :rasta {"category" "Gizmo"}
+                    sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
                                        (mt/with-test-user :rasta
                                          (qp/process-query query)))]
                 (testing "Unsandboxed"
@@ -1116,11 +1135,76 @@
 
 (deftest is-sandboxed-success-test
   (testing "Integration test that checks that is_sandboxed is recorded in query_execution correctly for a sandboxed query"
-    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+    (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (t2.with-temp/with-temp [Card card {:database_id   (mt/id)
                                           :table_id      (mt/id :categories)
                                           :dataset_query (mt/mbql-query categories)}]
         (let [query (:dataset_query card)]
-          (process-userland-query-test/with-query-execution [qe query]
+          (process-userland-query-test/with-query-execution! [qe query]
             (qp/process-query (qp/userland-query query))
-            (is (:is_sandboxed (qe)))))))))
+            (is (=? {:is_sandboxed true}
+                    (qe)))))))))
+
+(deftest sandbox-join-permissions-test
+  (testing "Sandboxed query fails when sandboxed table is joined to a table that the current user doesn't have access to"
+    (met/with-gtaps! (mt/$ids orders
+                       {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                        :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :products) :perms/view-data :legacy-no-self-service)
+      (data-perms/set-table-permission! &group (mt/id :products) :perms/create-queries :no)
+      (let [query (mt/mbql-query orders
+                    {:limit 5
+                     :aggregation [:count]
+                     :joins [{:source-table $$products
+                              :fields       :all
+                              :alias        "Products"
+                              :condition    [:= $product_id &Products.products.id]}]})]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query query))))
+
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query products)}]
+        (let [query (mt/mbql-query orders
+                      {:limit 5
+                       :aggregation [:count]
+                       :joins [{:source-table (str "card__" (:id card))
+                                :fields       :all
+                                :strategy     :left-join
+                                :alias        "Products"
+                                :condition    [:= $product_id &Products.products.id]}]})]
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"You do not have permissions to run this query"
+               (qp/process-query query))))))))
+
+(deftest sandbox-join-permissions-unrestricted-test
+  (testing "sandboxing with unrestricted data perms on the sandboxed table works"
+    (met/with-gtaps! (mt/$ids orders
+                       {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                        :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
+      (let [query (mt/mbql-query orders)]
+        (is (= 11 (count (mt/rows (qp/process-query query)))))))))
+
+(deftest sandbox-join-permissions-not-allowed-when-table-blocked-test
+  (testing "sandboxed query fails when sandboxed table is joined to a table that the current user is blocked on"
+    (met/with-gtaps! (mt/$ids orders
+                       {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
+                        :attributes {"user_id" 1}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :blocked)
+      (let [query (mt/mbql-query orders)]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"You do not have permissions to run this query"
+             (qp/process-query query)))))))
+
+(deftest sandbox-join-permissions-test-uses-nested-sandboxes-test
+  (testing "Nested sandbox query works when sandboxed definition is based on a fk to another sandboxed table"
+    (met/with-gtaps! (mt/$ids orders
+                       {:attributes {"user_id" 1}
+                        :gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}
+                                            ;; Since noone's zipcode == 1, this sandboxed table will return nothing
+                                     :people {:remappings {"user_id" [:dimension $people.zip]}}}})
+      (data-perms/set-table-permission! &group (mt/id :people) :perms/view-data :unrestricted)
+      (is (= 0 (count (mt/rows (qp/process-query (mt/mbql-query orders)))))))))

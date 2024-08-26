@@ -18,7 +18,7 @@
   (let [byte-count  (atom 0)
         check-total (fn [current-total]
                       (when (> current-total max-bytes)
-                        (log/info (trs "Results are too large to cache.") (u/emoji "😫"))
+                        (log/info "Results are too large to cache." (u/emoji "😫"))
                         (throw (ex-info (trs "Results are too large to cache.") {:type ::max-bytes}))))]
     (proxy [FilterOutputStream] [os]
       (write
@@ -38,12 +38,12 @@
 ;; flatland.ordered.map.OrderedMap gets encoded and decoded incorrectly, for some reason. See #25915
 
 (nippy/extend-freeze flatland.ordered.map.OrderedMap :flatland/ordered-map
-                     [x data-output]
-                     (nippy/freeze-to-out! data-output (vec x)))
+  [x data-output]
+  (nippy/freeze-to-out! data-output (vec x)))
 
 (nippy/extend-thaw :flatland/ordered-map
-                   [data-input]
-                   (ordered-map/ordered-map-reader-clj (nippy/thaw-from-in! data-input)))
+  [data-input]
+  (ordered-map/ordered-map-reader-clj (nippy/thaw-from-in! data-input)))
 
 (defn- freeze!
   [^OutputStream os obj]

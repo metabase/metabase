@@ -34,21 +34,20 @@
 
 (deftest ^:parallel collect-uuids-test
   (are [query expected-uuids] (= expected-uuids
-                                 (sort (lib.schema.util/collect-uuids query)))
+                                 (lib.schema.util/collect-uuids query))
     query-with-no-duplicate-uuids
-    ["00000000-0000-0000-0000-000000000001"
-     "00000000-0000-0000-0000-000000000002"
-     "00000000-0000-0000-0000-000000000010"
-     "00000000-0000-0000-0000-000000000020"]
+    #{"00000000-0000-0000-0000-000000000001"
+      "00000000-0000-0000-0000-000000000002"
+      "00000000-0000-0000-0000-000000000010"
+      "00000000-0000-0000-0000-000000000020"}
 
     query-with-duplicate-uuids
-    ["00000000-0000-0000-0000-000000000001"
-     "00000000-0000-0000-0000-000000000001"
-     "00000000-0000-0000-0000-000000000010"
-     "00000000-0000-0000-0000-000000000020"]))
+    #{"00000000-0000-0000-0000-000000000001"
+      "00000000-0000-0000-0000-000000000010"
+      "00000000-0000-0000-0000-000000000020"}))
 
 (deftest ^:parallel collect-uuids-from-lib-options
-  (is (= ["f590f35f-9224-45f1-8334-422f15fc4abd"]
+  (is (= #{"f590f35f-9224-45f1-8334-422f15fc4abd"}
          (lib.schema.util/collect-uuids
           {:lib/type :mbql/query
            :database 1
@@ -60,11 +59,11 @@
   (is (lib.schema.util/unique-uuids? query-with-no-duplicate-uuids))
   (is (not (lib.schema.util/unique-uuids? query-with-duplicate-uuids))))
 
-(deftest ^:parallel UniqueUUIDs-schema-test
-  (is (not (mc/explain lib.schema.util/UniqueUUIDs query-with-no-duplicate-uuids)))
-  (is (mc/explain lib.schema.util/UniqueUUIDs query-with-duplicate-uuids))
-  (is (= ["Duplicate :lib/uuid \"00000000-0000-0000-0000-000000000001\""]
-         (me/humanize (mc/explain lib.schema.util/UniqueUUIDs query-with-duplicate-uuids)))))
+(deftest ^:parallel unique-uuids-schema-test
+  (is (not (mc/explain ::lib.schema.util/unique-uuids query-with-no-duplicate-uuids)))
+  (is (mc/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids))
+  (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
+         (me/humanize (mc/explain ::lib.schema.util/unique-uuids query-with-duplicate-uuids)))))
 
 (deftest ^:parallel distinct-refs-test
   (are [refs] (not (lib.schema.util/distinct-refs? refs))

@@ -1,6 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore } from "e2e/support/helpers/e2e-setup-helpers";
-import { modal } from "e2e/support/helpers/e2e-ui-elements-helpers";
+import {
+  createAlert,
+  createPulse,
+  getCurrentUser,
+  modal,
+  restore,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -61,14 +66,12 @@ describe("scenarios > account > notifications", () => {
   describe("alerts", () => {
     beforeEach(() => {
       cy.signInAsAdmin().then(() => {
-        cy.getCurrentUser().then(({ body: { id: admin_id } }) => {
+        getCurrentUser().then(({ body: { id: admin_id } }) => {
           cy.signInAsNormalUser().then(() => {
-            cy.getCurrentUser().then(({ body: { id: user_id } }) => {
+            getCurrentUser().then(({ body: { id: user_id } }) => {
               cy.createQuestion(getQuestionDetails()).then(
                 ({ body: { id: card_id } }) => {
-                  cy.createAlert(
-                    getAlertDetails({ card_id, user_id, admin_id }),
-                  );
+                  createAlert(getAlertDetails({ card_id, user_id, admin_id }));
                 },
               );
             });
@@ -149,7 +152,7 @@ describe("scenarios > account > notifications", () => {
         cy.createQuestionAndDashboard({
           questionDetails: getQuestionDetails(),
         }).then(({ body: { card_id, dashboard_id } }) => {
-          cy.createPulse(getPulseDetails({ card_id, dashboard_id }));
+          createPulse(getPulseDetails({ card_id, dashboard_id }));
         });
       });
     });

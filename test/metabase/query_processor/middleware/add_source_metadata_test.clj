@@ -144,8 +144,8 @@
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
-                            {:source-query {:source-table $$venues
-                                            :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
+               {:source-query {:source-table $$venues
+                               :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}})))))))
 
 (deftest ^:parallel named-aggregations-display-name-only-test
   (testing "w/ `:display-name` only"
@@ -158,8 +158,8 @@
            (source-metadata
             (add-source-metadata
              (lib.tu.macros/mbql-query venues
-                            {:source-query {:source-table $$venues
-                                            :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
+               {:source-query {:source-table $$venues
+                               :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}})))))))
 
 (deftest ^:parallel nested-sources-test
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query has a "
@@ -201,7 +201,6 @@
            (add-source-metadata
             (lib.tu.macros/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues}}}}))))))
-
 
 (deftest ^:parallel nested-sources-3-levels-with-fields-test
   (testing "nested 3 levels with `fields`"
@@ -393,9 +392,8 @@
 
 (deftest ^:parallel add-correct-metadata-fields-for-deeply-nested-source-queries-test
   (testing "Make sure we add correct `:fields` from deeply-nested source queries (#14872)"
-    (is (= (lib.tu.macros/$ids orders
-             [$product-id->products.title
-              [:aggregation 0]])
+    (is (= [[:field "TITLE" {:base-type :type/Text}]
+            [:aggregation 0]]
            (->> (lib.tu.macros/mbql-query orders
                   {:source-query {:source-query {:source-table $$orders
                                                  :filter       [:= $id 1]

@@ -1,4 +1,4 @@
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 export function getValue(filter: Filter) {
   const operatorName = filter.operatorName();

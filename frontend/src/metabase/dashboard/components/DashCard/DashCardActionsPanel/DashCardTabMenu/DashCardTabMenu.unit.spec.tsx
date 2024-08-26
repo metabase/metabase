@@ -85,7 +85,7 @@ describe("DashCardTabMenu", () => {
     it("should show tabs other than the current one as options when hovering the button", async () => {
       setup({});
 
-      userEvent.hover(getIconButton());
+      await userEvent.hover(getIconButton());
 
       const menu = await waitFor(() => screen.findByRole("menu"));
 

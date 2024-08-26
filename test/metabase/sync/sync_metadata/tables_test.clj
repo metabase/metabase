@@ -3,7 +3,9 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models :refer [Database Table]]
    [metabase.sync :as sync]
    [metabase.sync.sync-metadata.tables :as sync-tables]
@@ -11,16 +13,17 @@
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util :as u]
+   [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
 (tx/defdataset db-with-some-cruft
   [["acquired_toucans"
-     [{:field-name "species"              :base-type :type/Text}
-      {:field-name "cam_has_acquired_one" :base-type :type/Boolean}]
-     [["Toco"               false]
-      ["Chestnut-Mandibled" true]
-      ["Keel-billed"        false]
-      ["Channel-billed"     false]]]
+    [{:field-name "species"              :base-type :type/Text}
+     {:field-name "cam_has_acquired_one" :base-type :type/Boolean}]
+    [["Toco"               false]
+     ["Chestnut-Mandibled" true]
+     ["Keel-billed"        false]
+     ["Channel-billed"     false]]]
    ["south_migrationhistory"
     [{:field-name "app_name"  :base-type :type/Text}
      {:field-name "migration" :base-type :type/Text}]
@@ -47,7 +50,7 @@
 (deftest sync-table-update-info-of-new-table-added-during-sync-test
   (testing "during sync, if a table is reactivated, we should update the table info if needed"
     (let [dbdef (mt/dataset-definition "sync-retired-table"
-                  ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
+                                       ["user" [{:field-name "name" :base-type :type/Text}] [["Ngoc"]]])]
       (mt/dataset dbdef
         (t2/update! :model/Table (mt/id :user) {:active false})
         ;; table description is changed
@@ -60,3 +63,18 @@
         (is (=? {:active true
                  :description "added comment"}
                 (t2/select-one :model/Table (mt/id :user))))))))
+
+(deftest sync-estimated-row-count-test
+  (mt/test-driver :postgres
+    (testing "Can sync row count"
+      (mt/dataset test-data
+        ;; row count is estimated so we VACUUM so the statistic table is updated before syncing
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver/*driver*
+         (mt/db)
+         nil
+         (fn [conn]
+           (next.jdbc/execute! conn ["VACUUM;"])))
+        (sync/sync-database! (mt/db) {:scan :schema})
+        (is (= 100
+               (t2/select-one-fn :estimated_row_count :model/Table (mt/id :venues))))))))

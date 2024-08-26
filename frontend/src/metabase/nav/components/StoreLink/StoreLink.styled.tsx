@@ -17,12 +17,12 @@ export const StoreIconWrapper = styled.div`
   height: 40px;
   border-radius: 6px;
   cursor: pointer;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   transition: all 300ms ease-in-out;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${darken(color("filter"))};
+    color: var(--mb-color-text-white);
+    background-color: ${() => darken(color("filter"))};
   }
 
   @media (prefers-reduced-motion) {

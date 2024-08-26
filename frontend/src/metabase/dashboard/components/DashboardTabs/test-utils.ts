@@ -30,6 +30,8 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
       name: "",
       description: "",
       can_write: true,
+      can_restore: false,
+      can_delete: false,
       cache_ttl: null,
       auto_apply_filters: true,
       archived: false,
@@ -40,6 +42,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
         last_name: "",
         timestamp: "",
       },
+      last_used_param_values: {},
       dashcards: [1, 2],
       tabs: [
         getDefaultTab({ tabId: 1, dashId: 1, name: "Tab 1" }),

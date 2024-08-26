@@ -49,7 +49,6 @@
                               :model    :model/Dashboard
                               :model-id (u/id object)})))
 
-
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 
@@ -207,5 +206,20 @@
 (derive :event/api-key-delete ::api-key-event)
 
 (methodical/defmethod events/publish-event! ::api-key-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::upload-event ::event)
+(derive :event/upload-create ::upload-event)
+(derive :event/upload-append ::upload-event)
+
+(methodical/defmethod events/publish-event! ::upload-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::cache-config-changed-event ::event)
+(derive :event/cache-config-update ::cache-config-changed-event)
+
+(methodical/defmethod events/publish-event! ::cache-config-changed-event
   [topic event]
   (audit-log/record-event! topic event))

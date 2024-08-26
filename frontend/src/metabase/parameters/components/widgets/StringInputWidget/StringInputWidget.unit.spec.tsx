@@ -42,7 +42,7 @@ describe("StringInputWidget", () => {
       expect(textbox).toHaveAttribute("placeholder", "Enter some text");
     });
 
-    it("should render a disabled update button, until the value is changed", () => {
+    it("should render a disabled update button, until the value is changed", async () => {
       render(
         <StringInputWidget
           value={["foo"]}
@@ -55,11 +55,11 @@ describe("StringInputWidget", () => {
       expect(button).toBeInTheDocument();
       expect(button).toBeDisabled();
 
-      userEvent.type(screen.getByRole("textbox"), "bar");
+      await userEvent.type(screen.getByRole("textbox"), "bar");
       expect(button).toBeEnabled();
     });
 
-    it("should let you update the input with a new value", () => {
+    it("should let you update the input with a new value", async () => {
       render(
         <StringInputWidget
           value={["foo"]}
@@ -69,13 +69,15 @@ describe("StringInputWidget", () => {
       );
 
       const textbox = screen.getByRole("textbox");
-      userEvent.type(textbox, "{backspace}{backspace}{backspace}bar");
+
+      await userEvent.type(textbox, "bar");
+
       const button = screen.getByRole("button", { name: "Update filter" });
-      userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(["bar"]);
+      await userEvent.click(button);
+      expect(mockSetValue).toHaveBeenCalledWith(["foobar"]);
     });
 
-    it("should let you update the input with an undefined value", () => {
+    it("should let you update the input with an undefined value", async () => {
       render(
         <StringInputWidget
           value={["a"]}
@@ -86,8 +88,8 @@ describe("StringInputWidget", () => {
 
       const textbox = screen.getByRole("textbox");
       const button = screen.getByRole("button", { name: "Update filter" });
-      userEvent.type(textbox, "{backspace}{enter}");
-      userEvent.click(button);
+      await userEvent.type(textbox, "{backspace}{enter}");
+      await userEvent.click(button);
       expect(mockSetValue).toHaveBeenCalledWith(undefined);
     });
   });
@@ -107,7 +109,7 @@ describe("StringInputWidget", () => {
       expect(values).toHaveTextContent("foobar");
     });
 
-    it("should correctly parse number inputs", () => {
+    it("should correctly parse number inputs", async () => {
       render(
         <StringInputWidget
           arity="n"
@@ -118,17 +120,17 @@ describe("StringInputWidget", () => {
       );
 
       const input = screen.getByRole("textbox");
-      userEvent.type(input, "foo{enter}bar{enter}baz{enter}");
+      await userEvent.type(input, "foo{enter}bar{enter}baz{enter}");
 
       const values = screen.getAllByRole("list")[0];
       expect(values).toHaveTextContent("foobarbaz");
 
       const button = screen.getByRole("button", { name: "Add filter" });
-      userEvent.click(button);
+      await userEvent.click(button);
       expect(mockSetValue).toHaveBeenCalledWith(["foo", "bar", "baz"]);
     });
 
-    it("should be unsettable", () => {
+    it("should be unsettable", async () => {
       render(
         <StringInputWidget
           arity="n"
@@ -139,11 +141,11 @@ describe("StringInputWidget", () => {
       );
 
       const input = screen.getByRole("textbox");
-      userEvent.type(input, "{backspace}{backspace}");
+      await userEvent.type(input, "{backspace}{backspace}");
 
       const button = screen.getByRole("button", { name: "Update filter" });
 
-      userEvent.click(button);
+      await userEvent.click(button);
       expect(mockSetValue).toHaveBeenCalledWith(undefined);
     });
   });

@@ -41,12 +41,11 @@
 (when-not *compile-files*
   (log/info
    (if default-secret-key
-     (trs "Saved credentials encryption is ENABLED for this Metabase instance.")
-     (trs "Saved credentials encryption is DISABLED for this Metabase instance."))
+     "Saved credentials encryption is ENABLED for this Metabase instance."
+     "Saved credentials encryption is DISABLED for this Metabase instance.")
    (u/emoji (if default-secret-key "🔐" "🔓"))
    "\n"
-   (trs "For more information, see")
-   "https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
+   "For more information, see https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
 
 (defn encrypt-bytes
   "Encrypt bytes `b` using a `secret-key` (a 64-byte byte array), by default is the hashed value of
@@ -57,11 +56,11 @@
   (^String [^String secret-key, ^bytes b]
    (let [initialization-vector (nonce/random-bytes 16)]
      (->> (crypto/encrypt b
-            secret-key
-            initialization-vector
-            {:algorithm :aes256-cbc-hmac-sha512})
-       (concat initialization-vector)
-       byte-array))))
+                          secret-key
+                          initialization-vector
+                          {:algorithm :aes256-cbc-hmac-sha512})
+          (concat initialization-vector)
+          byte-array))))
 
 (defn encrypt
   "Encrypt string `s` as hex bytes using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
@@ -130,7 +129,7 @@
     (u/ignore-exceptions
       (when-let [byte-length (alength b)]
         (zero? (mod (- byte-length aes256-tag-length)
-                 aes256-block-size))))))
+                    aes256-block-size))))))
 
 (defn possibly-encrypted-string?
   "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64

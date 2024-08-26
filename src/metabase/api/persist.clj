@@ -43,6 +43,9 @@
                                   :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
                                               [:report_card :c]        [:= :c.id :p.card_id]
                                               [:collection :col]       [:= :c.collection_id :col.id]]
+                                  :where     [:and
+                                              [:= :c.type "model"]
+                                              [:= :c.archived false]]
                                   :order-by  [[:p.refresh_begin :desc]]}
                            persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
                            (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
@@ -70,7 +73,12 @@
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} mw.offset-paging/*limit* mw.offset-paging/*offset*)]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (t2/count PersistedInfo :database_id [:in writable-db-ids])
+               (t2/count PersistedInfo {:from [[:persisted_info :p]]
+                                        :join [[:report_card :c] [:= :c.id :p.card_id]]
+                                        :where [:and
+                                                [:in :p.database_id writable-db-ids]
+                                                [:= :c.type "model"]
+                                                [:not :c.archived]]})
                0)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
@@ -94,10 +102,10 @@
 (def ^:private CronSchedule
   "Schema representing valid cron schedule for refreshing persisted models."
   (mu/with-api-error-message
-    [:and
-     ms/NonBlankString
-     [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
-    (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
+   [:and
+    ms/NonBlankString
+    [:fn {:error/message (deferred-tru "String representing a cron schedule")} #(= 7 (count (str/split % #" ")))]]
+   (deferred-tru "Value must be a string representing a cron schedule of format <seconds> <minutes> <hours> <day of month> <month> <day of week> <year>")))
 
 (api/defendpoint POST "/set-refresh-schedule"
   "Set the cron schedule to refresh persisted models.
@@ -119,7 +127,7 @@
   "Enable global setting to allow databases to persist models."
   []
   (validation/check-has-application-permission :setting)
-  (log/info (tru "Enabling model persistence"))
+  (log/info "Enabling model persistence")
   (public-settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
@@ -132,7 +140,7 @@
   []
   (let [id->db      (m/index-by :id (t2/select Database))
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
-    (log/info (tru "Disabling model persistence"))
+    (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
       (t2/update! Database (u/the-id db)
                   {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))

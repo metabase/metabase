@@ -15,6 +15,6 @@ export const FooterButtonGroup = styled(ButtonGroup)`
   align-items: stretch;
 
   ${Button.Root} {
-    border: 1px solid ${"white"};
+    border: 1px solid var(--mb-color-bg-white);
   }
 `;

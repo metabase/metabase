@@ -8,6 +8,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util.malli :as mu]))
@@ -60,7 +61,7 @@
      :display-name      (fallback-display-name)
      :long-display-name (fallback-display-name)}))
 
-(mu/defn available-segments :- [:maybe [:sequential {:min 1} lib.metadata/SegmentMetadata]]
+(mu/defn available-segments :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/segment]]
   "Get a list of Segments that you may consider using as filter for a query. Only Segments that have the same
   `table-id` as the `source-table` for this query will be suggested."
   ([query]

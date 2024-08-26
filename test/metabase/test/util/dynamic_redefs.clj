@@ -8,8 +8,8 @@
   "A thread-local mapping from vars to their most recently bound definition."
   {})
 
-(defn- get-local-definition
-  "Get the version of this function that is in scope. It is the unpatched version if there is no override."
+(defn dynamic-value
+  "Get the value of this var that is in scope. It is the unpatched version if there is no override."
   [a-var]
   (get *local-redefs* a-var
        (get (meta a-var) ::original)))
@@ -18,7 +18,7 @@
   "Build a proxy function to intercept the given var. The proxy checks the current scope for what to call."
   [a-var]
   (fn [& args]
-    (let [current-f (get-local-definition a-var)]
+    (let [current-f (dynamic-value a-var)]
       (apply current-f args))))
 
 (defn patch-vars!

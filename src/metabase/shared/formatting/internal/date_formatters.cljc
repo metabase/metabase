@@ -55,8 +55,12 @@
      "dddd, MMMM D, YYYY" {:week    [:month-full " " :day-of-month-d ", " :year]
                            :month   mmm-y}}))
 
-(def ^:private fallback-iso-format
+(def ^:private iso-format
   [:year "-" :month-dd "-" :day-of-month-dd "T" :hour-24-dd ":" :minute-dd ":" :second-dd])
+
+(def ->iso
+  "Datetime iso formatter."
+  (builder/->formatter iso-format))
 
 (defn- resolve-date-style
   "The `:date-style` is transformed to a `:date-format` as follows:
@@ -73,7 +77,7 @@
       (do
         (log/warn "Unrecognized date style" {:date-style date-style
                                              :unit       unit})
-        fallback-iso-format)))
+        iso-format)))
 
 (defn- normalize-date-format [{:keys [date-format] :as options}]
   (merge options (get constants/known-datetime-styles date-format)))
@@ -201,7 +205,7 @@
                           time-format
                           (do
                             (log/warn "Unrecognized date/time format" options)
-                            fallback-iso-format)))]
+                            iso-format)))]
     (builder/->formatter format-list)))
 
 (def ^:private options->formatter-cache (atom {}))

@@ -1,15 +1,17 @@
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 
 import type { IconName } from "metabase/ui";
-import type Field from "metabase-lib/metadata/Field";
+import { DelayGroup } from "metabase/ui";
+import type Field from "metabase-lib/v1/metadata/Field";
 
 import {
-  NodeListItemLink,
-  NodeListItemName,
-  NodeListItemIcon,
-  NodeListTitle,
   NodeListContainer,
   NodeListIcon,
+  NodeListInfoIcon,
+  NodeListItem,
+  NodeListItemLink,
+  NodeListItemName,
+  NodeListTitle,
   NodeListTitleText,
 } from "./NodeList.styled";
 
@@ -19,32 +21,33 @@ interface FieldListProps {
 }
 
 const FieldList = ({ fields, onFieldClick }: FieldListProps) => (
-  <NodeListContainer>
-    <NodeListTitle>
-      <NodeListIcon name="table2" size="12" />
-      <NodeListTitleText>
-        {ngettext(
-          msgid`${fields.length} column`,
-          `${fields.length} columns`,
-          fields.length,
-        )}
-      </NodeListTitleText>
-    </NodeListTitle>
-    {fields.map(field => {
-      // field.icon() cannot be annotated to return IconName
-      // because metabase-lib cannot import from metabase.
-      const iconName = field.icon() as IconName;
-      const tooltip = iconName === "unknown" ? t`Unknown type` : null;
-      return (
-        <li key={field.getUniqueId()}>
-          <NodeListItemLink onClick={() => onFieldClick(field)}>
-            <NodeListItemIcon name={iconName} tooltip={tooltip} />
-            <NodeListItemName>{field.name}</NodeListItemName>
-          </NodeListItemLink>
-        </li>
-      );
-    })}
-  </NodeListContainer>
+  <DelayGroup>
+    <NodeListContainer>
+      <NodeListTitle>
+        <NodeListIcon name="table2" size="12" />
+        <NodeListTitleText>
+          {ngettext(
+            msgid`${fields.length} column`,
+            `${fields.length} columns`,
+            fields.length,
+          )}
+        </NodeListTitleText>
+      </NodeListTitle>
+      {fields.map(field => {
+        // field.icon() cannot be annotated to return IconName
+        // because metabase-lib cannot import from metabase.
+        const iconName = field.icon() as IconName;
+        return (
+          <NodeListItem as="li" key={field.getUniqueId()}>
+            <NodeListItemLink onClick={() => onFieldClick(field)}>
+              <NodeListInfoIcon field={field} position="left" icon={iconName} />
+              <NodeListItemName>{field.name}</NodeListItemName>
+            </NodeListItemLink>
+          </NodeListItem>
+        );
+      })}
+    </NodeListContainer>
+  </DelayGroup>
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

@@ -27,7 +27,7 @@ java -jar metabase.jar
 
 Metabase will log its progress in the terminal as it starts up. Wait until you see "Metabase Initialization Complete" and visit `http://localhost:3000/setup`.
 
-If you are using a paid version, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
+If you are using a Pro or Enterprise version, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
 
 ## Local installation
 
@@ -103,7 +103,7 @@ At this point you're ready to go! You can access your new Metabase server on por
 
 You can use another port than 3000 by setting the `MB_JETTY_PORT` [environment variable](../configuring-metabase/environment-variables.md) before running the jar.
 
-If you are using a paid version of Metabase, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
+If you are using a Pro or Enterprise version of Metabase, be sure to [activate your license](../paid-features/activating-the-enterprise-edition.md).
 
 ## Production installation
 

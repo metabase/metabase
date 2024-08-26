@@ -4,11 +4,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.native :as lib-native]
    [metabase.models :refer [Card]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -18,14 +21,14 @@
 
 (defn- run-count-query [query]
   (or (ffirst
-       (mt/formatted-rows [int]
-         (qp/process-query query)))
+       (mt/formatted-rows
+        [int]
+        (qp/process-query query)))
       ;; HACK (!) Mongo returns `nil` count instead of 0 — (#5419) — workaround until this is fixed
       0))
 
 (defn- query-with-default-parameter-value [query param-name param-value]
   (assoc-in query [:native :template-tags (name param-name) :default] param-value))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Template Tag Params                                               |
@@ -54,28 +57,51 @@
                                  :target [:variable [:template-tag (name field)]]
                                  :value  param-value}]))))
 
-(deftest ^:parallel template-tag-param-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
-    (letfn [(count-with-params [table param-name param-type value & [options]]
-              (run-count-query
-               (template-tag-count-query table param-name param-type value options)))]
-      (doseq [[message options] {"Query with all supplied parameters" nil
-                                 "Query using default values"         {:defaults? true}}]
-        (testing message
-          (testing "text params"
-            (is (= 1
-                   (count-with-params :venues :name :text "In-N-Out Burger" options))))
-          (testing "number params"
-            (is (= 22
-                   (count-with-params :venues :price :number "1" options))))
-          ;; FIXME — This is not currently working on SQLite, probably because SQLite's implementation of temporal types
-          ;; is wacko.
-          (when (not= driver/*driver* :sqlite)
-            (testing "date params"
-              (is (= 1
-                     (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))))
+(defn- count-with-params [table param-name param-type value & [options]]
+  (run-count-query
+   (template-tag-count-query table param-name param-type value options)))
 
-(deftest template-tag-generation-test
+(defn- template-tag-do-test-with-different-options-combos [f]
+  (doseq [[message options] {"Query with all supplied parameters" nil
+                             "Query using default values"         {:defaults? true}}]
+    (testing message
+      (f options))))
+
+(deftest ^:parallel template-tag-text-param-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+    (template-tag-do-test-with-different-options-combos
+     (fn [options]
+       (testing "text params"
+         (is (= 1
+                (count-with-params :venues :name :text "In-N-Out Burger" options))))))))
+
+(deftest ^:parallel template-tag-number-param-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
+    (template-tag-do-test-with-different-options-combos
+     (fn [options]
+       (testing "number params"
+         (is (= 22
+                (count-with-params :venues :price :number "1" options))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::template-tag-date-param-test]
+  [_driver _feature _database]
+  true)
+
+;;; FIXME — This is not currently working on SQLite, probably because SQLite's implementation of temporal types is
+;;; wacko.
+(defmethod driver/database-supports? [:sqlite ::template-tag-date-param-test]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel template-tag-date-param-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::template-tag-date-param-test)
+    (template-tag-do-test-with-different-options-combos
+     (fn [options]
+       (testing "date params"
+         (is (= 1
+                (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))
+
+(deftest ^:parallel template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (t2.with-temp/with-temp
       [Card {card-id :id} {:type          :model
@@ -83,11 +109,12 @@
       (let [q   (str "SELECT * FROM {{#" card-id "}} LIMIT 2")
             tt  (lib-native/extract-template-tags q)
             res (qp/process-query
-                  {:database (mt/id)
-                   :type     :native
-                   :native   {:query         q
-                              :template-tags tt}})]
-        (is (some? res))))))
+                 {:database (mt/id)
+                  :type     :native
+                  :native   {:query         q
+                             :template-tags tt}})]
+        (is (=? {:status :completed}
+                res))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |
@@ -124,48 +151,56 @@
 ;; Tried manually syncing the DB (with attempted-murders dataset), and storing it to an initialized QP, to no avail.
 
 ;; this isn't a complete test for all possible field filter types, but it covers mostly everything
-(deftest ^:parallel field-filter-param-test
-  (letfn [(is-count-= [expected-count table field value-type value]
-            (let [query (field-filter-count-query table field value-type value)]
-              (testing (format "\nquery = \n%s" (u/pprint-to-str 'cyan query))
-                (is (= expected-count
-                       (run-count-query query))))))]
-    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
-      (testing "temporal field filters"
-        ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't
-        ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
-        ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
-        (when (and (mt/supports-time-type? driver/*driver*)
-                   ;; Not sure why it's failing for Snowflake, we'll have to investigate.
-                   (not (= :snowflake driver/*driver*)))
-          (mt/dataset attempted-murders
-            (doseq [field
-                    [:datetime
-                     :date
-                     :datetime_tz]
+(defn- field-filter-param-test-is-count-= [expected-count table field value-type value]
+  (let [query (field-filter-count-query table field value-type value)]
+    (mt/with-native-query-testing-context query
+      (is (= expected-count
+             (run-count-query query))))))
 
-                    [value-type value expected-count]
-                    [[:date/relative     "past30days" 0]
-                     [:date/range        "2019-11-01~2020-01-09" 20]
-                     [:date/single       "2019-11-12" 1]
-                     [:date/quarter-year "Q4-2019" 20]
-                     [:date/month-year   "2019-11" 20]]]
-              (testing (format "\nField filter with %s Field" field)
-                (testing (format "\nfiltering against %s value '%s'" value-type value)
-                  (is-count-= expected-count
-                              :attempts field value-type value)))))))
-      ;; FIXME — Field Filters don't seem to be working correctly for SparkSQL
-      (when-not (= driver/*driver* :sparksql)
-        (testing "text params"
-          (is-count-= 1
-                      :venues :name :text "In-N-Out Burger"))
-        (testing "number params"
-          (is-count-= 22
-                      :venues :price :number "1"))
-        (testing "boolean params"
-          (mt/dataset places-cam-likes
-            (is-count-= 2
-                        :places :liked :boolean true)))))))
+(deftest ^:parallel field-filter-param-test
+  ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't currently
+  ;; work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load the dataset
+  ;; and run tests using this dataset such as these, which doesn't even use the TIME type.
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :test/time-type)
+    (testing "temporal field filters"
+      (mt/dataset attempted-murders
+        (doseq [field
+                [:datetime
+                 :date
+                 :datetime_tz]
+
+                [value-type value expected-count]
+                [[:date/relative     "past30days" 0]
+                 [:date/range        "2019-11-01~2020-01-09" 20]
+                 [:date/single       "2019-11-12" 1]
+                 [:date/quarter-year "Q4-2019" 20]
+                 [:date/month-year   "2019-11" 20]]]
+          (testing (format "\nField filter with %s Field" field)
+            (testing (format "\nfiltering against %s value '%s'" value-type value)
+              (field-filter-param-test-is-count-= expected-count
+                                                  :attempts field value-type value))))))))
+
+(defmethod driver/database-supports? [::driver/driver ::field-filter-param-test-2]
+  [_driver _feature _database]
+  true)
+
+;;; FIXME — Field Filters don't seem to be working correctly for SparkSQL
+(defmethod driver/database-supports? [:sparksql ::field-filter-param-test-2]
+  [_driver _feature _database]
+  false)
+
+(deftest ^:parallel field-filter-param-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters ::field-filter-param-test-2)
+    (testing "text params"
+      (field-filter-param-test-is-count-= 1
+                                          :venues :name :text "In-N-Out Burger"))
+    (testing "number params"
+      (field-filter-param-test-is-count-= 22
+                                          :venues :price :number "1"))
+    (testing "boolean params"
+      (mt/dataset places-cam-likes
+        (field-filter-param-test-is-count-= 2
+                                            :places :liked :boolean true)))))
 
 (deftest ^:parallel filter-nested-queries-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries)
@@ -177,8 +212,9 @@
                                          :target [:dimension (mt/$ids *checkins.date)] ; expands to appropriate field-literal form
                                          :value  "2014-01-06"}])]
           (is (= [[182 "2014-01-06T00:00:00Z" 5 31]]
-                 (mt/formatted-rows :checkins
-                   (qp/process-query query)))))))))
+                 (mt/formatted-rows
+                  :checkins
+                  (qp/process-query query)))))))))
 
 (deftest ^:parallel string-escape-test
   ;; test `:sql` drivers that support native parameters
@@ -194,8 +230,8 @@
     (testing "Multiple values"
       (mt/dataset airports
         (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
-                :params nil}
-               (qp.compile/compile-and-splice-parameters
+                :params []}
+               (qp.compile/compile-with-inline-parameters
                 {:type       :native
                  :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                               :template-tags {"country"
@@ -209,12 +245,52 @@
                                :target [:dimension [:template-tag "country"]]
                                :value  ["US" "MX"]}]})))))))
 
+(deftest ^:parallel native-with-param-options-different-than-tag-type-test
+  (testing "Overriding the widget type in parameters should drop case-senstive option when incompatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
+              :params []}
+             (qp.compile/compile-with-inline-parameters
+              {:type       :native
+               :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                            :template-tags {"country"
+                                            {:name         "country"
+                                             :display-name "Country"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :options      {:case-sensitive false}
+                                             :widget-type  :string/contains}}}
+               :database   (mt/id)
+               :parameters [{:type   :string/=
+                             :target [:dimension [:template-tag "country"]]
+                             :value  ["US"]}]}))))))
+
+(deftest ^:parallel native-with-param-options-different-than-tag-type-test-2
+  (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
+    (mt/dataset airports
+      (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
+              :params []}
+             (qp.compile/compile-with-inline-parameters
+              {:type       :native
+               :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
+                            :template-tags {"country"
+                                            {:name         "country"
+                                             :display-name "Country"
+                                             :type         :dimension
+                                             :dimension    [:field (mt/id :country :name) nil]
+                                             :options      {:case-sensitive false}
+                                             :widget-type  :string/contains}}}
+               :database   (mt/id)
+               :parameters [{:type   :string/ends-with
+                             :target [:dimension [:template-tag "country"]]
+                             :value  ["US"]}]}))))))
+
 (deftest ^:parallel native-with-spliced-params-test-2
   (testing "Make sure we can convert a parameterized query to a native query with spliced params"
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
                             :template-tags {"price"
@@ -234,14 +310,13 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2, 3)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
                                         {:name "number_comma"
                                          :display-name "Number Comma"
-                                         :type :number
-                                         :dimension [:field (mt/id :venues :price) nil]}}}
+                                         :type :number}}}
                :database (mt/id)
                :parameters [{:type "number/="
                              :value ["1,2,3"]
@@ -253,7 +328,7 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
@@ -270,28 +345,28 @@
   (testing "Params in SQL comments are ignored"
     (testing "Single-line comments"
       (mt/dataset airports
-                  (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
-                          :params nil}
-                         (qp.compile/compile-and-splice-parameters
-                          {:type       :native
-                           :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
-                                        :template-tags {"country"
-                                                        {:name         "country"
-                                                         :display-name "Country"
-                                                         :type         :dimension
-                                                         :dimension    [:field (mt/id :country :name) nil]
-                                                         :widget-type  :category}}}
-                           :database   (mt/id)
-                           :parameters [{:type   :location/country
-                                         :target [:dimension [:template-tag "country"]]
-                                         :value  ["US" "MX"]}]})))))))
+        (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
+                :params []}
+               (qp.compile/compile-with-inline-parameters
+                {:type       :native
+                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
+                              :template-tags {"country"
+                                              {:name         "country"
+                                               :display-name "Country"
+                                               :type         :dimension
+                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :widget-type  :category}}}
+                 :database   (mt/id)
+                 :parameters [{:type   :location/country
+                               :target [:dimension [:template-tag "country"]]
+                               :value  ["US" "MX"]}]})))))))
 
 (deftest ^:parallel params-in-comments-test-2
   (testing "Params in SQL comments are ignored"
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
                             :template-tags {"price"
@@ -305,31 +380,39 @@
                              :target [:dimension [:template-tag "price"]]
                              :value  [1 2]}]}))))))
 
+(defmethod driver/database-supports? [::driver/driver ::get-parameter-count]
+  [_driver _feature _database]
+  true)
+
+;;; These do not support ParameterMetadata.getParameterCount
+(doseq [driver #{:athena
+                 :bigquery-cloud-sdk
+                 :presto-jdbc
+                 :redshift
+                 :snowflake
+                 :sparksql
+                 :vertica}]
+  (defmethod driver/database-supports? [driver ::get-parameter-count]
+    [_driver _feature _database]
+    false))
+
 (deftest ^:parallel better-error-when-parameter-mismatch
-  (mt/test-drivers (->> (mt/normal-drivers-with-feature :native-parameters)
-                        (filter #(isa? driver/hierarchy % :sql))
-                        ;; These do not support ParameterMetadata.getParameterCount
-                        (remove #{:athena
-                                  :bigquery-cloud-sdk
-                                  :presto-jdbc
-                                  :redshift
-                                  :snowflake
-                                  :sparksql
-                                  :vertica}))
+  (mt/test-drivers (->> (mt/normal-drivers-with-feature :native-parameters ::get-parameter-count)
+                        (filter #(isa? driver/hierarchy % :sql)))
     (is (thrown-with-msg?
-          Exception
-          #"It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."
-          (qp/process-query
-            {:type       :native
-             :native     {:query         "SELECT * FROM \n[[-- {{name}}]]\n VENUES [[WHERE {{name}} = price]]"
-                          :template-tags {"name"
-                                          {:name         "name"
-                                           :display-name "Name"
-                                           :type         :text}}}
-             :database   (mt/id)
-             :parameters [{:type   :category
-                           :target [:variable [:template-tag "name"]]
-                           :value "foobar"}]})))))
+         Exception
+         #"It looks like we got more parameters than we can handle, remember that parameters cannot be used in comments or as identifiers."
+         (qp/process-query
+          {:type       :native
+           :native     {:query         "SELECT * FROM \n[[-- {{name}}]]\n VENUES [[WHERE {{name}} = price]]"
+                        :template-tags {"name"
+                                        {:name         "name"
+                                         :display-name "Name"
+                                         :type         :text}}}
+           :database   (mt/id)
+           :parameters [{:type   :category
+                         :target [:variable [:template-tag "name"]]
+                         :value "foobar"}]})))))
 
 (deftest ^:parallel ignore-parameters-for-unparameterized-native-query-test
   (testing "Parameters passed for unparameterized queries should get ignored"
@@ -410,7 +493,6 @@
           query {:database (mt/id)
                  :type     :native
                  :native   {:query         sql
-                            :type          :native
                             :template-tags {"created_at" {:id           "a21ca6d2-f742-a94a-da71-75adf379069c"
                                                           :name         "created_at"
                                                           :display-name "Created At"
@@ -463,7 +545,7 @@
     (mt/dataset test-data
       (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
                             :template-tags {"n"
@@ -475,3 +557,80 @@
                              :target [:variable [:template-tag "n"]]
                              :slug "n"
                              :value "30"}]}))))))
+
+(deftest sql-permissions-but-no-card-permissions-template-tag-test
+  (testing "If we have full SQL perms for a DW but no Card perms we shouldn't be able to include it with a ref or template tag"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                       :model/Collection {collection-2-id :id} {}
+
+                       :model/Card
+                       {card-1-id :id}
+                       {:collection_id collection-1-id
+                        :dataset_query (mt/mbql-query venues {:fields   [$id $name]
+                                                              :order-by [[:asc $id]]
+                                                              :limit    2})}
+
+                       :model/Card
+                       {card-2-id :id, :as card-2}
+                       {:collection_id collection-2-id
+                        :dataset_query (mt/native-query
+                                         {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                                          :template-tags {"card" {:name         "card"
+                                                                  :display-name "card"
+                                                                  :type         :card
+                                                                  :card-id      card-1-id}}})}]
+          (testing (format "\nCollection 1 ID = %d, Card 1 ID = %d; Collection 2 ID = %d, Card 2 ID = %d"
+                           collection-1-id card-1-id collection-2-id card-2-id)
+            (mt/with-test-user :rasta
+              (testing "Sanity check: shouldn't be able to run Card as MBQL query"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to view Card \d+"
+                     (qp/process-query {:database (mt/id), :type :query, :query {:source-table (format "card__%d" card-2-id)}}))))
+              (testing "Sanity check: SHOULD be able to run a native query"
+                (testing (str "COMPILED = \n" (u/pprint-to-str (qp.compile/compile (:dataset_query card-2))))
+                  (is (= [[1 "Red Medicine"]
+                          [2 "Stout Burgers & Beers"]]
+                         (mt/formatted-rows
+                          [int str]
+                          (qp/process-query {:database (mt/id)
+                                             :type     :native
+                                             :native   (dissoc (qp.compile/compile (:dataset_query card-2))
+                                                               :metabase.models.query.permissions/referenced-card-ids)}))))))
+              (let [query (mt/native-query
+                            {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                             :template-tags {"card" {:name         "card"
+                                                     :display-name "card"
+                                                     :type         :card
+                                                     :card-id      card-2-id}}})]
+                (testing "SHOULD NOT be able to run native query with Card ID template tag"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"\QYou do not have permissions to run this query.\E"
+                       (qp/process-query query))))
+                (testing "Exception should NOT include the compiled native query"
+                  (try
+                    (qp/process-query query)
+                    (is (not ::here?)
+                        "Should never get here, query should throw an Exception")
+                    (catch Throwable e
+                      (doseq [data (keep ex-data (u/full-exception-chain e))]
+                        (walk/postwalk
+                         (fn [form]
+                           (when (string? form)
+                             (is (not (re-find #"SELECT" form))))
+                           form)
+                         data)))))
+                (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
+                              " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
+                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
+                  ;; need to call [[mt/with-test-user]] again so [[metabase.api.common/*current-user-permissions-set*]]
+                  ;; gets rebound with the updated permissions. This will be fixed in #45001
+                  (mt/with-test-user :rasta
+                    (is (= [[1 "Red Medicine"]
+                            [2 "Stout Burgers & Beers"]]
+                           (mt/formatted-rows
+                            [int str]
+                            (qp/process-query query))))))))))))))

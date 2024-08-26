@@ -8,26 +8,46 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import * as Urls from "metabase/lib/urls";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import { getSetting } from "metabase/selectors/settings";
+import { getIsWebApp } from "metabase/selectors/web-app";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
+import Question from "metabase-lib/v1/Question";
+import {
+  getValuePopulatedParameters as _getValuePopulatedParameters,
+  getParameterValuesBySlug,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
-  DashboardId,
   DashCardId,
+  Dashboard,
   DashboardCard,
+  DashboardId,
+  DashboardParameterMapping,
+  ParameterId,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,
   State,
+  StoreDashboard,
 } from "metabase-types/store";
 
-import { isQuestionDashCard } from "./utils";
+import { getNewCardUrl } from "./actions/getNewCardUrl";
+import {
+  canResetFilter,
+  getMappedParametersIds,
+  hasDatabaseActionsEnabled,
+  isQuestionCard,
+  isQuestionDashCard,
+} from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -46,7 +66,7 @@ function isEditParameterSidebar(
 const createDeepEqualSelector = createSelectorCreator(lruMemoize, _.isEqual);
 
 export const getDashboardBeforeEditing = (state: State) =>
-  state.dashboard.isEditing;
+  state.dashboard.editingDashboard;
 
 export const getIsEditing = (state: State) =>
   Boolean(getDashboardBeforeEditing(state));
@@ -58,7 +78,16 @@ export const getClickBehaviorSidebarDashcard = (state: State) => {
     : null;
 };
 export const getDashboards = (state: State) => state.dashboard.dashboards;
-export const getCardData = (state: State) => state.dashboard.dashcardData;
+export const getDashcardDataMap = (state: State) =>
+  state.dashboard.dashcardData;
+
+export const getDashcardData = createSelector(
+  [getDashcardDataMap, (_state: State, dashcardId: DashCardId) => dashcardId],
+  (dashcardDataMap, dashcardId) => {
+    return dashcardDataMap[dashcardId];
+  },
+);
+
 export const getSlowCards = (state: State) => state.dashboard.slowCards;
 export const getParameterValues = (state: State) =>
   state.dashboard.parameterValues;
@@ -67,9 +96,9 @@ export const getFavicon = (state: State) =>
     ? LOAD_COMPLETE_FAVICON
     : null;
 
-export const getIsRunning = (state: State) =>
+export const getIsDashCardsRunning = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "running";
-export const getIsLoadingComplete = (state: State) =>
+export const getIsDashCardsLoadingComplete = (state: State) =>
   state.dashboard.loadingDashCards.loadingStatus === "complete";
 
 export const getLoadingStartTime = (state: State) =>
@@ -87,6 +116,12 @@ export const getIsSlowDashboard = createSelector(
     }
   },
 );
+
+export const getIsLoadingWithoutCards = (state: State) =>
+  state.dashboard.loadingControls.isLoading;
+
+export const getIsLoading = (state: State) =>
+  getIsLoadingWithoutCards(state) || !getIsDashCardsLoadingComplete(state);
 
 export const getIsAddParameterPopoverOpen = (state: State) =>
   state.dashboard.isAddParameterPopoverOpen;
@@ -170,6 +205,37 @@ export const getDashboardComplete = createSelector(
   },
 );
 
+export const getDashcardHref = createSelector(
+  [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
+  (metadata, dashboard, parameterValues, dashcard) => {
+    if (
+      !dashboard ||
+      !dashcard ||
+      !isQuestionDashCard(dashcard) ||
+      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+    ) {
+      return undefined;
+    }
+
+    const card = {
+      ...dashcard.card,
+      visualization_settings: mergeSettings(
+        dashcard.card.visualization_settings,
+        dashcard.visualization_settings,
+      ),
+    };
+
+    return getNewCardUrl({
+      metadata,
+      dashboard,
+      parameterValues,
+      dashcard,
+      nextCard: card,
+      previousCard: card,
+    });
+  },
+);
+
 export const getAutoApplyFiltersToastId = (state: State) =>
   state.dashboard.autoApplyFilters.toastId;
 export const getAutoApplyFiltersToastDashboardId = (state: State) =>
@@ -196,6 +262,16 @@ const getIsParameterValuesEmpty = createSelector(
         ? parameterValue.length === 0
         : parameterValue == null,
     );
+  },
+);
+
+export const getParameterValuesBySlugMap = createSelector(
+  [getDashboardComplete, getParameterValues],
+  (dashboard, parameterValues) => {
+    if (!dashboard) {
+      return {};
+    }
+    return getParameterValuesBySlug(dashboard.parameters, parameterValues);
   },
 );
 
@@ -313,7 +389,10 @@ export const getQuestions = (state: State) => {
         const cards = [dashcard.card, ...(dashcard.series ?? [])];
 
         for (const card of cards) {
-          acc[card.id] = getQuestionByCard(state, { card });
+          const question = getQuestionByCard(state, { card });
+          if (question) {
+            acc[card.id] = question;
+          }
         }
       }
 
@@ -325,6 +404,7 @@ export const getQuestions = (state: State) => {
   return questionsById;
 };
 
+// TODO: remove it as we added cache to MLv2 and it should be fast now
 // getQuestions selector returns an array with stable references to the questions
 // but array itself is always new, so it may cause troubles in re-renderings
 const getQuestionsMemoized = createDeepEqualSelector(
@@ -350,6 +430,21 @@ export const getParameters = createSelector(
   },
 );
 
+export const getValuePopulatedParameters = createSelector(
+  [
+    getParameters,
+    getParameterValues,
+    getDraftParameterValues,
+    getIsAutoApplyFilters,
+  ],
+  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+    return _getValuePopulatedParameters({
+      parameters,
+      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+    });
+  },
+);
+
 export const getMissingRequiredParameters = createSelector(
   [getParameters],
   parameters =>
@@ -366,7 +461,7 @@ export const getMissingRequiredParameters = createSelector(
 export const getQuestionByCard = createCachedSelector(
   [(_state: State, props: { card: Card }) => props.card, getMetadata],
   (card, metadata) => {
-    return new Question(card, metadata);
+    return isQuestionCard(card) ? new Question(card, metadata) : undefined;
   },
 )((_state, props) => {
   return props.card.id;
@@ -414,6 +509,177 @@ export const getTabs = createSelector([getDashboard], dashboard => {
   return dashboard.tabs?.filter(tab => !tab.isRemoved) ?? [];
 });
 
-export function getSelectedTabId(state: State) {
-  return state.dashboard.selectedTabId;
+export const getSelectedTabId = createSelector(
+  [
+    getIsWebApp,
+    state => getSetting(state, "site-url"),
+    getDashboard,
+    state => state.dashboard.selectedTabId,
+  ],
+  (isWebApp, siteUrl, dashboard, selectedTabId) => {
+    if (dashboard && selectedTabId === null) {
+      return getInitialSelectedTabId(dashboard, siteUrl, isWebApp);
+    }
+
+    return selectedTabId;
+  },
+);
+
+export const getSelectedTab = createSelector(
+  [getDashboard, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || selectedTabId === null) {
+      return null;
+    }
+    return dashboard.tabs?.find(tab => tab.id === selectedTabId) || null;
+  },
+);
+
+export function getInitialSelectedTabId(
+  dashboard: Dashboard | StoreDashboard,
+  siteUrl: string,
+  isWebApp: boolean,
+) {
+  const pathname = window.location.pathname.replace(siteUrl, "");
+  const isDashboardUrl = pathname.includes("/dashboard/");
+
+  if (isDashboardUrl) {
+    const dashboardSlug = pathname.replace("/dashboard/", "");
+    const dashboardUrlId = Urls.extractEntityId(dashboardSlug);
+    const isNavigationInProgress = dashboardUrlId !== dashboard.id;
+    if (!isNavigationInProgress || !isWebApp) {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tabParam = searchParams.get("tab");
+      const tabId = tabParam ? parseInt(tabParam, 10) : null;
+      const hasTab = dashboard.tabs?.find?.(tab => tab.id === tabId);
+      if (hasTab) {
+        return tabId;
+      }
+    }
+  }
+
+  return dashboard.tabs?.[0]?.id || null;
 }
+
+export const getCurrentTabDashcards = createSelector(
+  [getDashboardComplete, getSelectedTabId],
+  (dashboard, selectedTabId) => {
+    if (!dashboard || !Array.isArray(dashboard?.dashcards)) {
+      return [];
+    }
+    if (!selectedTabId) {
+      return dashboard.dashcards;
+    }
+    return dashboard.dashcards.filter(
+      (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
+    );
+  },
+);
+
+export const getHiddenParameterSlugs = createSelector(
+  [getDashboardComplete, getParameters, getIsEditing],
+  (dashboard, parameters, isEditing) => {
+    if (isEditing || !dashboard) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const parameterIds = getMappedParametersIds(dashboard.dashcards);
+    const hiddenParameters = parameters.filter(
+      parameter => !parameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(parameter => parameter.slug).join(",");
+  },
+);
+
+export const getTabHiddenParameterSlugs = createSelector(
+  [getParameters, getCurrentTabDashcards, getIsEditing],
+  (parameters, currentTabDashcards, isEditing) => {
+    if (isEditing) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
+    const hiddenParameters = parameters.filter(
+      parameter => !currentTabParameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(p => p.slug).join(",");
+  },
+);
+
+export const getParameterMappingsBeforeEditing = createSelector(
+  [getDashboardBeforeEditing],
+  editingDashboard => {
+    if (!editingDashboard) {
+      return {};
+    }
+
+    const dashcards = editingDashboard.dashcards;
+    const map: Record<
+      ParameterId,
+      Record<DashCardId, DashboardParameterMapping>
+    > = {};
+
+    // create a map like {[parameterId]: {[dashcardId]: parameterMapping}}
+    for (const dashcard of dashcards) {
+      if (!dashcard.parameter_mappings) {
+        continue;
+      }
+
+      for (const parameterMapping of dashcard.parameter_mappings) {
+        const parameterId = parameterMapping.parameter_id;
+
+        if (!map[parameterId]) {
+          map[parameterId] = {};
+        }
+
+        map[parameterId][dashcard.id] =
+          parameterMapping as DashboardParameterMapping;
+      }
+    }
+
+    return map;
+  },
+);
+
+export const getDisplayTheme = (state: State) => state.dashboard.theme;
+
+export const getIsNightMode = createSelector(
+  [getDisplayTheme],
+  theme => theme === "night",
+);
+
+export const getHasModelActionsEnabled = createSelector(
+  [getMetadata],
+  metadata => {
+    if (!metadata) {
+      return false;
+    }
+
+    const databases = metadata.databasesList();
+    const hasModelActionsEnabled = Object.values(databases).some(database =>
+      // @ts-expect-error Schema types do not match
+      hasDatabaseActionsEnabled(database),
+    );
+
+    return hasModelActionsEnabled;
+  },
+);
+
+export const getVisibleValuePopulatedParameters = createSelector(
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  getVisibleParameters,
+);
+
+export const getFiltersToReset = createSelector(
+  [getVisibleValuePopulatedParameters],
+  parameters => parameters.filter(canResetFilter),
+);
+
+export const getCanResetFilters = createSelector(
+  [getFiltersToReset],
+  filtersToReset => filtersToReset.length > 0,
+);

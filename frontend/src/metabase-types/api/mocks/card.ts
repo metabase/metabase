@@ -1,13 +1,14 @@
 import type {
-  ModerationReview,
   Card,
-  UnsavedCard,
-  VisualizationSettings,
-  SeriesOrderSetting,
-  StructuredDatasetQuery,
+  CardQueryMetadata,
+  ModerationReview,
   NativeDatasetQuery,
   PublicCard,
+  SeriesOrderSetting,
+  StructuredDatasetQuery,
   TableColumnOrderSetting,
+  UnsavedCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import {
@@ -28,14 +29,18 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   result_metadata: [],
   type: "question",
   can_write: true,
+  can_restore: false,
+  can_delete: false,
   cache_ttl: null,
   collection: null,
   collection_id: null,
+  collection_position: null,
   last_query_start: null,
   average_query_time: null,
   based_on_upload: null,
   archived: false,
   enable_embedding: false,
+  embedding_params: null,
   initially_published_at: null,
   ...opts,
 });
@@ -75,6 +80,15 @@ export const createMockUnsavedCard = (
   ...opts,
 });
 
+export const createMockCardQueryMetadata = (
+  opts?: Partial<CardQueryMetadata>,
+): CardQueryMetadata => ({
+  databases: [],
+  tables: [],
+  fields: [],
+  ...opts,
+});
+
 export const createMockVisualizationSettings = (
   opts?: Partial<VisualizationSettings>,
 ): VisualizationSettings => ({
@@ -107,7 +121,6 @@ export const createMockTableColumnOrderSetting = (
   opts?: Partial<TableColumnOrderSetting>,
 ): TableColumnOrderSetting => ({
   name: "Column",
-  key: '["ref",["field",1,null]]',
   enabled: true,
   ...opts,
 });

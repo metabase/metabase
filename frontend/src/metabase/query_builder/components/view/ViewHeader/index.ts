@@ -1,1 +1,1 @@
-export { ViewTitleHeader } from "./ViewHeader";
+export { ViewTitleHeader } from "./ViewTitleHeader";

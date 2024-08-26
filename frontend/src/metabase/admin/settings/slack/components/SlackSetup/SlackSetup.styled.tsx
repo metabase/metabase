@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const SetupRoot = styled.div`
@@ -14,7 +13,7 @@ export const HeaderRoot = styled.header`
 `;
 
 export const HeaderTitle = styled.h2`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;
@@ -22,11 +21,11 @@ export const HeaderTitle = styled.h2`
 `;
 
 export const HeaderMessage = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const SectionRoot = styled.section`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   margin-bottom: 2rem;
 
@@ -48,7 +47,7 @@ export const SectionHeader = styled.header`
 export const SectionTitle = styled.h3`
   flex: 1 1 auto;
   margin: 0 1rem 0 0;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-size: 1rem;
   font-weight: bold;
   line-height: 1.5rem;
@@ -56,18 +55,18 @@ export const SectionTitle = styled.h3`
 
 export const SectionToggle = styled(Button)`
   flex: 0 0 auto;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   width: 2.5rem;
   height: 2.5rem;
 `;
 
 export const SectionBody = styled.div`
   padding: 1rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const SectionMessage = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   line-height: 1.5rem;
   margin-bottom: 1.5rem;
 `;

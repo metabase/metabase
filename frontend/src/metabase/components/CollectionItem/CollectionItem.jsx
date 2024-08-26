@@ -2,13 +2,14 @@ import PropTypes from "prop-types";
 
 import Card from "metabase/components/Card";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { getCollectionIcon } from "metabase/entities/collections";
+import CS from "metabase/css/core/index.css";
+import { getCollectionIcon } from "metabase/entities/collections/utils";
 
 import {
-  ItemLink,
-  IconContainer,
   CardContent,
   CollectionIcon,
+  IconContainer,
+  ItemLink,
 } from "./CollectionItem.styled";
 
 const propTypes = {
@@ -25,7 +26,7 @@ const CollectionItem = ({ collection, event }) => {
           <IconContainer color={icon.color}>
             <CollectionIcon name={icon.name} tooltip={icon.tooltip} />
           </IconContainer>
-          <h4 className="overflow-hidden">
+          <h4 className={CS.overflowHidden}>
             <Ellipsified>{collection.name}</Ellipsified>
           </h4>
         </CardContent>

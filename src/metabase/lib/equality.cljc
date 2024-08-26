@@ -2,7 +2,9 @@
   "Logic for determining whether two pMBQL queries are equal."
   (:refer-clojure :exclude [=])
   (:require
+   #?@(:clj ([metabase.util.log :as log]))
    [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -14,9 +16,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
-   [metabase.util.malli :as mu]
-   #?@(:clj ([metabase.util.log :as log]))))
+   [metabase.util.malli :as mu]))
 
 (defmulti =
   "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
@@ -119,11 +121,11 @@
      (catch #?(:clj Throwable :cljs :default) _
        nil))))
 
-(mu/defn ^:private column-join-alias :- [:maybe :string]
+(mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
-(mu/defn ^:private matching-join? :- :boolean
+(mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
   ;; If the ref has a source-field, and it matches the column's :fk-field-id then this is an implicitly joined field.
@@ -134,17 +136,21 @@
       ;; an own column.
       (clojure.core/= (column-join-alias column) join-alias)))
 
-(mu/defn ^:private plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind _opts ref-name :as a-ref] :- ::lib.schema.ref/ref
+(mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
+  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    (matching-join? a-ref %))
+                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                    ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                    (or (and (not (:join-alias opts))
+                             (#{:source/fields :source/card} (:lib/source %)))
+                        (matching-join? a-ref %)))
               columns)))
 
-(mu/defn ^:private plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
+(mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
    columns                           :- [:sequential ::lib.schema.metadata/column]
    generous?                         :- [:maybe :boolean]]
@@ -164,11 +170,11 @@
            {:ref a-ref
             :columns columns}))
 
-(mu/defn ^:private expression-column? [column]
+(mu/defn- expression-column? [column]
   (or (= (:lib/source column) :source/expressions)
       (:lib/expression-name column)))
 
-(mu/defn ^:private disambiguate-matches-dislike-field-refs-to-expressions :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-dislike-field-refs-to-expressions :- [:maybe ::lib.schema.metadata/column]
   "If a custom column is a simple wrapper for a field, that column gets `:id`, `:table_id`, etc.
   A custom column should get a ref like `[:expression {} \"expr name\"]`, not `[:field {} 17]`.
   If we got a `:field` ref, prefer matches which are not `:lib/source :source/expressions`."
@@ -183,17 +189,42 @@
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
-(mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-find-match-with-same-binning :- [:maybe ::lib.schema.metadata/column]
+  "If there are multiple matching columns and `a-ref` has a binning value, check if only one column has that same
+  binning."
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
+  (or (when-let [binning (lib.binning/binning a-ref)]
+        (let [matching-columns (filter #(-> % lib.binning/binning (lib.binning/binning= binning))
+                                       columns)]
+          (when (= (count matching-columns) 1)
+            (first matching-columns))))
+      (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
+
+(mu/defn- disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
+  "If there are multiple matching columns and `a-ref` has a temporal bucket, check if only one column has that same
+  unit."
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
+  (or (when-let [temporal-bucket (lib.temporal-bucket/raw-temporal-bucket a-ref)]
+        (let [matching-columns (filter (fn [col]
+                                         (= (lib.temporal-bucket/raw-temporal-bucket col) temporal-bucket))
+                                       columns)]
+          (when (= (count matching-columns) 1)
+            (first matching-columns))))
+      (disambiguate-matches-find-match-with-same-binning a-ref columns)))
+
+(mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
   "Prefers table-default or explicitly joined columns over implicitly joinable ones."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   (if-let [no-implicit (not-empty (remove :fk-field-id columns))]
     (if-not (next no-implicit)
       (first no-implicit)
-      (disambiguate-matches-dislike-field-refs-to-expressions a-ref no-implicit))
+      (disambiguate-matches-find-match-with-same-temporal-bucket a-ref no-implicit))
     nil))
 
-(mu/defn ^:private disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
@@ -211,7 +242,7 @@
     ;; written. If this case causes issues, that logic may need rewriting.
     nil))
 
-(mu/defn ^:private disambiguate-matches :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   (let [{:keys [join-alias]} (lib.options/options a-ref)]
@@ -225,8 +256,8 @@
            {:ref     a-ref
             :matches matches})
           #_(throw (ex-info "Multiple plausible matches with the same :join-alias - more disambiguation needed"
-                          {:ref     a-ref
-                           :matches matches}))))
+                            {:ref     a-ref
+                             :matches matches}))))
       (disambiguate-matches-no-alias a-ref columns))))
 
 (def ^:private FindMatchingColumnOptions
@@ -269,13 +300,13 @@
                                  columns)
      ;; Expressions are referenced by name; fields by ID or name.
      (:expression
-       :field)     (let [plausible (if (string? ref-id)
-                                     (plausible-matches-for-name a-ref columns)
-                                     (plausible-matches-for-id   a-ref columns generous?))]
-                     (case (count plausible)
-                       0 nil
-                       1 (first plausible)
-                       (disambiguate-matches a-ref plausible)))
+      :field)     (let [plausible (if (string? ref-id)
+                                    (plausible-matches-for-name a-ref columns)
+                                    (plausible-matches-for-id   a-ref columns generous?))]
+                    (case (count plausible)
+                      0 nil
+                      1 (first plausible)
+                      (disambiguate-matches a-ref plausible)))
      (throw (ex-info "Unknown type of ref" {:ref a-ref}))))
 
   ([query stage-number a-ref-or-column columns]

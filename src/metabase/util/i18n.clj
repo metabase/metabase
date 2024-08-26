@@ -7,8 +7,7 @@
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.log :as log]
    [potemkin :as p]
-   [potemkin.types :as p.types]
-   [schema.core :as s])
+   [potemkin.types :as p.types])
   (:import
    (java.text MessageFormat)
    (java.util Locale)))
@@ -87,18 +86,12 @@
 (p.types/defrecord+ UserLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (translate-user-locale format-string args pluralization-opts))
-  schema.core.Schema
-  (explain [this]
-    (str this)))
+    (translate-user-locale format-string args pluralization-opts)))
 
 (p.types/defrecord+ SiteLocalizedString [format-string args pluralization-opts]
   Object
   (toString [_]
-    (translate-site-locale format-string args pluralization-opts))
-  s/Schema
-  (explain [this]
-    (str this)))
+    (translate-site-locale format-string args pluralization-opts)))
 
 (defn- localized-to-json
   "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
@@ -112,13 +105,19 @@
 
 (def LocalizedString
   "Schema for user and system localized string instances"
-  (s/cond-pre UserLocalizedString SiteLocalizedString))
+  (letfn [(instance-of [^Class klass]
+            [:fn
+             {:error/message (str "instance of " (.getCanonicalName klass))}
+             (partial instance? klass)])]
+    [:or
+     (instance-of UserLocalizedString)
+     (instance-of SiteLocalizedString)]))
 
 (defn- valid-str-form?
- [str-form]
- (and
-  (= (first str-form) 'str)
-  (every? string? (rest str-form))))
+  [str-form]
+  (and
+   (= (first str-form) 'str)
+   (every? string? (rest str-form))))
 
 (defn- validate-number-of-args
   "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
@@ -151,6 +150,7 @@
   split a long string over multiple lines.
 
   Calling `str` on the results of this invocation will lookup the translated version of the string."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   (validate-number-of-args format-string-or-str args)
   `(UserLocalizedString. ~format-string-or-str ~(vec args) {}))
@@ -163,6 +163,7 @@
   split a long string over multiple lines.
 
   Calling `str` on the results of this invocation will lookup the translated version of the string."
+  {:style/indent [:form]}
   [format-string & args]
   (validate-number-of-args format-string args)
   `(SiteLocalizedString. ~format-string ~(vec args) {}))
@@ -182,6 +183,7 @@
 
   Prefer this over `deferred-tru`. Use `deferred-tru` only in code executed at compile time, or where `str` is manually
   applied to the result."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   `(str* (deferred-tru ~format-string-or-str ~@args)))
 
@@ -193,6 +195,7 @@
 
   Prefer this over `deferred-trs`. Use `deferred-trs` only in code executed at compile time, or where `str` is manually
   applied to the result."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   `(str* (deferred-trs ~format-string-or-str ~@args)))
 

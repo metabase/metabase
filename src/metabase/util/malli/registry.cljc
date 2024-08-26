@@ -1,16 +1,23 @@
 (ns metabase.util.malli.registry
   (:refer-clojure :exclude [declare def])
   (:require
+   #?@(:clj ([malli.experimental.time :as malli.time]))
    [malli.core :as mc]
    [malli.registry]
-   [malli.util :as mut]
-   #?@(:clj ([malli.experimental.time :as malli.time])))
+   [malli.util :as mut])
   #?(:cljs (:require-macros [metabase.util.malli.registry])))
 
 (defonce ^:private cache (atom {}))
 
-(defn- cached [k schema value-thunk]
-  (or (get-in @cache [k schema])
+(defn cached
+  "Get a cached value for `k` + `schema`. Cache is cleared whenever a schema is (re)defined
+  with [[metabase.util.malli.registry/def]]. If value doesn't exist, `value-thunk` is used to calculate (and cache)
+  it.
+
+  You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
+  you used namespaced keys if you are using it elsewhere."
+  [k schema value-thunk]
+  (or (get (get @cache k) schema) ; get-in is terribly inefficient
       (let [v (value-thunk)]
         (swap! cache assoc-in [k schema] v)
         v)))
@@ -62,11 +69,36 @@
   (reset! cache {})
   nil)
 
+(defn schema
+  "Get the Malli schema for `type` from the registry."
+  [type]
+  (malli.registry/schema registry type))
+
+(defn -with-doc
+  "Add a `:doc/message` option to a `schema`. Tries to merge it in existing vector schemas to avoid unnecessary
+  indirection."
+  [schema docstring]
+  (cond
+    (and (vector? schema)
+         (map? (second schema)))
+    (let [[tag opts & args] schema]
+      (into [tag (assoc opts :doc/message docstring)] args))
+
+    (vector? schema)
+    (let [[tag & args] schema]
+      (into [tag {:doc/message docstring}] args))
+
+    :else
+    [:schema {:doc/message docstring} schema]))
+
 #?(:clj
    (defmacro def
      "Like [[clojure.spec.alpha/def]]; add a Malli schema to our registry."
-     [type schema]
-     `(register! ~type ~schema)))
+     ([type schema]
+      `(register! ~type ~schema))
+     ([type docstring schema]
+      `(metabase.util.malli.registry/def ~type
+         (-with-doc ~schema ~docstring)))))
 
 (defn resolve-schema
   "For REPL/test usage: get the definition of a registered schema from the registry."

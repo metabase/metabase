@@ -1,8 +1,9 @@
 (ns metabase.driver.druid.sync
-  (:require [medley.core :as m]
-            [metabase.driver.druid.client :as druid.client]
-            [metabase.models.secret :as secret]
-            [metabase.util.ssh :as ssh]))
+  (:require
+   [medley.core :as m]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.models.secret :as secret]
+   [metabase.util.ssh :as ssh]))
 
 (defn- do-segment-metadata-query [details datasource]
   {:pre [(map? details) (string? datasource)]}
@@ -52,11 +53,11 @@
   {:pre [(map? (:details database))]}
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
     (let [druid-datasources (druid.client/GET (druid.client/details->url details-with-tunnel "/druid/v2/datasources")
-                             :auth-enabled     (-> database :details :auth-enabled)
-                             :auth-username    (-> database :details :auth-username)
-                             :auth-token-value (-> (:details database)
-                                                   (secret/db-details-prop->secret-map "auth-token")
-                                                   secret/value->string))]
+                                              :auth-enabled     (-> database :details :auth-enabled)
+                                              :auth-username    (-> database :details :auth-username)
+                                              :auth-token-value (-> (:details database)
+                                                                    (secret/db-details-prop->secret-map "auth-token")
+                                                                    secret/value->string))]
       {:tables (set (for [table-name druid-datasources]
                       {:schema nil, :name table-name}))})))
 
@@ -65,5 +66,10 @@
   [database]
   {:pre [(map? (:details database))]}
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
-    (-> (druid.client/GET (druid.client/details->url details-with-tunnel "/status"))
+    (-> (druid.client/GET (druid.client/details->url details-with-tunnel "/status")
+                          :auth-enabled     (-> database :details :auth-enabled)
+                          :auth-username    (-> database :details :auth-username)
+                          :auth-token-value (-> (:details database)
+                                                (secret/db-details-prop->secret-map "auth-token")
+                                                secret/value->string))
         (select-keys [:version]))))

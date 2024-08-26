@@ -4,7 +4,7 @@ import { t } from "ttag";
 import type { SelectChangeEvent } from "metabase/core/components/Select/Select";
 import Select from "metabase/core/components/Select/Select";
 import * as MetabaseCore from "metabase/lib/core";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldVisibilityType } from "metabase-types/api";
 
 interface FieldVisibilityPickerProps {

@@ -1,92 +1,90 @@
-import { useCallback } from "react";
-import { connect } from "react-redux";
+import { useState } from "react";
+import { useKeyPressEvent } from "react-use";
 import { t } from "ttag";
 
-import { exportFormats, exportFormatPng } from "metabase/lib/urls";
+import { isMac } from "metabase/lib/browser";
+import { exportFormatPng, exportFormats } from "metabase/lib/urls";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { Group, Icon, Stack, Text, Title, Tooltip } from "metabase/ui";
 import { canSavePng } from "metabase/visualizations";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
-import {
-  DownloadButtonRoot,
-  DownloadButtonText,
-  DownloadPopoverHeader,
-  DownloadPopoverMessage,
-  DownloadPopoverRoot,
-} from "./QueryDownloadPopover.styled";
+import { DownloadButton } from "./DownloadButton";
+import { checkCanManageFormatting } from "./utils";
 
-interface OwnProps {
+type QueryDownloadPopoverProps = {
   question: Question;
   result: Dataset;
-  onDownload: (format: string) => void;
-}
+  onDownload: (opts: { type: string; enableFormatting: boolean }) => void;
+};
 
-interface StateProps {
-  canDownloadPng: boolean;
-  hasTruncatedResults: boolean;
-  limitedDownloadSizeText: string;
-}
+const getFormattingInfoTooltipLabel = () => {
+  return isMac()
+    ? t`Hold the Option key to download unformatted results`
+    : t`Hold the Alt key to download unformatted results`;
+};
 
-type QueryDownloadPopoverProps = OwnProps & StateProps;
-
-const mapStateToProps = (
-  state: State,
-  { question, result }: OwnProps,
-): StateProps => ({
-  canDownloadPng: canSavePng(question.display()),
-  hasTruncatedResults:
-    result.data != null && result.data.rows_truncated != null,
-  limitedDownloadSizeText:
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
-    t`The maximum download size is 1 million rows.`,
-});
-
-const QueryDownloadPopover = ({
-  canDownloadPng,
-  hasTruncatedResults,
-  limitedDownloadSizeText,
+export const QueryDownloadPopover = ({
+  question,
+  result,
   onDownload,
 }: QueryDownloadPopoverProps) => {
+  const canDownloadPng = canSavePng(question.display());
+  const hasTruncatedResults =
+    result.data != null && result.data.rows_truncated != null;
+  const limitedDownloadSizeText =
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride(result) ??
+    t`The maximum download size is 1 million rows.`;
+
   const formats = canDownloadPng
     ? [...exportFormats, exportFormatPng]
     : exportFormats;
 
+  const [isAltPressed, toggleAltPressed] = useState(false);
+  useKeyPressEvent(
+    e => e.key === "Alt" || e.key === "Option",
+    () => {
+      toggleAltPressed(true);
+    },
+    () => {
+      toggleAltPressed(false);
+    },
+  );
+
   return (
-    <DownloadPopoverRoot isExpanded={hasTruncatedResults}>
-      <DownloadPopoverHeader>
-        <h4>{t`Download full results`}</h4>
-      </DownloadPopoverHeader>
+    <Stack w={hasTruncatedResults ? "18.75rem" : "16.25rem"}>
+      <Group align="center" position="apart" px="sm">
+        <Title order={4}>{t`Download full results`}</Title>
+        <Tooltip label={getFormattingInfoTooltipLabel()}>
+          <Icon name="info_filled" />
+        </Tooltip>
+      </Group>
+
       {hasTruncatedResults && (
-        <DownloadPopoverMessage>
+        <Text px="sm">
           <div>{t`Your answer has a large number of rows so it could take a while to download.`}</div>
           <div>{limitedDownloadSizeText}</div>
-        </DownloadPopoverMessage>
+        </Text>
       )}
-      {formats.map(format => (
-        <DownloadButton key={format} format={format} onDownload={onDownload} />
-      ))}
-    </DownloadPopoverRoot>
+
+      <Stack spacing="sm">
+        {formats.map(format => (
+          <DownloadButton
+            key={format}
+            format={format}
+            onClick={() => {
+              onDownload({
+                type: format,
+                enableFormatting: !(
+                  checkCanManageFormatting(format) && isAltPressed
+                ),
+              });
+            }}
+            isAltPressed={isAltPressed}
+          />
+        ))}
+      </Stack>
+    </Stack>
   );
 };
-
-interface DownloadButtonProps {
-  format: string;
-  onDownload: (format: string) => void;
-}
-
-const DownloadButton = ({ format, onDownload }: DownloadButtonProps) => {
-  const handleClick = useCallback(() => {
-    onDownload(format);
-  }, [format, onDownload]);
-
-  return (
-    <DownloadButtonRoot onClick={handleClick}>
-      <DownloadButtonText>.{format}</DownloadButtonText>
-    </DownloadButtonRoot>
-  );
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(mapStateToProps)(QueryDownloadPopover);

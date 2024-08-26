@@ -1,0 +1,27 @@
+.borderTop {
+  border-top: 1px solid var(--mb-color-border);
+
+  .borderBottom + & {
+    border-top: none;
+  }
+
+  &:first-child {
+    border-top: none;
+  }
+}
+
+.borderBottom {
+  border-bottom: 1px solid var(--mb-color-border);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.action {
+  color: var(--mb-color-text-dark);
+
+  &:hover {
+    color: inherit;
+  }
+}

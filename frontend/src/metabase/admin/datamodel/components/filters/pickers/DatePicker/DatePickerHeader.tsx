@@ -1,16 +1,15 @@
 import _ from "underscore";
 
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 
 import type { DateOperator } from "./DatePicker";
 import { DATE_OPERATORS } from "./DatePicker";
-import { Container, BackButton, TabButton } from "./DatePickerHeader.styled";
+import { BackButton, Container, TabButton } from "./DatePickerHeader.styled";
 import { getHeaderText } from "./ExcludeDatePicker";
 
 type Props = {
   className?: string;
   isSidebar?: boolean;
-  primaryColor?: string;
 
   filter: Filter;
   operators?: DateOperator[];
@@ -22,7 +21,6 @@ type Props = {
 export default function DatePickerHeader({
   operators = DATE_OPERATORS,
   filter,
-  primaryColor,
   onFilterChange,
   onBack,
 }: Props) {
@@ -36,7 +34,6 @@ export default function DatePickerHeader({
     return onBack || hasTemporalUnit ? (
       <Container>
         <BackButton
-          primaryColor={primaryColor}
           onClick={() => {
             if (hasTemporalUnit) {
               onFilterChange([
@@ -57,17 +54,10 @@ export default function DatePickerHeader({
 
   return (
     <Container>
-      {onBack ? (
-        <BackButton
-          primaryColor={primaryColor}
-          onClick={onBack}
-          icon="chevronleft"
-        />
-      ) : null}
+      {onBack ? <BackButton onClick={onBack} icon="chevronleft" /> : null}
       {tabs.map(({ test, displayName, init }) => (
         <TabButton
           selected={!!test(filter)}
-          primaryColor={primaryColor}
           key={displayName}
           onClick={() => {
             onFilterChange(init(filter));

@@ -7,15 +7,15 @@ import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   getCard,
   getDatasetEditorTab,
-  getZoomedObjectId,
   getOriginalQuestion,
   getQueryBuilderMode,
   getQuestion,
+  getZoomedObjectId,
 } from "../selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
@@ -25,7 +25,7 @@ import {
 } from "../utils";
 
 import { initializeQB, setCardAndRun } from "./core";
-import { zoomInRow, resetRowZoom } from "./object-detail";
+import { resetRowZoom, zoomInRow } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { resetUIControls, setQueryBuilderMode } from "./ui";
 
@@ -57,10 +57,21 @@ export const popState = createThunkAction(
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!equals(card, location.state.card)) {
-        const shouldRefreshUrl = location.state.card.type === "model";
-        await dispatch(setCardAndRun(location.state.card, shouldRefreshUrl));
-        await dispatch(setCurrentState(location.state));
-        await dispatch(resetUIControls());
+        const shouldUpdateUrl = location.state.card.type === "model";
+        const isEmptyQuery = !location.state.card.dataset_query.database;
+
+        if (isEmptyQuery) {
+          // We are being navigated back to empty notebook edtor without data source selected.
+          // Reset QB state to aovid showing any data or errors from "future" history states.
+          // Do not run the question as the query without data source is invalid.
+          await dispatch(initializeQB(location, {}));
+        } else {
+          await dispatch(
+            setCardAndRun(location.state.card, { shouldUpdateUrl }),
+          );
+          await dispatch(setCurrentState(location.state));
+          await dispatch(resetUIControls());
+        }
       }
     }
 
@@ -131,10 +142,14 @@ export const updateUrl = createThunkAction(
 
       if (dirty == null) {
         const originalQuestion = getOriginalQuestion(getState());
-        const isAdHocModel = isAdHocModelQuestion(question, originalQuestion);
+        const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
+          question,
+          originalQuestion,
+        );
         dirty =
           !originalQuestion ||
-          (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
+          (!isAdHocModelOrMetric &&
+            question.isDirtyComparedTo(originalQuestion));
       }
 
       const { isNative } = Lib.queryDisplayInfo(question.query());

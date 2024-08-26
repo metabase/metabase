@@ -12,23 +12,26 @@
 (defonce ^:private ^{:doc "Set of all registered MBQL clause tags e.g. #{:starts-with}"} tag-registry
   (atom #{}))
 
-(defn- tag->registered-schema-name
+(defn tag->registered-schema-name
   "Given an MBQL clause tag like `:starts-with`, return the name of the schema we'll register for it, e.g.
   `:mbql.clause/starts-with`."
   [tag]
   (keyword "mbql.clause" (name tag)))
+
+(def ^:private invalid-clause-schema
+  [:fn {:error/message "not a known MBQL clause"} (constantly false)])
 
 (defn- clause-schema
   "Build the schema for `::clause`, a `:multi` schema that maps MBQL clause tag -> the schema
   in [[clause-schema-registry]]."
   []
   (into [:multi
-         {:dispatch first
+         {:dispatch common/mbql-clause-tag
           :error/fn (fn [{:keys [value]} _]
-                      (if (vector? value)
-                        (str "Invalid " (pr-str (first value)) " clause: " (pr-str value))
+                      (if-let [tag (common/mbql-clause-tag value)]
+                        (str "Invalid " tag " clause: " (pr-str value))
                         "not an MBQL clause"))}
-         [::mc/default [:fn {:error/message "not a known MBQL clause"} (constantly false)]]]
+         [::mc/default invalid-clause-schema]]
         (map (fn [tag]
                [tag [:ref (tag->registered-schema-name tag)]]))
         @tag-registry))
@@ -77,7 +80,8 @@
      return-type)
    nil))
 
-;;; TODO -- add more stuff.
+;;; TODO: Support options more nicely - these don't allow for overriding the options, but we have a few cases where that
+;;; is necessary. See for example the inclusion of `string-filter-options` in [[metabase.lib.filter]].
 
 (defn catn-clause-schema
   "Helper intended for use with [[define-mbql-clause]]. Create an MBQL clause schema with `:catn`. Use this for clauses
@@ -91,7 +95,7 @@
   [:schema
    (into [:catn
           {:error/message (str "Valid " tag " clause")}
-          [:tag [:= tag]]
+          [:tag [:= {:decode/normalize common/normalize-keyword} tag]]
           [:options [:schema [:ref ::common/options]]]]
          args)])
 
@@ -102,7 +106,7 @@
   {:pre [(simple-keyword? tag)]}
   (into [:tuple
          {:error/message (str "Valid " tag " clause")}
-         [:= tag]
+         [:= {:decode/normalize common/normalize-keyword} tag]
          [:ref ::common/options]]
         args))
 

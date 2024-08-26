@@ -22,8 +22,8 @@ import type {
 
 import {
   FormSnippetTextArea,
-  SnippetFormFooterContent,
   SnippetFormFooter,
+  SnippetFormFooterContent,
 } from "./SnippetForm.styled";
 
 const SNIPPET_SCHEMA = Yup.object({
@@ -127,8 +127,8 @@ function SnippetForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
-      if (isEditing) {
+    async (values: SnippetFormValues) => {
+      if (isEditing && snippet.id) {
         await handleUpdate({ ...values, id: snippet.id });
       } else {
         await handleCreate(values);

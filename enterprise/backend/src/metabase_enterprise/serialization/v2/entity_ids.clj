@@ -3,8 +3,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.models]
+   [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -22,11 +22,11 @@
 (defn- entity-id-table-names
   "Return a set of lower-cased names of all application database tables that have an `entity_id` column, excluding views."
   []
-  (with-open [conn (.getConnection mdb.connection/*application-db*)]
+  (with-open [conn (.getConnection (mdb/app-db))]
     (let [dbmeta (.getMetaData conn)]
       (with-open [tables-rset (.getTables dbmeta nil nil nil (into-array String ["TABLE"]))]
         (let [non-view-tables (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq tables-rset))]
-          (with-open [rset (.getColumns dbmeta nil nil nil (case (mdb.connection/db-type)
+          (with-open [rset (.getColumns dbmeta nil nil nil (case (mdb/db-type)
                                                              :h2                "ENTITY_ID"
                                                              (:mysql :postgres) "entity_id"))]
             (let [entity-id-tables (into #{} (map (comp u/lower-case-en :table_name)) (resultset-seq rset))]
@@ -47,7 +47,7 @@
               :when table-name
               ;; ignore any models defined in test namespaces.
               :when (not (str/includes? (namespace model) "test"))]
-         [table-name model])))
+          [table-name model])))
 
 (defn- entity-id-models
   "Return a set of all Toucan models that have an `entity_id` column."
@@ -57,19 +57,21 @@
         entity-id-table-name->model (into {}
                                           (map (fn [table-name]
                                                  (if-let [model (table-name->model table-name)]
-                                                  [table-name model]
-                                                  (throw (ex-info (trs "Model not found for table {0}" table-name)
-                                                                  {:table-name table-name})))))
+                                                   [table-name model]
+                                                   (throw (ex-info (trs "Model not found for table {0}" table-name)
+                                                                   {:table-name table-name
+                                                                    :error      ::model-not-found})))))
                                           entity-id-table-names)
         entity-id-models            (set (vals entity-id-table-name->model))]
-    ;; make sure we've resolved all of the tables that have entity_id to their corresponding models.
+    ;; make sure we've resolved all the tables that have entity_id to their corresponding models.
     (when-not (= (count entity-id-table-names)
                  (count entity-id-models))
       (throw (ex-info (trs "{0} tables have entity_id; expected to resolve the same number of models, but only got {1}"
                            (count entity-id-table-names)
                            (count entity-id-models))
                       {:tables   entity-id-table-names
-                       :resolved entity-id-table-name->model})))
+                       :resolved entity-id-table-name->model
+                       :error    ::mismatched-model-count})))
     (set entity-id-models)))
 
 (defn- seed-entity-id-for-instance! [model instance]
@@ -79,8 +81,10 @@
       (when-not (some? pk-value)
         (throw (ex-info (format "Missing value for primary key column %s" (pr-str primary-key))
                         {:model       (name model)
+                         :table       (t2/table-name model)
                          :instance    instance
-                         :primary-key primary-key})))
+                         :primary-key primary-key
+                         :error       ::missing-pk})))
       (let [new-hash (serdes/identity-hash instance)]
         (log/infof "Update %s %s entity ID => %s" (name model) (pr-str pk-value) (pr-str new-hash))
         (t2/update! model pk-value {:entity_id new-hash}))
@@ -115,7 +119,7 @@
   Returns truthy if all missing entity IDs were created successfully, and falsey if there were any errors."
   []
   (log/info "Seeding Entity IDs")
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (let [{:keys [error-count]} (transduce
                                (map seed-entity-ids-for-model!)
                                (completing (partial merge-with +))
@@ -123,10 +127,15 @@
                                (entity-id-models))]
     (zero? error-count)))
 
+(defn- drop-entity-id-conditions-for-model [model]
+  (case model
+    :model/Collection {:id [:not= (collection/trash-collection-id)]}
+    {}))
+
 (defn- drop-entity-ids-for-model! [model]
   (log/infof "Dropping Entity IDs for model %s" (name model))
   (try
-    (let [update-count (t2/update! model {:entity_id nil})]
+    (let [update-count (t2/update! model (drop-entity-id-conditions-for-model model) {:entity_id nil})]
       (when (pos? update-count)
         (log/infof "Updated %d %s instance(s) successfully." update-count (name model)))
       {:update-count update-count})
@@ -140,10 +149,10 @@
   Returns truthy if all entity IDs were removed successfully, and falsey if there were any errors."
   []
   (log/info "Dropping Entity IDs")
-  (mdb/setup-db!)
+  (mdb/setup-db! :create-sample-content? false)
   (let [{:keys [error-count]} (transduce
-                                (map drop-entity-ids-for-model!)
-                                (completing (partial merge-with +))
-                                {:update-count 0, :error-count 0}
-                                (entity-id-models))]
+                               (map drop-entity-ids-for-model!)
+                               (completing (partial merge-with +))
+                               {:update-count 0, :error-count 0}
+                               (entity-id-models))]
     (zero? error-count)))

@@ -12,7 +12,7 @@
     (is (not (mc/explain ::lib.schema/query lib.schema.util-test/query-with-no-duplicate-uuids))))
   (testing "should not validate if UUIDs are duplicated"
     (is (mc/explain ::lib.schema/query lib.schema.util-test/query-with-duplicate-uuids))
-    (is (= ["Duplicate :lib/uuid \"00000000-0000-0000-0000-000000000001\""]
+    (is (= ["Duplicate :lib/uuid #{\"00000000-0000-0000-0000-000000000001\"}"]
            (me/humanize (mc/explain ::lib.schema/query lib.schema.util-test/query-with-duplicate-uuids))))))
 
 (def ^:private valid-ag-1
@@ -48,8 +48,8 @@
       [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
       ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message.
-      {:lib/type                           :mbql.stage/mbql
-       :metabase.lib.stage/cached-metadata {:field-ref [:aggregation 0]}}
+      {:lib/type           :mbql.stage/mbql
+       :some-other-section {:field-ref [:aggregation 0]}}
       ["Invalid :aggregation reference: [:aggregation 0]"]
 
       ;; don't recurse into joins.

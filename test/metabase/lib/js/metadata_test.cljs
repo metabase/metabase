@@ -20,12 +20,11 @@
   #js {"id"               36
        "name"             "CATEGORY_ID"
        "has_field_values" "none"
-       "dimensions"       #js [#js {"id"                      72
-                                    "field_id"                36
-                                    "name"                    "Category ID [external remap]"
-                                    "type"                    "external"
-                                    "human_readable_field_id" 67}]
-       "values"           #js []})
+       "dimensions"       #js [{"id"                      72
+                                "field_id"                36
+                                "name"                    "Category ID [external remap]"
+                                "type"                    "external"
+                                "human_readable_field_id" 67}]})
 
 (deftest ^:parallel parse-field-with-external-remap-test
   (let [metadata          #js {:fields #js {"36" mock-field-metadata-with-external-remap}}
@@ -44,17 +43,11 @@
   #js {"id"               33
        "name"             "ID"
        "has_field_values" "none"
-       "dimensions"       #js [#js {"id"                      66
-                                    "field_id"                33
-                                    "name"                    "ID [internal remap]"
-                                    "type"                    "internal"
-                                    "human_readable_field_id" nil}]
-       "values"           #js {"has_more_values"       false
-                               "type"                  "full"
-                               "human_readable_values" #js ["African" "BBQ" "Artisan" "American"]
-                               "id"                    17824
-                               "values"                #js [1 4 3 2]
-                               "field_id"              33}})
+       "dimensions"       #js [{"id"                      66
+                                "field_id"                33
+                                "name"                    "ID [internal remap]"
+                                "type"                    "internal"
+                                "human_readable_field_id" nil}]})
 
 (deftest ^:parallel parse-field-with-internal-remap-test
   (let [metadata          #js {:fields #js {"33" mock-field-metadata-with-internal-remap}}
@@ -65,7 +58,5 @@
             :has-field-values   :none
             :lib/internal-remap {:lib/type :metadata.column.remapping/internal
                                  :id       66
-                                 :name     "ID [internal remap]"
-                                 :values                [1 4 3 2]
-                                 :human-readable-values ["African" "BBQ" "Artisan" "American"]}}
+                                 :name     "ID [internal remap]"}}
            (lib.metadata/field metadata-provider 33)))))

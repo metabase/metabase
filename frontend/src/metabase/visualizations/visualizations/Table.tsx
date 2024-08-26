@@ -3,17 +3,19 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import * as DataGrid from "metabase/lib/data_grid";
 import { formatColumn } from "metabase/lib/formatting";
 import ChartSettingLinkUrlInput from "metabase/visualizations/components/settings/ChartSettingLinkUrlInput";
-import ChartSettingsTableFormatting, {
+import {
+  ChartSettingsTableFormatting,
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
-  columnSettings,
-  buildTableColumnSettings,
-  getTitleForColumn,
   isPivoted as _isPivoted,
+  columnSettings,
+  getTitleForColumn,
+  tableColumnSettings,
 } from "metabase/visualizations/lib/settings/column";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
@@ -23,18 +25,18 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import { isNative } from "metabase-lib/queries/utils/card";
-import { findColumnIndexesForColumnSettings } from "metabase-lib/queries/utils/dataset";
+import Question from "metabase-lib/v1/Question";
+import { isNative } from "metabase-lib/v1/queries/utils/card";
+import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import {
-  isMetric,
+  isAvatarURL,
   isDimension,
-  isNumber,
-  isURL,
   isEmail,
   isImageURL,
-  isAvatarURL,
-} from "metabase-lib/types/utils/isa";
+  isMetric,
+  isNumber,
+  isURL,
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,
@@ -58,7 +60,7 @@ interface TableState {
 class Table extends Component<TableProps, TableState> {
   static uiName = t`Table`;
   static identifier = "table";
-  static iconName = "table";
+  static iconName = "table2";
   static canSavePng = false;
 
   static minSize = getMinSize("table");
@@ -150,7 +152,7 @@ class Table extends Component<TableProps, TableState> {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    ...buildTableColumnSettings(),
+    ...tableColumnSettings,
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
@@ -336,16 +338,21 @@ class Table extends Component<TableProps, TableState> {
       );
       this.setState({
         data: DataGrid.pivot(data, normalIndex, pivotIndex, cellIndex),
+        question,
       });
     } else {
       const { cols, rows, results_timezone } = data;
       const columnSettings = settings["table.columns"] ?? [];
       const columnIndexes = findColumnIndexesForColumnSettings(
         cols,
-        this.props.isShowingDetailsOnlyColumns
-          ? columnSettings
-          : columnSettings.filter(({ enabled }) => enabled),
-      ).filter(columnIndex => columnIndex >= 0);
+        columnSettings,
+      ).filter(
+        (columnIndex, settingIndex) =>
+          columnIndex >= 0 &&
+          (this.props.isShowingDetailsOnlyColumns ||
+            (cols[columnIndex].visibility_type !== "details-only" &&
+              columnSettings[settingIndex].enabled)),
+      );
 
       this.setState({
         data: {
@@ -353,7 +360,6 @@ class Table extends Component<TableProps, TableState> {
           rows: rows.map(row => columnIndexes.map(i => row[i])),
           results_timezone,
         },
-        // cache question for performance reasons
         question,
       });
     }
@@ -411,8 +417,14 @@ class Table extends Component<TableProps, TableState> {
       return (
         <div
           className={cx(
-            "flex-full px1 pb1 text-centered flex flex-column layout-centered",
-            { "text-slate-light": isDashboard, "text-slate": !isDashboard },
+            CS.flexFull,
+            CS.px1,
+            CS.pb1,
+            CS.textCentered,
+            CS.flex,
+            CS.flexColumn,
+            CS.layoutCentered,
+            { [CS.textSlateLight]: isDashboard, [CS.textSlate]: !isDashboard },
           )}
         >
           <img
@@ -422,9 +434,11 @@ class Table extends Component<TableProps, TableState> {
               app/assets/img/hidden-field.png     1x,
               app/assets/img/hidden-field@2x.png  2x
             "
-            className="mb2"
+            className={CS.mb2}
           />
-          <span className="h4 text-bold">{t`Every field is hidden right now`}</span>
+          <span
+            className={cx(CS.h4, CS.textBold)}
+          >{t`Every field is hidden right now`}</span>
         </div>
       );
     }
@@ -432,6 +446,7 @@ class Table extends Component<TableProps, TableState> {
     return (
       <TableComponent
         {...this.props}
+        question={this.state.question}
         data={data}
         isPivoted={isPivoted}
         getColumnTitle={this.getColumnTitle}

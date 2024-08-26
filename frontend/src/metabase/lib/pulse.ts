@@ -1,17 +1,17 @@
 import _ from "underscore";
 
+import { getEmailDomain } from "metabase/lib/email";
 import MetabaseSettings from "metabase/lib/settings";
-import { getEmailDomain } from "metabase/lib/utils";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,
-} from "metabase-lib/parameters/utils/parameter-values";
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Channel,
   ChannelSpec,
-  NotificationRecipient,
   Pulse,
   PulseParameter,
+  User,
 } from "metabase-types/api";
 
 export const NEW_PULSE_TEMPLATE = {
@@ -92,7 +92,7 @@ function pulseChannelsAreValid(pulse: Pulse, channelSpecs: any) {
   );
 }
 
-export function recipientIsValid(recipient: NotificationRecipient) {
+export function recipientIsValid(recipient: User) {
   if (recipient.id) {
     return true;
   }
@@ -101,7 +101,7 @@ export function recipientIsValid(recipient: NotificationRecipient) {
   const allowedDomains = MetabaseSettings.subscriptionAllowedDomains();
   return (
     _.isEmpty(allowedDomains) ||
-    (recipientDomain && allowedDomains.includes(recipientDomain))
+    !!(recipientDomain && allowedDomains.includes(recipientDomain))
   );
 }
 
@@ -178,7 +178,7 @@ export function getDefaultChannel(channelSpecs: ChannelSpecs) {
   }
 }
 
-export function createChannel(channelSpec: ChannelSpec) {
+export function createChannel(channelSpec: ChannelSpec): Channel {
   const details = {};
 
   return {

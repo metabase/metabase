@@ -6,7 +6,7 @@ title: "Configuration file"
 
 {% include plans-blockquote.html feature="Loading from a configuration file" self-hosted-only="true" %}
 
-On some paid, self-hosted plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
+On self-hosted Pro and Enterprise plans, Metabase supports initialization on launch from a config file named `config.yml`. The config file should be located at:
 
 - The current directory (the directory where the running Metabase JAR is located).
 - The path specified by the `MB_CONFIG_FILE_PATH` [environment variable](./environment-variables.md).
@@ -25,7 +25,7 @@ The config file is split up into sections: `version` and `config.` Under `config
 
 Like so:
 
-```
+```yml
 version: 1
 config:
   settings:
@@ -44,7 +44,7 @@ The first user created in a Metabase instance is an Admin. The first user listed
 
 In the following example, assuming that the Metabase hasn't already been set up (which creates the first user) both users `first@example.com` and `admin@example.com` will be admins: `first@example.com` because it's the first user account on the list, and `admin@example.com` because that user has the `is_superuser` flag set to true.
 
-```
+```yml
 version: 1
 config:
   users:
@@ -69,7 +69,7 @@ If the Metabase has already been set up, then `first @example.com` will be loade
 
 On a new Metabase, the example below sets up an admin user account and one database connection.
 
-```
+```yml
 {% raw %}
 version: 1
 config:
@@ -92,9 +92,45 @@ config:
 
 To determine which keys you can specify for a database, check out the fields available in Metabase itself for the database that you want to add.
 
+### Setting up uploads on a database
+
+You can also configure [uploads](../databases/uploads.md) in the config file with the following settings:
+
+- `uploads_enabled`: Boolean
+- `uploads_schema_name`: String
+- `uploads_table_prefix`: String
+
+Here's an example:
+
+```yml
+{% raw %}
+version: 1
+config:
+  users:
+    - first_name: Cam
+      last_name: Era
+      password: 2cans3cans4cans
+      email: cam@example.com
+  databases:
+    - name: test-data (Postgres)
+      engine: postgres
+      details:
+        host: localhost
+        port: 5432
+        user: dbuser
+        password: "{{ env POSTGRES_TEST_DATA_PASSWORD }}"
+        dbname: test-data
+      uploads_enabled: true
+      uploads_schema_name: uploads
+      uploads_table_prefix: uploads_
+{% endraw %}
+```
+
+See [Uploads](../databases/uploads.md).
+
 ## Referring to environment variables in the `config.yml`
 
-As shown in the Databases example above, environment variables can be specified with `{% raw %}{{ template-tags }}{% endraw %}` like `{% raw %}{{ env POSTGRES_TEST_DATA_PASSWORD }}{% endraw %}` or `{% raw %}[[options {{template-tags}}]]{% endraw %}`.
+As shown in the Databases examples above, environment variables can be specified with `{% raw %}{{ template-tags }}{% endraw %}` like `{% raw %}{{ env POSTGRES_TEST_DATA_PASSWORD }}{% endraw %}` or `{% raw %}[[options {{template-tags}}]]{% endraw %}`.
 
 Metabase doesn't support recursive expansion, so if one of your environment variables references _another_ environment variable, you're going to have a bad time.
 
@@ -104,7 +140,7 @@ When loading a data model from a serialized export, you want to disable the sche
 
 To disable the initial database sync, you can add `config-from-file-sync-database` to the `settings` list and set the value to `false`. The setting `config-from-file-sync-database` must come _before_ the databases list, like so:
 
-```
+```yml
 version: 1
 config:
   settings:
@@ -121,19 +157,19 @@ In this config file, you can specify _any_ Admin setting.
 
 In general, the settings you can set in the `settings` section of this config file map to the [environment variables](./environment-variables.md), so check them out to see which settings you can use in your config file. The actual key that you include in the config file differs slightly from the format used for environment variables. For environment variables, the form is in screaming snake case, prefixed by an `MB`:
 
-```
+```txt
 MB_NAME_OF_VARIABLE
 ```
 
 Whereas in the config file, you'd translate that to:
 
-```
+```txt
 name-of-variable
 ```
 
 So for example, if you wanted to specify the `MB_EMAIL_FROM_NAME` in the `config.yml` file:
 
-```
+```yml
 version: 1
 config:
   settings:
@@ -147,19 +183,17 @@ config:
 
 Just to give you an idea for some settings, here's an incomplete list of settings you can set via the config file:
 
-```
+```txt
 application-colors
 config-from-file-sync-databases
 check-for-updates
 experimental-enable-actions
 persisted-model-refresh-cron-schedule
 email-smtp-host
-enable-query-caching
 email-smtp-username
 start-of-week
 email-smtp-password
 email-smtp-port
-query-caching-min-ttl
 email-from-name
 email-from-address
 email-reply-to
@@ -183,12 +217,12 @@ site-url
 site-name
 ```
 
-But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./config-file.md) to see what you can configure.
+But you can set any of the Admin settings with the config file. Check out the list of [environment variable](./environment-variables.md) to see what you can configure (though note that not all environment variables can be set via the config file.)
 
 ## Loading a new Metabase from a config file
 
-Since loading from a config file is a paid feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
+Since loading from a config file is a Pro/Enterprise feature: for new installations, you'll need to supply Metabase with a token using the `MB_PREMIUM_EMBEDDING_TOKEN` environment variable.
 
-```
+```sh
 MB_PREMIUM_EMBEDDING_TOKEN="[your token]" java -jar metabase.jar
 ```

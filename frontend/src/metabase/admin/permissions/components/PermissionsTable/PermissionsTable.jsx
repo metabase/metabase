@@ -1,22 +1,24 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Modal from "metabase/components/Modal";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 
 import {
+  ColumnName,
+  EntityName,
+  EntityNameLink,
+  HintIcon,
+  PermissionTableHeaderCell,
+  PermissionsTableCell,
   PermissionsTableRoot,
   PermissionsTableRow,
-  PermissionsTableCell,
-  PermissionTableHeaderCell,
-  EntityNameLink,
-  EntityName,
-  HintIcon,
-  ColumnName,
 } from "./PermissionsTable.styled";
 
 const propTypes = {
@@ -100,7 +102,7 @@ export function PermissionsTable({
         <tbody>
           {entities.map(entity => {
             const entityName = (
-              <span className="flex align-center">
+              <span className={cx(CS.flex, CS.alignCenter)}>
                 <Ellipsified>{entity.name}</Ellipsified>
                 {entity.hint && (
                   <Tooltip tooltip={entity.hint}>

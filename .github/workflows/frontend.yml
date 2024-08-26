@@ -70,7 +70,7 @@ jobs:
   fe-tests-unit:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.frontend_all == 'true'
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     env:
       JEST_JUNIT_OUTPUT_DIR: ./target/junit
@@ -91,10 +91,11 @@ jobs:
         run: yarn run test-unit --silent
       - name: Upload coverage to codecov.io
         if: github.ref_name == 'master'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./coverage/lcov.info
           flags: front-end
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()

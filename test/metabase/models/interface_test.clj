@@ -3,11 +3,11 @@
    [cheshire.core :as json]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
-   [metabase.test.util.log :as tu.log]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -38,24 +38,28 @@
            :type     :native
            :native   {:template-tags {100 [:field-id "WOW"]}}})))))
 
+(deftest ^:parallel normalize-empty-query-test
+  (is (= {}
+         ((:out mi/transform-metabase-query) "{}"))))
+
 (deftest ^:parallel normalize-metric-segment-definition-test
   (testing "Legacy Metric/Segment definitions should get normalized"
     (is (= {:filter [:= [:field 1 nil] [:field 2 {:temporal-unit :month}]]}
-           ((:out mi/transform-metric-segment-definition)
+           ((:out mi/transform-legacy-metric-segment-definition)
             (json/generate-string
              {:filter [:= [:field-id 1] [:datetime-field [:field-id 2] :month]]}))))))
 
 (deftest ^:parallel dont-explode-on-way-out-from-db-test
   (testing "`metric-segment-definition`s should avoid explosions coming out of the DB..."
     (is (= nil
-           ((:out mi/transform-metric-segment-definition)
+           ((:out mi/transform-legacy-metric-segment-definition)
             (json/generate-string
              {:filter 1000}))))
 
     (testing "...but should still throw them coming in"
       (is (thrown?
            Exception
-           ((:in mi/transform-metric-segment-definition)
+           ((:in mi/transform-legacy-metric-segment-definition)
             {:filter 1000}))))))
 
 (deftest handle-errors-gracefully-test
@@ -142,16 +146,85 @@
                (mi/encrypted-json-out
                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
     (testing "Logs an error message when incoming data looks encrypted"
-      (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
-              (tu.log/with-log-messages-for-level :error
-                (mi/encrypted-json-out
-                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (mi/encrypted-json-out
+         (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))
+        (is (=? [{:level   :error
+                  :e       JsonParseException
+                  :message "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"}]
+                (messages)))))
     (testing "Invalid JSON throws correct error"
-      (is (=? [[:error JsonParseException "Error parsing JSON"]]
-              (tu.log/with-log-messages-for-level :error
-                (mi/encrypted-json-out "{\"a\": 1"))))
-      (is (=? [[:error JsonParseException "Error parsing JSON"]]
-              (tu.log/with-log-messages-for-level :error
-                (encryption-test/with-secret-key "qwe"
-                  (mi/encrypted-json-out
-                   (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (mi/encrypted-json-out "{\"a\": 1")
+        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+                (messages))))
+      (mt/with-log-messages-for-level [messages :error]
+        (encryption-test/with-secret-key "qwe"
+          (mi/encrypted-json-out
+           (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))
+        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+                (messages)))))))
+
+(deftest ^:parallel instances-with-hydrated-data-test
+  (let [things [{:id 2} nil {:id 1}]]
+    (is (= [{:id 2 :even-id? true} nil {:id 1 :even-id? false}]
+           (mi/instances-with-hydrated-data
+            things :even-id?
+            #(into {} (comp (remove nil?)
+                            (map (juxt :id (comp even? :id))))
+                   things)
+            :id)))))
+
+(deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
+  (let [viz-settings
+        {"table.pivot_column" "TAX",
+         "graph.metrics" ["expression"],
+         "pivot_table.column_split"
+         {"rows"
+          [["field" 39 {"base-type" "type/DateTime", "temporal-unit" "month"}]
+           ["expression" "expression"]
+           ["field"
+            33
+            {"base-type" "type/Float",
+             "binning" {"strategy" "num-bins", "min-value" 0, "max-value" 12, "num-bins" 8, "bin-width" 2}}]],
+          "columns" [],
+          "values" [["aggregation" 0]]},
+         "pivot_table.column_widths" {"leftHeaderWidths" [141 99 80], "totalLeftHeaderWidths" 320, "valueHeaderWidths" {}},
+         "table.cell_column" "expression",
+         "table.column_formatting"
+         [{"columns" ["expression" nil "TAX" "count"],
+           "type" "single",
+           "operator" "is-null",
+           "value" 10,
+           "color" "#EF8C8C",
+           "highlight_row" false,
+           "id" 0}],
+         "column_settings" {"[\"ref\",[\"expression\",\"expression\"]]" {"number_style" "currency"}},
+         "series_settings" {"expression" {"line.interpolate" "step-after", "line.style" "dotted"}},
+         "graph.dimensions" ["CREATED_AT"]}]
+    (is (= {:table.pivot_column "TAX"
+            :graph.metrics ["expression"]
+            :pivot_table.column_split
+            {:rows
+             [[:field 39 {:base-type :type/DateTime, :temporal-unit :month}]
+              [:expression "expression"]
+              [:field
+               33
+               {:base-type :type/Float
+                :binning {:strategy :num-bins, :min-value 0, :max-value 12, :num-bins 8, :bin-width 2}}]]
+             :columns []
+             :values [[:aggregation 0]]}
+            :pivot_table.column_widths {:leftHeaderWidths [141 99 80], :totalLeftHeaderWidths 320, :valueHeaderWidths {}}
+            :table.cell_column "expression"
+            :table.column_formatting
+            [{:columns ["expression" nil "TAX" "count"]
+              :type "single"
+              :operator "is-null"
+              :value 10
+              :color "#EF8C8C"
+              :highlight_row false
+              :id 0}]
+            :column_settings {"[\"ref\",[\"expression\",\"expression\"]]" {:number_style "currency"}}
+            :series_settings {:expression {:line.interpolate "step-after", :line.style "dotted"}}
+            :graph.dimensions ["CREATED_AT"]}
+           (mi/normalize-visualization-settings viz-settings)))))

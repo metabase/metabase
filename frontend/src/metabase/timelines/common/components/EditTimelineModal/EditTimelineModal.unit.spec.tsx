@@ -12,9 +12,9 @@ describe("EditTimelineModal", () => {
     const name = "Another timeline";
 
     render(<EditTimelineModal {...props} />);
-    userEvent.clear(screen.getByLabelText("Name"));
-    userEvent.type(screen.getByLabelText("Name"), name);
-    userEvent.click(screen.getByText("Update"));
+    await userEvent.clear(screen.getByLabelText("Name"));
+    await userEvent.type(screen.getByLabelText("Name"), name);
+    await userEvent.click(screen.getByText("Update"));
 
     await waitFor(() => {
       expect(props.onSubmit).toHaveBeenCalledWith({ ...props.timeline, name });

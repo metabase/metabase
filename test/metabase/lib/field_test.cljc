@@ -1,5 +1,6 @@
 (ns metabase.lib.field-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -18,8 +19,7 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -476,9 +476,9 @@
                       :query    {:source-table (meta/id :venues)
                                  :joins        [{:fields       :all
                                                  :source-table (meta/id :categories)
-                                                 :conditions   [[:=
-                                                                 [:field (meta/id :venues :category-id) nil]
-                                                                 [:field (meta/id :categories :id) {:join-alias "Cat"}]]]
+                                                 :condition    [:=
+                                                                [:field (meta/id :venues :category-id) nil]
+                                                                [:field (meta/id :categories :id) {:join-alias "Cat"}]]
                                                  :alias        "Cat"}]}}
         query        (lib/query meta/metadata-provider legacy-query)]
     (is (=? [{:lib/desired-column-alias "ID"}
@@ -531,7 +531,7 @@
   ;; something like `:card-id` for Column Metadata yet. Make sure it works correctly.
   (let [query (assoc lib.tu/venues-query :lib/metadata lib.tu/metadata-provider-with-card)
         field (lib/metadata query (assoc (lib.metadata/field query (meta/id :venues :name))
-                                                              :table-id "card__1"))]
+                                         :table-id "card__1"))]
     (is (=? {:name           "NAME"
              :display-name   "Name"
              :semantic-type  :type/Name
@@ -709,8 +709,8 @@
                                    (meta/field-metadata :venues :category-id)
                                    (lib/with-join-alias (meta/field-metadata :categories :id) "Categories"))])
                                 (lib/with-join-fields [(lib/with-join-alias
-                                                         (meta/field-metadata :categories :name)
-                                                         "Categories")])))
+                                                        (meta/field-metadata :categories :name)
+                                                        "Categories")])))
                   lib/append-stage)
         breakoutables (lib/breakoutable-columns query)
         joined-col (last breakoutables)]
@@ -746,7 +746,7 @@
               (lib/display-info
                query
                (lib/with-binning (m/find-first (comp #{"PRICE"} :name) breakoutables)
-                 (first (lib.binning/numeric-binning-strategies)))))))))
+                                 (first (lib.binning/numeric-binning-strategies)))))))))
 
 (defn- sorted-fields [fields]
   (sort-by (comp str last) fields))
@@ -921,9 +921,9 @@
 
       (testing "join :fields list"
         (let [join-fields-query (lib.util/update-query-stage
-                                  query -1
-                                  update-in [:joins 0]
-                                  lib/with-join-fields (map lib/ref (take 4 join-columns)))]
+                                 query -1
+                                 update-in [:joins 0]
+                                 lib/with-join-fields (map lib/ref (take 4 join-columns)))]
           (testing "returns those plus all the main table fields"
             (is (=? (->> (concat table-columns
                                  (take 4 join-columns))
@@ -1244,31 +1244,12 @@
     (let [query      (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                          (lib/aggregate -1 (lib/sum (meta/field-metadata :orders :subtotal)))
                          (lib/breakout -1 (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month)))
-          stage      (lib.util/query-stage query -1)
-          columns    (lib/returned-columns query)
-          created-at [:field {} (meta/id :orders :created-at)]
-          sum        [:aggregation {} (-> stage :aggregation first lib.options/uuid)]]
+          columns    (lib/returned-columns query)]
       (testing "removing each field"
-        (is (=? [sum]
-                (-> query
-                    (lib/remove-field -1 (first columns))
-                    fields-of)))
-        (is (=? [created-at]
-                (-> query
-                    (lib/remove-field -1 (second columns))
-                    fields-of))))
-
-      (testing "removing and adding each field"
-        (is (nil? (-> query
-                      (lib/remove-field -1 (first columns))
-                      (lib/add-field    -1 (first columns))
-                      (lib.util/query-stage -1)
-                      :fields)))
-        (is (nil? (-> query
-                      (lib/remove-field -1 (second columns))
-                      (lib/add-field    -1 (second columns))
-                      (lib.util/query-stage -1)
-                      :fields)))))))
+        (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Only source columns"
+                              (lib/remove-field query -1 (first columns))))
+        (is (thrown-with-msg? #?(:cljs :default :clj Exception) #"Only source columns"
+                              (lib/remove-field query -1 (second columns))))))))
 
 (deftest ^:parallel find-visible-column-for-ref-test
   (testing "precise references"
@@ -1308,10 +1289,10 @@
                                          (lib/ref (meta/field-metadata :orders :tax))]))
           join     (-> (lib/join-clause (meta/table-metadata :orders)
                                         [(lib/=
-                                           (lib/ref (meta/field-metadata :orders :user-id))
-                                           (-> (meta/field-metadata :orders :id)
-                                               lib/ref
-                                               (lib.options/update-options assoc :join-alias "Orders")))])
+                                          (lib/ref (meta/field-metadata :orders :user-id))
+                                          (-> (meta/field-metadata :orders :id)
+                                              lib/ref
+                                              (lib.options/update-options assoc :join-alias "Orders")))])
                        (lib/with-join-alias "Orders")
                        (lib/with-join-fields [(lib/ref (meta/field-metadata :orders :id))
                                               (lib/ref (meta/field-metadata :orders :tax))]))
@@ -1371,8 +1352,8 @@
                     (lib.metadata.calculation/returned-columns hidden)))
             (is (=? (map #(dissoc % :lib/source) exp-hidden)
                     (filter :selected? (lib.equality/mark-selected-columns
-                                         (lib.metadata.calculation/visible-columns hidden)
-                                         (lib.metadata.calculation/returned-columns hidden)))))
+                                        (lib.metadata.calculation/visible-columns hidden)
+                                        (lib.metadata.calculation/returned-columns hidden)))))
 
             (testing "and showing it again"
               (let [shown     (lib/add-field query -1 to-hide)]
@@ -1380,8 +1361,8 @@
                         (lib.metadata.calculation/returned-columns shown)))
                 (is (=? (map #(dissoc % :lib/source) exp-shown)
                         (filter :selected? (lib.equality/mark-selected-columns
-                                             (lib.metadata.calculation/visible-columns shown)
-                                             (lib.metadata.calculation/returned-columns shown)))))))))))))
+                                            (lib.metadata.calculation/visible-columns shown)
+                                            (lib.metadata.calculation/returned-columns shown)))))))))))))
 
 (deftest ^:parallel nested-query-add-remove-fields-test
   (testing "a nested query with a field already excluded"
@@ -1439,7 +1420,7 @@
                 col-user-id))
         (is (=? [{:display-name "Created At: Month"}
                  {:display-name "Count"}]
-              (lib.metadata.calculation/returned-columns query)))))))
+                (lib.metadata.calculation/returned-columns query)))))))
 
 (defn- mark-selected [query]
   (lib.equality/mark-selected-columns query -1
@@ -1480,8 +1461,8 @@
   (testing "joining a nested query with another table"
     ;; Use the mock card for :orders, join that with products in the nested query.
     (let [provider  (lib.tu/metadata-provider-with-cards-for-queries
-                      meta/metadata-provider
-                      [(lib/query meta/metadata-provider (meta/table-metadata :orders))])
+                     meta/metadata-provider
+                     [(lib/query meta/metadata-provider (meta/table-metadata :orders))])
           base      (lib/query provider (lib.metadata/card provider 1))
           join      (lib/join-clause (meta/table-metadata :products)
                                      [(lib/= (lib/ref (meta/field-metadata :orders :product-id))
@@ -1524,9 +1505,30 @@
               (lib.metadata.calculation/metadata lib.tu/venues-query -1 [:field {:lib/uuid (str (random-uuid))} 12345]))))))
 
 (deftest ^:parallel field-values-search-info-test
-  (testing "external remaps (Field mapped to another Field)"
+  (testing "type/PK field remapped to a type/Name field within the same table"
+    (let [name-field (lib.metadata/field meta/metadata-provider (meta/id :venues :name))
+          metadata-provider (lib.tu/merged-mock-metadata-provider
+                             meta/metadata-provider
+                             {:fields [{:id  (meta/id :venues :id)
+                                        :name-field       name-field
+                                        :has-field-values :search}
+                                       {:id               (meta/id :venues :name)
+                                        :semantic-type    :type/Name}]})
+          venues-id       (lib.metadata/field metadata-provider (meta/id :venues :id))]
+      (testing `lib.field/remapped-field
+        (is (nil? (#'lib.field/remapped-field metadata-provider venues-id))))
+      (testing `lib.field/search-field
+        (is (=? {:id   (meta/id :venues :name)
+                 :name "NAME"}
+                (#'lib.field/search-field metadata-provider venues-id))))
+      (is (= {:field-id         (meta/id :venues :id)
+              :search-field-id  (meta/id :venues :name)
+              :has-field-values :search}
+             (lib.field/field-values-search-info metadata-provider venues-id)))))
+  (testing "type/FK field remapped to a field in another table"
     (let [metadata-provider (-> meta/metadata-provider
                                 (lib.tu/merged-mock-metadata-provider {:fields [{:id               (meta/id :venues :name)
+                                                                                 :semantic-type    :type/FK
                                                                                  :has-field-values nil}]})
                                 (lib.tu/remap-metadata-provider (meta/id :venues :name) (meta/id :categories :name)))
           venues-name       (lib.metadata/field metadata-provider (meta/id :venues :name))]
@@ -1564,47 +1566,47 @@
   (testing "No field-id without custom metadata (#37100)"
     (is (= {:field-id nil :search-field-id nil :has-field-values :none}
            (lib.field/field-values-search-info
-             meta/metadata-provider
-             (-> lib.tu/native-query
-                 lib/visible-columns
-                 first))))
+            meta/metadata-provider
+            (-> lib.tu/native-query
+                lib/visible-columns
+                first))))
     (is (= {:field-id nil :search-field-id nil :has-field-values :none}
            (lib.field/field-values-search-info
-             meta/metadata-provider
-             (-> (lib.tu/query-with-stage-metadata-from-card
-                   meta/metadata-provider
-                   (:venues/native lib.tu/mock-cards))
-                 lib/visible-columns
-                 first))))
+            meta/metadata-provider
+            (-> (lib.tu/query-with-stage-metadata-from-card
+                 meta/metadata-provider
+                 (:venues/native lib.tu/mock-cards))
+                lib/visible-columns
+                first))))
     (is (= {:field-id nil :search-field-id nil :has-field-values :none}
            (lib.field/field-values-search-info
-             meta/metadata-provider
-             (-> (lib.tu/query-with-stage-metadata-from-card
-                   meta/metadata-provider
-                   (:venues/native lib.tu/mock-cards))
-                 lib/append-stage
-                 lib/visible-columns
-                 first)))))
+            meta/metadata-provider
+            (-> (lib.tu/query-with-stage-metadata-from-card
+                 meta/metadata-provider
+                 (:venues/native lib.tu/mock-cards))
+                lib/append-stage
+                lib/visible-columns
+                first)))))
   (testing "field-id with custom metadata (#37100)"
     (is (= {:field-id 1 :search-field-id 1 :has-field-values :search}
            (lib.field/field-values-search-info
-             meta/metadata-provider
-             (-> (update-in lib.tu/native-query [:stages 0 :lib/stage-metadata :columns] conj
-                            {:lib/type :metadata/column
-                             :id 1
-                             :name "search"
-                             :display-name "Search"
-                             :base-type :type/Text})
-                 lib/visible-columns
-                 last))))
+            meta/metadata-provider
+            (-> (update-in lib.tu/native-query [:stages 0 :lib/stage-metadata :columns] conj
+                           {:lib/type :metadata/column
+                            :id 1
+                            :name "search"
+                            :display-name "Search"
+                            :base-type :type/Text})
+                lib/visible-columns
+                last))))
     (is (= {:field-id 1 :search-field-id nil :has-field-values :none}
            (lib.field/field-values-search-info
-             meta/metadata-provider
-             (-> (update-in lib.tu/native-query [:stages 0 :lib/stage-metadata :columns] conj
-                            {:lib/type :metadata/column
-                             :id 1
-                             :name "num"
-                             :display-name "Random number"
-                             :base-type :type/Integer})
-                 lib/visible-columns
-                 last))))))
+            meta/metadata-provider
+            (-> (update-in lib.tu/native-query [:stages 0 :lib/stage-metadata :columns] conj
+                           {:lib/type :metadata/column
+                            :id 1
+                            :name "num"
+                            :display-name "Random number"
+                            :base-type :type/Integer})
+                lib/visible-columns
+                last))))))

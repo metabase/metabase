@@ -3,9 +3,7 @@
   (:require
    [cheshire.core :as json]
    [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
-   [metabase.actions.execution :as actions.execution]
-   [metabase.actions.http-action :as http-action]
+   [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -25,21 +23,21 @@
   [:and
    string?
    (mu/with-api-error-message
-     [:fn #(http-action/apply-json-query {} %)]
-     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
+    [:fn #(actions/apply-json-query {} %)]
+    (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
   (mu/with-api-error-message
-    [:enum "http" "query" "implicit"]
-    (deferred-tru "Unsupported action type")))
+   [:enum "http" "query" "implicit"]
+   (deferred-tru "Unsupported action type")))
 
 (def ^:private implicit-action-kind
   (mu/with-api-error-message
-    (into [:enum]
-          (for [ns ["row" "bulk"]
-                action ["create" "update" "delete"]]
-            (str ns "/" action)))
-    (deferred-tru "Unsupported implicit action kind")))
+   (into [:enum]
+         (for [ns ["row" "bulk"]
+               action ["create" "update" "delete"]]
+           (str ns "/" action)))
+   (deferred-tru "Unsupported implicit action kind")))
 
 (def ^:private http-action-template
   [:map {:closed true}
@@ -58,9 +56,9 @@
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (action/select-actions models
-                                              :model_id [:in (map :id models)]
-                                              :archived false)
-                       :creator)
+                                                 :model_id [:in (map :id models)]
+                                                 :archived false)
+                          :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id
@@ -70,10 +68,7 @@
                                      [:= :type "model"]
                                      [:= :archived false]
                                      ;; action permission keyed off of model permission
-                                     (collection/visible-collection-ids->honeysql-filter-clause
-                                      :collection_id
-                                      (collection/permissions-set->visible-collection-ids
-                                       @api/*current-user-permissions-set*))]}))]
+                                     (collection/visible-collection-filter-clause)]}))]
       (actions-for models))))
 
 (api/defendpoint GET "/public"
@@ -84,6 +79,7 @@
   (t2/select [Action :name :id :public_uuid :model_id], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/:action-id"
+  "Fetch an Action."
   [action-id]
   {action-id ms/PositiveInt}
   (-> (action/select-action :id action-id :archived false)
@@ -91,6 +87,7 @@
       api/read-check))
 
 (api/defendpoint DELETE "/:action-id"
+  "Delete an Action."
   [action-id]
   {action-id ms/PositiveInt}
   (let [action (api/write-check Action action-id)]
@@ -142,6 +139,7 @@
       (last (action/select-actions nil :type type)))))
 
 (api/defendpoint PUT "/:id"
+  "Update an Action."
   [id :as {action :body}]
   {id     ms/PositiveInt
    action [:map
@@ -204,7 +202,7 @@
   (actions/check-actions-enabled! action-id)
   (-> (action/select-action :id action-id :archived false)
       api/read-check
-      (actions.execution/fetch-values (json/parse-string parameters))))
+      (actions/fetch-values (json/parse-string parameters))))
 
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.
@@ -217,6 +215,6 @@
     (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
                                                                              :type      type
                                                                              :action_id id})
-    (actions.execution/execute-action! action (update-keys parameters name))))
+    (actions/execute-action! action (update-keys parameters name))))
 
 (api/define-routes)

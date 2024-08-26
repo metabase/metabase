@@ -8,6 +8,7 @@ import { t } from "ttag";
 import Calendar from "metabase/components/Calendar";
 import ExpandingContent from "metabase/components/ExpandingContent";
 import InputBlurChange from "metabase/components/InputBlurChange";
+import CS from "metabase/css/core/index.css";
 import { getDateStyleFromSettings } from "metabase/lib/time";
 import { Icon } from "metabase/ui";
 
@@ -76,10 +77,19 @@ export default class SpecificDatePicker extends Component {
 
     return (
       <div className={className}>
-        <div className="mb2 full bordered rounded flex align-center">
+        <div
+          className={cx(
+            CS.mb2,
+            CS.full,
+            CS.bordered,
+            CS.rounded,
+            CS.flex,
+            CS.alignCenter,
+          )}
+        >
           <InputBlurChange
             placeholder={moment().format(dateFormat)}
-            className="borderless full p1 h3"
+            className={cx(CS.borderless, CS.full, CS.p1, CS.h3)}
             style={{
               outline: "none",
             }}
@@ -114,7 +124,7 @@ export default class SpecificDatePicker extends Component {
         )}
 
         {!hideTimeSelectors && (
-          <div className={cx({ py2: calendar }, { mb3: !calendar })}>
+          <div className={cx({ [CS.py2]: calendar }, { [CS.mb3]: !calendar })}>
             {hours == null || minutes == null ? (
               <TimeLabel
                 onClick={() =>
@@ -125,7 +135,7 @@ export default class SpecificDatePicker extends Component {
                   )
                 }
               >
-                <Icon className="mr1" name="clock" />
+                <Icon className={CS.mr1} name="clock" />
                 {t`Add a time`}
               </TimeLabel>
             ) : (

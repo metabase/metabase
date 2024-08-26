@@ -1,6 +1,6 @@
-import FieldInfo from "metabase/components/MetadataInfo/FieldInfo";
+import { TableColumnInfo } from "metabase/components/MetadataInfo/ColumnInfo";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
 
 import { PaneContent } from "./Pane.styled";
 
@@ -19,7 +19,7 @@ const FieldPane = ({ onBack, onClose, field }: FieldPaneProps) => {
       onClose={onClose}
     >
       <PaneContent>
-        <FieldInfo
+        <TableColumnInfo
           field={field}
           timezone={field.table?.database?.timezone}
           showAllFieldValues

@@ -1,10 +1,15 @@
 import * as ML from "cljs/metabase.lib.js";
-import type { DatabaseId, DatasetQuery, TableId } from "metabase-types/api";
+import type {
+  CardType,
+  DatabaseId,
+  DatasetQuery,
+  TableId,
+} from "metabase-types/api";
 
-import type LegacyMetadata from "./metadata/Metadata";
 import type {
   CardMetadata,
   Clause,
+  ClauseType,
   ColumnMetadata,
   Join,
   MetadataProvider,
@@ -16,15 +21,15 @@ import type {
 
 export function fromLegacyQuery(
   databaseId: DatabaseId | null,
-  metadata: MetadataProvider | LegacyMetadata,
+  metadataProvider: MetadataProvider,
   datasetQuery: DatasetQuery,
 ): Query {
-  return ML.query(databaseId, metadata, datasetQuery);
+  return ML.query(databaseId, metadataProvider, datasetQuery);
 }
 
 /**
  * Use this in combination with Lib.metadataProvider(databaseId, legacyMetadata) and
-   Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
+ Lib.tableOrCardMetadata(metadataProvider, tableOrCardId);
  */
 export function queryFromTableOrCardMetadata(
   metadataProvider: MetadataProvider,
@@ -57,12 +62,16 @@ export function appendStage(query: Query): Query {
   return ML.append_stage(query);
 }
 
-export function dropStage(query: Query, stageIndex: number): Query {
-  return ML.drop_stage(query, stageIndex);
+export function dropStage(query: Query): Query {
+  return ML.drop_stage(query);
 }
 
 export function dropEmptyStages(query: Query): Query {
   return ML.drop_empty_stages(query);
+}
+
+export function ensureFilterStage(query: Query): Query {
+  return ML.ensure_filter_stage(query);
 }
 
 export function removeClause(
@@ -82,10 +91,39 @@ export function replaceClause(
   return ML.replace_clause(query, stageIndex, targetClause, newClause);
 }
 
+export function swapClauses(
+  query: Query,
+  stageIndex: number,
+  sourceClause: Clause,
+  targetClause: Clause,
+): Query {
+  return ML.swap_clauses(query, stageIndex, sourceClause, targetClause);
+}
+
 export function sourceTableOrCardId(query: Query): TableId | null {
   return ML.source_table_or_card_id(query);
 }
 
-export function canRun(query: Query): boolean {
-  return ML.can_run(query);
+export function canRun(query: Query, cardType: CardType): boolean {
+  return ML.can_run(query, cardType);
+}
+
+export function canSave(query: Query, cardType: CardType): boolean {
+  return ML.can_save(query, cardType);
+}
+
+export function asReturned(
+  query: Query,
+  stageIndex: number,
+): { query: Query; stageIndex: number } {
+  return ML.as_returned(query, stageIndex);
+}
+
+export function previewQuery(
+  query: Query,
+  stageIndex: number,
+  clauseType: ClauseType,
+  clauseIndex: number | null,
+): Query | null {
+  return ML.preview_query(query, stageIndex, clauseType, clauseIndex);
 }

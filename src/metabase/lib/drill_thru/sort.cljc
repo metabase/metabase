@@ -37,13 +37,13 @@
                                      column-ref
                                      (lib.order-by/orderable-columns query stage-number)))
 
-(mu/defn ^:private existing-order-by-clause :- [:maybe ::lib.schema.order-by/order-by]
+(mu/defn- existing-order-by-clause :- [:maybe ::lib.schema.order-by/order-by]
   [query stage-number column]
   (m/find-first (fn [[_direction _opts expr, :as _asc-or-desc-clause]]
                   (lib.equality/find-matching-column query stage-number expr [column]))
                 (lib.order-by/order-bys query stage-number)))
 
-(mu/defn ^:private existing-order-by-direction :- [:maybe ::lib.schema.order-by/direction]
+(mu/defn- existing-order-by-direction :- [:maybe ::lib.schema.order-by/direction]
   [query stage-number column]
   (when-let [[direction _opts _expr] (existing-order-by-clause query stage-number column)]
     direction))

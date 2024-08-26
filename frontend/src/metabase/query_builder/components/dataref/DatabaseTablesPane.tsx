@@ -1,20 +1,20 @@
 import { useMemo } from "react";
-import { ngettext, msgid } from "ttag";
+import { msgid, ngettext } from "ttag";
 import _ from "underscore";
 
 import Search from "metabase/entities/search";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { SearchResult } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import {
-  NodeListItemLink,
-  NodeListItemName,
-  NodeListItemIcon,
-  NodeListTitle,
   NodeListContainer,
   NodeListIcon,
+  NodeListItemIcon,
+  NodeListItemLink,
+  NodeListItemName,
+  NodeListTitle,
   NodeListTitleText,
   QuestionId,
 } from "./NodeList.styled";
@@ -104,7 +104,11 @@ export const DatabaseTablesPane = ({
                   onClick={() => onItemClick("table", table)}
                 >
                   <NodeListItemIcon name="table" />
-                  <NodeListItemName>{table.table_name}</NodeListItemName>
+                  <NodeListItemName
+                    data-disabled={table.initial_sync_status !== "complete"}
+                  >
+                    {table.table_name}
+                  </NodeListItemName>
                 </NodeListItemLink>
               </li>
             ))}

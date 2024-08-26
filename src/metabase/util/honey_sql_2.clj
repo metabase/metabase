@@ -141,7 +141,7 @@
 
 (sql/register-fn! ::identifier #'format-identifier)
 
-(mu/defn identifier
+(mu/defn identifier :- Identifier
   "Define an identifier of type with `components`. Prefer this to using keywords for identifiers, as those do not
   properly handle identifiers with slashes in them.
 
@@ -236,7 +236,7 @@
       (fn [s]
         (= s (u/lower-case-en s)))]]]])
 
-(mu/defn ^:private normalize-type-info :- NormalizedTypeInfo
+(mu/defn- normalize-type-info :- NormalizedTypeInfo
   "Normalize the values in the `type-info` for a `TypedHoneySQLForm` for easy comparisons (e.g., normalize
   `:database-type` to a lower-case string)."
   [type-info]

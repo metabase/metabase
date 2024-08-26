@@ -7,8 +7,10 @@ import { Button } from "metabase/ui";
 export const UserElement = styled(Button)<
   HTMLAttributes<HTMLButtonElement> & ButtonProps
 >`
+  flex-shrink: 0;
+
   &:hover {
-    background-color: ${({ theme }) => theme.fn.themeColor("brand-lighter")};
+    background-color: var(--mb-color-brand-lighter);
   }
 
   & > div {

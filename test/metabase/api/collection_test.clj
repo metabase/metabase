@@ -11,6 +11,7 @@
             NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
             PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
@@ -30,32 +31,32 @@
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
-(defmacro ^:private with-collection-hierarchy
+(defmacro ^:private with-collection-hierarchy!
   "Totally-rad macro that creates a Collection hierarchy and grants the All Users group perms for all the Collections
   you've bound. See docs for [[metabase.models.collection-test/with-collection-hierarchy]] for more details."
   {:style/indent 1}
   [collection-bindings & body]
   {:pre [(vector? collection-bindings)
          (every? symbol? collection-bindings)]}
-  `(collection-test/with-collection-hierarchy [{:keys ~collection-bindings}]
+  `(collection-test/with-collection-hierarchy! [{:keys ~collection-bindings}]
      ~@(for [collection-symb collection-bindings]
          `(perms/grant-collection-read-permissions! (perms-group/all-users) ~collection-symb))
      ~@body))
 
-(defn- do-with-french-user-and-personal-collection [f]
+(defn- do-with-french-user-and-personal-collection! [f]
   (binding [collection/*allow-deleting-personal-collections* true]
-    (mt/with-mock-i18n-bundles {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
+    (mt/with-mock-i18n-bundles! {"fr" {:messages {"{0} {1}''s Personal Collection" "Collection personnelle de {0} {1}"}}}
       (t2.with-temp/with-temp [User       user       {:locale     "fr"
                                                       :first_name "Taco"
                                                       :last_name  "Bell"}
                                Collection collection {:personal_owner_id (:id user)}]
         (f user collection)))))
 
-(defmacro ^:private with-french-user-and-personal-collection
+(defmacro ^:private with-french-user-and-personal-collection!
   "Create a user with locale's fr and a collection associated with it"
   {:style/indent 2}
   [user collection & body]
-  `(do-with-french-user-and-personal-collection
+  `(do-with-french-user-and-personal-collection!
     (fn [~user ~collection]
       ~@body)))
 
@@ -75,8 +76,10 @@
                  :name                "Our analytics"
                  :authority_level     nil
                  :is_personal         false
-                 :id                  "root"}
-                (assoc (into {:is_personal false} collection) :can_write true)]
+                 :id                  "root"
+                 :can_restore         false
+                 :can_delete          false}
+                (assoc (into {:is_personal false} collection) :can_write true :can_delete false)]
                (filter #(#{(:id collection) "root"} (:id %))
                        (mt/user-http-request :crowberto :get 200 "collection"))))))))
 
@@ -106,7 +109,7 @@
 (deftest list-collections-personal-collection-locale-test
   (testing "GET /api/collection"
     (testing "Personal Collection's name and slug should be returned in user's locale"
-      (with-french-user-and-personal-collection user _collection
+      (with-french-user-and-personal-collection! user _collection
         (is (= [{:name "Collection personnelle de Taco Bell"
                  :slug "collection_personnelle_de_taco_bell"}]
                (->> (mt/user-http-request user :get 200 "collection")
@@ -156,8 +159,9 @@
 
 (deftest list-collections-archived-test
   (testing "GET /api/collection"
-    (t2.with-temp/with-temp [Collection _ {:name "Archived Collection", :archived true}
+    (t2.with-temp/with-temp [Collection {archived-col-id :id} {:name "Archived Collection"}
                              Collection _ {:name "Regular Collection"}]
+      (mt/user-http-request :rasta :put 200 (str "/collection/" archived-col-id) {:archived true})
       (letfn [(remove-other-collections [collections]
                 (filter (fn [{collection-name :name}]
                           (or (#{"Our analytics" "Archived Collection" "Regular Collection"} collection-name)
@@ -229,7 +233,7 @@
     (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
       (testing "sanity check"
         (is (some? personal-collection)))
-      (with-collection-hierarchy [a b c d e f g]
+      (with-collection-hierarchy! [a b c d e f g]
         (let [ids      (set (map :id (cons personal-collection [a b c d e f g])))
               response (mt/user-http-request :rasta :get 200 "collection/tree")]
           (testing "Make sure overall tree shape of the response is as is expected"
@@ -260,7 +264,7 @@
 
 (deftest collections-tree-exclude-other-user-collections-test
   (let [personal-collection (collection/user->personal-collection (mt/user->id :lucky))]
-    (with-collection-hierarchy [a b c d e f g]
+    (with-collection-hierarchy! [a b c d e f g]
       (collection/move-collection! a (collection/children-location personal-collection))
       (let [ids                 (set (map :id (cons personal-collection [a b c d e f g])))
             response-rasta      (mt/user-http-request :rasta :get 200 "collection/tree" :exclude-other-user-collections true)
@@ -286,7 +290,7 @@
 
 (deftest collection-tree-here-and-below-test
   (testing "Tree should properly indicate contents"
-    (with-collection-hierarchy [a b]
+    (with-collection-hierarchy! [a b]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))]
         (t2.with-temp/with-temp [Card _ {:name "Personal Card"
                                          :collection_preview false
@@ -304,11 +308,14 @@
                                          :collection_id (:id b)}]
           (is (=? [{:here ["card"] :below ["dataset"] :children [{:here ["dataset"]}]}
                    {:here ["card" "dataset"]}]
-                  (mt/user-http-request :rasta :get 200 "collection/tree"))))))))
+                  (filter
+                   ;; filter out any extraneous collections
+                   #(contains? #{(:id personal-collection) (:id a)} (:id %))
+                   (mt/user-http-request :rasta :get 200 "collection/tree")))))))))
 
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
-    (with-collection-hierarchy [a b c d e f g]
+    (with-collection-hierarchy! [a b c d e f g]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :rasta))
             ids                 (set (map :id (cons personal-collection [a b c d e f g])))]
         (let [response (mt/user-http-request :rasta :get 200 "collection/tree?shallow=true")]
@@ -346,7 +353,7 @@
 
 (deftest select-collections-shallow-test
   (testing "Selecting collections based off collection-id equaling nil works."
-    (with-collection-hierarchy [a b c d e f g]
+    (with-collection-hierarchy! [a b c d e f g]
       (let [personal-collection (collection/user->personal-collection (mt/user->id :crowberto))
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
         (mt/with-test-user :crowberto
@@ -388,21 +395,6 @@
                           (filter (fn [coll] (contains? ids (:id coll))))
                           (map #(select-keys % [:name]))
                           (into #{})))))))))))
-
-(deftest collection-tree-exclude-archived-collections-test
-  (testing "GET /api/collection/tree"
-    (testing "Excludes archived collections (#19603)"
-      (t2.with-temp/with-temp [Collection a {:name "A"}
-                               Collection b {:name     "B archived"
-                                             :location (collection/location-path a)
-                                             :archived true}
-                               Collection c {:name     "C archived"
-                                             :archived true}]
-        (let [ids      (set (map :id [a b c]))
-              response (mt/user-http-request :rasta :get 200
-                                             "collection/tree?exclude-archived=true")]
-          (is (= [{:name "A" :children []}]
-                 (collection-tree-view ids response))))))))
 
 (deftest collection-tree-exclude-other-users-personal-collections-test
   (testing "GET /api/collection/tree"
@@ -449,7 +441,7 @@
 (deftest collection-tree-user-locale-test
   (testing "GET /api/collection/tree"
     (testing "for personal collections, it should return name and slug in user's locale"
-      (with-french-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection! user collection
         (is (partial= {:description       nil
                        :archived          false
                        :entity_id         (:entity_id collection)
@@ -523,7 +515,7 @@
       ;; A* -+-> E*
       ;;     |
       ;;     +-> F* -> G*
-      (collection-test/with-collection-hierarchy [{:keys [a b e f g], :as collections}]
+      (collection-test/with-collection-hierarchy! [{:keys [a b e f g], :as collections}]
         (doseq [collection [a b e f g]]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection))
         (is (= [{:name     "A"
@@ -557,14 +549,14 @@
                  (mt/user-http-request :rasta :get 403 (str "collection/" (u/the-id collection))))))))
 
     (testing "for personal collections, it should return name and slug in user's locale"
-      (with-french-user-and-personal-collection user collection
+      (with-french-user-and-personal-collection! user collection
         (is (=? {:name "Collection personnelle de Taco Bell"
                  :slug "collection_personnelle_de_taco_bell"}
                 (mt/user-http-request (:id user) :get 200 (str "collection/" (:id collection)))))))))
 
 ;;; ------------------------------------------------ Collection Items ------------------------------------------------
 
-(defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
+(defn- do-with-some-children-of-collection! [collection-or-id-or-nil f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
@@ -589,8 +581,8 @@
             :dashboard-subscription-pulse-id dashboard-sub-pulse-id
             :dashboard-sub-pulse-card-id     dashboard-sub-pulse-card-id})))))
 
-(defmacro ^:private with-some-children-of-collection {:style/indent 1} [collection-or-id-or-nil & body]
-  `(do-with-some-children-of-collection
+(defmacro ^:private with-some-children-of-collection! {:style/indent 1} [collection-or-id-or-nil & body]
+  `(do-with-some-children-of-collection!
     ~collection-or-id-or-nil
     (fn [~'&ids]
       ~@body)))
@@ -625,13 +617,13 @@
 (defn- collection-item [collection-name & {:as extra-keypairs}]
   (let [personal-collection (str/ends-with? collection-name "Personal Collection")]
     (merge (cond->
-             {:id              true
-              :description     nil
-              :can_write       personal-collection
-              :model           "collection"
-              :authority_level nil
-              :entity_id       true
-              :name            collection-name}
+            {:id              true
+             :description     nil
+             :can_write       personal-collection
+             :model           "collection"
+             :authority_level nil
+             :entity_id       true
+             :name            collection-name}
              personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
 
@@ -647,32 +639,48 @@
                                                                         :moderator_id        user-id
                                                                         :most_recent         true}]
         (is (= (mt/obj->json->obj
-                [{:id                  card-id
+                [{:collection_id       (:id collection)
+                  :can_write           true
+                  :can_delete          false
+                  :can_restore         false
+                  :id                  card-id
+                  :archived            false
                   :location            nil
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
-                  :database_id         nil
+                  :database_id         (mt/id)
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
                   :moderated_status    "verified"
                   :model               "card"
+                  :last_used_at        (:last_used_at card)
                   :fully_parameterized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
                                              (str "collection/" (u/the-id collection) "/items"))))))))))
 
-(deftest collection-items-based-on-upload-test
+(deftest ^:mb/once collection-items-based-on-upload-test
   (testing "GET /api/collection/:id/items"
     (testing "check that based_on_upload is returned for cards correctly"
-      (api.card-test/run-based-on-upload-test
+      (api.card-test/run-based-on-upload-test!
        (fn [card]
          (->> (mt/user-http-request :crowberto :get 200 (str "collection/" (:collection_id card) "/items?models=card&models=dataset"))
               :data
               (filter (fn [item]
                         (= (:id item) (:id card))))
               first))))))
+
+(deftest collection-items-returns-collections-with-correct-collection-id-test
+  (testing "GET /api/collection/:id/items?model=collection"
+    (testing "check that the ID and collection_id don't match"
+      (t2.with-temp/with-temp [:model/Collection parent {}
+                               :model/Collection child {:location (collection/children-location parent)}]
+        (is (= {:id (:id child)
+                :collection_id (:id parent)}
+               (select-keys (first (:data (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id parent) "/items?model=collection"))))
+                            [:id :collection_id])))))))
 
 (deftest collection-items-return-database-id-for-datasets-test
   (testing "GET /api/collection/:id/items"
@@ -683,7 +691,7 @@
                                                            :collection_id (u/the-id collection)}
                                Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
         (is (= #{{:id card-id-1 :database_id (mt/id)}
-                 {:id card-id-2 :database_id nil}}
+                 {:id card-id-2 :database_id (mt/id)}}
                (->> (:data (mt/user-http-request :crowberto :get 200
                                                  (str "collection/" (u/the-id collection) "/items")))
                     (map #(select-keys % [:id :database_id]))
@@ -732,7 +740,7 @@
     (testing "check that you get to see the children as appropriate"
       (t2.with-temp/with-temp [Collection collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-        (with-some-children-of-collection collection
+        (with-some-children-of-collection! collection
           (is (partial= (-> (mapv default-item [{:name "Acme Products", :model "pulse", :entity_id true}
                                                 {:name               "Birthday Card", :description nil,     :model     "card",
                                                  :collection_preview false,           :display     "table", :entity_id true}
@@ -745,7 +753,7 @@
       (testing "...and that you can also filter so that you only see the children you want to see"
         (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}]
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-          (with-some-children-of-collection collection
+          (with-some-children-of-collection! collection
             (is (partial= ()
                           (mt/boolean-ids-and-timestamps
                            (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items") :models "no_models")))))
@@ -780,20 +788,118 @@
           (let [response (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id c3)))]
             (is (= 1 (:total response)))
             (let [{:keys [location effective_location]} (-> response :data first)]
-             (is (= (path c1 c2 c3) location))
-             (testing "the unreadable collections are removed from the `ui-logical-path`"
-               (is (= (path c3) effective_location))))))))))
+              (is (= (path c1 c2 c3) location))
+              (testing "the unreadable collections are removed from the `ui-logical-path`"
+                (is (= (path c3) effective_location))))))))))
 
-(deftest collection-items-archived-parameter-test
-  (testing "GET /api/collection/:id/items"
-    (testing "Let's make sure the `archived` option works."
-      (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}]
+(defn- get-items
+  "A helper function to get a list of items in a collection from the collection API. User is a keyword like `:rasta` or
+  `:crowberto`."
+  [user coll]
+  (->> (mt/user-http-request user :get 200 (str "collection/" (u/the-id coll) "/items"))
+       :data))
+
+(deftest collections-are-moved-to-trash-when-archived
+  (let [set-of-item-names (fn [user coll] (->> (get-items user coll)
+                                               (map :name)
+                                               set))]
+    (testing "I can trash something by marking it as archived"
+      (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}
+                               Collection _ {:name "Baby Collection"
+                                             :location (collection/children-location collection)}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-        (with-some-children-of-collection collection
-          (t2/update! Dashboard {:collection_id (u/the-id collection)} {:archived true})
-          (is (partial= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
-                        (mt/boolean-ids-and-timestamps
-                         (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))))
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (partial= [{:name "Art Collection", :description nil, :model "collection"}]
+                      (get-items :crowberto (collection/trash-collection-id))))
+        (is (partial= [{:name "Baby Collection", :model "collection"}]
+                      (get-items :crowberto collection)))))
+    (testing "I can untrash something by marking it as not archived"
+      (t2.with-temp/with-temp [Collection collection {:name "A"}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (= 1 (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" (collection/trash-collection-id) "/items"))))))
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived false})
+        (is (zero? (count (:data (mt/user-http-request :rasta :get 200 (str "collection/" (collection/trash-collection-id) "/items"))))))))
+    (testing "I can untrash something to a specific location if desired"
+      (t2.with-temp/with-temp [Collection collection-a {:name "A"}
+                               Collection collection-b {:name "B" :location (collection/children-location collection-a)}
+                               Collection destination {:name "Destination"}]
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-a)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) destination)
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived true})
+        (is (= #{"A"} (set-of-item-names :crowberto (collection/trash-collection-id))))
+        (is (= #{} (set-of-item-names :crowberto destination)))
+        ;; both A and B are marked as `archived`
+        (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-b)))))
+        (is (:archived (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id collection-a)))))
+        ;; we can't unarchive collection B without specifying a location, because it wasn't trashed directly.
+        (is (mt/user-http-request :crowberto :put 400 (str "collection/" (u/the-id collection-b)) {:archived false}))
+
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-b)) {:archived false :parent_id (u/the-id destination)})
+        ;; collection A is still here!
+        (is (= #{"A"} (set-of-item-names :crowberto (collection/trash-collection-id))))
+        ;; collection B got moved correctly
+        (is (= #{"B"} (set-of-item-names :crowberto destination)))
+
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection-a)) {:archived false :parent_id (u/the-id destination)})
+        (is (= #{"A" "B"} (set-of-item-names :crowberto destination)))))))
+
+(deftest collection-permissions-work-correctly
+  (let [set-of-item-names (fn [coll] (->> (get-items :rasta coll)
+                                          (map :name)
+                                          set))]
+    (t2.with-temp/with-temp [Collection collection-a {:name "A"}
+                             Collection subcollection-a {:name "sub-A" :location (collection/children-location collection-a)}
+                             Collection collection-b {:name "B"}
+                             Collection subcollection-b {:name "sub-B" :location (collection/children-location collection-b)}
+                             Collection collection-c {:name "C"}
+                             Collection subcollection-c {:name "sub-C" :location (collection/children-location collection-c)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-a)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-b)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-c)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-c)
+      (testing "i can't archive from a collection I have no permissions on"
+        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id subcollection-a)) {:archived true}))
+      (testing "i can't archive from a collection I have read permissions on"
+        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id subcollection-b)) {:archived true}))
+      (testing "i can archive from a collection i have no permissions on"
+        (mt/user-http-request :rasta :put 200 (str "collection/" (u/the-id subcollection-c)) {:archived true})))
+    (t2.with-temp/with-temp [Collection collection-a {:name "A"}
+                             Collection subcollection-a {:name "sub-A" :location (collection/children-location collection-a)}
+                             Dashboard  dashboard-a {:name "dashboard-A" :collection_id (u/the-id collection-a)}
+                             Collection collection-b {:name "B"}
+                             Collection subcollection-b {:name "sub-B" :location (collection/children-location collection-b)}
+                             Dashboard  dashboard-b {:name "dashboard-B" :collection_id (u/the-id collection-b)}
+                             Collection collection-c {:name "C"}
+                             Collection subcollection-c {:name "sub-C" :location (collection/children-location collection-c)}
+                             Dashboard  dashboard-c {:name "dashboard-C" :collection_id (u/the-id collection-c)}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-a)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-b)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-c)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection-b)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-c)
+      (doseq [coll [subcollection-a subcollection-b subcollection-c]]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id coll)) {:archived true}))
+      (doseq [dashboard [dashboard-a dashboard-b dashboard-c]]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true}))
+      (testing "rasta can see the correct set of collections in the trash"
+        (is (= #{;; can see all three subcollections, because Rasta has read/write permissions on *them*
+                 "sub-A"
+                 "sub-C"
+                 "sub-B"
+                 ;; can see the dashboard in Collection C, because Rasta has read/write permissions on Collection C
+                 "dashboard-C"} (set-of-item-names (collection/trash-collection-id)))))
+      (testing "if the collections themselves are trashed, subcollection checks still work the same way"
+        (doseq [coll [collection-a collection-b collection-c]]
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id coll)) {:archived true}))
+        (is (= #{"sub-A"
+                 "sub-B"
+                 "sub-C"
+                 "C"
+                 "dashboard-C"}
+               (set-of-item-names (collection/trash-collection-id))))))))
 
 (deftest collection-items-revision-history-and-ordering-test
   (testing "GET /api/collection/:id/items"
@@ -852,18 +958,18 @@
                    (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
                         :data
                         (map :name))))))
-       (testing "Results can be ordered by last-edited-by"
-         (testing "ascending"
+        (testing "Results can be ordered by last-edited-by"
+          (testing "ascending"
            ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
-           (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
-                       :data
-                       (map :name)))))
-         (testing "descending"
-           (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
-                       :data
-                       (map :name))))))))))
+            (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
+                        :data
+                        (map :name)))))
+          (testing "descending"
+            (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
+                        :data
+                        (map :name))))))))))
 
 (deftest collection-items-order-by-model-test
   (testing "GET /api/collection/:id/items"
@@ -966,40 +1072,119 @@
           (is (= #{"card" "dash" "subcollection" "dataset"}
                  (into #{} (map :name) items))))))))
 
+(deftest collection-items-include-here-and-below-test
+  (testing "GET /api/collection/:id/items"
+    (t2.with-temp/with-temp [:model/Collection {id1 :id} {:name "Collection with Items"}
+                             :model/Collection {id2 :id} {:name "subcollection"
+                                                          :location (format "/%d/" id1)}]
+      (let [item #(first (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" id1))))]
+        (testing "the item has nothing in or below it"
+          (is (nil? (:here (item))))
+          (is (nil? (:below (item)))))
+        (t2.with-temp/with-temp [:model/Collection {id3 :id} {:location (format "/%d/%d/" id1 id2)}]
+          (testing "now the item has a collection in it"
+            (is (= ["collection"] (:here (item)))))
+          (testing "but nothing :below"
+            (is (nil? (:below (item)))))
+          (t2.with-temp/with-temp [:model/Collection _ {:location (format "/%d/%d/%d/" id1 id2 id3)}]
+            (testing "the item still has a collection in it"
+              (is (= ["collection"] (:here (item)))))
+            (testing "the item now has a collection below it"
+              (is (= ["collection"] (:below (item))))))
+          (t2.with-temp/with-temp [:model/Card _ {:name "card" :collection_id id2}
+                                   :model/Card _ {:name "dataset" :type :model :collection_id id2}]
+            (testing "when the item has a card/dataset, that's reflected in `here` too"
+              (is (= #{"collection" "card" "dataset"} (set (:here (item)))))
+              (is (nil? (:below (item)))))
+            (t2.with-temp/with-temp [:model/Card _ {:name "card" :collection_id id3}]
+              (testing "when the item contains a collection that contains a card, that's `below`"
+                (is (= #{"card"} (set (:below (item))))))))
+          (t2.with-temp/with-temp [:model/Dashboard _ {:collection_id id2}]
+            (testing "when the item has a dashboard, that's reflected in `here` too"
+              (is (= #{"collection" "dashboard"} (set (:here (item))))))))))))
+
 (deftest children-sort-clause-test
+  ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
-      (is (= [[:%lower.name :asc]]
-             (api.collection/children-sort-clause nil app-db)))))
+      (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+              [[[:case
+                 [:= :collection_type nil] 0
+                 [:= :collection_type collection/trash-collection-type] 1
+                 :else 2]] :asc]
+              [:%lower.name :asc]]
+             (api.collection/children-sort-clause {:official-collections-first? true} app-db)))))
   (testing "Sorting by last-edited-at"
-    (is (= [[:%isnull.last_edit_timestamp]
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case
+               [:= :collection_type nil] 0
+               [:= :collection_type collection/trash-collection-type] 1
+               :else 2]] :asc]
+            [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
-    (is (= [[:last_edit_timestamp :nulls-last]
+           (api.collection/children-sort-clause {:sort-column :last-edited-at
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :mysql)))
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case
+               [:= :collection_type nil] 0
+               [:= :collection_type collection/trash-collection-type] 1
+               :else 2]] :asc]
+            [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-at :asc] :postgres))))
+           (api.collection/children-sort-clause {:sort-column :last-edited-at
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres))))
   (testing "Sorting by last-edited-by"
-    (is (= [[:last_edit_last_name :nulls-last]
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case
+               [:= :collection_type nil] 0
+               [:= :collection_type collection/trash-collection-type] 1
+               :else 2]] :asc]
+            [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
-    (is (= [[:%isnull.last_edit_last_name]
+           (api.collection/children-sort-clause {:sort-column :last-edited-by
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres)))
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case
+               [:= :collection_type nil] 0
+               [:= :collection_type collection/trash-collection-type] 1
+               :else 2]] :asc]
+            [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
-  (testing "Sortinb by model"
-    (is (= [[:model_ranking :asc]
+           (api.collection/children-sort-clause {:sort-column :last-edited-by
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :mysql))))
+  (testing "Sorting by model"
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case
+               [:= :collection_type nil] 0
+               [:= :collection_type collection/trash-collection-type] 1
+               :else 2]] :asc]
+            [:model_ranking :asc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:model :asc] :postgres)))
-    (is (= [[:model_ranking :desc]
+           (api.collection/children-sort-clause {:sort-column :model
+                                                 :sort-direction :asc
+                                                 :official-collections-first? true} :postgres)))
+    (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
+            [[[:case
+               [:= :collection_type nil] 0
+               [:= :collection_type collection/trash-collection-type] 1
+               :else 2]] :asc]
+            [:model_ranking :desc]
             [:%lower.name :asc]]
-           (api.collection/children-sort-clause [:model :desc] :mysql)))))
+           (api.collection/children-sort-clause {:sort-column :model
+                                                 :sort-direction :desc
+                                                 :official-collections-first? true} :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1045,6 +1230,8 @@
   (merge
    (mt/object-defaults Collection)
    {:slug                "lucky_pigeon_s_personal_collection"
+    :can_restore         false
+    :can_delete          false
     :can_write           true
     :name                "Lucky Pigeon's Personal Collection"
     :personal_owner_id   (mt/user->id :lucky)
@@ -1104,7 +1291,6 @@
       (is (partial= lucky-personal-subcollection-item
                     (api-get-lucky-personal-collection-with-subcollection :crowberto))))))
 
-
 ;;; ------------------------------------ Effective Ancestors & Effective Children ------------------------------------
 
 (defn- format-ancestors
@@ -1147,7 +1333,7 @@
 
 (deftest effective-ancestors-and-children-test
   (testing "does a top-level Collection like A have the correct Children?"
-    (with-collection-hierarchy [a b c d g]
+    (with-collection-hierarchy! [a b c d g]
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -1158,9 +1344,9 @@
 
 (deftest effective-ancestors-and-children-second-level-collection-test
   (testing "does a second-level Collection have its parent and its children?"
-    (with-collection-hierarchy [a b c d g]
+    (with-collection-hierarchy! [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors c))))
       (testing "children"
@@ -1169,10 +1355,10 @@
 
 (deftest effective-ancestors-and-children-third-level-collection-test
   (testing "Does a third-level Collection? have its parent and its children?"
-    (with-collection-hierarchy [a b c d g]
+    (with-collection-hierarchy! [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}
-                                      {:name "C", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}
+                                      {:name "C", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -1182,18 +1368,18 @@
 (deftest effective-ancestors-and-children-of-d-test
   (testing (str "for D: if we remove perms for C we should only have A as an ancestor; effective_location should lie "
                 "and say we are a child of A")
-    (with-collection-hierarchy [a b d g]
+    (with-collection-hierarchy! [a b d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors d))))
       (testing "children"
         (is (= []
                (api-get-collection-children d))))))
   (testing "for D: If, on the other hand, we remove A, we should see C as the only ancestor and as a root-level Collection."
-    (with-collection-hierarchy [b c d g]
+    (with-collection-hierarchy! [b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "C", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "C", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -1202,9 +1388,9 @@
 
 (deftest effective-ancestors-and-children-of-c-test
   (testing "for C: if we remove D we should get E and F as effective children"
-    (with-collection-hierarchy [a b c e f g]
+    (with-collection-hierarchy! [a b c e f g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors c))))
       (testing "children"
@@ -1213,7 +1399,7 @@
 
 (deftest effective-ancestors-and-children-collapse-multiple-generations-test
   (testing "Make sure we can collapse multiple generations. For A: removing C and D should move up E and F"
-    (with-collection-hierarchy [a b e f g]
+    (with-collection-hierarchy! [a b e f g]
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
@@ -1224,15 +1410,16 @@
 
 (deftest effective-ancestors-and-children-archived-test
   (testing "Let's make sure the 'archived` option works on Collections, nested or not"
-    (with-collection-hierarchy [a b c]
-      (t2/update! Collection (u/the-id b) {:archived true})
+    (with-collection-hierarchy! [a b c]
+      (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id b))
+                            {:archived true})
       (testing "ancestors"
         (is (= {:effective_ancestors []
                 :effective_location  "/"}
-               (api-get-collection-ancestors a :archived true))))
+               (api-get-collection-ancestors a))))
       (testing "children"
-        (is (partial= [(collection-item "B")]
-                      (api-get-collection-children a :archived true)))))))
+        (is (partial= [(collection-item "C")]
+                      (api-get-collection-children a)))))))
 
 (deftest personal-collection-ancestors-test
   (testing "Effective ancestors of a personal collection will contain a :personal_owner_id"
@@ -1248,6 +1435,7 @@
                  :is_personal                              false}
                 {:name              "Rasta Toucan's Personal Collection",
                  :id                true,
+                 :type              nil
                  :personal_owner_id root-owner-id,
                  :can_write         true}]
                (:effective_ancestors (api-get-collection-ancestors collection))))))))
@@ -1262,12 +1450,14 @@
       (is (= {:name                "Our analytics"
               :id                  "root"
               :can_write           true
+              :can_restore         false
               :effective_location  nil
               :effective_ancestors []
               :authority_level     nil
               :parent_id           nil
-              :is_personal         false}
-             (with-some-children-of-collection nil
+              :is_personal         false
+              :can_delete          false}
+             (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
 
 (defn results-matching [collection-items parameters]
@@ -1285,7 +1475,7 @@
                          (assoc :fully_parameterized true))
                      (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                      (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
-                    (with-some-children-of-collection nil
+                    (with-some-children-of-collection! nil
                       (-> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                           (remove-non-test-items &ids)
                           remove-non-personal-collections
@@ -1293,7 +1483,7 @@
 
 (deftest fetch-root-items-limit-and-offset-test
   (testing "GET /api/collection/root/items"
-    (with-some-children-of-collection nil
+    (with-some-children-of-collection! nil
       (letfn [(items [limit offset]
                 (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"
                                              :limit (str limit), :offset (str offset))))]
@@ -1309,7 +1499,7 @@
 (deftest fetch-root-items-total-test
   (testing "GET /api/collection/root/items"
     (testing "Include :total, even with limit and offset"
-      (with-some-children-of-collection nil
+      (with-some-children-of-collection! nil
         ;; `:total` should be at least 4 items based on `with-some-children-of-collection`. Might be a bit more if
         ;; other stuff was created
         (is (<= 4 (:total (mt/user-http-request :crowberto :get 200 "collection/root/items" :limit "2" :offset "1"))))))))
@@ -1319,12 +1509,12 @@
     (testing "we don't let you see stuff you wouldn't otherwise be allowed to see"
       (is (= []
              ;; if a User doesn't have perms for the Root Collection then they don't get to see things with no collection_id
-             (with-some-children-of-collection nil
+             (with-some-children-of-collection! nil
                (-> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                    remove-non-personal-collections
                    mt/boolean-ids-and-timestamps))))
       (testing "...but if they have read perms for the Root Collection they should get to see them"
-        (with-some-children-of-collection nil
+        (with-some-children-of-collection! nil
           (t2.with-temp/with-temp [PermissionsGroup           group {}
                                    PermissionsGroupMembership _     {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]
             (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
@@ -1486,7 +1676,6 @@
                               :data
                               (results-matching {:name "Business Card", :model "card"}))))))))))
 
-
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
 (defn- api-get-root-collection-children
@@ -1504,23 +1693,26 @@
     (is (collection/user->personal-collection (mt/user->id :rasta))))
   (testing "GET /api/collection/root/items"
     (testing "Do top-level collections show up as children of the Root Collection?"
-      (with-collection-hierarchy [a b c d e f g]
+      (with-collection-hierarchy! [a b c d e f g]
         (testing "children"
           (is (partial= (map collection-item ["A"])
                         (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "...and collapsing children should work for the Root Collection as well"
-      (with-collection-hierarchy [b d e f g]
+      (with-collection-hierarchy! [b d e f g]
         (testing "children"
           (is (partial= (map collection-item ["B" "D" "F"])
                         (remove-non-test-collections (api-get-root-collection-children)))))))
 
     (testing "does `archived` work on Collections as well?"
-      (with-collection-hierarchy [a b d e f g]
-        (t2/update! Collection (u/the-id a) {:archived true})
-        (testing "children"
-          (is (partial= [(collection-item "A")]
-                        (remove-non-test-collections (api-get-root-collection-children :archived true)))))))
+      (with-collection-hierarchy! [a b d e f g]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
+                              {:archived true})
+        (is (= [] (remove-non-test-collections (api-get-root-collection-children)))))
+      (with-collection-hierarchy! [a b d e f g]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
+                              {:archived true})
+        (is (= [] (remove-non-test-collections (api-get-root-collection-children))))))
 
     (testing "\n?namespace= parameter"
       (t2.with-temp/with-temp [Collection {normal-id :id} {:name "Normal Collection"}
@@ -1636,7 +1828,7 @@
   (testing "POST /api/collection"
     (testing "\nCan I create a Collection as a child of an existing collection?"
       (mt/with-model-cleanup [Collection]
-        (with-collection-hierarchy [a c d]
+        (with-collection-hierarchy! [a c d]
           (is (partial= (merge
                          (mt/object-defaults Collection)
                          {:id          true
@@ -1752,7 +1944,7 @@
 (deftest move-collection-test
   (testing "PUT /api/collection/:id"
     (testing "Can I *change* the `location` of a Collection? (i.e. move it into a different parent Collection)"
-      (with-collection-hierarchy [a b e]
+      (with-collection-hierarchy! [a b e]
         (is (partial= (merge
                        (mt/object-defaults Collection)
                        {:id        true
@@ -1945,3 +2137,144 @@
                                        (assoc (graph/graph)
                                               :groups {group-id {default-a :write, currency-a :write}}
                                               :namespace :currency)))))))))
+
+(deftest cards-and-dashboards-get-can-write
+  (t2.with-temp/with-temp [:model/Collection {collection-id :id :as collection} {}
+                           :model/Card _ {:collection_id collection-id}
+                           :model/Dashboard _ {:collection_id collection-id}
+                           :model/Card _ {:collection_id collection-id
+                                          :type :model}]
+
+    (testing "`can_write` is `true` when appropriate"
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+      (is (= #{[true "card"] [true "dataset"] [true "dashboard"]}
+             (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))
+
+    (testing "and `false` when appropriate"
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+      (is (= #{[false "card"] [false "dataset"] [false "dashboard"]}
+             (into #{} (map (juxt :can_write :model) (:data (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items"))))))))))
+
+(deftest root-items-excludes-trash-by-default
+  (testing "Trash collection is usually not included"
+    (is (= [] (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
+                   (filter #(= (:name %) "Trash"))))))
+  (testing "We can optionally request to include the Trash"
+    (is (= [{:name "Trash"
+             :id (collection/trash-collection-id)}]
+           (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items" :archived true))
+                (filter #(= (:id %) (collection/trash-collection-id)))
+                (map #(select-keys % [:name :id])))))))
+
+(deftest collection-tree-includes-trash-if-requested
+  (testing "Trash collection is included by default"
+    (is (some #(= (:id %) (collection/trash-collection-id)) (mt/user-http-request :crowberto :get 200 "collection/tree"))))
+  (testing "Trash collection is NOT included if `exclude-archived` is passed"
+    (is (not (some #(= (:id %) (collection/trash-collection-id)) (mt/user-http-request :crowberto :get 200 "collection/tree" :exclude-archived "true"))))))
+
+(defn- get-item-with-id-in-coll
+  [coll-id item-id]
+  (->> (get-items :crowberto coll-id)
+       (filter #(= (:id %) item-id))
+       first))
+
+(defn- get-item-with-id-in-root [id]
+  (->> (mt/user-http-request :crowberto :get 200 (str "collection/root/items"))
+       :data
+       (filter #(= (:id %) id))
+       first))
+
+(deftest ^:parallel can-restore
+  (testing "can_restore is correctly populated for dashboard"
+    (testing "when I can actually restore it"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true})
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard)))))))
+    (testing "and when I can't"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (u/the-id dashboard)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id dashboard))))))))
+  (testing "can_restore is correctly populated for card"
+    (testing "when I can actually restore it"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Card card {:name "Card" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card)))))))
+    (testing "and when I can't"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}
+                               :model/Card card {:name "Card" :collection_id (u/the-id subcollection)}]
+        (mt/user-http-request :crowberto :put 200 (str "card/" (u/the-id card)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id card))))))))
+  (testing "can_restore is correctly populated for collection"
+    (testing "when I can actually restore it"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection)))))))
+    (testing "and when I can't"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id subcollection)) {:archived true})
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id subcollection)))))))
+    (testing "and when I can't because its parent was the one that was trashed"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                               :model/Collection subcollection {:name "sub-A" :location (collection/children-location collection)}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id subcollection))))))))
+  (testing "can_restore is correctly populated for collections trashed from the root collection"
+    (testing "when I can actually restore it"
+      (t2.with-temp/with-temp [:model/Collection collection {:name "A"}]
+        (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id collection)) {:archived true})
+        (is (true? (:can_restore (get-item-with-id-in-coll (collection/trash-collection-id) (u/the-id collection))))))))
+  (testing "can_restore is correctly populated for things in the root collection"
+    (t2.with-temp/with-temp [:model/Collection collection {:name "A"}
+                             :model/Dashboard dashboard {:name "Dashboard"}]
+      (is (contains? (get-item-with-id-in-root (u/the-id dashboard)) :can_restore))
+      (is (contains? (get-item-with-id-in-root (u/the-id collection)) :can_restore))
+      (is (false? (:can_restore (get-item-with-id-in-root (u/the-id dashboard)))))
+      (is (false? (:can_restore (get-item-with-id-in-root (u/the-id collection)))))))
+  (testing "can_restore is correctly populated for things in other collections"
+    (t2.with-temp/with-temp [:model/Collection collection {:name "container"}
+                             :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id collection)}]
+      (is (contains? (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard)) :can_restore))
+      (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard))))))))
+
+(deftest nothing-can-be-moved-to-the-trash
+  (t2.with-temp/with-temp [:model/Dashboard dashboard {}
+                           :model/Collection collection {}
+                           :model/Card card {}]
+    (testing "Collections can't be moved to the trash"
+      (mt/user-http-request :crowberto :put 400 (str "collection/" (u/the-id collection)) {:parent_id (collection/trash-collection-id)})
+      (is (not (t2/exists? :model/Collection :location (collection/trash-path)))))
+    (testing "Dashboards can't be moved to the trash"
+      (mt/user-http-request :crowberto :put 400 (str "dashboard/" (u/the-id dashboard)) {:collection_id (collection/trash-collection-id)})
+      (is (not (t2/exists? :model/Dashboard :collection_id (collection/trash-collection-id)))))
+    (testing "Cards can't be moved to the trash"
+      (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
+      (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
+
+(deftest skip-graph-skips-graph-on-graph-PUT
+  (is (malli= [:map [:revision :int] [:groups :map]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id) :groups {}})))
+  (is (malli= [:map {:closed true} [:revision :int]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id)
+                                     :groups {}
+                                     :skip_graph true}))
+      "PUTs with skip_graph should not return the coll permission graph."))

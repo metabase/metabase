@@ -2,20 +2,20 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import type Filter from "metabase-lib/queries/structured/Filter";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   getInitialDayOfWeekFilter,
+  getInitialHourOfDayFilter,
   getInitialMonthOfYearFilter,
   getInitialQuarterOfYearFilter,
-  getInitialHourOfDayFilter,
+  getIsNullDateFilter,
+  getNotNullDateFilter,
   isDayOfWeekDateFilter,
+  isHourOfDayDateFilter,
   isMonthOfYearDateFilter,
   isQuarterofYearDateFilter,
-  isHourOfDayDateFilter,
-  getNotNullDateFilter,
-  getIsNullDateFilter,
-} from "metabase-lib/queries/utils/date-filters";
-import { EXCLUDE_OPTIONS } from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/date-filters";
+import { EXCLUDE_OPTIONS } from "metabase-lib/v1/queries/utils/query-time";
 
 import {
   ExcludeCheckBox,

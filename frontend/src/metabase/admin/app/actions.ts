@@ -1,6 +1,5 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
-
 import { updateSetting } from "metabase/admin/settings/settings";
+import { createAsyncThunk } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 
 export const disableNotice = createAsyncThunk(

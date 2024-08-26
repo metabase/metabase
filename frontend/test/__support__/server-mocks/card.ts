@@ -1,10 +1,12 @@
 import fetchMock from "fetch-mock";
 
-import {
-  getQuestionVirtualTableId,
-  convertSavedQuestionToVirtualTable,
-} from "metabase-lib/metadata/utils/saved-questions";
-import type { Card, CardId, Dataset } from "metabase-types/api";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type {
+  Card,
+  CardId,
+  CardQueryMetadata,
+  Dataset,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { PERMISSION_ERROR } from "./constants";
@@ -15,20 +17,14 @@ export function setupCardEndpoints(card: Card) {
     const lastCall = fetchMock.lastCall(url);
     return createMockCard(await lastCall?.request?.json());
   });
-  setupCardQueryMetadataEndpoint(card);
   fetchMock.get(`path:/api/card/${card.id}/series`, []);
 }
 
-export function setupCardQueryMetadataEndpoint(card: Card) {
-  const virtualTableId = getQuestionVirtualTableId(card.id);
-  fetchMock.get(`path:/api/table/${virtualTableId}/query_metadata`, {
-    ...convertSavedQuestionToVirtualTable(card),
-    fields: card.result_metadata?.map(field => ({
-      ...field,
-      table_id: virtualTableId,
-    })),
-    dimension_options: {},
-  });
+export function setupCardQueryMetadataEndpoint(
+  card: Card,
+  metadata: CardQueryMetadata,
+) {
+  fetchMock.get(`path:/api/card/${card.id}/query_metadata`, metadata);
 }
 
 export function setupCardsEndpoints(cards: Card[]) {

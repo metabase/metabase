@@ -3,8 +3,7 @@
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [metabase-enterprise.serialization.names
-    :refer [fully-qualified-name name-for-logging safe-name]]
+   [metabase-enterprise.serialization.names :refer [fully-qualified-name name-for-logging safe-name]]
    [metabase-enterprise.serialization.serialize :as serialize]
    [metabase.config :as config]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -12,13 +11,11 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.setting :as setting]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
@@ -74,7 +71,7 @@
   [instance]
   (some (fn [model]
           (mi/instance-of? model instance))
-        [Pulse Dashboard Metric Segment Field User]))
+        [Pulse Dashboard Segment Field User]))
 
 (defn- spit-entity!
   [path entity]
@@ -94,18 +91,18 @@
     (try
       (spit-entity! path entity)
       (catch Throwable e
-        (log/error e (trs "Error dumping {0}" (name-for-logging entity))))))
+        (log/errorf e "Error dumping %s" (name-for-logging entity)))))
   (spit-yaml! (str path "/manifest.yaml")
-             {:serialization-version serialize/serialization-protocol-version
-              :metabase-version      config/mb-version-info}))
+              {:serialization-version serialize/serialization-protocol-version
+               :metabase-version      config/mb-version-info}))
 
 (defn dump-settings!
   "Combine all settings into a map and dump it into YAML at `path`."
   [path]
   (spit-yaml! (str path "/settings.yaml")
-             (into {} (for [{:keys [key value]} (setting/admin-writable-site-wide-settings
-                                                 :getter (partial setting/get-value-of-type :string))]
-                        [key value]))))
+              (into {} (for [{:keys [key value]} (setting/admin-writable-site-wide-settings
+                                                  :getter (partial setting/get-value-of-type :string))]
+                         [key value]))))
 
 (defn dump-dimensions!
   "Combine all dimensions into a vector and dump it into YAML at in the directory for the
@@ -114,11 +111,11 @@
   (doseq [[table-id dimensions] (group-by (comp :table_id Field :field_id) (t2/select Dimension))
           :let [table (t2/select-one Table :id table-id)]]
     (spit-yaml! (if (:schema table)
-                 (format "%s%s/schemas/%s/dimensions.yaml"
-                         path
-                         (->> table :db_id (fully-qualified-name Database))
-                         (:schema table))
-                 (format "%s%s/dimensions.yaml"
-                         path
-                         (->> table :db_id (fully-qualified-name Database))))
-               (map serialize/serialize dimensions))))
+                  (format "%s%s/schemas/%s/dimensions.yaml"
+                          path
+                          (->> table :db_id (fully-qualified-name Database))
+                          (:schema table))
+                  (format "%s%s/dimensions.yaml"
+                          path
+                          (->> table :db_id (fully-qualified-name Database))))
+                (map serialize/serialize dimensions))))

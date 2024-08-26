@@ -2,8 +2,10 @@
   "Malli schema for a Field, aggregation, or expression reference (etc.)"
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.hierarchy :as lib.hierarchy]
+   [metabase.lib.schema.binning :as binning]
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.id :as id]
@@ -16,15 +18,22 @@
 
 (mr/def ::field.options
   [:merge
+   {:encode/serialize (fn [opts]
+                        (m/filter-keys (fn [k]
+                                         (or (simple-keyword? k)
+                                             (= (namespace k) "lib")))
+                                       opts))}
    ::common/options
    [:map
-    [:temporal-unit {:optional true} ::temporal-bucketing/unit]]])
+    [:temporal-unit                              {:optional true} [:ref ::temporal-bucketing/unit]]
+    [:binning                                    {:optional true} [:ref ::binning/binning]]
+    [:metabase.lib.field/original-effective-type {:optional true} [:ref ::common/base-type]]]])
 
 (mr/def ::field.literal.options
   [:merge
    ::field.options
    [:map
-    [:base-type ::common/base-type]]])
+    [:base-type [:ref ::common/base-type]]]])
 
 ;;; `:field` clause
 (mr/def ::field.literal
@@ -42,8 +51,8 @@
 (mbql-clause/define-mbql-clause :field
   [:and
    [:tuple
-    [:= :field]
-    ::field.options
+    [:= {:decode/normalize common/normalize-keyword} :field]
+    [:ref ::field.options]
     [:or ::id/field ::common/non-blank-string]]
    [:multi {:dispatch      (fn [clause]
                              ;; apparently it still tries to dispatch when humanizing errors even if the `:tuple`
@@ -65,7 +74,7 @@
       ::expression/type.unknown))
 
 (mbql-clause/define-tuple-mbql-clause :expression
-  ::common/non-blank-string)
+  #_expression-name ::common/non-blank-string)
 
 (defmethod expression/type-of-method :expression
   [[_tag opts _expression-name]]
@@ -84,7 +93,7 @@
 
 (mbql-clause/define-mbql-clause :aggregation
   [:tuple
-   [:= :aggregation]
+   [:= {:decode/normalize common/normalize-keyword} :aggregation]
    ::aggregation-options
    :string])
 

@@ -11,7 +11,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import type { WrappedResult } from "metabase/search/types";
 import type { IconName } from "metabase/ui";
-import type { SearchModelType, SearchResult } from "metabase-types/api";
+import type { SearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
@@ -47,7 +47,7 @@ const createSearchResult = ({
   model,
   ...resultProps
 }: {
-  model: SearchModelType;
+  model: SearchModel;
 } & Partial<SearchResult>) =>
   createMockSearchResult({
     collection: MOCK_COLLECTION,
@@ -67,7 +67,7 @@ async function setup({
   isCompact = false,
   resultProps = {},
 }: {
-  model?: SearchModelType;
+  model?: SearchModel;
   isCompact?: boolean;
   resultProps?: Partial<SearchResult>;
 } = {}) {
@@ -174,22 +174,6 @@ describe("InfoText", () => {
       );
     });
 
-    it("shows metric's table name", async () => {
-      await setup({
-        model: "metric",
-      });
-
-      const tableLink = screen.getByText(MOCK_TABLE.display_name);
-      expect(tableLink).toHaveAttribute(
-        "href",
-        `/question#?db=${MOCK_DATABASE.id}&table=${MOCK_TABLE.id}`,
-      );
-
-      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Updated ${LAST_EDITED_DURATION}`,
-      );
-    });
-
     it("shows table's schema", async () => {
       await setup({
         model: "table",
@@ -200,23 +184,6 @@ describe("InfoText", () => {
       expect(databaseLink).toHaveAttribute(
         "href",
         `/browse/databases/${MOCK_DATABASE.id}-database-name`,
-      );
-
-      expect(screen.getByTestId("revision-history-button")).toHaveTextContent(
-        `Updated ${LAST_EDITED_DURATION}`,
-      );
-    });
-
-    it("shows pulse's collection", async () => {
-      await setup({
-        model: "pulse",
-      });
-
-      const collectionLink = screen.getByText("Collection Name");
-      expect(collectionLink).toBeInTheDocument();
-      expect(collectionLink).toHaveAttribute(
-        "href",
-        `/collection/${MOCK_COLLECTION.id}-collection-name`,
       );
 
       expect(screen.getByTestId("revision-history-button")).toHaveTextContent(

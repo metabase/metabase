@@ -111,8 +111,8 @@
                             {:name      "totalValue"
                              :base_type :type/Float}]}]
                  (->> (t2/hydrate (t2/select Table :db_id db-id
-                                          {:where    [:in :name ["groupby_test" "v_groupby_test"]]
-                                           :order-by [:name]}) :fields)
+                                             {:where    [:in :name ["groupby_test" "v_groupby_test"]]
+                                              :order-by [:name]}) :fields)
                       (map table-fingerprint)))))))))
 
 (defn- default-table-result [table-name]
@@ -215,7 +215,7 @@
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
       (mt/dataset test-data
-        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY_2
+        (is (= '{:select   [source.CATEGORY_2 AS CATEGORY
                             COUNT (*)         AS count]
                  :from     [{:select [products.category       AS category
                                       products.category || ?  AS CATEGORY_2]

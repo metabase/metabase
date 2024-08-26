@@ -1,59 +1,58 @@
+import { useState } from "react";
 import { t } from "ttag";
 
+import type { DashboardPickerValueItem } from "metabase/common/components/DashboardPicker";
+import { DashboardPickerModal } from "metabase/common/components/DashboardPicker";
 import { useDashboardQuery } from "metabase/common/hooks";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import DashboardPicker from "metabase/containers/DashboardPicker";
-import type { Collection, DashboardId } from "metabase-types/api";
+import { Flex } from "metabase/ui";
+import type { DashboardId } from "metabase-types/api";
 
-import {
-  DashboardPickerContainer,
-  DashboardPickerButton,
-} from "./DashboardSelector.styled";
+import { DashboardPickerButton } from "./DashboardSelector.styled";
 
 interface DashboardSelectorProps {
   onChange: (value?: DashboardId) => void;
   value?: DashboardId;
-  collectionFilter?: (
-    collection: Collection,
-    index: number,
-    allCollections: Collection[],
-  ) => boolean;
 }
 
 export const DashboardSelector = ({
   onChange,
   value,
-  ...rest
 }: DashboardSelectorProps) => {
-  const {
-    data: dashboard,
-    error,
-    isLoading,
-  } = useDashboardQuery({ id: value });
+  const [isOpen, setIsOpen] = useState(false);
+  const { data: dashboard, isLoading } = useDashboardQuery({ id: value });
+
+  if (isLoading) {
+    return (
+      <Flex>
+        <DashboardPickerButton>{t`Loading...`}</DashboardPickerButton>
+      </Flex>
+    );
+  }
+
   return (
-    <LoadingAndErrorWrapper loading={isLoading}>
-      <TippyPopoverWithTrigger
-        sizeToFit
-        maxWidth={600}
-        renderTrigger={({ onClick }) => (
-          <DashboardPickerButton onClick={onClick}>
-            {dashboard?.name || t`Select a dashboard`}
-          </DashboardPickerButton>
-        )}
-        popoverContent={({ closePopover }) => (
-          <DashboardPickerContainer>
-            <DashboardPicker
-              value={error ? undefined : dashboard?.id}
-              onChange={value => {
-                closePopover();
-                onChange(value);
-              }}
-              {...rest}
-            />
-          </DashboardPickerContainer>
-        )}
-      />
-    </LoadingAndErrorWrapper>
+    <Flex>
+      <DashboardPickerButton onClick={() => setIsOpen(true)}>
+        {dashboard?.name || t`Select a dashboard`}
+      </DashboardPickerButton>
+      {isOpen && (
+        <DashboardPickerModal
+          title={t`Choose a dashboard`}
+          value={
+            dashboard?.id ? { model: "dashboard", id: dashboard.id } : undefined
+          }
+          onChange={(dashboard: DashboardPickerValueItem) => {
+            onChange(dashboard.id);
+            setIsOpen(false);
+          }}
+          onClose={() => setIsOpen(false)}
+          options={{
+            showPersonalCollections: false,
+            showRootCollection: true,
+            allowCreateNew: false,
+            hasConfirmButtons: false,
+          }}
+        />
+      )}
+    </Flex>
   );
 };

@@ -217,8 +217,8 @@
   (walk/postwalk
    (fn [node]
      (if (and (map? node) (= (:tag node) tag))
-        (assoc node :tag :default)
-        node))
+       (assoc node :tag :default)
+       node))
    content))
 
 (defmulti ast->slack
@@ -413,7 +413,7 @@
   (fn [_markdown channel-type] channel-type))
 
 (defmethod process-markdown :slack
-  [markdown _]
+  [markdown _channel-type]
   (-> (.parse ^Parser parser ^String markdown)
       to-clojure
       ast->slack
@@ -422,6 +422,6 @@
       str/trim))
 
 (defmethod process-markdown :html
-  [markdown _]
+  [markdown _channel-type]
   (let [ast (.parse ^Parser parser ^String markdown)]
     (.render ^HtmlRenderer renderer ^Document ast)))

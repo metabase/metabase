@@ -1,4 +1,4 @@
-import { createMockUiParameter } from "metabase-lib/parameters/mock";
+import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import { createMockParameter } from "metabase-types/api/mocks";
 
 import { isSingleOrMultiSelectable } from "./parameter-type";
@@ -8,7 +8,7 @@ describe("isSingleOrMultiSelectable", () => {
     const parameter = createMockParameter({
       sectionId: "number",
     });
-    expect(isSingleOrMultiSelectable(parameter)).toBe(false);
+    expect(isSingleOrMultiSelectable(parameter)).toBe(true);
   });
 
   it("is false for parameters with acceptable types and rejected subTypes", () => {

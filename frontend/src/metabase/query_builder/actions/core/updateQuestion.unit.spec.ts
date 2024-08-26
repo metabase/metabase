@@ -3,8 +3,8 @@ import { checkNotNull } from "metabase/lib/types";
 import * as questionActions from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import registerVisualizations from "metabase/visualizations/register";
-import Question from "metabase-lib/Question";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
+import Question from "metabase-lib/v1/Question";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
   Card,
   ConcreteFieldReference,
@@ -24,27 +24,27 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
-  createAdHocCard,
-  createSavedStructuredCard,
-  createAdHocNativeCard,
-  createSavedNativeCard,
-  createStructuredModelCard,
-  createNativeModelCard,
-  createComposedModelCard,
   ORDERS,
   ORDERS_ID,
-  PRODUCTS,
   PEOPLE,
-  SAMPLE_DB_ID,
+  PRODUCTS,
   REVIEWS,
   REVIEWS_ID,
+  SAMPLE_DB_ID,
+  createAdHocCard,
+  createAdHocNativeCard,
+  createComposedModelCard,
+  createNativeModelCard,
+  createSampleDatabase,
+  createSavedNativeCard,
+  createSavedStructuredCard,
+  createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
 import type { QueryBuilderMode } from "metabase-types/store";
 import {
-  createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 import * as native from "../native";
@@ -52,7 +52,7 @@ import * as navigation from "../navigation";
 import * as querying from "../querying";
 import * as ui from "../ui";
 
-import { updateQuestion, UPDATE_QUESTION } from "./updateQuestion";
+import { UPDATE_QUESTION, updateQuestion } from "./updateQuestion";
 
 registerVisualizations();
 
@@ -507,16 +507,6 @@ describe("QB Actions > updateQuestion", () => {
       const { getCard, questionType } = testCase;
 
       describe(questionType, () => {
-        it("loads metadata for the model", async () => {
-          const loadMetadataSpy = jest.spyOn(
-            questionActions,
-            "loadMetadataForCard",
-          );
-
-          await setup({ card: getCard() });
-          expect(loadMetadataSpy).toHaveBeenCalledTimes(1);
-        });
-
         it("refreshes question metadata if there's difference in dependent metadata", async () => {
           const loadMetadataSpy = jest.spyOn(
             questionActions,

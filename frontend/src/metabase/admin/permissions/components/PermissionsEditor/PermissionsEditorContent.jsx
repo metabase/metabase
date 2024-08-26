@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
@@ -30,6 +30,8 @@ export const permissionEditorContentPropTypes = {
   onAction: PropTypes.func,
   onBreadcrumbsItemSelect: PropTypes.func,
   breadcrumbs: PropTypes.array,
+  postHeaderContent: PropTypes.func,
+  preHeaderContent: PropTypes.func,
 };
 
 export function PermissionsEditorContent({
@@ -43,6 +45,8 @@ export function PermissionsEditorContent({
   onChange,
   onSelect,
   onAction,
+  postHeaderContent: PostHeaderContent = () => null,
+  preHeaderContent: PreHeaderContent = () => null,
 }) {
   const [filter, setFilter] = useState("");
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
@@ -63,6 +67,7 @@ export function PermissionsEditorContent({
 
   return (
     <PermissionEditorContentRoot data-testid="permissions-editor">
+      <PreHeaderContent />
       <Subhead>
         {title}{" "}
         {breadcrumbs && (
@@ -74,6 +79,8 @@ export function PermissionsEditorContent({
       </Subhead>
 
       {description && <Text>{description}</Text>}
+
+      <PostHeaderContent />
 
       <EditorFilterContainer>
         <Input

@@ -11,21 +11,23 @@
   (:require
    [clojure.string :as str]
    [metabase.driver.common.parameters :as params]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -34,10 +36,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private Date                   (ms/InstanceOfClass metabase.driver.common.parameters.Date))
-(def ^:private FieldFilter            (ms/InstanceOfClass metabase.driver.common.parameters.FieldFilter))
-(def ^:private ReferencedQuerySnippet (ms/InstanceOfClass metabase.driver.common.parameters.ReferencedQuerySnippet))
-(def ^:private ReferencedCardQuery    (ms/InstanceOfClass metabase.driver.common.parameters.ReferencedCardQuery))
+(def ^:private Date                   (lib.schema.common/instance-of-class metabase.driver.common.parameters.Date))
+(def ^:private FieldFilter            (lib.schema.common/instance-of-class metabase.driver.common.parameters.FieldFilter))
+(def ^:private ReferencedQuerySnippet (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedQuerySnippet))
+(def ^:private ReferencedCardQuery    (lib.schema.common/instance-of-class metabase.driver.common.parameters.ReferencedCardQuery))
 
 (defmulti ^:private parse-tag
   "Parse a tag by its `:type`, returning an appropriate record type such as
@@ -74,7 +76,7 @@
     [:sequential SingleValue]
     :map]])
 
-(mu/defn ^:private tag-targets
+(mu/defn- tag-targets
   "Given a template tag, returns a set of `target` structures that can be used to target the tag.
   Potential targets look something like:
 
@@ -93,7 +95,7 @@
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
 
-(mu/defn ^:private tag-params
+(mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
   [tag    :- mbql.s/TemplateTag
    params :- [:maybe [:sequential mbql.s/Parameter]]]
@@ -109,11 +111,11 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(mu/defn ^:private field-filter->field-id :- ms/PositiveInt
+(mu/defn- field-filter->field-id :- ::lib.schema.id/field
   [field-filter]
   (second field-filter))
 
-(mu/defn ^:private field-filter-value
+(mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
   [tag    :- mbql.s/TemplateTag
@@ -121,9 +123,20 @@
   (let [matching-params  (tag-params tag params)
         tag-opts         (:options tag)
         normalize-params (fn [params]
-                           ;; remove `:target` which is no longer needed after this point, and add any tag options
-                           (let [params (map #(cond-> (dissoc % :target)
-                                                (seq tag-opts) (assoc :options tag-opts))
+                           ;; remove `:target` which is no longer needed after this point
+                           ;; and add any tag options that are compatible with the new type
+                           (let [params (map (fn [param]
+                                               (let [tag-opts (if (and (contains? tag-opts :case-sensitive)
+                                                                       (not (contains? #{:string/contains
+                                                                                         :string/does-not-contain
+                                                                                         :string/ends-with
+                                                                                         :string/starts-with}
+                                                                                       (:type param))))
+                                                                (dissoc tag-opts :case-sensitive)
+                                                                tag-opts)]
+                                                 (cond-> (dissoc param :target)
+                                                   (seq tag-opts)
+                                                   (assoc :options tag-opts))))
                                              params)]
                              (if (= (count params) 1)
                                (first params)
@@ -190,7 +203,7 @@
                       {:query (qp.persistence/persisted-info-native-query
                                (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                persisted-info)})
-                    (qp.compile/compile query)))))
+                    (qp.compile/compile (limit/disable-max-results query))))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -217,10 +230,9 @@
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
-
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
-(mu/defn ^:private param-value-for-raw-value-tag
+(mu/defn- param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
   [tag    :- mbql.s/TemplateTag
    params :- [:maybe [:sequential mbql.s/Parameter]]]
@@ -260,16 +272,15 @@
   [tag params]
   (param-value-for-raw-value-tag tag params))
 
-
 ;;; Parsing Values
 
-(mu/defn ^:private parse-number :- number?
+(mu/defn- parse-number :- number?
   "Parse a string like `1` or `2.0` into a valid number. Done mostly to keep people from passing in
    things that aren't numbers, like SQL identifiers."
   [s :- :string]
   (.parse (NumberFormat/getInstance) ^String s))
 
-(mu/defn ^:private value->number :- [:or number? [:sequential {:min 1} number?]]
+(mu/defn- value->number :- [:or number? [:sequential {:min 1} number?]]
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
   undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the old parameter
   code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been
@@ -288,12 +299,12 @@
     (string? value)
     (u/many-or-one (mapv parse-number (str/split value #",")))))
 
-(mu/defn ^:private parse-value-for-field-type :- :any
+(mu/defn- parse-value-for-field-type :- :any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
   UUID fields."
-  [effective-type :- ms/FieldType value]
+  [effective-type :- ::lib.schema.common/base-type value]
   (cond
     (isa? effective-type :type/UUID)
     (UUID/fromString value)
@@ -304,7 +315,7 @@
     :else
     value))
 
-(mu/defn ^:private update-filter-for-field-type :- ParsedParamValue
+(mu/defn- update-filter-for-field-type :- ParsedParamValue
   "Update a Field Filter with a textual, or sequence of textual, values. The base type and semantic type of the field
   are used to determine what 'semantic' type interpretation is required (e.g. for UUID fields)."
   [{field :field, {value :value} :value, :as field-filter} :- FieldFilter]
@@ -322,7 +333,7 @@
     (cond-> field-filter
       new-value (assoc-in [:value :value] new-value))))
 
-(mu/defn ^:private parse-value-for-type :- ParsedParamValue
+(mu/defn- parse-value-for-type :- ParsedParamValue
   "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
   created, `value` here might be a raw value or a map including information about the Field it references as well as a
   value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
@@ -355,7 +366,7 @@
     :else
     value))
 
-(mu/defn ^:private value-for-tag :- ParsedParamValue
+(mu/defn- value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag    :- mbql.s/TemplateTag
@@ -366,11 +377,12 @@
       (throw (ex-info (tru "Error determining value for parameter {0}: {1}"
                            (pr-str (:name tag))
                            (ex-message e))
-                      {:tag  tag
-                       :type (or (:type (ex-data e)) qp.error-type/invalid-parameter)}
+                      {:tag    tag
+                       :type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                       :params params}
                       e)))))
 
-(mu/defn query->params-map :- [:map-of ms/NonBlankString ParsedParamValue]
+(mu/defn query->params-map :- [:map-of ::lib.schema.common/non-blank-string ParsedParamValue]
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
     (query->params-map some-inner-query)
@@ -390,3 +402,13 @@
                        :tags   tags
                        :params params}
                       e)))))
+
+(mu/defn referenced-card-ids :- [:set ::lib.schema.id/card]
+  "Return a set of all Card IDs referenced in the parameters in `params-map`. This should be added to the (inner) query
+  under the `:metabase.models.query.permissions/referenced-card-ids` key when doing parameter expansion."
+  [params-map :- [:map-of ::lib.schema.common/non-blank-string ParsedParamValue]]
+  (into #{}
+        (keep (fn [param]
+                (when (params/ReferencedCardQuery? param)
+                  (:card-id param))))
+        (vals params-map)))

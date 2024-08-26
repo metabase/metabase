@@ -1,32 +1,34 @@
-import PropTypes from "prop-types";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Tables from "metabase/entities/tables";
 import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import Table from "metabase-lib/metadata/Table";
+import type Table from "metabase-lib/v1/metadata/Table";
 
 import {
+  AbsoluteContainer,
   Description,
   EmptyDescription,
-  LoadingSpinner,
-  AbsoluteContainer,
   Fade,
+  LoadingSpinner,
 } from "../MetadataInfo.styled";
 
 import ColumnCount from "./ColumnCount";
 import ConnectedTables from "./ConnectedTables";
 import { InfoContainer, MetadataContainer } from "./TableInfo.styled";
 
-type OwnProps = {
+export type TableInfoProps = {
   className?: string;
   tableId: Table["id"];
   onConnectedTableClick?: (table: Table) => void;
 };
 
-const mapStateToProps = (state: any, props: OwnProps): { table?: Table } => {
+const mapStateToProps = (
+  state: any,
+  props: TableInfoProps,
+): { table?: Table } => {
   return {
     table: Tables.selectors.getObject(state, {
       entityId: props.tableId,
@@ -42,15 +44,7 @@ const mapDispatchToProps: {
   fetchMetadata: Tables.actions.fetchMetadata,
 };
 
-TableInfo.propTypes = {
-  className: PropTypes.string,
-  tableId: PropTypes.number.isRequired,
-  table: PropTypes.instanceOf(Table),
-  fetchForeignKeys: PropTypes.func.isRequired,
-  fetchMetadata: PropTypes.func.isRequired,
-};
-
-type AllProps = OwnProps &
+type AllProps = TableInfoProps &
   ReturnType<typeof mapStateToProps> &
   typeof mapDispatchToProps;
 
@@ -61,7 +55,7 @@ function useDependentTableMetadata({
   fetchMetadata,
 }: Pick<AllProps, "tableId" | "table" | "fetchForeignKeys" | "fetchMetadata">) {
   const isMissingFields = !table?.numFields();
-  const isMissingFks = _.isEmpty(table?.fks);
+  const isMissingFks = table?.fks === undefined;
   const shouldFetchMetadata = isMissingFields || isMissingFks;
   const [hasFetchedMetadata, setHasFetchedMetadata] = useState(
     !shouldFetchMetadata,

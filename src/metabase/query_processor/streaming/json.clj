@@ -3,6 +3,8 @@
   response with all the metadata for `:api`."
   (:require
    [cheshire.core :as json]
+   [cheshire.factory :as json.factory]
+   [cheshire.generate :as json.generate]
    [java-time.api :as t]
    [metabase.formatter :as formatter]
    [metabase.query-processor.streaming.common :as common]
@@ -10,6 +12,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date])
   (:import
+   (com.fasterxml.jackson.core JsonGenerator)
    (java.io BufferedWriter OutputStream OutputStreamWriter)
    (java.nio.charset StandardCharsets)))
 
@@ -31,13 +34,15 @@
         col-names          (volatile! nil)
         ordered-formatters (volatile! nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone]} :data} viz-settings]
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows?]
+                   :or   {format-rows? true}} :data} viz-settings]
         ;; TODO -- wouldn't it make more sense if the JSON downloads used `:name` preferentially? Seeing how JSON is
         ;; probably going to be parsed programmatically
-        (vreset! col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings)))
-        (vreset! ordered-formatters (mapv (fn [col]
-                                            (formatter/create-formatter results_timezone col viz-settings))
-                                          ordered-cols))
+        (vreset! col-names (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
+        (vreset! ordered-formatters
+                 (if format-rows?
+                   (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
+                   (vec (repeat (count ordered-cols) identity))))
         (.write writer "[\n"))
 
       (write-row! [_ row row-num _ {:keys [output-order]}]
@@ -48,19 +53,19 @@
           (when-not (zero? row-num)
             (.write writer ",\n"))
           (json/generate-stream
-            (zipmap
-              @col-names
-              (map (fn [formatter r]
+           (zipmap
+            @col-names
+            (map (fn [formatter r]
                      ;; NOTE: Stringification of formatted values ensures consistency with what is shown in the
                      ;; Metabase UI, especially numbers (e.g. percents, currencies, and rounding). However, this
                      ;; does mean that all JSON values are strings. Any other strategy requires some level of
                      ;; inference to know if we should or should not parse a string (or not stringify an object).
-                     (let [res (formatter (common/format-value r))]
-                       (if-some [num-str (:num-str res)]
-                         num-str
-                         res)))
-                   @ordered-formatters ordered-row))
-            writer)
+                   (let [res (formatter (common/format-value r))]
+                     (if-some [num-str (:num-str res)]
+                       num-str
+                       res)))
+                 @ordered-formatters ordered-row))
+           writer)
           (.flush writer)))
 
       (finish! [_ _]
@@ -73,43 +78,62 @@
   ([_]   (qp.si/stream-options :api nil))
   ([_ _] {:content-type "application/json; charset=utf-8"}))
 
-(defn- map->serialized-json-kvs
-  "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"
-  ^String [m]
-  (when (seq m)
-    (let [s (json/generate-string m)]
-      (.substring s 1 (dec (count s))))))
+(defn- generate-map-contents [^JsonGenerator jgen maplike]
+  (reduce (fn [^JsonGenerator jg kv]
+            (let [k (key kv)
+                  v (val kv)]
+              (.writeFieldName jg (if (keyword? k)
+                                    (subs (str k) 1)
+                                    (str k)))
+              (json.generate/generate jg v json.factory/default-date-format nil nil)
+              jg))
+          jgen maplike))
+
+(defn- make-generator ^JsonGenerator [^OutputStream os]
+  (-> os
+      (OutputStreamWriter. StandardCharsets/UTF_8)
+      (BufferedWriter.)
+      json/create-generator))
 
 (defmethod qp.si/streaming-results-writer :api
   [_ ^OutputStream os]
-  (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+  ;; Cheshire supports a custom encoding API that we would like to use for streaming, say by generating JSON on
+  ;; `{:data {:rows (a/chan), ...}}` and having a custom encoder for the channel.
+  ;; But there's a problem: the `metadata that arrives in `finish!` adds new keys to both the `:data` and outer maps,
+  ;; and there's no way to handle that mutation with a custom encoder.
+
+  ;; So instead we would like to use Cheshire's streaming generator API. But it is very eager to `(.flush writer)`.
+  ;; That results in sending 3 + N packets over the wire, where N is the number of rows in the response! That's a lot
+  ;; of TCP overhead, which causes download time slowdowns, especially with complex load balancing etc. See #34795.
+
+  ;; And so that leads to this low-level code that mixes calls to the underlying Jackson Java library with calls to
+  ;; Cheshire's streaming API for handling Clojure data. It duplicates some Cheshire logic for generating maps, since
+  ;; Cheshire doesn't have an API which generate in key-value pairs of a map without including the `{}`s.
+  (let [jgen (make-generator os)]
     (reify qp.si/StreamingResultsWriter
       (begin! [_ _ _]
-        (.write writer "{\"data\":{\"rows\":[\n"))
+        (doto jgen
+          (.writeStartObject)
+          (.writeFieldName "data")
+          (.writeStartObject)
+          (.writeFieldName "rows")
+          (.writeStartArray)))
 
-      (write-row! [_ row row-num _ _]
-        (when-not (zero? row-num)
-          (.write writer ",\n"))
-        (json/generate-stream row writer)
-        (.flush writer))
+      (write-row! [_ row _ _ _]
+        (json.generate/generate jgen row json.factory/default-date-format nil nil))
 
       (finish! [_ {:keys [data], :as metadata}]
-        (let [data-kvs-str           (map->serialized-json-kvs data)
-              other-metadata-kvs-str (map->serialized-json-kvs (dissoc metadata :data))]
-          ;; close data.rows
-          (.write writer "\n]")
-          ;; write any remaining keys in data
-          (when (seq data-kvs-str)
-            (.write writer ",\n")
-            (.write writer data-kvs-str))
-          ;; close data
-          (.write writer "}")
-          ;; write any remaining top-level keys
-          (when (seq other-metadata-kvs-str)
-            (.write writer ",\n")
-            (.write writer other-metadata-kvs-str))
-          ;; close top-level map
-          (.write writer "}"))
-        (.flush writer)
-        (.flush os)
-        (.close writer)))))
+        (.writeEndArray jgen)
+        ;; write any remaining keys in data
+        (when-not (empty? data)
+          (generate-map-contents jgen data))
+        ;; close data
+        (.writeEndObject jgen)
+        ;; write any remaining top-level keys
+        (when-let [other-metadata (not-empty (dissoc metadata :data))]
+          (generate-map-contents jgen other-metadata))
+        ;; close top-level map
+        (doto jgen
+          (.writeEndObject)
+          (.flush)
+          (.close))))))

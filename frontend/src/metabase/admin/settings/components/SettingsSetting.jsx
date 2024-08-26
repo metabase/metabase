@@ -1,11 +1,15 @@
 /* eslint-disable react/prop-types */
-import PropTypes from "prop-types";
-import { Component } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-use";
+import scrollIntoView from "scroll-into-view-if-needed";
 import { jt } from "ttag";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { alpha } from "metabase/lib/colors";
+import { Box } from "metabase/ui";
 
-import { getEnvVarDocsUrl, settingToFormFieldId } from "./../../settings/utils";
+import { getEnvVarDocsUrl, settingToFormFieldId } from "../utils";
+
 import SettingHeader from "./SettingHeader";
 import {
   SettingContent,
@@ -33,62 +37,98 @@ const SETTING_WIDGET_MAP = {
   hidden: () => null,
 };
 
-export default class SettingsSetting extends Component {
-  static propTypes = {
-    setting: PropTypes.object.isRequired,
-    settingValues: PropTypes.object,
-    onChange: PropTypes.func.isRequired,
-    onChangeSetting: PropTypes.func,
-    autoFocus: PropTypes.bool,
-    disabled: PropTypes.bool,
+export const SettingsSetting = props => {
+  const { hash } = useLocation();
+  const [fancyStyle, setFancyStyle] = useState({});
+  const thisRef = useRef();
+
+  const { setting, settingValues, errorMessage } = props;
+
+  useEffect(() => {
+    if (hash === `#${setting.key}` && thisRef.current) {
+      scrollIntoView(thisRef.current, {
+        behavior: "smooth",
+        block: "center",
+        scrollMode: "if-needed",
+      });
+
+      thisRef.current.focus();
+
+      setFancyStyle({
+        background: alpha("brand", 0.1),
+        boxShadow: `0 0 0 1px var(--mb-color-brand)`,
+      });
+
+      setTimeout(() => {
+        setFancyStyle({});
+      }, 1500);
+    }
+  }, [hash, setting.key]);
+
+  const settingId = settingToFormFieldId(setting);
+
+  let Widget = setting.widget || SETTING_WIDGET_MAP[setting.type];
+  if (!Widget) {
+    console.warn(
+      "No render method for setting type " +
+        setting.type +
+        ", defaulting to string input.",
+    );
+    Widget = SettingInput;
+  }
+
+  const widgetProps = {
+    ...setting.getProps?.(setting, settingValues),
+    ...setting.props,
+    ...props,
   };
 
-  render() {
-    const { setting, settingValues, errorMessage } = this.props;
-    const settingId = settingToFormFieldId(setting);
+  return (
+    // TODO - this formatting needs to be moved outside this component
+    <SettingRoot
+      data-testid={`${setting.key}-setting`}
+      ref={thisRef}
+      style={{
+        transition: "500ms ease all",
+        ...fancyStyle,
+      }}
+    >
+      {!setting.noHeader && <SettingHeader id={settingId} setting={setting} />}
+      <SettingContent>
+        {setting.is_env_setting && !setting.forceRenderWidget ? (
+          <SetByEnvVar setting={setting} />
+        ) : (
+          <Widget id={settingId} {...widgetProps} />
+        )}
+      </SettingContent>
+      {errorMessage && (
+        <SettingErrorMessage>{errorMessage}</SettingErrorMessage>
+      )}
+      {setting.warning && (
+        <SettingWarningMessage>{setting.warning}</SettingWarningMessage>
+      )}
+    </SettingRoot>
+  );
+};
 
-    let Widget = setting.widget || SETTING_WIDGET_MAP[setting.type];
-    if (!Widget) {
-      console.warn(
-        "No render method for setting type " +
-          setting.type +
-          ", defaulting to string input.",
-      );
-      Widget = SettingInput;
-    }
+export const SetByEnvVar = ({ setting }) => (
+  <SettingEnvVarMessage>
+    {jt`This has been set by the ${(
+      <ExternalLink href={getEnvVarDocsUrl(setting.env_name)}>
+        {setting.env_name}
+      </ExternalLink>
+    )} environment variable.`}
+  </SettingEnvVarMessage>
+);
 
-    const widgetProps = {
-      ...setting.getProps?.(setting, settingValues),
-      ...setting.props,
-      ...this.props,
-    };
-
+export const SetByEnvVarWrapper = ({ setting, children }) => {
+  if (setting.is_env_setting) {
     return (
-      // TODO - this formatting needs to be moved outside this component
-      <SettingRoot data-testid={`${setting.key}-setting`}>
-        {!setting.noHeader && (
-          <SettingHeader id={settingId} setting={setting} />
-        )}
-        <SettingContent>
-          {setting.is_env_setting && !setting.forceRenderWidget ? (
-            <SettingEnvVarMessage>
-              {jt`This has been set by the ${(
-                <ExternalLink href={getEnvVarDocsUrl(setting.env_name)}>
-                  {setting.env_name}
-                </ExternalLink>
-              )} environment variable.`}
-            </SettingEnvVarMessage>
-          ) : (
-            <Widget id={settingId} {...widgetProps} />
-          )}
-        </SettingContent>
-        {errorMessage && (
-          <SettingErrorMessage>{errorMessage}</SettingErrorMessage>
-        )}
-        {setting.warning && (
-          <SettingWarningMessage>{setting.warning}</SettingWarningMessage>
-        )}
-      </SettingRoot>
+      <Box mb="lg">
+        <SettingHeader id={setting.key} setting={setting} />
+        <SetByEnvVar setting={setting} />
+      </Box>
     );
   }
-}
+  return children;
+};

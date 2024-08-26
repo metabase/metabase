@@ -9,7 +9,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -20,7 +19,7 @@
   (let [missing (t2/select model :entity_id nil)
         pk      (first (t2/primary-keys model))]
     (when (seq missing)
-      (log/info (trs "Backfilling entity_id for {0} rows of {1}" (pr-str (count missing)) (name model)))
+      (log/infof "Backfilling entity_id for %s rows of %s" (pr-str (count missing)) (name model))
       (doseq [entity missing
               :let [hashed (serdes/identity-hash entity)
                     eid    (u/generate-nano-id hashed)]]
@@ -31,9 +30,9 @@
   [model]
   (or
     ;; toucan1 models
-    (isa? model ::mi/entity-id)
+   (isa? model ::mi/entity-id)
     ;; toucan2 models
-    (isa? model :hook/entity-id)))
+   (isa? model :hook/entity-id)))
 
 (defn backfill-ids!
   "Updates all rows of all models that are (a) serialized and (b) have `entity_id` columns to have the

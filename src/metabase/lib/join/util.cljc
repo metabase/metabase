@@ -7,6 +7,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.join :as lib.schema.join]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
@@ -26,9 +27,9 @@
     [:conditions {:optional true} [:ref ::lib.schema.join/conditions]]]])
 
 (def Field
-  "A field in a join, either [[lib.metadata/ColumnMetadata]] or a `:field` ref."
+  "A field in a join, either `:metabase.lib.schema.metadata/column` or a `:field` ref."
   [:or
-   lib.metadata/ColumnMetadata
+   [:ref ::lib.schema.metadata/column]
    [:ref :mbql.clause/field]])
 
 (def FieldOrPartialJoin
@@ -49,7 +50,8 @@
 
     MyJoin__my_field
 
-  You should pass the results thru a unique name function."
+  You should pass the results thru a unique name function e.g. one returned
+  by [[metabase.lib.util/unique-name-generator]]."
   [join-alias :- ::lib.schema.common/non-blank-string
    field-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__%s" join-alias field-name))
@@ -59,7 +61,8 @@
 
     CATEGORIES__via__CATEGORY_ID
 
-  You should make sure this gets ran thru a unique-name fn."
+  You should make sure this gets ran thru a unique-name fn e.g. one returned
+  by [[metabase.lib.util/unique-name-generator]]."
   [table-name           :- ::lib.schema.common/non-blank-string
    source-field-id-name :- ::lib.schema.common/non-blank-string]
   (lib.util/format "%s__via__%s" table-name source-field-id-name))
@@ -82,7 +85,7 @@
 
   You should pass the results thru a unique name function."
   [query          :- ::lib.schema/query
-   field-metadata :- lib.metadata/ColumnMetadata]
+   field-metadata :- ::lib.schema.metadata/column]
   (if-let [join-alias (or (current-join-alias field-metadata)
                           (implicit-join-name query field-metadata))]
     (joined-field-desired-alias join-alias (:name field-metadata))

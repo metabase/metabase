@@ -2,17 +2,18 @@
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require
    [clojure.walk :as walk]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli :as mu]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Add Implicit Fields                                               |
@@ -29,7 +30,7 @@
 (mu/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in [[metabase.query-processor.sort]], for all the Fields in a given Table."
-  [table-id :- ms/PositiveInt]
+  [table-id :- ::lib.schema.id/table]
   (let [fields (table->sorted-fields table-id)]
     (when (empty? fields)
       (throw (ex-info (tru "No fields found for table {0}." (pr-str (:name (lib.metadata/table (qp.store/metadata-provider) table-id))))
@@ -43,7 +44,7 @@
                                   {:temporal-unit :default})])
      fields)))
 
-(mu/defn ^:private source-metadata->fields :- mbql.s/Fields
+(mu/defn- source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
   (distinct
@@ -52,7 +53,7 @@
      ;; `:join-alias` or `:source-field`. Remove binning/temporal bucketing info. The Field should already be getting
      ;; bucketed in the source query; don't need to apply bucketing again in the parent query. Mark the field as
      ;; `qp/ignore-coercion` here so that it doesn't happen again in the parent query.
-     (or (some-> (mbql.u/match-one field-ref :field)
+     (or (some-> (lib.util.match/match-one field-ref :field)
                  (mbql.u/update-field-options dissoc :binning :temporal-unit)
                  (cond-> coercion-strategy (mbql.u/assoc-field-options :qp/ignore-coercion true)))
          ;; otherwise construct a field reference that can be used to refer to this Field.
@@ -65,7 +66,7 @@
            ;; expression. We don't need to mark as ignore-coercion here because these won't grab the field metadata
            [:field field-name {:base-type base-type}])))))
 
-(mu/defn ^:private should-add-implicit-fields?
+(mu/defn- should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
 
   *  The query has either a `:source-table`, *or* a `:source-query` with `:source-metadata` for it
@@ -81,15 +82,15 @@
              (qp.store/initialized?))
     ;; by 'caching' this result, this log message will only be shown once for a given QP run.
     (qp.store/cached [::should-add-implicit-fields-warning]
-      (log/warn (str (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`.")
-                     \newline
-                     (trs "Query: {0}" (u/pprint-to-str source-query))))))
+      (log/warn (str "Warning: cannot determine fields for an explicit `source-query` unless you also include"
+                     " `source-metadata`.\n"
+                     (format "Query: %s" (u/pprint-to-str source-query))))))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))
        (every? empty? [aggregations breakouts fields])))
 
-(mu/defn ^:private add-implicit-fields
+(mu/defn- add-implicit-fields
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
   [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query}]
@@ -111,20 +112,53 @@
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private add-implicit-breakout-order-by :- mbql.s/MBQLQuery
+(defn- fix-order-by-field-refs
+  "This function transforms top level integer field refs in order by to corresponding string field refs from breakout
+  if present.
+
+  ## Context
+  In current situation, ie. model as a source, then aggregation and breakout, and finally order by a breakout field,
+  [[metabase.lib.order-by/orderable-columns]] returns field ref with integer id, while reference to same field, but
+  with string id is present in breakout. Then, [[add-implicit-breakout-order-by]] adds the string ref to order by.
+
+  Resulting query would contain both references, while integral is transformed differently -- it contains no casting.
+  As that is not part of group by, the query would fail.
+
+  Reference: https://github.com/metabase/metabase/issues/44653."
+  [{:keys [breakout order-by] :as inner-query}]
+  (if (or (empty? breakout) (empty? order-by))
+    inner-query
+    (let [name->breakout (into {}
+                               (keep (fn [[tag id-or-name :as clause]]
+                                       (when (and (= :field tag)
+                                                  (string? id-or-name))
+                                         [id-or-name clause])))
+                               breakout)
+          ref->maybe-field-name (fn [[tag id-or-name]]
+                                  (when (and (= :field tag)
+                                             (integer? id-or-name))
+                                    ((some-fn :lib/desired-column-alias :name)
+                                     (lib.metadata/field (qp.store/metadata-provider)
+                                                         id-or-name))))
+          maybe-convert-order-by-ref (fn [[dir ref :as order-by-elm]]
+                                       (if-some [breakout (-> ref ref->maybe-field-name name->breakout)]
+                                         [dir breakout]
+                                         order-by-elm))]
+      (update inner-query :order-by (partial mapv maybe-convert-order-by-ref)))))
+
+(mu/defn- add-implicit-breakout-order-by :- mbql.s/MBQLQuery
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
-  [{breakouts :breakout, :as inner-query} :- mbql.s/MBQLQuery]
+  [inner-query :- mbql.s/MBQLQuery]
   ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
   ;; automatically ignore new ones that are reference Fields already in the order-by clause
-  (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
-                                                   [:asc breakout])))
-
+  (let [{breakouts :breakout, :as inner-query} (fix-order-by-field-refs inner-query)]
+    (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
+                                                     [:asc breakout]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

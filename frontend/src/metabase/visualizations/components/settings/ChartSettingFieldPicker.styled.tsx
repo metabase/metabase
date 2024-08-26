@@ -3,7 +3,6 @@ import styled from "@emotion/styled";
 import Triggerable from "metabase/components/Triggerable";
 import Button from "metabase/core/components/Button";
 import SelectButton from "metabase/core/components/SelectButton";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 import { ChartSettingColorPicker } from "./ChartSettingColorPicker";
@@ -15,11 +14,11 @@ interface ChartSettingFieldPickerRootProps {
 export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRootProps>`
   display: flex;
   align-items: center;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   padding-right: 1rem;
   padding-left: 0.5rem;
-  background: ${color("white")};
+  background: var(--mb-color-bg-white);
 
   ${Triggerable.Trigger} {
     flex: 1;
@@ -33,7 +32,7 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
 
   ${SelectButton.Icon} {
     margin-left: 0;
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     height: 0.625rem;
     ${props => props.disabled && "display: none;"}
     flex-shrink: 0;
@@ -47,11 +46,11 @@ export const ChartSettingFieldPickerRoot = styled.div<ChartSettingFieldPickerRoo
     overflow-wrap: anywhere;
     text-align: left;
     overflow: hidden;
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
   }
 
   ${SelectButton.Root}:disabled {
-    background-color: ${color("white")};
+    background-color: var(--mb-color-bg-white);
   }
 `;
 
@@ -71,11 +70,11 @@ export const SettingsButton = styled(Button)<SettingsIconProps>`
 
 export const SettingsIcon = styled(Icon)<SettingsIconProps>`
   margin-left: ${props => (props.noMargin ? "0" : "0.75rem")};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   cursor: ${props => (props.noPointer ? "inherit" : "pointer")};
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 

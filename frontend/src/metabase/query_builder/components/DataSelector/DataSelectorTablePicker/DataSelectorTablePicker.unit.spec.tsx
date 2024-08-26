@@ -2,7 +2,7 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
-import type { InitialSyncStatus, Database } from "metabase-types/api";
+import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -42,7 +42,7 @@ describe("DataSelectorTablePicker", () => {
         tables: [createMockTable({ initial_sync_status })],
       });
       setup({ database });
-      expect(screen.getByTestId("loading-spinner")).toBeInTheDocument();
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     },
   );
 
@@ -51,7 +51,7 @@ describe("DataSelectorTablePicker", () => {
       tables: [createMockTable({ initial_sync_status: "complete" })],
     });
     setup({ database });
-    expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
   });
 
   it("when no table is in database", () => {
@@ -64,10 +64,11 @@ describe("DataSelectorTablePicker", () => {
   });
 
   it("show tables in the database", () => {
-    const table = createMockTable();
+    const table = createMockTable({ description: "This a table description" });
     const database = createMockDatabase({ tables: [table] });
     setup({ database });
     expect(screen.getByText(database.name)).toBeInTheDocument();
     expect(screen.getByText(table.display_name)).toBeInTheDocument();
+    expect(screen.getByLabelText("More info")).toBeInTheDocument();
   });
 });

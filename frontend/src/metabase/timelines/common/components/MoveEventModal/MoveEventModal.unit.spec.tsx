@@ -10,7 +10,7 @@ import type { MoveEventModalProps } from "./MoveEventModal";
 import MoveEventModal from "./MoveEventModal";
 
 describe("MoveEventModal", () => {
-  it("should move an event to a different timeline", () => {
+  it("should move an event to a different timeline", async () => {
     const event = createMockTimelineEvent({ timeline_id: 1 });
     const oldTimeline = createMockTimeline({ id: 1, name: "Builds" });
     const newTimeline = createMockTimeline({ id: 2, name: "Releases" });
@@ -23,8 +23,8 @@ describe("MoveEventModal", () => {
     render(<MoveEventModal {...props} />);
     expect(screen.getByRole("button", { name: "Move" })).toBeDisabled();
 
-    userEvent.click(screen.getByText(newTimeline.name));
-    userEvent.click(screen.getByText("Move"));
+    await userEvent.click(screen.getByText(newTimeline.name));
+    await userEvent.click(screen.getByText("Move"));
     expect(props.onSubmit).toHaveBeenLastCalledWith(
       event,
       newTimeline,

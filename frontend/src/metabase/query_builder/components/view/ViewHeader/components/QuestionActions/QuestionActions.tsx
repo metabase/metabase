@@ -1,8 +1,10 @@
 import type { ChangeEvent } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { t } from "ttag";
 
+import { useSetting } from "metabase/common/hooks";
 import EntityMenu from "metabase/components/EntityMenu";
+import { UploadInput } from "metabase/components/upload";
 import BookmarkToggle from "metabase/core/components/BookmarkToggle";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -17,19 +19,21 @@ import {
 } from "metabase/plugins";
 import { softReloadCard } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
-import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   checkCanBeModel,
   checkDatabaseCanPersistDatasets,
-} from "metabase-lib/metadata/utils/models";
+} from "metabase-lib/v1/metadata/utils/models";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
+import { UploadMode } from "metabase-types/store/upload";
 
-import { canUploadToQuestion } from "../../../../../selectors";
-import { ViewHeaderIconButtonContainer } from "../../ViewHeader.styled";
+import { ViewHeaderIconButtonContainer } from "../../ViewTitleHeader.styled";
 
 import {
   QuestionActionsDivider,
@@ -48,14 +52,17 @@ const ARCHIVE_TESTID = "archive-button";
 interface Props {
   isBookmarked: boolean;
   isShowingQuestionInfoSidebar: boolean;
-  handleBookmark: () => void;
-  onOpenModal: (modalType: string) => void;
+  onToggleBookmark: () => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   question: Question;
-  setQueryBuilderMode: (
-    mode: string,
-    opt: { datasetEditorTab: string },
+  onSetQueryBuilderMode: (
+    mode: QueryBuilderMode,
+    opts?: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: DatasetEditorTab;
+    },
   ) => void;
-  turnDatasetIntoQuestion: () => void;
+  onTurnModelIntoQuestion: () => void;
   onInfoClick: () => void;
   onModelPersistenceChange: () => void;
 }
@@ -63,19 +70,16 @@ interface Props {
 export const QuestionActions = ({
   isBookmarked,
   isShowingQuestionInfoSidebar,
-  handleBookmark,
+  onToggleBookmark,
   onOpenModal,
   question,
-  setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  onSetQueryBuilderMode,
+  onTurnModelIntoQuestion,
   onInfoClick,
   onModelPersistenceChange,
 }: Props) => {
-  const isMetabotEnabled = useSelector(state =>
-    getSetting(state, "is-metabot-enabled"),
-  );
-
-  const canUpload = useSelector(canUploadToQuestion(question));
+  const [uploadMode, setUploadMode] = useState<UploadMode>(UploadMode.append);
+  const isMetabotEnabled = useSetting("is-metabot-enabled");
 
   const isModerator = useSelector(getUserIsAdmin) && question.canWrite?.();
 
@@ -89,29 +93,35 @@ export const QuestionActions = ({
 
   const isQuestion = question.type() === "question";
   const isModel = question.type() === "model";
-  const canWrite = question.canWrite();
+  const isMetric = question.type() === "metric";
+  const isModelOrMetric = isModel || isMetric;
+  const hasCollectionPermissions = question.canWrite();
   const isSaved = question.isSaved();
   const database = question.database();
-  const canAppend = canUpload && canWrite && !!question._card.based_on_upload;
+  const canAppend =
+    hasCollectionPermissions && !!question._card.based_on_upload;
+  const { isEditable: hasDataPermissions } = Lib.queryDisplayInfo(
+    question.query(),
+  );
 
   const canPersistDataset =
     PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-    canWrite &&
+    hasCollectionPermissions &&
     isSaved &&
     isModel &&
     checkDatabaseCanPersistDatasets(question.database());
 
   const handleEditQuery = useCallback(() => {
-    setQueryBuilderMode("dataset", {
+    onSetQueryBuilderMode("dataset", {
       datasetEditorTab: "query",
     });
-  }, [setQueryBuilderMode]);
+  }, [onSetQueryBuilderMode]);
 
   const handleEditMetadata = useCallback(() => {
-    setQueryBuilderMode("dataset", {
+    onSetQueryBuilderMode("dataset", {
       datasetEditorTab: "metadata",
     });
-  }, [setQueryBuilderMode]);
+  }, [onSetQueryBuilderMode]);
 
   const handleTurnToModel = useCallback(() => {
     const modal = checkCanBeModel(question)
@@ -144,14 +154,17 @@ export const QuestionActions = ({
     ),
   );
 
-  if (canWrite && isModel) {
-    extraButtons.push(
-      {
-        title: t`Edit query definition`,
+  if (hasCollectionPermissions) {
+    if (isModelOrMetric && hasDataPermissions) {
+      extraButtons.push({
+        title: isMetric ? t`Edit metric definition` : t`Edit query definition`,
         icon: "notebook",
         action: handleEditQuery,
-      },
-      {
+      });
+    }
+
+    if (isModel) {
+      extraButtons.push({
         title: (
           <div>
             {t`Edit metadata`} <StrengthIndicator dataset={question} />
@@ -159,8 +172,8 @@ export const QuestionActions = ({
         ),
         icon: "label",
         action: handleEditMetadata,
-      },
-    );
+      });
+    }
   }
 
   if (canPersistDataset) {
@@ -173,7 +186,7 @@ export const QuestionActions = ({
     });
   }
 
-  if (isQuestion) {
+  if (isQuestion || isMetric) {
     extraButtons.push({
       title: t`Add to dashboard`,
       icon: "add_to_dash",
@@ -182,13 +195,25 @@ export const QuestionActions = ({
     });
   }
 
-  if (canWrite) {
+  if (hasCollectionPermissions) {
     extraButtons.push({
       title: t`Move`,
       icon: "move",
       action: () => onOpenModal(MODAL_TYPES.MOVE),
       testId: MOVE_TESTID,
     });
+  }
+
+  if (hasDataPermissions) {
+    extraButtons.push({
+      title: t`Duplicate`,
+      icon: "clone",
+      action: () => onOpenModal(MODAL_TYPES.CLONE),
+      testId: CLONE_TESTID,
+    });
+  }
+
+  if (hasCollectionPermissions) {
     if (isQuestion) {
       extraButtons.push({
         title: t`Turn into a model`,
@@ -201,36 +226,29 @@ export const QuestionActions = ({
       extraButtons.push({
         title: t`Turn back to saved question`,
         icon: "insight",
-        action: turnDatasetIntoQuestion,
+        action: onTurnModelIntoQuestion,
       });
     }
   }
 
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
-  if (isEditable) {
-    extraButtons.push({
-      title: t`Duplicate`,
-      icon: "clone",
-      action: () => onOpenModal(MODAL_TYPES.CLONE),
-      testId: CLONE_TESTID,
-    });
-  }
+  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
 
-  if (canWrite) {
+  if (hasCollectionPermissions) {
     extraButtons.push({
-      title: t`Archive`,
-      icon: "archive",
+      title: t`Move to trash`,
+      icon: "trash",
       action: () => onOpenModal(MODAL_TYPES.ARCHIVE),
       testId: ARCHIVE_TESTID,
     });
   }
 
-  extraButtons.push(...PLUGIN_QUERY_BUILDER_HEADER.extraButtons(question));
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUploadClick = () => {
+  const handleUploadClick = (
+    newUploadMode: UploadMode.append | UploadMode.replace,
+  ) => {
     if (fileInputRef.current) {
+      setUploadMode(newUploadMode);
       fileInputRef.current.click();
     }
   };
@@ -238,11 +256,14 @@ export const QuestionActions = ({
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file && question._card.based_on_upload) {
-      uploadFile({
-        file,
-        tableId: question._card.based_on_upload,
-        reloadQuestionData: true,
-      })(dispatch);
+      dispatch(
+        uploadFile({
+          file,
+          tableId: question._card.based_on_upload,
+          reloadQuestionData: true,
+          uploadMode,
+        }),
+      );
 
       // reset the file input so that subsequent uploads of the same file trigger the change handler
       if (fileInputRef.current?.value) {
@@ -254,13 +275,15 @@ export const QuestionActions = ({
   return (
     <>
       <QuestionActionsDivider />
-      <ViewHeaderIconButtonContainer>
-        <BookmarkToggle
-          onCreateBookmark={handleBookmark}
-          onDeleteBookmark={handleBookmark}
-          isBookmarked={isBookmarked}
-        />
-      </ViewHeaderIconButtonContainer>
+      {!question.isArchived() && (
+        <ViewHeaderIconButtonContainer>
+          <BookmarkToggle
+            onCreateBookmark={onToggleBookmark}
+            onDeleteBookmark={onToggleBookmark}
+            isBookmarked={isBookmarked}
+          />
+        </ViewHeaderIconButtonContainer>
+      )}
       <Tooltip tooltip={t`More info`}>
         <ViewHeaderIconButtonContainer>
           <Button
@@ -275,34 +298,49 @@ export const QuestionActions = ({
       </Tooltip>
       {canAppend && (
         <>
-          <input
-            type="file"
-            accept="text/csv"
-            id="append-file-input"
+          <UploadInput
+            id="upload-file-input"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            style={{ display: "none" }}
           />
           <Tooltip tooltip={t`Upload data to this model`}>
             <ViewHeaderIconButtonContainer>
-              <Button
-                onlyIcon
-                icon="upload"
-                iconSize={HEADER_ICON_SIZE}
-                onClick={handleUploadClick}
-                color={infoButtonColor}
-                data-testid="qb-header-append-button"
-              />
+              <Menu position="bottom-end">
+                <Menu.Target>
+                  <Button
+                    onlyIcon
+                    icon="upload"
+                    iconSize={HEADER_ICON_SIZE}
+                    color={infoButtonColor}
+                    data-testid="qb-header-append-button"
+                  />
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    icon={<Icon name="add" />}
+                    onClick={() => handleUploadClick(UploadMode.append)}
+                  >
+                    {t`Append data to this model`}
+                  </Menu.Item>
+
+                  <Menu.Item
+                    icon={<Icon name="refresh" />}
+                    onClick={() => handleUploadClick(UploadMode.replace)}
+                  >
+                    {t`Replace all data in this model`}
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
             </ViewHeaderIconButtonContainer>
           </Tooltip>
         </>
       )}
-      {extraButtons.length > 0 && (
+      {extraButtons.length > 0 && !question.isArchived() && (
         <EntityMenu
-          triggerAriaLabel={t`Move, archive, and more...`}
+          triggerAriaLabel={t`Move, trash, and more...`}
           items={extraButtons}
           triggerIcon="ellipsis"
-          tooltip={t`Move, archive, and more...`}
+          tooltip={t`Move, trash, and more...`}
         />
       )}
     </>

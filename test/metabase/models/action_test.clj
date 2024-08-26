@@ -67,7 +67,9 @@
               (testing "a entry with defaults should be created if there is a new matching parameter"
                 (is (= {:id "name"
                         :hidden false}
-                       (get field-settings "name"))))))))))
+                       (get field-settings "name")))))))))))
+
+(deftest hydrate-implicit-action-test-2
   (testing "Implicit actions do not map parameters to json fields (parents or nested)"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom :nested-field-columns)
       (mt/dataset json
@@ -135,7 +137,11 @@
                                                           :dashboard_id dashboard-id}]
             (is (= 1 (t2/count DashboardCard :id dashcard-id)))
             (action/update! {:id action-id, :archived true} {:id action-id})
-            (is (zero? (t2/count DashboardCard :id dashcard-id))))))
+            (is (zero? (t2/count DashboardCard :id dashcard-id)))))))))
+
+(deftest dashcard-deletion-test-2
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
+    (mt/with-actions-enabled
       (testing "Dashcards are deleted after actions are deleted entirely"
         (mt/with-actions [{:keys [action-id]} {}]
           (mt/with-temp [Dashboard {dashboard-id :id} {}

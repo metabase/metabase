@@ -1,0 +1,8 @@
+.AlertModalsBorder {
+  border-width: 2px;
+  border-color: var(--mb-color-border);
+}
+
+.AlertModalsTextWidth {
+  width: 162px;
+}

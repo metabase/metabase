@@ -10,7 +10,7 @@
  {metabase/athena             {:local/root "athena"}
   metabase/bigquery-cloud-sdk {:local/root "bigquery-cloud-sdk"}
   metabase/druid              {:local/root "druid"}
-  metabase/googleanalytics    {:local/root "googleanalytics"}
+  metabase/druid-jdbc         {:local/root "druid-jdbc"}
   metabase/mongo              {:local/root "mongo"}
   metabase/oracle             {:local/root "oracle"}
   metabase/presto-jdbc        {:local/root "presto-jdbc"}

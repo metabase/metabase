@@ -10,14 +10,17 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { createMockEntitiesState } from "__support__/store";
 import {
-  screen,
+  act,
   renderWithProviders,
+  screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
@@ -29,6 +32,7 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockDashboardQueryMetadata,
   createMockDatabase,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -59,11 +63,16 @@ async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
-  const channelData = { channels: {} };
-  fetchMock.get("path:/api/pulse/form_input", channelData);
+  setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
+  setupDashboardQueryMetadataEndpoint(
+    mockDashboard,
+    createMockDashboardQueryMetadata({
+      databases: [TEST_DATABASE_WITH_ACTIONS],
+    }),
+  );
   setupCollectionsEndpoints({ collections: [] });
   setupCollectionItemsEndpoint({
     collection: TEST_COLLECTION,
@@ -114,7 +123,7 @@ async function setup({ dashboard }: Options = {}) {
   };
 }
 
-describe("DashboardApp", function () {
+describe("DashboardApp", () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -127,11 +136,11 @@ describe("DashboardApp", function () {
     it("should have a beforeunload event when the user tries to leave a dirty dashboard", async function () {
       const { mockEventListener } = await setup();
 
-      userEvent.click(screen.getByLabelText("Edit dashboard"));
-      userEvent.click(screen.getByTestId("dashboard-name-heading"));
-      userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      await userEvent.click(screen.getByTestId("dashboard-name-heading"));
+      await userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
       // need to click away from the input to trigger the isDirty flag
-      userEvent.tab();
+      await userEvent.tab();
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
 
@@ -142,7 +151,7 @@ describe("DashboardApp", function () {
     it("should not have a beforeunload event when the dashboard is unedited", async function () {
       const { mockEventListener } = await setup();
 
-      userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
@@ -157,7 +166,7 @@ describe("DashboardApp", function () {
 
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
       history.goBack();
 
@@ -169,17 +178,21 @@ describe("DashboardApp", function () {
     it("shows custom warning modal when leaving with unsaved changes via SPA navigation", async () => {
       const { dashboardId, history } = await setup();
 
-      history.push("/");
-      history.push(`/dashboard/${dashboardId}`);
+      act(() => {
+        history.push("/");
+        history.push(`/dashboard/${dashboardId}`);
+      });
 
       await waitForLoaderToBeRemoved();
 
-      userEvent.click(screen.getByLabelText("Edit dashboard"));
-      userEvent.click(screen.getByTestId("dashboard-name-heading"));
-      userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
-      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+      await userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(screen.getByTestId("dashboard-name-heading"));
+      await userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+      await userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
-      history.goBack();
+      act(() => {
+        history.goBack();
+      });
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
@@ -187,9 +200,9 @@ describe("DashboardApp", function () {
     it("does not show custom warning modal when leaving with no changes via Cancel button", async () => {
       await setup();
 
-      userEvent.click(screen.getByLabelText("Edit dashboard"));
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
 
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(
         screen.queryByTestId("leave-confirmation"),
@@ -199,12 +212,12 @@ describe("DashboardApp", function () {
     it("shows custom warning modal when leaving with unsaved changes via Cancel button", async () => {
       await setup();
 
-      userEvent.click(screen.getByLabelText("Edit dashboard"));
-      userEvent.click(screen.getByTestId("dashboard-name-heading"));
-      userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
-      userEvent.tab(); // need to click away from the input to trigger the isDirty flag
+      await userEvent.click(await screen.findByLabelText("Edit dashboard"));
+      await userEvent.click(screen.getByTestId("dashboard-name-heading"));
+      await userEvent.type(screen.getByTestId("dashboard-name-heading"), "a");
+      await userEvent.tab(); // need to click away from the input to trigger the isDirty flag
 
-      userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
       expect(screen.getByTestId("leave-confirmation")).toBeInTheDocument();
     });
@@ -224,5 +237,34 @@ describe("DashboardApp", function () {
         screen.getByText(/there's nothing here, yet./i),
       ).toBeInTheDocument();
     });
+  });
+
+  /**
+   * passing the same uuid in the URL is required to enable metadata cache
+   * sharing on BE
+   */
+  it("should pass dashboard_load_id to dashboard and query_metadata endpoints", async () => {
+    const { dashboardId } = await setup();
+
+    const dashboardURL = fetchMock.lastUrl(
+      `path:/api/dashboard/${dashboardId}`,
+    );
+    const queryMetadataURL = fetchMock.lastUrl(
+      `path:/api/dashboard/${dashboardId}/query_metadata`,
+    );
+
+    const dashboardSearchParams = new URLSearchParams(
+      dashboardURL?.split("?")[1],
+    );
+    const queryMetadataSearchParams = new URLSearchParams(
+      queryMetadataURL?.split("?")[1],
+    );
+
+    expect(dashboardSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
+    expect(queryMetadataSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
+
+    expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
+      dashboardSearchParams.get("dashboard_load_id"),
+    );
   });
 });

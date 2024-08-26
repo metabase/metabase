@@ -1,2 +1,2 @@
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export { default } from "./BulkActionBar";
+export * from "./BulkActionBar";
+export * from "./BulkActionBar.styled";

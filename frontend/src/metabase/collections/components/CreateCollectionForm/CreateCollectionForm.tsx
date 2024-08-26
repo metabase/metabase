@@ -6,7 +6,7 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -22,7 +22,7 @@ import * as Errors from "metabase/lib/errors";
 import type { Collection } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import FormAuthorityLevelFieldContainer from "../../containers/FormAuthorityLevelFieldContainer";
+import { FormAuthorityLevelField } from "../../containers/FormAuthorityLevelFieldContainer";
 
 const COLLECTION_SCHEMA = Yup.object({
   name: Yup.string()
@@ -111,13 +111,13 @@ function CreateCollectionForm({
       validationSchema={COLLECTION_SCHEMA}
       onSubmit={handleCreate}
     >
-      {({ dirty, values }) => (
+      {({ dirty }) => (
         <Form>
           <FormInput
             name="name"
             title={t`Name`}
             placeholder={t`My new fantastic collection`}
-            autoFocus
+            data-autofocus
           />
           <FormTextArea
             name="description"
@@ -131,9 +131,7 @@ function CreateCollectionForm({
             title={t`Collection it's saved in`}
             filterPersonalCollections={filterPersonalCollections}
           />
-          <FormAuthorityLevelFieldContainer
-            collectionParentId={values.parent_id}
-          />
+          <FormAuthorityLevelField />
           <FormFooter>
             <FormErrorMessage inline />
             {!!onCancel && (

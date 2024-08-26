@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import Modal from "metabase/components/Modal";
-import ModalContent from "metabase/components/ModalContent";
-import type Question from "metabase-lib/Question";
+import { Button, Modal, Text } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
 
 interface Props {
   isShowingNewbModal: boolean;
@@ -26,6 +25,14 @@ const getLabels = (question: Question) => {
       message: t`You won't make any permanent changes to them unless you edit their query definition.`,
     };
   }
+
+  if (type === "metric") {
+    return {
+      title: t`It's okay to play around with metrics`,
+      message: t`You won't make any permanent changes to them unless you edit their query definition.`,
+    };
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };
 
@@ -37,15 +44,19 @@ export const SavedQuestionIntroModal = ({
   const { title, message } = getLabels(question);
 
   return (
-    <Modal isOpen={isShowingNewbModal}>
-      <ModalContent title={title} className="Modal-content text-centered py2">
-        <div className="px2 pb2 text-paragraph">{message}</div>
-        <div className="Form-actions flex justify-center py1">
-          <button className="Button Button--primary" onClick={onClose}>
-            {t`Okay`}
-          </button>
-        </div>
-      </ModalContent>
-    </Modal>
+    <Modal.Root opened={isShowingNewbModal} onClose={onClose} size={500}>
+      <Modal.Overlay />
+      <Modal.Content p="md">
+        <Modal.Header mb="md">
+          <Modal.Title>{title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body ta="center">
+          <Text mb="lg" align="left">
+            {message}
+          </Text>
+          <Button variant="filled" onClick={onClose}>{t`Okay`}</Button>
+        </Modal.Body>
+      </Modal.Content>
+    </Modal.Root>
   );
 };

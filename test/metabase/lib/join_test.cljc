@@ -1,5 +1,6 @@
 (ns metabase.lib.join-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
@@ -12,8 +13,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.mocks-31769 :as lib.tu.mocks-31769]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -67,6 +67,18 @@
              :lib/options {:lib/uuid string?}
              :fields      :all}
             (lib/join-clause (meta/table-metadata :orders)))))
+  (testing "Should allow specifying the join strategy when creating a join clause"
+    (is (= [:left-join :right-join :inner-join]
+           (let [query lib.tu/query-with-join
+                 product-table (meta/table-metadata :products)
+                 products-id (meta/id :products :id)
+                 orders-product-id (meta/id :orders :product-id)
+                 join-conditions [(lib/= orders-product-id products-id)]
+                 join-strategies (lib/available-join-strategies query)]
+             (into [] (comp
+                       (map #(lib/join-clause product-table join-conditions %))
+                       (map :strategy))
+                   join-strategies)))))
   (testing "source-card"
     (let [query {:lib/type :mbql/query
                  :lib/metadata lib.tu/metadata-provider-with-mock-cards
@@ -77,7 +89,7 @@
           [_ orders-product-id] (lib/join-condition-lhs-columns query product-card nil nil)
           [products-id] (lib/join-condition-rhs-columns query product-card orders-product-id nil)]
       (is (=? {:stages [{:joins [{:stages [{:source-card (:id product-card)}]}]}]}
-           (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
+              (lib/join query (lib/join-clause product-card [(lib/= orders-product-id products-id)]))))))
   (testing "source-table"
     (let [query {:lib/type :mbql/query
                  :lib/metadata lib.tu/metadata-provider-with-mock-cards
@@ -195,17 +207,17 @@
                  :database     (meta/id)
                  :lib/metadata meta/metadata-provider}
           metadata (lib/returned-columns query)]
-        (is (=? [(merge (meta/field-metadata :categories :name)
-                        {:display-name         "Name"
-                         :lib/source           :source/fields
-                         ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
-                metadata))
-        (is (=? "CATEGORIES__via__CATEGORY_ID"
-                (lib.join.util/current-join-alias (first metadata))))
-        (is (=? [:field
-                 {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
-                 (meta/id :categories :name)]
-                (lib/ref (first metadata)))))))
+      (is (=? [(merge (meta/field-metadata :categories :name)
+                      {:display-name         "Name"
+                       :lib/source           :source/fields
+                       ::lib.join/join-alias "CATEGORIES__via__CATEGORY_ID"})]
+              metadata))
+      (is (=? "CATEGORIES__via__CATEGORY_ID"
+              (lib.join.util/current-join-alias (first metadata))))
+      (is (=? [:field
+               {:lib/uuid string?, :join-alias "CATEGORIES__via__CATEGORY_ID"}
+               (meta/id :categories :name)]
+              (lib/ref (first metadata)))))))
 
 (deftest ^:parallel join-against-source-card-metadata-test
   (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
@@ -515,10 +527,10 @@
                            (meta/field-metadata :venues :id)
                            (-> (meta/field-metadata :categories :id)
                                (lib/with-join-alias "My Join")))]]
-        (is (=? [[:= {}
-                  [:field {} (meta/id :venues :id)]
-                  [:field {:join-alias "My Join"} (meta/id :categories :id)]]]
-                (lib/join-conditions (lib/with-join-conditions join new-conditions)))))))
+      (is (=? [[:= {}
+                [:field {} (meta/id :venues :id)]
+                [:field {:join-alias "My Join"} (meta/id :categories :id)]]]
+              (lib/join-conditions (lib/with-join-conditions join new-conditions)))))))
 
 (deftest ^:parallel with-join-conditions-join-has-no-alias-yet-test
   (testing "with-join-conditions should work if join doesn't yet have an alias"
@@ -984,6 +996,76 @@
                     [:field {} #(contains? #{id-message-sender-id id-message-recipient-id} %)]]]
                   (lib/suggested-join-conditions query message))))))))
 
+(deftest ^:parallel suggested-join-conditions-transitive-fks-test
+  (testing "Implicitly joinable fields are ignored during suggested-joins-condition computation (#41202)"
+    (let [account-tab-id 10
+          organization-tab-id 20
+          contact-tab-id 30
+          account-f-id 100
+          organization-f-id 110
+          organization-f-account-id 120
+          contact-f-organization-id 130
+          account-card-id 1000
+          contact-card-id 1100
+          metadata-provider (lib.tu/mock-metadata-provider
+                             {:database meta/database
+                              :tables   [{:id   account-tab-id
+                                          :name "account"}
+                                         {:id   organization-tab-id
+                                          :name "organization"}
+                                         {:id   contact-tab-id
+                                          :name "contact"}]
+                              :fields   [{:id account-f-id
+                                          :name "account__id"
+                                          :table-id account-tab-id
+                                          :base-type :type/Integer}
+                                         {:id organization-f-id
+                                          :name "organization__id"
+                                          :table-id organization-tab-id
+                                          :base-type :type/Integer}
+                                         {:id organization-f-account-id
+                                          :name "organization__account_id"
+                                          :table-id organization-tab-id
+                                          :base-type :type/Integer
+                                          :semantic-type :type/FK
+                                          :fk-target-field-id account-f-id}
+                                         {:id contact-f-organization-id
+                                          :name "contact__organization_id"
+                                          :table-id contact-tab-id
+                                          :base-type :type/Integer
+                                          :semantic-type :type/FK
+                                          :fk-target-field-id organization-f-id}]
+                              :cards [{:id account-card-id
+                                       :name "Account Model"
+                                       :type :model
+                                       :lib/type :metadata/card
+                                       :database-id (:id meta/database)
+                                       :result-metadata [{:id account-f-id
+                                                          :name "account__id"
+                                                          :table-id account-tab-id
+                                                          :base-type :type/Integer}]
+                                       :dataset-query {:lib/type :mbql.stage/mbql
+                                                       :database (:id meta/database)
+                                                       :source-table account-tab-id}}
+                                      {:id contact-card-id
+                                       :name "Contact Model"
+                                       :type :model
+                                       :lib/type :metadata/card
+                                       :database-id (:id meta/database)
+                                       :result-metadata [{:id contact-f-organization-id
+                                                          :name "contact__organization_id"
+                                                          :table-id contact-tab-id
+                                                          :base-type :type/Integer
+                                                          :semantic-type :type/FK
+                                                          :fk-target-field-id organization-f-id}]
+                                       :dataset-query {:lib/type :mbql.stage/mbql
+                                                       :database (:id meta/database)
+                                                       :source-table contact-tab-id}}]})
+          account-card (lib.metadata/card metadata-provider account-card-id)
+          contact-card (lib.metadata/card metadata-provider contact-card-id)
+          query (lib/query metadata-provider account-card)]
+      (is (nil? (lib.join/suggested-join-conditions query contact-card))))))
+
 (deftest ^:parallel suggested-join-conditions-multiple-fks-to-different-columns-test
   (testing "when there are multiple FKs to a table, and they point to different columns, suggest multiple join conditions (#34184)"
     ;; let's pretend we live in crazy land and the PK for USER is ID + EMAIL (a composite PK) and ORDER has USER_ID
@@ -1024,7 +1106,7 @@
           user                (lib.metadata/table metadata-provider id-user)
           ;; the order the conditions get returned in is indeterminate, so for convenience let's just sort them by
           ;; Field IDs so we get consistent results in the test assertions.
-          sort-conditions     #(sort-by (fn [[_= _opts [_field _opts lhs-id, :as _lhs] [_field _opts rhs-id, :as _rhs]]]
+          sort-conditions     #(sort-by (fn [[_= _opts [_field-lhs _opts-lhs lhs-id, :as _lhs] [_field-rhs _opts-rhs rhs-id, :as _rhs]]]
                                           [lhs-id rhs-id])
                                         %)]
       (testing "ORDER joining USER (we have a composite FK to the joined thing)"
@@ -1094,11 +1176,15 @@
               cols  (lib/joinable-columns query -1 join)]
           (is (=? [{:name                         "ID"
                     :metabase.lib.join/join-alias "Cat"
+                    :source-alias                 "Cat"
+                    :lib/source                   :source/joins
                     :lib/source-column-alias      "ID"
                     :lib/desired-column-alias     "Cat__ID"
                     :selected?                    id-selected?}
                    {:name                         "NAME"
                     :metabase.lib.join/join-alias "Cat"
+                    :source-alias                 "Cat"
+                    :lib/source                   :source/joins
                     :lib/source-column-alias      "NAME"
                     :lib/desired-column-alias     "Cat__NAME"
                     :selected?                    name-selected?}]
@@ -1170,43 +1256,43 @@
              [:field {:temporal-unit :year} (meta/id :orders :created-at)]
              [:field {:temporal-unit :year} (meta/id :products :created-at)]]
             (lib/join-condition-update-temporal-bucketing
-              query
-              -1
-              (lib/= orders-created-at
-                     products-created-at)
-              :year)))
+             query
+             -1
+             (lib/= orders-created-at
+                    products-created-at)
+             :year)))
     (is (=? [:= {}
              [:field (complement :temporal-unit) (meta/id :orders :id)]
              [:field {:temporal-unit :year} (meta/id :products :created-at)]]
             (lib/join-condition-update-temporal-bucketing
-              query
-              -1
-              (lib/= (meta/field-metadata :orders :id)
-                     products-created-at)
-              :year)))
+             query
+             -1
+             (lib/= (meta/field-metadata :orders :id)
+                    products-created-at)
+             :year)))
     (testing "removing with nil"
       (is (=? [:= {}
                [:field (complement :temporal-unit) (meta/id :orders :created-at)]
                [:field (complement :temporal-unit) (meta/id :products :created-at)]]
               (lib/join-condition-update-temporal-bucketing
+               query
+               -1
+               (lib/join-condition-update-temporal-bucketing
                 query
                 -1
-                (lib/join-condition-update-temporal-bucketing
-                  query
-                  -1
-                  (lib/= orders-created-at
-                         products-created-at)
-                  :year)
-                nil))))
+                (lib/= orders-created-at
+                       products-created-at)
+                :year)
+               nil))))
     (is (thrown-with-msg?
-          #?(:clj AssertionError :cljs :default)
-          #"Non-standard join condition."
-          (lib/join-condition-update-temporal-bucketing
-            query
-            -1
-            (lib/= (lib/+ (meta/field-metadata :orders :id) 1)
-                   products-created-at)
-            :year)))))
+         #?(:clj AssertionError :cljs :default)
+         #"Non-standard join condition."
+         (lib/join-condition-update-temporal-bucketing
+          query
+          -1
+          (lib/= (lib/+ (meta/field-metadata :orders :id) 1)
+                 products-created-at)
+          :year)))))
 
 (deftest ^:parallel default-join-alias-test
   (testing "default join-alias set without overwriting other aliases (#32897)"
@@ -1344,3 +1430,55 @@
   (testing "Include the names of joined tables in suggested query names (#24703)"
     (is (= "Venues + Categories"
            (lib/suggested-name lib.tu/query-with-join)))))
+
+(deftest ^:parallel suggested-join-conditions-with-position-test
+  (testing "when editing the _i_th join, columns from that and later joins should not be suggested"
+    ;; We want a case where the existing join contains an FK for the new RHS table, but the original table doesn't.
+    ;; Products + Orders works for this: Orders.USER_ID is an FK to People.ID, but Products has no such link.
+    (let [products->orders  (lib/join-clause (meta/table-metadata :orders)
+                                             [(lib/= (meta/field-metadata :products :id)
+                                                     (meta/field-metadata :orders :product-id))])
+          products->reviews (lib/join-clause (meta/table-metadata :reviews)
+                                             [(lib/= (meta/field-metadata :products :id)
+                                                     (meta/field-metadata :reviews :product-id))])]
+      (testing "Products + Orders"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                        (lib/join products->orders))]
+          (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
+          (testing "but when editing that join, Orders.USER_ID is not visible and no condition is suggested"
+            (is (=? nil
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0))))))
+      (testing "Products + Reviews + Orders"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                        (lib/join products->reviews)
+                        (lib/join products->orders))]
+          (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
+          (testing "but when editing *either* join, Orders.USER_ID is not visible and no condition is suggested"
+            (doseq [position [0 1]]
+              (is (=? nil
+                      (lib/suggested-join-conditions query -1 (meta/table-metadata :people) position)))))))
+      (testing "Products + Orders + Reviews"
+        (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :products))
+                        (lib/join products->orders)
+                        (lib/join products->reviews))]
+          (testing "for a new join (no position), Orders.USER_ID is suggested for joining People"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people)))))
+          (testing "when editing the second join, the first join's keys are still available"
+            (is (=? [[:= {}
+                      [:field {:join-alias "Orders"} (meta/id :orders :user-id)]
+                      [:field {}                     (meta/id :people :id)]]]
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 1))))
+          (testing "but when editing the first join, Orders.USER_ID is not visible and no condition is suggested"
+            (is (=? nil
+                    (lib/suggested-join-conditions query -1 (meta/table-metadata :people) 0)))))))))

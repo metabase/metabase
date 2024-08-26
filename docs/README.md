@@ -53,6 +53,7 @@ Metabase's reference documentation.
 - [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
+- [About the anonymous usage data we collect](./installation-and-operation/information-collection.md)
 
 ### Databases
 
@@ -90,6 +91,7 @@ Metabase's reference documentation.
 - [Sharing answers](./questions/sharing/answers.md)
 - [Alerts](./questions/sharing/alerts.md)
 - [Public sharing](./questions/sharing/public-links.md)
+- [Exporting data](./questions/sharing/exporting-results.md)
 
 ### Dashboards
 
@@ -105,6 +107,7 @@ Metabase's reference documentation.
 
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
+- [Model persistence](./data-modeling/model-persistence.md)
 - [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
@@ -143,7 +146,7 @@ Metabase's reference documentation.
 - [JWT-based authentication](./people-and-groups/authenticating-with-jwt.md)
 - [SAML-based authentication](./people-and-groups/authenticating-with-saml.md)
   - [SAML with Auth0](./people-and-groups/saml-auth0.md)
-  - [SAML with Azure AD](./people-and-groups/saml-azure.md)
+  - [SAML with Microsoft Entra ID](./people-and-groups/saml-azure.md)
   - [SAML with Google](./people-and-groups/saml-google.md)
   - [SAML with Keycloak](./people-and-groups/saml-keycloak.md)
   - [SAML with Okta](./people-and-groups/saml-okta.md)

@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.pre-alias-aggregations
   (:require
    [metabase.driver :as driver]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor.middleware.annotate :as annotate]))
 
 (defn- ag-name [inner-query ag-clause]

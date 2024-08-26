@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [metabase.models.serialization :as serdes]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log :as log]
    [metabase.util.yaml :as yaml]
    [potemkin.types :as p])
   (:import (java.io File)))
@@ -55,18 +56,23 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
-(def ^:private legal-top-level-paths
+(def legal-top-level-paths "Known top-level paths for directory with serialization output"
   #{"actions" "collections" "databases" "snippets"}) ; But return the hierarchy without labels.
 
 (defn- ingest-all [^File root-dir]
   ;; This returns a map {unlabeled-hierarchy [original-hierarchy File]}.
   (into {} (for [^File file (file-seq root-dir)
-                 :when      (and (.isFile file)
-                                 (str/ends-with? (.getName file) ".yaml")
-                                 (let [rel (.relativize (.toPath root-dir) (.toPath file))]
-                                   (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
+                 :when (and (.isFile file)
+                            (not (str/starts-with? (.getName file) "."))
+                            (str/ends-with? (.getName file) ".yaml")
+                            (let [rel (.relativize (.toPath root-dir) (.toPath file))]
+                              (-> rel (.subpath 0 1) (.toString) legal-top-level-paths)))
                  ;; TODO: only load YAML once.
-                 :let [hierarchy (serdes/path (ingest-file file))]]
+                 :let  [hierarchy (try
+                                    (serdes/path (ingest-file file))
+                                    (catch Exception e
+                                      (log/error e "Error reading file" (.getName file))))]
+                 :when hierarchy]
              [(strip-labels hierarchy) [hierarchy file]])))
 
 (deftype YamlIngestion [^File root-dir settings cache]

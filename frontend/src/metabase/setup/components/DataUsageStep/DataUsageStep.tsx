@@ -7,8 +7,8 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import Settings from "metabase/lib/settings";
 
-import { submitSetup, updateTracking } from "../../actions";
-import { getIsSetupCompleted, getIsTrackingAllowed } from "../../selectors";
+import { goToNextStep, updateTracking } from "../../actions";
+import { getIsTrackingAllowed } from "../../selectors";
 import { useStep } from "../../useStep";
 import { ActiveStep } from "../ActiveStep";
 import { InactiveStep } from "../InactiveStep";
@@ -26,20 +26,22 @@ import {
 export const DataUsageStep = ({
   stepLabel,
 }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, handleStepSelect } =
-    useStep("data_usage");
+  const { isStepActive, isStepCompleted } = useStep("data_usage");
   const [errorMessage, setErrorMessage] = useState<string>();
   const isTrackingAllowed = useSelector(getIsTrackingAllowed);
-  const isSetupCompleted = useSelector(getIsSetupCompleted);
   const dispatch = useDispatch();
 
-  const handleTrackingChange = (isTrackingAllowed: boolean) => {
-    dispatch(updateTracking(isTrackingAllowed));
+  const handleTrackingChange = async (isTrackingAllowed: boolean) => {
+    try {
+      await dispatch(updateTracking(isTrackingAllowed)).unwrap();
+    } catch (error) {
+      setErrorMessage(getSubmitError(error));
+    }
   };
 
   const handleStepSubmit = async () => {
     try {
-      await dispatch(submitSetup()).unwrap();
+      await dispatch(goToNextStep()).unwrap();
     } catch (error) {
       setErrorMessage(getSubmitError(error));
       throw error;
@@ -52,8 +54,6 @@ export const DataUsageStep = ({
         title={getStepTitle(isTrackingAllowed, isStepCompleted)}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }

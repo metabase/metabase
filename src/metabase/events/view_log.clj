@@ -1,49 +1,147 @@
 (ns metabase.events.view-log
-  "This namespace is responsible for subscribing to events which should update the view log."
+  "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.query.permissions :as query-perms]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
+   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
-(defn- record-views!
+(defn- group-by-frequency
+  "Given a list of items, returns a map of frequencies to items.
+    (group-by-frequency [:a :a :b :b :c :c :c])
+    ;; => {2 [:a :b] 3 [:c]}"
+  [items]
+  (reduce (fn [acc [item cnt]]
+            (update acc cnt u/conjv item))
+          {}
+          (frequencies items)))
+
+(defn- increment-view-counts!*
+  [items]
+  (log/debugf "Increment view counts of %d items" (count items))
+  (try
+    (let [model->ids (reduce (fn [acc {:keys [id model]}]
+                               (update acc model conj id))
+                             {}
+                             items)]
+      (doseq [[model ids] model->ids]
+        (let [cnt->ids (group-by-frequency ids)]
+          (t2/query {:update (t2/table-name model)
+                     :set    {:view_count [:+ :view_count (into [:case]
+                                                                (mapcat (fn [[cnt ids]]
+                                                                          [[:in :id ids] cnt])
+                                                                        cnt->ids))]}
+                     :where  [:in :id (apply concat (vals cnt->ids))]}))))
+    (catch Exception e
+      (log/error e "Failed to increment view counts"))))
+
+(def ^:private increment-view-count-interval-seconds 20)
+
+(defonce ^:private
+  increase-view-count-queue
+  (delay (grouper/start!
+          increment-view-counts!*
+          :capacity 500
+          :interval (* increment-view-count-interval-seconds 1000))))
+
+(defn- increment-view-counts!
+  "Increment the view count of the given `model` and `model-id`."
+  [model model-id]
+  (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
+
+(mu/defn ^:private record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
-  [view-or-views]
+  [view-or-views :- [:or :map [:sequential :map]]]
   (span/with-span!
     {:name "record-view!"}
-    (t2/insert! :model/ViewLog view-or-views)))
+    (when (premium-features/log-enabled?)
+      (t2/insert! :model/ViewLog view-or-views))))
 
 (defn- generate-view
-  "Generates a view, given an event map."
-  [{:keys [object user-id has-access]
-    :or   {has-access true}}]
-  {:model      (u/lower-case-en (audit-log/model-name object))
+  "Generates a view, given an event map. The event map either has an `object` or a `model` and `object-id`."
+  [& {:keys [model object-id object user-id has-access context]
+      :or   {has-access true}}]
+  {:model      (u/lower-case-en (audit-log/model-name (or model object)))
    :user_id    (or user-id api/*current-user-id*)
-   :model_id   (u/id object)
-   :has_access has-access})
+   :model_id   (or object-id (u/id object))
+   :has_access has-access
+   :context    context})
 
 (derive ::card-read-event :metabase/event)
 (derive :event/card-read ::card-read-event)
 
 (m/defmethod events/publish-event! ::card-read-event
   "Handle processing for a generic read event notification"
-  [topic event]
+  [topic {:keys [object-id user-id] :as event}]
   (span/with-span!
-    {:name "view-log-card-read"
-     :topic topic
-     :user-id (:user-id event)}
+    {:name    "view-log-card-read"
+     :topic   topic
+     :user-id user-id}
     (try
-      (-> event
-          generate-view
-          (assoc :context "question")
-          record-views!)
+      (increment-view-counts! :model/Card object-id)
+      (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
-        (log/warnf e "Failed to process view_log event. %s" topic)))))
+        (log/warnf e "Failed to process view event. %s" topic)))))
+
+(derive ::dashboard-queried :metabase/event)
+(derive :event/dashboard-queried ::dashboard-queried)
+
+(def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
+
+(defn- update-dashboard-last-viewed-at!* [dashboard-id-timestamps]
+  (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
+                                             (fn [xs] (apply t/max (map :timestamp xs))))]
+    (try
+      (t2/update! :model/Dashboard :id [:in (keys dashboard-id->timestamp)]
+                  {:last_viewed_at (into [:case]
+                                         (mapcat (fn [[id timestamp]]
+                                                   [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                 dashboard-id->timestamp))})
+      (catch Exception e
+        (log/error e "Failed to update dashboard last_viewed_at")))))
+
+(def ^:private update-dashboard-last-viewed-at-queue
+  (delay (grouper/start!
+          update-dashboard-last-viewed-at!*
+          :capacity 500
+          :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
+
+(defn- update-dashboard-last-viewed-at!
+  "Update the `last_used_at` of a dashboard asynchronously"
+  [dashboard-id]
+  (let [now (t/offset-date-time)]
+    (grouper/submit! @update-dashboard-last-viewed-at-queue {:id dashboard-id
+                                                             :timestamp now})))
+
+(m/defmethod events/publish-event! ::dashboard-queried
+  "Handle processing for a dashboard query being run"
+  [topic {:keys [object-id] :as _event}]
+  (try
+    (update-dashboard-last-viewed-at! object-id)
+    (catch Throwable e
+      (log/warnf e "Failed to process dashboard query event. %s" topic))))
+
+(derive ::collection-read-event :metabase/event)
+(derive :event/collection-read ::collection-read-event)
+
+(m/defmethod events/publish-event! ::collection-read-event
+  "Handle processing for a generic read event notification"
+  [topic event]
+  (try
+    (-> event
+        generate-view
+        record-views!)
+    (catch Throwable e
+      (log/warnf e "Failed to process view event. %s" topic))))
 
 (derive ::read-permission-failure :metabase/event)
 (derive :event/read-permission-failure ::read-permission-failure)
@@ -55,44 +153,27 @@
     ;; Only log permission check failures for Cards and Dashboards. This set can be expanded if we add view logging of
     ;; other models.
     (when (#{:model/Card :model/Dashboard} (t2/model object))
-     (-> event
-         generate-view
-         record-views!))
+      (-> event
+          generate-view
+          record-views!))
     (catch Throwable e
-      (log/warnf e "Failed to process view_log event. %s" topic))))
+      (log/warnf e "Failed to process view event. %s" topic))))
 
 (derive ::dashboard-read :metabase/event)
 (derive :event/dashboard-read ::dashboard-read)
 
-(defn- readable-dashcard?
-  "Returns true if the dashcard's card was readable by the current user, and false otherwise. Unreadable cards are
-  replaced with maps containing just the card's ID, so we can check for this to determine whether the card was readable"
-  [dashcard]
-  (let [card (:card dashcard)]
-    (not= (set (keys card)) #{:id})))
-
 (m/defmethod events/publish-event! ::dashboard-read
-  "Handle processing for the dashboard read event. Logs the dashboard view as well as card views for each card on the
-  dashboard."
-  [topic {:keys [object user-id] :as event}]
+  "Handle processing for the dashboard read event. Logs the dashboard view. Card views are logged separately."
+  [topic {:keys [object-id user-id] :as event}]
   (span/with-span!
     {:name "view-log-dashboard-read"
      :topic topic
      :user-id user-id}
     (try
-      (let [dashcards (filter :card_id (:dashcards object)) ;; filter out link/text cards wtih no card_id
-            user-id   (or user-id api/*current-user-id*)
-            views     (map (fn [dashcard]
-                               {:model      "card"
-                                :model_id   (u/id (:card_id dashcard))
-                                :user_id    user-id
-                                :has_access (readable-dashcard? dashcard)
-                                :context    "dashboard"})
-                           dashcards)
-            dash-view (generate-view event)]
-        (record-views! (cons dash-view views)))
+      (increment-view-counts! :model/Dashboard object-id)
+      (record-views! (generate-view :model :model/Dashboard event))
       (catch Throwable e
-        (log/warnf e "Failed to process view_log event. %s" topic)))))
+        (log/warnf e "Failed to process view event. %s" topic)))))
 
 (derive ::table-read :metabase/event)
 (derive :event/table-read ::table-read)
@@ -106,6 +187,7 @@
      :topic topic
      :user-id user-id}
     (try
+      (increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
             database-id (:db_id object)
             has-access? (when (= api/*current-user-id* user-id)
@@ -115,4 +197,4 @@
             generate-view
             record-views!))
       (catch Throwable e
-        (log/warnf e "Failed to process view_log event. %s" topic)))))
+        (log/warnf e "Failed to process view event. %s" topic)))))

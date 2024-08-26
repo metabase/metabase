@@ -12,7 +12,7 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
   flex-direction: row;
   overflow-x: hidden;
   max-width: 388px;
-  background-color: ${color("text-dark")};
+  background-color: var(--mb-color-text-dark);
   padding: 16px;
   border-radius: 6px;
   ${props =>
@@ -30,19 +30,19 @@ export const ToasterContainer = styled.div<ToasterContainerProps>`
 `;
 
 export const ToasterMessage = styled.p`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 250px;
   line-height: 24px;
   font-size: 14px;
-  margin: 0px;
+  margin: 0;
 `;
 
 export const ToasterButton = styled.button`
   display: flex;
   padding: 7px 18px;
-  background-color: ${alpha(color("bg-white"), 0.1)};
+  background-color: ${() => alpha(color("bg-white"), 0.1)};
   border-radius: 6px;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   width: 90px;
   height: fit-content;
   font-size: 14px;
@@ -51,15 +51,16 @@ export const ToasterButton = styled.button`
 
   &:hover {
     cursor: pointer;
-    background-color: ${alpha(color("bg-white"), 0.3)};
+    background-color: ${() => alpha(color("bg-white"), 0.3)};
   }
 `;
 
 export const ToasterDismiss = styled.button`
   cursor: pointer;
   transition: color 200ms ease;
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
+
   &:hover {
-    color: ${lighten("bg-dark", 0.3)};
+    color: ${() => lighten("bg-dark", 0.3)};
   }
 `;

@@ -1,52 +1,63 @@
-import type React from "react";
+import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
-import type { SearchListQuery } from "metabase-types/api";
 
 import type {
   EntityPickerOptions,
-  TypeWithModel,
+  IsFolder,
+  ListProps,
   PickerState,
-  TisFolder,
+  TypeWithModel,
 } from "../../types";
-import type { EntityItemListProps } from "../ItemList";
+import { isSelectedItem } from "../../utils";
+import { AutoScrollBox } from "../AutoScrollBox";
 
-import { AutoScrollBox } from "./AutoScrollBox";
 import { ListBox } from "./NestedItemPicker.styled";
+import { findLastSelectedItem, generateKey } from "./utils";
 
-export interface NestedItemPickerProps<TItem extends TypeWithModel> {
-  onFolderSelect: ({ folder }: { folder: TItem }) => void;
-  onItemSelect: (item: TItem) => void;
-  itemName: string;
-  options: EntityPickerOptions;
-  path: PickerState<TItem>;
-  isFolder: TisFolder<TItem>;
-  listResolver: React.FC<
-    EntityItemListProps<TItem> & {
-      options: EntityPickerOptions;
-    }
-  >;
+export interface NestedItemPickerProps<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+  Options extends EntityPickerOptions,
+> {
+  onFolderSelect: ({ folder }: { folder: Item }) => void;
+  onItemSelect: (item: Item) => void;
+  options: Options;
+  path: PickerState<Item, Query>;
+  isFolder: IsFolder<Id, Model, Item>;
+  listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
+  shouldDisableItem?: (item: Item) => boolean;
+  shouldShowItem?: (item: Item) => boolean;
 }
 
-const generateKey = (query?: SearchListQuery) =>
-  JSON.stringify(query ?? "root");
-
-export function NestedItemPicker<TItem extends TypeWithModel>({
+export function NestedItemPicker<
+  Id,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+  Query,
+  Options extends EntityPickerOptions,
+>({
   onFolderSelect,
   onItemSelect,
   options,
   path,
   isFolder,
   listResolver: ListResolver,
-}: NestedItemPickerProps<TItem>) {
-  const handleClick = (item: TItem) => {
+  shouldDisableItem,
+  shouldShowItem,
+}: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
+  const handleClick = (item: Item) => {
     if (isFolder(item)) {
       onFolderSelect({ folder: item });
     } else {
       onItemSelect(item);
     }
   };
+
+  const lastSelectedItem = findLastSelectedItem(path);
 
   return (
     <AutoScrollBox
@@ -56,6 +67,11 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
           const { query, selectedItem } = level;
+          const isCurrentLevel = Boolean(
+            selectedItem &&
+              lastSelectedItem &&
+              isSelectedItem(selectedItem, lastSelectedItem),
+          );
 
           return (
             <ListBox
@@ -67,8 +83,10 @@ export function NestedItemPicker<TItem extends TypeWithModel>({
                   query={query}
                   selectedItem={selectedItem}
                   options={options}
-                  onClick={(item: TItem) => handleClick(item)}
-                  isCurrentLevel={index === path.length - 2}
+                  onClick={(item: Item) => handleClick(item)}
+                  isCurrentLevel={isCurrentLevel}
+                  shouldDisableItem={shouldDisableItem}
+                  shouldShowItem={shouldShowItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

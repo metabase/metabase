@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
@@ -10,7 +9,7 @@ export const Container = styled.div`
 
 export const HeaderContainer = styled.div`
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   cursor: pointer;
   display: flex;
 `;

@@ -1,13 +1,13 @@
 import {
-  ORDERS_DASHBOARD_ID,
   ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
   clearFilterWidget,
-  filterWidget,
   editDashboard,
+  filterWidget,
+  popover,
+  restore,
   saveDashboard,
   setFilter,
   visitDashboard,
@@ -43,7 +43,7 @@ describe("scenarios > dashboard > filters > location", () => {
         addWidgetStringFilter(value);
 
         cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
+        cy.findByTestId("dashcard").within(() => {
           cy.contains(representativeResult);
         });
 
@@ -66,7 +66,7 @@ describe("scenarios > dashboard > filters > location", () => {
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("1510");
     });
   });

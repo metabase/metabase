@@ -1,12 +1,11 @@
 (ns metabase.models.audit-log
   "Model defenition for the Metabase Audit Log, which tracks actions taken by users across the Metabase app. This is
-  distinct from the Activity and View Log models, which predate this namespace, and which power specific API endpoints
-  used for in-app functionality, such as the recently-viewed items displayed on the homepage."
+  distinct from the View Log model, which predates this namespace, and which powers specific API endpoints used for
+  in-app functionality, such as the recently-viewed items displayed on the homepage."
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.models.activity :as activity]
    [metabase.models.interface :as mi]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
@@ -47,6 +46,7 @@
   [instance-or-model]
   (let [model (or (t2/model instance-or-model) instance-or-model)
         raw-model-name (cond
+                         (= model :model/LegacyMetric) "Metric"
                          (keyword? model) (name model)
                          (class? model) (.getSimpleName ^java.lang.Class model))]
     (model-name->audit-logged-name raw-model-name raw-model-name)))
@@ -95,12 +95,6 @@
                                   (prepare-update-event-data object-details previous-details)
                                   object-details))})))
 
-(defn- log-enabled?
-  "Returns true when we should record audit data into the audit log."
-  []
-  (or (premium-features/is-hosted?)
-      (premium-features/has-feature? :audit-app)))
-
 (mu/defn record-event!
   "Records an event in the Audit Log.
 
@@ -124,31 +118,21 @@
   - Otherwise, returns the audit logged row."
   [topic :- :keyword
    params :- ::event-params]
-  (when (log-enabled?)
+  (when (premium-features/log-enabled?)
     (span/with-span!
       {:name       "record-event!"
        :attributes (cond-> {}
                      (:model-id params) (assoc :model/id (:model-id params))
                      (:user-id params) (assoc :user/id (:user-id params))
                      (:model params) (assoc :model/name (u/lower-case-en (:model params))))}
-      (let [{:keys [user-id model-name model-id details unqualified-topic object]}
+      (let [{:keys [user-id model-name model-id details unqualified-topic]}
             (construct-event topic params api/*current-user-id*)]
         (t2/insert! :model/AuditLog
                     :topic    unqualified-topic
                     :details  details
                     :model    model-name
                     :model_id model-id
-                    :user_id  user-id)
-        ;; TODO: temporarily double-writing to the `activity` table, delete this in Metabase v48
-        ;; TODO figure out set of events to actually continue recording in activity
-        (when-not (#{:card-read :dashboard-read :table-read :card-query :setting-update} unqualified-topic)
-          (activity/record-activity!
-            {:topic    topic
-             :object   object
-             :details  details
-             :model    model-name
-             :model-id model-id
-             :user-id  user-id}))))))
+                    :user_id  user-id)))))
 
 (t2/define-before-insert :model/AuditLog
   [activity]

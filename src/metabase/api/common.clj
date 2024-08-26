@@ -35,6 +35,46 @@
 ;;   but it may be more instructive to look at examples in our codebase.
 ;;
 ;;  <hr />
+;;
+;; ## How does defendpoint coersion work?
+;;
+;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
+;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
+;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
+;;
+;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
+;;
+;; ### Here's an example repl session showing how it works:
+;;
+;; <pre><code>
+;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]])
+;; </code></pre>
+;;
+;; To see how a schema will be transformed, call `mc/decode` with `defendpoint-transformer`.
+;;
+;; With the `:keyword` schema:
+;;
+;; <pre><code>
+;; (mc/decode :keyword "foo/bar" defendpoint-transformer)
+;; ;; => :foo/bar
+;; </code></pre>
+;;
+;; The schemas can get quite complex, ( see: https://github.com/metosin/malli#advanced-transformations ) so it's best
+;; to test them out in the REPL to see how they'll be transformed.
+;;
+;; Example:
+;; <pre><code>
+;; (def DecodableKwInt
+;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
+;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
+;;
+;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
+;; ;; => 123
+;; </code></pre>
+;; <hr />
 
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."
@@ -42,15 +82,17 @@
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
+   [clojure.tools.macro :as macro]
    [compojure.core :as compojure]
    [medley.core :as m]
    [metabase.api.common.internal
     :refer [add-route-param-schema
             auto-coerce
             route-dox
-            validate-params
             route-fn-name
+            validate-params
             wrap-response-if-needed]]
+   [metabase.api.common.openapi :as openapi]
    [metabase.config :as config]
    [metabase.events :as events]
    [metabase.models.interface :as mi]
@@ -59,10 +101,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [potemkin :as p]
    [ring.middleware.multipart-params :as mp]
    [toucan2.core :as t2]))
 
 (declare check-403 check-404)
+
+(p/import-vars [openapi openapi-object])
 
 ;;; ----------------------------------------------- DYNAMIC VARIABLES ------------------------------------------------
 ;; These get bound by middleware for each HTTP request.
@@ -88,7 +133,6 @@
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
   more information about the Metabase permissions system."
   (atom #{}))
-
 
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
@@ -123,7 +167,7 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
-  {:style/indent 1, :arglists '([condition [code message] & more] [condition code message & more])}
+  {:style/indent [:form], :arglists '([condition [code message] & more] [condition code message & more])}
   [condition & args]
   (let [[code message & more] (if (sequential? (first args))
                                 (concat (first args) (rest args))
@@ -152,8 +196,8 @@
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
   (throw (ex-info (tru "Invalid field: {0}" field-name)
-           {:status-code 400
-            :errors      {(keyword field-name) message}})))
+                  {:status-code 400
+                   :errors      {(keyword field-name) message}})))
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
@@ -165,11 +209,9 @@
   `checkp` can be called with the form
 
       (checkp test field-name message)"
-  {:style/indent 1}
-  ([tst field-name message]
-   (when-not tst
-     (throw-invalid-param-exception (str field-name) message))))
-
+  [tst field-name message]
+  (when-not tst
+    (throw-invalid-param-exception (str field-name) message)))
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 
@@ -193,7 +235,6 @@
            ~@(vec (apply concat (for [[binding test] (partition-all 2 bindings)]
                                   [binding `(check ~test ~response-pair-symb)])))]
        ~@body)))
-
 
 ;;; ### GENERIC RESPONSE HELPERS
 ;; These are basically the same as the `api-` versions but with RESPONSE-PAIR already bound
@@ -254,7 +295,6 @@
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
-
 ;;; --------------------------------------- DEFENDPOINT AND RELATED FUNCTIONS ----------------------------------------
 
 (s/def ::defendpoint-args
@@ -276,14 +316,14 @@
           route                                               (add-route-param-schema arg->schema route)
           ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
           ;; their API error messages
-          docstr                                              (route-dox method route docstr args
-                                                                               (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
-                                                                               body)]
+          route-doc                                           (route-dox method route docstr args
+                                                                         (m/map-vals #_{:clj-kondo/ignore [:discouraged-var]} eval arg->schema)
+                                                                         body)]
       ;; Don't i18n this, it's dev-facing only
       (when-not docstr
         (log/warn (u/format-color 'red "Warning: endpoint %s/%s does not have a docstring. Go add one."
                                   (ns-name *ns*) fn-name)))
-      (assoc parsed :fn-name fn-name, :route route, :docstr docstr))))
+      (assoc parsed :fn-name fn-name, :route route, :route-doc route-doc, :docstr docstr))))
 
 (defn validate-param-values
   "Log a warning if the request body contains any parameters not included in `expected-params` (which is presumably
@@ -308,17 +348,26 @@
 
 (defmacro defendpoint*
   "Impl macro for [[defendpoint]]; don't use this directly."
-  [{:keys [method route fn-name docstr args body arg->schema]}]
+  [{:keys [method route fn-name route-doc docstr args body arg->schema]}]
   {:pre [(or (string? route) (vector? route))]}
   (let [method-kw       (method-symbol->keyword method)
         allowed-params  (mapv keyword (keys arg->schema))
         prep-route      #'compojure/prepare-route
         multipart?      (get (meta method) :multipart false)
-        handler-wrapper (if multipart? mp/wrap-multipart-params identity)]
+        handler-wrapper (if multipart? mp/wrap-multipart-params identity)
+        schema          (into [:map] (for [[k v] arg->schema]
+                                       [(keyword k) v]))
+        quoted-args     (list 'quote args)]
     `(def ~(vary-meta fn-name
-                      assoc
-                      :doc          docstr
-                      :is-endpoint? true)
+                      merge
+                      {:doc          route-doc
+                       :orig-doc     docstr
+                       :method       method-kw
+                       :path         route
+                       :schema       schema
+                       :args         quoted-args
+                       :is-endpoint? true}
+                      (meta method))
        ;; The next form is a copy of `compojure/compile-route`, with the sole addition of the call to
        ;; `validate-param-values`. This is because to validate the request body we need to intercept the request
        ;; before the destructuring takes place. I.e., we need to validate the value of `(:body request#)`, and that's
@@ -389,22 +438,37 @@
   "Create a `(defroutes routes ...)` form that automatically includes all functions created with `defendpoint` in the
   current namespace. Optionally specify middleware that will apply to all of the endpoints in the current namespace.
 
-     (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
+    (api/define-routes api/+check-superuser) ; all API endpoints in this namespace will require superuser access"
   {:style/indent 0}
   [& middleware]
-  (let [api-route-fns (namespace->api-route-fns *ns*)
-        routes        `(compojure/routes ~@api-route-fns)
+  (let [api-route-fns (vec (namespace->api-route-fns *ns*))
+        routes        `(with-meta (compojure/routes ~@api-route-fns) {:routes ~api-route-fns})
         docstring     (str "Routes for " *ns*)]
-    `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+    `(def ~(vary-meta 'routes assoc
+                      :doc    (api-routes-docstring *ns* api-route-fns middleware)
+                      :routes api-route-fns)
        ~docstring
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
           routes))))
 
+(defmacro context
+  "Replacement for `compojure.core/context`, but with metadata"
+  [path args & routes]
+  `(with-meta (compojure/context ~path ~args ~@routes) {:routes (vector ~@routes)
+                                                        :path   ~path}))
+
+(defmacro defroutes
+  "Replacement for `compojure.core/defroutes, but with metadata"
+  [name & routes]
+  (let [[name routes] (macro/name-with-attributes name routes)
+        name          (vary-meta name assoc :routes (vec routes))]
+    `(def ~name (compojure/routes ~@routes))))
+
 (defn +check-superuser
   "Wrap a Ring handler to make sure the current user is a superuser before handling any requests.
 
-     (api/+check-superuser routes)"
+    (api/+check-superuser routes)"
   [handler]
   (fn
     ([request]
@@ -425,7 +489,6 @@
   "Check whether we can read an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
   don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
   `obj` if the check is successful."
-  {:style/indent 2}
   ([obj]
    (check-404 obj)
    (try
@@ -444,10 +507,9 @@
    (read-check (apply t2/select-one entity :id id other-conditions))))
 
 (defn write-check
-  "Check whether we can write an existing OBJ, or ENTITY with ID.
-   If the object doesn't exist, throw a 404; if we don't have proper permissions, throw a 403.
-   This will fetch the object if it was not already fetched, and returns OBJ if the check is successful."
-  {:style/indent 2}
+  "Check whether we can write an existing `obj`, or `entity` with `id`. If the object doesn't exist, throw a 404; if we
+  don't have proper permissions, throw a 403. This will fetch the object if it was not already fetched, and returns
+  `obj` if the check is successful."
   ([obj]
    (check-404 obj)
    (try
@@ -468,7 +530,7 @@
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `POST` API endpoints instead have the `can-create?` logic for a given model
   hardcoded into them -- this should be considered an antipattern and be refactored out going forward."
-  {:added "0.32.0", :style/indent 2}
+  {:added "0.32.0"}
   [entity m]
   (try
     (check-403 (mi/can-create? entity m))
@@ -483,7 +545,7 @@
   This function was added *years* after `read-check` and `write-check`, and at the time of this writing most models do
   not implement this method. Most `PUT` API endpoints instead have the `can-update?` logic for a given model hardcoded
   into them -- this should be considered an antipattern and be refactored out going forward."
-  {:added "0.36.0", :style/indent 2}
+  {:added "0.36.0"}
   [instance changes]
   (try
     (check-403 (mi/can-update? instance changes))
@@ -500,7 +562,7 @@
   (u/prog1 object
     (check-404 object)
     (check (not (:archived object))
-      [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
+           [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
@@ -598,7 +660,6 @@
          (reconcile-position-for-collection! old-collection-id old-position nil)
          (reconcile-position-for-collection! new-collection-id nil new-position))))))
 
-
 ;;; ------------------------------------------ PARAM PARSING FNS ----------------------------------------
 
 (defn bit->boolean
@@ -627,3 +688,45 @@
   (if (sequential? xs)
     (map parse-fn xs)
     [(parse-fn xs)]))
+
+;;; ---------------------------------------- SET `archived_directly` ---------------------------------
+
+(defn updates-with-archived-directly
+  "Sets `archived_directly` to `true` iff `:archived` is being set to `true`."
+  [current-obj obj-updates]
+  (cond-> obj-updates
+    (column-will-change? :archived current-obj obj-updates)
+    (assoc :archived_directly (boolean (:archived obj-updates)))
+
+    ;; This is a hack around a frontend issue. Apparently, the undo functionality depends on calculating a diff
+    ;; between the current state and the previous state. Sometimes this results in the frontend telling us to
+    ;; *both* mark an item as archived *and* "move" it to the Trash.
+    ;;
+    ;; Let's just say that if you're marking something as archived, we throw away any `collection_id` you passed in
+    ;; along with it.
+    (and (column-will-change? :archived current-obj obj-updates)
+         (:archived obj-updates))
+    (dissoc :collection_id)))
+
+(defn present-in-trash-if-archived-directly
+  "If `:archived_directly` is `true`, set `:collection_id` to the trash collection ID."
+  [item trash-collection-id]
+  (cond-> item
+    (:archived_directly item)
+    (assoc :collection_id trash-collection-id)))
+
+(mu/defn present-items
+  "A convenience function that takes a heterogeneous collection of items. Each item should have, at minimum, a `:model`
+  and an `:id`. The `f` function is called like `(f model all-items-with-that-model)` and should return a collection
+  of maps. `:id` is the only required key for these maps, and order *does not matter* - `present-items` is responsible
+  for reordering items the way they were."
+  [f items :- [:sequential [:map
+                            [:id ms/PositiveInt]
+                            [:model :keyword]]]]
+  (let [id+model->order (into {} (map-indexed (fn [i row] [[(:id row) (:model row)] i]) items))]
+    (->> items
+         (group-by :model)
+         (mapcat (fn [[model items]]
+                   (map #(assoc % ::model model) (f model items))))
+         (sort-by (comp id+model->order (juxt :id ::model)))
+         (map #(dissoc % ::model)))))

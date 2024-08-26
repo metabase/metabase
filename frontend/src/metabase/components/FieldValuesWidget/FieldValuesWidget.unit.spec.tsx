@@ -1,8 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
 import {
-  getBrokenUpTextMatcher,
+  setupFieldSearchValuesEndpoint,
+  setupParameterValuesEndpoints,
+} from "__support__/server-mocks";
+import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
@@ -11,23 +13,23 @@ import type { IFieldValuesWidgetProps } from "metabase/components/FieldValuesWid
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 import Fields from "metabase/entities/fields";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
-import type Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { createMockParameter } from "metabase-types/api/mocks";
 import {
   ORDERS,
-  PRODUCTS,
   PEOPLE,
-  PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
+  PRODUCTS,
+  PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 
 import {
-  state,
-  metadata,
+  EXPRESSION_FIELD_ID,
   LISTABLE_PK_FIELD_ID,
   LISTABLE_PK_FIELD_VALUE,
   SEARCHABLE_FK_FIELD_ID,
-  EXPRESSION_FIELD_ID,
-  metadataWithSearchValuesField,
+  metadata,
+  state,
 } from "./testMocks";
 
 async function setup({
@@ -49,9 +51,17 @@ async function setup({
     .spyOn(Fields.objectActions, "fetchFieldValues")
     .mockImplementation(fetchFieldValues);
 
+  const onChange = jest.fn();
+
+  setupParameterValuesEndpoints({
+    values: [],
+    has_more_values: false,
+  });
+
   if (searchValue) {
     fields.forEach(field => {
-      setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
+      const fieldId = field?.id as number;
+      setupFieldSearchValuesEndpoint(fieldId, fieldId, searchValue);
     });
   }
 
@@ -59,7 +69,7 @@ async function setup({
     <FieldValuesWidget
       value={[]}
       fields={fields.filter(isNotNull)}
-      onChange={jest.fn()}
+      onChange={onChange}
       prefix={prefix}
       {...props}
     />,
@@ -70,7 +80,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { fetchFieldValues };
+  return { fetchFieldValues, onChange };
 }
 
 describe("FieldValuesWidget", () => {
@@ -273,44 +283,27 @@ describe("FieldValuesWidget", () => {
     });
   });
 
-  describe("NoMatchState", () => {
-    it("should display field title when one field passed and there are no matching results", async () => {
-      const field = metadataWithSearchValuesField.field(PEOPLE.PASSWORD);
-      const displayName = field?.display_name; // "Password"
-      const searchValue = "somerandomvalue";
-
-      await setup({
-        fields: [field],
-        multi: true,
-        disablePKRemappingForSearch: true,
-        searchValue,
+  describe("custom labels", () => {
+    it("should use custom labels if provided", async () => {
+      const valuesField = checkNotNull(metadata.field(LISTABLE_PK_FIELD_ID));
+      const { onChange } = await setup({
+        fields: [valuesField],
+        parameter: createMockParameter({
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [
+              ["A", "Foo"],
+              ["B", "Bar"],
+            ],
+          },
+        }),
       });
 
-      userEvent.type(
-        screen.getByPlaceholderText(`Search by ${displayName}`),
-        searchValue,
-      );
+      const input = screen.getByRole("searchbox");
 
-      expect(
-        await screen.findByText(
-          getBrokenUpTextMatcher(`No matching ${displayName} found.`),
-        ),
-      ).toBeInTheDocument();
-    });
+      await userEvent.type(input, "Foo,");
 
-    it("should not display field title when multiple fields passed and no matching results found", async () => {
-      const searchValue = "somerandomvalue";
-
-      await setup({
-        fields: [metadata.field(PEOPLE.CITY), metadata.field(PEOPLE.NAME)],
-        multi: true,
-        disablePKRemappingForSearch: true,
-        searchValue,
-      });
-
-      userEvent.type(screen.getByPlaceholderText("Search"), searchValue);
-
-      expect(await screen.findByText(`No matching result`)).toBeInTheDocument();
+      expect(onChange).toHaveBeenLastCalledWith(["A"]);
     });
   });
 });

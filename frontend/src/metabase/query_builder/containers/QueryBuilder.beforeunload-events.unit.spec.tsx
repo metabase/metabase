@@ -24,7 +24,21 @@ import {
 registerVisualizations();
 
 describe("QueryBuilder - beforeunload events", () => {
+  const scrollBy = HTMLElement.prototype.scrollBy;
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+
+  beforeEach(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
+  });
+
   afterEach(() => {
+    HTMLElement.prototype.scrollBy = scrollBy;
+    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+
     jest.resetAllMocks();
   });
 
@@ -108,8 +122,8 @@ describe("QueryBuilder - beforeunload events", () => {
         initialRoute: "/",
       });
 
-      userEvent.click(screen.getByText("New"));
-      userEvent.click(
+      await userEvent.click(screen.getByText("New"));
+      await userEvent.click(
         within(await screen.findByRole("dialog")).getByText("SQL query"),
       );
       await waitForLoaderToBeRemoved();
@@ -128,8 +142,8 @@ describe("QueryBuilder - beforeunload events", () => {
         initialRoute: "/",
       });
 
-      userEvent.click(screen.getByText("New"));
-      userEvent.click(
+      await userEvent.click(screen.getByText("New"));
+      await userEvent.click(
         within(await screen.findByRole("dialog")).getByText("SQL query"),
       );
 
@@ -184,8 +198,8 @@ describe("QueryBuilder - beforeunload events", () => {
       });
 
       expect(screen.queryByText("Count")).not.toBeInTheDocument();
-      userEvent.click(await screen.findByText("Summarize"));
-      userEvent.click(await screen.findByText("Done"));
+      await userEvent.click(await screen.findByText("Summarize"));
+      await userEvent.click(await screen.findByText("Done"));
       expect(await screen.findByText("Count")).toBeInTheDocument();
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
@@ -199,8 +213,8 @@ describe("QueryBuilder - beforeunload events", () => {
       });
 
       expect(screen.queryByText("Count")).not.toBeInTheDocument();
-      userEvent.click(await screen.findByText("Summarize"));
-      userEvent.click(await screen.findByText("Done"));
+      await userEvent.click(await screen.findByText("Summarize"));
+      await userEvent.click(await screen.findByText("Done"));
       expect(await screen.findByText("Count")).toBeInTheDocument();
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");

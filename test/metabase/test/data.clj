@@ -41,6 +41,7 @@
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
@@ -55,7 +56,12 @@
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset
 ;; combos.
 
-(defn db
+(mu/defn db :- [:map
+                [:id       ::lib.schema.id/database]
+                [:engine   :keyword]
+                [:name     :string]
+                [:settings [:map
+                            [:database-source-dataset-name :string]]]]
   "Return the current database.
    Relies on the dynamic variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   []
@@ -187,19 +193,22 @@
   [table-name & [query]]
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
+(def ^:private FormattableName
+  [:or
+   :keyword
+   :string
+   :symbol
+   [:fn
+    {:error/message (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? "
+                         "(Change the form to `$table.field`, or specify a top-level default Table to "
+                         "`$ids` or `mbql-query`.)")}
+    (constantly false)]])
+
 (mu/defn format-name :- :string
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current
   driver's implementation of [[ddl.i/format-name]]. (Most databases use the default implementation of `identity`; H2
   uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
-  [a-name :- [:or
-              :keyword
-              :string
-              :symbol
-              [:fn
-               {:error/message (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? "
-                                    "(Change the form to `$table.field`, or specify a top-level default Table to "
-                                    "`$ids` or `mbql-query`.)")}
-               (constantly false)]]]
+  [a-name :- FormattableName]
   (ddl.i/format-name (tx/driver) (name a-name)))
 
 (defn id
@@ -238,7 +247,7 @@
   *  An inline dataset definition:
 
      (data/dataset (get-dataset-definition) ...)"
-  {:style/indent 1}
+  {:style/indent :defn}
   [dataset & body]
   `(t/testing (colorize/magenta ~(str (if (symbol? dataset)
                                         (format "using %s dataset" dataset)
@@ -257,6 +266,8 @@
   [& body]
   `(data.impl/do-with-temp-copy-of-db (^:once fn* [] ~@body)))
 
+;;; TODO FIXME -- rename this to `with-empty-h2-app-db`
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-empty-h2-app-db
   "Runs `body` under a new, blank, H2 application database (randomly named), in which all model tables have been
   created via Liquibase schema migrations. After `body` is finished, the original app DB bindings are restored.
@@ -269,5 +280,5 @@
      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
      (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
                    perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
-       (mdb/setup-db!)
+       (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
        ~@body)))

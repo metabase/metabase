@@ -9,7 +9,9 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.random :as u.random]))
 
 (comment metabase.driver.sql/keep-me)
 
@@ -20,7 +22,6 @@
 (defn add-test-extensions! [driver]
   (driver/add-parent! driver :sql/test-extensions)
   (log/infof "Added SQL test extensions for %s ✏️" driver))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Interface (Identifier Names)                                          |
@@ -35,6 +36,7 @@
 (defmethod pk-field-name :sql/test-extensions [_] "id")
 
 ;; TODO - WHAT ABOUT SCHEMA NAME???
+;; Tech debt issue - #39356
 (defmulti qualified-name-components
   "Return a vector of String names that can be used to refer to a Database, Table, or Field. This is provided so drivers
   have the opportunity to inject things like schema names or even modify the names themselves.
@@ -61,7 +63,7 @@
 
   You should only use this function in places where you are working directly with SQL. For HoneySQL forms, use
   [[metabase.util.honey-sql-2/identifier]] instead."
-  {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name]), :style/indent 1}
+  {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name])}
   [driver & names]
   (let [identifier-type (condp = (count names)
                           1 :database
@@ -70,7 +72,6 @@
     (->> (apply qualified-name-components driver names)
          (map (partial ddl.i/format-name driver))
          (apply sql.u/quote-name driver identifier-type))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Interface (Comments)                                              |
@@ -94,7 +95,6 @@
   (when (seq field-comment)
     (format "COMMENT '%s'" field-comment)))
 
-
 (defmulti standalone-column-comment-sql
   "Return standalone `COMMENT` statement for a column."
   {:arglists '([driver dbdef tabledef fielddef])}
@@ -108,8 +108,8 @@
   [driver {:keys [database-name]} {:keys [table-name]} {:keys [field-name field-comment]}]
   (when (seq field-comment)
     (format "COMMENT ON COLUMN %s IS '%s';"
-      (qualify-and-quote driver database-name table-name field-name)
-      field-comment)))
+            (qualify-and-quote driver database-name table-name field-name)
+            field-comment)))
 
 (defmulti inline-table-comment-sql
   "Return an inline `COMMENT` statement for a table."
@@ -132,9 +132,8 @@
   [driver {:keys [database-name]} {:keys [table-name table-comment]}]
   (when (seq table-comment)
     (format "COMMENT ON TABLE %s IS '%s';"
-      (qualify-and-quote driver database-name table-name)
-      table-comment)))
-
+            (qualify-and-quote driver database-name table-name)
+            table-comment)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Interface (DDL SQL Statements)                                         |
@@ -239,17 +238,23 @@
         inline-comment (inline-column-comment-sql driver field-comment)]
     (str/join " " (filter some? [field-name field-type not-null unique inline-comment]))))
 
+(defn fielddefs->pk-field-names
+  "Find the pk field names in fieldefs"
+  [fieldefs]
+  (->> fieldefs (filter :pk?) (map :field-name)))
+
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as _dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [pk-field-name (format-and-quote-field-name driver (pk-field-name driver))]
-    (format "CREATE TABLE %s (%s %s, %s, PRIMARY KEY (%s)) %s;"
+  (let [pk-field-names (->> (fielddefs->pk-field-names field-definitions)
+                            (map (partial format-and-quote-field-name driver))
+                            (str/join ", "))]
+    (format "CREATE TABLE %s (%s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
-            pk-field-name (pk-sql-type driver)
             (str/join
              ", "
              (for [field-def field-definitions]
                (field-definition-sql driver field-def)))
-            pk-field-name
+            pk-field-names
             (or (inline-table-comment-sql driver table-comment) ""))))
 
 (defmulti drop-table-if-exists-sql
@@ -271,10 +276,24 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defn- get-tabledef
+  [dbdef table-name]
+  (->> dbdef
+       :table-definitions
+       (filter #(= (:table-name %) table-name))
+       first))
+
 (defmethod add-fk-sql :sql/test-extensions
-  [driver {:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
+  [driver {:keys [database-name] :as dbdef} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
   (let [quot            #(sql.u/quote-name driver %1 (ddl.i/format-name driver %2))
-        dest-table-name (name dest-table-name)]
+        dest-table-name (name dest-table-name)
+        pk-names        (->> (get-tabledef dbdef dest-table-name)
+                             :field-definitions
+                             fielddefs->pk-field-names)
+        _ (when (< 1 (count pk-names))
+            (throw (IllegalArgumentException. "`add-fk-sql` only works with tables with a single PK field")))
+        pk-name             (first pk-names)]
+
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
@@ -285,7 +304,7 @@
               (quot :constraint fk-name))
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
-            (quot :field (pk-field-name driver)))))
+            (quot :field pk-name))))
 
 (defmethod tx/count-with-template-tag-query :sql/test-extensions
   [driver table field _param-type]
@@ -323,3 +342,8 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod session-schema :sql/test-extensions [_] nil)
+
+(defmethod tx/native-query-with-card-template-tag :sql
+  [_driver card-template-tag-name]
+  (let [source-table-name (u/lower-case-en (u.random/random-name))]
+    (format "SELECT * FROM {{%s}} %s" card-template-tag-name source-table-name)))

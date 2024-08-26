@@ -10,6 +10,8 @@
    [metabase.driver.bigquery-cloud-sdk.query-processor-test.reconciliation-test-util
     :as bigquery.qp.reconciliation-tu]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -17,13 +19,13 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -44,13 +46,13 @@
   (mt/test-driver :bigquery-cloud-sdk
     (is (= [[100] [99]]
            (mt/rows
-             (qp/process-query
-              (mt/native-query
-                {:query (with-test-db-name
-                          (str "SELECT `v4_test_data.venues`.`id` "
-                               "FROM `v4_test_data.venues` "
-                               "ORDER BY `v4_test_data.venues`.`id` DESC "
-                               "LIMIT 2;"))})))))))
+            (qp/process-query
+             (mt/native-query
+               {:query (with-test-db-name
+                         (str "SELECT `v4_test_data.venues`.`id` "
+                              "FROM `v4_test_data.venues` "
+                              "ORDER BY `v4_test_data.venues`.`id` DESC "
+                              "LIMIT 2;"))})))))))
 
 (deftest ^:parallel native-query-test-2
   (mt/test-driver :bigquery-cloud-sdk
@@ -75,15 +77,15 @@
                :effective_type :type/Integer
                :field_ref    [:field "checkins_id" {:base-type :type/Integer}]}]
              (mt/cols
-               (qp/process-query
-                {:native   {:query (with-test-db-name
-                                     (str "SELECT `v4_test_data.checkins`.`venue_id` AS `venue_id`, "
-                                          "       `v4_test_data.checkins`.`user_id` AS `user_id`, "
-                                          "       `v4_test_data.checkins`.`id` AS `checkins_id` "
-                                          "FROM `v4_test_data.checkins` "
-                                          "LIMIT 2"))}
-                 :type     :native
-                 :database (mt/id)})))))))
+              (qp/process-query
+               {:native   {:query (with-test-db-name
+                                    (str "SELECT `v4_test_data.checkins`.`venue_id` AS `venue_id`, "
+                                         "       `v4_test_data.checkins`.`user_id` AS `user_id`, "
+                                         "       `v4_test_data.checkins`.`id` AS `checkins_id` "
+                                         "FROM `v4_test_data.checkins` "
+                                         "LIMIT 2"))}
+                :type     :native
+                :database (mt/id)})))))))
 
 (deftest ^:parallel native-query-test-3
   (mt/test-driver :bigquery-cloud-sdk
@@ -109,8 +111,8 @@
                                          "[DATETIME '1957-05-17 03:35:00.00', DATETIME '2018-06-01 01:15:34.12'], "
                                          "[TIMESTAMP '2014-09-27 12:30:00.45-08', TIMESTAMP '2020-09-27 09:57:00.45-05'], "
                                          "[]"))}
-                 :type     :native
-                 :database (mt/id)})))))))
+                :type     :native
+                :database (mt/id)})))))))
 
 (deftest ^:parallel aggregations-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -147,7 +149,7 @@
                              "  `price`"
                              "ORDER BY"
                              "  `avg` ASC,"
-                             "  `price` ASC"]
+                             "  `v4_test_data.venues`.`price` ASC"]
                 :params     nil
                 :table-name "venues"
                 :mbql?      true})
@@ -164,34 +166,33 @@
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
                   "different  what other SQL databases do. (#4218)")
-      (mt/with-mock-fks-for-drivers-without-fk-constraints
-        (let [results (mt/run-mbql-query venues
-                        {:aggregation [:count]
-                         :breakout    [$category_id->categories.name]})]
-          (is (= (with-test-db-name
-                   (->> ["SELECT"
-                         "  `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
-                         "  COUNT(*) AS `count`"
-                         "FROM"
-                         "  `v4_test_data.venues`"
-                         "  LEFT JOIN `v4_test_data.categories` AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
-                         "GROUP BY"
-                         "  `categories__via__category_id__name`"
-                         "ORDER BY"
-                         "  `categories__via__category_id__name` ASC"]
+      (let [results (mt/run-mbql-query venues
+                      {:aggregation [:count]
+                       :breakout    [$category_id->categories.name]})]
+        (is (= (with-test-db-name
+                 (->> ["SELECT"
+                       "  `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
+                       "  COUNT(*) AS `count`"
+                       "FROM"
+                       "  `v4_test_data.venues`"
+                       "  LEFT JOIN `v4_test_data.categories` AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
+                       "GROUP BY"
+                       "  `categories__via__category_id__name`"
+                       "ORDER BY"
+                       "  `categories__via__category_id__name` ASC"]
                         ;; reformat the SQL because the formatting may have changed once we change the test DB name.
-                        (str/join " ")
-                        (driver/prettify-native-form :bigquery-cloud-sdk)
-                        str/split-lines))
-                 (or (when-let [sql (get-in results [:data :native_form :query])]
-                       (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))
-                     results))))))))
+                      (str/join " ")
+                      (driver/prettify-native-form :bigquery-cloud-sdk)
+                      str/split-lines))
+               (or (when-let [sql (get-in results [:data :native_form :query])]
+                     (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))
+                   results)))))))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
-        {:database (u/the-id db-or-db-id)
-         :type     :native
-         :native   {:query (format "select DATETIME(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)}})
+       {:database (u/the-id db-or-db-id)
+        :type     :native
+        :native   {:query (format "select DATETIME(TIMESTAMP \"%s\", \"%s\")" timestamp-str timezone-str)}})
       :data
       :rows
       ffirst))
@@ -202,7 +203,7 @@
            (native-timestamp-query (mt/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
 
-    (test.tz/with-system-timezone-id "America/Chicago"
+    (test.tz/with-system-timezone-id! "America/Chicago"
       (t2.with-temp/with-temp [Database db {:engine  :bigquery-cloud-sdk
                                             :details (assoc (:details (mt/db))
                                                             :use-jvm-timezone true)}]
@@ -212,7 +213,7 @@
                  "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
                  "the correct date is compared"))))
 
-    (test.tz/with-system-timezone-id "Asia/Jakarta"
+    (test.tz/with-system-timezone-id! "Asia/Jakarta"
       (t2.with-temp/with-temp [Database db {:engine  :bigquery-cloud-sdk
                                             :details (assoc (:details (mt/db))
                                                             :use-jvm-timezone true)}]
@@ -292,19 +293,18 @@
                  :info     {:executed-by 1000
                             :query-hash  (byte-array [1 2 3 4])}})))))))
 
-(deftest ^:parallel unprepare-params-test
-  (mt/test-driver :bigquery-cloud-sdk
-    (is (= [["Red Medicine"]]
-           (mt/rows
-             (qp/process-query
-              (mt/native-query
-                {:query  (with-test-db-name
-                           (str "SELECT `v4_test_data.venues`.`name` AS `name` "
-                                "FROM `v4_test_data.venues` "
-                                "WHERE `v4_test_data.venues`.`name` = ?"))
-                 :params ["Red Medicine"]}))))
-        (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
-             "another? (EE #277)"))))
+(deftest ^:parallel query-with-params-test
+  (testing "Can we execute queries with parameters? (EE #277)"
+    (mt/test-driver :bigquery-cloud-sdk
+      (is (= [["Red Medicine"]]
+             (mt/rows
+              (qp/process-query
+               (mt/native-query
+                 {:query  (with-test-db-name
+                            (str "SELECT `v4_test_data.venues`.`name` AS `name` "
+                                 "FROM `v4_test_data.venues` "
+                                 "WHERE `v4_test_data.venues`.`name` = ?"))
+                  :params ["Red Medicine"]}))))))))
 
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
@@ -314,13 +314,13 @@
       [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
       (meta/field-metadata :checkins :date)                                 :date)))
 
-(deftest ^:parallel reconcile-temporal-types-test
+(deftest reconcile-temporal-types-test
   (doseq [test-case (bigquery.qp.reconciliation-tu/test-cases)]
-    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case)))
-      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation test-case))))
+    (testing (str \newline (u/pprint-to-str (list `bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case)))
+      (bigquery.qp.reconciliation-tu/test-temporal-type-reconciliation! test-case))))
 
-(deftest ^:parallel reconcile-temporal-types-date-extraction-filters-test
-  (mt/with-report-timezone-id nil
+(deftest reconcile-temporal-types-date-extraction-filters-test
+  (mt/with-report-timezone-id! nil
     (qp.store/with-metadata-provider bigquery.qp.reconciliation-tu/mock-temporal-fields-metadata-provider
       (binding [*print-meta* true]
         (testing "\ndate extraction filters"
@@ -338,10 +338,10 @@
                      (sql.qp/->honeysql :bigquery-cloud-sdk [:= [:field (:id field) {:temporal-unit     :day-of-week
                                                                                      ::add/source-table "ABC"}] 1]))))))))))
 
-(deftest ^:parallel reconcile-unix-timestamps-test
+(deftest reconcile-unix-timestamps-test
   (testing "temporal type reconciliation should work for UNIX timestamps (#15376)"
     (mt/test-driver :bigquery-cloud-sdk
-      (mt/with-report-timezone-id nil
+      (mt/with-report-timezone-id! nil
         (mt/dataset test-data
           (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
                                             (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -363,10 +363,10 @@
               (is (= :completed
                      (:status (qp/process-query query)))))))))))
 
-(deftest ^:parallel temporal-type-conversion-test
+(deftest temporal-type-conversion-test
   (mt/with-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
-      (mt/with-report-timezone-id "US/Pacific"
+      (mt/with-report-timezone-id! "US/Pacific"
         (let [temporal-string "2022-01-01"
               convert         (fn [from-t to-t]
                                 (->> (#'bigquery.qp/->temporal-type to-t (#'bigquery.qp/->temporal-type from-t temporal-string))
@@ -397,9 +397,9 @@
                 (is (= [(str (u/upper-case-en (name to-t)) "(TIMESTAMP(?, 'US/Pacific'), 'US/Pacific')") temporal-string]
                        (convert :timestamp to-t)))))))))))
 
-(deftest ^:parallel reconcile-relative-datetimes-test-1
+(deftest reconcile-relative-datetimes-test-1
   (mt/with-driver :bigquery-cloud-sdk
-    (mt/with-report-timezone-id nil
+    (mt/with-report-timezone-id! nil
       (qp.store/with-metadata-provider (mt/id)
         (testing "relative-datetime clauses on their own"
           (doseq [[t unit expected-sql]
@@ -419,12 +419,12 @@
                          (sql.qp/format-honeysql :bigquery-cloud-sdk
                                                  {:where hsql}))))))))))))
 
-(deftest ^:parallel reconcile-relative-datetimes-test-2
+(deftest reconcile-relative-datetimes-test-2
   (mt/with-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
       (testing "relative-datetime clauses on their own when a reporting timezone is set"
         (doseq [timezone ["UTC" "US/Pacific"]]
-          (mt/with-report-timezone-id timezone
+          (mt/with-report-timezone-id! timezone
             (doseq [[t [unit expected-sql]]
                     {:time      [:hour ["TIME_TRUNC("
                                         "  TIME_ADD(CURRENT_TIME('{{timezone}}'), INTERVAL -1 hour),"
@@ -582,9 +582,9 @@
                (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
                  (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
                         (mt/rows
-                          (mt/run-mbql-query nil
-                            {:source-table (mt/id table-name)
-                             :filter       filter-clause})))))))))))))
+                         (mt/run-mbql-query nil
+                           {:source-table (mt/id table-name)
+                            :filter       filter-clause})))))))))))))
 
 (deftest ^:parallel datetime-parameterized-sql-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -619,13 +619,78 @@
                   (is (= [[0]]
                          (mt/rows (qp/process-query query)))))))))))))
 
-(deftest ^:parallel current-datetime-honeysql-form-test
+(deftest datetime-timezone-parameter-test
+  (testing "Date Field Filter not includes Timezone (#43597)"
+    (mt/test-driver
+      :bigquery-cloud-sdk
+      (mt/dataset
+        attempted-murders
+        (doseq [:let [expectations {["Europe/Oslo" :date "2020-01-09"]
+                                    [#t"2020-01-09"],
+                                    ["Europe/Oslo" :datetime "2020-01-09"]
+                                    [#t "2020-01-09T00:00" #t "2020-01-10T00:00"],
+                                    ["Europe/Oslo" :datetime "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03" #t "2020-01-09T01:04"],
+                                    ["Europe/Oslo" :datetime_tz "2020-01-09"]
+                                    [#t "2020-01-09T00:00+01:00[Europe/Oslo]" #t "2020-01-10T00:00+01:00[Europe/Oslo]"],
+                                    ["Europe/Oslo" :datetime_tz "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03+01:00[Europe/Oslo]" #t "2020-01-09T01:04+01:00[Europe/Oslo]"],
+
+                                    ["UTC" :date "2020-01-09"]
+                                    [#t"2020-01-09"],
+                                    ["UTC" :datetime "2020-01-09"]
+                                    [#t "2020-01-09T00:00" #t "2020-01-10T00:00"],
+                                    ["UTC" :datetime "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03" #t "2020-01-09T01:04"],
+                                    ["UTC" :datetime_tz "2020-01-09"]
+                                    [#t "2020-01-09T00:00Z[UTC]" #t "2020-01-10T00:00Z[UTC]"],
+                                    ["UTC" :datetime_tz "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03Z[UTC]" #t "2020-01-09T01:04Z[UTC]"],
+
+                                    [nil :date "2020-01-09"]
+                                    [#t"2020-01-09"]
+                                    [nil :datetime "2020-01-09"]
+                                    [#t "2020-01-09T00:00" #t "2020-01-10T00:00"],
+                                    [nil :datetime "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03" #t "2020-01-09T01:04"],
+                                    [nil :datetime_tz "2020-01-09"]
+                                    [#t "2020-01-09T00:00Z[UTC]" #t "2020-01-10T00:00Z[UTC]"]
+                                    [nil :datetime_tz "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03Z[UTC]" #t "2020-01-09T01:04Z[UTC]"]}]
+                tz [nil "Europe/Oslo" "UTC"]
+                field [:date :datetime :datetime_tz]
+                value (cond-> ["2020-01-09"]
+                        (not= field :date)
+                        (conj "2020-01-09T01:03"))]
+          (testing (format "With TZ %s: field: %s value: %s parsed: %s" tz field value (pr-str (u.date/parse value)))
+            (mt/with-report-timezone-id!
+              tz
+              (let [expected (get expectations [tz field value])
+                    value-type :date/single
+                    query {:database (mt/id)
+                           :type :native
+                           :native {:query (str "SELECT count(*)\n"
+                                                (format "FROM `%s.attempts`\n"
+                                                        (bigquery.tx/test-dataset-id "attempted_murders"))
+                                                "WHERE {{d}}")
+                                    :template-tags {"d" {:name         "d"
+                                                         :display-name "Date"
+                                                         :type         :dimension
+                                                         :widget-type  :date/all-options
+                                                         :dimension    [:field (mt/id :attempts field) nil]}}}
+                           :parameters [{:type value-type
+                                         :name "d"
+                                         :target [:dimension [:template-tag "d"]]
+                                         :value value}]}]
+                (is (= expected (:params (qp.compile/compile query))))))))))))
+
+(deftest current-datetime-honeysql-form-test
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
       (testing (str "The object returned by `current-datetime-honeysql-form` should be a magic object that can take on "
                     "whatever temporal type we want.")
         (doseq [report-timezone [nil "UTC"]]
-          (mt/with-report-timezone-id report-timezone
+          (mt/with-report-timezone-id! report-timezone
             (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
               (is (= nil
                      (#'bigquery.qp/temporal-type form))
@@ -645,12 +710,12 @@
                          (sql/format-expr (#'bigquery.qp/->temporal-type temporal-type form)))
                       "Should convert to the correct SQL"))))))))))
 
-(deftest ^:parallel current-datetime-honeysql-form-test-2
+(deftest current-datetime-honeysql-form-test-2
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
       (testing (str "The object returned by `current-datetime-honeysql-form` should use the reporting timezone when set.")
         (doseq [timezone ["UTC" "US/Pacific"]]
-          (mt/with-report-timezone-id timezone
+          (mt/with-report-timezone-id! timezone
             (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
               (is (= ["CURRENT_TIMESTAMP()"]
                      (sql/format-expr form))
@@ -667,13 +732,13 @@
                          (sql/format-expr (#'bigquery.qp/->temporal-type temporal-type form)))
                       "Should specify the correct timezone in the SQL for non-timestamp functions"))))))))))
 
-(deftest ^:parallel add-interval-honeysql-form-test
+(deftest add-interval-honeysql-form-test
   ;; this doesn't test conversion to/from time because there's no unit we can use that works for all for. So we'll
   ;; just test the 3 that support `:day` and that should be proof the logic is working. (The code that actually uses
   ;; this is tested e2e by [[filter-by-relative-date-ranges-test]] anyway.)
   (mt/test-driver :bigquery-cloud-sdk
     (qp.store/with-metadata-provider (mt/id)
-      (mt/with-report-timezone-id nil
+      (mt/with-report-timezone-id! nil
         (doseq [initial-type [:date :datetime :timestamp]
                 :let         [form (sql.qp/add-interval-honeysql-form
                                     :bigquery-cloud-sdk
@@ -697,7 +762,7 @@
                        (sql/format-expr (#'bigquery.qp/->temporal-type new-type form)))
                     "Should convert to the correct SQL")))))))))
 
-(deftest ^:parallel filter-by-relative-date-ranges-test
+(deftest filter-by-relative-date-ranges-test
   (mt/with-driver :bigquery-cloud-sdk
     (testing "Make sure the SQL we generate for filters against relative-datetimes is typed correctly"
       (doseq [[field-type [unit expected-sql]]
@@ -719,7 +784,7 @@
                                                             :base-type      field-type
                                                             :effective-type field-type
                                                             :database-type  (name (bigquery.tx/base-type->bigquery-type field-type))})]})
-          (mt/with-report-timezone-id nil
+          (mt/with-report-timezone-id! nil
             (testing (format "%s field" field-type)
               (is (= [expected-sql]
                      (sql/format {:where (sql.qp/->honeysql
@@ -730,11 +795,11 @@
                                            [:relative-datetime -1 unit]])}
                                  {:dialect ::h2x/unquoted-dialect}))))))))))
 
-(deftest ^:parallel filter-by-relative-date-ranges-test-2
+(deftest filter-by-relative-date-ranges-test-2
   (mt/with-driver :bigquery-cloud-sdk
     (testing "Make sure the SQL we generate for filters against relative-datetimes uses the reporting timezone when set"
       (doseq [timezone ["UTC" "US/Pacific"]]
-        (mt/with-report-timezone-id timezone
+        (mt/with-report-timezone-id! timezone
           (letfn [(mock-metadata-provider [field-type]
                     (lib.tu/mock-metadata-provider
                      meta/metadata-provider
@@ -813,11 +878,11 @@
        :col      col-key
        :expected expected})))
 
-(defn- can-we-filter-against-relative-datetime? [field unit report-timezone]
+(defn- can-we-filter-against-relative-datetime?! [field unit report-timezone]
   (try
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset attempted-murders
-        (mt/with-report-timezone-id report-timezone
+        (mt/with-report-timezone-id! report-timezone
           (mt/run-mbql-query attempts
             {:aggregation [[:count]]
              :filter      [:time-interval (mt/id :attempts field) :last unit]}))))
@@ -825,25 +890,25 @@
     (catch Throwable _
       false)))
 
-(defn- run-filter-test-table-tests-for-field [field report-timezone]
+(defn- run-filter-test-table-tests-for-field! [field report-timezone]
   (testing (str "Make sure filtering against relative date ranges works correctly regardless of underlying column "
                 "type (#11725)")
     (doseq [test-case       (test-table-seq filter-test-table)
             :when           (= (:row test-case) field)
             :let            [unit (:col test-case)]]
       (if (:expected test-case)
-        (is (can-we-filter-against-relative-datetime? field unit report-timezone))
-        (is (not (can-we-filter-against-relative-datetime? field unit report-timezone)))))))
+        (is (can-we-filter-against-relative-datetime?! field unit report-timezone))
+        (is (not (can-we-filter-against-relative-datetime?! field unit report-timezone)))))))
 
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-time-test      (run-filter-test-table-tests-for-field :time nil))
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-datetime-test  (run-filter-test-table-tests-for-field :datetime nil))
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-date-test      (run-filter-test-table-tests-for-field :date nil))
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-timestamp-test (run-filter-test-table-tests-for-field :datetime_tz nil))
+(deftest filter-by-relative-date-ranges-e2e-time-test      (run-filter-test-table-tests-for-field! :time nil))
+(deftest filter-by-relative-date-ranges-e2e-datetime-test  (run-filter-test-table-tests-for-field! :datetime nil))
+(deftest filter-by-relative-date-ranges-e2e-date-test      (run-filter-test-table-tests-for-field! :date nil))
+(deftest filter-by-relative-date-ranges-e2e-timestamp-test (run-filter-test-table-tests-for-field! :datetime_tz nil))
 
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-time-report-timezone-test      (run-filter-test-table-tests-for-field :time "UTC"))
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-datetime-report-timezone-test  (run-filter-test-table-tests-for-field :datetime "UTC"))
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-date-report-timezone-test      (run-filter-test-table-tests-for-field :date "UTC"))
-(deftest ^:parallel filter-by-relative-date-ranges-e2e-timestamp-report-timezone-test (run-filter-test-table-tests-for-field :datetime_tz "UTC"))
+(deftest filter-by-relative-date-ranges-e2e-time-report-timezone-test      (run-filter-test-table-tests-for-field! :time "UTC"))
+(deftest filter-by-relative-date-ranges-e2e-datetime-report-timezone-test  (run-filter-test-table-tests-for-field! :datetime "UTC"))
+(deftest filter-by-relative-date-ranges-e2e-date-report-timezone-test      (run-filter-test-table-tests-for-field! :date "UTC"))
+(deftest filter-by-relative-date-ranges-e2e-timestamp-report-timezone-test (run-filter-test-table-tests-for-field! :datetime_tz "UTC"))
 
 ;; This is a table of different BigQuery column types -> temporal units we should be able to bucket them by for
 ;; breakout purposes.
@@ -854,11 +919,11 @@
    [:date        true     false   false true  true  true   true     true  false           false        true         true          true         true          true           true]
    [:datetime_tz true     true    true  true  true  true   true     true  true            true         true         true          true         true          true           true]])
 
-(defn- can-breakout? [field unit report-timezone]
+(defn- can-breakout?! [field unit report-timezone]
   (try
     (mt/test-driver :bigquery-cloud-sdk
       (mt/dataset attempted-murders
-        (mt/with-report-timezone-id report-timezone
+        (mt/with-report-timezone-id! report-timezone
           (mt/run-mbql-query attempts
             {:aggregation [[:count]]
              :breakout    [[:field (mt/id :attempts field) {:temporal-unit unit}]]}))))
@@ -866,46 +931,48 @@
     (catch Throwable _
       false)))
 
-(defn- run-breakout-test-table-tests-for-field
+(defn- run-breakout-test-table-tests-for-field!
   [field report-timezone]
   (testing "Make sure datetime breakouts like :minute-of-hour work correctly for different temporal types"
     (doseq [test-case (test-table-seq breakout-test-table)
             :when     (= (:row test-case) field)
             :let      [unit (:col test-case)]]
       (if (:expected test-case)
-        (is (can-breakout? field unit report-timezone))
-        (is (not (can-breakout? field unit report-timezone)))))))
+        (is (can-breakout?! field unit report-timezone))
+        (is (not (can-breakout?! field unit report-timezone)))))))
 
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-time-test      (run-breakout-test-table-tests-for-field :time nil))
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-datetime-test  (run-breakout-test-table-tests-for-field :datetime nil))
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-date-test      (run-breakout-test-table-tests-for-field :date nil))
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-timestamp-test (run-breakout-test-table-tests-for-field :datetime_tz nil))
+(deftest breakout-by-bucketed-datetimes-e2e-time-test      (run-breakout-test-table-tests-for-field! :time nil))
+(deftest breakout-by-bucketed-datetimes-e2e-datetime-test  (run-breakout-test-table-tests-for-field! :datetime nil))
+(deftest breakout-by-bucketed-datetimes-e2e-date-test      (run-breakout-test-table-tests-for-field! :date nil))
+(deftest breakout-by-bucketed-datetimes-e2e-timestamp-test (run-breakout-test-table-tests-for-field! :datetime_tz nil))
 
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-time-report-timezone-test      (run-breakout-test-table-tests-for-field :time "UTC"))
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-datetime-report-timezone-test  (run-breakout-test-table-tests-for-field :datetime "UTC"))
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-date-report-timezone-test      (run-breakout-test-table-tests-for-field :date "UTC"))
-(deftest ^:parallel breakout-by-bucketed-datetimes-e2e-timestamp-report-timezone-test (run-breakout-test-table-tests-for-field :datetime_tz "UTC"))
+(deftest breakout-by-bucketed-datetimes-e2e-time-report-timezone-test      (run-breakout-test-table-tests-for-field! :time "UTC"))
+(deftest breakout-by-bucketed-datetimes-e2e-datetime-report-timezone-test  (run-breakout-test-table-tests-for-field! :datetime "UTC"))
+(deftest breakout-by-bucketed-datetimes-e2e-date-report-timezone-test      (run-breakout-test-table-tests-for-field! :date "UTC"))
+(deftest breakout-by-bucketed-datetimes-e2e-timestamp-report-timezone-test (run-breakout-test-table-tests-for-field! :datetime_tz "UTC"))
 
 (deftest ^:parallel string-escape-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure single quotes in parameters are escaped properly to prevent SQL injection\n"
       (testing "MBQL query"
         (is (= [[0]]
-               (mt/formatted-rows [int]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:count]]
-                    :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
+               (mt/formatted-rows
+                [int]
+                (mt/run-mbql-query venues
+                  {:aggregation [[:count]]
+                   :filter      [:= $name "x\\\\' OR 1 = 1 -- "]})))))
 
       (testing "native query"
         (is (= [[0]]
-               (mt/formatted-rows [int]
-                 (qp/process-query
-                  (mt/native-query
-                    {:query  (with-test-db-name
-                               (str "SELECT count(*) AS `count` "
-                                    "FROM `v4_test_data.venues` "
-                                    "WHERE `v4_test_data.venues`.`name` = ?"))
-                     :params ["x\\\\' OR 1 = 1 -- "]})))))))))
+               (mt/formatted-rows
+                [int]
+                (qp/process-query
+                 (mt/native-query
+                   {:query  (with-test-db-name
+                              (str "SELECT count(*) AS `count` "
+                                   "FROM `v4_test_data.venues` "
+                                   "WHERE `v4_test_data.venues`.`name` = ?"))
+                    :params ["x\\\\' OR 1 = 1 -- "]})))))))))
 
 (deftest ^:parallel escape-alias-test
   (testing "`escape-alias` should generate valid field identifiers"
@@ -937,54 +1004,51 @@
       (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
                                         (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                         {:tables [{:id (mt/id :venues), :name "Organização"}]})
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
-              "Sanity check for with-mock-fks-for-drivers-without-fk-constraints macro")
-          (let [query (mt/mbql-query checkins
-                        {:fields [$id $venue-id->venues.name]
-                         :limit  1})]
-            (is (= (with-test-db-name
-                     {:query      ["SELECT"
-                                   "  `v4_test_data.checkins`.`id` AS `id`,"
-                                   "  `Organizacao__via__venue_id`.`name` AS `Organizacao__via__venue_id__name`"
-                                   "FROM"
-                                   "  `v4_test_data.checkins`"
-                                   "  LEFT JOIN `v4_test_data.Organização` AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
-                                   "LIMIT"
-                                   "  1"]
-                      :params     nil
-                      :table-name "checkins"
-                      :mbql?      true})
-                   (-> (qp.compile/compile query)
-                       (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))))))))
+        (let [query (mt/mbql-query checkins
+                      {:fields [$id $venue-id->venues.name]
+                       :limit  1})]
+          (is (= (with-test-db-name
+                   {:query      ["SELECT"
+                                 "  `v4_test_data.checkins`.`id` AS `id`,"
+                                 "  `Organizacao__via__venue_id`.`name` AS `Organizacao__via__venue_id__name`"
+                                 "FROM"
+                                 "  `v4_test_data.checkins`"
+                                 "  LEFT JOIN `v4_test_data.Organização` AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
+                                 "LIMIT"
+                                 "  1"]
+                    :params     nil
+                    :table-name "checkins"
+                    :mbql?      true})
+                 (-> (qp.compile/compile query)
+                     (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %)))))))))))
 
 (deftest ^:parallel multiple-template-parameters-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Make sure multiple template parameters can be used in a single query correctly (#15487)"
       (is (= ["foo" "bar"]
              (mt/first-row
-               (qp/process-query
-                 {:database   (mt/id)
-                  :type       :native
-                  :native     {:query (str "DECLARE param1 STRING DEFAULT {{p1}};\n"
-                                           "DECLARE param2 STRING DEFAULT {{p2}};\n"
-                                            "SELECT param1, param2")
-                               :template-tags {:p1 {:name         "p1"
-                                                    :display_name "p1"
-                                                    :type         "text"
-                                                    :required     true}
-                                               :p2 {:name         "p2"
-                                                    :display_name "p2"
-                                                    :type         "text"
-                                                    :required     true}}}
-                  :parameters [{:type   "text"
-                                :name   "p1"
-                                :target [:variable [:template-tag "p1"]]
-                                :value  "foo"}
-                               {:type   "text"
-                                :name   "p2"
-                                :target [:variable [:template-tag "p2"]]
-                                :value  "bar"}]})))))))
+              (qp/process-query
+               {:database   (mt/id)
+                :type       :native
+                :native     {:query (str "DECLARE param1 STRING DEFAULT {{p1}};\n"
+                                         "DECLARE param2 STRING DEFAULT {{p2}};\n"
+                                         "SELECT param1, param2")
+                             :template-tags {:p1 {:name         "p1"
+                                                  :display_name "p1"
+                                                  :type         "text"
+                                                  :required     true}
+                                             :p2 {:name         "p2"
+                                                  :display_name "p2"
+                                                  :type         "text"
+                                                  :required     true}}}
+                :parameters [{:type   "text"
+                              :name   "p1"
+                              :target [:variable [:template-tag "p1"]]
+                              :value  "foo"}
+                             {:type   "text"
+                              :name   "p2"
+                              :target [:variable [:template-tag "p2"]]
+                              :value  "bar"}]})))))))
 
 (deftest ^:parallel multiple-counts-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -1131,3 +1195,53 @@
   (testing "correct format of log10 for BigQuery"
     (is (= ["LOG(150, 10)"]
            (sql/format-expr (sql.qp/->honeysql :bigquery-cloud-sdk [:log 150]))))))
+
+(deftest ^:parallel mixed-cumulative-and-non-cumulative-aggregations-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          orders            (lib.metadata/table metadata-provider (mt/id :orders))
+          orders-created-at (lib.metadata/field metadata-provider (mt/id :orders :created_at))
+          orders-total      (lib.metadata/field metadata-provider (mt/id :orders :total))
+          query             (-> (lib/query metadata-provider orders)
+                                ;; 1. month
+                                (lib/breakout (lib/with-temporal-bucket orders-created-at :month))
+                                ;; 2. cumulative count of orders
+                                (lib/aggregate (lib/cum-count))
+                                ;; 3. cumulative sum of order total
+                                (lib/aggregate (lib/cum-sum orders-total))
+                                ;; 4. sum of order total
+                                (lib/aggregate (lib/sum orders-total))
+                                (lib/limit 3))]
+      (is (= ["SELECT"
+              "  `source`.`created_at` AS `created_at`,"
+              "  SUM(COUNT(*)) OVER ("
+              "    ORDER BY"
+              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "  ) AS `count`,"
+              "  SUM(SUM(`source`.`total`)) OVER ("
+              "    ORDER BY"
+              "      `source`.`created_at` ASC ROWS UNBOUNDED PRECEDING"
+              "  ) AS `sum`,"
+              "  SUM(`source`.`total`) AS `sum_2`"
+              "FROM"
+              "  ("
+              "    SELECT"
+              "      TIMESTAMP_TRUNC("
+              "        `test_data.orders`.`created_at`,"
+              "        month"
+              "      ) AS `created_at`,"
+              "      `test_data.orders`.`total` AS `total`"
+              "    FROM"
+              "      `test_data.orders`"
+              "  ) AS `source`"
+              "GROUP BY"
+              "  `created_at`"
+              "ORDER BY"
+              "  `created_at` ASC"
+              "LIMIT"
+              "  3"]
+             (-> (qp.compile/compile query)
+                 :query
+                 (->> (driver/prettify-native-form :bigquery-cloud-sdk))
+                 (str/replace #"v4_test_data__transient_\d+" "test_data")
+                 str/split-lines))))))

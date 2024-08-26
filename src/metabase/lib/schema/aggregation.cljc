@@ -28,7 +28,17 @@
 (mbql-clause/define-tuple-mbql-clause :max
   [:schema [:ref ::expression/orderable]])
 
-(lib.hierarchy/derive :max :lib.type-of/type-is-type-of-first-arg)
+;;; check either the type of the first arg, or fall back to `:type/Number` is the type cannot be determined.
+(lib.hierarchy/derive ::type-is-type-of-first-arg-or-number :lib.type-of/type-is-type-of-first-arg)
+
+(defmethod expression/type-of-method ::type-is-type-of-first-arg-or-number
+  [expr]
+  (let [expr-type ((get-method expression/type-of-method :lib.type-of/type-is-type-of-first-arg) expr)]
+    (if (= expr-type ::expression/type.unknown)
+      :type/Number
+      expr-type)))
+
+(lib.hierarchy/derive :max ::type-is-type-of-first-arg-or-number)
 
 ;;; apparently median and percentile only work for numeric args in Postgres, as opposed to anything orderable. Not
 ;;; sure this makes sense conceptually, but since there probably isn't as much of a use case we can keep that
@@ -36,12 +46,12 @@
 (mbql-clause/define-tuple-mbql-clause :median
   [:schema [:ref ::expression/number]])
 
-(lib.hierarchy/derive :median :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :median ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :min
   [:schema [:ref ::expression/orderable]])
 
-(lib.hierarchy/derive :min :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :min ::type-is-type-of-first-arg-or-number)
 
 (mr/def ::percentile.percentile
   [:and
@@ -55,7 +65,7 @@
   #_expr       [:ref ::expression/number]
   #_percentile [:ref ::percentile.percentile])
 
-(lib.hierarchy/derive :percentile :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :percentile ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :share :- :type/Float
   [:schema [:ref ::expression/boolean]])
@@ -69,42 +79,53 @@
 (mbql-clause/define-tuple-mbql-clause :cum-sum
   [:schema [:ref ::expression/number]])
 
-(lib.hierarchy/derive :sum :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :sum ::type-is-type-of-first-arg-or-number)
 
-(lib.hierarchy/derive :cum-sum :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :cum-sum ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :sum-where
   [:schema [:ref ::expression/number]]
   [:schema [:ref ::expression/boolean]])
 
-(lib.hierarchy/derive :sum-where :lib.type-of/type-is-type-of-first-arg)
+(lib.hierarchy/derive :sum-where ::type-is-type-of-first-arg-or-number)
 
 (mbql-clause/define-tuple-mbql-clause :var :- :type/Float
   #_expr [:schema [:ref ::expression/number]])
 
+(doseq [tag [:avg
+             :count
+             :cum-count
+             :count-where
+             :distinct
+             :max
+             :median
+             :min
+             :offset
+             :percentile
+             :share
+             :stddev
+             :sum
+             :cum-sum
+             :sum-where
+             :var
+             ;; legacy metric ref
+             :metric]]
+  (lib.hierarchy/derive tag ::aggregation-clause-tag))
+
+(defn- aggregation-expression?
+  "A clause is a valid aggregation if it is an aggregation clause, or it is an expression that transitively contains
+  a single aggregation clause."
+  [x]
+  (when-let [[tag _opts & args] (and (vector? x) x)]
+    (or (lib.hierarchy/isa? tag ::aggregation-clause-tag)
+        (some aggregation-expression? args))))
+
 (mr/def ::aggregation
-  ;; placeholder!
-  [:or
-   :mbql.clause/avg
-   :mbql.clause/count
-   :mbql.clause/cum-count
-   :mbql.clause/count-where
-   :mbql.clause/distinct
-   :mbql.clause/max
-   :mbql.clause/median
-   :mbql.clause/min
-   :mbql.clause/percentile
-   :mbql.clause/share
-   :mbql.clause/stddev
-   :mbql.clause/sum
-   :mbql.clause/cum-sum
-   :mbql.clause/sum-where
-   :mbql.clause/var
-   ;; We should not allow anything. Fixing this is bigger piece of work,
-   ;; because it makes expressions and aggregations mutually recursive
-   ;; or requires a large amount of duplication. See also
-   ;; metabase.lib.expression-test/diagnose-expression-test.
-   :any])
+  [:and
+   [:ref :metabase.lib.schema.mbql-clause/clause]
+   [:fn
+    {:error/message "Valid aggregation clause"}
+    aggregation-expression?]])
 
 (mr/def ::aggregations
   [:sequential {:min 1} [:ref ::aggregation]])

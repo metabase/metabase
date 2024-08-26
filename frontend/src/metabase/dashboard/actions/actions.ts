@@ -8,8 +8,6 @@ import { ActionsApi, PublicApi } from "metabase/services";
 import type {
   ActionDashboardCard,
   ActionFormSubmitResult,
-  ActionParametersMapping,
-  CardId,
   Dashboard,
   ParametersForActionExecution,
   WritebackAction,
@@ -21,16 +19,14 @@ import { getDashboardType } from "../utils";
 import { setDashCardAttributes } from "./core";
 import { closeSidebar, setSidebar } from "./ui";
 
-interface DashboardAttributes {
-  card_id?: CardId | null;
-  action?: WritebackAction | null;
-  parameter_mappings?: ActionParametersMapping[] | null;
-  visualization_settings?: ActionDashboardCard["visualization_settings"];
-}
+type EditableActionButtonAttrs = Pick<
+  ActionDashboardCard,
+  "card_id" | "action" | "parameter_mappings" | "visualization_settings"
+>;
 
 export function updateButtonActionMapping(
   dashCardId: number,
-  attributes: DashboardAttributes,
+  attributes: EditableActionButtonAttrs,
 ) {
   return (dispatch: Dispatch) => {
     dispatch(

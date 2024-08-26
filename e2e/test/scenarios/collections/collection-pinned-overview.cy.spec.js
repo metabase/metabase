@@ -1,16 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
   dragAndDrop,
   getPinnedSection,
   openPinnedItemMenu,
   openUnpinnedItemMenu,
+  popover,
+  restore,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -189,7 +189,7 @@ describe("scenarios > collection pinned items overview", () => {
 
     openRootCollection();
     openPinnedItemMenu(DASHBOARD_NAME);
-    popover().findByText("Archive").click();
+    popover().findByText("Move to trash").click();
     cy.wait("@getPinnedItems");
 
     getPinnedSection().should("not.exist");

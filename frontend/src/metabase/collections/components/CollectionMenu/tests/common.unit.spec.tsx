@@ -14,11 +14,11 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(await screen.findByText("Edit permissions")).toBeInTheDocument();
   });
 
-  it("should not be able to edit collection permissions without admin access", () => {
+  it("should not be able to edit collection permissions without admin access", async () => {
     setup({
       collection: createMockCollection({
         can_write: true,
@@ -26,7 +26,7 @@ describe("CollectionMenu", () => {
       isAdmin: false,
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
   });
 
@@ -42,7 +42,7 @@ describe("CollectionMenu", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
-  it("should not be able to edit permissions for personal subcollections", () => {
+  it("should not be able to edit permissions for personal subcollections", async () => {
     setup({
       collection: createMockCollection({
         can_write: true,
@@ -51,7 +51,7 @@ describe("CollectionMenu", () => {
       isPersonalCollectionChild: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(screen.queryByText("Edit permissions")).not.toBeInTheDocument();
   });
 
@@ -62,9 +62,9 @@ describe("CollectionMenu", () => {
       }),
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(await screen.findByText("Move")).toBeInTheDocument();
-    expect(screen.getByText("Archive")).toBeInTheDocument();
+    expect(screen.getByText("Move to trash")).toBeInTheDocument();
   });
 
   it("should not be able to move and archive a collection without write access", () => {
@@ -100,7 +100,7 @@ describe("CollectionMenu", () => {
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
-  it("should not be able to make the collection official", () => {
+  it("should not be able to make the collection official", async () => {
     setup({
       collection: createMockCollection({
         can_write: true,
@@ -108,7 +108,7 @@ describe("CollectionMenu", () => {
       isAdmin: true,
     });
 
-    userEvent.click(getIcon("ellipsis"));
+    await userEvent.click(getIcon("ellipsis"));
     expect(
       screen.queryByText("Make collection official"),
     ).not.toBeInTheDocument();

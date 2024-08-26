@@ -2,17 +2,20 @@
   "moduleNameMapper": {
     "\\.(css|less)$": "<rootDir>/frontend/test/__mocks__/styleMock.js",
     "\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$": "<rootDir>/frontend/test/__mocks__/fileMock.js",
-    "^promise-loader\\?global\\!metabase-lib\\/metadata\\/utils\\/ga-metadata$": "<rootDir>/frontend/src/metabase-lib/metadata/utils/ga-metadata.js",
     "^cljs/(.*)$": "<rootDir>/target/cljs_dev/$1",
     "^d3-(.*)$": "<rootDir>/node_modules/d3-$1/dist/d3-$1",
     "react-markdown": "<rootDir>/node_modules/react-markdown/react-markdown.min.js",
     "\\.svg\\?(component|source)": "<rootDir>/frontend/test/__mocks__/svgMock.jsx"
   },
   "transformIgnorePatterns": [
-    "<rootDir>/node_modules/(?!rehype-external-links/)"
+    "<rootDir>/node_modules/(?!rehype-external-links|d3/)"
   ],
   "testMatch": ["<rootDir>/frontend/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
-  "modulePaths": ["<rootDir>/frontend/test", "<rootDir>/frontend/src"],
+  "modulePaths": [
+    "<rootDir>/frontend/test",
+    "<rootDir>/frontend/src",
+    "<rootDir>/enterprise/frontend/src"
+  ],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js",

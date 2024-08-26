@@ -1,5 +1,5 @@
 .editHeader {
-  composes: text-white from "style";
+  composes: textWhite from "style";
   align-items: center;
   display: flex;
   position: absolute;
@@ -7,7 +7,7 @@
   left: 0;
   right: 0;
   height: 43px;
-  background-color: color-mod(var(--color-bg-white) alpha(-85%));
+  background-color: var(--mb-color-bg-white-alpha-15);
 }
 
 .editHeaderButtons {
@@ -16,7 +16,7 @@
 
 .editHeaderButton {
   border: none;
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }
 
 .saveButton {

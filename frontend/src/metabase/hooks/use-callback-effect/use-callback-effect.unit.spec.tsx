@@ -38,16 +38,14 @@ describe("useCallbackEffect", () => {
 
     userEvent.click(screen.getByRole("button", { name: "Schedule" }));
 
-    expect(screen.getByText("Status: scheduled")).toBeInTheDocument();
     expect(callback).not.toHaveBeenCalled();
+    await screen.findByText("Status: scheduled");
 
     await waitFor(() => {
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
-    await waitFor(() => {
-      expect(screen.getByText("Status: not scheduled")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Status: not scheduled")).toBeInTheDocument();
 
     expect(callback).toHaveBeenCalledTimes(1);
   });

@@ -16,44 +16,40 @@ For more information, check out our guide for [authenticating with SAML](./authe
 ## Working in the Keycloak console
 
 1. Go to the Keycloak admin console and sign in as an administrator.
-2. Create a test user from **Manage** > **Users**. You'll need to populate the fields with an email, first name, and last name.
-3. Once you've created at least one user, navigation tabs will appear at the top of the **Users** page. Go to **Credentials** to set password for your test user.
+2. Create a user from **Manage** > **Users**. You'll need to populate the fields with an email, first name, and last name.
+3. Once you've created at least one user, navigation tabs will appear at the top of the **Users** page. Go to **Credentials** to set password for your user.
     - Turn off the **Temporary** toggle.
     - Click **Set Password** to save your changes.
-4. Create a new SSO client from **Manage** > **Clients** > **Create**.
-    - **Client ID**: Enter “metabase” in lowercase.
-    - **Client Protocol**: Select “saml” from the dropdown.
+4. Create a new SSO client from **Manage** > **Clients** > **Create**
+    - **Client ID**: Enter `metabase` in lowercase.
+    - **Client type**: Select `SAML` from the dropdown.
+    - Click **Next**.
+    - **Valid Redirect URIs**: The URL where you are hosting your Metabase instance followed by a slash (/) and an asterisk (*). For example, if you are hosting Metabase locally at `http://localhost:3000`, the URL would be `http://localhost:3000/*`.
+    - **Home URL**:  In your Metabase, go to **Admin settings** > **Authentication** > **SAML**. You'll find your Home URL in the field **URL the IdP should redirect back to**.
     - Click **Save**.
-5. Configure the SSO client from the form that appears after saving:
-    - **Client Signature Required**: DISABLE
-    - **Valid Redirect URIs**: URL where you are hosting your Metabase instance followed by
-     a slash (/) and an asterisk (*). For example, `http://localhost:3000/*`.
-    - **Base URL**: Fill this in with the value under “URL the IdP should redirect back to” from your Metabase **Admin settings** > **Authentication** > **SAML**.
-    - Click **Save**.
-6. Map user data to your SSO client from **Mappers** > **Add Builtin**.
-    - [Mapping attributes from users in Keycloak to Metabase](#mapping-attributes-from-users-in-keycloak-to-metabase)
+
+5. (Optional) Disable key signing for SSO client.  See [settings for signing SSO requests](https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-saml#settings-for-signing-sso-requests-optional).
+    - Click **Keys** tab.
+    - **Client signature required:** Off.
+ 
+6. Map user attributes from Metabase to SSO client. 
+    - Click **Client scopes** tab.
+    - Click `metabase-dedicated`.
+    - Click **Add predefined mappers**.
+    - [Map attributes from users in Keycloak to Metabase](#mapping-attributes-from-users-in-keycloak-to-metabase).
 7. Configure the service provider (Metabase) from **Configure** > **Realm Settings**.
     - From **Endpoints**, select “SAML 2.0 Identity Provider Metadata”.
     - An XML file will open in a new tab.
-8. Configure the Single Logout service (if you intend to use Single Logout)
-    1. in **Clients** > **Valid post logout redirect URIs** put your server's uri (this usually matches **Valid redirect URIs**)
-    2. in **Clients** > **Advanced** > **Logout Service POST Binding URL** put your server URI appended with `/auth/sso/handle_slo`
-9. From the XML file, note the following:
-    1. The URL that appears right after the following string:
-    ```
-    md:SingleSignOnServiceBinding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location=
-    ```
-    2. The URL that appears right after `entityID`.
-    3. The long string that appears after the `<X509Certificate>` tag.
+    - Keep this for reference, we will use it in the next section to configure Metabase.
 
 ## Mapping fields from Keycloak to Metabase
 
 1. Go to your Metabase **Admin settings** > **Authentication** > **SAML**.
-2. Enter the information from step 8 above:
-    - **SAML Identity Provider URL**: the URL from 8.1.
-    - **SAML Identity Provider Issuer**: the URL from 8.2.
-    - **SAML Identity Provider Certificate**: the string from 8.3. Take care when inserting this string -- the setup won't work if any letters or special characters are wrong!
-    - **SAML Application Name**: metabase
+2. From the XML file from Step 7 above:
+    - **SAML Identity Provider URL**: Insert the URL that appears right after the following string: `Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location=`
+    - **SAML Identity Provider Issuer**: Insert the URL that appears right after `entityID=`.
+    - **SAML Identity Provider Certificate**: Input the long string that appears after the `<X509Certificate>` tag. Take care when inserting this string: if any letters or special characters are added or off,  the setup won't work.
+    - **SAML Application Name**: `metabase`
 3. Click **Save Changes**.
 4. Check that **SAML Authentication** is toggled **ON** at the top of the page.
 
@@ -69,7 +65,7 @@ Let's say we want email, name, and surname to be passed between the client (Meta
     - **SAML Attribute Name**: the name that Metabase expects to receive.
     - **SAML Attribute NameFormat**: select “Basic” from the dropdown menu.
 
-You can find the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
+You can edit the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
 
 ## Troubleshooting SAML issues
 

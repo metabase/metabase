@@ -7,7 +7,7 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import type { Database, DatabaseCandidate } from "metabase-types/api";
+import type { Database, DatabaseXray } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockDatabaseCandidate,
@@ -18,7 +18,7 @@ import { HomeXraySection } from "./HomeXraySection";
 
 interface SetupOpts {
   database: Database;
-  candidates: DatabaseCandidate[];
+  candidates: DatabaseXray[];
 }
 
 const setup = async ({ database, candidates }: SetupOpts) => {

@@ -4,6 +4,7 @@ import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
 } from "metabase/plugins";
+import { isInteractiveEmbeddingEnabled } from "metabase-enterprise/embedding/selectors";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EmbeddingAppOriginDescription } from "./components/EmbeddingAppOriginDescription";
@@ -16,6 +17,8 @@ const SLUG = "embedding-in-other-applications/full-app";
 
 if (hasPremiumFeature("embedding")) {
   PLUGIN_EMBEDDING.isEnabled = () => true;
+  PLUGIN_EMBEDDING.isInteractiveEmbeddingEnabled =
+    isInteractiveEmbeddingEnabled;
 
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => {
     return {

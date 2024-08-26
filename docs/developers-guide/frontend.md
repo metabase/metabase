@@ -362,7 +362,7 @@ When dealing with business logic you don't want to be concerned with the specifi
 
 ```css
 .Button.Button--primary {
-  color: -var(--color-brand);
+  color: -var(--mb-color-brand);
 }
 ```
 
@@ -370,7 +370,7 @@ When dealing with business logic you don't want to be concerned with the specifi
 
 ```css
 .text-brand {
-  color: -var(--color-brand);
+  color: -var(--mb-color-brand);
 }
 ```
 
@@ -389,7 +389,7 @@ const Foo = ({ color ) =>
 
 ```css
 :local(.primary) {
-  color: -var(--color-brand);
+  color: -var(--mb-color-brand);
 }
 ```
 
@@ -476,9 +476,9 @@ describe("CollectionHeader", () => {
       collection,
     });
 
-    userEvent.clear(screen.getByDisplayValue("Old name"));
-    userEvent.type(screen.getByPlaceholderText("Add title"), "New title");
-    userEvent.tab();
+    await userEvent.clear(screen.getByDisplayValue("Old name"));
+    await userEvent.type(screen.getByPlaceholderText("Add title"), "New title");
+    await userEvent.tab();
 
     expect(onUpdateCollection).toHaveBeenCalledWith({
       ...collection,

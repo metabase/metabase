@@ -5,11 +5,9 @@
    [metabase.driver :as driver]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
-   [schema.core :as s])
-  (:import
-   (org.joda.time DateTime)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,7 +17,7 @@
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
    :display-name (deferred-tru "Host")
-   :helper-text (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
+   :helper-text  (deferred-tru "Your database's IP address (e.g. 98.137.149.56) or its domain name (e.g. esc.mydatabase.com).")
    :placeholder  "name.database.com"})
 
 (def default-port-details
@@ -129,8 +127,8 @@
    :default      true
    :display-name (deferred-tru "Rerun queries for simple explorations")
    :description  (deferred-tru
-                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
-                        "This is on by default but you can turn it off if performance is slow."))
+                  (str "We execute the underlying query when you explore data using Summarize or Filter. "
+                       "This is on by default but you can turn it off if performance is slow."))
    :visible-if   {"advanced-options" true}})
 
 (def let-user-control-scheduling
@@ -147,8 +145,8 @@
   {:name "schedules.metadata_sync"
    :display-name (deferred-tru "Database syncing")
    :description  (deferred-tru
-                   (str "This is a lightweight process that checks for updates to this database’s schema. "
-                        "In most cases, you should be fine leaving this set to sync hourly."))
+                  (str "This is a lightweight process that checks for updates to this database’s schema. "
+                       "In most cases, you should be fine leaving this set to sync hourly."))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def cache-field-values-schedule
@@ -157,10 +155,10 @@
   {:name "schedules.cache_field_values"
    :display-name (deferred-tru "Scanning for Filter Values")
    :description  (deferred-tru
-                   (str "Metabase can scan the values present in each field in this database to enable checkbox "
-                        "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
-                        "particularly if you have a very large database. When should Metabase automatically scan "
-                        "and cache field values?"))
+                  (str "Metabase can scan the values present in each field in this database to enable checkbox "
+                       "filters in dashboards and questions. This can be a somewhat resource-intensive process, "
+                       "particularly if you have a very large database. When should Metabase automatically scan "
+                       "and cache field values?"))
    :visible-if   {"let-user-control-scheduling" true}})
 
 (def json-unfolding
@@ -170,9 +168,9 @@
    :type         :boolean
    :visible-if   {"advanced-options" true}
    :description  (deferred-tru
-                   (str "This enables unfolding JSON columns into their component fields. "
-                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
-                        "individual fields in their settings."))
+                  (str "This enables unfolding JSON columns into their component fields. "
+                       "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
+                       "individual fields in their settings."))
    :default      true})
 
 (def refingerprint
@@ -181,8 +179,8 @@
    :type         :boolean
    :display-name (deferred-tru "Periodically refingerprint tables")
    :description  (deferred-tru
-                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
-                        "behavior, like improved auto-binning on your bar charts."))
+                  (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
+                       "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
 (def default-advanced-options
@@ -218,8 +216,8 @@
    :getter (fn []
              (when-let [ips (public-settings/cloud-gateway-ips)]
                (str (deferred-tru
-                      (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
-                           "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
+                     (str "If your database is behind a firewall, you may need to allow connections from our Metabase "
+                          "[Cloud IP addresses](https://www.metabase.com/cloud/docs/ip-addresses-to-whitelist.html):"))
                     "\n"
                     (str/join " - " ips))))})
 
@@ -228,6 +226,31 @@
   added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
   {:cloud-ip-address-info cloud-ip-address-info})
 
+(def auth-provider-options
+  "Options for using an auth provider instead of a literal password."
+  [{:name "use-auth-provider"
+    :type :section
+    :default false}
+   {:name "auth-provider"
+    :display-name (deferred-tru "Auth provider")
+    :type :select
+    :options [{:name (deferred-tru "Azure Managed Identity")
+               :value "azure-managed-identity"}
+              {:name (deferred-tru "OAuth")
+               :value "oauth"}]
+    :default "azure-managed-identity"
+    :visible-if {"use-auth-provider" true}}
+   {:name "azure-managed-identity-client-id"
+    :display-name (deferred-tru "Client ID")
+    :required true
+    :visible-if {"auth-provider" "azure-managed-identity"}}
+   {:name "oauth-token-url"
+    :display-name (deferred-tru "Auth token URL")
+    :required true
+    :visible-if {"auth-provider" "oauth"}}
+   {:name "oauth-token-headers"
+    :display-name (deferred-tru "Auth token request headers (a JSON map)")
+    :visible-if {"auth-provider" "oauth"}}])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |
@@ -247,11 +270,10 @@
     java.math.BigInteger           :type/BigInteger
     Number                         :type/Number
     String                         :type/Text
-    ;; java.sql types and Joda-Time types should be considered DEPRECATED
+    ;; java.sql types should be considered DEPRECATED
     java.sql.Date                  :type/Date
     java.sql.Timestamp             :type/DateTime
     java.util.Date                 :type/Date
-    DateTime                       :type/DateTime
     java.util.UUID                 :type/UUID
     clojure.lang.IPersistentMap    :type/Dictionary
     clojure.lang.IPersistentVector :type/Array
@@ -271,7 +293,7 @@
     ;; all-NULL columns in DBs like Mongo w/o explicit types
     nil                            :type/*
     (do
-      (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
+      (log/warnf "Don't know how to map class '%s' to a Field base_type, falling back to :type/*." klass)
       :type/*)))
 
 (def ^:private column-info-sample-size
@@ -304,8 +326,7 @@
   More in (defmethod date [:sql :week-of-year-us])."
   nil)
 
-(s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
-                                      "Start of week integer")
+(mu/defn start-of-week->int :- [:int {:min 0, :max 6, :error/message "Start of week integer"}]
   "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
@@ -323,7 +344,7 @@
     (* (Integer/signum delta)
        (- 7 (Math/abs delta)))))
 
-(s/defn start-of-week-offset :- s/Int
+(mu/defn start-of-week-offset :- :int
   "Return the offset needed to adjust a day of the week (in the range 1..7) returned by the `driver`, with `1`
   corresponding to [[driver/db-start-of-week]], so that `1` corresponds to [[metabase.public-settings/start-of-week]] in
   results.

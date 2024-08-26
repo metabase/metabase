@@ -47,7 +47,7 @@ Command failed with exception: Unsupported database file version or invalid file
     java -jar metabase.jar load-from-h2 /path/to/metabase.db # do not include .mv.db
     ```
 
-If you're using a [paid version of Metabase][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
+If you're using a [Pro or Enterprise version of Metabase][enterprise], you can use [serialization][serialization-docs] to snapshot your application database. Serialization is useful when you want to [preload questions and dashboards][serialization-learn] in a new Metabase instance.
 
 ## Are you trying to downgrade?
 

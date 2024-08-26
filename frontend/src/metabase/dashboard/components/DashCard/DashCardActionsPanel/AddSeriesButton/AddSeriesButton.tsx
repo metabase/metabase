@@ -33,7 +33,6 @@ export function AddSeriesButton({
     <ActionButton
       onClick={onClick}
       tooltip={series.length > 1 ? t`Edit series` : t`Add series`}
-      analyticsEvent="Dashboard;Edit Series Modal;open"
       data-testid="add-series-button"
     >
       <IconContainer>

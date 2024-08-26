@@ -16,12 +16,11 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.sql Connection ResultSet Time)
@@ -32,20 +31,20 @@
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
-(doseq [[feature supported?] {:regex                                  false
-                              :case-sensitivity-string-filter-options false
-                              :now                                    true
-                              :datetime-diff                          true
+(doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :convert-timezone                       true
-                              :test/jvm-timezone-setting              false
-                              :index-info                             true}]
+                              :datetime-diff                          true
+                              :index-info                             true
+                              :now                                    true
+                              :regex                                  false
+                              :test/jvm-timezone-setting              false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
   [_ _ db]
   (let [major-version (get-in db [:dbms_version :semantic-version 0] 0)]
     (when (zero? major-version)
-      (log/warn (trs "Unable to determine sqlserver's dbms major version. Fallback to 0.")))
+      (log/warn "Unable to determine sqlserver's dbms major version. Fallback to 0."))
     (>= major-version 16)))
 
 (defmethod driver/db-start-of-week :sqlserver
@@ -224,9 +223,9 @@
                         "datetimeoffset"
                         "datetime")]
     (h2x/cast original-type
-      (date-add :day
-                (h2x/- 1 (date-part :weekday expr))
-                (h2x/->date expr)))))
+              (date-add :day
+                        (h2x/- 1 (date-part :weekday expr))
+                        (h2x/->date expr)))))
 
 (defmethod sql.qp/date [:sqlserver :week]
   [driver _ expr]
@@ -381,8 +380,8 @@
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset [:raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
-                                               (* items (dec page))
-                                               items)]))
+                                             (* items (dec page))
+                                             items)]))
 
 (defn- optimized-temporal-buckets
   "If `field-clause` is being truncated temporally to `:year`, `:month`, or `:day`, return a optimized set of
@@ -448,7 +447,9 @@
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply sql.helpers/group-by new-hsql (mapv (partial sql.qp/->honeysql driver) optimized))
+      ;; remove duplicate group by clauses (from the optimize breakout clauses stuff)
+      (update new-hsql :group-by distinct))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."
@@ -468,7 +469,9 @@
   ;; year(), month(), and day() can make use of indexes while DateFromParts() cannot.
   (let [query         (update query :order-by optimize-order-by-subclauses)
         parent-method (get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])]
-    (parent-method driver :order-by honeysql-form query)))
+    (-> (parent-method driver :order-by honeysql-form query)
+        ;; order bys have to be distinct in SQL Server!!!!!!!1
+        (update :order-by distinct))))
 
 ;; SQLServer doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlserver Boolean]
@@ -573,13 +576,37 @@
     (cond-> t
       (timezoneless-comparison?) (format-without-trailing-zeros datetime-format))))
 
+;;; this is a psuedo-MBQL clause to signify that we need to do a cast, see the code below where we add it for an
+;;; explanation.
+(defmethod sql.qp/->honeysql [:sqlserver ::cast]
+  [driver [_tag expr database-type]]
+  (h2x/maybe-cast database-type (sql.qp/->honeysql driver expr)))
+
 (doseq [op [:= :!= :< :<= :> :>= :between]]
   (defmethod sql.qp/->honeysql [:sqlserver op]
-    [driver [_ field :as clause]]
+    [driver [_tag field & args :as _clause]]
     (binding [*compared-field-options* (when (and (vector? field)
                                                   (= (get field 0) :field))
                                          (get field 2))]
-      ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause))))
+      ;; We read string literals like `2019-11-05T14:23:46.410` as `datetime2`, which is never going to be `=` to a
+      ;; `datetime` (etc.). Wrap all args after the first in temporal filters in a cast() to the same type as the first
+      ;; arg so filters work correctly. Do this before we fully compile to Honey SQL so we can still use the parent
+      ;; method to take care of things like `[:= <string> <expr>]` generating `WHERE <string> = ? AND <string> IS NOT
+      ;; NULL` for us.
+      (let [clause (into [op field]
+                         ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
+                         ;; get the real database type of the expression... maybe when we convert this to MLv2 we can
+                         ;; just use MLv2 metadata or type calculation functions instead.
+                         (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
+                               (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
+                                 (map (fn [[_type val :as expr]]
+                                        ;; Do not cast nil arguments to enable transformation to IS NULL.
+                                        (if (some? val)
+                                          [::cast expr field-database-type]
+                                          expr)))))
+                             identity)
+                         args)]
+        ((get-method sql.qp/->honeysql [:sql-jdbc op]) driver clause)))))
 
 (defmethod driver/db-default-timezone :sqlserver
   [driver database]
@@ -641,7 +668,7 @@
             (and (has-order-by-without-limit? m)
                  (not (in-join-source-query? path))
                  (in-source-query? path)))]
-    (mbql.u/replace inner-query
+    (lib.util.match/replace inner-query
       ;; remove order by and then recurse in case we need to do more tranformations at another level
       (m :guard (partial remove-order-by? &parents))
       (fix-order-bys (dissoc m :order-by))
@@ -683,36 +710,36 @@
 (defmethod sql-jdbc.execute/statement :sqlserver
   [_ ^Connection conn]
   (let [stmt (.createStatement conn
-               ResultSet/TYPE_FORWARD_ONLY
-               ResultSet/CONCUR_READ_ONLY)]
+                               ResultSet/TYPE_FORWARD_ONLY
+                               ResultSet/CONCUR_READ_ONLY)]
     (try
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/debug e (trs "Error setting statement fetch direction to FETCH_FORWARD"))))
+          (log/debug e "Error setting statement fetch direction to FETCH_FORWARD")))
       stmt
       (catch Throwable e
         (.close stmt)
         (throw e)))))
 
-(defmethod unprepare/unprepare-value [:sqlserver LocalDate]
+(defmethod sql.qp/inline-value [:sqlserver LocalDate]
   [_ ^LocalDate t]
   ;; datefromparts(year, month, day)
   ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datefromparts-transact-sql?view=sql-server-ver15
   (format "DateFromParts(%d, %d, %d)" (.getYear t) (.getMonthValue t) (.getDayOfMonth t)))
 
-(defmethod unprepare/unprepare-value [:sqlserver LocalTime]
+(defmethod sql.qp/inline-value [:sqlserver LocalTime]
   [_ ^LocalTime t]
   ;; timefromparts(hour, minute, seconds, fraction, precision)
   ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/timefromparts-transact-sql?view=sql-server-ver15
   ;; precision = 7 which means the fraction is 100 nanoseconds, smallest supported by SQL Server
   (format "TimeFromParts(%d, %d, %d, %d, 7)" (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))))
 
-(defmethod unprepare/unprepare-value [:sqlserver OffsetTime]
+(defmethod sql.qp/inline-value [:sqlserver OffsetTime]
   [driver t]
-  (unprepare/unprepare-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+  (sql.qp/inline-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
-(defmethod unprepare/unprepare-value [:sqlserver OffsetDateTime]
+(defmethod sql.qp/inline-value [:sqlserver OffsetDateTime]
   [_ ^OffsetDateTime t]
   ;; DateTimeOffsetFromParts(year, month, day, hour, minute, seconds, fractions, hour_offset, minute_offset, precision)
   (let [offset-minutes (long (/ (.getTotalSeconds (.getOffset t)) 60))
@@ -723,11 +750,11 @@
             (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))
             hour-offset minute-offset)))
 
-(defmethod unprepare/unprepare-value [:sqlserver ZonedDateTime]
+(defmethod sql.qp/inline-value [:sqlserver ZonedDateTime]
   [driver t]
-  (unprepare/unprepare-value driver (t/offset-date-time t)))
+  (sql.qp/inline-value driver (t/offset-date-time t)))
 
-(defmethod unprepare/unprepare-value [:sqlserver LocalDateTime]
+(defmethod sql.qp/inline-value [:sqlserver LocalDateTime]
   [_ ^LocalDateTime t]
   ;; DateTime2FromParts(year, month, day, hour, minute, seconds, fractions, precision)
   (format "DateTime2FromParts(%d, %d, %d, %d, %d, %d, %d, 7)"
@@ -745,7 +772,7 @@
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
-  [_^ResultSet rs _ ^Integer i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (.getObject rs i OffsetDateTime)))
 
@@ -753,12 +780,3 @@
 (defmethod driver.sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
-
-(defmethod driver/normalize-db-details :sqlserver
-  [_ database]
-  (if-let [rowcount-override (-> database :details :rowcount-override)]
-    ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
-    ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
-    (-> (update database :details #(dissoc % :rowcount-override))
-        (update :settings #(assoc % :unaggregated-query-row-limit rowcount-override)))
-    database))

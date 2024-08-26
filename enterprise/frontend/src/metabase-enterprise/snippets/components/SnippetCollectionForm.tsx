@@ -5,13 +5,14 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
+import type { CollectionPickerItem } from "metabase/common/components/CollectionPicker";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import FormTextArea from "metabase/core/components/FormTextArea";
-import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections";
+import { DEFAULT_COLLECTION_COLOR_ALIAS } from "metabase/entities/collections/constants";
 import SnippetCollections from "metabase/entities/snippet-collections";
 import { Form, FormProvider } from "metabase/forms";
 import { color } from "metabase/lib/colors";
@@ -103,13 +104,29 @@ function SnippetCollectionForm({
   );
 
   const handleSubmit = useCallback(
-    async values => {
+    async (values: SnippetCollectionFormValues) => {
       const nextCollection = isEditing
         ? await handleUpdate({ id: collection.id as CollectionId, ...values })
         : await handleCreate(values);
       onSave?.(nextCollection);
     },
     [collection.id, isEditing, handleCreate, handleUpdate, onSave],
+  );
+
+  const shouldDisableItem = useCallback(
+    (item: CollectionPickerItem) => {
+      if (passedCollection.id === undefined) {
+        return false;
+      } else {
+        return (
+          item.effective_location
+            ?.split("/")
+            .includes(String(passedCollection.id)) ||
+          passedCollection.id === item.id
+        );
+      }
+    },
+    [passedCollection.id],
   );
 
   return (
@@ -137,6 +154,9 @@ function SnippetCollectionForm({
             name="parent_id"
             title={t`Folder this should be in`}
             type="snippet-collections"
+            collectionPickerModalProps={{
+              shouldDisableItem: shouldDisableItem,
+            }}
           />
           <FormFooter>
             <FormErrorMessage inline />

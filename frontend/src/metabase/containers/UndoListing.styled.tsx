@@ -1,8 +1,9 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Card from "metabase/components/Card";
 import Link from "metabase/core/components/Link";
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
@@ -21,15 +22,24 @@ export const UndoList = styled.ul`
 `;
 
 export const ToastCard = styled(Card)<{
-  translateY: number;
+  translateY?: number;
   color?: string;
+  noBorder?: boolean;
 }>`
   padding: 10px ${space(2)};
   margin-top: ${space(1)};
   min-width: 310px;
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  transform: ${props => `translateY(${props.translateY}px)`};
-  ${props => (props.color ? `background-color: ${color(props.color)}` : "")}
+  position: relative;
+  ${props =>
+    props.translateY ? `transform: translateY(${props.translateY}px)` : ""}
+  ${props => (props.color ? `background-color: ${color(props.color)}` : "")};
+  ${({ noBorder }) =>
+    noBorder &&
+    css`
+      border: none;
+      overflow-x: hidden;
+    `};
 `;
 
 export const CardContent = styled.div`
@@ -59,22 +69,22 @@ export const DefaultText = styled.span`
 
 export const UndoButton = styled(Link)`
   font-weight: bold;
-  background-color: ${alpha(color("bg-white"), 0.1)};
+  background-color: ${() => alpha(color("bg-white"), 0.1)};
   padding: 4px 12px;
   margin-left: ${space(1)};
   border-radius: 8px;
 
   :hover {
-    background-color: ${alpha(color("bg-white"), 0.3)};
+    background-color: ${() => alpha(color("bg-white"), 0.3)};
   }
 `;
 
-export const DismissIcon = styled(Icon)`
+export const DismissIcon = styled(Icon)<{ color?: string }>`
   margin-left: ${space(2)};
-  color: ${color("bg-dark")};
+  color: ${({ color: iconColor = "bg-dark" }) => color(iconColor)};
   cursor: pointer;
 
   :hover {
-    color: ${lighten(color("bg-dark"), 0.3)};
+    opacity: 0.7;
   }
 `;

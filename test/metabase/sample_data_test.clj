@@ -5,11 +5,14 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.api.database-test :as api.database-test]
+   [metabase.db :as mdb]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.models :refer [Database Field Table]]
    [metabase.plugins :as plugins]
    [metabase.sample-data :as sample-data]
    [metabase.sync :as sync]
+   [metabase.task.sync-databases-test :as task.sync-databases-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.files :as u.files]
@@ -46,7 +49,6 @@
   "Get the Field in a `db` with `table-name` and `field-name.`"
   [db table-name field-name]
   (t2/select-one Field :name field-name, :table_id (u/the-id (table db table-name))))
-
 
 ;;; ----------------------------------------------------- Tests ------------------------------------------------------
 
@@ -168,13 +170,28 @@
             (is (not (contains? (get-tables) "NEW_TABLE")))
             (jdbc/execute! conn-spec "CREATE TABLE NEW_TABLE (id INTEGER);")
             (is (contains? (get-tables) "NEW_TABLE"))
-           (testing "add column"
-             (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-             (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
-             (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
-            (testing "remove column"
-              (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+            (testing "add column"
               (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
-             (testing "drop table"
-                 (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
-                 (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
+              (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE ADD COLUMN NEW_COLUMN VARCHAR(255);")
+              (is (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN"))
+              (testing "remove column"
+                (jdbc/execute! conn-spec "ALTER TABLE NEW_TABLE DROP COLUMN NEW_COLUMN;")
+                (is (not (contains? (show-columns-from "NEW_TABLE") "NEW_COLUMN")))
+                (testing "drop table"
+                  (jdbc/execute! conn-spec "DROP TABLE NEW_TABLE;")
+                  (is (not (contains? (get-tables) "NEW_TABLE"))))))))))))
+
+(deftest sample-database-schedule-sync-test
+  (testing "Check that the sample database has scheduled sync jobs, just like a newly created database"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (api.database-test/with-db-scheduler-setup!
+        (mdb/setup-db! :create-sample-content? true)
+        (sample-data/extract-and-sync-sample-database!)
+        (testing "Sense check: a newly created database should have sync jobs scheduled"
+          (mt/with-temp [:model/Database db {}]
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name db)))))
+        (testing "The sample database should also have sync jobs scheduled"
+          (let [sample-db (t2/select-one :model/Database :is_sample true)]
+            (is (= (task.sync-databases-test/all-db-sync-triggers-name sample-db)
+                   (task.sync-databases-test/query-all-db-sync-triggers-name sample-db)))))))))

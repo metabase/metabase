@@ -1,7 +1,13 @@
 import _ from "underscore";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { openNotebook, popover, restore, visualize } from "e2e/support/helpers";
+import {
+  openNotebook,
+  popover,
+  restore,
+  tableHeaderClick,
+  visualize,
+} from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
@@ -350,9 +356,7 @@ describe("scenarios > visualizations > table column settings", () => {
     it("should be able to rename table columns via popover", () => {
       cy.createQuestion(tableQuestion, { visitQuestion: true });
 
-      cy.findByTestId("TableInteractive-root").within(() => {
-        cy.findByText("Product ID").click();
-      });
+      tableHeaderClick("Product ID");
 
       popover().within(() => {
         cy.icon("gear").click();
@@ -496,8 +500,6 @@ describe("scenarios > visualizations > table column settings", () => {
 
       _hideColumn(testData);
       _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
     });
 
     it("should be able to show and hide custom expressions for a table with selected fields", () => {
@@ -515,8 +517,6 @@ describe("scenarios > visualizations > table column settings", () => {
 
       _hideColumn(testData);
       _showColumn(testData);
-      _removeColumn(testData);
-      _addColumn(testData);
     });
 
     it("should be able to show and hide columns from aggregations", () => {
@@ -623,12 +623,14 @@ describe("scenarios > visualizations > table column settings", () => {
         column: "Products → Category",
         columnName: "Products → Category",
         table: "test question",
+        scrollTimes: 3,
       };
 
       const testData2 = {
         column: "Ean",
         columnName: "Product → Ean",
         table: "product",
+        scrollTimes: 3,
       };
 
       _hideColumn(testData);

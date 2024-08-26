@@ -5,13 +5,13 @@ import { jt, t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import { getUser } from "metabase/selectors/user";
-import type Question from "metabase-lib/Question";
-import type Database from "metabase-lib/metadata/Database";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, MetabotFeedbackType, User } from "metabase-types/api";
 import type { Dispatch, MetabotQueryStatus, State } from "metabase-types/store";
 
 import { cancelQuery, runPromptQuery, updatePrompt } from "../../actions";
-import { getFeedbackType, getQueryStatus, getPrompt } from "../../selectors";
+import { getFeedbackType, getPrompt, getQueryStatus } from "../../selectors";
 import DatabasePicker from "../DatabasePicker";
 import MetabotMessage from "../MetabotMessage";
 import MetabotPrompt from "../MetabotPrompt";

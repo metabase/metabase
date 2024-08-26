@@ -1,5 +1,5 @@
 import PropTypes from "prop-types";
-import { isValidElement, Fragment } from "react";
+import { Fragment, isValidElement } from "react";
 
 import { Container, Divider, HeaderBadge } from "./HeaderBreadcrumbs.styled";
 
@@ -26,7 +26,7 @@ export function HeadBreadcrumbs({
   variant = "head",
   parts,
   divider,
-  inactiveColor,
+  inactiveColor = undefined,
   ...props
 }) {
   return (

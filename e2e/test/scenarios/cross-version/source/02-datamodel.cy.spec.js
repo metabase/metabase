@@ -10,6 +10,9 @@ const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 const sampleDBDataModelPage = `/admin/datamodel/database/${SAMPLE_DB_ID}`;
 
 it("should configure data model settings", () => {
+  cy.intercept("GET", "/api/segment").as("getSegments");
+  cy.intercept("GET", "/api/metric").as("getMetrics");
+
   cy.signInAsAdmin();
 
   cy.visit("/admin/datamodel");
@@ -37,6 +40,7 @@ it("should configure data model settings", () => {
   cy.wait("@updateProductId");
 
   cy.visit(sampleDBDataModelPage);
+
   cy.get(".AdminList").findByText("Reviews").click();
   cy.intercept("POST", `/api/field/${REVIEWS.RATING}/values`).as(
     "remapRatingValues",
@@ -86,8 +90,10 @@ it("should configure data model settings", () => {
   cy.findByDisplayValue("Price")
     .parent()
     .parent()
-    .contains("No semantic type")
+    .findByText("No semantic type")
     .click();
+
+  cy.get(".MB-Select").should("be.visible");
 
   cy.get(".MB-Select")
     .scrollTo("top")
@@ -120,7 +126,7 @@ it("should configure data model settings", () => {
   const metric = {
     name: "Revenue",
     description: "Sum of orders subtotal",
-    table_id: ORDERS_ID,
+    table_id: ORDERS_ID, // legacy api
     definition: {
       "source-table": ORDERS_ID,
       aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
@@ -137,14 +143,16 @@ it("should configure data model settings", () => {
     },
   };
 
-  createMetric(metric);
+  createMetric(metric); // legacy api
   createSegment(segment);
 
   cy.visit("/admin/datamodel/segments");
+  cy.wait("@getSegments");
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText(segment.name);
 
   cy.visit("/admin/datamodel/metrics");
+  cy.wait("@getMetrics");
   // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
   cy.findByText(metric.name);
 });

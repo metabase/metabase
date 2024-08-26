@@ -2,14 +2,13 @@
   "Convenience functions for parsing and generating YAML."
   (:refer-clojure :exclude [load])
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
    (java.nio.file Files Path)
@@ -56,13 +55,13 @@
    (try
      (-> f .toUri slurp parse-string constructor)
      (catch Exception e
-       (log/error (trs "Error parsing {0}:\n{1}"
-                       (.getFileName f)
-                       (or (some-> e
-                                   ex-data
-                                   (select-keys [:error :value])
-                                   u/pprint-to-str)
-                           e)))
+       (log/errorf "Error parsing %s:\n%s"
+                   (.getFileName f)
+                   (or (some-> e
+                               ex-data
+                               (select-keys [:error :value])
+                               u/pprint-to-str)
+                       e))
        (throw e)))))
 
 (defn load-dir

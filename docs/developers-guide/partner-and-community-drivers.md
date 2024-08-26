@@ -42,7 +42,8 @@ To qualify as a partner driver, the driver must:
 
 Current partner drivers:
 
-- [Clickhouse](https://github.com/ClickHouse/metabase-clickhouse-driver)
+- [ClickHouse](https://github.com/ClickHouse/metabase-clickhouse-driver)
+- [DuckDB](https://github.com/MotherDuck-Open-Source/metabase_duckdb_driver)
 - [Exasol](https://github.com/exasol/metabase-driver)
 - [Firebolt](https://docs.firebolt.io/integrations/business-intelligence/connecting-to-metabase.html)
 - [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)
@@ -68,7 +69,6 @@ You install these drivers at your own risk. The plugins will run as part of your
 | [Cube.js](https://github.com/lili-data/metabase-cubejs-driver)                         | ![GitHub stars](https://img.shields.io/github/stars/lili-data/metabase-cubejs-driver)                | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/lili-data/metabase-cubejs-driver)                |
 | [DB2](https://github.com/damienchambe/metabase-db2-driver)                             | ![GitHub stars](https://img.shields.io/github/stars/damienchambe/metabase-db2-driver)                | ![Github (Pre-)Release Date](https://img.shields.io/github/release-date-pre/damienchambe/metabase-db2-driver)                |
 | [Dremio](https://github.com/Baoqi/metabase-dremio-driver)                              | ![GitHub stars](https://img.shields.io/github/stars/Baoqi/metabase-dremio-driver)                    | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/Baoqi/metabase-dremio-driver)                    |
-| [DuckDB](https://github.com//AlexR2D2/metabase_duckdb_driver)                          | ![GitHub stars](https://img.shields.io/github/stars/AlexR2D2/metabase_duckdb_driver)                 | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/AlexR2D2/metabase_duckdb_driver)                 |
 | [Firebird](https://github.com/evosec/metabase-firebird-driver)                         | ![GitHub stars](https://img.shields.io/github/stars/evosec/metabase-firebird-driver)                 | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/evosec/metabase-firebird-driver)                 |
 | [Hydra](https://www.hydra.so/blog-posts/2022-09-28-metabase-and-hydra)                 | Hydra connections use the official [Postgres driver](../databases/connections/postgresql.md).        | Not applicable.                                                                                                              |
 | [Impala](https://github.com/brenoae/metabase-impala-driver)                            | ![GitHub stars](https://img.shields.io/github/stars/brenoae/metabase-impala-driver)                  | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/brenoae/metabase-impala-driver)                  |
@@ -77,6 +77,7 @@ You install these drivers at your own risk. The plugins will run as part of your
 | [Teradata](https://github.com/swisscom-bigdata/metabase-teradata-driver)               | ![GitHub stars](https://img.shields.io/github/stars/swisscom-bigdata/metabase-teradata-driver)       | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/swisscom-bigdata/metabase-teradata-driver)       |
 | [Netsuite SuiteAnalytics Connect](https://github.com/ericcj/metabase-netsuite-driver)  | ![GitHub stars](https://img.shields.io/github/stars/ericcj/metabase-netsuite-driver)                 | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ericcj/metabase-netsuite-driver)                 |
 | [Databend](https://github.com/databendcloud/metabase-databend-driver)                  | ![GitHub stars](https://img.shields.io/github/stars/databendcloud/metabase-databend-driver)          | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/databendcloud/metabase-databend-driver)          |
+| [Peaka](https://github.com/peakacom/metabase-driver)                                   | ![GitHub stars](https://img.shields.io/github/stars/peakacom/metabase-driver)                        | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/peakacom/metabase-driver)                        |
 
 If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
 

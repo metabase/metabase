@@ -1,5 +1,6 @@
 import EntityMenu from "metabase/components/EntityMenu";
 import Button from "metabase/core/components/Button";
+import CS from "metabase/css/core/index.css";
 import { Flex } from "metabase/ui/components";
 
 import {
@@ -17,7 +18,7 @@ export interface ObjectDetailHeaderProps {
   }[];
   canZoom: boolean;
   objectName: string;
-  objectId: ObjectId | null | unknown;
+  objectId: ObjectId | null;
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
   showControls?: boolean;
@@ -39,9 +40,9 @@ export function ObjectDetailHeader({
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
-    <ObjectDetailHeaderWrapper className="Grid">
-      <div className="Grid-cell">
-        <h2 className="p3">
+    <ObjectDetailHeaderWrapper className={CS.Grid}>
+      <div className={CS.GridCell}>
+        <h2 className={CS.p3}>
           {objectName}
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>

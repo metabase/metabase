@@ -1,9 +1,10 @@
 import type {
+  ActionDashboardCard,
   Dashboard,
+  DashboardQueryMetadata,
   DashboardTab,
   QuestionDashboardCard,
   VirtualCard,
-  ActionDashboardCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
 
@@ -17,6 +18,8 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   name: "Dashboard",
   dashcards: [],
   can_write: true,
+  can_restore: false,
+  can_delete: false,
   description: "",
   cache_ttl: null,
   "last-edit-info": {
@@ -26,6 +29,7 @@ export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
     last_name: "Doe",
     timestamp: "2018-01-01",
   },
+  last_used_param_values: {},
   auto_apply_filters: true,
   archived: false,
   public_uuid: null,
@@ -84,6 +88,7 @@ export const createMockActionDashboardCard = (
   opts?: Partial<ActionDashboardCard>,
 ): ActionDashboardCard => ({
   ...createMockDashboardCard(),
+  action_id: 1,
   action: undefined,
   card: createMockCard({ display: "action" }),
   visualization_settings: {
@@ -130,14 +135,15 @@ export const createMockVirtualDashCard = (
   };
 };
 
-export const createMockTextDashboardCard = (
-  opts?: VirtualDashboardCardOpts & { text?: string },
-): VirtualDashboardCard =>
+export const createMockTextDashboardCard = ({
+  text,
+  ...opts
+}: VirtualDashboardCardOpts & { text?: string } = {}): VirtualDashboardCard =>
   createMockVirtualDashCard({
     ...opts,
     card: createMockVirtualCard({ display: "text" }),
     visualization_settings: {
-      text: opts?.text ?? "Body Text",
+      text: text ?? "Body Text",
     },
   });
 
@@ -175,3 +181,14 @@ export const createMockPlaceholderDashboardCard = ({
     ...opts,
     card: createMockVirtualCard({ display: "placeholder" }),
   });
+
+export const createMockDashboardQueryMetadata = (
+  opts?: Partial<DashboardQueryMetadata>,
+): DashboardQueryMetadata => ({
+  databases: [],
+  tables: [],
+  fields: [],
+  cards: [],
+  dashboards: [],
+  ...opts,
+});

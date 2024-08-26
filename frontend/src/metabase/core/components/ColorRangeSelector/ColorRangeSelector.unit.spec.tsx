@@ -36,7 +36,7 @@ describe("ColorRangeSelector", () => {
     screen.getByRole("button").click();
     expect(await screen.findByRole("tooltip")).toBeInTheDocument();
 
-    screen.getByLabelText(color("summarize")).click();
+    (await screen.findByLabelText(color("summarize"))).click();
     expect(onChange).toHaveBeenCalled();
 
     screen.getByLabelText(color("filter")).click();
@@ -49,13 +49,17 @@ describe("ColorRangeSelector", () => {
     screen.getByRole("button").click();
     expect(await screen.findByRole("tooltip")).toBeInTheDocument();
 
-    screen.getByLabelText(getColorRangeLabel(DEFAULT_VALUE)).click();
+    (await screen.findByLabelText(getColorRangeLabel(DEFAULT_VALUE))).click();
     expect(onChange).not.toHaveBeenCalled();
 
-    screen.getByLabelText(getColorRangeLabel(WHITE_COLOR_RANGE)).click();
+    (
+      await screen.findByLabelText(getColorRangeLabel(WHITE_COLOR_RANGE))
+    ).click();
     expect(onChange).toHaveBeenCalled();
 
-    screen.getByLabelText(getColorRangeLabel(WARNING_COLOR_RANGE)).click();
+    (
+      await screen.findByLabelText(getColorRangeLabel(WARNING_COLOR_RANGE))
+    ).click();
     expect(onChange).toHaveBeenCalled();
   });
 });

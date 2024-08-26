@@ -1,8 +1,10 @@
 (ns metabase.driver-test
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.h2 :as h2]
    [metabase.driver.impl :as driver.impl]
    [metabase.plugins.classloader :as classloader]
@@ -17,17 +19,16 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature _db] true)
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature db] (= db "dummy"))
+(defmethod driver/database-supports? [::test-driver :metadata/key-constraints] [_driver _feature db] (= db "dummy"))
 
 (deftest ^:parallel database-supports?-test
-  (is (driver/database-supports? ::test-driver :foreign-keys "dummy"))
-  (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
+  (is (driver/database-supports? ::test-driver :metadata/key-constraints "dummy"))
+  (is (not (driver/database-supports? ::test-driver :metadata/key-constraints "not-dummy")))
   (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
   (is (thrown-with-msg?
-        java.lang.Exception
-        #"Invalid driver feature: .*"
-        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+       java.lang.Exception
+       #"Invalid driver feature: .*"
+       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
@@ -82,10 +83,7 @@
 
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    (mt/test-drivers (->> (mt/normal-drivers)
-                          ;; athena is a special case because connections aren't made with a single database,
-                          ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
+    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -117,23 +115,21 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    (mt/test-drivers (->> (mt/normal-drivers)
-                          ;; athena is a special case because connections aren't made with a single database,
-                          ;; but to an S3 bucket that may contain many databases
-                          (remove #{:athena}))
+    (mt/test-drivers (mt/normal-drivers-without-feature :connection/multiple-databases)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
           (let [db (mt/db)
                 cant-sync-logged? (fn []
-                                    (some?
-                                     (some
-                                      (fn [[log-level throwable message]]
-                                        (and (= log-level :warn)
-                                             (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
-                                      (mt/with-log-messages-for-level :warn
-                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+                                    (mt/with-log-messages-for-level [messages :warn]
+                                      (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
+                                      (some?
+                                       (some
+                                        (fn [{:keys [level e message]}]
+                                          (and (= level :warn)
+                                               (instance? clojure.lang.ExceptionInfo e)
+                                               (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
+                                        (messages)))))]
             (testing "sense checks before deleting the database"
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
                 (is (false? (cant-sync-logged?))))
@@ -196,3 +192,99 @@
             ;; one it should be harmless but annoying
             (is (= query
                    (json/parse-string weird-formatted-query)))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Begin tests for `describe-*` methods used in sync
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- describe-fields-for-table [db table]
+  (sort-by :database-position
+           (if (driver/database-supports? driver/*driver* :describe-fields db)
+             (vec (driver/describe-fields driver/*driver* db
+                                          :schema-names [(:schema table)]
+                                          :table-names [(:name table)]))
+             (:fields (driver/describe-table driver/*driver* db table)))))
+
+(deftest ^:parallel describe-fields-or-table-test
+  (testing "test `describe-fields` or `describe-table` returns some basic metadata"
+    (mt/test-drivers (mt/normal-drivers)
+      (mt/dataset daily-bird-counts
+        (let [table (t2/select-one :model/Table :id (mt/id :bird-count))
+              fmt   #(ddl.i/format-name driver/*driver* %)]
+          (is (=? [{:name              (fmt "id")
+                    :database-type     string?
+                    :database-position 0
+                    :base-type         #(isa? % :type/Number)}
+                   {:name              (fmt "date")
+                    :database-type     string?
+                    :database-position 1
+                    :base-type         #(isa? % :type/Temporal)}
+                   {:name              (fmt "count")
+                    :database-type     string?
+                    :database-position 2
+                    :base-type         #(isa? % :type/Number)}]
+                  (describe-fields-for-table (mt/db) table))))))))
+
+(deftest ^:parallel describe-table-fks-test
+  (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :metadata/key-constraints)
+                                     (mt/normal-drivers-with-feature :describe-fks))
+      (let [orders   (t2/select-one :model/Table (mt/id :orders))
+            products (t2/select-one :model/Table (mt/id :products))
+            people   (t2/select-one :model/Table (mt/id :people))
+            fmt      (partial ddl.i/format-name driver/*driver*)]
+        (is (= #{{:fk-column-name   (fmt "user_id")
+                  :dest-table       (select-keys people [:name :schema])
+                  :dest-column-name (fmt "id")}
+                 {:fk-column-name   (fmt "product_id")
+                  :dest-table       (select-keys products [:name :schema])
+                  :dest-column-name (fmt "id")}}
+               #_{:clj-kondo/ignore [:deprecated-var]}
+               (driver/describe-table-fks driver/*driver* (mt/db) orders)))))))
+
+(deftest ^:parallel describe-fks-test
+  (testing "`describe-fks` works for drivers that support `describe-fks`"
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints :describe-fks)
+      (let [fmt           (partial ddl.i/format-name driver/*driver*)
+            orders        (t2/select-one :model/Table (mt/id :orders))
+            products      (t2/select-one :model/Table (mt/id :products))
+            people        (t2/select-one :model/Table (mt/id :people))
+            entire-db-fks (driver/describe-fks driver/*driver* (mt/db))
+            schema-db-fks (driver/describe-fks driver/*driver* (mt/db)
+                                               :schema-names (when (:schema orders) [(:schema orders)]))
+            table-db-fks  (driver/describe-fks driver/*driver* (mt/db)
+                                               :schema-names (when (:schema orders) [(:schema orders)])
+                                               :table-names [(:name orders)])]
+        (doseq [[description orders-fks]
+                {"describe-fks results for entire DB includes the orders table FKs"
+                 (into #{}
+                       (filter (fn [x]
+                                 (and (= (:fk-table-name x) (:name orders))
+                                      (= (:fk-table-schema x) (:schema orders)))))
+                       entire-db-fks)
+                 "describe-fks results for a schema includes the orders table FKs"
+                 (into #{}
+                       (filter (fn [x]
+                                 (and (= (:fk-table-name x) (:name orders))
+                                      (= (:fk-table-schema x) (:schema orders)))))
+                       schema-db-fks)
+                 "describe-fks results for a table includes the orders table FKs"
+                 (into #{} table-db-fks)}]
+          (testing description
+            (is (= #{{:fk-column-name  (fmt "user_id")
+                      :fk-table-name   (:name orders)
+                      :fk-table-schema (:schema orders)
+                      :pk-column-name  (fmt "id")
+                      :pk-table-name   (:name people)
+                      :pk-table-schema (:schema people)}
+                     {:fk-column-name  (fmt "product_id")
+                      :fk-table-name   (:name orders)
+                      :fk-table-schema (:schema orders)
+                      :pk-column-name  (fmt "id")
+                      :pk-table-name   (:name products)
+                      :pk-table-schema (:schema products)}}
+                   orders-fks))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; End tests for `describe-*` methods used in sync
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

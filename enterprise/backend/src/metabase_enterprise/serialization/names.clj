@@ -3,7 +3,7 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.collection :refer [Collection]]
@@ -11,13 +11,11 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.segment :refer [Segment]]
    [metabase.models.table :refer [Table]]
    [metabase.models.user :refer [User]]
-   [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -41,7 +39,7 @@
 
 (def ^{:arglists '([entity] [model id])} fully-qualified-name
   "Get the logical path for entity `entity`."
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([entity] (fully-qualified-name* entity))
      ([model id]
@@ -69,10 +67,6 @@
   (if (:fk_target_field_id field)
     (str (->> field :table_id (fully-qualified-name Table)) "/fks/" (safe-name field))
     (str (->> field :table_id (fully-qualified-name Table)) "/fields/" (safe-name field))))
-
-(defmethod fully-qualified-name* Metric
-  [metric]
-  (str (->> metric :table_id (fully-qualified-name Table)) "/metrics/" (safe-name metric)))
 
 (defmethod fully-qualified-name* Segment
   [segment]
@@ -151,8 +145,7 @@
 
 (def ^:private ^{:arglists '([context model model-attrs entity-name])} path->context
   "Extract entities from a logical path."
-   path->context*)
-
+  path->context*)
 
 (defmethod path->context* "databases"
   [context _ _ db-name]
@@ -167,69 +160,63 @@
 (defmethod path->context* "tables"
   [context _ _ table-name]
   (assoc context :table (t2/select-one-pk Table
-                          :db_id  (:database context)
-                          :schema (:schema context)
-                          :name   table-name)))
+                                          :db_id  (:database context)
+                                          :schema (:schema context)
+                                          :name   table-name)))
 
 (defmethod path->context* "fields"
   [context _ _ field-name]
   (assoc context :field (t2/select-one-pk Field
-                          :table_id (:table context)
-                          :name     field-name)))
+                                          :table_id (:table context)
+                                          :name     field-name)))
 
 (defmethod path->context* "fks"
   [context _ _ field-name]
   (path->context* context "fields" nil field-name))
 
-(defmethod path->context* "metrics"
-  [context _ _ metric-name]
-  (assoc context :metric (t2/select-one-pk Metric
-                           :table_id (:table context)
-                           :name     metric-name)))
-
 (defmethod path->context* "segments"
   [context _ _ segment-name]
   (assoc context :segment (t2/select-one-pk Segment
-                            :table_id (:table context)
-                            :name     segment-name)))
+                                            :table_id (:table context)
+                                            :name     segment-name)))
 
 (defmethod path->context* "collections"
   [context _ model-attrs collection-name]
   (if (= collection-name "root")
     (assoc context :collection nil)
     (assoc context :collection (t2/select-one-pk Collection
-                                 :name      collection-name
-                                 :namespace (:namespace model-attrs)
-                                 :location  (or (letfn [(collection-location [id]
-                                                          (t2/select-one-fn :location Collection :id id))]
-                                                  (some-> context
-                                                          :collection
-                                                          collection-location
-                                                          (str (:collection context) "/")))
-                                                "/")))))
+                                                 :name      collection-name
+                                                 :namespace (:namespace model-attrs)
+                                                 :location  (or (letfn [(collection-location [id]
+                                                                          (t2/select-one-fn :location Collection :id id))]
+                                                                  (some-> context
+                                                                          :collection
+                                                                          collection-location
+                                                                          (str (:collection context) "/")))
+                                                                "/")))))
 
 (defmethod path->context* "dashboards"
   [context _ _ dashboard-name]
   (assoc context :dashboard (t2/select-one-pk Dashboard
-                              :collection_id (:collection context)
-                              :name          dashboard-name)))
+                                              :collection_id (:collection context)
+                                              :name          dashboard-name)))
 
 (defmethod path->context* "pulses"
   [context _ _ pulse-name]
   (assoc context :dashboard (t2/select-one-pk Pulse
-                              :collection_id (:collection context)
-                              :name          pulse-name)))
+                                              :collection_id (:collection context)
+                                              :name          pulse-name)))
 
 (defmethod path->context* "cards"
   [context _ _ dashboard-name]
   (assoc context :card (t2/select-one-pk Card
-                         :collection_id (:collection context)
-                         :name          dashboard-name)))
+                                         :collection_id (:collection context)
+                                         :name          dashboard-name)))
 
 (defmethod path->context* "users"
   [context _ _ email]
   (assoc context :user (t2/select-one-pk User
-                         :email email)))
+                                         :email email)))
 
 (defmethod path->context* "snippets"
   [context _ _ snippet-name]
@@ -299,7 +286,7 @@
 
      (contains? all-entities c)
      (partition-name-components (cond-> (assoc acc ::prev-model-name? true
-                                                   ::current-component [c])
+                                               ::current-component [c])
                                   (not-empty (::current-component acc))
                                   (update ::name-components conj (::current-component acc)))
                                 more-comps))))
@@ -309,7 +296,7 @@
   [fully-qualified-name]
   (when fully-qualified-name
     (let [components (->> (str/split fully-qualified-name separator-pattern)
-                          rest ; we start with a /
+                          rest          ; we start with a /
                           partition-name-components
                           (map (fn [[model-name & entity-parts]]
                                  (cond-> {::model-name model-name ::entity-name (last entity-parts)}
@@ -318,7 +305,7 @@
                                                           first ; ns is first/only item after "collections"
                                                           rest  ; strip the starting :
                                                           (apply str)))))))
-          context (loop [acc-context                   {}
+          context (loop [acc-context {}
                          [{::keys [model-name entity-name] :as model-map} & more] components]
                     (let [model-attrs (dissoc model-map ::model-name ::entity-name)
                           new-context (path->context acc-context model-name model-attrs (unescape-name entity-name))]
@@ -329,9 +316,9 @@
            (not (mc/validate [:maybe Context] context))
            (not *suppress-log-name-lookup-exception*))
         (log/warn
-         (ex-info (trs "Can''t resolve {0} in fully qualified name {1}"
-                       (str/join ", " (map name (keys context)))
-                       fully-qualified-name)
+         (ex-info (format "Can't resolve %s in fully qualified name %s"
+                          (str/join ", " (map name (keys context)))
+                          fully-qualified-name)
                   {:fully-qualified-name fully-qualified-name
                    :resolve-name-failed? true
                    :context              context}))

@@ -1,7 +1,9 @@
 import {
-  restore,
-  popover,
+  chartPathWithFillColor,
+  echartsContainer,
   openPeopleTable,
+  popover,
+  restore,
   summarize,
 } from "e2e/support/helpers";
 
@@ -31,7 +33,7 @@ describe("scenarios > binning > correctness > longitude", () => {
         cy.findByText("Done").click();
 
         getTitle(`Count by Longitude: ${selected}`);
-        cy.get(".bar");
+        chartPathWithFillColor("#509EE3");
 
         assertOnXYAxisLabels();
         assertOnXAxisTicks(representativeValues);
@@ -52,7 +54,7 @@ describe("scenarios > binning > correctness > longitude", () => {
     cy.findByText("Done").click();
 
     getTitle("Count by Longitude");
-    cy.get(".cellData")
+    cy.get("[data-testid=cell-data]")
       .should("contain", "Longitude")
       .should("contain", "Count")
       .and("contain", "166.54257260° W")
@@ -78,18 +80,16 @@ function getTitle(title) {
 }
 
 function assertOnXYAxisLabels() {
-  cy.get(".y-axis-label").invoke("text").should("eq", "Count");
-  cy.get(".x-axis-label").invoke("text").should("eq", "Longitude");
+  echartsContainer().get("text").contains("Count");
+  echartsContainer().get("text").contains("Longitude");
 }
 
 function assertOnXAxisTicks(values) {
   if (values) {
-    cy.get(".axis.x").within(() => {
+    echartsContainer().within(() => {
       values.forEach(value => {
         cy.findByText(value);
       });
     });
-  } else {
-    cy.get(".axis.x").should("not.exist");
   }
 }

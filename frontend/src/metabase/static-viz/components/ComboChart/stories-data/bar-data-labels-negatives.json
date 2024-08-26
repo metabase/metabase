@@ -1,0 +1,457 @@
+[
+  {
+    "card": {
+      "displayIsLocked": true,
+      "cache_invalidated_at": null,
+      "archived": false,
+      "view_count": 5,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "default"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": [
+            "field",
+            "count",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 46,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 251.5,
+                "q3": 533.5147186257615,
+                "max": 584,
+                "sd": 179.31850155519373,
+                "avg": 382.85714285714283
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Count Inverted",
+          "field_ref": ["expression", "Count Inverted"],
+          "name": "Count Inverted",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 46,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": -584,
+                "q1": -533.5147186257615,
+                "q3": -251.5,
+                "max": -1,
+                "sd": 179.31850155519368,
+                "avg": -382.85714285714283
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-05-20T17:24:29.444123Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": 17,
+      "query_type": "query",
+      "last_query_start": "2024-05-30T17:26:39.407993Z",
+      "dashboard_count": 0,
+      "last_used_at": "2024-05-30T17:26:39.58883Z",
+      "type": "question",
+      "average_query_time": 516,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-05-30T17:26:39.590635Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "expressions": {
+            "Count Inverted": [
+              "-",
+              0,
+              [
+                "field",
+                "count",
+                {
+                  "base-type": "type/Integer"
+                }
+              ]
+            ]
+          },
+          "source-query": {
+            "source-table": 2,
+            "aggregation": [["count"]],
+            "breakout": [
+              [
+                "field",
+                41,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month"
+                }
+              ]
+            ]
+          }
+        }
+      },
+      "parameter_mappings": [],
+      "display": "bar",
+      "entity_id": "azKs7IUj9aXDLVjebzzed",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-05-23T17:44:27.469126Z"
+      },
+      "visualization_settings": {
+        "graph.show_values": true,
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count", "Count Inverted"],
+        "series_settings": {
+          "count": {
+            "show_series_values": true
+          },
+          "Count Inverted": {
+            "show_series_values": true
+          }
+        }
+      },
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "bugs___regressions",
+        "name": "Bugs / Regressions",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 17,
+        "entity_id": "5GNXgVzQTdQp5bxa6D_aa",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-13T22:30:37.083713Z"
+      },
+      "metabase_version": "v0.1.5-SNAPSHOT (43a9dca)",
+      "parameters": [],
+      "created_at": "2024-05-23T17:44:27.279818Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "original_card_id": 336
+    },
+    "data": {
+      "rows": [
+        ["2022-04-01T00:00:00-07:00", 1, -1],
+        ["2022-05-01T00:00:00-07:00", 19, -19],
+        ["2022-06-01T00:00:00-07:00", 37, -37],
+        ["2022-07-01T00:00:00-07:00", 64, -64],
+        ["2022-08-01T00:00:00-07:00", 79, -79],
+        ["2022-09-01T00:00:00-07:00", 92, -92],
+        ["2022-10-01T00:00:00-07:00", 137, -137],
+        ["2022-11-01T00:00:00-07:00", 150, -150],
+        ["2022-12-01T00:00:00-08:00", 165, -165],
+        ["2023-01-01T00:00:00-08:00", 205, -205],
+        ["2023-02-01T00:00:00-08:00", 206, -206],
+        ["2023-03-01T00:00:00-08:00", 256, -256],
+        ["2023-04-01T00:00:00-07:00", 238, -238],
+        ["2023-05-01T00:00:00-07:00", 271, -271],
+        ["2023-06-01T00:00:00-07:00", 264, -264],
+        ["2023-07-01T00:00:00-07:00", 325, -325],
+        ["2023-08-01T00:00:00-07:00", 333, -333],
+        ["2023-09-01T00:00:00-07:00", 346, -346],
+        ["2023-10-01T00:00:00-07:00", 354, -354],
+        ["2023-11-01T00:00:00-07:00", 394, -394],
+        ["2023-12-01T00:00:00-08:00", 418, -418],
+        ["2024-01-01T00:00:00-08:00", 457, -457],
+        ["2024-02-01T00:00:00-08:00", 404, -404],
+        ["2024-03-01T00:00:00-08:00", 445, -445],
+        ["2024-04-01T00:00:00-07:00", 439, -439],
+        ["2024-05-01T00:00:00-07:00", 520, -520],
+        ["2024-06-01T00:00:00-07:00", 455, -455],
+        ["2024-07-01T00:00:00-07:00", 523, -523],
+        ["2024-08-01T00:00:00-07:00", 501, -501],
+        ["2024-09-01T00:00:00-07:00", 498, -498],
+        ["2024-10-01T00:00:00-07:00", 533, -533],
+        ["2024-11-01T00:00:00-07:00", 520, -520],
+        ["2024-12-01T00:00:00-08:00", 539, -539],
+        ["2025-01-01T00:00:00-08:00", 584, -584],
+        ["2025-02-01T00:00:00-08:00", 533, -533],
+        ["2025-03-01T00:00:00-08:00", 573, -573],
+        ["2025-04-01T00:00:00-07:00", 533, -533],
+        ["2025-05-01T00:00:00-07:00", 561, -561],
+        ["2025-06-01T00:00:00-07:00", 521, -521],
+        ["2025-07-01T00:00:00-07:00", 556, -556],
+        ["2025-08-01T00:00:00-07:00", 566, -566],
+        ["2025-09-01T00:00:00-07:00", 519, -519],
+        ["2025-10-01T00:00:00-07:00", 540, -540],
+        ["2025-11-01T00:00:00-07:00", 542, -542],
+        ["2025-12-01T00:00:00-08:00", 550, -550],
+        ["2026-01-01T00:00:00-08:00", 580, -580],
+        ["2026-02-01T00:00:00-08:00", 543, -543],
+        ["2026-03-01T00:00:00-08:00", 527, -527],
+        ["2026-04-01T00:00:00-07:00", 344, -344]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "default"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "field_ref": [
+            "field",
+            "count",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "fields",
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "Count Inverted",
+          "display_name": "Count Inverted",
+          "expression_name": "Count Inverted",
+          "field_ref": ["expression", "Count Inverted"],
+          "source": "fields",
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"CREATED_AT\" AS \"CREATED_AT\", \"source\".\"count\" AS \"count\", 0 - \"source\".\"count\" AS \"Count Inverted\" FROM (SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC) AS \"source\" LIMIT 2000",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "default"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": [
+              "field",
+              "count",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 46,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 251.5,
+                  "q3": 533.5147186257615,
+                  "max": 584,
+                  "sd": 179.31850155519373,
+                  "avg": 382.85714285714283
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Count Inverted",
+            "field_ref": ["expression", "Count Inverted"],
+            "name": "Count Inverted",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 46,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -584,
+                  "q1": -533.5147186257615,
+                  "q3": -251.5,
+                  "max": -1,
+                  "sd": 179.31850155519368,
+                  "avg": -382.85714285714283
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 527,
+          "unit": "month",
+          "offset": -6953.728152924208,
+          "last-change": -0.34724857685009486,
+          "col": "count",
+          "slope": 0.37026747854680997,
+          "last-value": 344,
+          "best-fit": [
+            "+",
+            -72489.05973457091,
+            ["*", 7365.321460060798, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": -527,
+          "unit": "month",
+          "offset": 6953.728152924208,
+          "last-change": 0.5319767441860465,
+          "col": "Count Inverted",
+          "slope": -0.37026747854680997,
+          "last-value": -344,
+          "best-fit": [
+            "+",
+            72489.05973457091,
+            ["*", -7365.321460060798, ["log", "x"]]
+          ]
+        }
+      ]
+    }
+  }
+]

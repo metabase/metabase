@@ -3,15 +3,19 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  setTokenFeatures,
-  popover,
   describeEE,
   modal,
+  newButton,
+  onlyOnEE,
+  onlyOnOSS,
+  popover,
+  restore,
+  setTokenFeatures,
+  sidebar,
+  tableHeaderClick,
   visitDashboard,
   visitModel,
   visitQuestion,
-  describeOSS,
 } from "e2e/support/helpers";
 
 const ANALYTICS_COLLECTION_NAME = "Metabase analytics";
@@ -57,9 +61,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           visitModel(id);
         });
 
-        cy.findByTestId("TableInteractive-root").within(() => {
-          cy.findByText("Last Name").click();
-        });
+        tableHeaderClick("Last Name");
 
         popover().findByText("Filter by this column").click();
         cy.wait("@fieldValues");
@@ -83,7 +85,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
           expect(response.statusCode).to.eq(200);
         });
 
-        modal().button("Not now").click();
+        cy.button("Not now").click();
 
         cy.log("saving copied question");
 
@@ -136,7 +138,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       cy.findByTestId("collection-menu").within(() => {
         cy.icon("ellipsis").click();
-        cy.contains("Archive").should("not.exist");
+        cy.contains("Move to trash").should("not.exist");
         cy.contains("Move").should("not.exist");
       });
 
@@ -153,7 +155,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       popover().within(() => {
         cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move to trash").should("not.exist");
         cy.findByText("Move").should("not.exist");
       });
 
@@ -177,7 +179,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 
       popover().within(() => {
         cy.findByText("Bookmark").should("be.visible");
-        cy.findByText("Archive").should("not.exist");
+        cy.findByText("Move to trash").should("not.exist");
         cy.findByText("Move").should("not.exist");
       });
     });
@@ -204,6 +206,40 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
         cy.findByText("Duplicate").should("be.visible");
         cy.findByText("Edit query definition").should("not.exist");
       });
+    });
+
+    it("should not leak instance analytics database into SQL query builder (metabase#44856)", () => {
+      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+        visitModel(id);
+      });
+
+      newButton("SQL query").click();
+
+      // sample DB should be the only one
+      cy.findByTestId("gui-builder-data")
+        .icon("cheverondown")
+        .should("not.exist");
+    });
+
+    it("should not leak instance analytics database into permissions editor (metabase#44856)", () => {
+      getItemId(ANALYTICS_COLLECTION_NAME, PEOPLE_MODEL_NAME).then(id => {
+        visitModel(id);
+      });
+
+      // it's important that we do this manually, as this will only reproduce if theres no page load
+      cy.findByTestId("app-bar").icon("gear").click();
+      popover().findByText("Admin settings").click();
+      cy.findByLabelText("Navigation bar").findByText("Permissions").click();
+      sidebar().findByText("Administrators").click();
+      cy.findByTestId("permission-table")
+        .findByText(/internal metabase database/i)
+        .should("not.exist");
+
+      sidebar().findByText("Databases").click();
+
+      sidebar()
+        .findByText(/internal metabase database/i)
+        .should("not.exist");
     });
   });
 
@@ -262,6 +298,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
 describe("question and dashboard links", () => {
   describeEE("ee", () => {
     beforeEach(() => {
+      onlyOnEE();
       restore();
       cy.signInAsAdmin();
       setTokenFeatures("all");
@@ -301,7 +338,7 @@ describe("question and dashboard links", () => {
     it("should show a analytics link for dashboards", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.intercept("GET", "/api/collection/**").as("collection");
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").click();
 
       cy.wait("@collection");
@@ -336,12 +373,13 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });
-  describeOSS("oss", { tags: "@OSS" }, () => {
+  describe("oss", { tags: "@OSS" }, () => {
     beforeEach(() => {
+      onlyOnOSS();
       restore();
       cy.signInAsAdmin();
     });
@@ -355,7 +393,7 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });

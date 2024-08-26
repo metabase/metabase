@@ -36,9 +36,12 @@ const obfuscateString = (original, string) => {
 
 export function enableTranslatedStringReplacement() {
   const c3po = require("ttag");
+
   const _t = c3po.t;
   const _jt = c3po.jt;
   const _ngettext = c3po.ngettext;
+  const _c = c3po.c;
+
   c3po.t = (...args) => {
     return obfuscateString(args[0][0], _t(...args));
   };
@@ -48,6 +51,13 @@ export function enableTranslatedStringReplacement() {
   c3po.jt = (...args) => {
     const elements = _jt(...args);
     return <span style={{ backgroundColor: "currentcolor" }}>{elements}</span>;
+  };
+  c3po.c = (...args) => {
+    return Object.assign(_c(...args), {
+      t: c3po.t,
+      jt: c3po.jt,
+      ngettext: c3po.ngettext,
+    });
   };
 }
 

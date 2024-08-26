@@ -1,18 +1,21 @@
 import { useField } from "formik";
 import type { HTMLAttributes } from "react";
-import { useState, useRef, useMemo, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import {
-  isValidCollectionId,
   canonicalCollectionId,
+  isTrashedCollection,
+  isValidCollectionId,
 } from "metabase/collections/utils";
-import {
-  type CollectionPickerOptions,
-  CollectionPickerModal,
-} from "metabase/common/components/EntityPicker";
+import type {
+  CollectionPickerItem,
+  CollectionPickerModalProps,
+  CollectionPickerOptions,
+} from "metabase/common/components/CollectionPicker";
+import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import CollectionName from "metabase/containers/CollectionName";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
 import SnippetCollectionName from "metabase/containers/SnippetCollectionName";
 import FormField from "metabase/core/components/FormField";
 import Collections from "metabase/entities/collections";
@@ -31,6 +34,7 @@ export interface FormCollectionPickerProps
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
+  collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
 function ItemName({
@@ -55,9 +59,12 @@ function FormCollectionPicker({
   placeholder = t`Select a collection`,
   type = "collections",
   filterPersonalCollections,
+  collectionPickerModalProps,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
+
   const [{ value }, { error, touched }, { setValue }] = useField(name);
+
   const formFieldRef = useRef<HTMLDivElement>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
@@ -67,6 +74,21 @@ function FormCollectionPicker({
     Collections.selectors.getObject(state, {
       entityId: openCollectionId,
     }),
+  );
+
+  const selectedCollection = useSelector(state =>
+    Collections.selectors.getObject(state, {
+      entityId: value,
+    }),
+  );
+
+  useEffect(
+    function preventUsingArchivedCollection() {
+      if (selectedCollection && isTrashedCollection(selectedCollection)) {
+        setValue("root", false);
+      }
+    },
+    [setValue, selectedCollection],
   );
 
   const isOpenCollectionInPersonalCollection = openCollection?.is_personal;
@@ -83,12 +105,13 @@ function FormCollectionPicker({
       hasConfirmButtons: true,
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
+      hasRecents: type !== "snippet-collections",
     }),
     [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
 
   const handleChange = useCallback(
-    ({ id }) => {
+    ({ id }: CollectionPickerItem) => {
       setValue(canonicalCollectionId(id));
       setIsPickerOpen(false);
     },
@@ -132,6 +155,7 @@ function FormCollectionPicker({
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
           options={options}
+          {...collectionPickerModalProps}
         />
       )}
     </>

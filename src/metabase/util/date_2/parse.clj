@@ -5,10 +5,10 @@
    [metabase.util.date-2.common :as u.date.common]
    [metabase.util.date-2.parse.builder :as b]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
-   (java.time.format DateTimeFormatter)
+   (java.time Instant LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time.format DateTimeFormatter DateTimeParseException)
    (java.time.temporal Temporal TemporalAccessor TemporalField TemporalQueries)))
 
 (set! *warn-on-reflection* true)
@@ -42,9 +42,26 @@
                  :when                    (.isSupported temporal-accessor field)]
              [k (.getLong temporal-accessor field)])))
 
-(s/defn parse-with-formatter :- (s/maybe Temporal)
+(def ^:private InstanceOfTemporal
+  [:fn
+   {:error/message "Instance of a java.time.temporal.Temporal"}
+   (partial instance? Temporal)])
+
+(def ^:private utc-zone-region (t/zone-id "UTC"))
+
+(defn- try-parse-as-iso-timestamp
+  "Fastpath for parsing ISO Instant timestamp if it matches the required length. Return nil if the length doesn't match
+  or the parsing fails, otherwise return a ZonedDateTime instance at UTC."
+  [^String s]
+  (when (and s (= (.length s) (.length "1970-01-01T00:00:00Z")))
+    (try (let [temporal-accessor (.parse DateTimeFormatter/ISO_INSTANT s)]
+           (.atZone (Instant/from temporal-accessor) utc-zone-region))
+         (catch DateTimeParseException _))))
+
+(mu/defn parse-with-formatter :- [:maybe InstanceOfTemporal]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."
-  [formattr s :- (s/maybe s/Str)]
+  [formattr
+   s :- [:maybe :string]]
   {:pre [((some-fn string? nil?) s)]}
   (when-not (str/blank? s)
     (let [formattr          (t/formatter formattr)
@@ -55,7 +72,7 @@
           zone-offset       (query temporal-accessor :zone-offset)
           zone-id           (or (query temporal-accessor :zone-id)
                                 (when (= zone-offset ZoneOffset/UTC)
-                                  (t/zone-id "UTC")))
+                                  utc-zone-region))
           literal-type      [(cond
                                zone-id     :zone
                                zone-offset :offset
@@ -75,9 +92,9 @@
         [:offset :time]     (OffsetTime/of local-time zone-offset)
         [:local  :time]     local-time
         (throw (ex-info (tru "Don''t know how to parse {0} using format {1}" (pr-str s) (pr-str formattr))
-                 {:s                s
-                  :formatter        formattr
-                  :supported-fields (all-supported-fields temporal-accessor)}))))))
+                        {:s                s
+                         :formatter        formattr
+                         :supported-fields (all-supported-fields temporal-accessor)}))))))
 
 (def ^:private ^DateTimeFormatter date-formatter*
   (b/formatter
@@ -129,4 +146,5 @@
 (defn parse
   "Parse a string into a `java.time` object."
   [^String s]
-  (parse-with-formatter formatter s))
+  (or (try-parse-as-iso-timestamp s) ;; Try the fastpath first.
+      (parse-with-formatter formatter s)))

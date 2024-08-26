@@ -65,8 +65,11 @@ async function setupCollectionContent(overrides = {}) {
   setupBookmarksEndpoints([]);
 
   const settings = createMockSettingsState({
-    "uploads-enabled": true,
-    "uploads-database-id": 1,
+    "uploads-settings": {
+      db_id: 1,
+      schema_name: null,
+      table_prefix: null,
+    },
   });
 
   renderWithProviders(
@@ -201,7 +204,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent();
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -229,7 +232,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent({ collectionId: secondCollectionId });
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -238,7 +241,7 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Create" }));
+    await userEvent.click(screen.getByRole("button", { name: "Create model" }));
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -263,7 +266,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent({ collectionId: secondCollectionId });
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -272,14 +275,16 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Append to a model"));
-    const submitButton = await screen.findByRole("button", { name: "Append" });
+    await userEvent.click(screen.getByText("Append to a model"));
+    const submitButton = await screen.findByRole("button", {
+      name: "Append to model",
+    });
 
     // only appendable model should be pre-selected
     await screen.findByText("my uploaded model");
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    userEvent.click(submitButton);
+    await userEvent.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -304,7 +309,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent({ collectionId: thirdCollection.id });
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -313,18 +318,20 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Select upload destination"),
     ).toBeInTheDocument();
 
-    userEvent.click(screen.getByText("Append to a model"));
-    const submitButton = await screen.findByRole("button", { name: "Append" });
+    await userEvent.click(screen.getByText("Append to a model"));
+    const submitButton = await screen.findByRole("button", {
+      name: "Append to model",
+    });
 
-    userEvent.click(await screen.findByPlaceholderText("Select a model"));
-    userEvent.click(
+    await userEvent.click(await screen.findByPlaceholderText("Select a model"));
+    await userEvent.click(
       await within(await screen.findByRole("listbox")).findByText(
         "my uploaded model",
       ),
     );
 
     await waitFor(() => expect(submitButton).toBeEnabled());
-    userEvent.click(submitButton);
+    await userEvent.click(submitButton);
 
     act(() => {
       jest.advanceTimersByTime(500);
@@ -341,6 +348,55 @@ describe("FileUploadStatus", () => {
     expect(
       await screen.findByRole("link", { name: "Start exploring" }),
     ).toHaveAttribute("href", "/model/3");
+    await screen.findByText("Data added to Fancy Table");
+  });
+
+  it("Should allow replacing data in a model", async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    fetchMock.post("path:/api/table/123/replace-csv", "3", { delay: 1000 });
+
+    await setupCollectionContent({ collectionId: thirdCollection.id });
+
+    await userEvent.upload(
+      screen.getByTestId("upload-input"),
+      new File(["foo, bar"], "test.csv", { type: "text/csv" }),
+    );
+
+    expect(
+      await screen.findByText("Select upload destination"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByText("Replace data in a model"));
+    const submitButton = await screen.findByRole("button", {
+      name: "Replace model data",
+    });
+
+    await userEvent.click(await screen.findByPlaceholderText("Select a model"));
+    await userEvent.click(
+      await within(await screen.findByRole("listbox")).findByText(
+        "my uploaded model",
+      ),
+    );
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await userEvent.click(submitButton);
+
+    act(() => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(
+      await screen.findByText(/Uploading data to Fancy Table/i),
+    ).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Start exploring" }),
+    ).toHaveAttribute("href", "/model/3");
+    await screen.findByText("Data replaced in Fancy Table");
   });
 
   it("Should show an error message on error", async () => {
@@ -358,7 +414,7 @@ describe("FileUploadStatus", () => {
 
     await setupCollectionContent();
 
-    userEvent.upload(
+    await userEvent.upload(
       screen.getByTestId("upload-input"),
       new File(["foo, bar"], "test.csv", { type: "text/csv" }),
     );
@@ -379,7 +435,7 @@ describe("FileUploadStatus", () => {
       await screen.findByText("Error uploading your file"),
     ).toBeInTheDocument();
 
-    userEvent.click(await screen.findByText("Show error details"));
+    await userEvent.click(await screen.findByText("Show error details"));
 
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
@@ -393,7 +449,7 @@ describe("FileUploadStatus", () => {
 
       await setupCollectionContent();
 
-      userEvent.upload(
+      await userEvent.upload(
         screen.getByTestId("upload-input"),
         new File(["foo, bar"], "test.csv", { type: "text/csv" }),
       );

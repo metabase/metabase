@@ -1,14 +1,13 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
-  restore,
-  modal,
-  describeEE,
   assertPermissionForItem,
+  describeEE,
+  modal,
   modifyPermission,
+  restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
-const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DETAILS_PERMISSION_INDEX = 4;
 
 describeEE(
@@ -23,12 +22,6 @@ describeEE(
     it("allows database managers to see and edit database details but not to delete a database (metabase#22293)", () => {
       // As an admin, grant database details permissions to all users
       cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
-      modifyPermission(
-        "All Users",
-        DATA_ACCESS_PERMISSION_INDEX,
-        "Unrestricted",
-      );
       modifyPermission("All Users", DETAILS_PERMISSION_INDEX, "Yes");
 
       cy.button("Save changes").click();

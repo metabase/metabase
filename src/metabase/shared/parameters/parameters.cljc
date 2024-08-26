@@ -5,7 +5,7 @@
    (:clj
     [(:require
       [clojure.string :as str]
-      [metabase.mbql.normalize :as mbql.normalize]
+      [metabase.legacy-mbql.normalize :as mbql.normalize]
       [metabase.shared.util.i18n :refer [trs trsn]]
       [metabase.util.date-2 :as u.date]
       [metabase.util.date-2.parse.builder :as b]
@@ -16,7 +16,7 @@
     [(:require
       ["moment" :as moment]
       [clojure.string :as str]
-      [metabase.mbql.normalize :as mbql.normalize]
+      [metabase.legacy-mbql.normalize :as mbql.normalize]
       [metabase.shared.util.i18n :refer [trs trsn]])]))
 
 ;; Without this comment, the namespace-checker linter incorrectly detects moment as unused
@@ -201,12 +201,12 @@
   [strs-or-vars]
   (->> strs-or-vars
        (partition-by (fn [str-or-var]
-                         (or (string? str-or-var)
-                             (not (:value str-or-var)))))
+                       (or (string? str-or-var)
+                           (not (:value str-or-var)))))
        (mapcat (fn [strs-or-var]
-                   (if (string? (first strs-or-var))
-                     [(str/join strs-or-var)]
-                     strs-or-var)))))
+                 (if (string? (first strs-or-var))
+                   [(str/join strs-or-var)]
+                   strs-or-var)))))
 
 (defn- add-values-to-variables
   "Given `split-text`, containing a list of alternating strings and TextParam, add a :value key to any TextParams
@@ -215,8 +215,8 @@
   (map
    (fn [maybe-variable]
      (if (TextParam? maybe-variable)
-         (assoc maybe-variable :value (value (:tag maybe-variable) tag->normalized-param locale escape-markdown))
-         maybe-variable))
+       (assoc maybe-variable :value (value (:tag maybe-variable) tag->normalized-param locale escape-markdown))
+       maybe-variable))
    split-text))
 
 (def ^:private optional-block-regex
@@ -251,12 +251,12 @@
       first
       (update-keys keyword)))
 
-(defn ^:export substitute_tags
+(defn ^:export substitute-tags
   "Given the context of a text dashboard card, replace all template tags in the text with their corresponding values,
   formatted and escaped appropriately if escape-markdown is true. Specifically escape-markdown should be false when the
   output isn't being rendered directly as markdown, such as in header cards."
   ([text tag->param]
-   (substitute_tags text tag->param "en" true))
+   (substitute-tags text tag->param "en" true))
   ([text tag->param locale escape-markdown]
    (when text
      (let [tag->param #?(:clj tag->param

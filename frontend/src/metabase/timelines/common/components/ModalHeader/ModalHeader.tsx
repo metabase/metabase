@@ -5,10 +5,10 @@ import { Icon } from "metabase/ui";
 import {
   HeaderBackIcon,
   HeaderCloseButton,
+  HeaderLink,
   HeaderMenu,
   HeaderRoot,
   HeaderTitle,
-  HeaderLink,
 } from "./ModalHeader.styled";
 
 export interface ModalHeaderProps {
@@ -28,7 +28,7 @@ const ModalHeader = ({
     <HeaderRoot>
       <HeaderLink onClick={onGoBack}>
         {onGoBack && <HeaderBackIcon name="chevronleft" />}
-        <HeaderTitle tooltipMaxWidth="100%">{title}</HeaderTitle>
+        <HeaderTitle tooltipMaxWidth="auto">{title}</HeaderTitle>
       </HeaderLink>
       {children && <HeaderMenu>{children}</HeaderMenu>}
       {onClose && (

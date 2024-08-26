@@ -1,5 +1,5 @@
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   ActionFormSettings,
   FieldType,

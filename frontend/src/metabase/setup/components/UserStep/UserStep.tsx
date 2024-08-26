@@ -15,15 +15,14 @@ import type { NumberedStepProps } from "../types";
 import { StepDescription } from "./UserStep.styled";
 
 export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
-  const { isStepActive, isStepCompleted, handleStepSelect, isSetupCompleted } =
-    useStep("user_info");
+  const { isStepActive, isStepCompleted } = useStep("user_info");
   const user = useSelector(getUser);
   const isHosted = useSelector(getIsHosted);
 
   const dispatch = useDispatch();
 
-  const handleSubmit = (user: UserInfo) => {
-    dispatch(submitUser(user));
+  const handleSubmit = async (user: UserInfo) => {
+    await dispatch(submitUser(user)).unwrap();
   };
 
   if (!isStepActive) {
@@ -32,8 +31,6 @@ export const UserStep = ({ stepLabel }: NumberedStepProps): JSX.Element => {
         title={getStepTitle(user, isStepCompleted)}
         label={stepLabel}
         isStepCompleted={isStepCompleted}
-        isSetupCompleted={isSetupCompleted}
-        onStepSelect={handleStepSelect}
       />
     );
   }

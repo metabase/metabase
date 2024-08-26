@@ -16,13 +16,13 @@ import Questions from "metabase/entities/questions";
 import useBeforeUnload from "metabase/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import { getMetadata } from "metabase/selectors/metadata";
-import type Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
+import type Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   CardId,
   DatabaseId,
-  WritebackActionId,
   WritebackAction,
+  WritebackActionId,
   WritebackQueryAction,
 } from "metabase-types/api";
 import type { State } from "metabase-types/store";
@@ -212,7 +212,7 @@ function ActionCreator({
 
 function ensureAceEditorClosed() {
   // @ts-expect-error — `ace` isn't typed yet
-  const editor = window.ace?.edit(ACE_ELEMENT_ID);
+  const editor = window.ace?.edit?.(ACE_ELEMENT_ID);
   editor?.completer?.popup?.hide();
 }
 

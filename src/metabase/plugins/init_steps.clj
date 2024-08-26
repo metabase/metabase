@@ -8,7 +8,6 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (defmulti ^:private do-init-step!
@@ -18,7 +17,7 @@
   (comp keyword :step))
 
 (defmethod do-init-step! :load-namespace [{nmspace :namespace}]
-  (log/debug (u/format-color 'blue (trs "Loading plugin namespace {0}..." nmspace)))
+  (log/debug (u/format-color 'blue "Loading plugin namespace %s..." nmspace))
   (classloader/require (symbol nmspace)))
 
 (defmethod do-init-step! :register-jdbc-driver [{class-name :class}]

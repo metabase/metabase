@@ -3,7 +3,10 @@ import type {
   MultipleMetricsChartColumns,
 } from "metabase/visualizations/lib/graph/columns";
 import type { ColumnFormatter } from "metabase/visualizations/shared/types/format";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockVisualizationSettings,
+} from "metabase-types/api/mocks";
 
 import { getGroupedDataset } from "./data";
 
@@ -66,6 +69,7 @@ describe("data utils", () => {
         const groupedData = getGroupedDataset(
           rows,
           multipleMetricsChartColumns,
+          createMockVisualizationSettings({ column: () => {} }),
           columnFormatter,
         );
 
@@ -98,6 +102,7 @@ describe("data utils", () => {
       const groupedData = getGroupedDataset(
         rows,
         breakoutChartColumns,
+        createMockVisualizationSettings({ column: () => {} }),
         columnFormatter,
       );
 

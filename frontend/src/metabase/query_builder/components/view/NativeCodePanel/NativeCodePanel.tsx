@@ -17,7 +17,7 @@ interface NativeCodePanelProps {
   isCopyEnabled?: boolean;
 }
 
-const NativeCodePanel = ({
+export const NativeCodePanel = ({
   value,
   isHighlighted,
   isCopyEnabled,
@@ -57,6 +57,3 @@ const useCopyButton = (value: string) => {
 
   return { isCopied, handleCopy };
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NativeCodePanel;

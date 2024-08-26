@@ -1,31 +1,76 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
   (:require
-   [clojure.spec.alpha :as s]
+   [clojure.data :as data]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.permission-graph :as api.permission-graph]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
    [metabase.models :refer [PermissionsGroupMembership User]]
+   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
    [metabase.models.permissions-revision :as perms-revision]
+   [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; v50 Permissions Tutorial settings
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Bryan (7/8/24): The following 2 settings are meant to mitigate any confusion for admins over the new and improved
+;; permissions format. It looks different, so we want to make sure they know what's up.
+;; We don't want to show the modal or banner to admins who started using MB after v50 or who have dismissed them.
+;; We should come back around and delete them from the master branch in a few months.
+
+(defn- instance-create-time []
+  (->> (t2/select-one [:model/User [:%min.date_joined :min]]) :min t/local-date-time))
+
+(defn- v-fifty-migration-time []
+  (let [v50-migration-id "v50.2024-01-04T13:52:51"]
+    (->> (mdb/changelog-by-id (mdb/app-db) v50-migration-id) :dateexecuted)))
+
+(defsetting show-updated-permission-modal
+  (deferred-tru
+   "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
+  :visibility :admin
+  :export?    false
+  :default    true
+  :user-local :only
+  :getter (fn [] (if (t/after? (instance-create-time) (v-fifty-migration-time))
+                   false
+                   (setting/get-value-of-type :boolean :show-updated-permission-modal)))
+  :type       :boolean
+  :audit      :never)
+
+(defsetting show-updated-permission-banner
+  (deferred-tru
+   "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
+  :visibility :admin
+  :export?    false
+  :default    true
+  :user-local :only
+  :getter (fn [] (if (t/after? (instance-create-time) (v-fifty-migration-time))
+                   false
+                   (setting/get-value-of-type :boolean :show-updated-permission-banner)))
+  :type       :boolean
+  :audit      :never)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
@@ -34,36 +79,30 @@
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
 (api/defendpoint GET "/graph"
-  "Fetch a graph of all v1 Permissions (excludes v2 query and data permissions)."
+  "Fetch a graph of all Permissions."
   []
   (api/check-superuser)
-  (perms/data-perms-graph))
+  (data-perms.graph/api-graph))
 
 (api/defendpoint GET "/graph/db/:db-id"
-  "Fetch a graph of all v1 Permissions for db-id `db-id` (excludes v2 query and data permissions)."
+  "Fetch a graph of all Permissions for db-id `db-id`."
   [db-id]
   {db-id ms/PositiveInt}
   (api/check-superuser)
-  (perms/data-graph-for-db db-id))
+  (data-perms.graph/api-graph {:db-id db-id}))
 
 (api/defendpoint GET "/graph/group/:group-id"
-  "Fetch a graph of all v1 Permissions for group-id `group-id` (excludes v2 query and data permissions)."
+  "Fetch a graph of all Permissions for group-id `group-id`."
   [group-id]
   {group-id ms/PositiveInt}
   (api/check-superuser)
-  (perms/data-graph-for-group group-id))
-
-(api/defendpoint GET "/graph-v2"
-  "Fetch a graph of all v2 Permissions (excludes v1 data permissions)."
-  []
-  (api/check-superuser)
-  (perms/data-perms-graph-v2))
+  (data-perms.graph/api-graph {:group-id group-id}))
 
 (defenterprise upsert-sandboxes!
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_sandboxes]
- (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
+  (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
 
 (defenterprise insert-impersonations!
   "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
@@ -92,27 +131,37 @@
   {body :map
    skip-graph [:maybe :boolean]}
   (api/check-superuser)
-  (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
-                         body
-                         (mtx/transformer
-                          mtx/string-transformer
-                          (mtx/transformer {:name :perm-graph})))]
-    (when-not (mc/validate api.permission-graph/DataPermissionsGraph graph)
-      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph graph)]
+  (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
+                             body
+                             (mtx/transformer
+                              mtx/string-transformer
+                              (mtx/transformer {:name :perm-graph})))]
+    (when-not (mc/validate api.permission-graph/DataPermissionsGraph new-graph)
+      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph new-graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
-      (perms/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
-      (let [sandbox-updates        (:sandboxes graph)
-            sandboxes              (when sandbox-updates
-                                     (upsert-sandboxes! sandbox-updates))
-            impersonation-updates  (:impersonations graph)
-            impersonations         (when impersonation-updates
-                                     (insert-impersonations! impersonation-updates))]
-        (merge {:revision (perms-revision/latest-id)}
-               (when-not skip-graph {:groups (:groups (perms/data-perms-graph))})
-               (when sandboxes {:sandboxes sandboxes})
-               (when impersonations {:impersonations impersonations}))))))
+      (let [group-ids (-> new-graph :groups keys)
+            old-graph (data-perms.graph/api-graph {:group-ids group-ids})
+            [old new] (data/diff (:groups old-graph)
+                                 (:groups new-graph))
+            old       (or old {})
+            new       (or new {})]
+        (perms.u/log-permissions-changes old new)
+        (perms.u/check-revision-numbers old-graph new-graph)
+        (data-perms.graph/update-data-perms-graph! {:groups new})
+        (perms.u/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+        (let [sandbox-updates        (:sandboxes new-graph)
+              sandboxes              (when sandbox-updates
+                                       (upsert-sandboxes! sandbox-updates))
+              impersonation-updates  (:impersonations new-graph)
+              impersonations         (when impersonation-updates
+                                       (insert-impersonations! impersonation-updates))
+              group-ids (-> new-graph :groups keys)]
+          (merge {:revision (perms-revision/latest-id)}
+                 (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
+                 (when sandboxes {:sandboxes sandboxes})
+                 (when impersonations {:impersonations impersonations})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -207,7 +256,6 @@
   (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
 
-
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 
 (api/defendpoint GET "/membership"
@@ -290,34 +338,5 @@
     (validation/check-manager-of-group (:group_id membership))
     (t2/delete! PermissionsGroupMembership :id id)
     api/generic-204-no-content))
-
-
-;;; ------------------------------------------- Execution Endpoints -------------------------------------------
-
-(api/defendpoint GET "/execution/graph"
-  "Fetch a graph of execution permissions."
-  []
-  (api/check-superuser)
-  (perms/execution-perms-graph))
-
-(api/defendpoint PUT "/execution/graph"
-  "Do a batch update of execution permissions by passing in a modified graph. The modified graph of the same
-  form as returned by the corresponding GET endpoint.
-
-  Revisions to the permissions graph are tracked. If you fetch the permissions graph and some other third-party
-  modifies it before you can submit you revisions, the endpoint will instead make no changes and return a
-  409 (Conflict) response. In this case, you should fetch the updated graph and make desired changes to that."
-  [:as {body :body}]
-  {body [:map]}
-  (api/check-superuser)
-  ;; TODO remove api.permission-graph/converted-json->graph call
-  (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/execution-permissions-graph body)]
-    (when (= graph :clojure.spec.alpha/invalid)
-      (throw (ex-info (tru "Invalid execution permission graph: {0}"
-                           (s/explain-str ::api.permission-graph/execution-permissions-graph body))
-                      {:status-code 400
-                       :error       (s/explain-data ::api.permission-graph/execution-permissions-graph body)})))
-    (perms/update-execution-perms-graph! graph))
-  (perms/execution-perms-graph))
 
 (api/define-routes)

@@ -11,7 +11,7 @@ import { getDateStyleFromSettings } from "metabase/lib/time";
 import {
   getTimeComponent,
   setTimeComponent,
-} from "metabase-lib/queries/utils/query-time";
+} from "metabase-lib/v1/queries/utils/query-time";
 
 import HoursMinutesInput from "./HoursMinutesInput";
 import { DateInputContainer } from "./SpecificDatePicker.styled";
@@ -19,7 +19,6 @@ import { DateInputContainer } from "./SpecificDatePicker.styled";
 interface SpecificDatePickerProps {
   className?: string;
   value: string;
-  primaryColor?: string;
   selectAll?: SelectAll;
   isActive?: boolean;
   hasCalendar?: boolean;
@@ -33,7 +32,6 @@ interface SpecificDatePickerProps {
 const SpecificDatePicker = ({
   className,
   value,
-  primaryColor,
   selectAll,
   isActive,
   hasCalendar,
@@ -106,7 +104,6 @@ const SpecificDatePicker = ({
             onChange={value => handleChange(value, hours, minutes)}
             isRangePicker={false}
             selectAll={selectAll}
-            primaryColor={primaryColor}
           />
         </ExpandingContent>
       )}

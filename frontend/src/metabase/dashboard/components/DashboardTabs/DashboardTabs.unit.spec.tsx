@@ -1,11 +1,13 @@
 import userEvent from "@testing-library/user-event";
 import type { Location } from "history";
-import { Link, Route } from "react-router";
+import { type InjectedRouter, Link, Route, withRouter } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/core/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
+import { createTabSlug } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
 import type { DashboardTab } from "metabase-types/api";
 import type { DashboardState, State } from "metabase-types/store";
@@ -13,7 +15,6 @@ import type { DashboardState, State } from "metabase-types/store";
 import { DashboardTabs } from "./DashboardTabs";
 import { TEST_DASHBOARD_STATE } from "./test-utils";
 import { useDashboardTabs } from "./use-dashboard-tabs";
-import { getSlug } from "./use-sync-url-slug";
 
 function setup({
   tabs,
@@ -34,23 +35,21 @@ function setup({
     },
   };
 
-  const DashboardComponent = ({ location }: { location: Location }) => {
-    const { selectedTabId } = useDashboardTabs({ location, dashboardId: 1 });
-
-    return (
-      <>
-        <DashboardTabs
-          dashboardId={1}
-          location={location}
-          isEditing={isEditing}
-        />
-        <span>Selected tab id is {selectedTabId}</span>
-        <br />
-        <span>Path is {location.pathname + location.search}</span>
-        <Link to="/someotherpath">Navigate away</Link>
-      </>
-    );
-  };
+  const RoutedDashboardComponent = withRouter(
+    ({ location }: { location: Location }) => {
+      const { selectedTabId } = useDashboardTabs({ dashboardId: 1 });
+      useDashboardUrlQuery(createMockRouter(), location);
+      return (
+        <>
+          <DashboardTabs dashboardId={1} isEditing={isEditing} />
+          <span>Selected tab id is {selectedTabId}</span>
+          <br />
+          <span>Path is {location.pathname + location.search}</span>
+          <Link to="/someotherpath">Navigate away</Link>
+        </>
+      );
+    },
+  );
 
   const OtherComponent = () => {
     const selectedTabId = useSelector(getSelectedTabId);
@@ -66,7 +65,10 @@ function setup({
 
   const { store } = renderWithProviders(
     <>
-      <Route path="dashboard/:slug(/:tabSlug)" component={DashboardComponent} />
+      <Route
+        path="dashboard/:slug(/:tabSlug)"
+        component={RoutedDashboardComponent}
+      />
       <Route path="someotherpath" component={OtherComponent} />
     </>,
     {
@@ -86,14 +88,14 @@ function queryTab(numOrName: number | string) {
   return screen.queryByRole("tab", { name, hidden: true });
 }
 
-function selectTab(num: number) {
+async function selectTab(num: number) {
   const selectedTab = queryTab(num) as HTMLElement;
-  userEvent.click(selectedTab);
+  await userEvent.click(selectedTab);
   return selectedTab;
 }
 
-function createNewTab() {
-  userEvent.click(screen.getByLabelText("Create new tab"));
+async function createNewTab() {
+  await userEvent.click(screen.getByLabelText("Create new tab"));
 }
 
 async function openTabMenu(num: number) {
@@ -101,7 +103,7 @@ async function openTabMenu(num: number) {
     name: "chevrondown icon",
     hidden: true,
   });
-  userEvent.click(dropdownIcons[num - 1]);
+  await userEvent.click(dropdownIcons[num - 1]);
   await screen.findByRole("option");
 }
 
@@ -113,8 +115,10 @@ async function selectTabMenuItem(
     name: "chevrondown icon",
     hidden: true,
   });
-  userEvent.click(dropdownIcons[num - 1]);
-  (await screen.findByRole("option", { name, hidden: true })).click();
+  await userEvent.click(dropdownIcons[num - 1]);
+  await userEvent.click(
+    await screen.findByRole("option", { name, hidden: true }),
+  );
 }
 
 async function deleteTab(num: number) {
@@ -128,7 +132,8 @@ async function renameTab(num: number, name: string) {
     name: `Tab ${num}`,
     hidden: true,
   });
-  userEvent.type(inputEl, `${name}{enter}`);
+  await userEvent.clear(inputEl);
+  await userEvent.type(inputEl, `${name}{enter}`);
 }
 
 async function duplicateTab(num: number) {
@@ -136,7 +141,23 @@ async function duplicateTab(num: number) {
 }
 
 async function findSlug({ tabId, name }: { tabId: number; name: string }) {
-  return screen.findByText(new RegExp(getSlug({ tabId, name })));
+  return screen.findByText(new RegExp(createTabSlug({ id: tabId, name })));
+}
+
+function createMockRouter(): InjectedRouter {
+  return {
+    push: jest.fn(),
+    replace: jest.fn(),
+    go: jest.fn(),
+    goBack: jest.fn(),
+    goForward: jest.fn(),
+    setRouteLeaveHook: jest.fn(),
+    createPath: jest.fn(),
+    createHref: jest.fn(),
+    isActive: jest.fn(),
+    // @ts-expect-error missing type definition
+    listen: jest.fn().mockReturnValue(jest.fn()),
+  };
 }
 
 describe("DashboardTabs", () => {
@@ -186,10 +207,10 @@ describe("DashboardTabs", () => {
       it("should automatically select the tab in the slug if valid", async () => {
         setup({
           isEditing: false,
-          slug: getSlug({ tabId: 2, name: "Tab 2" }),
+          slug: createTabSlug({ id: 2, name: "Tab 2" }),
         });
 
-        expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+        expect(await selectTab(2)).toHaveAttribute("aria-selected", "true");
         expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
         expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
@@ -199,7 +220,7 @@ describe("DashboardTabs", () => {
       it("should automatically select the first tab if slug is invalid", async () => {
         setup({
           isEditing: false,
-          slug: getSlug({ tabId: 99, name: "A bad slug" }),
+          slug: createTabSlug({ id: 99, name: "A bad slug" }),
         });
 
         expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
@@ -212,7 +233,7 @@ describe("DashboardTabs", () => {
       it("should allow you to click to select tabs", async () => {
         setup({ isEditing: false });
 
-        expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+        expect(await selectTab(2)).toHaveAttribute("aria-selected", "true");
         expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
         expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
@@ -249,7 +270,7 @@ describe("DashboardTabs", () => {
     it("should allow you to click to select tabs", async () => {
       setup();
 
-      expect(selectTab(2)).toHaveAttribute("aria-selected", "true");
+      expect(await selectTab(2)).toHaveAttribute("aria-selected", "true");
       expect(queryTab(1)).toHaveAttribute("aria-selected", "false");
       expect(queryTab(3)).toHaveAttribute("aria-selected", "false");
 
@@ -257,9 +278,9 @@ describe("DashboardTabs", () => {
     });
 
     describe("when adding tabs", () => {
-      it("should add two tabs, assign cards to the first, and select the second when adding a tab for the first time", () => {
+      it("should add two tabs, assign cards to the first, and select the second when adding a tab for the first time", async () => {
         const { getDashcards } = setup({ tabs: [] });
-        createNewTab();
+        await createNewTab();
         const firstNewTab = queryTab(1);
         const secondNewTab = queryTab(2);
 
@@ -274,9 +295,9 @@ describe("DashboardTabs", () => {
         expect(dashcards[1].dashboard_tab_id).toEqual(-1);
       });
 
-      it("should add add one tab, not reassign cards, and select the tab when adding an additional tab", () => {
+      it("should add add one tab, not reassign cards, and select the tab when adding an additional tab", async () => {
         const { getDashcards } = setup();
-        createNewTab();
+        await createNewTab();
         const newTab = queryTab(4);
 
         expect(newTab).toBeVisible();
@@ -306,7 +327,7 @@ describe("DashboardTabs", () => {
 
       it("should select the tab to the left if the selected tab was deleted", async () => {
         setup();
-        selectTab(2);
+        await selectTab(2);
         await deleteTab(2);
 
         expect(queryTab(1)).toHaveAttribute("aria-selected", "true");
@@ -315,7 +336,7 @@ describe("DashboardTabs", () => {
 
       it("should select the tab to the right if the selected tab was deleted and was the first tab", async () => {
         setup();
-        selectTab(1);
+        await selectTab(1);
         await deleteTab(1);
 
         expect(queryTab(2)).toHaveAttribute("aria-selected", "true");
@@ -339,8 +360,8 @@ describe("DashboardTabs", () => {
 
       it("should correctly update selected tab id when deleting tabs (#30923)", async () => {
         setup({ tabs: [] });
-        createNewTab();
-        createNewTab();
+        await createNewTab();
+        await createNewTab();
 
         await deleteTab(2);
         await deleteTab(2);
@@ -363,13 +384,14 @@ describe("DashboardTabs", () => {
         setup();
         const name = "Another cool new name";
         const inputWrapperEl = screen.getAllByTestId(INPUT_WRAPPER_TEST_ID)[0];
-        userEvent.dblClick(inputWrapperEl);
+        await userEvent.dblClick(inputWrapperEl);
 
         const inputEl = screen.getByRole("textbox", {
           name: "Tab 1",
           hidden: true,
         });
-        userEvent.type(inputEl, `${name}{enter}`);
+        await userEvent.clear(inputEl);
+        await userEvent.type(inputEl, `${name}{enter}`);
 
         expect(queryTab(name)).toBeInTheDocument();
         expect(await findSlug({ tabId: 1, name })).toBeInTheDocument();
@@ -403,13 +425,13 @@ describe("DashboardTabs", () => {
   });
 
   describe("when navigating away from dashboard", () => {
-    it("should preserve selected tab id", () => {
+    it("should preserve selected tab id", async () => {
       setup();
 
-      selectTab(2);
+      await selectTab(2);
       expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
 
-      screen.getByText("Navigate away").click();
+      await userEvent.click(screen.getByText("Navigate away"));
       expect(screen.getByText("Another route")).toBeInTheDocument();
       expect(screen.getByText("Selected tab id is 2")).toBeInTheDocument();
     });

@@ -34,10 +34,10 @@
  ["test-data" "products"]                                             95636200
  ["test-data" "reviews"]                                              292738400
  ["test-data-self-referencing-user" "users"]                          5118200
- ["test-data-with-null-date-checkins" "categories"]                   8328000
- ["test-data-with-null-date-checkins" "checkins"]                     132575300
- ["test-data-with-null-date-checkins" "users"]                        6756300
- ["test-data-with-null-date-checkins" "venues"]                       16336800
+ ["test-data-null-date" "categories"]                                 8328000
+ ["test-data-null-date" "checkins"]                                   132575300
+ ["test-data-null-date" "users"]                                      6756300
+ ["test-data-null-date" "venues"]                                     16336800
  ["test-data-with-time" "users"]                                      15280900
  ["test-data-with-timezones" "categories"]                            11324400
  ["test-data-with-timezones" "checkins"]                              143596000

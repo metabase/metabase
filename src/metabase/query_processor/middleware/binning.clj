@@ -2,6 +2,7 @@
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
   (:require
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.binning.util :as lib.binning.util]
    [metabase.lib.card :as lib.card]
    [metabase.lib.equality :as lib.equality]
@@ -9,8 +10,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
@@ -21,18 +21,18 @@
 (def ^:private FieldIDOrName->Filters
   [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential mbql.s/Filter]])
 
-(mu/defn ^:private filter->field-map :- FieldIDOrName->Filters
+(mu/defn- filter->field-map :- FieldIDOrName->Filters
   "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses the reference
   it."
   [filter-clause :- [:maybe mbql.s/Filter]]
   (reduce
    (partial merge-with concat)
    {}
-   (for [subclause (mbql.u/match filter-clause #{:between :< :<= :> :>=})
-         field-id-or-name (mbql.u/match subclause [:field field-id-or-name _] field-id-or-name)]
+   (for [subclause (lib.util.match/match filter-clause #{:between :< :<= :> :>=})
+         field-id-or-name (lib.util.match/match subclause [:field field-id-or-name _] field-id-or-name)]
      {field-id-or-name [subclause]})))
 
-(mu/defn ^:private extract-bounds :- [:map [:min-value number?] [:max-value number?]]
+(mu/defn- extract-bounds :- [:map [:min-value number?] [:max-value number?]]
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
   the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
   given field."
@@ -42,9 +42,9 @@
   (let [{global-min :min, global-max :max} (get-in fingerprint [:type :type/Number])
         filter-clauses                     (get field-id-or-name->filters field-id-or-name)
         ;; [:between <field> <min> <max>] or [:< <field> <x>]
-        user-maxes                         (mbql.u/match filter-clauses
+        user-maxes                         (lib.util.match/match filter-clauses
                                              [(_ :guard #{:< :<= :between}) & args] (last args))
-        user-mins                          (mbql.u/match filter-clauses
+        user-mins                          (lib.util.match/match filter-clauses
                                              [(_ :guard #{:> :>= :between}) _ min-val & _] min-val)
         min-value                          (or (when (seq user-mins)
                                                  (apply max user-mins))
@@ -54,16 +54,16 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value (missing or incomplete fingerprint)")
-               {:type qp.error-type/invalid-query
-                :field-id-or-name field-id-or-name
-                :fingerprint fingerprint})))
+                      {:type qp.error-type/invalid-query
+                       :field-id-or-name field-id-or-name
+                       :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
 (def ^:private PossiblyLegacyColumnMetadata
   [:map
    [:name :string]])
 
-(mu/defn ^:private matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
+(mu/defn- matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
   [field-name      :- ::lib.schema.common/non-blank-string
    source-metadata :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
   (do
@@ -72,8 +72,7 @@
       (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
                       {:field field-name})))
     ;; try to find field in source-metadata with matching name
-    (let [mlv2-metadatas (for [col source-metadata]
-                           (lib.card/->card-metadata-column (qp.store/metadata-provider) col))]
+    (let [mlv2-metadatas (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)]
       (or
        (lib.equality/find-matching-column
         [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]
@@ -82,7 +81,7 @@
                             (pr-str field-name))
                        {:field field-name, :resolved-metadata mlv2-metadatas}))))))
 
-(mu/defn ^:private matching-metadata :- ::lib.schema.metadata/column
+(mu/defn- matching-metadata :- ::lib.schema.metadata/column
   [field-id-or-name :- [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
    source-metadata  :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
   (if (integer? field-id-or-name)
@@ -91,7 +90,7 @@
     ;; for field literals, we require `source-metadata` from the source query
     (matching-metadata-from-source-metadata field-id-or-name source-metadata)))
 
-(mu/defn ^:private update-binned-field :- mbql.s/field
+(mu/defn- update-binned-field :- mbql.s/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
@@ -117,7 +116,7 @@
   "Update `:field` clauses with `:binning` strategy options in an `inner` [MBQL] query."
   [{filters :filter, :as inner-query}]
   (let [field-id-or-name->filters (filter->field-map filters)]
-    (mbql.u/replace inner-query
+    (lib.util.match/replace inner-query
       [:field _ (_ :guard :binning)]
       (try
         (update-binned-field inner-query field-id-or-name->filters &match)

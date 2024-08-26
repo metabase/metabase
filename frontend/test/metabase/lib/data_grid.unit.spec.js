@@ -1,14 +1,14 @@
 import _ from "underscore";
 
 import {
-  pivot,
-  multiLevelPivot,
-  COLUMN_SPLIT_SETTING,
   COLLAPSED_ROWS_SETTING,
-  COLUMN_SORT_ORDER,
   COLUMN_SHOW_TOTALS,
+  COLUMN_SORT_ORDER,
+  COLUMN_SPLIT_SETTING,
+  multiLevelPivot,
+  pivot,
 } from "metabase/lib/data_grid";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 const dimension = i => ({
   name: "D" + i,

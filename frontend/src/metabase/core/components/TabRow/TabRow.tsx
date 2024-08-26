@@ -1,9 +1,9 @@
-import type { UniqueIdentifier, DragEndEvent } from "@dnd-kit/core";
+import type { DragEndEvent, UniqueIdentifier } from "@dnd-kit/core";
 import {
   DndContext,
-  useSensor,
-  PointerSensor,
   MouseSensor,
+  PointerSensor,
+  useSensor,
 } from "@dnd-kit/core";
 import {
   restrictToHorizontalAxis,
@@ -13,7 +13,8 @@ import {
   SortableContext,
   horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { usePreviousDistinct } from "react-use";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { Icon } from "metabase/ui";
@@ -21,6 +22,7 @@ import { Icon } from "metabase/ui";
 import type { TabListProps } from "../TabList/TabList";
 
 import { ScrollButton, TabList } from "./TabRow.styled";
+import { tabsCollisionDetection } from "./collision-detection";
 
 interface TabRowProps<T> extends TabListProps<T> {
   width?: number | null;
@@ -44,24 +46,8 @@ function TabRowInner<T>({
   const [showScrollRight, setShowScrollRight] = useState(false);
   const showScrollLeft = scrollPosition > 0;
 
-  useEffect(() => {
-    if (!width || !tabListRef.current) {
-      return;
-    }
-
-    setShowScrollRight(
-      Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
-    );
-  }, [children, scrollPosition, width]);
-
-  const scroll = (direction: "left" | "right") => {
-    if (!tabListRef.current || !width) {
-      return;
-    }
-
-    const scrollDistance = width * (direction === "left" ? -1 : 1);
-    tabListRef.current.scrollBy(scrollDistance, 0);
-  };
+  const itemsCount = itemIds?.length ?? 0;
+  const previousItemsCount = usePreviousDistinct(itemsCount) ?? 0;
 
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 10 },
@@ -72,6 +58,33 @@ function TabRowInner<T>({
   const mouseSensor = useSensor(MouseSensor, {
     activationConstraint: { distance: 10 },
   });
+
+  const scroll = useCallback(
+    (direction: "left" | "right") => {
+      if (!tabListRef.current || !width) {
+        return;
+      }
+      const left = width * (direction === "left" ? -1 : 1);
+      tabListRef.current.scrollBy?.({ left, behavior: "instant" });
+    },
+    [width],
+  );
+
+  useLayoutEffect(() => {
+    if (itemsCount - previousItemsCount === 1) {
+      scroll("right");
+    }
+  }, [itemsCount, previousItemsCount, scroll]);
+
+  useLayoutEffect(() => {
+    if (!width || !tabListRef.current) {
+      return;
+    }
+
+    setShowScrollRight(
+      Math.round(scrollPosition + width) < tabListRef.current?.scrollWidth,
+    );
+  }, [scrollPosition, width]);
 
   const onDragEnd = (event: DragEndEvent) => {
     if (!event.over || !handleDragEnd) {
@@ -91,6 +104,7 @@ function TabRowInner<T>({
         onDragEnd={onDragEnd}
         modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
         sensors={[pointerSensor, mouseSensor]}
+        collisionDetection={tabsCollisionDetection}
       >
         <SortableContext
           items={itemIds ?? []}

@@ -11,6 +11,7 @@
      :EUR  ;; Euro
      :AUD  ;; Australian dollar
      :BRL  ;; Brazilian real
+     :BTC  ;; Bitcoin
      :CNY  ;; Chinese yuan
      :GBP  ;; British pound
      :HKD  ;; Hong Kong dollar

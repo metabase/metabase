@@ -35,15 +35,21 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
+  // We are first loading databases to see if we should show the
+  // database selector or simply display the previously selected database
+  cy.findAllByTestId("loading-indicator").should("not.exist");
+
   return focusNativeEditor().as(alias);
 }
 
 export function focusNativeEditor() {
-  return cy
-    .findByTestId("native-query-editor")
+  cy.findByTestId("native-query-editor")
     .should("be.visible")
     .should("have.class", "ace_editor")
-    .click()
+    .click();
+
+  return cy
+    .findByTestId("native-query-editor")
     .should("have.class", "ace_focus");
 }
 
@@ -99,36 +105,47 @@ export function interceptPromise(method, path) {
  *   cy.visit(`/dashboard/1`);
  * });
  */
-const cypressWaitAllRecursive = (results, currentCommand, commands) => {
-  return currentCommand.then(result => {
+const cypressWaitAllRecursive = (results, commands) => {
+  const [nextCommand, ...restCommands] = commands;
+  if (!nextCommand) {
+    return;
+  }
+
+  return nextCommand.then(result => {
     results.push(result);
 
-    const [nextCommand, ...rest] = Array.from(commands);
-
     if (nextCommand == null) {
-      return results;
+      return;
     }
 
-    return cypressWaitAllRecursive(results, nextCommand, rest);
+    return cypressWaitAllRecursive(results, restCommands);
   });
 };
 
 export const cypressWaitAll = function (commands) {
   const results = [];
 
-  return cypressWaitAllRecursive(
-    results,
-    cy.wrap(null, { log: false }),
-    commands,
-  );
+  return cy.wrap(results).then(() => {
+    cypressWaitAllRecursive(results, commands);
+  });
 };
 
 /**
  * Visit a question and wait for its query to load.
  *
- * @param {number} id
+ * @param {number|string} questionIdOrAlias
  */
-export function visitQuestion(id) {
+export function visitQuestion(questionIdOrAlias) {
+  if (typeof questionIdOrAlias === "number") {
+    visitQuestionById(questionIdOrAlias);
+  }
+
+  if (typeof questionIdOrAlias === "string") {
+    cy.get(questionIdOrAlias).then(id => visitQuestionById(id));
+  }
+}
+
+function visitQuestionById(id) {
   // In case we use this function multiple times in a test, make sure aliases are unique for each question
   const alias = "cardQuery" + id;
 
@@ -160,6 +177,25 @@ export function visitModel(id, { hasDataAccess = true } = {}) {
 }
 
 /**
+ * Visit a metric and wait for its query to load.
+ *
+ * @param {number} id
+ */
+export function visitMetric(id, { hasDataAccess = true } = {}) {
+  const alias = "metricQuery" + id;
+
+  if (hasDataAccess) {
+    cy.intercept("POST", "/api/dataset").as(alias);
+  } else {
+    cy.intercept("POST", `/api/card/**/${id}/query`).as(alias);
+  }
+
+  cy.visit(`/metric/${id}`);
+
+  cy.wait("@" + alias);
+}
+
+/**
  * Visit a dashboard and wait for the related queries to load.
  *
  * @param {number|string} dashboardIdOrAlias
@@ -171,7 +207,7 @@ export function visitDashboard(dashboardIdOrAlias, { params = {} } = {}) {
   }
 
   if (typeof dashboardIdOrAlias === "string") {
-    visitDashboardByAlias(dashboardIdOrAlias, { params });
+    cy.get(dashboardIdOrAlias).then(id => visitDashboardById(id, { params }));
   }
 }
 
@@ -185,7 +221,7 @@ function visitDashboardById(dashboard_id, config) {
   }).then(({ status, body: { dashcards, tabs } }) => {
     const dashboardAlias = "getDashboard" + dashboard_id;
 
-    cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(dashboardAlias);
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(dashboardAlias);
 
     const canViewDashboard = hasAccess(status);
 
@@ -237,14 +273,6 @@ function visitDashboardById(dashboard_id, config) {
   });
 }
 
-/**
- * Visit a dashboard by using its previously saved dashboard id alias.
- * @param {string} alias
- */
-function visitDashboardByAlias(alias, config) {
-  cy.get(alias).then(id => visitDashboard(id, config));
-}
-
 function hasAccess(statusCode) {
   return statusCode !== 403;
 }
@@ -270,7 +298,7 @@ function dashboardHasQuestions(cards) {
 }
 
 export function interceptIfNotPreviouslyDefined({ method, url, alias } = {}) {
-  const aliases = Object.keys(cy.state("aliases"));
+  const aliases = Object.keys(cy.state("aliases") ?? {});
 
   const isAlreadyDefined = aliases.find(a => a === alias);
 
@@ -284,7 +312,7 @@ export function saveQuestion(
   { wrapId = false, idAlias = "questionId" } = {},
 ) {
   cy.intercept("POST", "/api/card").as("saveQuestion");
-  cy.findByText("Save").click();
+  cy.findByTestId("qb-header").button("Save").click();
 
   cy.findByTestId("save-question-modal").within(modal => {
     if (name) {
@@ -300,7 +328,8 @@ export function saveQuestion(
   });
 
   cy.get("#QuestionSavedModal").within(() => {
-    cy.button("Not now").click();
+    cy.findByText(/add this to a dashboard/i);
+    cy.findByText("Not now").click();
   });
 }
 

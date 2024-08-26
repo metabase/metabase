@@ -1,7 +1,6 @@
 import type { CardId } from "./card";
 import type { FieldReference } from "./query";
 
-export type NormalizedModelIndex = ModelIndex;
 export type NormalizedIndexedEntity = IndexedEntity;
 
 export type ModelIndex = {
@@ -24,4 +23,17 @@ export type IndexedEntity = {
   model_name: string;
   name: string;
   pk_ref: FieldReference;
+};
+
+export type ModelIndexesListQuery = {
+  model_id: CardId | null;
+};
+
+export type ModelIndexCreateQuery = Pick<
+  ModelIndex,
+  "model_id" | "pk_ref" | "value_ref"
+>;
+
+export type ModelIndexDeleteQuery = {
+  id: number;
 };

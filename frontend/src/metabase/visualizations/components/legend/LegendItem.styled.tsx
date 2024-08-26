@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
@@ -24,7 +23,7 @@ export const LegendItemLabel = styled.div<{ isMuted: boolean }>`
   transition: opacity 0.25s linear;
 
   &:hover {
-    color: ${({ onMouseEnter }) => (onMouseEnter ? color("brand") : "")};
+    color: ${({ onMouseEnter }) => onMouseEnter && "var(--mb-color-brand)"};
   }
 `;
 
@@ -34,23 +33,24 @@ export const LegendItemDot = styled.div`
   height: 0.75rem;
   border-radius: 50%;
   background-color: ${({ color }) => color};
+  color-adjust: exact;
 `;
 
 export const LegendItemTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-primary);
   font-weight: bold;
-  font-size: 12px;
+  font-size: 0.85em;
   margin-left: 4px;
   overflow: hidden;
 `;
 
 export const LegendItemRemoveIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   cursor: pointer;
   margin-left: 0.5rem;
 
   &:hover {
-    color: ${color("text-medium")};
+    color: var(--mb-color-text-medium);
   }
 `;
 

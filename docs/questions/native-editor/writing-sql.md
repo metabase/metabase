@@ -24,7 +24,7 @@ After clicking **SQL query**, you'll see an editor where you can write and run q
 
 To try it out, make sure you've selected the [Sample Database][sample-database-gloss], then paste in this short SQL query:
 
-```
+```sql
 SELECT
     sum(subtotal),
     created_at
@@ -43,6 +43,22 @@ You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or
 Questions asked using SQL can be saved, downloaded, converted to models, and added to dashboards just like questions asked using the query builder.
 
 You can also [refer to models and saved questions][ref-models] in your SQL queries.
+
+## Use `??` instead of `?` operator
+
+If you're using the `?` JSON operator in PostgreSQL, use the equivalent `??` operator instead.
+
+This is due to limitations of JDBC that interprets a single question mark `?` as a parameter placeholder.
+
+## Format SQL queries
+
+You can format your SQL queries by clicking on the "document" icon in the editor sidebar.
+
+| Before format                                                         | After format                                                        |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| ![a SQL query before formatting](../images/before-sql-formatting.png) | ![a SQL query after formatting](../images/after-sql-formatting.png) |
+
+The formatter works only for SQL queries, and isn’t available for SQLite and SQL Server.
 
 ## Using SQL filters
 
@@ -66,6 +82,24 @@ For questions, [dashboards](../../dashboards/start.md), and [models](../../data-
 
 See [History](../../exploration-and-organization/history.md).
 
+## Explore SQL question results using the Query Builder
+
+On saved SQL questions without [parameters](./sql-parameters.md), you'll get the **Explore results** button. It will create a new Query Builder question that uses the SQL question results as a data source.
+
+![Explore results button](../images/explore-results.png)
+
+## To enable drill-through, turn a SQL question into a model and set the data types
+
+Visualizations created with SQL do not have [drill-through][drill-through] capability. To enable drill-through on a SQL question, you can turn it into a model:
+
+1. Save the SQL question and [turn it into a model](../../data-modeling/models.md#create-a-model-from-a-saved-question).
+2. [Edit the column metadata](../../data-modeling/metadata-editing.md#column-field-settings) in the model's settings. Make sure to set the data types for all the columns.
+3. [Create a Query Builder question](../query-builder/introduction.md#creating-a-new-question-with-the-query-builder) based on the model. You should be able to use drill-through on this question, if you configured the metadata correctly.
+
+## Caching results
+
+See [Caching question policies](../../configuring-metabase/caching.md#question-caching-policy).
+
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
@@ -78,3 +112,4 @@ See [History](../../exploration-and-organization/history.md).
 [sql-gloss]: https://www.metabase.com/glossary/sql
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
 [variable-gloss]: https://www.metabase.com/glossary/variable
+[drill-through]: https://www.metabase.com/learn/questions/drill-through

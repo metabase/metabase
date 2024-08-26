@@ -2,9 +2,9 @@ import slugg from "slugg";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 import MetabaseSettings from "metabase/lib/settings";
-import type { QuestionCreatorOpts } from "metabase-lib/Question";
-import Question from "metabase-lib/Question";
-import * as ML_Urls from "metabase-lib/urls";
+import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
+import Question from "metabase-lib/v1/Question";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { CardId, Card as SavedCard } from "metabase-types/api";
 
 import { appendSlug, getEncodedUrlSearchParams } from "./utils";
@@ -22,7 +22,9 @@ export type QuestionUrlBuilderParams = {
 };
 
 export function question(
-  card: Card | null,
+  card: Partial<
+    Pick<Card, "id" | "name" | "type" | "card_id" | "model">
+  > | null,
   {
     mode = "view",
     hash = "",
@@ -104,11 +106,10 @@ export function newQuestion({
     creationType,
     query: objectId ? { objectId } : undefined,
   });
-
   const type = question.type();
 
   if (mode) {
-    return url.replace(/^\/(question|model)/, `/${type}\/${mode}`);
+    return url.replace(/^\/(question|model|metric)/, `/${type}\/${mode}`);
   }
 
   return url;

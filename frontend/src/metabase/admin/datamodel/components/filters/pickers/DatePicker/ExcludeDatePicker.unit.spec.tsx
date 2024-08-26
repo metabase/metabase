@@ -1,8 +1,8 @@
-import { render, fireEvent, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
-import Filter from "metabase-lib/queries/structured/Filter";
+import Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   ORDERS,
   ORDERS_ID,

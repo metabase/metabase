@@ -28,7 +28,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -87,12 +86,17 @@
 
 (t2/define-before-update :model/Pulse
   [notification]
-  (let [{:keys [collection_id dashboard_id]} (t2/original notification)]
+  (let [{:keys [collection_id dashboard_id]} (t2/original notification)
+        changes                              (t2/changes notification)]
     (when (and dashboard_id
                (contains? notification :collection_id)
                (not= (:collection_id notification) collection_id)
                (not *allow-moving-dashboard-subscriptions*))
       (throw (ex-info (tru "collection ID of a dashboard subscription cannot be directly modified") notification)))
+    (when (contains? changes :archived)
+      (if (:archived changes)
+        (t2/update! :model/PulseChannel :pulse_id (u/the-id notification) {:enabled false})
+        (t2/update! :model/PulseChannel :pulse_id (u/the-id notification) {:enabled true})))
     (when (and dashboard_id
                (contains? notification :dashboard_id)
                (not= (:dashboard_id notification) dashboard_id))
@@ -100,6 +104,11 @@
   (u/prog1 (t2/changes notification)
     (assert-valid-parameters notification)
     (collection/check-collection-namespace Pulse (:collection_id notification))))
+
+(t2/define-before-delete :model/Pulse
+  [pulse]
+  ;; to trigger deleting the scheduled jobs
+  (t2/delete! :model/PulseChannel :pulse_id (u/the-id pulse)))
 
 (defn- alert->card
   "Return the Card associated with an Alert, fetching it if needed, for permissions-checking purposes."
@@ -148,10 +157,10 @@
 (defmethod mi/can-read? Pulse
   [notification]
   (if (is-alert? notification)
-   (mi/current-user-has-full-permissions? :read notification)
-   (or api/*is-superuser?*
-       (or (current-user-is-creator? notification)
-           (current-user-is-recipient? notification)))))
+    (mi/current-user-has-full-permissions? :read notification)
+    (or api/*is-superuser?*
+        (or (current-user-is-creator? notification)
+            (current-user-is-recipient? notification)))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
@@ -163,10 +172,6 @@
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
 
-(defmethod serdes/hash-fields Pulse
-  [_pulse]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def AlertConditions
@@ -177,37 +182,38 @@
   "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
   required since the card may be a placeholder."
   (mu/with-api-error-message
-    [:map
-     [:include_csv                        ms/BooleanValue]
-     [:include_xls                        ms/BooleanValue]
-     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
+   [:map
+    [:include_csv                        ms/BooleanValue]
+    [:include_xls                        ms/BooleanValue]
+    [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
+    [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
   (mu/with-api-error-message
-    [:merge CardBase
-     [:map
-      [:id ms/PositiveInt]]]
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
+   [:merge CardBase
+    [:map
+     [:id ms/PositiveInt]]]
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
   additional information used by the UI to display it from `Card`. This is a superset of `CardRef` and is coercible to
   a `CardRef`"
   (mu/with-api-error-message
-    [:merge CardRef
-     [:map
-      [:name               [:maybe string?]]
-      [:description        [:maybe string?]]
-      [:display            [:maybe ms/KeywordOrString]]
-      [:collection_id      [:maybe ms/PositiveInt]]
-      [:dashboard_id       [:maybe ms/PositiveInt]]
-      [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
-    (deferred-tru "value must be a map with the following keys `({0})`"
-        (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
-                        "dashboard_id" "parameter_mappings"]))))
+   [:merge CardRef
+    [:map
+     [:name               [:maybe string?]]
+     [:description        [:maybe string?]]
+     [:display            [:maybe ms/KeywordOrString]]
+     [:collection_id      [:maybe ms/PositiveInt]]
+     [:dashboard_id       [:maybe ms/PositiveInt]]
+     [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
+   (deferred-tru "value must be a map with the following keys `({0})`"
+                 (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
+                                 "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
@@ -215,72 +221,78 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(mi/define-simple-hydration-method channels
-  :channels
-  "Return the PulseChannels associated with this `notification`."
-  [notification-or-id]
-  (t2/select PulseChannel, :pulse_id (u/the-id notification-or-id)))
+(methodical/defmethod t2/batched-hydrate [:default :channels]
+  [_model k pulses]
+  (mi/instances-with-hydrated-data
+   pulses k
+   #(group-by :pulse_id (t2/select :model/PulseChannel :pulse_id [:in (map :id pulses)]))
+   :id
+   {:default []}))
 
 (def ^:dynamic *allow-hydrate-archived-cards*
   "By default the :cards hydration method only return active cards,
   but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
   false)
 
-(mu/defn ^:private cards* :- [:sequential HybridPulseCard]
-  [notification-or-id]
+(mu/defn- cards* :- [:sequential HybridPulseCard]
+  [pulse-ids]
   (t2/select
    :model/Card
-   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls
-                :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings]] ;; :dc.parameter_mappings - how do you select this?
+   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows
+                :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
     :from      [[:pulse :p]]
     :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
                 [:report_card :c] [:= :c.id :pc.card_id]]
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
-                [:= :p.id (u/the-id notification-or-id)]
+                [:in :p.id pulse-ids]
                 (when-not *allow-hydrate-archived-cards*
                   [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
-(mi/define-simple-hydration-method cards
-  :cards
-  "Return the Cards associated with this `notification`."
-  [notification-or-id]
-  (cards* notification-or-id))
+(methodical/defmethod t2/batched-hydrate [:model/Pulse :cards]
+  [_model k pulses]
+  (mi/instances-with-hydrated-data
+   pulses k
+   #(update-vals (group-by :pulse_id (cards* (map :id pulses)))
+                 (fn [cards] (map (fn [card] (dissoc card :pulse_id)) cards)))
+
+   :id
+   {:default []}))
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
-(mu/defn hydrate-notification :- (mi/InstanceOf Pulse)
+(mu/defn hydrate-notification :- (ms/InstanceOf Pulse)
   "Hydrate Pulse or Alert with the Fields needed for sending it."
-  [notification :- (mi/InstanceOf Pulse)]
+  [notification :- (ms/InstanceOf Pulse)]
   (-> notification
       (t2/hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
-(mu/defn ^:private hydrate-notifications :- [:sequential (mi/InstanceOf Pulse)]
+(mu/defn- hydrate-notifications :- [:sequential (ms/InstanceOf Pulse)]
   "Batched-hydrate multiple Pulses or Alerts."
-  [notifications :- [:sequential (mi/InstanceOf Pulse)]]
+  [notifications :- [:sequential (ms/InstanceOf Pulse)]]
   (as-> notifications <>
     (t2/hydrate <> :creator :cards [:channels :recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
-(mu/defn ^:private notification->pulse :- (mi/InstanceOf Pulse)
+(mu/defn- notification->pulse :- (ms/InstanceOf Pulse)
   "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
   consists of removing associated `Alert` columns."
-  [notification :- (mi/InstanceOf Pulse)]
+  [notification :- (ms/InstanceOf Pulse)]
   (dissoc notification :alert_condition :alert_above_goal :alert_first_only))
 
 ;; TODO - do we really need this function? Why can't we just use `t2/select` and `hydrate` like we do for everything
-;; else?
-(mu/defn retrieve-pulse :- [:maybe (mi/InstanceOf Pulse)]
+;; else?  (#40016)
+(mu/defn retrieve-pulse :- [:maybe (ms/InstanceOf Pulse)]
   "Fetch a single *Pulse*, and hydrate it with a set of 'standard' hydrations; remove Alert columns, since this is a
   *Pulse* and they will all be unset."
   [pulse-or-id]
-  (some-> (t2/select-one Pulse :id (u/the-id pulse-or-id), :alert_condition nil)
+  (some-> (t2/select-one Pulse :id (u/the-id pulse-or-id))
           hydrate-notification
           notification->pulse))
 
-(mu/defn retrieve-notification :- [:maybe (mi/InstanceOf Pulse)]
+(mu/defn retrieve-notification :- [:maybe (ms/InstanceOf Pulse)]
   "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
   `:cards`."
   [notification-or-id & additional-conditions]
@@ -288,15 +300,15 @@
   (some-> (apply t2/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
-(mu/defn ^:private notification->alert :- (mi/InstanceOf Pulse)
+(mu/defn- notification->alert :- (ms/InstanceOf Pulse)
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just
   consists of collapsing `:cards` into a `:card` key with whatever the first Card is."
-  [notification :- (mi/InstanceOf Pulse)]
+  [notification :- (ms/InstanceOf Pulse)]
   (-> notification
       (assoc :card (first (:cards notification)))
       (dissoc :cards)))
 
-(mu/defn retrieve-alert :- [:maybe (mi/InstanceOf Pulse)]
+(mu/defn retrieve-alert :- [:maybe (ms/InstanceOf Pulse)]
   "Fetch a single Alert by its `id` value, do the standard hydrations, and put it in the standard `Alert` format."
   [alert-or-id]
   (some-> (t2/select-one Pulse, :id (u/the-id alert-or-id), :alert_condition [:not= nil])
@@ -306,7 +318,7 @@
 (defn- query-as [model query]
   (t2/select model query))
 
-(mu/defn retrieve-alerts :- [:sequential (mi/InstanceOf Pulse)]
+(mu/defn retrieve-alerts :- [:sequential (ms/InstanceOf Pulse)]
   "Fetch all Alerts."
   ([]
    (retrieve-alerts nil))
@@ -335,7 +347,7 @@
            :when (:card alert)]
        alert))))
 
-(mu/defn retrieve-pulses :- [:sequential (mi/InstanceOf Pulse)]
+(mu/defn retrieve-pulses :- [:sequential (ms/InstanceOf Pulse)]
   "Fetch all `Pulses`. When `user-id` is included, only fetches `Pulses` for which the provided user is the creator
   or a recipient."
   [{:keys [archived? dashboard-id user-id]
@@ -410,8 +422,8 @@
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
+   :format_rows       (get card :format_rows true)
    :dashboard_card_id (get card :dashboard_card_id nil)})
-
 
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
 
@@ -427,12 +439,13 @@
   (t2/delete! PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
-    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls dashboard_card_id]}]
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows dashboard_card_id]}]
                                {:pulse_id          (u/the-id notification-or-id)
                                 :card_id           card-id
                                 :position          i
                                 :include_csv       include_csv
                                 :include_xls       include_xls
+                                :format_rows       format_rows
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
       (t2/insert! PulseCard cards))))
@@ -473,12 +486,12 @@
   [notification-or-id channels :- [:sequential :map]]
   (let [new-channels   (group-by (comp keyword :channel_type) channels)
         old-channels   (group-by (comp keyword :channel_type) (t2/select PulseChannel
-                                                                :pulse_id (u/the-id notification-or-id)))
+                                                                         :pulse_id (u/the-id notification-or-id)))
         handle-channel #(create-update-delete-channel! (u/the-id notification-or-id)
                                                        (first (get new-channels %))
                                                        (first (get old-channels %)))]
     (assert (zero? (count (get new-channels nil)))
-      "Cannot have channels without a :channel_type attribute")
+            "Cannot have channels without a :channel_type attribute")
     ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
     ;; it with a new one immediately thereafter.
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
@@ -486,7 +499,7 @@
       (doseq [[channel-type] pulse-channel/channel-types]
         (handle-channel channel-type)))))
 
-(mu/defn ^:private create-notification-and-add-cards-and-channels!
+(mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification card-refs :- [:maybe [:sequential CardRef]] channels]
@@ -501,7 +514,6 @@
   PulseCards, PulseChannels, and PulseChannelRecipients.
 
   Returns the newly created Pulse, or throws an Exception."
-  {:style/indent 2}
   [cards    :- [:sequential [:map-of :keyword :any]]
    channels :- [:sequential [:map-of :keyword :any]]
    kvs      :- [:map
@@ -527,18 +539,18 @@
     ;; return the full Pulse (and record our create event)
     (retrieve-alert id)))
 
-(mu/defn ^:private notification-or-id->existing-card-refs :- [:sequential CardRef]
+(mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
   (t2/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
-    :pulse_id (u/the-id notification-or-id)
-    {:order-by [[:position :asc]]}))
+             :pulse_id (u/the-id notification-or-id)
+             {:order-by [[:position :asc]]}))
 
-(mu/defn ^:private card-refs-have-changed? :- :boolean
+(mu/defn- card-refs-have-changed? :- :boolean
   [notification-or-id new-card-refs :- [:sequential CardRef]]
   (not= (notification-or-id->existing-card-refs notification-or-id)
         new-card-refs))
 
-(mu/defn ^:private update-notification-cards-if-changed! [notification-or-id new-card-refs]
+(mu/defn- update-notification-cards-if-changed! [notification-or-id new-card-refs]
   (when (card-refs-have-changed? notification-or-id new-card-refs)
     (update-notification-cards! notification-or-id new-card-refs)))
 
@@ -558,9 +570,9 @@
                     [:archived            {:optional true} boolean?]
                     [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (t2/update! Pulse (u/the-id notification)
-    (u/select-keys-when notification
-      :present [:collection_id :collection_position :archived]
-      :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+              (u/select-keys-when notification
+                                  :present [:collection_id :collection_position :archived]
+                                  :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
@@ -588,7 +600,7 @@
                 (dissoc :card))
       (seq cards) (assoc :cards cards))))
 
-;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT?
+;; TODO - why do we make sure to strictly validate everything when we create a PULSE but not when we create an ALERT? (#40016)
 (defn update-alert!
   "Updates the given `alert` and returns it"
   [alert]
@@ -596,22 +608,3 @@
   ;; fetch the fully updated pulse, log an update event, and return it
   (u/prog1 (retrieve-alert (u/the-id alert))
     (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
-
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defmethod serdes/extract-one "Pulse"
-  [_model-name _opts pulse]
-  (cond-> (serdes/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes/*export-fk* 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes/*export-fk* 'Dashboard)
-    true                   (update :creator_id    serdes/*export-user*)))
-
-(defmethod serdes/load-xform "Pulse" [pulse]
-  (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes/*import-user*)
-      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
-
-(defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
-  (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
-                  (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

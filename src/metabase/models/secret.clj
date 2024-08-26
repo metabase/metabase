@@ -58,7 +58,7 @@
   {:added "0.42.0"}
   [conn-props]
   (->> (filter #(= :secret (keyword (:type %))) conn-props)
-    (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
+       (reduce (fn [acc prop] (assoc acc (:name prop) prop)) {})))
 
 (defn value->file!*
   "Returns the value of the given `secret` instance in the form of a file. If the given instance has a `:file-path` as
@@ -127,12 +127,12 @@
   `ext?` is an optional argument that sets the file extension used for the temporary file, if one needs to be created."
   (memoize/memo
    (with-meta value->file!*
-     {::memoize/args-fn (fn [[secret _driver? ext?]]
+              {::memoize/args-fn (fn [[secret _driver? ext?]]
                           ;; not clear if value->string could return nil due to the cond so we'll just cache on a key
                           ;; that is unique
-                          [(vec (:value secret)) ext?])})))
+                                   [(vec (:value secret)) ext?])})))
 
-(defn get-sub-props
+(defn ->sub-props
   "Return a map of secret subproperties for the property `connection-property-name`."
   [connection-property-name]
   (let [sub-prop-types [:path :value :options :id]
@@ -166,7 +166,7 @@
   {:added "0.42.0"}
   [details conn-prop-nm]
   (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id}
-        (get-sub-props conn-prop-nm)
+        (->sub-props conn-prop-nm)
         value  (cond
                  ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
                  (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
@@ -207,7 +207,7 @@
 (defn get-secret-string
   "Get the value of a secret property from the database details as a string."
   [details secret-property]
-  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (get-sub-props secret-property)
+  (let [{path-kw :path, value-kw :value, options-kw :options, id-kw :id} (->sub-props secret-property)
         id (id-kw details)
         ;; When a secret is updated, we get both a new value as well as the ID of old secret.
         value (or (when-let [value (value-kw details)]
@@ -257,7 +257,7 @@
     (if latest-version
       (if (= (select-keys latest-version bump-version-keys) [kind src value])
         (pos? (t2/update! Secret {:id existing-id :version (:version latest-version)}
-                        {:name nm}))
+                          {:name nm}))
         (insert-new (u/the-id latest-version) (inc (:version latest-version))))
       (insert-new nil 1))))
 
@@ -276,10 +276,10 @@
   [driver db-details reduce-fn]
   (let [conn-props-fn (get-method driver/connection-properties driver)]
     (if (and (map? db-details) (fn? conn-props-fn))
-        (let [conn-props            (conn-props-fn driver)
-              conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)]
-          (reduce-kv reduce-fn db-details conn-secrets-by-name))
-        db-details)))
+      (let [conn-props            (conn-props-fn driver)
+            conn-secrets-by-name  (conn-props->secret-props-by-name conn-props)]
+        (reduce-kv reduce-fn db-details conn-secrets-by-name))
+      db-details)))
 
 (defn expand-inferred-secret-values
   "Expand certain secret sub-properties in the `db-details`, depending on the secret type, for admin purposes.  This is
@@ -315,7 +315,7 @@
         src     (:source secret*)]
     ;; always populate the -source, -creator-id, and -created-at sub properties
     (cond-> (assoc db-details (subprop "-source") src
-                              (subprop "-creator-id") (:creator_id secret*))
+                   (subprop "-creator-id") (:creator_id secret*))
 
       (some? (:created_at secret*))
       (assoc (subprop "-created-at") (t/format :iso-offset-date-time (:created_at secret*)))

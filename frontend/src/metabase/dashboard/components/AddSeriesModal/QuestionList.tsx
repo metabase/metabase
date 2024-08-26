@@ -1,27 +1,28 @@
-import { memo, useState, useEffect, useCallback, useMemo } from "react";
+import cx from "classnames";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
+import CS from "metabase/css/core/index.css";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { CardApi } from "metabase/services";
 import type {
   Card,
   CardId,
-  QuestionDashboardCard,
   GetCompatibleCardsPayload,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 import {
+  EmptyStateContainer,
   LoadMoreButton,
   LoadMoreRow,
+  QuestionListContainer,
+  QuestionListWrapper,
   SearchContainer,
   SearchInput,
-  QuestionListContainer,
-  EmptyStateContainer,
-  QuestionListWrapper,
 } from "./QuestionList.styled";
 import { QuestionListItem } from "./QuestionListItem";
 
@@ -91,14 +92,6 @@ export const QuestionList = memo(function QuestionList({
     loadCards(debouncedSearchText, lastCard?.id);
   }, [cards, debouncedSearchText, loadCards]);
 
-  const handleSearchFocus = () => {
-    MetabaseAnalytics.trackStructEvent(
-      "Dashboard",
-      "Edit Series Modal",
-      "search",
-    );
-  };
-
   const hasQuestionsToShow = cards.length > 0;
 
   return (
@@ -109,12 +102,11 @@ export const QuestionList = memo(function QuestionList({
           value={searchText}
           leftIcon="search"
           placeholder={t`Search for a question`}
-          onFocus={handleSearchFocus}
           onChange={e => setSearchText(e.target.value)}
         />
       </SearchContainer>
       <QuestionListWrapper
-        className="flex flex-full overflow-auto"
+        className={cx(CS.flex, CS.flexFull, CS.overflowAuto)}
         error={error}
         noBackground
       >

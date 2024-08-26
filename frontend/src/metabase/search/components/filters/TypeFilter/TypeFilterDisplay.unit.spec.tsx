@@ -1,16 +1,17 @@
 import { render, screen } from "__support__/ui";
 import type { TypeFilterProps } from "metabase/search/types";
-import type { EnabledSearchModelType } from "metabase-types/api";
+import type { EnabledSearchModel } from "metabase-types/api";
 
 import { TypeFilterDisplay } from "./TypeFilterDisplay";
 
-const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModelType, string> = {
+const MODEL_TYPE_DISPLAY_NAMES: Record<EnabledSearchModel, string> = {
   action: "Action",
   card: "Question",
   collection: "Collection",
   dashboard: "Dashboard",
   database: "Database",
   dataset: "Model",
+  metric: "Metric",
   table: "Table",
   "indexed-entity": "Indexed record",
 };
@@ -32,7 +33,7 @@ describe("TypeFilterDisplay", () => {
   it.each(Object.keys(MODEL_TYPE_DISPLAY_NAMES))(
     "should display correct text for %s type selected",
     type => {
-      const searchModelType = type as EnabledSearchModelType;
+      const searchModelType = type as EnabledSearchModel;
       setup([searchModelType]);
       const expectedText: string = MODEL_TYPE_DISPLAY_NAMES[searchModelType];
       expect(screen.getByText(expectedText)).toBeInTheDocument();

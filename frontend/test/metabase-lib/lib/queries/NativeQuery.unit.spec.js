@@ -3,12 +3,12 @@ import { assocIn } from "icepick";
 import { createMockMetadata } from "__support__/metadata";
 import NativeQuery, {
   updateCardTemplateTagNames,
-} from "metabase-lib/queries/NativeQuery";
+} from "metabase-lib/v1/queries/NativeQuery";
 import { createMockDatabase } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   PRODUCTS,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const MONGO_DB_ID = SAMPLE_DB_ID + 1;

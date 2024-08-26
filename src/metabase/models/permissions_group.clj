@@ -9,9 +9,11 @@
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings.premium-features :as premium-features]
@@ -27,14 +29,20 @@
 
 (methodical/defmethod t2/table-name :model/PermissionsGroup [_model] :permissions_group)
 
-(derive :model/PermissionsGroup :metabase/model)
+(doto :model/PermissionsGroup
+  (derive :metabase/model)
+  (derive :hook/entity-id))
+
+(defmethod serdes/hash-fields :model/PermissionsGroup
+  [_user]
+  [:name])
 
 ;;; -------------------------------------------- Magic Groups Getter Fns ---------------------------------------------
 
 (defn- magic-group [group-name]
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn []
-     (u/prog1 (t2/select-one PermissionsGroup :name group-name)
+     (u/prog1 (t2/select-one [PermissionsGroup :id :name] :name group-name)
        ;; normally it is impossible to delete the magic [[all-users]] or [[admin]] Groups -- see
        ;; [[check-not-magic-group]]. This assertion is here to catch us if we do something dumb when hacking on
        ;; the MB code -- to make tests fail fast. For that reason it's not i18n'ed.
@@ -58,7 +66,6 @@
   "Fetch the `Administrators` permissions group"
   (magic-group admin-group-name))
 
-
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
 (defn exists-with-name?
@@ -66,7 +73,7 @@
   ^Boolean [group-name]
   {:pre [((some-fn keyword? string?) group-name)]}
   (t2/exists? PermissionsGroup
-    :%lower.name (u/lower-case-en (name group-name))))
+              :%lower.name (u/lower-case-en (name group-name))))
 
 (defn- check-name-not-already-taken
   [group-name]
@@ -81,15 +88,25 @@
                        (admin)]]
     (when (= id (:id magic-group))
       (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
-               {:status-code 400})))))
-
+                      {:status-code 400})))))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (t2/define-before-insert :model/PermissionsGroup
- [{group-name :name, :as group}]
- (u/prog1 group
-   (check-name-not-already-taken group-name)))
+  [{group-name :name, :as group}]
+  (u/prog1 group
+    (check-name-not-already-taken group-name)))
+
+(defn- set-default-permission-values!
+  [group]
+  (t2/with-transaction [_conn]
+    (doseq [db-id (t2/select-pks-vec :model/Database)]
+      (data-perms/set-new-group-permissions! group db-id (u/the-id (all-users))))))
+
+(t2/define-after-insert :model/PermissionsGroup
+  [group]
+  (u/prog1 group
+    (set-default-permission-values! group)))
 
 (t2/define-before-delete :model/PermissionsGroup
   [{id :id, :as group}]
@@ -97,22 +114,23 @@
   ;; Remove from LDAP mappings
   (classloader/require 'metabase.integrations.ldap)
   (setting/set-value-of-type!
-    :json :ldap-group-mappings
-    (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
-      (zipmap (keys mappings)
-              (for [val (vals mappings)]
-                (remove (partial = id) val))))))
+   :json :ldap-group-mappings
+   (when-let [mappings (setting/get-value-of-type :json :ldap-group-mappings)]
+     (zipmap (keys mappings)
+             (for [val (vals mappings)]
+               (remove (partial = id) val))))))
 
 (t2/define-before-update :model/PermissionsGroup
   [group]
   (let [changes (t2/changes group)]
     (u/prog1 group
-      (check-not-magic-group group)
+      (when (contains? changes :name)
+        ;; Allow backfilling the entity ID for magic groups, but not changing anything else
+        (check-not-magic-group group))
       (when-let [group-name (:name changes)]
         (check-name-not-already-taken group-name)))))
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
-
 
 (mi/define-simple-hydration-method members
   :members
@@ -137,3 +155,9 @@
   "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group."
   []
   (t2/select PermissionsGroup :name [:not= admin-group-name]))
+
+(defn non-magic-groups
+  "Return a set of the IDs of all `PermissionsGroups`, aside from the admin group and the All Users group."
+  []
+  (t2/select PermissionsGroup {:where [:and [:not= :name admin-group-name]
+                                       [:not= :name all-users-group-name]]}))

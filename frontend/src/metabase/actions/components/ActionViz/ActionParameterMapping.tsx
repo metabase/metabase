@@ -1,4 +1,4 @@
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { sortActionParams } from "metabase/actions/utils";
@@ -7,21 +7,21 @@ import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select from "metabase/core/components/Select";
 import { setParameterMapping } from "metabase/dashboard/actions";
 import { useDispatch } from "metabase/lib/redux";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
   Dashboard,
-  WritebackParameter,
-  WritebackAction,
   Parameter,
   ParameterTarget,
+  WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
 import {
-  ParameterFormSection,
-  ParameterFormLabel,
   ParameterFormBadge,
+  ParameterFormLabel,
+  ParameterFormSection,
 } from "./ActionParameterMapping.styled";
 import {
   getParameterDefaultValue,
@@ -61,7 +61,7 @@ export const ActionParameterMappingForm = ({
   }, [action]);
 
   const handleParameterChange = useCallback(
-    (dashboardParameterId, target) => {
+    (dashboardParameterId: any, target: ParameterTarget) => {
       dispatch(
         setParameterMapping(
           dashboardParameterId,

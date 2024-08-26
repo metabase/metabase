@@ -11,11 +11,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: tibdex/github-app-token@v2.1.0
-        id: generate-token
-        with:
-          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
-          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
       - uses: ./.github/actions/find-squashed-commit
         name: Find commit
         id: find_commit
@@ -82,7 +78,7 @@ jobs:
           TARGET_BRANCH: ${{ steps.get_latest_release_branch.outputs.branch-name }}
           ORIGINAL_PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number }}
           ORIGINAL_TITLE: ${{ github.event.pull_request.title }}
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           COMMIT: ${{ steps.find_commit.outputs.commit }}
 
       - name: Auto approve backport PR
@@ -96,7 +92,7 @@ jobs:
         if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
         uses: peter-evans/enable-pull-request-automerge@v2
         with:
-          token: ${{ steps.generate-token.outputs.token }}
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           pull-request-number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
           merge-method: squash
 

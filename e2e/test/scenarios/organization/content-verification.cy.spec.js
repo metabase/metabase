@@ -1,12 +1,17 @@
 import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  closeCommandPalette,
+  commandPalette,
+  commandPaletteSearch,
+  createModerationReview,
   describeEE,
-  restore,
-  visitQuestion,
+  openCommandPalette,
   openQuestionActions,
-  questionInfoButton,
-  setTokenFeatures,
   popover,
+  questionInfoButton,
+  restore,
+  setTokenFeatures,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describeEE("scenarios > premium > content verification", () => {
@@ -83,13 +88,14 @@ describeEE("scenarios > premium > content verification", () => {
         });
 
         // 3. Recently viewed list
-        cy.findByPlaceholderText("Search…").click();
-        cy.findByTestId("recently-viewed-item")
-          .should("contain", "Orders, Count")
+        openCommandPalette();
+        commandPalette()
+          .findByRole("option", { name: "Orders, Count" })
           .find(".Icon-verified_filled");
+        closeCommandPalette();
 
         // 4. Search results
-        cy.findByPlaceholderText("Search…").type("orders{enter}");
+        commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
           .siblings(".Icon-verified_filled");
@@ -120,14 +126,15 @@ describeEE("scenarios > premium > content verification", () => {
         });
 
         // 3. Recently viewed list
-        cy.findByPlaceholderText("Search…").click();
-        cy.findByTestId("recently-viewed-item")
-          .should("contain", "Orders, Count")
-          .find(".Icon-verified_filed")
+        openCommandPalette();
+        commandPalette()
+          .findByRole("option", { name: "Orders, Count" })
+          .find(".Icon-verified_filled")
           .should("not.exist");
+        closeCommandPalette();
 
         // 4. Search results
-        cy.findByPlaceholderText("Search…").type("orders{enter}");
+        commandPaletteSearch("orders");
         cy.findAllByTestId("search-result-item")
           .contains("Orders, Count")
           .siblings(".Icon-verified_filed")
@@ -145,7 +152,7 @@ describeEE("scenarios > premium > content verification", () => {
 
     describe("non-admin user", () => {
       beforeEach(() => {
-        cy.createModerationReview({
+        createModerationReview({
           status: "verified",
           moderated_item_type: "card",
           moderated_item_id: ORDERS_COUNT_QUESTION_ID,
@@ -173,7 +180,7 @@ describeEE("scenarios > premium > content verification", () => {
           .findAllByText("A moderator verified this")
           .should("have.length", 2);
 
-        cy.findByPlaceholderText("Search…").type("orders{enter}");
+        commandPaletteSearch("orders");
         cy.log("Verified content should show up higher in search results");
         cy.findAllByTestId("search-result-item")
           .first()
@@ -194,7 +201,7 @@ describeEE("scenarios > premium > content verification", () => {
   context("token expired or removed", () => {
     beforeEach(() => {
       setTokenFeatures("all");
-      cy.createModerationReview({
+      createModerationReview({
         status: "verified",
         moderated_item_type: "card",
         moderated_item_id: ORDERS_COUNT_QUESTION_ID,
@@ -217,7 +224,7 @@ describeEE("scenarios > premium > content verification", () => {
         cy.contains(/verified this/).should("not.exist");
       });
 
-      cy.findByPlaceholderText("Search…").type("orders{enter}");
+      commandPaletteSearch("orders");
       cy.log(
         "The question lost the verification status and does not appear high in search results anymore",
       );

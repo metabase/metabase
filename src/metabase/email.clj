@@ -3,7 +3,7 @@
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -50,9 +50,9 @@
   :visibility :settings-manager
   :audit      :getter
   :setter     (fn [new-value]
-               (if (validate-reply-to-addresses new-value)
-                 (setting/set-value-of-type! :json :email-reply-to new-value)
-                 (throw (ex-info "Invalid reply-to address" {:value new-value})))))
+                (if (validate-reply-to-addresses new-value)
+                  (setting/set-value-of-type! :json :email-reply-to new-value)
+                  (throw (ex-info "Invalid reply-to address" {:value new-value})))))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails.")
@@ -146,7 +146,6 @@
   "Send an email to one or more `recipients`. Upon success, this returns the `message` that was just sent. This function
   does not catch and swallow thrown exceptions, it will bubble up. Should prefer to use [[send-email-retrying!]] unless
   the caller has its own retry logic."
-  {:style/indent 0}
   [{:keys [subject recipients message-type message] :as email}]
   (try
     (when-not (email-smtp-host)
@@ -184,7 +183,7 @@
   `:metabase.email/error`, which will either be `nil` (indicating no error) or an instance of [[java.lang.Throwable]]
   with the error."
   [:map {:closed true}
-   [::error [:maybe [:fn #(instance? Throwable %)]]]])
+   [::error [:maybe (ms/InstanceOfClass Throwable)]]])
 
 (defn send-message!
   "Send an email to one or more `:recipients`. `:recipients` is a sequence of email addresses; `:message-type` must be
@@ -202,7 +201,7 @@
   (try
     (send-email-retrying! msg-args)
     (catch Throwable e
-      (log/warn e (trs "Failed to send email"))
+      (log/warn e "Failed to send email")
       {::error e})))
 
 (def ^:private SMTPSettings
@@ -217,7 +216,7 @@
    [:sender-name {:optional true} [:maybe :string]]
    [:reply-to    {:optional true} [:maybe [:sequential ms/Email]]]])
 
-(mu/defn ^:private test-smtp-settings :- SMTPStatus
+(mu/defn- test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
   in `:security`."
   [{:keys [host port user pass sender security], :as details} :- SMTPSettings]
@@ -235,7 +234,7 @@
         (.connect transport host port user pass)))
     {::error nil}
     (catch Throwable e
-      (log/error e (trs "Error testing SMTP connection"))
+      (log/error e "Error testing SMTP connection")
       {::error e})))
 
 (def ^:private email-security-order [:tls :starttls :ssl])
@@ -245,7 +244,7 @@
   us from getting banned on Outlook.com."
   500)
 
-(mu/defn ^:private guess-smtp-security :- [:maybe [:enum :tls :starttls :ssl]]
+(mu/defn- guess-smtp-security :- [:maybe [:enum :tls :starttls :ssl]]
   "Attempts to use each of the security methods in security order with the same set of credentials. This is used only
   when the initial connection attempt fails, so it won't overwrite a functioning configuration. If this uses something
   other than the provided method, a warning gets printed on the config page.

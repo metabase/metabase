@@ -43,6 +43,6 @@ export const createMockSetupState = (
 ): SetupState => ({
   step: "welcome",
   isLocaleLoaded: false,
-  isTrackingAllowed: false,
+  isTrackingAllowed: true,
   ...opts,
 });

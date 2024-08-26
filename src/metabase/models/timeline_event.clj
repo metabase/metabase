@@ -2,7 +2,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -54,11 +53,12 @@
 
 ;;;; hydration
 
-(mi/define-simple-hydration-method timeline
-  :timeline
-  "Attach the parent `:timeline` to this [[TimelineEvent]]."
-  [{:keys [timeline_id]}]
-  (t2/select-one 'Timeline :id timeline_id))
+(methodical/defmethod t2/batched-hydrate [:model/TimelineEvent :timeline]
+  [_model k events]
+  (mi/instances-with-hydrated-data
+   events k
+   #(t2/select-pk->fn identity :model/Timeline :id [:in (map :timeline_id events)])
+   :timeline_id))
 
 (defn- fetch-events
   "Fetch events for timelines in `timeline-ids`. Can include optional `start` and `end` dates in the options map, as
@@ -115,11 +115,12 @@
   [:name :timestamp (serdes/hydrated-hash :timeline) :created_at])
 
 ;;;; serialization
-;; TimelineEvents are inlined under their Timelines, but we can reuse the [[load-one!]] logic using [[load-xform]].
-(defmethod serdes/load-xform "TimelineEvent" [event]
-  (-> event
-      serdes/load-xform-basics
-      (update :timeline_id serdes/*import-fk* 'Timeline)
-      (update :creator_id  serdes/*import-user*)
-      (update :timestamp   u.date/parse)
-      (update :created_at  #(if (string? %) (u.date/parse %) %))))
+
+;; nested in Timeline
+(defmethod serdes/make-spec "TimelineEvent" [_model-name _opts]
+  {:copy      [:archived :description :icon :name :time_matters :timezone]
+   :skip      []
+   :transform {:created_at  (serdes/date)
+               :creator_id  (serdes/fk :model/User)
+               :timeline_id (serdes/parent-ref)
+               :timestamp   (serdes/date)}})

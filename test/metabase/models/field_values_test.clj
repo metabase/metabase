@@ -3,10 +3,8 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
@@ -21,6 +19,60 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import (clojure.lang ExceptionInfo)))
+
+(def ^:private base-types-without-field-values
+  #{:type/*
+    :type/JSON
+    :type/Array
+    :type/DruidJSON
+    :type/Dictionary
+    :type/Structured
+    :type/Collection
+    :type/OracleCLOB
+    :type/SnowflakeVariant
+    :type/DruidHyperUnique
+    :type/TimeWithTZ
+    :type/TimeWithLocalTZ
+    :type/Time
+    :type/UpdatedTime
+    :type/Instant
+    :type/UpdatedDate
+    :type/JoinTimestamp
+    :type/DeletionTime
+    :type/CancelationDate
+    :type/CancelationTime
+    :type/DeletionDate
+    :type/DateTimeWithZoneID
+    :type/UpdatedTimestamp
+    :type/Birthdate
+    :type/Date
+    :type/SerializedJSON
+    :type/DateTimeWithZoneOffset
+    :type/Temporal
+    :type/CreationTimestamp
+    :type/Large
+    :type/JoinTime
+    :type/CreationTime
+    :type/DateTimeWithTZ
+    :type/JoinDate
+    :type/CancelationTimestamp
+    :type/CreationDate
+    :type/XML
+    :type/field-values-unsupported
+    :type/DeletionTimestamp
+    :type/TimeWithZoneOffset
+    :type/DateTime
+    :type/DateTimeWithLocalTZ
+    :type/Interval})
+
+(deftest ^:parallel base-type-should-have-field-values-test
+  (doseq [base-type (conj (descendants :type/*) :type/*)]
+    (let [expected (not (contains? base-types-without-field-values base-type))]
+      (testing (str base-type "should " (when-not expected "not ") "have field values")
+        (is (= expected
+               (#'field-values/field-should-have-field-values? {:has_field_values :list
+                                                                :visibility_type  :normal
+                                                                :base_type        base-type})))))))
 
 (deftest ^:parallel field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
@@ -97,18 +149,28 @@
         (is (= expected
                (#'field-values/field-should-have-field-values? input)))))))
 
-(deftest distinct-values-test
-  (with-redefs [metadata-queries/field-distinct-values (constantly [[1] [2] [3] [4]])]
-    (is (= {:values          [[1] [2] [3] [4]]
-            :has_more_values false}
-           (#'field-values/distinct-values {}))))
+(defn distinct-field-values
+  [id]
+  (field-values/distinct-values (t2/select-one :model/Field id)))
 
-  (testing "(#2332) check that if field values are long we only store a subset of it"
-    (with-redefs [metadata-queries/field-distinct-values (constantly [["AAAA"] [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))]])]
-      (testing "The total length of stored values must less than our max-length-limit"
-        (is (= {:values          [["AAAA"]]
-                :has_more_values true}
-              (#'field-values/distinct-values {})))))))
+(deftest distinct-values-test
+  (testing "Correctly get distinct field values for text fields"
+    (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]
+            :has_more_values false}
+           (distinct-field-values (mt/id :products :category)))))
+  (testing "Correctly get distinct field values for non-text fields"
+    (is (= {:values [[1] [2] [3] [4] [5]]
+            :has_more_values false}
+           (distinct-field-values (mt/id :reviews :rating)))))
+  (testing "if the values of field exceeds max-char-len, return a subset of it (#2332)"
+    (binding [field-values/*total-max-length* 16]
+      (is (= {:values          [["Doohickey"] ["Gadget"]]
+              :has_more_values true}
+             (distinct-field-values (mt/id :products :category)))))
+    (binding [field-values/*total-max-length* 3]
+      (is (= {:values          [[1] [2] [3]]
+              :has_more_values true}
+             (distinct-field-values (mt/id :reviews :rating)))))))
 
 (deftest clear-field-values-for-field!-test
   (mt/with-temp [Database    {database-id :id} {}
@@ -148,6 +210,28 @@
             (is (= 1 (count (t2/select FieldValues :field_id field-id :type :full))))
             ;; double check that we deleted the correct row
             (is (= ["C" "D"] (:human_readable_values (field-values/get-latest-full-field-values field-id))))))))))
+
+(deftest implicit-deduplication-batched-test
+  (let [before (t/zoned-date-time)
+        after  (t/plus before (t/millis 1))
+        later  (t/plus after (t/millis 1))]
+    (mt/with-temp [:model/Database    {database-id :id} {}
+                   :model/Table       {table-id :id}    {:db_id database-id}
+                   ;; will have duplicated field values
+                   :model/Field       {field-id-1 :id}     {:table_id table-id}
+                   ;; have only one field values
+                   :model/Field       {field-id-2 :id}     {:table_id table-id}
+                   ;; doesn't have a a field values
+                   :model/Field       {field-id-3 :id}     {:table_id table-id}
+                   :model/FieldValues _                 {:field_id field-id-1 :type :full :values ["a" "b"] :human_readable_values ["A" "B"] :created_at before :updated_at before}
+                   :model/FieldValues _                 {:field_id field-id-1 :type :full :values ["c" "d"] :human_readable_values ["C" "D"] :created_at before :updated_at later}
+                   :model/FieldValues _                 {:field_id field-id-2 :type :full :values ["e" "f"] :human_readable_values ["E" "F"] :created_at after :updated_at after}]
+      (testing "When we have multiple FieldValues rows in the database, we always return the most recently updated row"
+        (is (=? {field-id-1 {:values ["c" "d"]}
+                 field-id-2 {:values ["e" "f"]}}
+                (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
+        (testing "and older values are implicitly deleted"
+          (is (= 1 (count (t2/select FieldValues :field_id field-id-1 :type :full)))))))))
 
 (deftest get-or-create-full-field-values!-test
   (mt/dataset test-data
@@ -299,10 +383,10 @@
 
 (deftest update-field-values-hook-test
   (t2.with-temp/with-temp [FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
-                                                             :type     :full}
+                                                         :type     :full}
                            FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
-                                                             :type     :sandbox
-                                                             :hash_key "random-hash"}]
+                                                         :type     :sandbox
+                                                         :hash_key "random-hash"}]
     (testing "The model hooks prevent us changing the intrinsic identity of a field values"
       (doseq [[id update-map] [[sandbox-id {:field_id 1}]
                                [sandbox-id {:type :full}]

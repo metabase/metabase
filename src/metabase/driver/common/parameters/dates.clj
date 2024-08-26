@@ -4,14 +4,17 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models.params :as params]
+   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli :as mu])
   (:import
    (java.time.temporal Temporal)))
 
@@ -26,7 +29,7 @@
 (mu/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
   [param-type :- :keyword]
-  (= (get-in mbql.s/parameter-types [param-type :type]) :date))
+  (= (get-in lib.schema.parameter/types [param-type :type]) :date))
 
 (defn not-single-date-type?
   "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
@@ -144,7 +147,7 @@
       (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
       [[group-label group-value]])))
 
-(mu/defn ^:private regex->parser :- fn?
+(mu/defn- regex->parser :- fn?
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
   validates the value against regex and gives a map of labels and group values. Respects the following special label
   names:
@@ -255,7 +258,6 @@
 
 (defn- ->iso-8601-date-time [t]
   (t/format :iso-local-date-time t))
-
 
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
@@ -368,7 +370,7 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-(mu/defn ^:private execute-decoders
+(mu/defn- execute-decoders
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
@@ -386,11 +388,11 @@
 
 (def ^:private TemporalRange
   [:map
-   [:start {:optional true} [:fn #(instance? Temporal %)]]
-   [:end   {:optional true} [:fn #(instance? Temporal %)]]
+   [:start {:optional true} (lib.schema.common/instance-of-class Temporal)]
+   [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   TemporalUnit]])
 
-(mu/defn ^:private adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
+(mu/defn- adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
   "Make an inclusive date range exclusive as needed."
   [{:keys [inclusive-start? inclusive-end?]} temporal-range :- [:maybe TemporalRange]]
   (-> temporal-range
@@ -403,15 +405,15 @@
       (m/update-existing :end #(if inclusive-end?
                                  %
                                  (u.date/add % (case (:unit temporal-range)
-                                                   (:year :quarter :month :week :day)
-                                                   :day
-                                                   (:unit temporal-range)) 1)))))
+                                                 (:year :quarter :month :week :day)
+                                                 :day
+                                                 (:unit temporal-range)) 1)))))
 
 (def ^:private DateStringRange
   "Schema for a valid date range returned by `date-string->range`."
   [:and [:map {:closed true}
-         [:start {:optional true} ms/NonBlankString]
-         [:end   {:optional true} ms/NonBlankString]]
+         [:start {:optional true} ::lib.schema.common/non-blank-string]
+         [:end   {:optional true} ::lib.schema.common/non-blank-string]]
    [:fn {:error/message "must have either :start or :end"}
     (fn [{:keys [start end]}]
       (or start end))]
@@ -447,7 +449,7 @@
   ([date-string]
    (date-string->range date-string nil))
 
-  ([date-string  :- ms/NonBlankString
+  ([date-string  :- ::lib.schema.common/non-blank-string
     {:keys [inclusive-start? inclusive-end?]
      :or   {inclusive-start? true inclusive-end? true}}]
    (let [options {:inclusive-start? inclusive-start?, :inclusive-end? inclusive-end?}
@@ -467,12 +469,79 @@
                          {:param date-string
                           :type  qp.error-type/invalid-parameter}))))))
 
+(defn- date-str->qp-aware-offset-dt
+  "Generate offset datetime from `date-str` with respect to qp's `results-timezone`."
+  [date-str]
+  (when date-str
+    (let [[y M d h m s] (shared.ut/yyyyMMddhhmmss->parts date-str)]
+      (try (.toOffsetDateTime (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id))))
+           (catch Throwable _
+             (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
+
+(defn- date-str->unit-fn
+  "Return appropriate function for interval end adjustments in [[exclusive-datetime-range-end]]."
+  [date-str]
+  (when date-str
+    (if (re-matches shared.ut/local-date-regex date-str)
+      t/days
+      t/minutes)))
+
+(defn- exclusive-datetime-range-end
+  "Transform `end-dt` OffsetDateTime to appropriate range end.
+
+  Context. Datetime range is required for `FieldFilter`s on `:type/DateTime` fields (see the
+  [[metabase.driver.sql.parameters.substitution/field-filter->replacement-snippet-info]]) instead of _Date Range_
+  available from [[date-string->range]].
+
+  [[date-string->range]] returns interval of dates. [[date-str->datetime-range]] modifies the interval to consist
+  of datetimes. By adding 0 temporal padding the end interval has to be adjusted."
+  [end-dt unit-fn]
+  (when (and end-dt unit-fn)
+    (t/+ end-dt (unit-fn 1))))
+
+(defn- fallback-raw-range
+  "Try to extract date time value if [[date-string->range]] fails."
+  [date-str]
+  (let [date-str (first (re-find #"\d+-\d+-\d+T?(\d?+)?(:\d+)?(:\d+)?" date-str))]
+    {:start date-str
+     :end   date-str}))
+
+(defn- maybe-adjust-open-range
+  [{:keys [start end] :as range} unit-fn]
+  (assert (some some? [start end]))
+  (cond (and start end) range
+        start           (update range :start t/+ (unit-fn 1))
+        end             (update range :end   t/- (unit-fn 1))))
+
+(mu/defn date-str->datetime-range :- DateStringRange
+  "Generate range from `date-range-str`.
+
+  First [[date-string->range]] generates range for dates (inclusive by default). Operating on that range,
+  this function:
+  1. converts dates to OffsetDateTime, respecting qp's timezone, adding zero temporal padding,
+  2. updates range to correct _end-exclusive datetime_*
+  3. formats the range.
+
+  This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters.
+
+  * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
+  [raw-date-str]
+  (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
+        ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
+        range-raw (try (date-string->range raw-date-str)
+                       (catch Throwable _
+                         (fallback-raw-range raw-date-str)))]
+    (-> (update-vals range-raw date-str->qp-aware-offset-dt)
+        (m/update-existing :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
+        (maybe-adjust-open-range (date-str->unit-fn ((some-fn :start :end) range-raw)))
+        format-date-range)))
+
 (mu/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
    returns a corresponding MBQL filter clause for a given field reference."
   [date-string :- :string
-   field       :- [:or ms/PositiveInt mbql.s/Field]]
-  (or (execute-decoders all-date-string-decoders :filter (params/wrap-field-id-if-needed field) date-string)
+   field       :- [:or ::lib.schema.id/field mbql.s/Field]]
+  (or (execute-decoders all-date-string-decoders :filter (mbql.u/wrap-field-id-if-needed field) date-string)
       (throw (ex-info (tru "Don''t know how to parse date string {0}" (pr-str date-string))
                       {:type        qp.error-type/invalid-parameter
                        :date-string date-string}))))

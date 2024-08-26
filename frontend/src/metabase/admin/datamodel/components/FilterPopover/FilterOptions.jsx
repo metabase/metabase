@@ -1,13 +1,14 @@
+import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component } from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
+import CS from "metabase/css/core/index.css";
 import {
   getFilterOptions,
   setFilterOptions,
-} from "metabase-lib/queries/utils/filter";
+} from "metabase-lib/v1/queries/utils/filter";
 
 const OPTION_NAMES = {
   "include-current": filter => {
@@ -70,7 +71,7 @@ export default class FilterOptions extends Component {
     return false;
   }
 
-  setOptionValue(name, value) {
+  setOptionValue(name) {
     const { filter } = this.props;
     const options = getFilterOptions(filter);
     this.props.onFilterChange(
@@ -78,12 +79,6 @@ export default class FilterOptions extends Component {
         ...options,
         [name]: !options[name],
       }),
-    );
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Filter",
-      "SetOption",
-      name,
     );
   }
 
@@ -97,9 +92,9 @@ export default class FilterOptions extends Component {
       return null;
     }
     return (
-      <div className="flex align-center">
-        {options.map(([name, option]) => (
-          <div key={name} className="flex align-center">
+      <div className={cx(CS.flex, CS.alignCenter)}>
+        {options.map(([name]) => (
+          <div key={name} className={cx(CS.flex, CS.alignCenter)}>
             <CheckBox
               label={this.getOptionName(name)}
               checkedColor="accent2"

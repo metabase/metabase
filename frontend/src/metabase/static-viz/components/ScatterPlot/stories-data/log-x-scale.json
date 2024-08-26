@@ -1,0 +1,344 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 136,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "state_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1271, { "base-type": "type/Text" }],
+          "effective_type": "type/Text",
+          "id": 1271,
+          "visibility_type": "normal",
+          "display_name": "State ID",
+          "fingerprint": {
+            "global": { "distinct-count": 52, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0.9893,
+                "average-length": 2
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Average of Population",
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "avg",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 51, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 1469.695652173913,
+                "q1": 4572.894012695673,
+                "q3": 15485.509101366468,
+                "max": 63651.97637795276,
+                "sd": 13014.30576699397,
+                "avg": 13313.084478964429
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Density",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "avg_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": { "distinct-count": 51, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 39.807887323943646,
+                "q1": 225.04135934819897,
+                "q3": 559.4280150602413,
+                "max": 1306.4092526690388,
+                "sd": 295.88123653554203,
+                "avg": 446.5233498652778
+              }
+            }
+          }
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 8,
+      "query_type": "query",
+      "name": "Scatter Log X-Axis - US Cities Avg Pop, Density by State",
+      "creator_id": 1,
+      "updated_at": "2023-12-02T17:11:52.34474Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            ["avg", ["field", 1264, { "base-type": "type/BigInteger" }]],
+            ["avg", ["field", 1268, { "base-type": "type/Float" }]]
+          ],
+          "breakout": [["field", 1271, { "base-type": "type/Text" }]],
+          "source-table": "card__70",
+          "filter": ["!=", ["field", 1271, { "base-type": "type/Text" }], "DC"]
+        }
+      },
+      "id": 97,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "scatter",
+      "entity_id": "tRuxuolhuRpHeoJWlAZ-N",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["avg"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.show_goal": false,
+        "graph.x_axis.scale": "log",
+        "graph.metrics": ["avg_2"]
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-02T17:11:52.34474Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "state_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1271, { "base-type": "type/Text" }],
+            "effective_type": "type/Text",
+            "id": 1271,
+            "visibility_type": "normal",
+            "display_name": "State ID",
+            "fingerprint": {
+              "global": { "distinct-count": 52, "nil%": 0 },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0.9893,
+                  "average-length": 2
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Average of Population",
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "avg",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 51, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 1469.695652173913,
+                  "q1": 4572.894012695673,
+                  "q3": 15485.509101366468,
+                  "max": 63651.97637795276,
+                  "sd": 13014.30576699397,
+                  "avg": 13313.084478964429
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Density",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "avg_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": { "distinct-count": 51, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 39.807887323943646,
+                  "q1": 225.04135934819897,
+                  "q3": 559.4280150602413,
+                  "max": 1306.4092526690388,
+                  "sd": 295.88123653554203,
+                  "avg": 446.5233498652778
+                }
+              }
+            }
+          }
+        ]
+      },
+      "rows": [
+        ["AK", 2118.6619718309857, 39.807887323943646],
+        ["AL", 7324.446700507614, 146.91319796954312],
+        ["AR", 4331.070853462158, 170.82673107890483],
+        ["AZ", 20972.780911062906, 190.40845986984831],
+        ["CA", 36660.23444374607, 905.8488372093013],
+        ["CO", 15526.217573221757, 422.85481171548133],
+        ["CT", 23164.08152173913, 636.0293478260874],
+        ["DE", 6455.645569620253, 639.1341772151897],
+        ["FL", 32636.52598091198, 898.5051961823965],
+        ["GA", 15755.070149253732, 313.02880597014956],
+        ["HI", 12135.955696202533, 764.7803797468354],
+        ["IA", 3166.0282375852, 257.1221032132425],
+        ["ID", 7248.670886075949, 384.83375527426125],
+        ["IL", 12395.868583162219, 508.6791923340173],
+        ["IN", 8899.09928057554, 445.73611510791363],
+        ["KS", 3501.2953929539294, 279.81937669376686],
+        ["KY", 5733.771739130435, 485.50108695652256],
+        ["LA", 9620.713114754099, 334.11209016393485],
+        ["MA", 63651.97637795276, 1006.6629921259845],
+        ["MD", 13805.005639097744, 781.4956766917295],
+        ["ME", 9011.757575757576, 224.04696969696977],
+        ["MI", 13750.144594594594, 478.6255405405394],
+        ["MN", 8023.276854928018, 313.0838316722035],
+        ["MO", 6923.745605920444, 354.5835337650325],
+        ["MS", 4761.023419203747, 212.52857142857158],
+        ["MT", 1590.468686868687, 151.98424242424244],
+        ["NC", 11867.249027237354, 305.3320363164726],
+        ["ND", 1779.8079800498754, 161.8835411471323],
+        ["NE", 3201.250847457627, 286.7847457627116],
+        ["NH", 19640.29268292683, 298.30487804878044],
+        ["NJ", 9410.996951219513, 1255.6746951219504],
+        ["NM", 3961.4576923076925, 133.97250000000017],
+        ["NV", 34925.466165413534, 255.62556390977437],
+        ["NY", 38256.10710607621, 955.8160659114324],
+        ["OH", 10879.444976076555, 506.3480063795856],
+        ["OK", 4510.184210526316, 185.31937799043084],
+        ["OR", 12075.094117647059, 571.1240000000003],
+        ["PA", 8389.247742663656, 721.4823363431145],
+        ["PR", 15109.562277580071, 1306.4092526690388],
+        ["RI", 55470.967741935485, 928.0580645161288],
+        ["SC", 9975.099365750528, 299.73847780126823],
+        ["SD", 1469.695652173913, 181.36397515527918],
+        ["TN", 12237.281437125748, 223.23672654690623],
+        ["TX", 18169.85628742515, 390.3673924877518],
+        ["UT", 15363.383685800603, 359.2646525679758],
+        ["VA", 12451.81626506024, 524.340060240964],
+        ["VT", 2362.7169811320755, 228.02452830188662],
+        ["WA", 15833.259083728279, 517.710426540285],
+        ["WI", 7361.449367088608, 316.36392405063293],
+        ["WV", 2792.9020501138953, 332.3863325740318],
+        ["WY", 2309.1813725490197, 180.80637254901953]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 136,
+          "coercion_strategy": null,
+          "name": "state_id",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1271, { "base-type": "type/Text" }],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1271,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "State ID",
+          "fingerprint": {
+            "global": { "distinct-count": 52, "nil%": 0 },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0.9893,
+                "average-length": 2
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Decimal",
+          "name": "avg",
+          "display_name": "Average of Population",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Decimal"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg_2",
+          "display_name": "Average of Density",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        }
+      ],
+      "viz-settings": {
+        "graph.dimensions": ["avg"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.show_goal": false,
+        "graph.x_axis.scale": "log",
+        "graph.metrics": ["avg_2"],
+        "metabase.shared.models.visualization-settings/column-settings": {
+          "{:metabase.shared.models.visualization-settings/field-id 1264}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1260}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1259}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1255}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1267}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1256}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1257}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1271}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1261}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1258}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1263}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1265}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1266}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1268}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1270}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1262}": {},
+          "{:metabase.shared.models.visualization-settings/field-id 1269}": {}
+        },
+        "metabase.shared.models.visualization-settings/global-column-settings": {}
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"state_id\" AS \"state_id\", AVG(\"source\".\"population\") AS \"avg\", AVG(\"source\".\"density\") AS \"avg_2\" FROM (SELECT \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"city\" AS \"city\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"city_ascii\" AS \"city_ascii\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"state_id\" AS \"state_id\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"state_name\" AS \"state_name\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"county_fips\" AS \"county_fips\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"county_name\" AS \"county_name\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"lat\" AS \"lat\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"lng\" AS \"lng\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"population\" AS \"population\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"density\" AS \"density\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"source\" AS \"source\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"military\" AS \"military\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"incorporated\" AS \"incorporated\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"timezone\" AS \"timezone\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"ranking\" AS \"ranking\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"zips\" AS \"zips\", \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\".\"id\" AS \"id\" FROM \"csv_upload_data\".\"csv_upload_us_cities_20231121133400\") AS \"source\" WHERE (\"source\".\"state_id\" <> 'DC') OR (\"source\".\"state_id\" IS NULL) GROUP BY \"source\".\"state_id\" ORDER BY \"source\".\"state_id\" ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]

@@ -1,13 +1,8 @@
 import * as ML from "cljs/metabase.lib.js";
+import type { TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
-import type {
-  Bucket,
-  ColumnMetadata,
-  Clause,
-  Query,
-  BucketName,
-} from "./types";
+import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
 
 export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.temporal_bucket(clause);
@@ -41,34 +36,44 @@ export function withDefaultTemporalBucket(
   stageIndex: number,
   column: ColumnMetadata,
 ): ColumnMetadata {
+  const defaultBucket = defaultTemporalBucket(query, stageIndex, column);
+  return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
+}
+
+export function defaultTemporalBucket(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): Bucket | null {
   const buckets = availableTemporalBuckets(query, stageIndex, column);
   const defaultBucket = buckets.find(
     bucket => displayInfo(query, stageIndex, bucket).default,
   );
-  return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
+
+  return defaultBucket ?? null;
 }
 
 type IntervalAmount = number | "current" | "next" | "last";
 
 export function describeTemporalInterval(
   n: IntervalAmount,
-  unit?: string,
+  unit?: TemporalUnit,
 ): string {
   return ML.describe_temporal_interval(n, unit);
 }
 
 export function describeRelativeDatetime(
   n: IntervalAmount,
-  unit?: string,
+  unit?: TemporalUnit,
 ): string {
   return ML.describe_relative_datetime(n, unit);
 }
 
 type RelativeDateRangeFormatOpts = {
   value: number | "current";
-  unit: BucketName;
+  unit: TemporalUnit;
   offsetValue?: number;
-  offsetUnit?: BucketName;
+  offsetUnit?: TemporalUnit;
   includeCurrent?: boolean;
 };
 
@@ -82,4 +87,8 @@ export function formatRelativeDateRange({
   return ML.format_relative_date_range(value, unit, offsetValue, offsetUnit, {
     "include-current": includeCurrent,
   });
+}
+
+export function availableTemporalUnits(): TemporalUnit[] {
+  return ML.available_temporal_units();
 }

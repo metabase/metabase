@@ -1,5 +1,5 @@
 import { TypeFilter } from "metabase/search/components/filters/TypeFilter";
-import type { EnabledSearchModelType } from "metabase-types/api";
+import type { EnabledSearchModel } from "metabase-types/api";
 
 const fromUrl = TypeFilter.fromUrl;
 const toUrl = TypeFilter.toUrl;
@@ -48,13 +48,13 @@ describe("fromUrl", () => {
 
 describe("toUrl", () => {
   it("should convert an array of valid types to an array of valid types", () => {
-    const types: EnabledSearchModelType[] = ["collection", "dashboard"];
+    const types: EnabledSearchModel[] = ["collection", "dashboard"];
     const result = toUrl(types);
     expect(result).toEqual(["collection", "dashboard"]);
   });
 
   it("should return null when the input array is empty", () => {
-    const types: EnabledSearchModelType[] = [];
+    const types: EnabledSearchModel[] = [];
     const result = toUrl(types);
     expect(result).toBeNull();
   });
@@ -66,7 +66,7 @@ describe("toUrl", () => {
   });
 
   it("should return an array with a single valid type when the input array has one valid type", () => {
-    const types: EnabledSearchModelType[] = ["collection"];
+    const types: EnabledSearchModel[] = ["collection"];
     const result = toUrl(types);
     expect(result).toEqual(["collection"]);
   });

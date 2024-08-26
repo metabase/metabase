@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const SchemaHeader = styled.div`
@@ -24,7 +23,6 @@ export const FieldListItem = styled.li`
   display: flex;
   flex-direction: row;
   align-items: center;
-
   width: 100%;
   border-radius: 8px;
   padding: 1rem 0.5rem;
@@ -34,6 +32,6 @@ export const FieldListItem = styled.li`
   }
 
   &:hover {
-    background-color: ${color("brand-light")};
+    background-color: var(--mb-color-brand-light);
   }
 `;

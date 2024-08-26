@@ -2,30 +2,30 @@ import { t } from "ttag";
 import * as Yup from "yup";
 
 import * as Errors from "metabase/lib/errors";
-import type Field from "metabase-lib/metadata/Field";
-import { TYPE } from "metabase-lib/types/constants";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   ActionDashboardCard,
   ActionFormOption,
   ActionFormSettings,
   BaseDashboardCard,
   Card,
-  FieldType,
   FieldSettings,
   FieldSettingsMap,
+  FieldType,
   InputComponentType,
   InputSettingType,
   Parameter,
+  VirtualCard,
   WritebackAction,
   WritebackActionBase,
   WritebackImplicitQueryAction,
   WritebackParameter,
-  VirtualCard,
 } from "metabase-types/api";
 
 import type {
-  ActionFormProps,
   ActionFormFieldProps,
+  ActionFormProps,
   FieldSettings as LocalFieldSettings,
 } from "./types";
 

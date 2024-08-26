@@ -2,7 +2,7 @@ import dayjs from "dayjs";
 import { t } from "ttag";
 import { isNull } from "underscore";
 
-import { useUserListQuery } from "metabase/common/hooks/use-user-list-query";
+import { useUserListQuery } from "metabase/common/hooks";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getRelativeTime } from "metabase/lib/time";
 import { isNotNull } from "metabase/lib/types";
@@ -59,7 +59,7 @@ export const InfoTextEditedInfo = ({
 
   const { prefix, timestamp, userId } = isUpdated
     ? {
-        prefix: t`Updated`,
+        prefix: result.archived ? t`Deleted` : t`Updated`,
         timestamp: result.last_edited_at,
         userId: result.last_editor_id,
       }

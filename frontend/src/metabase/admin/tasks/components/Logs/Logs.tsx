@@ -1,10 +1,12 @@
-import { useState, useMemo } from "react";
+import cx from "classnames";
+import { useMemo, useState } from "react";
 import * as React from "react";
 import reactAnsiStyle from "react-ansi-style";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Select, { Option } from "metabase/core/components/Select";
+import CS from "metabase/css/core/index.css";
 
 import { LogsContainer, LogsContent } from "./Logs.styled";
 import { usePollingLogsQuery, useTailLogs } from "./hooks";
@@ -17,7 +19,11 @@ interface LogsProps {
   pollingDurationMs?: number;
 }
 
-export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
+export const DEFAULT_POLLING_DURATION_MS = 1000;
+
+export const Logs = ({
+  pollingDurationMs = DEFAULT_POLLING_DURATION_MS,
+}: LogsProps) => {
   const [selectedProcessUUID, setSelectedProcessUUID] = useState("ALL");
   const { loaded, error, logs } = usePollingLogsQuery(pollingDurationMs);
   const processUUIDs = useMemo(() => getAllProcessUUIDs(logs), [logs]);
@@ -38,7 +44,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
   return (
     <LogsContainer loading={!loaded} error={error}>
       {processUUIDs.length > 1 && (
-        <div className="pb1">
+        <div className={CS.pb1}>
           <label>{t`Select Metabase process:`}</label>
           <Select
             defaultValue="ALL"
@@ -47,7 +53,7 @@ export const Logs = ({ pollingDurationMs = 1000 }: LogsProps) => {
               refollow();
               setSelectedProcessUUID(e.target.value);
             }}
-            className="inline-block ml1"
+            className={cx(CS.inlineBlock, CS.ml1)}
             width={400}
           >
             <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>

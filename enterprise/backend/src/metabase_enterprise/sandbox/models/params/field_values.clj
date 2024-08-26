@@ -8,7 +8,7 @@
    [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
     :as row-level-restrictions]
    [metabase.api.common :as api]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models :refer [Field PermissionsGroupMembership]]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values]
@@ -76,7 +76,7 @@
          (into {} (for [[k v] attribute_remappings
                         ;; get attribute that map to fields of the same table
                         :when (contains? field-ids
-                                         (mbql.u/match-one v [:dimension [:field field-id _]] field-id))]
+                                         (lib.util.match/match-one v [:dimension [:field field-id _]] field-id))]
                     {k (get login-attributes k)})))])))
 
 (defenterprise field-id->field-values-for-current-user
@@ -93,7 +93,7 @@
      ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
      (when (seq unsandboxed-fields)
        (params.field-values/default-field-id->field-values-for-current-user
-         (map u/the-id unsandboxed-fields)))
+        (map u/the-id unsandboxed-fields)))
      ;; for sandboxed fields, fetch the sandboxed values individually.
      (into {} (for [{field-id :id, :as field} sandboxed-fields]
                 [field-id (select-keys (params.field-values/get-or-create-advanced-field-values! :sandbox field)

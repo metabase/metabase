@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/core/components/MetabotLogo";
-import { color } from "metabase/lib/colors";
 import { breakpointMinExtraLarge } from "metabase/styled-components/theme";
 
 export const GreetingRoot = styled.div`
@@ -9,9 +8,11 @@ export const GreetingRoot = styled.div`
   align-items: center;
 `;
 
-export const GreetingLogo = styled(MetabotLogo)`
-  padding-right: 0.5rem;
+export const GreetingLogo = styled(MetabotLogo)<{ isCool: boolean }>`
   height: 2.5rem;
+  position: absolute;
+  top: 0;
+  opacity: ${props => (props.isCool ? 1 : 0)};
 
   ${breakpointMinExtraLarge} {
     height: 3rem;
@@ -23,7 +24,7 @@ export interface GreetingMessageProps {
 }
 
 export const GreetingMessage = styled.span<GreetingMessageProps>`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: ${props => (props.showLogo ? "1.125rem" : "1.25rem")};
   font-weight: bold;
   line-height: 1.5rem;

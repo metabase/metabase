@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { areParameterValuesIdentical } from "metabase-lib/parameters/utils/parameter-values";
+import { areParameterValuesIdentical } from "metabase-lib/v1/parameters/utils/parameter-values";
 
 const UPDATE = t`Update filter`;
 const ADD = t`Add filter`;

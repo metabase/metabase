@@ -7,10 +7,11 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
+import CS from "metabase/css/core/index.css";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { getMetadata } from "metabase/selectors/metadata";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 
 import { AuditMode } from "../lib/mode";
 
@@ -69,7 +70,7 @@ function AuditTable({
     <div>
       <QuestionLoadAndDisplay
         keepPreviousWhileLoading
-        className="mt3"
+        className={CS.mt3}
         question={question}
         metadata={metadata}
         mode={mode}

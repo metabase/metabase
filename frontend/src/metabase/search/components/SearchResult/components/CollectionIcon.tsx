@@ -1,25 +1,22 @@
 import { color } from "metabase/lib/colors";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
-import { DEFAULT_ICON_SIZE } from "metabase/search/components/SearchResult/components";
+import { getIcon } from "metabase/lib/icon";
+import {
+  DEFAULT_ICON_SIZE,
+  LARGE_ICON_SIZE,
+} from "metabase/search/components/SearchResult/components";
 import { Icon } from "metabase/ui";
 
 import type { IconComponentProps } from "./ItemIcon";
 
 export function CollectionIcon({ item }: { item: IconComponentProps["item"] }) {
-  const iconProps = { ...item.getIcon(), tooltip: null };
-  const isRegular =
-    "collection" in item &&
-    PLUGIN_COLLECTIONS.isRegularCollection(item.collection);
+  const icon = getIcon(item);
 
-  if (isRegular) {
-    return (
-      <Icon
-        {...iconProps}
-        size={DEFAULT_ICON_SIZE}
-        color={color("text-light")}
-      />
-    );
-  }
+  icon.color = icon.color ? color(icon.color) : color("text-light");
 
-  return <Icon {...iconProps} width={20} height={24} />;
+  return (
+    <Icon
+      {...icon}
+      size={icon.name === "folder" ? DEFAULT_ICON_SIZE : LARGE_ICON_SIZE}
+    />
+  );
 }

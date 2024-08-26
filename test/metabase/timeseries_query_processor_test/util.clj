@@ -6,7 +6,7 @@
    [metabase.test.data.interface :as tx]))
 
 (defn timeseries-drivers []
-  #{:druid})
+  #{:druid :druid-jdbc})
 
 (def flattened-db-def
   "The normal test-data DB definition as a flattened, single-table DB definition."
@@ -23,7 +23,8 @@
   `(do-with-flattened-dbdef (fn [] ~@body)))
 
 (defn do-test-timeseries-drivers [thunk]
-  (mt/test-drivers (timeseries-drivers)
+  (mt/test-drivers
+    (timeseries-drivers)
     (with-flattened-dbdef
       (thunk))))
 

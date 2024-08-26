@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { AggregationPicker as BaseAggregationPicker } from "metabase/common/components/AggregationPicker";
-import { color } from "metabase/lib/colors";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 export const SidebarView = styled(SidebarContent)`
@@ -25,14 +24,13 @@ export const AggregationsContainer = styled(Section)`
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-
   padding-top: 0;
 `;
 
 export const AggregationPicker = styled(BaseAggregationPicker)`
-  color: ${color("summarize")};
+  color: var(--mb-color-summarize);
 `;
 
 export const ColumnListContainer = styled(Section)`
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;

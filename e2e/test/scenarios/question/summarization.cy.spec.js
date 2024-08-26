@@ -1,20 +1,21 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
   changeBinningForDimension,
+  checkExpressionEditorHelperPopoverPosition,
+  enterCustomColumnDetails,
+  expressionEditorWidget,
   getDimensionByName,
   getRemoveDimensionButton,
+  interceptIfNotPreviouslyDefined,
+  openOrdersTable,
+  openReviewsTable,
+  popover,
+  restore,
+  rightSidebar,
   summarize,
   visitQuestion,
-  popover,
-  openReviewsTable,
-  openOrdersTable,
-  enterCustomColumnDetails,
   visualize,
-  checkExpressionEditorHelperPopoverPosition,
-  rightSidebar,
-  interceptIfNotPreviouslyDefined,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -44,7 +45,7 @@ describe("scenarios > question > summarize sidebar", () => {
   it("selected dimensions becomes pinned to the top of the dimensions list", () => {
     getDimensionByName({ name: "Total" })
       .should("have.attr", "aria-selected", "false")
-      .click();
+      .click({ position: "left" });
 
     getDimensionByName({ name: "Total" }).should(
       "have.attr",
@@ -101,7 +102,7 @@ describe("scenarios > question > summarize sidebar", () => {
   });
 
   it("selecting a binning adds a dimension", () => {
-    getDimensionByName({ name: "Total" }).click();
+    getDimensionByName({ name: "Total" }).click({ position: "left" });
 
     changeBinningForDimension({
       name: "Quantity",
@@ -156,7 +157,7 @@ describe("scenarios > question > summarize sidebar", () => {
     openOrdersTable({ mode: "notebook" });
     summarize({ mode: "notebook" });
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "2 * Max([Total])",
         name: "twice max total",
@@ -178,12 +179,11 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize({ mode: "notebook" });
 
     popover().contains("Custom Expression").click();
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula:
           "sum([Total]) / (sum([Product → Price]) * average([Quantity]))",
       });
-      cy.get("@formula").blur();
     });
 
     popover().within(() => {
@@ -248,7 +248,7 @@ describe("scenarios > question > summarize sidebar", () => {
     summarize();
 
     cy.findAllByTestId("header-cell").should("have.length", 4);
-    cy.get(".TableInteractive-headerCellData--sorted").as("sortedCell");
+    cy.get(".test-TableInteractive-headerCellData--sorted").as("sortedCell");
 
     cy.log('At this point only "Sum of Subtotal" should be sorted');
     cy.get("@sortedCell").its("length").should("eq", 1);
@@ -266,7 +266,7 @@ describe("scenarios > question > summarize sidebar", () => {
     removeMetricFromSidebar("Sum of Total");
 
     cy.findAllByTestId("header-cell").should("have.length", 2);
-    cy.get(".cellData").should("contain", 744); // `Count` for year 2022
+    cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2022
   });
 
   // flaky test (#19454)

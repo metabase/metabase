@@ -1,9 +1,9 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { numberToWord, compareVersions } from "metabase/lib/utils";
+import { compareVersions, numberToWord } from "metabase/lib/utils";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import type {
   PasswordComplexity,
@@ -207,13 +207,6 @@ class MetabaseSettings {
   }
 
   /**
-   * @deprecated use getSetting(state, "search-typeahead-enabled")
-   */
-  searchTypeaheadEnabled() {
-    return this.get("search-typeahead-enabled");
-  }
-
-  /**
    * @deprecated use getSetting(state, "anon-tracking-enabled")
    */
   trackingEnabled() {
@@ -224,14 +217,7 @@ class MetabaseSettings {
    * @deprecated use getSetting(state, "anon-tracking-enabled")
    */
   uploadsEnabled() {
-    return !!(this.get("uploads-enabled") && this.get("uploads-database-id"));
-  }
-
-  /**
-   * @deprecated use getSetting(state, "ga-enabled")
-   */
-  googleAnalyticsEnabled() {
-    return this.get("ga-enabled") || false;
+    return !!this.get("uploads-settings")?.db_id;
   }
 
   /**

@@ -1,1 +1,0 @@
-export { DatabasePromptBanner } from "./DatabasePromptBanner";

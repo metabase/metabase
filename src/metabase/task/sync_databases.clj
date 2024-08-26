@@ -10,14 +10,13 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [malli.core :as mc]
+   [metabase.audit :as audit]
    [metabase.config :as config]
-   [metabase.db.query :as mdb.query]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.schedules :as sync.schedules]
@@ -31,11 +30,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (org.quartz
-    CronTrigger
-    JobDetail
-    JobKey
-    TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobKey TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -45,7 +40,7 @@
 
 (declare unschedule-tasks-for-db!)
 
-(mu/defn ^:private job-context->database-id :- [:maybe ::lib.schema.id/database]
+(mu/defn- job-context->database-id :- [:maybe ::lib.schema.id/database]
   "Get the Database ID referred to in `job-context`."
   [job-context]
   (u/the-id (get (qc/from-job-data job-context) "db-id")))
@@ -101,7 +96,7 @@
   "The sync and analyze database job, as a function that can be used in a test"
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (if (= perms/audit-db-id database-id)
+    (if (= audit/audit-db-id database-id)
       (do
         (log/warn "Cannot sync Database: It is the audit db.")
         (when-not config/is-prod?
@@ -134,7 +129,6 @@
   UpdateFieldValues [job-context]
   (update-field-values! job-context))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         TASK INFO AND GETTER FUNCTIONS                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -147,85 +141,88 @@
   [:map
    [:key                :keyword]
    [:db-schedule-column :keyword]
-   [:job-class          ::class]])
+   [:job-class          ::class]
+   [:name               :string]])
 
 (def ^:private sync-analyze-task-info
   {:key                :sync-and-analyze
    :db-schedule-column :metadata_sync_schedule
-   :job-class          SyncAndAnalyzeDatabase})
+   :job-class          SyncAndAnalyzeDatabase
+   :name               "Sync and Analyze"})
 
 (assert (mc/validate TaskInfo sync-analyze-task-info))
 
 (def ^:private field-values-task-info
   {:key                :update-field-values
    :db-schedule-column :cache_field_values_schedule
-   :job-class          UpdateFieldValues})
+   :job-class          UpdateFieldValues
+   :name               "Scan Field Values"})
 
 (assert (mc/validate TaskInfo field-values-task-info))
 
+(def ^:private all-tasks
+  [sync-analyze-task-info field-values-task-info])
 
 ;; These getter functions are not strictly necessary but are provided primarily so we can get some extra validation by
 ;; using them
 
-(mu/defn ^:private job-key :- (ms/InstanceOfClass JobKey)
+(mu/defn- job-key :- (ms/InstanceOfClass JobKey)
   "Return an appropriate string key for the job described by `task-info` for `database-or-id`."
   ^JobKey [task-info :- TaskInfo]
   (jobs/key (format "metabase.task.%s.job" (name (:key task-info)))))
 
-(mu/defn ^:private trigger-key :- (ms/InstanceOfClass TriggerKey)
+(mu/defn- trigger-key :- (ms/InstanceOfClass TriggerKey)
   "Return an appropriate string key for the trigger for `task-info` and `database-or-id`."
   ^TriggerKey [database  :- (ms/InstanceOf Database)
                task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
-(mu/defn ^:private cron-schedule :- u.cron/CronScheduleString
+(mu/defn- cron-schedule :- [:maybe u.cron/CronScheduleString]
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
   [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))
 
-(mu/defn ^:private job-class :- ::class
+(mu/defn- job-class :- ::class
   "Get the Job class for `task-info`."
   [task-info :- TaskInfo]
   (:job-class task-info))
 
-(mu/defn ^:private trigger-description :- :string
+(mu/defn- trigger-description :- :string
   "Return an appropriate description string for a job/trigger for Database described by `task-info`."
   [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (format "%s Database %d" (name (:key task-info)) (u/the-id database)))
 
-(mu/defn ^:private job-description :- :string
+(mu/defn- job-description :- :string
   "Return an appropriate description string for a job"
   [task-info :- TaskInfo]
   (format "%s for all databases" (name (:key task-info))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            DELETING TASKS FOR A DB                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private delete-task!
-  "Cancel a single sync task for `database-or-id` and `task-info`."
+(mu/defn- delete-trigger!
+  "Cancel a single sync trigger for `database-or-id` and `task-info`."
   [database  :- (ms/InstanceOf Database)
    task-info :- TaskInfo]
   (let [trigger-key (trigger-key database task-info)]
     (log/debug (u/format-color 'red
-                   (format "Unscheduling task for Database %d: trigger: %s" (u/the-id database) (.getName trigger-key))))
+                               (format "Unscheduling task for Database %d: trigger: %s" (u/the-id database) (.getName trigger-key))))
     (task/delete-trigger! trigger-key)))
 
 (mu/defn unschedule-tasks-for-db!
   "Cancel *all* scheduled sync and FieldValues caching tasks for `database-or-id`."
   [database :- (ms/InstanceOf Database)]
-  (doseq [task [sync-analyze-task-info field-values-task-info]]
-    (delete-task! database task)))
-
+  (doseq [task all-tasks]
+    (delete-trigger! database task)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         (RE)SCHEDULING TASKS FOR A DB                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private job :- (ms/InstanceOfClass JobDetail)
+(mu/defn- job :- (ms/InstanceOfClass JobDetail)
   "Build a durable Quartz Job for `task-info`. Durable in Quartz allows the job to exist even if there are no triggers
   for it."
   ^JobDetail [task-info :- TaskInfo]
@@ -238,63 +235,76 @@
 (def ^:private sync-analyze-job (job sync-analyze-task-info))
 (def ^:private field-values-job (job field-values-task-info))
 
-(mu/defn ^:private trigger :- (ms/InstanceOfClass CronTrigger)
-  "Build a Quartz Trigger for `database` and `task-info`."
+(mu/defn- trigger :- [:maybe (ms/InstanceOfClass CronTrigger)]
+  "Build a Quartz Trigger for `database` and `task-info` if a schedule exists."
   ^CronTrigger [database  :- (ms/InstanceOf Database)
                 task-info :- TaskInfo]
-  (triggers/build
-   (triggers/with-description (trigger-description database task-info))
-   (triggers/with-identity (trigger-key database task-info))
-   (triggers/using-job-data {"db-id" (u/the-id database)})
-   (triggers/for-job (job-key task-info))
-   (triggers/start-now)
-   (triggers/with-schedule
-     (cron/schedule
-      (cron/cron-schedule (cron-schedule database task-info))
-      ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
-      ;; Just wait until the next sync cycle.
-      ;;
-      ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
-      (cron/with-misfire-handling-instruction-do-nothing)))))
+  (when-let [task-schedule (cron-schedule database task-info)]
+    (triggers/build
+     (triggers/with-description (trigger-description database task-info))
+     (triggers/with-identity (trigger-key database task-info))
+     (triggers/using-job-data {"db-id" (u/the-id database)})
+     (triggers/for-job (job-key task-info))
+     (triggers/start-now)
+     (triggers/with-schedule
+      (cron/schedule
+       (cron/cron-schedule task-schedule)
+        ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+        ;; Just wait until the next sync cycle.
+        ;;
+        ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+       (cron/with-misfire-handling-instruction-do-nothing))))))
+
+(defn- update-db-trigger-if-needed!
+  "Replace or remove the existing trigger if the schedule changes, do nothing if schedule is the same."
+  [database task-info]
+  (let [job                                 (task/job-info (job-key task-info))
+        new-trigger                         (trigger database task-info)
+        ;; there should be only one schedule per task per DB
+        existing-trigger-with-same-schedule (when new-trigger
+                                              (let [trigger-key   (.. new-trigger getKey getName)
+                                                    task-schedule (cron-schedule database task-info)]
+                                                (some #(when (and (= (:key %) trigger-key)
+                                                                  (= (:schedule %) task-schedule))
+                                                         %)
+                                                      (:triggers job))))]
+    (cond
+     ;; no new schedule
+     ;; delete the existing trigger
+      (nil? new-trigger)
+      (do
+        (log/infof "Trigger for \"%s\" of Database \"%s\" has been removed. It will no longer run on a schedule."
+                   (:name task-info)
+                   (:name database))
+        (delete-trigger! database task-info))
+
+     ;; need to recreate the new trigger
+      (and (some? new-trigger)
+           (nil? existing-trigger-with-same-schedule))
+      (do
+        (if (delete-trigger! database task-info)
+          (log/infof "Trigger for \"%s\" of Database \"%s\" has been updated. The new schedule is: \"%s\""
+                     (:name task-info)
+                     (:name database)
+                     (cron-schedule database task-info))
+          (log/infof "A trigger for \"%s\" of Database \"%s\" has been enabled with schedule: \"%s\""
+                     (:name task-info)
+                     (:name database)
+                     (cron-schedule database task-info)))
+        (task/add-trigger! new-trigger))
+
+     ;; don't need to do anything as the existing trigger matches the new schedule
+      :else
+      nil)))
 
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (mu/defn check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- (ms/InstanceOf Database)]
-  (if (= perms/audit-db-id (:id database))
+  (if (= audit/audit-db-id (:id database))
     (log/info (u/format-color :red "Not scheduling tasks for audit database"))
-    (let [sync-job (task/job-info (job-key sync-analyze-task-info))
-          fv-job   (task/job-info (job-key field-values-task-info))
-
-          sync-trigger (trigger database sync-analyze-task-info)
-          fv-trigger   (trigger database field-values-task-info)
-
-          existing-sync-trigger (some (fn [trigger] (when (= (:key trigger) (.. sync-trigger getKey getName))
-                                                      trigger))
-                                      (:triggers sync-job))
-          existing-fv-trigger   (some (fn [trigger] (when (= (:key trigger) (.. fv-trigger getKey getName))
-                                                      trigger))
-                                      (:triggers fv-job))
-          jobs-to-create [{:existing-trigger  existing-sync-trigger
-                           :existing-schedule (:metadata_sync_schedule database)
-                           :ti                sync-analyze-task-info
-                           :trigger           sync-trigger
-                           :description       "sync/analyze"}
-                          {:existing-trigger  existing-fv-trigger
-                           :existing-schedule (:cache_field_values_schedule database)
-                           :ti                field-values-task-info
-                           :trigger           fv-trigger
-                           :description       "field-values"}]]
-      (doseq [{:keys [existing-trigger existing-schedule ti trigger description]} jobs-to-create
-              :when (or (not existing-trigger)
-                        (not= (:schedule existing-trigger) existing-schedule))]
-        (delete-task! database ti)
-        (log/info
-         (u/format-color :green "Scheduling %s for database %d: trigger: %s"
-                         description (:id database) (.. ^org.quartz.Trigger trigger getKey getName)))
-        ;; now (re)schedule the task
-        (task/add-trigger! trigger)))))
-
+    (doseq [task all-tasks]
+      (update-db-trigger-if-needed! database task))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              TASK INITIALIZATION                                               |
@@ -320,20 +330,18 @@
              (fn
                ([] 0)
                ([counter]
-                (log/info "Updated default schedules for %d databases" counter)
+                (log/infof "Updated default schedules for %d databases" counter)
                 counter)
                ([counter db]
                 (try
                   (t2/update! Database (u/the-id db)
-                    (sync.schedules/schedule-map->cron-strings
-                     (sync.schedules/default-randomized-schedule)))
+                              (sync.schedules/schedule-map->cron-strings
+                               (sync.schedules/default-randomized-schedule)))
                   (inc counter)
                   (catch Exception e
-                    (log/warnf e
-                               "Error updating database %d for randomized schedules"
-                               (u/the-id db))
+                    (log/warnf e "Error updating database %d for randomized schedules" (u/the-id db))
                     counter))))
-             (mdb.query/reducible-query
+             (t2/reducible-query
               {:select [:id :details]
                :from   [:metabase_database]
                :where  [:or

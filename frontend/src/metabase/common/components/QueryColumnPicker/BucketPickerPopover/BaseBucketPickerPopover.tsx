@@ -9,6 +9,7 @@ import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import {
+  ChevronDown,
   Content,
   MoreButton,
   SelectListItem,
@@ -35,6 +36,7 @@ export interface BaseBucketPickerPopoverProps {
   isEditing: boolean;
   triggerLabel?: string;
   hasArrowIcon?: boolean;
+  hasChevronDown?: boolean;
   color?: ColorName;
   checkBucketIsSelected: (item: BucketListItem) => boolean;
   renderTriggerContent: (bucket?: Lib.BucketDisplayInfo) => ReactNode;
@@ -53,6 +55,7 @@ function _BaseBucketPickerPopover({
   checkBucketIsSelected,
   renderTriggerContent,
   onSelect,
+  hasChevronDown,
 }: BaseBucketPickerPopoverProps) {
   const [isOpened, setIsOpened] = useState(false);
   const [isExpanded, setIsExpanded] = useState(
@@ -64,7 +67,8 @@ function _BaseBucketPickerPopover({
     [items],
   );
 
-  const handleExpand = useCallback(() => {
+  const handleExpand = useCallback((evt: React.MouseEvent) => {
+    evt.stopPropagation();
     setIsExpanded(true);
   }, []);
 
@@ -105,7 +109,10 @@ function _BaseBucketPickerPopover({
           <Ellipsified>
             {renderTriggerContent(triggerContentBucketDisplayInfo)}
           </Ellipsified>
-          {hasArrowIcon && <TriggerIcon name="chevronright" />}
+          {hasArrowIcon && !hasChevronDown && (
+            <TriggerIcon name="chevronright" />
+          )}
+          {hasChevronDown && <ChevronDown name="chevrondown" />}
         </TriggerButton>
       </Popover.Target>
       <Popover.Dropdown>

@@ -6,27 +6,34 @@ import type {
 } from "@dnd-kit/core";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
+import GrabberS from "metabase/css/components/grabber.module.css";
 import { isNotNull } from "metabase/lib/types";
 
 type ItemId = number | string;
+export type DragEndEvent = {
+  id: ItemId;
+  newIndex: number;
+  itemIds: ItemId[];
+};
 
-interface RenderItemProps<T> {
+export type RenderItemProps<T> = {
   item: T;
   id: ItemId;
   isDragOverlay?: boolean;
-}
-interface useSortableListProps<T> {
+};
+type useSortableListProps<T> = {
   items: T[];
   getId: (item: T) => ItemId;
   renderItem: ({ item, id, isDragOverlay }: RenderItemProps<T>) => JSX.Element;
   onSortStart?: (event: DragStartEvent) => void;
-  onSortEnd?: ({ id, newIndex }: { id: ItemId; newIndex: number }) => void;
+  onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
   sensors?: SensorDescriptor<any>[];
   modifiers?: Modifier[];
-}
+  useDragOverlay?: boolean;
+};
 
 export const SortableList = <T,>({
   items,
@@ -36,9 +43,12 @@ export const SortableList = <T,>({
   onSortEnd,
   sensors = [],
   modifiers = [],
+  useDragOverlay = true,
 }: useSortableListProps<T>) => {
   const [itemIds, setItemIds] = useState<ItemId[]>([]);
-  const [indexedItems, setIndexedItems] = useState<Record<ItemId, T>>({});
+  const [indexedItems, setIndexedItems] = useState<Partial<Record<ItemId, T>>>(
+    {},
+  );
   const [activeItem, setActiveItem] = useState<T | null>(null);
 
   useEffect(() => {
@@ -70,7 +80,7 @@ export const SortableList = <T,>({
   };
 
   const handleDragStart = (event: DragStartEvent) => {
-    document.body.classList.add("grabbing");
+    document.body.classList.add(GrabberS.grabbing);
 
     onSortStart?.(event);
 
@@ -81,11 +91,12 @@ export const SortableList = <T,>({
   };
 
   const handleDragEnd = () => {
-    document.body.classList.remove("grabbing");
+    document.body.classList.remove(GrabberS.grabbing);
     if (activeItem && onSortEnd) {
       onSortEnd({
         id: getId(activeItem),
         newIndex: itemIds.findIndex(id => id === getId(activeItem)),
+        itemIds,
       });
       setActiveItem(null);
     }
@@ -100,15 +111,17 @@ export const SortableList = <T,>({
       modifiers={modifiers}
     >
       <SortableContext items={itemIds}>{sortableElements}</SortableContext>
-      <DragOverlay>
-        {activeItem
-          ? renderItem({
-              item: activeItem,
-              id: getId(activeItem),
-              isDragOverlay: true,
-            })
-          : null}
-      </DragOverlay>
+      {useDragOverlay && (
+        <DragOverlay>
+          {activeItem
+            ? renderItem({
+                item: activeItem,
+                id: getId(activeItem),
+                isDragOverlay: true,
+              })
+            : null}
+        </DragOverlay>
+      )}
     </DndContext>
   );
 };

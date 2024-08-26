@@ -18,8 +18,10 @@ describe("issue 5276", () => {
     cy.findByText("Products").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Fields in this table").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Edit").click();
+
+    // Calling .click on this element goes into edit more and immediately calls resetForm to pull us back out
+    // no idea why. TODO: Fix
+    cy.button(/Edit/).trigger("click");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Score").click();

@@ -5,8 +5,10 @@
    [clojure.string :as str]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.user :as user :refer [User]]
-   [metabase.public-settings.premium-features :refer [defenterprise-schema]]
+   [metabase.public-settings.premium-features
+    :refer [defenterprise-schema]]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
@@ -51,16 +53,23 @@
   [ldap-connection                 :- (ms/InstanceOfClass LDAPConnectionPool)
    username                        :- ms/NonBlankString
    {:keys [user-base user-filter]} :- LDAPSettings]
-  (some-> (first
-           (ldap/search
-            ldap-connection
-            user-base
-            {:scope      :sub
-             :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
-             :size-limit 1}))
-          u/lower-case-map-keys))
+  (let [options {:scope      :sub
+                 :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
+                 :size-limit 1}]
+    (log/debugf "Searching for LDAP user %s with user search base %s and options %s"
+                username
+                user-base
+                (u/pprint-to-str options))
+    (let [search-result (ldap/search
+                         ldap-connection
+                         user-base
+                         {:scope      :sub
+                          :filter     (str/replace user-filter filter-placeholder (Filter/encodeValue ^String username))
+                          :size-limit 1})]
+      (log/debugf "LDAP search results: %s" (u/pprint-to-str search-result))
+      (some-> (first search-result) u/lower-case-map-keys))))
 
-(mu/defn ^:private process-group-membership-filter :- ms/NonBlankString
+(mu/defn- process-group-membership-filter :- ms/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."
   [group-membership-filter :- ms/NonBlankString
    dn                      :- ms/NonBlankString
@@ -70,7 +79,7 @@
         (str/replace "{dn}" (Filter/encodeValue ^String dn))
         (str/replace "{uid}" (Filter/encodeValue ^String uid-string)))))
 
-(mu/defn ^:private user-groups :- [:maybe [:sequential ms/NonBlankString]]
+(mu/defn- user-groups :- [:maybe [:sequential ms/NonBlankString]]
   "Retrieve groups for a supplied DN."
   [ldap-connection         :- (ms/InstanceOfClass LDAPConnectionPool)
    dn                      :- ms/NonBlankString
@@ -144,13 +153,13 @@
   [{:keys [first-name last-name email groups]} :- UserInfo
    {:keys [sync-groups?], :as settings}        :- LDAPSettings]
   (let [user     (t2/select-one [User :id :last_login :first_name :last_name :is_active]
-                   :%lower.email (u/lower-case-en email))
+                                :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
                          old-last-name  (:last_name user)
                          user-changes   (merge
-                                          (when (not= first-name old-first-name) {:first_name first-name})
-                                          (when (not= last-name old-last-name) {:last_name last-name}))]
+                                         (when (not= first-name old-first-name) {:first_name first-name})
+                                         (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
                          (t2/update! User (:id user) user-changes)

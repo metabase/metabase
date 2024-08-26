@@ -4,7 +4,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
-   [metabase.mbql.schema :as mbql.s]
    [metabase.util.malli :as mu]))
 
 (mu/defn database-id :- [:maybe ::lib.schema.id/database]
@@ -17,7 +16,7 @@
   `:database-id`; if this is not available for one reason or another this will return `nil`."
   [query :- ::lib.schema/query]
   (when-let [id (:database query)]
-    (if (not= id mbql.s/saved-questions-virtual-database-id)
+    (if (not= id lib.schema.id/saved-questions-virtual-database-id)
       id
       (when-let [source-card-id (lib.util/source-card-id query)]
         (when-let [card-metadata (lib.metadata/card query source-card-id)]

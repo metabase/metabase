@@ -18,7 +18,7 @@ title: Can't view or edit
 2. If a saved question is in a collection that you don't have access to, you'll need to ask someone with edit access to the collection to:
     - Grant you permission to the collection.
     - Or, to move the saved question to a collection that you have permissions to.
-3. If the steps above don't solve your problem, ask your Metabase admin if you have [permission to the database that's used by the question](../permissions/data.md#block-access).
+3. If the steps above don't solve your problem, ask your Metabase admin if you have [permission to the database that's used by the question](../permissions/data.md#blocked-view-data-permission).
 
 **Explanation**
 

@@ -2,11 +2,10 @@ import { updateIn } from "icepick";
 
 import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCard";
 import GoogleSettingsForm from "metabase/admin/settings/auth/containers/GoogleAuthForm";
-import FormikForm from "metabase/containers/FormikForm";
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  PLUGIN_AUTH_PROVIDERS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
@@ -37,7 +36,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
-    component: GoogleSettingsForm ?? FormikForm,
+    component: GoogleSettingsForm,
     settings: [
       { key: "google-auth-client-id" },
       { key: "google-auth-auto-create-accounts-domain" },

@@ -1,22 +1,22 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { HeaderButton } from "../ViewHeader.styled";
+import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
-  ...props
+  className,
 }) {
   return (
-    <HeaderButton
-      large
-      color={color("summarize")}
-      labelBreakpoint="sm"
+    <Button
+      color="summarize"
+      variant={isShowingSummarySidebar ? "filled" : "default"}
       onClick={async () => {
         if (isShowingSummarySidebar) {
           onCloseSummary();
@@ -24,11 +24,11 @@ export function QuestionSummarizeWidget({
           onEditSummary();
         }
       }}
-      active={isShowingSummarySidebar}
-      {...props}
+      data-active={isShowingSummarySidebar}
+      className={cx(className, ViewTitleHeaderS.SummarizeButton)}
     >
       {t`Summarize`}
-    </HeaderButton>
+    </Button>
   );
 }
 
@@ -45,6 +45,7 @@ QuestionSummarizeWidget.shouldRender = ({
     !isNative &&
     isEditable &&
     !isObjectDetail &&
-    isActionListVisible
+    isActionListVisible &&
+    !question.isArchived()
   );
 };

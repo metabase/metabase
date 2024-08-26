@@ -4,7 +4,7 @@ redirect_from:
   - /docs/latest/administration-guide/19-formatting-settings
 ---
 
-# Formatting defaults 
+# Formatting defaults
 
 There are Metabase users around the world, each with different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase allows you to customize these formatting options at three different levels:
 
@@ -35,6 +35,25 @@ The options you'll see here will depend on the field's type. They're generally t
 
 Currency field formatting settings include all the same options as in the global formatting section, as well as all the options that Number fields have.
 
+See [Currency formatting options](../questions/sharing/visualizations/table.md#currency-formatting-options).
+
 ## Question-level formatting
 
 Lastly, you can override all formatting settings in any specific saved question or dashboard card by clicking on the gear to open up the visualization options. To reset any overridden setting to the default, just click on the rotating arrow icon next to the setting's label. This will reset the setting to the field-level setting if there is one; otherwise it will be reset to the global default.
+
+Formatting options vary depending on the type of visualization:
+
+- [Combo chart](../questions/sharing/visualizations/combo-chart.md)
+- [Detail](../questions/sharing/visualizations/detail.md)
+- [Funnel](../questions/sharing/visualizations/funnel.md)
+- [Gauge](../questions/sharing/visualizations/gauge.md)
+- [Line, Bar, and area charts](../questions/sharing/visualizations/line-bar-and-area-charts.md)
+- [Maps](../questions/sharing/visualizations/map.md)
+- [Numbers](../questions/sharing/visualizations/numbers.md)
+- [Pie or donut chart](../questions/sharing/visualizations/pie-or-donut-chart.md)
+- [Pivot table](../questions/sharing/visualizations/pivot-table.md)
+- [Progress bar](../questions/sharing/visualizations/progress-bar.md)
+- [Scatter plot or bubble chart](../questions/sharing/visualizations/scatterplot-or-bubble-chart.md)
+- [Tables](../questions/sharing/visualizations/table.md)
+- [Trend](../questions/sharing/visualizations/trend.md)
+- [Waterfall chart](../questions/sharing/visualizations/waterfall-chart.md)

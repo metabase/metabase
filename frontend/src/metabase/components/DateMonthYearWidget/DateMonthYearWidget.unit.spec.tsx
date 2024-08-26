@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import DateMonthYearWidget from "./DateMonthYearWidget";
+import { DateMonthYearWidget } from "./DateMonthYearWidget";
 
 describe("DateMonthYearWidget", () => {
   it("should render correctly", () => {
@@ -16,7 +16,7 @@ describe("DateMonthYearWidget", () => {
     expect(screen.getByText("December")).toBeVisible();
 
     // 07 = July and year 2021
-    expect(screen.getByTestId("select-button")).toHaveTextContent("2021");
+    expect(screen.getByTestId("select-year-picker")).toHaveValue("2021");
     expect(screen.getByText("July")).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("June")).toHaveAttribute("aria-selected", "false");
   });

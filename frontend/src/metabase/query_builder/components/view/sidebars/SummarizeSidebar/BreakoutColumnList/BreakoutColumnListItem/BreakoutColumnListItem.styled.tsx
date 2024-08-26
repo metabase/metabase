@@ -1,30 +1,20 @@
-import { css } from "@emotion/react";
+import { type Theme, css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { BucketPickerPopover as BaseBucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
+import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
-
-const triggerButtonStyle = css`
-  border-color: transparent;
-  visibility: hidden;
-  border-left-width: 1px;
-`;
-
-export const BucketPickerPopover = styled(BaseBucketPickerPopover)`
-  ${BaseBucketPickerPopover.TriggerButton} {
-    ${triggerButtonStyle}
-  }
-`;
-
-BucketPickerPopover.defaultProps = { color: "summarize" };
+import { alpha } from "metabase/lib/colors";
 
 export const Content = styled.div`
   display: flex;
   flex: auto;
   align-items: center;
   border-radius: 6px;
+
+  ${BucketPickerPopover.TriggerButton} {
+    height: 100%;
+  }
 `;
 
 export const TitleContainer = styled.div`
@@ -36,14 +26,13 @@ export const TitleContainer = styled.div`
 `;
 
 export const RemoveButton = styled(Button)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   background-color: transparent;
-
   opacity: 0.6;
   transition: all 100ms;
 
   &:hover {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
     background-color: transparent;
     opacity: 1;
   }
@@ -58,7 +47,7 @@ RemoveButton.defaultProps = {
 export const AddButton = styled(Button)`
   width: 34px;
   margin-left: 0.5rem;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   transition: none;
 `;
 
@@ -68,8 +57,8 @@ AddButton.defaultProps = {
   borderless: true,
 };
 
-export const ColumnTypeIcon = styled(Icon)`
-  color: ${color("text-medium")};
+export const ColumnTypeIcon = styled(QueryColumnInfoIcon)`
+  color: var(--mb-color-text-medium);
 `;
 
 export const Title = styled.div`
@@ -79,49 +68,53 @@ export const Title = styled.div`
   font-weight: 700;
 `;
 
-const selectedStyle = css`
+const getSelectedStyle = (theme: Theme) => css`
   ${Content},
   ${ColumnTypeIcon} {
-    background-color: ${color("summarize")};
-    color: ${color("white")};
+    background-color: var(--mb-color-summarize);
+    color: var(--mb-color-text-white);
   }
 
-  ${BaseBucketPickerPopover.TriggerButton} {
-    visibility: visible;
-    color: ${alpha("white", 0.5)};
-    border-color: ${alpha("text-dark", 0.1)};
-    border-left-width: 1px;
+  ${BucketPickerPopover.TriggerButton} {
+    opacity: 1;
+    color: ${alpha(theme.fn.themeColor("text-white"), 0.65)};
   }
 
-  ${BaseBucketPickerPopover.TriggerButton}:hover {
-    color: ${color("white")};
-    border-left-width: 1px;
+  ${BucketPickerPopover.TriggerButton}:hover {
+    color: var(--mb-color-text-white);
+    opacity: 1;
   }
 `;
 
 const unselectedStyle = css`
+  ${BucketPickerPopover.TriggerButton} {
+    opacity: 0;
+    color: var(--mb-color-text-light);
+  }
+
+  ${ColumnTypeIcon} {
+    color: var(--mb-color-text-light);
+  }
+
   &:hover {
     ${Content},
     ${ColumnTypeIcon},
     ${AddButton} {
-      color: ${color("summarize")};
-      background-color: ${color("bg-light")};
+      color: var(--mb-color-summarize);
+      background-color: var(--mb-color-bg-light);
     }
 
     ${AddButton}:hover {
-      background-color: ${color("bg-medium")};
+      background-color: var(--mb-color-bg-medium);
     }
 
-    ${BaseBucketPickerPopover.TriggerButton} {
-      visibility: visible;
-      color: ${color("text-light")};
-      border-color: ${alpha("text-dark", 0.1)};
-      border-left-width: 1px;
+    ${BucketPickerPopover.TriggerButton} {
+      opacity: 1;
+      color: var(--mb-color-text-light);
     }
 
-    ${BaseBucketPickerPopover.TriggerButton}:hover {
-      color: ${color("text-medium")};
-      border-left-width: 1px;
+    ${BucketPickerPopover.TriggerButton}:hover {
+      color: var(--mb-color-text-medium);
     }
   }
 `;
@@ -132,6 +125,8 @@ export const Root = styled.li<{ isSelected: boolean }>`
   cursor: pointer;
   margin: 0.25rem 0;
   min-height: 34px;
+  position: relative;
 
-  ${props => (props.isSelected ? selectedStyle : unselectedStyle)}
+  ${props =>
+    props.isSelected ? getSelectedStyle(props.theme) : unselectedStyle}
 `;

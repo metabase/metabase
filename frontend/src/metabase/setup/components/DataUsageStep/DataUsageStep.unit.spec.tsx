@@ -1,8 +1,13 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { setupErrorSetupEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+} from "__support__/server-mocks";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { SetupStep } from "metabase/setup/types";
+import { createMockSettings } from "metabase-types/api/mocks";
 import {
   createMockSetupState,
   createMockState,
@@ -14,6 +19,8 @@ interface SetupOpts {
   step?: SetupStep;
 }
 
+const TRACKING_PATH = "path:/api/setting/anon-tracking-enabled";
+
 const setup = ({ step = "data_usage" }: SetupOpts = {}) => {
   const state = createMockState({
     setup: createMockSetupState({
@@ -21,7 +28,9 @@ const setup = ({ step = "data_usage" }: SetupOpts = {}) => {
     }),
   });
 
-  setupErrorSetupEndpoints();
+  setupSettingsEndpoints([]);
+  setupPropertiesEndpoints(createMockSettings());
+
   renderWithProviders(<DataUsageStep stepLabel={0} />, {
     storeInitialState: state,
   });
@@ -34,20 +43,34 @@ describe("DataUsageStep", () => {
     expect(screen.getByText("Usage data preferences")).toBeInTheDocument();
   });
 
-  it("should allow toggling tracking permissions", () => {
+  it("should allow toggling tracking permissions", async () => {
     setup({ step: "data_usage" });
+    fetchMock.put(TRACKING_PATH, 204);
 
     const toggle = screen.getByRole("switch", { name: /Allow Metabase/ });
-    userEvent.click(toggle);
-
     expect(toggle).toBeChecked();
+    await userEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(fetchMock.called(TRACKING_PATH, { method: "PUT" })).toBeTruthy();
+    });
+
+    expect(toggle).not.toBeChecked();
   });
 
   it("should show an error message on submit", async () => {
     setup({ step: "data_usage" });
+    fetchMock.put(TRACKING_PATH, 400);
 
-    userEvent.click(screen.getByText("Finish"));
+    const toggle = screen.getByRole("switch", { name: /Allow Metabase/ });
+    expect(toggle).toBeChecked();
+    await userEvent.click(toggle);
+
+    await waitFor(() => {
+      expect(fetchMock.called(TRACKING_PATH, { method: "PUT" })).toBeTruthy();
+    });
 
     expect(await screen.findByText("An error occurred")).toBeInTheDocument();
+    expect(toggle).toBeChecked();
   });
 });

@@ -79,7 +79,7 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
 
     expect(screen.getByText("Edit event")).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe("EventCard", () => {
     });
 
     render(<EventCard {...props} />);
-    userEvent.click(screen.getByLabelText("ellipsis icon"));
+    await userEvent.click(screen.getByLabelText("ellipsis icon"));
     await screen.findByRole("dialog");
 
     expect(screen.getByText("Unarchive event")).toBeInTheDocument();

@@ -1,16 +1,27 @@
 (ns dev.debug-qp
-  "TODO -- I think this should be moved to something like [[metabase.test.util.debug-qp]]"
+  "Debug QP stuff as follows:
+
+    ;; start Portal if you have not done so already. Open http://localhost:1337 in your browser
+    (dev.debug-qp/start-portal!)
+
+    ;; run a query with debugging enabled
+    (binding [metabase.query-processor.debug/*debug* true]
+      (metabase.query-processor/process-query query))"
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
    [lambdaisland.deep-diff2 :as ddiff]
    [medley.core :as m]
-   [metabase.db.query :as mdb.query]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.db :as mdb]
+   [metabase.driver :as driver]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.util :as u]
+   [portal.api]
    [toucan2.core :as t2]))
 
 ;;;; [[->sorted-mbql-query-map]]
@@ -115,7 +126,7 @@
                        (symbol (format "#_\"%s.%s\"" field-name table-name)))))
                  (field-id->name-form [field-id]
                    (list 'do (add-name-to-field-id field-id) field-id))]
-           (mbql.u/replace form
+           (lib.util.match/replace form
              [:field (id :guard pos-int?) opts]
              [:field id (add-name-to-field-id id) (cond-> opts
                                                     (pos-int? (:source-field opts))
@@ -254,7 +265,7 @@
         coll))
 
 (defn- can-symbolize? [x]
-  (mbql.u/match-one x
+  (lib.util.match/match-one x
     (_ :guard string?)
     (not (re-find #"\s+" x))
 
@@ -282,7 +293,7 @@
 
 (defn- expand [form table]
   (try
-    (mbql.u/replace form
+    (lib.util.match/replace form
       ([:field (id :guard pos-int?) nil] :guard can-symbolize?)
       (let [[table-name field-name] (field-and-table-name id)
             field-name              (some-> field-name u/lower-case-en)
@@ -338,10 +349,10 @@
                       e)))))
 
 (defn- no-$ [x]
-  (mbql.u/replace x [::$ & args] (into [::no-$] args)))
+  (lib.util.match/replace x [::$ & args] (into [::no-$] args)))
 
 (defn- symbolize [form]
-  (mbql.u/replace form
+  (lib.util.match/replace form
     [::-> x y]
     (symbol (format "%s->%s" (symbolize x) (str/replace (symbolize y) #"^\$" "")))
 
@@ -387,6 +398,39 @@
 
 (defn pprint-sql
   "Pretty print a SQL string."
-  [driver sql]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-   (println (mdb.query/format-sql sql driver)))
+  ([sql]
+   (pprint-sql (mdb/db-type) sql))
+  ([driver sql]
+   #_{:clj-kondo/ignore [:discouraged-var]}
+   (println (driver/prettify-native-form driver sql))))
+
+(defonce ^:private portal (atom nil))
+
+(defn- portal-setup
+  "Do setup after Portal has started, e.g. loading the custom viewers in [[dev.debug-qp.viewers]]. This is supposed to
+  be done automatically on start, but you can call this function to reload them if needed."
+  []
+  (portal.api/eval-str
+   (slurp (io/resource "dev/debug_qp/viewers.cljs"))))
+
+(def ^:private default-portal-config
+  {:port    1337
+   :on-load #'portal-setup})
+
+(defn stop-portal! []
+  (when @portal
+    (portal.api/stop)
+    (remove-tap #'portal.api/submit)
+    (reset! portal nil)))
+
+(defn start-portal!
+  ([]
+   (start-portal! nil))
+
+  ([config]
+   (let [config (merge default-portal-config config)]
+     (stop-portal!)
+     (reset! portal (portal.api/start config))
+     (add-tap #'portal.api/submit)
+     #_{:clj-kondo/ignore [:discouraged-var]}
+     (printf "Started Portal on port %d.\n" (:port config)))))

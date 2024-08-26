@@ -6,7 +6,7 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import { setup, FULL_APP_EMBEDDING_URL, EMAIL_URL } from "./setup";
+import { EMAIL_URL, FULL_APP_EMBEDDING_URL, setup } from "./setup";
 
 describe("SettingsEditor", () => {
   describe("full-app embedding", () => {
@@ -16,8 +16,8 @@ describe("SettingsEditor", () => {
         settingValues: createMockSettings({ "enable-embedding": true }),
       });
 
-      userEvent.click(screen.getByText("Embedding"));
-      userEvent.click(screen.getByText("Interactive embedding"));
+      await userEvent.click(screen.getByText("Embedding"));
+      await userEvent.click(screen.getByText("Interactive embedding"));
       expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
       expect(
         screen.queryByText("SameSite cookie setting"),

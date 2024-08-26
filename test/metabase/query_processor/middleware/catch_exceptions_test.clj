@@ -3,7 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.permissions :as perms]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -28,7 +28,7 @@
   (testing "Should nicely format a chain of exceptions, with the top-level Exception appearing first"
     (testing "lowest-level error `:type` should be pulled up to the top-level"
       (let [e1 (ex-info "1" {:level 1})
-            e2 (ex-info "2" {:level 2, :type qp.error-type/qp} e1)
+            e2 (ex-info "2" {:level 2, :type qp.error-type/qp :is-curated true} e1)
             e3 (ex-info "3" {:level 3} e2)]
         (is (= {:status     :failed
                 :class      clojure.lang.ExceptionInfo
@@ -36,12 +36,13 @@
                 :stacktrace true
                 :error_type :qp
                 :ex-data    {:level 1}
-                :via        [{:status     :failed
-                              :class      clojure.lang.ExceptionInfo
-                              :error      "2"
-                              :stacktrace true
-                              :ex-data    {:level 2, :type :qp}
-                              :error_type :qp}
+                :via        [{:status        :failed
+                              :class         clojure.lang.ExceptionInfo
+                              :error         "2"
+                              :stacktrace    true
+                              :ex-data       {:level 2, :type :qp, :is-curated true}
+                              :error_type    :qp
+                              :error_is_curated true}
                              {:status     :failed
                               :class      clojure.lang.ExceptionInfo
                               :error      "3"
@@ -52,7 +53,6 @@
                    (update :via (fn [causes]
                                   (for [cause causes]
                                     (update cause :stacktrace sequential?)))))))))))
-
 
 (defn catch-exceptions
   ([run]
@@ -143,24 +143,26 @@
 
 (deftest permissions-test
   (mt/with-temp-copy-of-db
-    (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
-    (perms/grant-permissions! (perms-group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-    (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
-                  "the query in the error response")
-      (is (=? {:native nil, :preprocessed map?}
-              (test.users/with-test-user :rasta
-                (qp/process-query
-                 (qp/userland-query
-                  (mt/mbql-query venues {:fields [!month.id]})))))))
+    (mt/with-no-data-perms-for-all-users!
+      (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+      (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+      (testing (str "If someone doesn't have native query execution permissions, they shouldn't see the native version of "
+                    "the query in the error response")
+        (is (=? {:native nil, :preprocessed map?}
+                (test.users/with-test-user :rasta
+                  (qp/process-query
+                   (qp/userland-query
+                    (mt/mbql-query venues {:fields [!month.id]})))))))
 
-    (testing "They should see it if they have ad-hoc native query perms"
-      (perms/grant-native-readwrite-permissions! (perms-group/all-users) (mt/id))
-      ;; this is not actually a valid query
-      (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
-                                           " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
-                              :params nil}
-               :preprocessed map?}
-              (test.users/with-test-user :rasta
-                (qp/process-query
-                 (qp/userland-query
-                  (mt/mbql-query venues {:fields [!month.id]})))))))))
+      (testing "They should see it if they have ad-hoc native query perms"
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+        ;; this is not actually a valid query
+        (is (=? {:native       {:query  (str "SELECT DATE_TRUNC('month', \"PUBLIC\".\"VENUES\".\"ID\") AS \"ID\""
+                                             " FROM \"PUBLIC\".\"VENUES\" LIMIT 1048575")
+                                :params nil}
+                 :preprocessed map?}
+                (test.users/with-test-user :rasta
+                  (qp/process-query
+                   (qp/userland-query
+                    (mt/mbql-query venues {:fields [!month.id]}))))))))))

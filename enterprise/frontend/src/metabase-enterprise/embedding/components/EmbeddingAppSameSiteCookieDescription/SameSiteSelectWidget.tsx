@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import { color } from "metabase/lib/colors";
-import { Button, Group, Menu, Text, Icon } from "metabase/ui";
+import { Button, Group, Icon, Menu, Text } from "metabase/ui";
 import type { SessionCookieSameSite } from "metabase-types/api";
 
 interface Options {
@@ -51,7 +50,7 @@ export function SameSiteSelectWidget({
         {setting.options.map(({ value, name, description }) => (
           <Menu.Item key="value" onClick={() => onChange(value)}>
             <Text>{name}</Text>
-            <Text c={color("text-light")}>{description}</Text>
+            <Text c="text-light">{description}</Text>
           </Menu.Item>
         ))}
       </Menu.Dropdown>

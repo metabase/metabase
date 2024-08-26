@@ -5,8 +5,7 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.types :as types]
-   [metabase.util.malli.registry :as mr]
-   ))
+   [metabase.util.malli.registry :as mr]))
 
 ;;; the logic for calculating the return type of a `:case` or similar statement is not optimal nor perfect. But it
 ;;; should be ok for now and errors on the side of being permissive. See this Slack thread for more info:
@@ -54,7 +53,6 @@
    {:error/message "Valid :case [pred expr] pair"}
    #_pred [:ref ::expression/boolean]
    #_expr [:ref ::expression/expression]])
-
 
 (mbql-clause/define-catn-mbql-clause :case
   ;; TODO -- we should further constrain this so all of the exprs are of the same type

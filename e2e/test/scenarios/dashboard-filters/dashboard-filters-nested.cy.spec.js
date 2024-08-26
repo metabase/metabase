@@ -1,13 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  popover,
-  filterWidget,
   editDashboard,
-  saveDashboard,
-  visitDashboard,
-  setFilter,
+  filterWidget,
   getDashboardCard,
+  multiAutocompleteInput,
+  popover,
+  restore,
+  saveDashboard,
+  setFilter,
+  visitDashboard,
 } from "e2e/support/helpers";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -78,8 +79,7 @@ describe("scenarios > dashboard > filters > nested questions", () => {
     // Add multiple values (metabase#18113)
     filterWidget().click();
     popover().within(() => {
-      cy.findByText("Gizmo").click();
-      cy.findByText("Gadget").click();
+      multiAutocompleteInput().type("Gizmo,Gadget").blur();
     });
 
     cy.button("Add filter").click();

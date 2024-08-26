@@ -1,6 +1,7 @@
 (ns ^:mb/once metabase.util.i18n.impl-test
   (:require
    [clojure.test :refer :all]
+   [metabase.config :as config]
    [metabase.models.setting :as setting]
    [metabase.public-settings :as public-settings]
    [metabase.test :as mt]
@@ -86,12 +87,12 @@
            (i18n.impl/translate "zz" "Translate me {0}" [100])))))
 
 (deftest translate-test
-  (mt/with-mock-i18n-bundles  {"es"    {:messages
-                                        {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
-                                         "I''m good thanks"               "Está bien, gracias"
-                                         "must be {0} characters or less" "deben tener {0} caracteres o menos"}}
-                               "es_MX" {:messages
-                                        {"I''m good thanks" "Está muy bien, gracias"}}}
+  (mt/with-mock-i18n-bundles!  {"es"    {:messages
+                                         {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
+                                          "I''m good thanks"               "Está bien, gracias"
+                                          "must be {0} characters or less" "deben tener {0} caracteres o menos"}}
+                                "es_MX" {:messages
+                                         {"I''m good thanks" "Está muy bien, gracias"}}}
     (testing "Should be able to translate stuff"
       (is (= "¡Tu base de datos ha sido añadida!"
              (i18n.impl/translate "es" "Your database has been added!"))))
@@ -114,7 +115,7 @@
              (i18n.impl/translate "es" "must be {0} characters or less" [140]))))))
 
 (deftest translate-error-handling-test
-  (mt/with-mock-i18n-bundles {"ba-DD" {"Bad translation {0}" "BaD TrAnSlAtIoN {a}"}}
+  (mt/with-mock-i18n-bundles! {"ba-DD" {"Bad translation {0}" "BaD TrAnSlAtIoN {a}"}}
     (testing "Should fall back to original format string if translated one is busted"
       (is (= "Bad translation 100"
              (i18n.impl/translate "ba-DD" "Bad translation {0}" [100]))))
@@ -129,7 +130,7 @@
       (encryption-test/with-secret-key "secret_key__1"
         ;; set `site-locale` to something encrypted with the first encryption key.
         (mt/with-temporary-setting-values [site-locale "en"]
-          (binding [setting/*disable-cache* true]
+          (binding [config/*disable-setting-cache* true]
             (is (= "en"
                    (i18n.impl/site-locale-from-setting)))
             ;; rotate the encryption key, which will trigger an error being logged

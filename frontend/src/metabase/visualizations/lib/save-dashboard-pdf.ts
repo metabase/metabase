@@ -1,7 +1,6 @@
-import html2canvas from "html2canvas";
-import jspdf from "jspdf";
+import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import type { Dashboard } from "metabase-types/api";
 
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
@@ -17,14 +16,15 @@ export const saveDashboardPdf = async (
     return;
   }
 
+  const { default: html2canvas } = await import("html2canvas-pro");
   const image = await html2canvas(node, {
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
       node.classList.add(SAVING_DOM_IMAGE_CLASS);
       const title = doc.createElement("h2") as HTMLElement;
       title.innerHTML = dashboardName;
-      title.style["borderBottom"] = `1px solid ${color("border")}`;
-      title.style["padding"] = "0 1rem 1rem 1rem";
+      title.style["borderBottom"] = "1px solid var(--mb-color-border)";
+      title.style["padding"] = "2rem 1rem 1rem 1rem";
       node.insertBefore(title, node.firstChild);
     },
   });
@@ -35,6 +35,7 @@ export const saveDashboardPdf = async (
   const pdfWidth = imageWidth;
   const pdfHeight = imageHeight + 80;
 
+  const { default: jspdf } = await import("jspdf");
   const pdf = new jspdf({
     unit: "px",
     hotfixes: ["px_scaling"],
@@ -42,7 +43,13 @@ export const saveDashboardPdf = async (
     orientation: pdfWidth > pdfHeight ? "l" : "p",
   });
 
-  pdf.addImage(image, "JPEG", 0, 60, imageWidth, imageHeight, "", "FAST", 0);
+  pdf.addImage(image, "JPEG", 0, 0, imageWidth, imageHeight, "", "FAST", 0);
 
   pdf.save(fileName);
+};
+
+export const getExportTabAsPdfButtonText = (tabs: Dashboard["tabs"]) => {
+  return Array.isArray(tabs) && tabs.length > 1
+    ? t`Export tab as PDF`
+    : t`Export as PDF`;
 };

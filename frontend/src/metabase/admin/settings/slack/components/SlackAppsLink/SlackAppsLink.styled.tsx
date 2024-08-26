@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const LinkRoot = styled(ExternalLink)`
@@ -15,7 +14,7 @@ export const LinkText = styled.div`
 `;
 
 export const LinkIcon = styled(Icon)`
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
   margin-left: 0.5rem;
   width: 0.75rem;
   height: 0.75rem;

@@ -8,8 +8,8 @@ import {
 } from "metabase/lib/urls";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
-import { Icon, Box, Text } from "metabase/ui";
-import type Database from "metabase-lib/metadata/Database";
+import { Box, Icon, Text } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import type { InfoTextData } from "./get-info-text";
 import { getInfoText } from "./get-info-text";
@@ -136,7 +136,7 @@ export const InfoTextAssetLink = ({
     return <InfoTextTablePath showLinks={showLinks} result={result} />;
   }
 
-  if (result.model === "segment" || result.model === "metric") {
+  if (result.model === "segment") {
     return <InfoTextTableLink showLinks={showLinks} result={result} />;
   }
 

@@ -1,64 +1,57 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
   describeEE,
-  visitQuestion,
-  questionInfoButton,
+  restore,
   rightSidebar,
-  popover,
   setTokenFeatures,
+  visitQuestion,
 } from "e2e/support/helpers";
+
+import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
+import {
+  adaptiveRadioButton,
+  durationRadioButton,
+  openSidebarCacheStrategyForm,
+} from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
 describeEE("scenarios > question > caching", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-    cy.request("PUT", "/api/setting/enable-query-caching", { value: true });
   });
 
-  it("can set cache ttl for a saved question", () => {
-    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`).as("updateQuestion");
+  /**
+   * @note There is a similar test for the cache config form that appears in the dashboard sidebar.
+   * It's in the Cypress describe block labeled "scenarios > dashboard > caching"
+   */
+  it("can configure cache for a question, on an enterprise instance", () => {
+    interceptPerformanceRoutes();
     visitQuestion(ORDERS_QUESTION_ID);
 
-    questionInfoButton().click();
+    openSidebarCacheStrategyForm();
 
     rightSidebar().within(() => {
-      cy.findByText("Cache Configuration").click();
-    });
-
-    popover().within(() => {
-      cy.findByPlaceholderText("24").clear().type("48").blur();
-      cy.button("Save changes").click();
-    });
-
-    cy.wait("@updateQuestion");
-    cy.button(/Saved/);
-    cy.reload();
-
-    questionInfoButton().click();
-
-    rightSidebar().within(() => {
-      cy.findByText("Cache Configuration").click();
-    });
-
-    popover().within(() => {
-      cy.findByDisplayValue("48").clear().type("0").blur();
-      cy.button("Save changes").click();
-    });
-
-    cy.wait("@updateQuestion");
-    cy.button(/Saved/);
-    cy.reload();
-
-    questionInfoButton().click();
-
-    rightSidebar().within(() => {
-      cy.findByText("Cache Configuration").click();
-    });
-
-    popover().within(() => {
-      cy.findByPlaceholderText("24");
+      cy.findByRole("heading", { name: /Caching settings/ }).should(
+        "be.visible",
+      );
+      durationRadioButton().click();
+      cy.findByLabelText("Cache results for this many hours").type("48");
+      cy.findByRole("button", { name: /Save/ }).click();
+      cy.wait("@putCacheConfig");
+      cy.log(
+        "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
+      );
+      cy.findByLabelText(/Caching policy/).should("contain", "Duration");
+      cy.findByLabelText(/Caching policy/).click();
+      adaptiveRadioButton().click();
+      cy.findByLabelText(/Minimum query duration/).type("999");
+      cy.findByRole("button", { name: /Save/ }).click();
+      cy.wait("@putCacheConfig");
+      cy.log(
+        "Check that the newly chosen cache invalidation policy - Adaptive - is now visible in the sidebar",
+      );
+      cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
     });
   });
 });

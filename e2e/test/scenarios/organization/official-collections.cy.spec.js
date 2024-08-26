@@ -1,13 +1,13 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
+  commandPaletteSearch,
   describeEE,
-  openNewCollectionItemFlowFor,
-  appBar,
-  navigationSidebar,
   getCollectionActions,
-  popover,
+  navigationSidebar,
   openCollectionMenu,
+  openNewCollectionItemFlowFor,
+  popover,
+  restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
@@ -202,9 +202,9 @@ function testOfficialBadgeInSearch({
   question,
   expectBadge,
 }) {
-  appBar().findByPlaceholderText("Search…").as("searchBar").type(searchQuery);
+  commandPaletteSearch(searchQuery);
 
-  cy.findByTestId("search-results-list").within(() => {
+  cy.findByTestId("search-app").within(() => {
     assertSearchResultBadge(collection, {
       expectBadge,
       selector: "[data-testid='search-result-item-name']",
@@ -235,9 +235,9 @@ function testOfficialQuestionBadgeInRegularDashboard(expectBadge = true) {
   cy.visit("/collection/root");
   cy.findByText("Regular Dashboard").click();
 
-  cy.get(".DashboardGrid").within(() => {
-    cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
-  });
+  cy.findByTestId("dashboard-grid")
+    .icon("badge")
+    .should(expectBadge ? "exist" : "not.exist");
 }
 
 function openCollection(collectionName) {

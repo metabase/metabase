@@ -1,12 +1,14 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
+  getSidebarSectionTitle,
   navigationSidebar,
-  openQuestionActions,
   openNavigationSidebar,
+  openQuestionActions,
+  restore,
   visitQuestion,
 } from "e2e/support/helpers";
-import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
+
+import { toggleQuestionBookmarkStatus } from "./helpers/bookmark-helpers";
 
 describe("scenarios > question > bookmarks", () => {
   beforeEach(() => {
@@ -17,13 +19,12 @@ describe("scenarios > question > bookmarks", () => {
 
   it("should add, update bookmark name when question name is updated, then remove bookmark from question page", () => {
     visitQuestion(ORDERS_QUESTION_ID);
-    toggleBookmark();
+    toggleQuestionBookmarkStatus();
 
     openNavigationSidebar();
     navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/);
+      getSidebarSectionTitle(/Bookmarks/);
       cy.findByText("Orders");
-      cy.icon("model").should("not.exist");
     });
 
     // Rename bookmarked question
@@ -33,40 +34,43 @@ describe("scenarios > question > bookmarks", () => {
       cy.findByText("Orders 2");
     });
 
-    // Convert to model
+    cy.log("Turn the question into a model");
     openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Turn into a model").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Turn this into a model").click();
+    cy.findByRole("dialog").contains("Turn into a model").click();
+    cy.findByRole("dialog").contains("Turn this into a model").click();
+    cy.findByRole("status")
+      .should("contain", "This is a model now.")
+      // Close this toast as soon we confim it exists!
+      // It lingers in the UI far too long which is causing flakiness later on
+      // when we assert on the next toast (when we turn the model back to the question).
+      .icon("close")
+      .click();
 
     navigationSidebar().within(() => {
-      cy.icon("model");
+      cy.findByLabelText(/Bookmarks/)
+        .icon("model")
+        .should("exist");
     });
 
-    // Convert back to question
+    cy.log("Turn the model back into a question");
     openQuestionActions();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Turn back to saved question").click();
+    cy.findByRole("dialog").contains("Turn back to saved question").click();
+    cy.findByRole("status").should("contain", "This is a question now.");
 
+    openNavigationSidebar();
+    cy.log("Should not find bookmark");
     navigationSidebar().within(() => {
-      cy.icon("model").should("not.exist");
+      cy.findByLabelText(/Bookmarks/)
+        .icon("model")
+        .should("not.exist");
     });
 
     // Remove bookmark
-    toggleBookmark({ wasSelected: true });
+    toggleQuestionBookmarkStatus({ wasSelected: true });
 
     navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/).should("not.exist");
+      getSidebarSectionTitle(/Bookmarks/).should("not.exist");
       cy.findByText("Orders 2").should("not.exist");
     });
   });
 });
-
-function toggleBookmark({ wasSelected = false } = {}) {
-  const iconName = wasSelected ? "bookmark_filled" : "bookmark";
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon(iconName).click();
-  });
-  cy.wait("@toggleBookmark");
-}

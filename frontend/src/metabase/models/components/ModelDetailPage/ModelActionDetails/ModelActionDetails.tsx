@@ -10,29 +10,29 @@ import Databases from "metabase/entities/databases";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   canArchiveAction,
   canEditAction,
   canRunAction,
-} from "metabase-lib/actions/utils";
-import type Database from "metabase-lib/metadata/Database";
+} from "metabase-lib/v1/actions/utils";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import {
-  EmptyStateContainer,
-  EmptyStateTitle,
-  EmptyStateMessage,
   EmptyStateActionContainer,
+  EmptyStateContainer,
+  EmptyStateMessage,
+  EmptyStateTitle,
 } from "../EmptyState.styled";
 
 import {
-  Root,
-  ActionsHeader,
-  ActionMenu,
-  ActionList,
   ActionAlert,
+  ActionList,
+  ActionMenu,
+  ActionsHeader,
+  Root,
 } from "./ModelActionDetails.styled";
 import ModelActionListItem from "./ModelActionListItem";
 

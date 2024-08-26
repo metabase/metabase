@@ -1,15 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
-  visitQuestion,
-  saveQuestion,
-  downloadAndAssert,
   assertSheetRowsCount,
-  openNewPublicLinkDropdown,
   createPublicQuestionLink,
+  downloadAndAssert,
+  filterWidget,
   modal,
   openNativeEditor,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  restore,
+  saveQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -66,7 +67,7 @@ describe("scenarios > public > question", () => {
       visitQuestion(id);
 
       // Make sure metadata fully loaded before we continue
-      cy.get(".cellData").contains("Winner");
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
       openNewPublicLinkDropdown("card");
 
@@ -83,12 +84,12 @@ describe("scenarios > public > question", () => {
 
       cy.wait("@publicQuery");
       // Name of a city from the expected results
-      cy.get(".cellData").contains("Winner");
+      cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.get("@uuid").then(publicUid => {
+      cy.get("@uuid").then(publicUuid => {
         downloadAndAssert(
-          { fileType: "xlsx", questionId: id, publicUid },
+          { fileType: "xlsx", questionId: id, publicUuid },
           assertSheetRowsCount(5),
         );
       });
@@ -102,7 +103,7 @@ describe("scenarios > public > question", () => {
       cy.signInAsNormalUser().then(() => {
         visitQuestion(id);
 
-        cy.icon("share").click();
+        openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
@@ -129,7 +130,7 @@ describe("scenarios > public > question", () => {
               filterWidget().contains("Previous 30 Years");
               filterWidget().contains("Affiliate");
 
-              cy.get(".cellData").contains("Winner");
+              cy.get("[data-testid=cell-data]").contains("Winner");
             },
           );
         });
@@ -161,7 +162,7 @@ describe("scenarios > public > question", () => {
         cy.signOut();
         cy.signInAsNormalUser().then(() => {
           cy.visit(`/public/question/${uuid}`);
-          cy.get(".cellData").contains("test");
+          cy.get("[data-testid=cell-data]").contains("test");
         });
       });
     });
@@ -187,7 +188,7 @@ describe("scenarios > public > question", () => {
           cy.signInAsNormalUser().then(() => {
             cy.visit(`/public/question/${uuid}`);
             // Check the name of the first person in the PEOPLE table
-            cy.get(".cellData").contains("Hudson Borer");
+            cy.get("[data-testid=cell-data]").contains("Hudson Borer");
           });
         });
       });

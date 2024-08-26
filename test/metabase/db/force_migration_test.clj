@@ -1,7 +1,7 @@
 (ns metabase.db.force-migration-test
   (:require
    [clojure.test :refer :all]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.db.custom-migrations :as custom-migrations]
    [metabase.db.liquibase :as liquibase]
    [metabase.db.setup :as db.setup]
@@ -37,15 +37,15 @@
   (mt/test-drivers #{:h2 :mysql :postgres}
     (mt/with-temp-empty-app-db [conn driver/*driver*]
       (with-redefs [liquibase/changelog-file "force-migration.yaml"]
-        (let [{:keys [db-type ^javax.sql.DataSource data-source]} mdb.connection/*application-db*
-              database (->> (if (instance? java.sql.Connection conn)
-                              conn
-                              (.getConnection ^javax.sql.DataSource conn))
-                            (#'liquibase/liquibase-connection)
-                            (#'liquibase/database))
+        (let [data-source  (mdb/data-source)
+              database     (->> (if (instance? java.sql.Connection conn)
+                                  conn
+                                  (.getConnection ^javax.sql.DataSource conn))
+                                (#'liquibase/liquibase-connection)
+                                (#'liquibase/database))
               lock-service (.getLockService (LockServiceFactory/getInstance) database)]
           (.acquireLock lock-service)
-          (db.setup/migrate! db-type data-source :force)
+          (db.setup/migrate! data-source :force)
 
           (testing "Make sure the migrations that intended to succeed are succeed"
             (is (= ["1" "2" "5"]

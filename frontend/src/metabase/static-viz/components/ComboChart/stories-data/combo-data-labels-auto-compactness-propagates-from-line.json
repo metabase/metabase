@@ -1,0 +1,392 @@
+[
+  {
+    "card": {
+      "original_card_id": 370,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-05T04:03:11.645973Z",
+      "parameters": [],
+      "metabase_version": "v0.1.7-SNAPSHOT (cc8afe3)",
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "visualization_settings": {
+        "stackable.stack_type": "stacked",
+        "graph.show_values": true,
+        "graph.label_value_formatting": "auto",
+        "series_settings": {
+          "Y3_LINE_FULL": {
+            "display": "line"
+          },
+          "Y3_LINE_COMPACT": {
+            "display": "line"
+          }
+        },
+        "graph.show_stack_values": "series",
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y1_FULL", "Y2_FULL", "Y3_LINE_COMPACT"]
+      },
+      "collection_preview": true,
+      "entity_id": "mPZpZ2XzGAebGrZ17iiYp",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 370,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 'foo' x, 500000 y1_full, 500000 y2_full, 1000000 y3_line_compact\nunion all select 'bar', 500000, 500000, 1000000\nunion all select 'baz', 500000, 500000, 1000000\n\n"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-05T04:03:11.645973Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "last_used_at": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "line compact formatting propagates to stack",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 3
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y1_FULL",
+          "field_ref": [
+            "field",
+            "Y1_FULL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1_FULL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 500000,
+                "q1": 500000,
+                "q3": 500000,
+                "max": 500000,
+                "sd": 0,
+                "avg": 500000
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y2_FULL",
+          "field_ref": [
+            "field",
+            "Y2_FULL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y2_FULL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 500000,
+                "q1": 500000,
+                "q3": 500000,
+                "max": 500000,
+                "sd": 0,
+                "avg": 500000
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y3_LINE_COMPACT",
+          "field_ref": [
+            "field",
+            "Y3_LINE_COMPACT",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y3_LINE_COMPACT",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1000000,
+                "q1": 1000000,
+                "q3": 1000000,
+                "max": 1000000,
+                "sd": 0,
+                "avg": 1000000
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["foo", 500000, 500000, 1000000],
+        ["bar", 500000, 500000, 1000000],
+        ["baz", 500000, 500000, 1000000]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "Y1_FULL",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y1_FULL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1_FULL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y2_FULL",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y2_FULL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y2_FULL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y3_LINE_COMPACT",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y3_LINE_COMPACT",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y3_LINE_COMPACT",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select 'foo' x, 500000 y1_full, 500000 y2_full, 1000000 y3_line_compact\nunion all select 'bar', 500000, 500000, 1000000\nunion all select 'baz', 500000, 500000, 1000000"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 3
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y1_FULL",
+            "field_ref": [
+              "field",
+              "Y1_FULL",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y1_FULL",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 500000,
+                  "q1": 500000,
+                  "q3": 500000,
+                  "max": 500000,
+                  "sd": 0,
+                  "avg": 500000
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y2_FULL",
+            "field_ref": [
+              "field",
+              "Y2_FULL",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y2_FULL",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 500000,
+                  "q1": 500000,
+                  "q3": 500000,
+                  "max": 500000,
+                  "sd": 0,
+                  "avg": 500000
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y3_LINE_COMPACT",
+            "field_ref": [
+              "field",
+              "Y3_LINE_COMPACT",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y3_LINE_COMPACT",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1000000,
+                  "q1": 1000000,
+                  "q3": 1000000,
+                  "max": 1000000,
+                  "sd": 0,
+                  "avg": 1000000
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

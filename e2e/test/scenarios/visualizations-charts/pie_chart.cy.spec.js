@@ -1,6 +1,14 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { restore, visitQuestionAdhoc, popover } from "e2e/support/helpers";
+import {
+  chartPathWithFillColor,
+  leftSidebar,
+  pieSlices,
+  popover,
+  restore,
+  tableHeaderClick,
+  visitQuestionAdhoc,
+} from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -30,7 +38,7 @@ describe("scenarios > visualizations > pie chart", () => {
 
     cy.log("#35244");
     cy.findByLabelText("Switch to data").click();
-    cy.findAllByTestId("header-cell").contains("Count").click();
+    tableHeaderClick("Count");
     popover().within(() => {
       cy.findByRole("img", { name: /filter/ }).should("exist");
       cy.findByRole("img", { name: /gear/ }).should("not.exist");
@@ -52,20 +60,74 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Widget", "false"],
     ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
   });
+
+  it("should instantly toggle the total after changing the setting", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pie",
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Show total").click();
+    });
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("TOTAL").should("not.exist");
+    });
+
+    leftSidebar().within(() => {
+      cy.findByText("Show total").click();
+    });
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("TOTAL").should("be.visible");
+    });
+  });
+
+  it("should truncate the center dimension label if it overflows", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            category_foo: [
+              "concat",
+              ["field", PRODUCTS.CATEGORY, null],
+              " the quick brown fox jumps over the lazy dog",
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [["expression", "category_foo"]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    chartPathWithFillColor("#F9D45C").trigger("mousemove");
+
+    cy.findByTestId("query-visualization-root")
+      .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
+      .should("be.visible");
+  });
 });
 
 function ensurePieChartRendered(rows, totalValue) {
-  cy.get(".Visualization").within(() => {
+  cy.findByTestId("query-visualization-root").within(() => {
     // detail
-    cy.findByText("Total").should("be.visible");
-    cy.findByTestId("detail-value").should("have.text", totalValue);
+    cy.findByText("TOTAL").should("be.visible");
+    cy.findByText(totalValue).should("be.visible");
 
     // slices
-    cy.findAllByTestId("slice").should("have.length", rows.length);
+    pieSlices().should("have.length", rows.length);
 
     // legend
     rows.forEach((name, i) => {
-      cy.get(".LegendItem").contains(name).should("be.visible");
+      cy.findAllByTestId("legend-item").contains(name).should("be.visible");
     });
   });
 }

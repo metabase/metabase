@@ -1,18 +1,20 @@
 import { DashboardApi } from "metabase/services";
+import { createMockRoutingState } from "metabase-types/store/mocks/index";
 
 import { SIDEBAR_NAME } from "../constants";
 
 import {
-  setSidebar,
+  CLOSE_SIDEBAR,
+  SET_DASHBOARD_ATTRIBUTES,
   SET_SIDEBAR,
   closeSidebar,
-  CLOSE_SIDEBAR,
-  setSharing,
-  showClickBehaviorSidebar,
-  setEditingParameter,
   openAddQuestionSidebar,
   removeParameter,
-  SET_DASHBOARD_ATTRIBUTES,
+  setEditingDashboard,
+  setEditingParameter,
+  setSharing,
+  setSidebar,
+  showClickBehaviorSidebar,
   updateDashboardAndCards,
 } from "./index";
 
@@ -168,7 +170,7 @@ describe("dashboard actions", () => {
 
       const getState = () => ({
         dashboard: {
-          isEditing: dashboard,
+          editingDashboard: dashboard,
           dashboardId: 1,
           dashboards: {
             1: {
@@ -187,6 +189,39 @@ describe("dashboard actions", () => {
 
       // if this is called only once, it means that the dashboard was not saved
       expect(dispatch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("setEditingDashboard", () => {
+    const getState = () => ({
+      routing: createMockRoutingState({
+        locationBeforeTransitions: {
+          pathname: "/dashboard/1",
+          hash: "#hashparam",
+        },
+      }),
+    });
+
+    it("should remove any hash parameters from url when not editing", () => {
+      setEditingDashboard(null)(dispatch, getState);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        payload: {
+          args: [
+            {
+              action: "POP",
+              hash: "",
+              key: "",
+              pathname: "/dashboard/1",
+              query: {},
+              search: "",
+              state: undefined,
+            },
+          ],
+          method: "push",
+        },
+        type: "@@router/CALL_HISTORY_METHOD",
+      });
     });
   });
 });

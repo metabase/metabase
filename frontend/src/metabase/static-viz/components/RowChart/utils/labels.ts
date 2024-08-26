@@ -1,9 +1,9 @@
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type { VisualizationSettings } from "metabase-types/api";
 
 // Uses inverse axis settings to have settings compatibility between line/area/bar/combo and row charts
 export const getChartLabels = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ) => {
   const defaultXLabel =

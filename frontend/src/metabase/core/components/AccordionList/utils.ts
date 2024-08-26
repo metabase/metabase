@@ -7,7 +7,7 @@ type Section = {
   items: any;
 };
 
-type IsSectionExpandedFn = (sectionIndex: number) => boolean;
+type SectionPredicate = (sectionIndex: number) => boolean;
 type ItemFilterPredicate = (item: any) => boolean;
 
 const areSameCursors = (left: Cursor, right: Cursor) => {
@@ -20,8 +20,8 @@ const areSameCursors = (left: Cursor, right: Cursor) => {
 export const getNextCursor = (
   cursor: Cursor | null,
   sections: Section[],
-  isSectionExpanded: IsSectionExpandedFn,
-  canSelectSection: boolean,
+  isSectionExpanded: SectionPredicate,
+  canSelectSection: SectionPredicate,
   filterFn: ItemFilterPredicate,
   skipInitial: boolean = true,
 ): Cursor => {
@@ -54,7 +54,7 @@ export const getNextCursor = (
     if (
       !skipSectionItem &&
       (!skipInitial || !areSameCursors(cursor, sectionCursor)) &&
-      canSelectSection
+      canSelectSection(sectionIndex)
     ) {
       return sectionCursor;
     }
@@ -91,8 +91,8 @@ export const getNextCursor = (
 export const getPrevCursor = (
   cursor: Cursor | null,
   sections: Section[],
-  isSectionExpanded: IsSectionExpandedFn,
-  canSelectSection: boolean,
+  isSectionExpanded: SectionPredicate,
+  canSelectSection: SectionPredicate,
   filterFn: ItemFilterPredicate,
 ): Cursor => {
   if (!cursor) {
@@ -151,7 +151,7 @@ export const getPrevCursor = (
       continue;
     }
 
-    if (canSelectSection) {
+    if (canSelectSection(sectionIndex)) {
       return sectionCursor;
     }
 

@@ -13,7 +13,7 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -81,14 +81,15 @@
                   (for [event results]
                     (merge {:timestamp (ts-getter event)} (:result event))))})
 
-(s/defn ^:private col-names->getter-fns :- [(s/cond-pre s/Keyword (s/pred fn?))]
+(mu/defn- col-names->getter-fns :- [:sequential [:or :keyword fn?]]
   "Given a sequence of `columns` keywords, return a sequence of appropriate getter functions to get values from a single
   result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
   parse the result as an integer (for further explanation, see the docstring for
   `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an integer
   since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding
   cardinality and HLL)."
-  [actual-col-names :- [s/Keyword], annotate-col-names :- [s/Keyword]]
+  [actual-col-names   :- [:sequential :keyword]
+   annotate-col-names :- [:sequential :keyword]]
   (let [annotate-col-names (set annotate-col-names)]
     (filter
      some?
@@ -119,8 +120,8 @@
   (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
     (when-not (seq getters)
       (throw (ex-info (tru "Don''t know how to retrieve results for columns {0}" (pr-str actual-col-names))
-               {:type    qp.error-type/driver
-                :results results})))
+                      {:type    qp.error-type/driver
+                       :results results})))
     (map (apply juxt getters) rows)))
 
 (defn- remove-bonus-keys

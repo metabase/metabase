@@ -8,12 +8,10 @@ import {
   DatabaseSchema,
   FieldSchema,
   IndexedEntitySchema,
-  MetricSchema,
-  ModelIndexSchema,
   QuestionSchema,
+  SchemaSchema,
   SegmentSchema,
   SnippetSchema,
-  SchemaSchema,
   TableSchema,
   UserSchema,
 } from "metabase/schema";
@@ -25,13 +23,12 @@ import type {
   Database,
   Field,
   NativeQuerySnippet,
-  Metric,
-  Table,
-  User,
+  SavedQuestionDatabase,
   Schema,
   Segment,
+  Table,
+  User,
   WritebackAction,
-  SavedQuestionDatabase,
 } from "metabase-types/api";
 import type { EntitiesState } from "metabase-types/store";
 import { createMockNormalizedEntitiesState } from "metabase-types/store/mocks";
@@ -45,7 +42,6 @@ export interface EntitiesStateOpts {
   schemas?: Schema[];
   tables?: Table[];
   fields?: Field[];
-  metrics?: Metric[];
   segments?: Segment[];
   snippets?: NativeQuerySnippet[];
   users?: User[];
@@ -61,10 +57,8 @@ const EntitiesSchema: Record<keyof EntitiesState, NormalizrSchema<any>> = {
   schemas: [SchemaSchema],
   tables: [TableSchema],
   fields: [FieldSchema],
-  metrics: [MetricSchema],
   segments: [SegmentSchema],
   snippets: [SnippetSchema],
-  modelIndexes: [ModelIndexSchema],
   indexedEntities: [IndexedEntitySchema],
   users: [UserSchema],
   questions: [QuestionSchema],

@@ -1,18 +1,18 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
-  getDefaultFormSettings,
   getDefaultFieldSettings,
+  getDefaultFormSettings,
 } from "metabase/actions/utils";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import type {
   NativeDatasetQuery,
   Parameter,
   TemplateTagType,
 } from "metabase-types/api";
 import {
+  SAMPLE_DB_ID,
   createAdHocNativeCard,
   createSampleDatabase,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
 import {

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.sandbox.api.table-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.api.table :as table]
    [metabase-enterprise.sandbox.test-util :as mt.tu]
    [metabase-enterprise.test :as met]
    [metabase.test :as mt]
@@ -19,10 +20,10 @@
 
 (deftest query-metadata-test
   (testing "GET /api/table/:id/query_metadata"
-    (met/with-gtaps {:gtaps      {:venues
-                                  {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
-                                   :query      (mt.tu/restricted-column-query (mt/id))}}
-                     :attributes {:cat 50}}
+    (met/with-gtaps! {:gtaps      {:venues
+                                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                    :query      (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
       (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
         (is (= #{"CATEGORY_ID" "ID" "NAME"}
                (field-names :rasta))))
@@ -35,15 +36,44 @@
   (testing "GET /api/table/:id/query_metadata"
     (testing (str "If a GTAP has a question, but that question doesn't include a clause to restrict the columns that "
                   "are returned, all fields should be returned")
-      (met/with-gtaps {:gtaps      {:venues {:query      (mt/mbql-query venues)
-                                             :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
-                       :attributes {:cat 50}}
+      (met/with-gtaps! {:gtaps      {:venues {:query      (mt/mbql-query venues)
+                                              :remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}}}
+                        :attributes {:cat 50}}
         (is (= all-columns
                (field-names :rasta)))))))
 
 (deftest query-metadata-sandbox-without-query-test
   (testing "GET /api/table/:id/query_metadata"
     (testing "Make sure the endpoint doesn't blow up if the sandbox doesn't have a query associated with it"
-      (met/with-gtaps {:gtaps {:venues {}}}
+      (met/with-gtaps! {:gtaps {:venues {}}}
         (is (= all-columns
                (field-names :rasta)))))))
+
+(deftest batch-fetch-table-query-metadatas-test
+  (let [upper-case-field-names
+        (fn [tables]
+          (into #{}
+                (mapcat (fn [{table-name :name, fields :fields}]
+                          (let [table-name (u/upper-case-en table-name)]
+                            (map (fn [{field-name :name}]
+                                   (str table-name "." (u/upper-case-en field-name)))
+                                 fields))))
+                tables))]
+    (met/with-gtaps! {:gtaps      {:venues
+                                   {:remappings {:cat [:variable [:field (mt/id :venues :category_id) nil]]}
+                                    :query      (mt.tu/restricted-column-query (mt/id))}}
+                      :attributes {:cat 50}}
+      (testing "Users with restricted access to the columns of a table should only see columns included in the GTAP question"
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= #{"VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.NAME"}
+                 (->> [(mt/id :venues) (mt/id :checkins)]
+                      table/batch-fetch-table-query-metadatas
+                      upper-case-field-names)))))
+
+      (testing "Users with full permissions should not be affected by this field filtering"
+        (mt/with-current-user (mt/user->id :crowberto)
+          (is (= #{"CHECKINS.DATE" "CHECKINS.ID" "CHECKINS.USER_ID" "CHECKINS.VENUE_ID"
+                   "VENUES.CATEGORY_ID" "VENUES.ID" "VENUES.LATITUDE" "VENUES.LONGITUDE" "VENUES.NAME" "VENUES.PRICE"}
+                 (->> [(mt/id :venues) (mt/id :checkins)]
+                      table/batch-fetch-table-query-metadatas
+                      upper-case-field-names))))))))

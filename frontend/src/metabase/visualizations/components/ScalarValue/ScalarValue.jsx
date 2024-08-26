@@ -2,21 +2,26 @@
  * Shared component for Scalar and SmartScalar to make sure our number presentation stays in sync
  */
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 import Tooltip from "metabase/core/components/Tooltip";
+import DashboardS from "metabase/css/dashboard.module.css";
+import QueryBuilderS from "metabase/css/query_builder.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { useMantineTheme } from "metabase/ui";
 
 import {
-  ScalarRoot,
-  ScalarValueWrapper,
-  ScalarTitleContainer,
   ScalarDescriptionContainer,
   ScalarDescriptionIcon,
   ScalarDescriptionPlaceholder,
+  ScalarRoot,
+  ScalarTitleContainer,
   ScalarTitleContent,
+  ScalarValueWrapper,
 } from "./ScalarValue.styled";
 import { findSize, getMaxFontSize } from "./utils";
 
@@ -32,26 +37,41 @@ const ScalarValue = ({
   totalNumGridCols,
   fontFamily,
 }) => {
-  const fontSize = useMemo(
-    () =>
-      findSize({
-        text: value,
-        targetHeight: height,
-        targetWidth: width,
-        fontFamily: fontFamily ?? "Lato",
-        fontWeight: 700,
-        unit: "rem",
-        step: 0.2,
-        min: 1,
-        max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
-      }),
-    [fontFamily, gridSize, height, totalNumGridCols, value, width],
-  );
+  const {
+    other: { number: numberTheme },
+  } = useMantineTheme();
+
+  const fontSize = useMemo(() => {
+    if (numberTheme?.value?.fontSize) {
+      return numberTheme.value?.fontSize;
+    }
+
+    return findSize({
+      text: value,
+      targetHeight: height,
+      targetWidth: width,
+      fontFamily: fontFamily ?? "Lato",
+      fontWeight: 700,
+      unit: "rem",
+      step: 0.2,
+      min: 1,
+      max: gridSize ? getMaxFontSize(gridSize.width, totalNumGridCols) : 4,
+    });
+  }, [
+    fontFamily,
+    gridSize,
+    height,
+    totalNumGridCols,
+    value,
+    width,
+    numberTheme?.value?.fontSize,
+  ]);
 
   return (
     <ScalarValueWrapper
-      className="ScalarValue"
+      className={cx(DashboardS.ScalarValue, QueryBuilderS.ScalarValue)}
       fontSize={fontSize}
+      lineHeight={numberTheme?.value?.lineHeight}
       data-testid="scalar-value"
     >
       {value ?? t`null`}
@@ -67,7 +87,11 @@ export const ScalarTitle = ({ lines = 2, title, description, onClick }) => (
      */}
     {description && description.length > 0 && <ScalarDescriptionPlaceholder />}
     <ScalarTitleContent
-      className="fullscreen-normal-text fullscreen-night-text"
+      className={cx(
+        DashboardS.fullscreenNormalText,
+        DashboardS.fullscreenNightText,
+        EmbedFrameS.fullscreenNightText,
+      )}
       onClick={onClick}
     >
       <Ellipsified tooltip={title} lines={lines} placement="bottom">

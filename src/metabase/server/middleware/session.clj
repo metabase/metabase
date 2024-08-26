@@ -28,6 +28,7 @@
    [metabase.db :as mdb]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.api-key :as api-key]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.models.setting
     :as setting
     :refer [*user-local-values* defsetting]]
@@ -36,15 +37,15 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n :refer [deferred-trs deferred-tru trs tru]]
+   [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.password :as u.password]
    [ring.util.response :as response]
-   [schema.core :as s]
    [toucan2.core :as t2]
-   [toucan2.pipeline :as t2.pipeline])
-  (:import
-   (java.util UUID)))
+   [toucan2.pipeline :as t2.pipeline]))
+
+(set! *warn-on-reflection* true)
 
 (def ^String metabase-session-cookie
   "Where the session cookie goes."                      "metabase.SESSION")
@@ -104,7 +105,10 @@
                 (throw (ex-info (tru "Invalid value for session cookie samesite")
                                 {:possible-values possible-session-cookie-samesite-values
                                  :session-cookie-samesite normalized-value
-                                 :http-status 400}))))))
+                                 :http-status 400})))))
+  :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
+        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
 
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
@@ -114,7 +118,7 @@
 (defmethod default-session-cookie-attributes :default
   [session-type _]
   (throw (ex-info (str (tru "Invalid session-type."))
-           {:session-type session-type})))
+                  {:session-type session-type})))
 
 (defmethod default-session-cookie-attributes :normal
   [_ request]
@@ -176,13 +180,15 @@
     ;; Otherwise check whether the user selected "remember me" during login
     (get-in request [:body :remember])))
 
-(s/defn set-session-cookies
+(mu/defn set-session-cookies
   "Add the appropriate cookies to the `response` for the Session."
   [request
    response
    {session-uuid :id
     session-type :type
-    anti-csrf-token :anti_csrf_token} :- {:id (s/cond-pre UUID u/uuid-regex), s/Keyword s/Any}
+    anti-csrf-token :anti_csrf_token} :- [:map [:id [:or
+                                                     uuid?
+                                                     [:re u/uuid-regex]]]]
    request-time]
   (let [cookie-options (merge
                         (default-session-cookie-attributes session-type request)
@@ -196,9 +202,9 @@
                           {:max-age (* 60 (config/config-int :max-session-age))}))]
     (when (and (= (session-cookie-samesite) :none) (not (req.util/https? request)))
       (log/warn
-       (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
-            " "
-            "https://www.chromestatus.com/feature/5633521622188032")))
+       (str "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection."
+            " Some browsers will reject cookies under these conditions."
+            " https://www.chromestatus.com/feature/5633521622188032")))
     (-> response
         wrap-body-if-needed
         (cond-> (= session-type :full-app-embed)
@@ -254,7 +260,6 @@
                       request)]
       (handler request respond raise))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -291,7 +296,6 @@
            [:permissions_group_membership :pgm] [:and
                                                  [:= :pgm.user_id :user.id]
                                                  [:is :pgm.is_group_manager true]]))))))))
-
 
 ;; See above: because this query runs on every single API request (with an API Key) it's worth it to optimize it a bit
 ;; and only compile it to SQL once rather than every time
@@ -337,7 +341,10 @@
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
 
-(defn- do-useless-hash []
+(defn do-useless-hash
+  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
+  attacks."
+  []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
 (defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
@@ -354,7 +361,7 @@
     (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                  (premium-features/enable-advanced-permissions?))
                                                 [(api-key/prefix api-key)]))
-                               (update :is-group-manager? boolean))]
+                            (update :is-group-manager? boolean))]
       (when (matching-api-key? user-data api-key)
         (dissoc user-data :api-key)))))
 
@@ -374,7 +381,6 @@
   [handler]
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               bind-current-user                                                |
@@ -398,6 +404,20 @@
   ;;
   ::none)
 
+;;; this is actually used by [[metabase.models.permissions/clear-current-user-cached-permissions!]]
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn clear-current-user-cached-permissions-set!
+  "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
+  Called by [[metabase.models.permissions/delete-related-permissions!]]
+  and [[metabase.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a current user
+  and then grant or revoke permissions for that user without rebinding it."
+  []
+  (when-let [current-user-id api/*current-user-id*]
+    ;; [[api/*current-user-permissions-set*]] is dynamically bound
+    (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
+      (.set #'api/*current-user-permissions-set* (delay (user/permissions-set current-user-id)))))
+  nil)
+
 (defn do-with-current-user
   "Impl for [[with-current-user]]."
   [{:keys [metabase-user-id is-superuser? permissions-set user-locale settings is-group-manager?]} thunk]
@@ -414,7 +434,8 @@
                                              (delay (atom (or settings
                                                               (user/user-local-settings metabase-user-id)))))
             *user-local-values-user-id*    metabase-user-id]
-    (thunk)))
+    (data-perms/with-relevant-permissions-for-user metabase-user-id
+      (thunk))))
 
 (defmacro ^:private with-current-user-for-request
   [request & body]
@@ -442,17 +463,17 @@
   [current-user-id]
   (when current-user-id
     (t2/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale] :settings]
-      :id current-user-id)))
+                   :id current-user-id)))
 
 (defmacro as-admin
   "Execude code in body as an admin user."
-  {:style/indent :defn}
+  {:style/indent 0}
   [& body]
   `(do-with-current-user
     (merge
-      (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
-      {:is-superuser? true
-       :permissions-set #{"/"}})
+     (with-current-user-fetch-user-for-id ~`api/*current-user-id*)
+     {:is-superuser? true
+      :permissions-set #{"/"}})
     (fn [] ~@body)))
 
 (defmacro with-current-user
@@ -463,7 +484,6 @@
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              reset-cookie-timeout                                             |
@@ -495,17 +515,18 @@
              (let [value (setting/get-value-of-type :json :session-timeout)]
                (if-let [error-key (check-session-timeout value)]
                  (do (log/warn (case error-key
-                                 :amount-must-be-positive            (trs "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (trs "Session timeout must be less than 100 years.")))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years."))
                      nil)
                  value)))
   :setter  (fn [new-value]
              (when-let [error-key (check-session-timeout new-value)]
                (throw (ex-info (case error-key
-                                 :amount-must-be-positive            (tru "Session timeout amount must be positive.")
-                                 :amount-must-be-less-than-100-years (tru "Session timeout must be less than 100 years."))
+                                 :amount-must-be-positive            "Session timeout amount must be positive."
+                                 :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
                                {:status-code 400})))
-             (setting/set-value-of-type! :json :session-timeout new-value)))
+             (setting/set-value-of-type! :json :session-timeout new-value))
+  :doc "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."

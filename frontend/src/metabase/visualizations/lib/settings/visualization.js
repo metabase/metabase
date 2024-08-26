@@ -4,12 +4,12 @@ import { t } from "ttag";
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
-import { normalize } from "metabase-lib/queries/utils/normalize";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 
 import {
   getComputedSettings,
-  getSettingsWidgets,
   getPersistableDefaultSettings,
+  getSettingsWidgets,
 } from "../settings";
 
 const COMMON_SETTINGS = {

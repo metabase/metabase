@@ -3,6 +3,7 @@ import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
+  setupUserRecipientsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
@@ -35,15 +36,21 @@ const TEST_RESULT_INDEXED_ENTITY = createWrappedSearchResult({
   model_index_id: 1,
 });
 
+const USER = createMockUser();
+
 const setup = ({ result }: { result: WrappedResult }) => {
   setupCollectionByIdEndpoint({
     collections: [TEST_REGULAR_COLLECTION],
   });
 
-  setupUsersEndpoints([createMockUser()]);
+  setupUsersEndpoints([USER]);
+  setupUserRecipientsEndpoint({ users: [USER] });
 
   const { history } = renderWithProviders(
-    <Route path="*" component={() => <SearchResult result={result} />} />,
+    <Route
+      path="*"
+      component={() => <SearchResult result={result} index={0} />}
+    />,
     {
       withRouter: true,
       initialRoute: "/",
@@ -78,7 +85,7 @@ describe("SearchResult", () => {
   it("should redirect to search result page when clicking item", async () => {
     const { history } = setup({ result: TEST_RESULT_QUESTION });
 
-    userEvent.click(screen.getByText(TEST_RESULT_QUESTION.name));
+    await userEvent.click(screen.getByText(TEST_RESULT_QUESTION.name));
 
     const expectedPath = TEST_RESULT_QUESTION.getUrl();
 
@@ -97,12 +104,12 @@ describe("SearchResult", () => {
       expect(getIcon("bolt")).toBeInTheDocument();
     });
 
-    it("redirects to x-ray page when clicking on x-ray button", () => {
+    it("redirects to x-ray page when clicking on x-ray button", async () => {
       const { history } = setup({ result: TEST_RESULT_INDEXED_ENTITY });
 
       expect(getIcon("bolt")).toBeInTheDocument();
 
-      userEvent.click(getIcon("bolt"));
+      await userEvent.click(getIcon("bolt"));
 
       const expectedPath = `/auto/dashboard/model_index/${TEST_RESULT_INDEXED_ENTITY.model_index_id}/primary_key/${TEST_RESULT_INDEXED_ENTITY.id}`;
 

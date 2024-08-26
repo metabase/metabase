@@ -18,7 +18,7 @@ export const Button = styled.button<{ isActive: boolean }>`
   font-weight: bold;
   cursor: pointer;
   background-color: ${({ isActive }) =>
-    isActive ? color("brand") : color("bg-light")};
+    isActive ? color("brand") : "var(--mb-color-bg-light)"};
   color: ${({ isActive }) =>
     isActive ? color("text-white") : color("text-medium")};
 `;

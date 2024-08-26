@@ -5,16 +5,8 @@ import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
 
 export const createTracker = store => {
-  if (Settings.googleAnalyticsEnabled()) {
-    createGoogleAnalyticsTracker();
-  }
-
   if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);
-  }
-
-  if (Settings.googleAnalyticsEnabled() || Settings.snowplowEnabled()) {
-    document.body.addEventListener("click", handleStructEventClick, true);
   }
 };
 
@@ -23,25 +15,8 @@ export const trackPageView = url => {
     return;
   }
 
-  if (Settings.googleAnalyticsEnabled()) {
-    trackGoogleAnalyticsPageView(getSanitizedUrl(url));
-  }
-
   if (Settings.snowplowEnabled()) {
     trackSnowplowPageView(getSanitizedUrl(url));
-  }
-};
-
-/**
- * @deprecated This uses GA which is not setup. We should use `trackSchemaEvent`.
- */
-export const trackStructEvent = (category, action, label, value) => {
-  if (!category || !label || !Settings.trackingEnabled()) {
-    return;
-  }
-
-  if (Settings.googleAnalyticsEnabled()) {
-    trackGoogleAnalyticsStructEvent(category, action, label, value);
   }
 };
 
@@ -64,28 +39,6 @@ export const trackSchemaEvent = (schema, version, data) => {
   if (Settings.snowplowEnabled()) {
     trackSnowplowSchemaEvent(schema, version, data);
   }
-};
-
-const createGoogleAnalyticsTracker = () => {
-  const code = Settings.get("ga-code");
-  window.ga?.("create", code, "auto");
-
-  Settings.on("anon-tracking-enabled", enabled => {
-    window[`ga-disable-${code}`] = enabled ? null : true;
-  });
-};
-
-const trackGoogleAnalyticsPageView = url => {
-  const version = Settings.get("version", {});
-  window.ga?.("set", "dimension1", version.tag);
-  window.ga?.("set", "page", url);
-  window.ga?.("send", "pageview", url);
-};
-
-const trackGoogleAnalyticsStructEvent = (category, action, label, value) => {
-  const version = Settings.get("version", {});
-  window.ga?.("set", "dimension1", version.tag);
-  window.ga?.("send", "event", category, action, label, value);
 };
 
 const createSnowplowTracker = store => {
@@ -143,19 +96,6 @@ const trackSnowplowSchemaEvent = (schema, version, data) => {
       data,
     },
   });
-};
-
-const handleStructEventClick = event => {
-  if (!Settings.trackingEnabled()) {
-    return;
-  }
-
-  for (let node = event.target; node != null; node = node.parentNode) {
-    if (node.dataset && node.dataset.metabaseEvent) {
-      const parts = node.dataset.metabaseEvent.split(";").map(p => p.trim());
-      trackStructEvent(...parts);
-    }
-  }
 };
 
 const getSanitizedUrl = url => {

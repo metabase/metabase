@@ -1,5 +1,6 @@
 (ns metabase.lib.column-group-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.column-group :as lib.column-group]
@@ -7,8 +8,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.join :as lib.join]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -96,13 +96,30 @@
         groups  (lib/group-columns columns)]
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "User ID", :lib/source :source/card}
-                                             {:display-name "Count", :lib/source :source/card}]}]
+                                             {:display-name "Count", :lib/source :source/card}]}
+             {::lib.column-group/group-type :group-type/join.implicit
+              :fk-field-id                  (meta/id :checkins :user-id)
+              :fk-join-alias                nil
+              ::lib.column-group/columns    [{:display-name "ID", :lib/source :source/implicitly-joinable}
+                                             {:display-name "Name", :lib/source :source/implicitly-joinable}
+                                             {:display-name "Last Login", :lib/source :source/implicitly-joinable}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display-name           "My Card"
                 :is-from-join           false
-                :is-implicitly-joinable false}]
+                :is-implicitly-joinable false}
+               {:name                   "USER_ID"
+                :display-name           "User"
+                :long-display-name      "User ID"
+                :semantic-type          :type/FK
+                :effective-type         :type/Integer
+                :is-aggregation         false
+                :is-breakout            false
+                :is-from-join           false
+                :is-from-previous-stage false
+                :is-implicitly-joinable true
+                :is-calculated          false}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns
@@ -180,13 +197,30 @@
     (is (=? [{::lib.column-group/group-type :group-type/main
               ::lib.column-group/columns    [{:display-name "User ID", :lib/source :source/card}
                                              {:display-name "Count", :lib/source :source/card}
-                                             {:display-name "expr", :lib/source :source/expressions}]}]
+                                             {:display-name "expr", :lib/source :source/expressions}]}
+             {::lib.column-group/group-type :group-type/join.implicit
+              :fk-field-id                  (meta/id :checkins :user-id)
+              :fk-join-alias                nil
+              ::lib.column-group/columns    [{:display-name "ID", :lib/source :source/implicitly-joinable}
+                                             {:display-name "Name", :lib/source :source/implicitly-joinable}
+                                             {:display-name "Last Login", :lib/source :source/implicitly-joinable}]}]
             groups))
     (testing `lib/display-info
       (is (=? [{:name                   "My Card"
                 :display-name           "My Card"
                 :is-from-join           false
-                :is-implicitly-joinable false}]
+                :is-implicitly-joinable false}
+               {:name                   "USER_ID"
+                :display-name           "User"
+                :long-display-name      "User ID"
+                :semantic-type          :type/FK
+                :effective-type         :type/Integer
+                :is-aggregation         false
+                :is-breakout            false
+                :is-from-join           false
+                :is-from-previous-stage false
+                :is-implicitly-joinable true
+                :is-calculated          false}]
               (for [group groups]
                 (lib/display-info query group)))))
     (testing `lib/columns-group-columns

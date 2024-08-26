@@ -1,30 +1,57 @@
-import { freeze } from "immer";
-
 import * as Lib from "metabase-lib";
-import { createQuery } from "metabase-lib/test-helpers";
-import {
-  createOrdersTaxDatasetColumn,
-  createOrdersTotalDatasetColumn,
-} from "metabase-types/api/mocks/presets";
+
+import { createQueryWithClauses } from "./test-helpers";
 
 describe("findColumnIndexesFromLegacyRefs", () => {
-  it("works even on frozen columns and refs", () => {
-    const query = createQuery();
-    const stageIndex = -1;
-    const columns = freeze(
-      [createOrdersTotalDatasetColumn(), createOrdersTaxDatasetColumn()],
-      true,
-    );
+  const stageIndex = -1;
 
+  it("should match columns that differ only by temporal buckets", () => {
+    const query = createQueryWithClauses({
+      breakouts: [
+        {
+          tableName: "ORDERS",
+          columnName: "CREATED_AT",
+          temporalBucketName: "Year",
+        },
+        {
+          tableName: "ORDERS",
+          columnName: "CREATED_AT",
+          temporalBucketName: "Month",
+        },
+      ],
+    });
+    const columns = Lib.returnedColumns(query, stageIndex);
     const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
       query,
       stageIndex,
       columns,
-      columns.map(({ field_ref }) => field_ref!),
+      columns.map(column => Lib.legacyRef(query, stageIndex, column)),
     );
+    expect(columnIndexes).toEqual([0, 1]);
+  });
 
-    expect(Object.isFrozen(columns[0])).toBe(true);
-    expect(Object.isFrozen(columns[1])).toBe(true);
+  it("should match columns that differ only by binning", () => {
+    const query = createQueryWithClauses({
+      breakouts: [
+        {
+          tableName: "ORDERS",
+          columnName: "TOTAL",
+          binningStrategyName: "10 bins",
+        },
+        {
+          tableName: "ORDERS",
+          columnName: "TOTAL",
+          binningStrategyName: "50 bins",
+        },
+      ],
+    });
+    const columns = Lib.returnedColumns(query, stageIndex);
+    const columnIndexes = Lib.findColumnIndexesFromLegacyRefs(
+      query,
+      stageIndex,
+      columns,
+      columns.map(column => Lib.legacyRef(query, stageIndex, column)),
+    );
     expect(columnIndexes).toEqual([0, 1]);
   });
 });

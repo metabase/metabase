@@ -1,25 +1,27 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { callMockEvent } from "__support__/events";
 import {
   setupDatabasesEndpoints,
-  setupPermissionsGraphEndpoints,
   setupGroupsEndpoint,
+  setupPermissionsGraphEndpoints,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
-  fireEvent,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { delay } from "__support__/utils";
 import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import GroupsPermissionsPage from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { BEFORE_UNLOAD_UNSAVED_MESSAGE } from "metabase/hooks/use-before-unload";
-import { delay } from "metabase/lib/promise";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 const TEST_DATABASE = createSampleDatabase();
 
@@ -63,16 +65,18 @@ const setup = async ({
 };
 
 const editDatabasePermission = async () => {
-  const permissionsSelectElem = screen.getAllByTestId("permissions-select")[0];
-  fireEvent.click(permissionsSelectElem);
+  const permissionsSelectElem = (
+    await screen.findAllByTestId("permissions-select")
+  )[NATIVE_QUERIES_PERMISSION_INDEX];
+  await userEvent.click(permissionsSelectElem);
 
-  const clickElement = screen.getByLabelText("eye icon");
-  fireEvent.click(clickElement);
+  const clickElement = await screen.findByLabelText(/close icon/);
+  await userEvent.click(clickElement);
 
   await delay(0);
 };
 
-describe("GroupsPermissionsPage", function () {
+describe("GroupsPermissionsPage", () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });

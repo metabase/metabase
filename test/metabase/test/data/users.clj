@@ -3,7 +3,7 @@
   (:require
    [clojure.test :as t]
    [medley.core :as m]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.http-client :as client]
    [metabase.models.permissions-group :refer [PermissionsGroup]]
    [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -13,7 +13,6 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [schema.core :as s]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -56,9 +55,6 @@
 (def ^:private TestUserName
   (into [:enum] usernames))
 
-(def ^:private TestUserName:Schema
-  (apply s/enum usernames))
-
 ;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
 (def ^:private create-user-lock (Object.))
@@ -97,7 +93,7 @@
 
     (user->id)        ; -> {:rasta 4, ...}
     (user->id :rasta) ; -> 4"
-  (mdb.connection/memoize-for-application-db
+  (mdb/memoize-for-application-db
    (fn
      ([]
       (zipmap usernames (map user->id usernames)))
@@ -111,15 +107,19 @@
   User could be a keyword like `:rasta` or a user object."
   [user]
   (cond
-   (keyword user)       (user-descriptor (fetch-user user))
-   (:is_superuser user) "admin"
-   :else                "non-admin"))
+    (keyword user)       (user-descriptor (fetch-user user))
+    (:is_superuser user) "admin"
+    :else                "non-admin"))
 
-(s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
+(mu/defn user->credentials :- [:map
+                               [:username [:fn
+                                           {:error/message "valid email"}
+                                           u/email?]]
+                               [:password :string]]
   "Return a map with `:username` and `:password` for User with `username`.
 
     (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
-  [username :- TestUserName:Schema]
+  [username :- TestUserName]
   {:pre [(contains? usernames username)]}
   (let [{:keys [email password]} (user->info username)]
     {:username email
@@ -127,9 +127,9 @@
 
 (defonce ^:private tokens (atom {}))
 
-(s/defn username->token :- u/uuid-regex
+(mu/defn username->token :- [:re u/uuid-regex]
   "Return cached session token for a test User, logging in first if needed."
-  [username :- TestUserName:Schema]
+  [username :- TestUserName]
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
@@ -169,8 +169,8 @@
   [the-client user & args]
   (if (keyword? user)
     (do
-     (fetch-user user)
-     (apply client-fn the-client user args))
+      (fetch-user user)
+      (apply client-fn the-client user args))
     (let [user-id (u/the-id user)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))
@@ -178,31 +178,29 @@
                                                                 :user_id user-id}]
         (apply the-client session-id args)))))
 
-(def user-http-request
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-http-request
   "A version of our test client that issues the request with credentials for a given User. User may be either a
   redefined test User name, e.g. `:rasta`, or any User or User ID.
   The request will be executed with a temporary session id.
 
   Note: this makes a mock API call, not an actual HTTP call, use [[user-real-request]] for that."
-  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                 request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/client))
 
-(def user-real-request
+(def ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
+                    request-options? http-body-map? & {:as query-params}])} user-real-request
   "Like `user-http-request` but instead of calling the app handler, this makes an actual http request."
-  ^{:arglists '([test-user-name-or-user-or-id method expected-status-code? endpoint
-                 request-options? http-body-map? & {:as query-params}])}
   (partial user-request client/real-client))
 
 (defn do-with-test-user [user-kwd thunk]
-  (t/testing (format "with test user %s\n" user-kwd)
+  (t/testing (format "\nwith test user %s\n" user-kwd)
     (mw.session/with-current-user (some-> user-kwd user->id)
       (thunk))))
 
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the predefined test User
   named by `user-kwd`. If you want to bind a non-predefined-test User, use `mt/with-current-user` instead."
-  {:style/indent 1}
+  {:style/indent :defn}
   [user-kwd & body]
   `(do-with-test-user ~user-kwd (fn [] ~@body)))
 

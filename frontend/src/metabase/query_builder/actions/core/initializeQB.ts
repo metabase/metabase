@@ -4,23 +4,26 @@ import querystring from "querystring";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Questions from "metabase/entities/questions";
 import Snippets from "metabase/entities/snippets";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import { isNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
-import { getIsEditingInDashboard } from "metabase/query_builder/selectors";
+import {
+  getIsEditingInDashboard,
+  getIsNotebookNativePreviewShown,
+  getNotebookNativePreviewSidebarWidth,
+} from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/Question";
-import type Metadata from "metabase-lib/metadata/Metadata";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { updateCardTemplateTagNames } from "metabase-lib/queries/NativeQuery";
-import { cardIsEquivalent } from "metabase-lib/queries/utils/card";
-import { normalize } from "metabase-lib/queries/utils/normalize";
-import type { Card, MetricId, SegmentId } from "metabase-types/api";
+import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
+import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
+import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import type { Card, SegmentId } from "metabase-types/api";
 import { isSavedCard } from "metabase-types/guards";
 import type {
   Dispatch,
@@ -42,10 +45,9 @@ type BlankQueryOptions = {
   db?: string;
   table?: string;
   segment?: string;
-  metric?: string;
 };
 
-type QueryParams = BlankQueryOptions & {
+export type QueryParams = BlankQueryOptions & {
   slug?: string;
   objectId?: string;
 };
@@ -73,17 +75,12 @@ function getCardForBlankQuestion(
   const databaseId = options.db ? parseInt(options.db) : undefined;
   const tableId = options.table ? parseInt(options.table) : undefined;
   const segmentId = options.segment ? parseInt(options.segment) : undefined;
-  const metricId = options.metric ? parseInt(options.metric) : undefined;
 
   let question = Question.create({ databaseId, tableId, metadata });
 
   if (databaseId && tableId) {
     if (typeof segmentId === "number") {
       question = filterBySegmentId(question, segmentId);
-    }
-
-    if (typeof metricId === "number") {
-      question = aggregateByMetricId(question, metricId);
     }
   }
 
@@ -103,20 +100,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   return question.setQuery(newQuery);
 }
 
-function aggregateByMetricId(question: Question, metricId: MetricId) {
-  const stageIndex = -1;
-  const query = question.query();
-  const metricMetadata = Lib.metricMetadata(query, metricId);
-
-  if (!metricMetadata) {
-    return question;
-  }
-
-  const newQuery = Lib.aggregate(query, stageIndex, metricMetadata);
-  return question.setQuery(newQuery);
-}
-
-function deserializeCard(serializedCard: string) {
+export function deserializeCard(serializedCard: string) {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
     // Ensure older MBQL is supported
@@ -173,7 +157,7 @@ type ResolveCardsResult = {
   originalCard?: Card;
 };
 
-async function resolveCards({
+export async function resolveCards({
   cardId,
   deserializedCard,
   options,
@@ -202,7 +186,7 @@ async function resolveCards({
       );
 }
 
-function parseHash(hash?: string) {
+export function parseHash(hash?: string) {
   let options: BlankQueryOptions = {};
   let serializedCard;
 
@@ -271,6 +255,7 @@ async function handleQBInit(
   const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
+  const currentUser = getUser(getState());
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
@@ -284,7 +269,7 @@ async function handleQBInit(
     getState,
   });
 
-  if (isSavedCard(card) && card.archived) {
+  if (isSavedCard(card) && card.archived && !currentUser) {
     dispatch(setErrorPage(ARCHIVED_ERROR));
     return;
   }
@@ -298,6 +283,15 @@ async function handleQBInit(
     return;
   }
 
+  if (
+    isSavedCard(card) &&
+    card.type !== "metric" &&
+    location.pathname?.startsWith("/metric")
+  ) {
+    dispatch(setErrorPage(NOT_FOUND_ERROR));
+    return;
+  }
+
   if (deserializedCard?.dashcardId) {
     card = await propagateDashboardParameters({
       card,
@@ -306,16 +300,6 @@ async function handleQBInit(
       dispatch,
     });
   }
-
-  if (!hasCard && options.metric) {
-    uiControls.isShowingSummarySidebar = true;
-  }
-
-  MetabaseAnalytics.trackStructEvent(
-    "QueryBuilder",
-    hasCard ? "Query Loaded" : "Query Started",
-    card.dataset_query.type,
-  );
 
   if (isSavedCard(card)) {
     dispatch(fetchAlertsForQuestion(card.id));
@@ -335,10 +319,8 @@ async function handleQBInit(
       question = question.lockDisplay();
     }
 
-    const currentUser = getUser(getState());
     if (currentUser?.is_qbnewb) {
       uiControls.isShowingNewbModal = true;
-      MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
     }
   }
 
@@ -362,6 +344,12 @@ async function handleQBInit(
   });
 
   const objectId = params?.objectId || queryParams?.objectId;
+
+  uiControls.isShowingNotebookNativePreview = getIsNotebookNativePreviewShown(
+    getState(),
+  );
+  uiControls.notebookNativePreviewSidebarWidth =
+    getNotebookNativePreviewSidebarWidth(getState());
 
   dispatch({
     type: INITIALIZE_QB,

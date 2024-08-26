@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Input from "metabase/core/components/Input";
-import { color } from "metabase/lib/colors";
 
 export const LicenseInputContainer = styled.div`
   display: flex;
@@ -17,5 +16,5 @@ export const LicenseTextInput = styled(Input)`
 export const LicenseErrorMessage = styled.div`
   margin-top: 8px;
   white-space: nowrap;
-  color: ${color("error")};
+  color: var(--mb-color-error);
 `;

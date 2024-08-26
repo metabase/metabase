@@ -38,7 +38,7 @@ body:
     validations:
       required: true
 
-  - type: input
+  - type: textarea
     id: expected-behavior
     attributes:
       label: Expected behavior

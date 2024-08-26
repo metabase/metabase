@@ -171,7 +171,10 @@ describe("MetadataEditor", () => {
       await setup();
 
       const searchValue = ORDERS_TABLE.name.substring(0, 3);
-      userEvent.type(screen.getByPlaceholderText("Find a table"), searchValue);
+      await userEvent.type(
+        screen.getByPlaceholderText("Find a table"),
+        searchValue,
+      );
 
       expect(screen.getByText(ORDERS_TABLE.display_name)).toBeInTheDocument();
       expect(
@@ -182,11 +185,11 @@ describe("MetadataEditor", () => {
     it("should not allow to enter an empty table name", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.clear(
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.clear(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       );
-      userEvent.tab();
+      await userEvent.tab();
 
       expect(
         screen.getByDisplayValue(ORDERS_TABLE.display_name),
@@ -196,11 +199,11 @@ describe("MetadataEditor", () => {
     it("should not allow to enter an empty field name", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.clear(
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.clear(
         await screen.findByDisplayValue(ORDERS_ID_FIELD.display_name),
       );
-      userEvent.tab();
+      await userEvent.tab();
 
       expect(
         screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
@@ -210,7 +213,7 @@ describe("MetadataEditor", () => {
     it("should allow to switch between metadata and original schema", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
@@ -218,7 +221,9 @@ describe("MetadataEditor", () => {
         screen.getByDisplayValue(ORDERS_ID_FIELD.display_name),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByRole("radio", { name: "Original schema" }));
+      await userEvent.click(
+        screen.getByRole("radio", { name: "Original schema" }),
+      );
       expect(screen.getByText(ORDERS_TABLE.name)).toBeInTheDocument();
       expect(screen.getByText(ORDERS_ID_FIELD.name)).toBeInTheDocument();
     });
@@ -228,7 +233,7 @@ describe("MetadataEditor", () => {
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
       expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(PRODUCTS_TABLE.display_name));
+      await userEvent.click(screen.getByText(PRODUCTS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(PRODUCTS_TABLE.display_name),
       ).toBeInTheDocument();
@@ -249,7 +254,7 @@ describe("MetadataEditor", () => {
       expect(await screen.findByText("1 Queryable Table")).toBeInTheDocument();
       expect(screen.getByText("1 Hidden Table")).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
@@ -276,11 +281,14 @@ describe("MetadataEditor", () => {
           "Select any table to see its schema and add or edit metadata.",
         ),
       ).toBeInTheDocument();
-      expect(() =>
+
+      // This click should not cause a change, as the table should be disabled
+      await expect(
         userEvent.click(
           screen.getByText(ORDERS_TABLE_INITIAL_SYNC_INCOMPLETE.display_name),
         ),
-      ).toThrow();
+      ).rejects.toThrow(/pointer-events: none/);
+
       expect(
         await screen.findByText(
           "Select any table to see its schema and add or edit metadata.",
@@ -291,8 +299,8 @@ describe("MetadataEditor", () => {
     it("should display sort options", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
-      userEvent.click(await screen.findByLabelText("Sort"));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(await screen.findByLabelText("Sort"));
 
       expect(await screen.findByText("Database")).toBeInTheDocument();
       expect(screen.getByText("Alphabetical")).toBeInTheDocument();
@@ -302,12 +310,12 @@ describe("MetadataEditor", () => {
 
     it("should display field visibility options", async () => {
       await setup();
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
         await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
-      userEvent.click(section.getByText("Everywhere"));
+      await userEvent.click(section.getByText("Everywhere"));
 
       expect(
         await screen.findByText("Only in detail views"),
@@ -317,39 +325,39 @@ describe("MetadataEditor", () => {
 
     it("should allow to search for field semantic types", async () => {
       await setup();
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
         await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
-      userEvent.click(section.getByText("Entity Key"));
+      await userEvent.click(section.getByText("Entity Key"));
       expect(await screen.findByText("Entity Name")).toBeInTheDocument();
 
-      userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
+      await userEvent.type(screen.getByPlaceholderText("Find..."), "Pri");
       expect(screen.getByText("Price")).toBeInTheDocument();
       expect(screen.queryByText("Score")).not.toBeInTheDocument();
     });
 
     it("should show the foreign key target for foreign keys", async () => {
       await setup();
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
         await screen.findByLabelText(ORDERS_PRODUCT_ID_FIELD.name),
       );
-      userEvent.click(section.getByText("Products → ID"));
+      await userEvent.click(section.getByText("Products → ID"));
 
       const popover = within(await screen.findByTestId("popover"));
       expect(popover.getByText("Products → ID")).toBeInTheDocument();
       expect(popover.queryByText("Orders → ID")).not.toBeInTheDocument();
 
-      userEvent.type(popover.getByPlaceholderText("Find..."), "Products");
+      await userEvent.type(popover.getByPlaceholderText("Find..."), "Products");
       expect(popover.getByText("Products → ID")).toBeInTheDocument();
     });
 
     it("should show an access denied error if the foreign key field has an inaccessible target", async () => {
       await setup();
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
         await screen.findByLabelText(ORDERS_USER_ID_FIELD.name),
@@ -360,7 +368,7 @@ describe("MetadataEditor", () => {
     it("should not show the foreign key target for non-foreign keys", async () => {
       await setup();
 
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
       const section = within(
         await screen.findByLabelText(ORDERS_ID_FIELD.name),
       );
@@ -370,18 +378,18 @@ describe("MetadataEditor", () => {
 
     it("should show currency settings for currency fields", async () => {
       await setup();
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
         await screen.findByLabelText(ORDERS_DISCOUNT_FIELD.name),
       );
-      userEvent.click(section.getByText("US Dollar"));
+      await userEvent.click(section.getByText("US Dollar"));
 
       const popover = within(await screen.findByTestId("popover"));
       expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
       expect(popover.getByText("Euro")).toBeInTheDocument();
 
-      userEvent.type(popover.getByPlaceholderText("Find..."), "Dollar");
+      await userEvent.type(popover.getByPlaceholderText("Find..."), "Dollar");
       expect(popover.getByText("US Dollar")).toBeInTheDocument();
       expect(popover.getByText("Canadian Dollar")).toBeInTheDocument();
       expect(popover.queryByText("Euro")).not.toBeInTheDocument();
@@ -389,7 +397,7 @@ describe("MetadataEditor", () => {
 
     it("should not show currency settings for non-currency fields", async () => {
       await setup();
-      userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
+      await userEvent.click(screen.getByText(ORDERS_TABLE.display_name));
 
       const section = within(
         await screen.findByLabelText(ORDERS_ID_FIELD.name),
@@ -418,7 +426,10 @@ describe("MetadataEditor", () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
       const searchValue = PEOPLE_TABLE_MULTI_SCHEMA.schema.substring(0, 3);
-      userEvent.type(screen.getByPlaceholderText("Find a schema"), searchValue);
+      await userEvent.type(
+        screen.getByPlaceholderText("Find a schema"),
+        searchValue,
+      );
 
       expect(
         screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
@@ -431,7 +442,7 @@ describe("MetadataEditor", () => {
     it("should allow to search for a table", async () => {
       await setup({ databases: [SAMPLE_DB_MULTI_SCHEMA] });
 
-      userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
+      await userEvent.click(screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema));
       expect(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.display_name),
       ).toBeInTheDocument();
@@ -439,7 +450,7 @@ describe("MetadataEditor", () => {
         screen.queryByText(REVIEWS_TABLE_MULTI_SCHEMA.display_name),
       ).not.toBeInTheDocument();
 
-      userEvent.click(screen.getByText("Schemas"));
+      await userEvent.click(screen.getByText("Schemas"));
       expect(
         screen.getByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       ).toBeInTheDocument();
@@ -456,9 +467,9 @@ describe("MetadataEditor", () => {
         await screen.findByText(ORDERS_TABLE.display_name),
       ).toBeInTheDocument();
 
-      userEvent.click(screen.getByText(SAMPLE_DB.name));
-      userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
-      userEvent.click(
+      await userEvent.click(screen.getByText(SAMPLE_DB.name));
+      await userEvent.click(screen.getByText(SAMPLE_DB_MULTI_SCHEMA.name));
+      await userEvent.click(
         await screen.findByText(PEOPLE_TABLE_MULTI_SCHEMA.schema),
       );
       expect(
@@ -480,7 +491,7 @@ describe("MetadataEditor", () => {
   describe("databases with json fields", () => {
     it("should display unfolded json fields", async () => {
       await setup({ databases: [JSON_DB] });
-      userEvent.click(screen.getByText(JSON_TABLE.display_name));
+      await userEvent.click(screen.getByText(JSON_TABLE.display_name));
       expect(
         await screen.findByDisplayValue(JSON_TABLE.display_name),
       ).toBeInTheDocument();
@@ -501,14 +512,14 @@ describe("MetadataEditor", () => {
       const { history } = await setup({ initialRoute: "notAdmin" });
 
       expect(screen.getByText("Link to Datamodel")).toBeInTheDocument();
-      userEvent.click(screen.getByText("Link to Datamodel"));
+      await userEvent.click(screen.getByText("Link to Datamodel"));
 
       await waitForLoaderToBeRemoved();
       expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
       history?.goBack();
 
-      expect(screen.getByText("Link to Datamodel")).toBeInTheDocument();
+      expect(await screen.findByText("Link to Datamodel")).toBeInTheDocument();
     });
   });
 });

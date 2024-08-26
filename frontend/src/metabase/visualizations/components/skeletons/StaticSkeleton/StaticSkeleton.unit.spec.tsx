@@ -27,27 +27,24 @@ function setup({ description }: { description?: string } = {}) {
 
 describe("StaticSkeleton", () => {
   describe("description", () => {
-    const originalScrollWidth = Object.getOwnPropertyDescriptor(
-      HTMLElement.prototype,
-      "scrollWidth",
-    );
+    const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const rangeGetBoundingClientRect = Range.prototype.getBoundingClientRect;
 
     beforeAll(() => {
-      // emulate ellipsis
-      Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
-        configurable: true,
-        value: 100,
-      });
+      // Mock return values so that getIsTruncated can kick in
+      HTMLElement.prototype.getBoundingClientRect = jest
+        .fn()
+        .mockReturnValue({ height: 1, width: 1 });
+      Range.prototype.getBoundingClientRect = jest
+        .fn()
+        .mockReturnValue({ height: 1, width: 2 });
     });
 
     afterAll(() => {
-      if (originalScrollWidth) {
-        Object.defineProperty(
-          HTMLElement.prototype,
-          "scrollWidth",
-          originalScrollWidth,
-        );
-      }
+      HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+      Range.prototype.getBoundingClientRect = rangeGetBoundingClientRect;
+
+      jest.resetAllMocks();
     });
 
     it("should render description markdown as plain text", () => {
@@ -56,10 +53,10 @@ describe("StaticSkeleton", () => {
       expect(screen.getByText(MARKDOWN_AS_TEXT)).toBeInTheDocument();
     });
 
-    it("should show description tooltip with markdown formatting on hover", () => {
+    it("should show description tooltip with markdown formatting on hover", async () => {
       setup({ description: MARKDOWN });
 
-      userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
+      await userEvent.hover(screen.getByText(MARKDOWN_AS_TEXT));
 
       expect(screen.getByRole("tooltip")).toHaveTextContent(MARKDOWN_AS_TEXT);
     });

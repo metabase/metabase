@@ -1,6 +1,6 @@
 import type { Ace } from "ace-builds";
 import * as ace from "ace-builds/src-noconflict/ace";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
 import type { ResizableBox, ResizableBoxProps } from "react-resizable";
 import slugg from "slugg";
@@ -28,12 +28,13 @@ import { getEngineNativeAceMode } from "metabase/lib/engine";
 import { checkNotNull } from "metabase/lib/types";
 import { canGenerateQueriesForDatabase } from "metabase/metabot/utils";
 import SnippetFormModal from "metabase/query_builder/components/template_tags/SnippetFormModal";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { getSetting } from "metabase/selectors/settings";
 import { Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
-import type NativeQuery from "metabase-lib/queries/NativeQuery";
-import { CARD_TAG_REGEX } from "metabase-lib/queries/NativeQuery";
+import type Question from "metabase-lib/v1/Question";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { CARD_TAG_REGEX } from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
   CardId,
@@ -49,8 +50,8 @@ import { ResponsiveParametersList } from "../ResponsiveParametersList";
 
 import DataSourceSelectors from "./DataSourceSelectors";
 import {
-  DragHandleContainer,
   DragHandle,
+  DragHandleContainer,
   EditorRoot,
   NativeQueryEditorRoot,
   StyledResizableBox,
@@ -60,7 +61,7 @@ import type { Features as SidebarFeatures } from "./NativeQueryEditorSidebar";
 import { NativeQueryEditorSidebar } from "./NativeQueryEditorSidebar";
 import { RightClickPopover } from "./RightClickPopover";
 import { VisibilityToggler } from "./VisibilityToggler";
-import { ACE_ELEMENT_ID, SCROLL_MARGIN, MIN_HEIGHT_LINES } from "./constants";
+import { ACE_ELEMENT_ID, MIN_HEIGHT_LINES, SCROLL_MARGIN } from "./constants";
 import {
   calcInitialEditorHeight,
   formatQuery,
@@ -112,7 +113,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   hasEditingSidebar?: boolean;
   sidebarFeatures?: SidebarFeatures;
   resizable?: boolean;
-  resizableBoxProps?: Partial<ResizableBoxProps>;
+  resizableBoxProps?: Partial<Omit<ResizableBoxProps, "axis">>;
 
   editorContext?: "question";
 
@@ -131,7 +132,7 @@ type OwnProps = typeof NativeQueryEditor.defaultProps & {
   setIsNativeEditorOpen?: (isOpen: boolean) => void;
   setParameterValue: (parameterId: ParameterId, value: string) => void;
   setParameterValueToDefault: (parameterId: ParameterId) => void;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
   toggleDataReference: () => void;
   toggleTemplateTagsEditor: () => void;
   toggleSnippetSidebar: () => void;
@@ -185,6 +186,7 @@ export class NativeQueryEditor extends Component<
 
   _editor: Ace.Editor | null = null;
   _localUpdate = false;
+  _focusFrame: number;
 
   constructor(props: Props) {
     super(props);
@@ -200,6 +202,7 @@ export class NativeQueryEditor extends Component<
     // Ace sometimes fires multiple "change" events in rapid succession
     // e.x. https://github.com/metabase/metabase/issues/2801
     this.onChange = _.debounce(this.onChange.bind(this), 1);
+    this._focusFrame = -1;
   }
 
   static defaultProps = {
@@ -231,6 +234,9 @@ export class NativeQueryEditor extends Component<
     this.loadAceEditor();
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("contextmenu", this.handleRightClick);
+
+    // hmmm, this could be dangerous
+    this.focus();
   }
 
   handleRightClick = (event: MouseEvent) => {
@@ -315,6 +321,7 @@ export class NativeQueryEditor extends Component<
     if (this.props.cancelQueryOnLeave) {
       this.props.cancelQuery?.();
     }
+    window.cancelAnimationFrame(this._focusFrame);
     this._editor?.destroy?.();
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("contextmenu", this.handleRightClick);
@@ -389,6 +396,20 @@ export class NativeQueryEditor extends Component<
     }
   };
 
+  focus() {
+    if (this.props.readOnly) {
+      return;
+    }
+
+    clearTimeout(this._focusFrame);
+
+    // HACK: the cursor doesn't blink without this intended small delay
+    // HACK: the editor injects newlines into the query without this small delay
+    this._focusFrame = window.requestAnimationFrame(() =>
+      this._editor?.focus(),
+    );
+  }
+
   loadAceEditor() {
     const { query } = this.props;
 
@@ -422,11 +443,6 @@ export class NativeQueryEditor extends Component<
 
     // reset undo manager to prevent undoing to empty editor
     editor.getSession().getUndoManager().reset();
-
-    // hmmm, this could be dangerous
-    if (!this.props.readOnly) {
-      editor.focus();
-    }
 
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     editor.setOptions({
@@ -691,10 +707,7 @@ export class NativeQueryEditor extends Component<
       setDatasetQuery(query.setDatabaseId(databaseId).setDefaultCollection());
 
       onSetDatabaseId?.(databaseId);
-      if (!this.props.readOnly) {
-        // HACK: the cursor doesn't blink without this intended small delay
-        setTimeout(() => this._editor?.focus(), 50);
-      }
+      this.focus();
     }
   };
 
@@ -730,7 +743,7 @@ export class NativeQueryEditor extends Component<
 
   handleQueryGenerated = (queryText: string) => {
     this.handleQueryUpdate(queryText);
-    this._editor?.focus();
+    this.focus();
   };
 
   isPromptInputVisible = () => {
@@ -754,7 +767,7 @@ export class NativeQueryEditor extends Component<
     const queryText = Lib.rawNativeQuery(query);
 
     this.handleQueryUpdate(await formatQuery(queryText, engine));
-    this._editor?.focus();
+    this.focus();
   };
 
   render() {
@@ -817,13 +830,15 @@ export class NativeQueryEditor extends Component<
                 enableParameterRequiredBehavior
               />
             )}
-            {query.hasWritePermission() && this.props.setIsNativeEditorOpen && (
-              <VisibilityToggler
-                isOpen={isNativeEditorOpen}
-                readOnly={!!readOnly}
-                toggleEditor={this.toggleEditor}
-              />
-            )}
+            {query.hasWritePermission() &&
+              !query.question().isArchived() &&
+              this.props.setIsNativeEditorOpen && (
+                <VisibilityToggler
+                  isOpen={isNativeEditorOpen}
+                  readOnly={!!readOnly}
+                  toggleEditor={this.toggleEditor}
+                />
+              )}
           </Flex>
         )}
         {isPromptInputVisible && (
@@ -833,7 +848,6 @@ export class NativeQueryEditor extends Component<
             onClose={this.togglePromptVisibility}
           />
         )}
-        {/* @ts-expect-error — error in resizable box types  */}
         <StyledResizableBox
           ref={this.resizeBox}
           isOpen={isNativeEditorOpen}

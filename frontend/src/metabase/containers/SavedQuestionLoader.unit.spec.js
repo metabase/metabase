@@ -2,14 +2,19 @@ import { screen } from "@testing-library/react";
 
 import {
   setupCardEndpoints,
-  setupUnauthorizedSchemaEndpoints,
-  setupUnauthorizedCardEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
+  setupUnauthorizedCardEndpoints,
+  setupUnauthorizedSchemaEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import SavedQuestionLoader from "metabase/containers/SavedQuestionLoader";
-import Question from "metabase-lib/Question";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import Question from "metabase-lib/v1/Question";
+import {
+  createMockCard,
+  createMockCardQueryMetadata,
+  createMockColumn,
+} from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 const databaseMock = createSampleDatabase();
@@ -36,6 +41,12 @@ const setupQuestion = ({ id, name, hasAccess }) => {
 
   if (hasAccess) {
     setupCardEndpoints(q.card());
+    setupCardQueryMetadataEndpoint(
+      q.card(),
+      createMockCardQueryMetadata({
+        databases: [databaseMock],
+      }),
+    );
   } else {
     setupUnauthorizedCardEndpoints(q.card());
   }

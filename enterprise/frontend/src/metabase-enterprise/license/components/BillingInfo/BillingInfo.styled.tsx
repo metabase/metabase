@@ -4,7 +4,6 @@ import styled from "@emotion/styled";
 import Card from "metabase/components/Card";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const BillingInfoCard = styled(Card)`
@@ -18,14 +17,14 @@ export const BillingInfoRowContainer = styled.div<{ extraPadding?: boolean }>`
   align-items: center;
 
   &:not(:last-child) {
-    border-bottom: 1px solid ${color("bg-medium")};
+    border-bottom: 1px solid var(--mb-color-bg-medium);
   }
 `;
 
 const linkStyles = css`
   display: inline-flex;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const BillingInternalLink = styled(Link)(linkStyles);
@@ -38,8 +37,8 @@ export const BillingExternalLinkIcon = styled(Icon)`
 
 export const StoreButtonLink = styled(ExternalLink)`
   display: inline-flex;
-  background-color: ${color("brand")};
-  color: ${color("text-white")};
+  background-color: var(--mb-color-brand);
+  color: var(--mb-color-text-white);
   align-items: center;
   font-weight: bold;
   padding: 0.75rem 1rem;

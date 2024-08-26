@@ -1,37 +1,36 @@
-import { t } from "ttag";
+import type { Location } from "history";
 import _ from "underscore";
 
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { isUUID, isJWT } from "metabase/lib/utils";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
-  isDateParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/parameters/utils/parameter-type";
+  areParameterValuesIdentical,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
+  ActionDashboardCard,
+  BaseDashboardCard,
+  CacheableDashboard,
   Card,
   CardId,
+  DashCardDataMap,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
-  QuestionDashboardCard,
   Database,
   Dataset,
-  NativeDatasetQuery,
-  Parameter,
-  StructuredDatasetQuery,
-  ActionDashboardCard,
   EmbedDataset,
-  BaseDashboardCard,
-  DashCardDataMap,
+  ParameterId,
+  QuestionDashboardCard,
   VirtualCard,
-  VirtualDashboardCard,
   VirtualCardDisplay,
+  VirtualDashboardCard,
 } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
@@ -81,6 +80,10 @@ export function expandInlineCard(card?: Card | VirtualCard) {
     ...card,
     id: _.uniqueId("card"),
   };
+}
+
+export function isQuestionCard(card: Card | VirtualCard) {
+  return card.dataset_query != null;
 }
 
 export function isQuestionDashCard(
@@ -134,18 +137,6 @@ export function showVirtualDashCardInfoText(
   }
 }
 
-export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
-  if (isDateParameter(parameter)) {
-    return t`Add a date variable to this question to connect it to a dashboard filter.`;
-  } else if (isNumberParameter(parameter)) {
-    return t`Add a number variable to this question to connect it to a dashboard filter.`;
-  } else if (isStringParameter(parameter)) {
-    return t`Add a string variable to this question to connect it to a dashboard filter.`;
-  } else {
-    return t`Add a variable to this question to connect it to a dashboard filter.`;
-  }
-}
-
 export function getAllDashboardCards(dashboard: Dashboard) {
   const results = [];
   if (dashboard) {
@@ -176,7 +167,7 @@ export function getDashboardType(id: unknown) {
   if (id == null || typeof id === "object") {
     // HACK: support inline dashboards
     return "inline";
-  } else if (isUUID(id)) {
+  } else if (isUuid(id)) {
     return "public";
   } else if (isJWT(id)) {
     return "embed";
@@ -195,27 +186,19 @@ export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   }
 }
 
-export function getDatasetQueryParams(
-  datasetQuery: Partial<StructuredDatasetQuery> &
-    Partial<NativeDatasetQuery> = {},
-) {
-  const { type, query, native, parameters = [] } = datasetQuery;
-  return { type, query, native, parameters };
-}
-
 export function isDashcardLoading(
   dashcard: BaseDashboardCard,
-  dashcardsData: DashCardDataMap,
+  dashcardsData: Record<CardId, Dataset | null | undefined>,
 ) {
   if (isVirtualDashCard(dashcard)) {
     return false;
   }
 
-  if (dashcardsData[dashcard.id] == null) {
+  if (dashcardsData == null) {
     return true;
   }
 
-  const cardData = Object.values(dashcardsData[dashcard.id]);
+  const cardData = Object.values(dashcardsData);
   return cardData.length === 0 || cardData.some(data => data == null);
 }
 
@@ -223,7 +206,7 @@ export function getDashcardResultsError(datasets: Dataset[]) {
   const isAccessRestricted = datasets.some(
     s =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      s.error?.status === 403,
+      (typeof s.error === "object" && s.error?.status === 403),
   );
 
   if (isAccessRestricted) {
@@ -233,14 +216,16 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     };
   }
 
-  const errors = datasets.map(s => s.error).filter(Boolean);
-  if (errors.length > 0) {
-    if (IS_EMBED_PREVIEW) {
-      const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" as const };
-    }
+  if (datasets.some(dataset => dataset.error)) {
+    const curatedErrorDataset = datasets.find(
+      dataset => dataset.error && dataset.error_is_curated,
+    );
+
     return {
-      message: getGenericErrorMessage(),
+      message:
+        typeof curatedErrorDataset?.error === "string"
+          ? curatedErrorDataset.error
+          : getGenericErrorMessage(),
       icon: "warning" as const,
     };
   }
@@ -363,4 +348,60 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
     visualization_settings: {},
     archived: false,
   };
+}
+
+export const isDashboardCacheable = (
+  dashboard: Dashboard,
+): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
+
+export function parseTabSlug(location: Location) {
+  const slug = location.query?.tab;
+  if (typeof slug === "string" && slug.length > 0) {
+    const id = parseInt(slug, 10);
+    return Number.isSafeInteger(id) ? id : null;
+  }
+  return null;
+}
+
+export function createTabSlug({
+  id,
+  name,
+}: {
+  id: SelectedTabId;
+  name: string | undefined;
+}) {
+  if (id === null || id < 0 || !name) {
+    return "";
+  }
+  return [id, ...name.toLowerCase().split(" ")].join("-");
+}
+
+export function canResetFilter(parameter: UiParameter): boolean {
+  const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
+  const hasValue = !parameterHasNoDisplayValue(parameter.value);
+
+  if (hasDefaultValue) {
+    return !areParameterValuesIdentical(
+      wrapArray(parameter.value),
+      wrapArray(parameter.default),
+    );
+  }
+
+  return hasValue;
+}
+
+function wrapArray<T>(value: T | T[]): T[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
+}
+
+export function getMappedParametersIds(
+  dashcards: DashboardCard[],
+): ParameterId[] {
+  return dashcards.flatMap((dashcard: DashboardCard) => {
+    const mappings = dashcard.parameter_mappings ?? [];
+    return mappings.map(parameter => parameter.parameter_id);
+  });
 }

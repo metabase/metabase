@@ -8,11 +8,11 @@ import Search from "metabase/entities/search";
 import { closeNavbar } from "metabase/redux/app";
 import {
   getHasDataAccess,
+  getHasDatabaseWithActionsEnabled,
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
-  getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -45,7 +45,7 @@ export default _.compose(
   Search.loadList({
     // Checking if there is at least one model,
     // so we can decide if "Action" option should be shown
-    query: { models: "dataset", limit: 1 },
+    query: { models: ["dataset"], limit: 1 },
     loadingAndErrorWrapper: false,
     listName: "models",
   }),

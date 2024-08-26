@@ -4,16 +4,16 @@ import {
   isImplicitDeleteAction,
   isImplicitUpdateAction,
 } from "metabase/actions/utils";
-import { singularize, formatValue } from "metabase/lib/formatting";
-import type Question from "metabase-lib/Question";
-import { canRunAction } from "metabase-lib/actions/utils";
-import type Database from "metabase-lib/metadata/Database";
-import type Table from "metabase-lib/metadata/Table";
+import { formatValue, singularize } from "metabase/lib/formatting";
+import type Question from "metabase-lib/v1/Question";
+import { canRunAction } from "metabase-lib/v1/actions/utils";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Table from "metabase-lib/v1/metadata/Table";
 import {
   getIsPKFromTablePredicate,
   isEntityName,
   isPK,
-} from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   DatasetData,

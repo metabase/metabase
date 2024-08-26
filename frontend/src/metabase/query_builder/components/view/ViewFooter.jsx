@@ -3,16 +3,14 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ButtonBar from "metabase/components/ButtonBar";
-import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
-import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
+import CS from "metabase/css/core/index.css";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
-import QuestionAlertWidget from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
-import QuestionLastUpdated from "./QuestionLastUpdated";
+import { QuestionLastUpdated } from "./QuestionLastUpdated/QuestionLastUpdated";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import ViewButton from "./ViewButton";
@@ -26,15 +24,12 @@ const ViewFooter = ({
   isShowingChartSettingsSidebar,
   isShowingRawTable,
   onOpenChartType,
-  onOpenModal,
   onCloseChartType,
   onOpenChartSettings,
   onCloseChartSettings,
   setUIControls,
   isObjectDetail,
-  questionAlerts,
   visualizationSettings,
-  canManageSubscriptions,
   isVisualized,
   isTimeseries,
   isShowingTimelineSidebar,
@@ -45,18 +40,17 @@ const ViewFooter = ({
     return null;
   }
 
-  const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
-  const hasDataPermission = isEditable;
-  const hideChartSettings = result.error && !hasDataPermission;
-  const type = question.type();
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const hideChartSettings =
+    (result.error && !isEditable) || question.isArchived();
 
   return (
     <ViewFooterRoot
-      className={cx(className, "text-medium border-top")}
+      className={cx(className, CS.textMedium, CS.borderTop)}
       data-testid="view-footer"
     >
       <ButtonBar
-        className="flex-full"
+        className={CS.flexFull}
         left={[
           !hideChartSettings && (
             <FooterButtonGroup>
@@ -94,7 +88,7 @@ const ViewFooter = ({
           isVisualized && (
             <QuestionDisplayToggle
               key="viz-table-toggle"
-              className="mx1"
+              className={CS.mx1}
               question={question}
               isShowingRawTable={isShowingRawTable}
               onToggleRawTable={isShowingRawTable => {
@@ -108,68 +102,35 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
-          isNative && <ExecutionTime time={result.running_time} />,
-          QuestionLastUpdated.shouldRender({ result }) && (
-            <QuestionLastUpdated
-              key="last-updated"
-              className="hide sm-show"
-              result={result}
-            />
+          ExecutionTime.shouldRender({ result }) && (
+            <ExecutionTime key="execution_time" time={result.running_time} />
           ),
-          QueryDownloadWidget.shouldRender({ result }) && (
-            <QueryDownloadWidget
-              key="download"
-              className="hide sm-show"
-              question={question}
-              result={result}
-              visualizationSettings={visualizationSettings}
-              dashcardId={question.card().dashcardId}
-              dashboardId={question.card().dashboardId}
-            />
-          ),
-          QuestionAlertWidget.shouldRender({
-            question,
-            visualizationSettings,
-          }) && (
-            <QuestionAlertWidget
-              key="alerts"
-              className="hide sm-show"
-              canManageSubscriptions={canManageSubscriptions}
-              question={question}
-              questionAlerts={questionAlerts}
-              onCreateAlert={() =>
-                question.isSaved()
-                  ? onOpenModal("create-alert")
-                  : onOpenModal("save-question-before-alert")
-              }
-            />
-          ),
-          type === "question" &&
-            (question.isSaved() ? (
-              <EmbedMenu
-                key="embed"
-                resource={question}
-                resourceType="question"
-                hasPublicLink={!!question.publicUUID()}
-                onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
+          <Group key="button-group" spacing="sm" noWrap>
+            {QuestionLastUpdated.shouldRender({ result }) && (
+              <QuestionLastUpdated
+                className={cx(CS.hide, CS.smShow)}
+                result={result}
               />
-            ) : (
-              <ResourceEmbedButton
-                hasBackground={false}
-                onClick={() =>
-                  onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED)
-                }
+            )}
+            {QueryDownloadWidget.shouldRender({ result }) && (
+              <QueryDownloadWidget
+                className={cx(CS.hide, CS.smShow)}
+                question={question}
+                result={result}
+                visualizationSettings={visualizationSettings}
+                dashcardId={question.card().dashcardId}
+                dashboardId={question.card().dashboardId}
               />
-            )),
-          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
-            <QuestionTimelineWidget
-              key="timelines"
-              className="hide sm-show"
-              isShowingTimelineSidebar={isShowingTimelineSidebar}
-              onOpenTimelines={onOpenTimelines}
-              onCloseTimelines={onCloseTimelines}
-            />
-          ),
+            )}
+            {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
+              <QuestionTimelineWidget
+                className={cx(CS.hide, CS.smShow)}
+                isShowingTimelineSidebar={isShowingTimelineSidebar}
+                onOpenTimelines={onOpenTimelines}
+                onCloseTimelines={onCloseTimelines}
+              />
+            )}
+          </Group>,
         ]}
       />
     </ViewFooterRoot>

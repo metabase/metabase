@@ -21,7 +21,9 @@
    [metabase.plugins.classloader :as classloader]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.setup :as setup]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -48,7 +50,8 @@
 
 (doto :model/User
   (derive :metabase/model)
-  (derive :hook/updated-at-timestamped?))
+  (derive :hook/updated-at-timestamped?)
+  (derive :hook/entity-id))
 
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
@@ -87,7 +90,7 @@
      {})))
 
 (t2/define-before-insert :model/User
-  [{:keys [email password reset_token locale], :as user}]
+  [{:keys [email password reset_token locale sso_source], :as user}]
   ;; these assertions aren't meant to be user-facing, the API endpoints should be validation these as well.
   (assert (u/email? email))
   (assert ((every-pred string? (complement str/blank?)) password))
@@ -96,6 +99,10 @@
      (contains? allowed-user-types user-type)))
   (when locale
     (assert (i18n/available-locale? locale) (tru "Invalid locale: {0}" (pr-str locale))))
+  (when (and sso_source (not (setup/has-user-setup)))
+    ;; Only allow SSO users to be provisioned if the setup flow has been completed and an admin has been created
+    (throw (Exception. (trs "Instance has not been initialized"))))
+  (premium-features/airgap-check-user-count)
   (merge
    insert-default-values
    user
@@ -113,15 +120,15 @@
   [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
     (let [current-version (:tag config/mb-version-info)]
-      (log/info (trs "Setting User {0}''s last_acknowledged_version to {1}, the current version" user-id current-version))
+      (log/infof "Setting User %s's last_acknowledged_version to %s, the current version" user-id current-version)
       ;; Can't use mw.session/with-current-user due to circular require
       (binding [api/*current-user-id*       user-id
                 setting/*user-local-values* (delay (atom (user-local-settings user)))]
         (setting/set! :last-acknowledged-version current-version)))
     ;; add the newly created user to the magic perms groups.
-    (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
+    (log/infof "Adding User %s to All Users permissions group..." user-id)
     (when superuser?
-      (log/info (trs "Adding User {0} to All Users permissions group..." user-id)))
+      (log/infof "Adding User %s to All Users permissions group..." user-id))
     (let [groups (filter some? [(perms-group/all-users)
                                 (when superuser? (perms-group/admin))])]
       (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
@@ -180,6 +187,8 @@
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
   The key will only be added if `user` contains the required keys to derive it correctly."
   [{:keys [first_name last_name email], :as user}]
+  ;; This logic is replicated in SQL in [[metabase-enterprise.query-reference-validation.api]]. If the below logic changes,
+  ;; please update the EE ns as well.
   (let [common-name (if (or first_name last_name)
                       (str/trim (str first_name " " last_name))
                       email)]
@@ -232,6 +241,10 @@
    ;; is_group_manager only included if `advanced-permissions` is enabled
    [:is_group_manager {:optional true} :boolean]])
 
+(defmethod mi/exclude-internal-content-hsql :model/User
+  [_model & {:keys [table-alias]}]
+  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
+
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
@@ -263,7 +276,11 @@
                                               [:id (when (premium-features/enable-advanced-permissions?)
                                                      :is_group_manager)]))]
       (for [user users]
-        (assoc user :user_group_memberships (map membership->group (user-id->memberships (u/the-id user))))))))
+        (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
+                                                 (map membership->group)
+                                                 ;; sort these so the id returned is consistent so our tests don't
+                                                 ;; randomly fail
+                                                 (sort-by :id)))))))
 
 (mi/define-batched-hydration-method add-group-ids
   :group_ids
@@ -272,7 +289,7 @@
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (t2/select [PermissionsGroupMembership :user_id :group_id]
-                                                    :user_id [:in (set (map u/the-id users))]))]
+                                                             :user_id [:in (set (map u/the-id users))]))]
       (for [user users]
         (assoc user :group_ids (set (map :group_id (user-id->memberships (u/the-id user)))))))))
 
@@ -316,8 +333,8 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
   (mu/with-api-error-message
-    [:map-of ms/KeywordOrString :any]
-    (deferred-tru "login attribute keys must be a keyword or string")))
+   [:map-of ms/KeywordOrString :any]
+   (deferred-tru "login attribute keys must be a keyword or string")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -328,6 +345,7 @@
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
+   [:locale           {:optional true} [:maybe ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ms/KeywordOrString]]])
 
 (def ^:private Invitor
@@ -336,7 +354,7 @@
    [:email      ms/Email]
    [:first_name [:maybe ms/NonBlankString]]])
 
-(mu/defn ^:private insert-new-user!
+(mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
@@ -420,14 +438,14 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (t2/with-transaction [_conn]
-       (when (seq to-remove)
-         (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+        (when (seq to-remove)
+          (t2/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
        ;; do things like automatically set the `is_superuser` flag for a User
        ;; TODO use multipel insert here
-       (doseq [group-id to-add]
-         (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+        (doseq [group-id to-add]
+          (t2/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
     true))
 
 ;;; ## ---------------------------------------- USER SETTINGS ----------------------------------------
@@ -443,7 +461,65 @@
   (deferred-tru "The last database a user has selected for a native query or a native model.")
   :user-local :only
   :visibility :authenticated
-  :type :integer)
+  :type :integer
+  :getter (fn []
+            (when-let [id (setting/get-value-of-type :integer :last-used-native-database-id)]
+              (when (t2/exists? :model/Database :id id) id))))
+
+(defsetting dismissed-custom-dashboard-toast
+  (deferred-tru "Toggle which is true after a user has dismissed the custom dashboard toast.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting dismissed-browse-models-banner
+  (deferred-tru "Whether the user has dismissed the explanatory banner about models that appears on the Browse Data page")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    false
+  :audit      :never)
+
+(defsetting notebook-native-preview-shown
+  (deferred-tru "User preference for the state of the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :boolean
+  :default    false)
+
+(defsetting notebook-native-preview-sidebar-width
+  (deferred-tru "Last user set sidebar width for the native query preview in the notebook.")
+  :user-local :only
+  :visibility :authenticated
+  :type       :integer
+  :default    nil)
+
+(defsetting expand-browse-in-nav
+  (deferred-tru "User preference for whether the 'Browse' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting expand-bookmarks-in-nav
+  (deferred-tru "User preference for whether the 'Bookmarks' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting browse-filter-only-verified-models
+  (deferred-tru "User preference for whether the 'Browse models' page should be filtered to show only verified models.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 

@@ -23,6 +23,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           fontSize: theme.fontSizes.md,
           lineHeight: theme.lineHeight,
           overflow: "hidden",
+          ":active": { transform: "none" }, // Remove Mantine's default pressed effect
           [`&:has(.${getStylesRef("label")}:empty)`]: {
             padding: compact ? `${rem(3)} ${rem(3)}` : `${rem(11)} ${rem(11)}`,
             [`.${getStylesRef("leftIcon")}`]: {
@@ -57,15 +58,15 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
           root: {
             color: theme.fn.themeColor("text-dark"),
             borderColor: theme.fn.themeColor("border"),
-            backgroundColor: theme.white,
+            backgroundColor: theme.fn.themeColor("bg-white"),
             "&:hover": {
               color: primaryColor,
               backgroundColor: theme.fn.themeColor("bg-light"),
             },
             "&:disabled": {
-              color: theme.fn.themeColor("text-light"),
-              borderColor: theme.fn.themeColor("border"),
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-tertiary)",
+              borderColor: "var(--mb-color-border)",
+              backgroundColor: "var(--mb-color-background-disabled)",
             },
             "&[data-loading]": {
               [`& .${getStylesRef("leftIcon")}`]: {
@@ -78,20 +79,31 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       filled: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
         const hoverColor = getHoverColor(theme, primaryColor);
+        const isThemeable = color === "brand";
+        const colors = isThemeable
+          ? {
+              default: "var(--mb-color-background-brand)",
+              hover:
+                "color-mix(in srgb, var(--mb-color-background-brand) 88%, transparent)",
+            }
+          : {
+              default: primaryColor,
+              hover: hoverColor,
+            };
 
         return {
           root: {
             color: theme.white,
-            borderColor: primaryColor,
-            backgroundColor: primaryColor,
+            borderColor: colors.default,
+            backgroundColor: colors.default,
             "&:hover": {
-              borderColor: hoverColor,
-              backgroundColor: hoverColor,
+              borderColor: colors.hover,
+              backgroundColor: colors.hover,
             },
             "&:disabled": {
-              color: theme.fn.themeColor("text-light"),
-              borderColor: theme.fn.themeColor("border"),
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-tertiary)",
+              borderColor: "var(--mb-color-border)",
+              backgroundColor: "var(--mb-color-background-disabled)",
             },
             "&[data-loading]": {
               [`& .${getStylesRef("leftIcon")}`]: {
@@ -116,9 +128,9 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               backgroundColor,
             },
             "&:disabled": {
-              color: theme.fn.themeColor("text-light"),
-              borderColor: theme.fn.themeColor("border"),
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-tertiary)",
+              borderColor: "var(--mb-color-border)",
+              backgroundColor: "var(--mb-color-background-disabled)",
             },
           },
         };
@@ -126,7 +138,6 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       subtle: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
         const hoverColor = getHoverColor(theme, primaryColor);
-
         return {
           root: {
             color: primaryColor,
@@ -134,7 +145,7 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               color: hoverColor,
               backgroundColor: "transparent",
             },
-            "&:disabled": {
+            "&:disabled, &[data-disabled=true]": {
               color: theme.fn.themeColor("text-light"),
               borderColor: "transparent",
               backgroundColor: "transparent",

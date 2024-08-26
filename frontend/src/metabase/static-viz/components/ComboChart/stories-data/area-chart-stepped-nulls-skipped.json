@@ -1,0 +1,239 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 4,
+      "collection_position": null,
+      "table_id": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 6,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 3
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y1",
+          "field_ref": [
+            "field",
+            "Y1",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0.5
+            },
+            "type": {
+              "type/Number": {
+                "min": 40,
+                "q1": 42.5,
+                "q3": 57.5,
+                "max": 60,
+                "sd": 10,
+                "avg": 50
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "native",
+      "name": "simple area stepped repro",
+      "last_query_start": "2024-06-12T23:49:15.548696Z",
+      "dashboard_count": 0,
+      "last_used_at": "2024-06-12T23:49:15.670014Z",
+      "type": "question",
+      "average_query_time": 95.5,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-06-12T23:50:37.708483Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 'foo' x, null y1\nunion all select 'bar', 40\nunion all select 'baz', 50\nunion all select 'qux', null\nunion all select 'asd', 60\nunion all select 'qwe', null"
+        }
+      },
+      "id": 377,
+      "parameter_mappings": [],
+      "display": "area",
+      "archived_directly": false,
+      "entity_id": "fQUCA_K7HdwBoxNwU4srv",
+      "collection_preview": true,
+      "visualization_settings": {
+        "stackable.stack_type": null,
+        "graph.y_axis.auto_split": false,
+        "series_settings": {
+          "Y2": {
+            "line.interpolate": "step-after"
+          },
+          "Y1": {
+            "line.interpolate": "step-after",
+            "line.missing": "none"
+          }
+        },
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y1"]
+      },
+      "collection": null,
+      "metabase_version": "v0.50.1-SNAPSHOT (430f266)",
+      "parameters": [],
+      "created_at": "2024-06-11T17:35:09.795877Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": false
+    },
+    "data": {
+      "rows": [
+        ["foo", null],
+        ["bar", 40],
+        ["baz", 50],
+        ["qux", null],
+        ["asd", 60],
+        ["qwe", null]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "Y1",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y1",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y1",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select 'foo' x, null y1\nunion all select 'bar', 40\nunion all select 'baz', 50\nunion all select 'qux', null\nunion all select 'asd', 60\nunion all select 'qwe', null"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 6,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 3
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y1",
+            "field_ref": [
+              "field",
+              "Y1",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y1",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0.5
+              },
+              "type": {
+                "type/Number": {
+                  "min": 40,
+                  "q1": 42.5,
+                  "q3": 57.5,
+                  "max": 60,
+                  "sd": 10,
+                  "avg": 50
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

@@ -53,17 +53,18 @@
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
+(def ^:private Perms
+  "Perms that get reused for TablePerms and SchemaPerms"
+  [:enum
+   :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no :blocked])
+
 (def ^:private TablePerms
-  [:or
-   [:enum :all :segmented :none :full :limited]
-   [:map
-    [:read {:optional true} [:enum :all :none]]
-    [:query {:optional true} [:enum :all :none :segmented]]]])
+  [:or Perms [:map
+              [:read {:optional true} [:enum :all :none]]
+              [:query {:optional true} [:enum :all :none :segmented]]]])
 
 (def ^:private SchemaPerms
-  [:or
-   [:keyword {:title "schema name"}]
-   [:map-of Id TablePerms]])
+  [:or Perms [:map-of Id TablePerms]])
 
 (def ^:private SchemaGraph
   [:map-of
@@ -72,7 +73,21 @@
 
 (def ^:private Schemas
   [:or
-   [:enum :all :segmented :none :block :full :limited :impersonated]
+   [:enum
+    :all
+    :segmented
+    :none
+    :block
+    :blocked
+    :full
+    :limited
+    :impersonated
+    :unrestricted
+    :sandboxed
+    :legacy-no-self-service
+    :query-builder-and-native
+    :query-builder
+    :no]
    SchemaGraph])
 
 (def ^:private DataPerms
@@ -81,7 +96,7 @@
    [:schemas {:optional true} Schemas]])
 
 (def StrictDataPerms
-  "data perms that care about how native and schemas keys related to one another.
+  "Data perms that care about how view-data and make-queries are related to one another.
   If you have write access for native queries, you must have data access to all schemas."
   [:and
    DataPerms
@@ -89,45 +104,35 @@
     (fn [{:keys [native schemas]}]
       (not (and (= native :write) schemas (not (#{:all :impersonated} schemas)))))]])
 
-(def ^:private DbGraph
-  [:schema {:registry {"DataPerms" DataPerms}}
-   [:map-of
-    Id
-    [:map
-     [:data {:optional true} "DataPerms"]
-     [:query {:optional true} "DataPerms"]
-     [:download {:optional true} "DataPerms"]
-     [:data-model {:optional true} "DataPerms"]
-     ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
-     ;; consistency with the language used on the frontend.
-     [:details {:optional true} [:enum :yes :no]]
-     [:execute {:optional true} [:enum :all :none]]]]])
-
 (def StrictDbGraph
-  "like db-graph, but if you have write access for native queries, you must have data access to all schemas."
+  "like db-graph, but with added validations:
+   - Ensures 'view-data' is not 'blocked' if 'create-queries' is 'query-builder-and-native'."
   [:schema {:registry {"StrictDataPerms" StrictDataPerms}}
    [:map-of
     Id
-    [:map
-     [:data {:optional true} "StrictDataPerms"]
-     [:query {:optional true} "StrictDataPerms"]
-     [:download {:optional true} "StrictDataPerms"]
-     [:data-model {:optional true} "StrictDataPerms"]
-     ;; We use :yes and :no instead of booleans for consistency with the application perms graph, and
-     ;; consistency with the language used on the frontend.
-     [:details {:optional true} [:enum :yes :no]]
-     [:execute {:optional true} [:enum :all :none]]]]])
+    [:and
+     [:map
+      [:view-data {:optional true} Schemas]
+      [:create-queries {:optional true} Schemas]
+      [:data {:optional true} "StrictDataPerms"]
+      [:download {:optional true} "StrictDataPerms"]
+      [:data-model {:optional true} "StrictDataPerms"]
+      [:details {:optional true} [:enum :yes :no]]]
+     [:fn {:error/fn (fn [_ _] (trs "Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas."))}
+      (fn [db-entry]
+        (let [{:keys [create-queries view-data]} db-entry]
+          (not (and (= create-queries :query-builder-and-native) (= view-data :blocked)))))]]]])
 
 (def DataPermissionsGraph
   "Used to transform, and verify data permissions graph"
-  [:map [:groups [:map-of GroupId [:maybe DbGraph]]]])
+  [:map
+   [:groups [:map-of GroupId [:maybe StrictDbGraph]]]])
 
-(def StrictData
-  "Top level strict data graph schema"
+(def StrictApiPermissionsGraph
+  "Top level strict data graph schema expected over the API. Includes revision ID for avoiding concurrent updates."
   [:map
    [:groups [:map-of GroupId [:maybe StrictDbGraph]]]
    [:revision int?]])
-
 
 ;;; --------------------------------------------- Execution Permissions ----------------------------------------------
 

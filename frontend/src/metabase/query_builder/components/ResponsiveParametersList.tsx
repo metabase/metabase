@@ -1,17 +1,17 @@
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext } from "ttag";
 
 import Button from "metabase/core/components/Button";
 import useIsSmallScreen from "metabase/hooks/use-is-small-screen";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type { Parameter, ParameterId } from "metabase-types/api";
 
 import {
   FilterButton,
-  ParametersListHeader,
-  StyledParametersList,
-  ResponsiveParametersListRoot,
   ParametersListContainer,
+  ParametersListHeader,
+  ResponsiveParametersListRoot,
+  StyledParametersList,
 } from "./ResponsiveParametersList.styled";
 
 interface ResponsiveParametersListProps {

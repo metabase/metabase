@@ -22,22 +22,28 @@ const ORIGINAL_COLORS = [
 ];
 
 const CUSTOM_COLORS = [
-  "brand",
-  "brand-lighter",
-  "text-white",
-  "text-light",
-  "text-medium",
-  "text-dark",
-  "focus",
-  "border",
+  "bg-black",
+  "bg-dark",
   "bg-light",
   "bg-medium",
-  "bg-dark",
-  "bg-black",
-  "success",
+  "bg-white",
+  "border",
+  "brand",
+  "brand-lighter",
+  "danger",
   "error",
+  "filter",
+  "focus",
+  "shadow",
+  "success",
+  "summarize",
+  "text-dark",
+  "text-light",
+  "text-medium",
+  "text-white",
+  "warning",
   "white",
-];
+] as const;
 
 function getColorShades(color: string): ColorShades {
   return Array(10).fill(color) as ColorShades;

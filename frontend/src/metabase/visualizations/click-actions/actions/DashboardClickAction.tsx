@@ -4,12 +4,12 @@ import {
   setParameterValue,
 } from "metabase/dashboard/actions";
 import type {
-  ClickObject,
-  LegacyDrill,
   AlwaysDefaultClickAction,
   AlwaysDefaultClickActionSubAction,
+  ClickObject,
+  LegacyDrill,
 } from "metabase/visualizations/types";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import {
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
@@ -17,7 +17,7 @@ import {
   getDashboardDrillTab,
   getDashboardDrillType,
   getDashboardDrillUrl,
-} from "metabase-lib/queries/drills/dashboard-click-drill";
+} from "metabase-lib/v1/queries/drills/dashboard-click-drill";
 
 type DashboardDrillType =
   | "link-url"

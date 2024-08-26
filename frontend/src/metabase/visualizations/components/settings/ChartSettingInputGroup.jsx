@@ -1,12 +1,15 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
+
 import InputBlurChange from "metabase/components/InputBlurChange";
+import CS from "metabase/css/core/index.css";
 
 // value is an array of strings. This component provides one input box per string
 export default function ChartSettingInputGroup({ value: values, onChange }) {
   const inputs = values.map((str, i) => (
     <InputBlurChange
       key={i}
-      className="block full mb1"
+      className={cx(CS.block, CS.full, CS.mb1)}
       value={str}
       onBlurChange={e => {
         const newStr = e.target.value.trim();

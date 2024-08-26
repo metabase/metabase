@@ -2,13 +2,13 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :refer [*current-user-id*]]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.public-settings.premium-features :refer [defenterprise]]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]))
 
 (defn- field-ids [form]
-  (set (mbql.u/match form
+  (set (lib.util.match/match form
          [:field (id :guard integer?) _]
          id)))
 
@@ -25,8 +25,8 @@
     (when (seq restricted-field-ids)
       (let [fields-ids-in-query (field-ids (m/dissoc-in query [:query :source-query]))]
         (when-not (every? restricted-field-ids fields-ids-in-query)
-          (log/warn (trs "User ''{0}'' attempted to access an inaccessible field. Accessible fields {1}, fields in query {2}"
-                         *current-user-id* (pr-str restricted-field-ids) (pr-str fields-ids-in-query)))
+          (log/warnf "User '%s' attempted to access an inaccessible field. Accessible fields %s, fields in query %s"
+                     *current-user-id* (pr-str restricted-field-ids) (pr-str fields-ids-in-query))
           (throw (ex-info (str (tru "User not able to query field")) {:status 403})))))))
 
 (defenterprise maybe-apply-column-level-perms-check

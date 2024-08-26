@@ -13,9 +13,9 @@ describe("UserProfileForm", () => {
     });
 
     render(<UserProfileForm {...props} />);
-    userEvent.clear(screen.getByLabelText("First name"));
-    userEvent.type(screen.getByLabelText("First name"), "New name");
-    userEvent.click(screen.getByText("Update"));
+    await userEvent.clear(screen.getByLabelText("First name"));
+    await userEvent.type(screen.getByLabelText("First name"), "New name");
+    await userEvent.click(screen.getByText("Update"));
 
     expect(await screen.findByText("Success")).toBeInTheDocument();
   });

@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
@@ -11,10 +12,10 @@ import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import type { IconName } from "metabase/ui";
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/urls";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Collection } from "metabase-types/api/collection";
 import type { State } from "metabase-types/store";
 
@@ -40,17 +41,12 @@ interface QuestionPaneProps {
 }
 
 const getIcon = (question: Question): IconName => {
-  const type = question.type();
-
-  if (type === "question") {
-    return "table";
-  }
-
-  if (type === "model") {
-    return "model";
-  }
-
-  throw new Error(`Unknown question.type(): ${type}`);
+  return match(question.type())
+    .returnType<IconName>()
+    .with("question", () => "table")
+    .with("model", () => "model")
+    .with("metric", () => "metric")
+    .exhaustive();
 };
 
 const QuestionPane = ({
@@ -129,8 +125,8 @@ export default _.compose(
   Tables.load({
     id: (_state: State, props: QuestionPaneProps) =>
       getQuestionVirtualTableId(props.question.id()),
-    fetchType: "fetchMetadata",
-    requestType: "fetchMetadata",
+    fetchType: "fetchMetadataDeprecated",
+    requestType: "fetchMetadataDeprecated",
   }),
   Collections.load({
     id: (_state: State, props: QuestionPaneProps) =>

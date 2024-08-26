@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import Toggle from "metabase/core/components/Toggle";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
+import { Switch } from "metabase/ui";
 
 import {
   ImageContainer,
@@ -17,7 +17,7 @@ export interface ImageToggleProps {
   onChange: (value: boolean) => void;
 }
 
-const ImageToggle = ({
+export const ImageToggle = ({
   label,
   value,
   children,
@@ -30,17 +30,13 @@ const ImageToggle = ({
       <ImageContainer>{children}</ImageContainer>
       <ToggleContainer>
         <ToggleLabel htmlFor={toggleId}>{label}</ToggleLabel>
-        <Toggle
+        <Switch
           id={toggleId}
           aria-checked={value}
-          role="switch"
-          value={value}
-          onChange={onChange}
+          checked={value}
+          onChange={e => onChange(e.target.checked)}
         />
       </ToggleContainer>
     </ToggleRoot>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ImageToggle;

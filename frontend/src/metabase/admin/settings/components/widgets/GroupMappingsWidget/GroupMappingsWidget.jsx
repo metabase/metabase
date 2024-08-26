@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
+import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
 import Tooltip from "metabase/core/components/Tooltip";
+import CS from "metabase/css/core/index.css";
 import { FormSwitch } from "metabase/forms";
 import { isDefaultGroup } from "metabase/lib/groups";
 import { Icon } from "metabase/ui";
@@ -13,13 +15,13 @@ import SettingToggle from "../SettingToggle";
 
 import AddMappingRow from "./AddMappingRow";
 import {
-  GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
-  GroupMappingsWidgetRoot as Root,
-  GroupMappingsWidgetHeader as Header,
-  GroupMappingsWidgetToggleRoot as ToggleRoot,
   GroupMappingsWidgetAbout as About,
   GroupMappingsWidgetAboutContentRoot as AboutContentRoot,
   AddMappingButton,
+  GroupMappingsWidgetHeader as Header,
+  GroupMappingsWidgetRoot as Root,
+  GroupMappingsWidgetToggleRoot as ToggleRoot,
+  GroupMappingsWidgetAndErrorRoot as WidgetAndErrorRoot,
 } from "./GroupMappingsWidget.styled";
 import MappingRow from "./MappingRow";
 
@@ -171,7 +173,9 @@ function GroupMappingsWidget({
         </div>
       </Root>
       {saveError?.data?.message && (
-        <div className="text-error text-bold m1">{saveError.data.message}</div>
+        <div className={cx(CS.textError, CS.textBold, CS.m1)}>
+          {saveError.data.message}
+        </div>
       )}
     </WidgetAndErrorRoot>
   );

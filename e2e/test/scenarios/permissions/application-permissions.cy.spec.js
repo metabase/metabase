@@ -1,22 +1,25 @@
-import { USERS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
+  createPulse,
   describeEE,
+  modal,
   modifyPermission,
-  getFullName,
-  visitQuestion,
-  visitDashboard,
+  openSharingMenu,
+  popover,
+  restore,
   setTokenFeatures,
   setupSMTP,
+  sharingMenu,
+  sharingMenuButton,
   sidebar,
-  popover,
+  tableInteractive,
   undoToast,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -26,7 +29,6 @@ const MONITORING_INDEX = 1;
 const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
-const { admin } = USERS;
 
 describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
@@ -38,7 +40,7 @@ describeEE("scenarios > admin > permissions > application", () => {
   it("shows permissions help", () => {
     cy.visit("/admin/permissions/application");
     cy.get("main").within(() => {
-      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.findByText("Permissions help").as("permissionHelpButton").click();
       cy.get("@permissionHelpButton").should("not.exist");
     });
 
@@ -74,10 +76,15 @@ describeEE("scenarios > admin > permissions > application", () => {
 
       it("revokes ability to create subscriptions and alerts and manage them", () => {
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.icon("subscription").should("not.exist");
+
+        openSharingMenu();
+        sharingMenu()
+          .findByText(/subscri/i)
+          .should("not.exist");
 
         visitQuestion(ORDERS_QUESTION_ID);
-        cy.icon("bell").should("not.exist");
+        tableInteractive().should("be.visible");
+        sharingMenuButton().should("be.disabled");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
@@ -87,23 +94,19 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("granted", () => {
-      it("gives ability to create dashboard subscriptions", () => {
+      it("gives ability to create dashboard subscriptions and question alerts", () => {
         setupSMTP();
         cy.signInAsNormalUser();
+
+        cy.log("Create a dashboard subscription");
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.findByLabelText("subscriptions").click();
-
+        openSharingMenu(/subscriptions/i);
         sidebar().findByText("Email this dashboard").should("exist");
-      });
 
-      it("gives ability to create question alerts", () => {
-        cy.signInAsNormalUser();
+        cy.log("Create a question alert");
         visitQuestion(ORDERS_QUESTION_ID);
-        cy.icon("bell").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
-          "To send alerts, an admin needs to set up email integration.",
-        );
+        openSharingMenu(/alert/i);
+        modal().findByText("The wide world of alerts").should("be.visible");
       });
     });
   });
@@ -134,7 +137,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.signInAsNormalUser();
       });
 
-      it("allows accessing tools, audit, and troubleshooting for non-admins", () => {
+      it("allows accessing tools and troubleshooting for non-admins", () => {
         cy.visit("/");
         cy.icon("gear").click();
 
@@ -146,20 +149,6 @@ describeEE("scenarios > admin > permissions > application", () => {
           name: "Questions that errored when last run",
         });
         cy.findAllByRole("cell").should("contain", "broken_question");
-
-        cy.log("Audit smoke test");
-        cy.findByRole("navigation")
-          .findByRole("link", { name: "Audit" })
-          .click();
-        cy.location("pathname").should("eq", "/admin/audit/members/overview");
-        cy.findByRole("heading", {
-          name: "Team members",
-        });
-        cy.findByRole("radiogroup").contains("Audit log").click();
-        cy.location("pathname").should("eq", "/admin/audit/members/log");
-        cy.findAllByRole("cell")
-          .should("contain", "broken_question")
-          .and("contain", getFullName(admin));
 
         cy.log("Troubleshooting smoke test");
         cy.findByRole("navigation")
@@ -173,7 +162,7 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("revoked", () => {
-      it("does not allow accessing tools, audit, and troubleshooting for non-admins", () => {
+      it("does not allow accessing tools, and troubleshooting for non-admins", () => {
         cy.signInAsNormalUser();
         cy.visit("/");
         cy.icon("gear").click();
@@ -244,7 +233,7 @@ function createSubscription(user_id) {
       },
     },
   }).then(({ body: { card_id, dashboard_id } }) => {
-    cy.createPulse({
+    createPulse({
       name: "Subscription",
       dashboard_id,
       cards: [

@@ -98,11 +98,11 @@
       (neg? n)
       ;; this should legitimately be lowercasing in the user locale. I know system locale isn't necessarily the same
       ;; thing, but it might be. This will have to do until we have some sort of user-locale lower-case functionality
-      #_ {:clj-kondo/ignore [:discouraged-var]}
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (i18n/tru "{0} {1} ago" (abs n) (str/lower-case (describe-temporal-unit (abs n) unit)))
 
       :else
-      #_ {:clj-kondo/ignore [:discouraged-var]}
+      #_{:clj-kondo/ignore [:discouraged-var]}
       (i18n/tru "{0} {1} from now" n (str/lower-case (describe-temporal-unit n unit))))))
 
 (defmulti with-temporal-bucket-method
@@ -181,15 +181,24 @@
             (= unit :day) (assoc :default true)))
         lib.schema.temporal-bucketing/ordered-date-bucketing-units))
 
+(def datetime-bucket-units
+  "The temporal bucketing units for datetime type expressions."
+  (into []
+        (remove hidden-bucketing-options)
+        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
+
 (def datetime-bucket-options
   "The temporal bucketing options for datetime type expressions."
-  (into []
-        (comp (remove hidden-bucketing-options)
-              (map (fn [unit]
-                     (cond-> {:lib/type :option/temporal-bucketing
-                              :unit unit}
-                       (= unit :day) (assoc :default true)))))
-        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
+  (mapv (fn [unit]
+          (cond-> {:lib/type :option/temporal-bucketing
+                   :unit unit}
+            (= unit :day) (assoc :default true)))
+        datetime-bucket-units))
+
+(defn available-temporal-units
+  "The temporal bucketing units for datetime type expressions."
+  []
+  datetime-bucket-units)
 
 (defmethod lib.metadata.calculation/display-name-method :option/temporal-bucketing
   [_query _stage-number {:keys [unit]} _style]

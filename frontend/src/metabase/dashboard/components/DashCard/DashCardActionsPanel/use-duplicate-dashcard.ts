@@ -7,8 +7,8 @@ import {
 import { getExistingDashCards } from "metabase/dashboard/actions/utils";
 import { trackDashcardDuplicated } from "metabase/dashboard/analytics";
 import {
-  getCardData,
   getDashboards,
+  getDashcardDataMap,
   getDashcards,
   getSelectedTabId,
 } from "metabase/dashboard/selectors";
@@ -31,7 +31,7 @@ export function useDuplicateDashCard({
   const dashboards = useSelector(getDashboards);
   const dashcards = useSelector(getDashcards);
   const selectedTabId = useSelector(getSelectedTabId);
-  const dashcardDataMap = useSelector(getCardData);
+  const dashcardDataMap = useSelector(getDashcardDataMap);
 
   return useCallback(() => {
     if (!dashcard) {

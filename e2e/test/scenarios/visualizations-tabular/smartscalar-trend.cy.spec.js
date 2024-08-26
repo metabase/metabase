@@ -2,8 +2,11 @@ import Color from "color";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  cartesianChartCircle,
+  createNativeQuestion,
   menu,
   popover,
+  queryBuilderMain,
   restore,
   rightSidebar,
   summarize,
@@ -447,6 +450,50 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.log("Reported failing on v0.35 - v0.37.0.2");
     cy.log("Bug: showing blank visualization");
 
-    cy.get(".ScalarValue").contains("100");
+    cy.findByTestId("scalar-value").contains("100");
+  });
+
+  it("should gracefully handle errors (metabase#42948)", () => {
+    createNativeQuestion(
+      {
+        name: "42948",
+        native: {
+          query:
+            "SELECT DATE '2024-05-21' AS created_at, 5 as v\nUNION ALL SELECT DATE '2024-05-20' , 4\nUNION ALL SELECT DATE '2024-05-19' , 3\nORDER BY created_at",
+        },
+
+        display: "smartscalar",
+        visualization_settings: {
+          "scalar.field": "v",
+          "scalar.comparisons": [
+            {
+              id: "1",
+              type: "periodsAgo",
+              value: "this will cause an error because it is not a number",
+            },
+          ],
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    // check that error/warning is showing up
+    cy.icon("warning").realHover();
+    queryBuilderMain().findByText(
+      "No integer value supplied for periods ago comparison.",
+    );
+
+    // check that we can switch to the table view and the data is shown
+    cy.findByLabelText("Switch to data").click();
+    queryBuilderMain().within(() => {
+      cy.findByText("CREATED_AT").should("be.visible");
+      cy.findByText("V").should("be.visible");
+    });
+
+    // check that we can switch visualizations and no longer have the error show
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("Line-button").click();
+    cy.icon("warning").should("not.exist");
+    cartesianChartCircle().should("have.length", 3);
   });
 });

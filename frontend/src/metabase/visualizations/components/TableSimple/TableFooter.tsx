@@ -3,13 +3,16 @@ import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Icon } from "metabase/ui";
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import {
-  TableFooterRoot,
-  PaginationMessage,
   PaginationButton,
+  PaginationMessage,
+  TableFooterRoot,
 } from "./TableSimple.styled";
 
 interface TableFooterProps {
@@ -73,13 +76,16 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
       <TableFooterRoot
         className={cx(
           className,
-          "fullscreen-normal-text fullscreen-night-text",
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
         )}
         data-testid={dataTestId}
         ref={ref}
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>
         <PaginationButton
+          className={CS.textPrimary}
           aria-label={t`Previous page`}
           direction="previous"
           onClick={handlePreviousPage}
@@ -88,6 +94,7 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
           <Icon name="chevronleft" />
         </PaginationButton>
         <PaginationButton
+          className={CS.textPrimary}
           aria-label={t`Next page`}
           direction="next"
           onClick={handleNextPage}

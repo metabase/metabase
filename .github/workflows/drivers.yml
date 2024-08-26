@@ -40,6 +40,9 @@ jobs:
       MB_ATHENA_TEST_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_ACCESS_KEY }}
       MB_ATHENA_TEST_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_SECRET_KEY }}
       MB_ATHENA_TEST_S3_STAGING_DIR: ${{ secrets.MB_ATHENA_TEST_S3_STAGING_DIR }}
+      # These credentials are used to test the driver when the user does not have the athena:GetTableMetadata permission
+      MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_ACCESS_KEY }}
+      MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY: ${{ secrets.MB_ATHENA_TEST_WITHOUT_GET_TABLE_METADATA_SECRET_KEY }}
     steps:
     - uses: actions/checkout@v4
     - name: Test Athena driver
@@ -126,54 +129,28 @@ jobs:
         aws-region: ${{ vars.AWS_REGION }}
         trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
 
-  be-tests-googleanalytics-ee:
+  be-tests-druid-jdbc-ee:
     needs: files-changed
     if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
     runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
       CI: 'true'
-      DRIVERS: googleanalytics
+      DRIVERS: druid-jdbc
+    services:
+      druid:
+        image: metabase/druid:29.0.1-json-no-ingestion
+        ports:
+          - "8888:8888"
+        env:
+          CLUSTER_SIZE: nano-quickstart
     steps:
     - uses: actions/checkout@v4
-    - name: Test Google Analytics driver
+    - name: Test Druid JDBC driver
       uses: ./.github/actions/test-driver
       with:
-        junit-name: 'be-tests-googleanalytics-ee'
+        junit-name: 'be-tests-druid-jdbc-ee'
         test-args: ":exclude-tags '[:mb/once]'"
-    - name: Upload Test Results
-      uses: ./.github/actions/upload-test-results
-      if: always()
-      with:
-        input-path: ./target/junit/
-        output-name: ${{ github.job }}
-        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ vars.AWS_REGION }}
-        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
-
-  be-google-related-drivers-classpath-test:
-    needs: files-changed
-    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: 'googleanalytics,bigquery-cloud-sdk'
-      MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
-      MB_BIGQUERY_TEST_CLIENT_ID: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_ID }}
-      MB_BIGQUERY_TEST_CLIENT_SECRET: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_SECRET }}
-      MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
-      MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
-      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test Google Related Drivers Classpath
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-google-related-drivers-classpath-test'
-        test-args: ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test metabase.driver.googleanalytics-test]"'
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -281,7 +258,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-4-4-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -327,7 +304,7 @@ jobs:
         uses: ./.github/actions/test-driver
         with:
           junit-name: 'be-tests-mongo-4-4-ee'
-          test-args: ":exclude-tags '[:mb/once]'"
+          test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
         if: always()
@@ -361,7 +338,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -407,7 +384,7 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-5-0-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -444,7 +421,39 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mongo-latest-ee'
-        test-args: ":exclude-tags '[:mb/once]'"
+        test-args: ":exclude-tags '[:mb/once :mongo-sharded-cluster-tests]'"
+    - name: Upload Test Results
+      uses: ./.github/actions/upload-test-results
+      if: always()
+      with:
+        input-path: ./target/junit/
+        output-name: ${{ github.job }}
+        bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
+        aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+        trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+
+  be-tests-mongo-sharded-cluster-ee:
+    needs: files-changed
+    if: github.event.pull_request.draft == false && needs.files-changed.outputs.backend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      DRIVERS: mongo
+    services:
+      mongodb:
+        image: metabase/mongo-sharded-cluster:6
+        ports:
+          - "27017:17017"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Test MongoDB driver (Sharded cluster)
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-mongo-sharded-cluster-ee'
+        test-args: ':only "[metabase.driver.mongo.sharded-cluster-test]"'
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
@@ -800,6 +809,11 @@ jobs:
       MB_SNOWFLAKE_TEST_WAREHOUSE: ${{ secrets.MB_SNOWFLAKE_TEST_WAREHOUSE }}
       MB_SNOWFLAKE_TEST_PK_USER: METABASE PK
       MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY: ${{ secrets.MB_SNOWFLAKE_TEST_PK_PRIVATE_KEY }}
+      # RSA Role testing:
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DEFAULT_USER: RSA_ROLE_TEST_DEFAULT_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_CUSTOM_USER: RSA_ROLE_TEST_CUSTOM_USER
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_ROLE: RSA_ROLE_TEST_ROLE
+      MB_SNOWFLAKE_TEST_RSA_ROLE_TEST_DB: RSA_ROLE_TEST_DB
     steps:
     - uses: actions/checkout@v4
     - name: Test Snowflake driver

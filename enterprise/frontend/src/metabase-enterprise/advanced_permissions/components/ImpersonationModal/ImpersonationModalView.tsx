@@ -10,10 +10,11 @@ import FormFooter from "metabase/core/components/FormFooter";
 import FormSelect from "metabase/core/components/FormSelect";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import Link from "metabase/core/components/Link/Link";
+import CS from "metabase/css/core/index.css";
 import { Form, FormProvider } from "metabase/forms";
 import * as Errors from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
-import type Database from "metabase-lib/metadata/Database";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { UserAttribute } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
@@ -70,7 +71,7 @@ export const ImpersonationModalView = ({
 
   // Does the "role" field need to first be filled out on the DB details page?
   const roleRequired =
-    database.features.includes("connection-impersonation-requires-role") &&
+    database.features?.includes("connection-impersonation-requires-role") &&
     database.details["role"] == null;
 
   // for redshift, we impersonate using users, not roles
@@ -93,7 +94,7 @@ export const ImpersonationModalView = ({
       <ImpersonationDescription>
         {modalMessage}{" "}
         <ExternalLink
-          className="link"
+          className={CS.link}
           // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
           href={MetabaseSettings.docsUrl("permissions/data")}
         >{t`Learn More`}</ExternalLink>

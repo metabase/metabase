@@ -1,7 +1,6 @@
 import { assoc } from "icepick";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { handleActions, createAction } from "metabase/lib/redux";
+import { createAction, handleActions } from "metabase/lib/redux";
 
 import { filterUntouchedFields, isEmptyObject } from "./utils.js";
 
@@ -24,13 +23,9 @@ export const startLoading = createAction(START_LOADING);
 
 export const endLoading = createAction(END_LOADING);
 
-export const startEditing = createAction(START_EDITING, () => {
-  MetabaseAnalytics.trackStructEvent("Data Reference", "Started Editing");
-});
+export const startEditing = createAction(START_EDITING);
 
-export const endEditing = createAction(END_EDITING, () => {
-  MetabaseAnalytics.trackStructEvent("Data Reference", "Ended Editing");
-});
+export const endEditing = createAction(END_EDITING);
 
 export const expandFormula = createAction(EXPAND_FORMULA);
 
@@ -73,33 +68,9 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (
     ]);
   })(databaseID);
 };
-export const wrappedFetchMetricDetail = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
-    await Promise.all([props.fetchMetricTable(mID), props.fetchMetrics()]);
-  })(metricID);
-};
-export const wrappedFetchMetricQuestions = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
-    await Promise.all([
-      props.fetchMetricTable(mID),
-      props.fetchMetrics(),
-      props.fetchQuestions(),
-    ]);
-  })(metricID);
-};
-export const wrappedFetchMetricRevisions = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
-    await Promise.all([props.fetchMetricRevisions(mID), props.fetchMetrics()]);
-  })(metricID);
-};
-
 export const wrappedFetchDatabases = props => {
   fetchDataWrapper(props, props.fetchRealDatabases)({});
 };
-export const wrappedFetchMetrics = props => {
-  fetchDataWrapper(props, props.fetchMetrics)({});
-};
-
 export const wrappedFetchSegments = props => {
   fetchDataWrapper(props, props.fetchSegments)({});
 };
@@ -188,24 +159,6 @@ export const rUpdateTableDetail = (formFields, props) => {
 };
 export const rUpdateFieldDetail = (formFields, props) => {
   return () => updateDataWrapper(props, props.updateField)(formFields);
-};
-
-export const rUpdateMetricDetail = (metric, formFields, props) => {
-  return async () => {
-    props.startLoading();
-    try {
-      const editedFields = filterUntouchedFields(formFields, metric);
-      if (!isEmptyObject(editedFields)) {
-        const newMetric = { ...metric, ...editedFields };
-        await props.updateMetric(newMetric);
-      }
-    } catch (error) {
-      props.setError(error);
-      console.error(error);
-    }
-
-    resetForm(props);
-  };
 };
 
 export const rUpdateFields = (fields, formFields, props) => {

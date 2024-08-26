@@ -14,7 +14,7 @@
    [metabase.models.field :as field]
    [metabase.models.table :as table]
    [metabase.sync.analyze :as analyze]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.field-values :as field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -34,6 +34,26 @@
      [:name       :string]
      [:steps      [:maybe [:sequential sync-util/StepNameWithMetadata]]]]]])
 
+(def ^:private phase->fn
+  {:metadata     sync-metadata/sync-db-metadata!
+   :analyze      analyze/analyze-db!
+   :field-values field-values/update-field-values!})
+
+(defn- scan-phases [scan]
+  (if (not= :full scan)
+    [:metadata]
+    [:metadata :analyze :field-values]))
+
+(defn- do-phase! [database phase]
+  (let [f      (phase->fn phase)
+        result (f database)]
+    (if (instance? Throwable result)
+      ;; do nothing if we're configured to just move on.
+      (when-not sync-util/*log-exceptions-and-continue?*
+        ;; but if we didn't expect any suppressed exceptions, rethrow it
+        (throw result))
+      (assoc result :name (name phase)))))
+
 (mu/defn sync-database! :- SyncDatabaseResults
   "Perform all the different sync operations synchronously for `database`.
 
@@ -49,10 +69,9 @@
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-     (cond-> [(assoc (sync-metadata/sync-db-metadata! database) :name "metadata")]
-       (= scan :full)
-       (conj (assoc (analyze/analyze-db! database) :name "analyze")
-             (assoc (field-values/update-field-values! database) :name "field-values"))))))
+     (->> (scan-phases scan)
+          (keep (partial do-phase! database))
+          (doall)))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
@@ -76,5 +95,5 @@
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
-        (fingerprint/refingerprint-field field))
+        (sync.fingerprint/refingerprint-field field))
       :sync/no-connection)))

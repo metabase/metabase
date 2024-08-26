@@ -145,7 +145,7 @@ describe("AddSeriesModal", () => {
 
     const firstSeriesLegendItem = screen.getAllByTestId("legend-item")[1];
 
-    userEvent.click(
+    await userEvent.click(
       within(firstSeriesLegendItem).getByRole("img", { name: "close icon" }),
     );
 
@@ -163,7 +163,7 @@ describe("AddSeriesModal", () => {
 
     const secondSeriesLegendItem = screen.getAllByTestId("legend-item")[2];
 
-    userEvent.click(
+    await userEvent.click(
       within(secondSeriesLegendItem).getByRole("img", { name: "close icon" }),
     );
 
@@ -181,7 +181,7 @@ describe("AddSeriesModal", () => {
 
     const firstSeriesLegendItem = screen.getAllByTestId("legend-item")[1];
 
-    userEvent.click(
+    await userEvent.click(
       within(firstSeriesLegendItem).getByRole("img", { name: "close icon" }),
     );
 
@@ -189,7 +189,7 @@ describe("AddSeriesModal", () => {
 
     const secondSeriesLegendItem = screen.getAllByTestId("legend-item")[1];
 
-    userEvent.click(
+    await userEvent.click(
       within(secondSeriesLegendItem).getByRole("img", { name: "close icon" }),
     );
 

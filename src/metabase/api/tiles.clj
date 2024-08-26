@@ -5,8 +5,8 @@
    [clojure.set :as set]
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
@@ -31,7 +31,6 @@
   "Limit for number of pins to query for per tile."
   2000)
 
-
 ;;; ---------------------------------------------------- UTIL FNS ----------------------------------------------------
 
 (defn- degrees->radians ^double [^double degrees]
@@ -39,7 +38,6 @@
 
 (defn- radians->degrees ^double [^double radians]
   (/ radians (/ Math/PI 180.0)))
-
 
 ;;; --------------------------------------------------- QUERY FNS ----------------------------------------------------
 
@@ -69,7 +67,6 @@
                        (bottom-right :lat)
                        (bottom-right :lon)]]
     (update details :filter mbql.u/combine-filter-clauses inside-filter)))
-
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
@@ -128,7 +125,6 @@
        :type     :query
        :query    {:source-query native}})
     query))
-
 
 ;;; ---------------------------------------------------- ENDPOINT ----------------------------------------------------
 

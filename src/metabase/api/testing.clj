@@ -1,16 +1,20 @@
 (ns metabase.api.testing
   "Endpoints for testing."
   (:require
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
+   [java-time.api :as t]
+   [java-time.clock]
    [metabase.api.common :as api]
    [metabase.config :as config]
-   [metabase.db.connection :as mdb.connection]
-   [metabase.db.setup :as mdb.setup]
+   [metabase.db :as mdb]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource)
    (java.util.concurrent.locks ReentrantReadWriteLock)))
@@ -32,10 +36,10 @@
 ;;;; SAVE
 
 (defn- save-snapshot! [snapshot-name]
-  (assert-h2 mdb.connection/*application-db*)
+  (assert-h2 (mdb/app-db))
   (let [path (snapshot-path-for-name snapshot-name)]
     (log/infof "Saving snapshot to %s" path)
-    (jdbc/query {:datasource mdb.connection/*application-db*} ["SCRIPT TO ?" path]))
+    (jdbc/query {:datasource (mdb/app-db)} ["SCRIPT TO ?" path]))
   :ok)
 
 (api/defendpoint POST "/snapshot/:name"
@@ -50,17 +54,17 @@
 (defn- reset-app-db-connection-pool!
   "Immediately destroy all open connections in the app DB connection pool."
   []
-  (let [{:keys [data-source]} mdb.connection/*application-db*]
-     (when (instance? PoolBackedDataSource data-source)
-       (log/info "Destroying application database connection pool")
-       (.hardReset ^PoolBackedDataSource data-source))))
+  (let [data-source (mdb/data-source)]
+    (when (instance? PoolBackedDataSource data-source)
+      (log/info "Destroying application database connection pool")
+      (.hardReset ^PoolBackedDataSource data-source))))
 
 (defn- restore-app-db-from-snapshot!
   "Drop all objects in the application DB, then reload everything from the SQL dump at `snapshot-path`."
   [^String snapshot-path]
   (log/infof "Restoring snapshot from %s" snapshot-path)
   (api/check-404 (.exists (java.io.File. snapshot-path)))
-  (with-open [conn (.getConnection mdb.connection/*application-db*)]
+  (with-open [conn (.getConnection (mdb/app-db))]
     (doseq [sql-args [["SET LOCK_TIMEOUT 180000"]
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
@@ -81,36 +85,32 @@
       ;; parameterization doesn't work with view names. If someone maliciously named a table, this is bad. On the
       ;; other hand, this is not running in prod and you already had to have enough access to maliciously name the
       ;; table, so this is probably safe enough.
-      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name))))
-  ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend` and a
-  ;; backend server started with `dev/start!` the snapshots are always missing columms added by DB migrations. So let's
-  ;; just check and make sure it's fully up to date in this scenario. Not doing this outside of dev because it seems to
-  ;; work fine for whatever reason normally and we don't want tests taking 5 million years to run because we're wasting
-  ;; a bunch of time initializing Liquibase and checking for unrun migrations for every test when we don't need to. --
-  ;; Cam
-  (when config/is-dev?
-    (mdb.setup/migrate! (mdb.connection/db-type) mdb.connection/*application-db* :up)))
-
-(defn- increment-app-db-unique-indentifier!
-  "Increment the [[mdb.connection/unique-identifier]] for the Metabase application DB. This effectively flushes all
-  caches using it as a key (including things using [[mdb.connection/memoize-for-application-db]]) such as the Settings
-  cache."
-  []
-  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
+      (jdbc/execute! {:connection conn} (format "ALTER VIEW %s RECOMPILE" table-name)))))
 
 (defn- restore-snapshot! [snapshot-name]
-  (assert-h2 mdb.connection/*application-db*)
+  (assert-h2 (mdb/app-db))
   (let [path                         (snapshot-path-for-name snapshot-name)
-        ^ReentrantReadWriteLock lock (:lock mdb.connection/*application-db*)]
+        ^ReentrantReadWriteLock lock (:lock (mdb/app-db))]
     ;; acquire the application DB WRITE LOCK which will prevent any other threads from getting any new connections until
     ;; we release it.
     (try
       (.. lock writeLock lock)
       (reset-app-db-connection-pool!)
       (restore-app-db-from-snapshot! path)
-      (increment-app-db-unique-indentifier!)
+      (mdb/increment-app-db-unique-indentifier!)
       (finally
-        (.. lock writeLock unlock))))
+        (.. lock writeLock unlock)
+        ;; don't know why this happens but when I try to test things locally with `yarn-test-cypress-open-no-backend`
+        ;; and a backend server started with `dev/start!` the snapshots are always missing columms added by DB
+        ;; migrations. So let's just check and make sure it's fully up to date in this scenario. Not doing this outside
+        ;; of dev because it seems to work fine for whatever reason normally and we don't want tests taking 5 million
+        ;; years to run because we're wasting a bunch of time initializing Liquibase and checking for unrun migrations
+        ;; for every test when we don't need to. -- Cam
+        ;;
+        ;; Important! This needs to happen AFTER we unlock the app DB, otherwise migrations will hang for the evil ones
+        ;; that are initializing Quartz and opening new connections to do stuff on different threads.
+        (when config/is-dev?
+          (mdb/migrate! (mdb/app-db) :up)))))
   :ok)
 
 (api/defendpoint POST "/restore/:name"
@@ -121,6 +121,7 @@
   nil)
 
 (api/defendpoint POST "/echo"
+  "Simple echo hander. Fails when you POST {\"fail\": true}."
   [fail :as {:keys [body]}]
   {fail ms/BooleanValue}
   (if fail
@@ -128,5 +129,49 @@
      :body {:error-code "oops"}}
     {:status 200
      :body body}))
+
+(api/defendpoint POST "/set-time"
+  "Make java-time see world at exact time."
+  [:as {{:keys [time add-ms]} :body}]
+  {time   [:maybe ms/TemporalString]
+   add-ms [:maybe ms/Int]}
+  (let [clock (when-let [time' (cond
+                                 time   (u.date/parse time)
+                                 add-ms (t/plus (t/zoned-date-time)
+                                                (t/duration add-ms :millis)))]
+                (t/mock-clock (t/instant time') (t/zone-id time')))]
+    ;; if time' is `nil`, we'll get system clock back
+    (alter-var-root #'java-time.clock/*clock* (constantly clock))
+    {:result (if clock :set :reset)
+     :time   (t/instant)}))
+
+(api/defendpoint GET "/echo"
+  "Simple echo hander. Fails when you GET {\"fail\": true}."
+  [fail body]
+  {fail ms/BooleanValue
+   body ms/JSONString}
+  (if fail
+    {:status 400
+     :body {:error-code "oops"}}
+    {:status 200
+     :body (json/decode body true)}))
+
+(api/defendpoint POST "/mark-stale"
+  "Mark the card or dashboard as stale"
+  [:as {{:keys [id model date-str]} :body}]
+  {id             ms/PositiveInt
+   model          :string
+   date-str       [:maybe :string]}
+  (let [date (if date-str
+               (try (t/local-date "yyyy-MM-dd" date-str)
+                    (catch Exception _
+                      (throw (ex-info (str "invalid date: '"
+                                           date-str
+                                           "' expected format: 'yyyy-MM-dd'")
+                                      {:status 400}))))
+               (t/minus (t/local-date) (t/months 7)))]
+    (case model
+      "card"      (t2/update! :model/Card :id id {:last_used_at date})
+      "dashboard" (t2/update! :model/Dashboard :id id {:last_viewed_at date}))))
 
 (api/define-routes)

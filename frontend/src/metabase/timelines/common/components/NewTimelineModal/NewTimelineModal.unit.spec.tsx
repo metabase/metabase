@@ -15,12 +15,12 @@ describe("NewTimelineModal", () => {
     const values = createMockTimelineData();
 
     render(<NewTimelineModal {...props} />);
-    userEvent.type(screen.getByLabelText("Name"), values.name);
+    await userEvent.type(screen.getByLabelText("Name"), values.name);
     await waitFor(() => {
       expect(screen.getByText("Create")).toBeEnabled();
     });
 
-    userEvent.click(screen.getByText("Create"));
+    await userEvent.click(screen.getByText("Create"));
     await waitFor(() => {
       expect(props.onSubmit).toHaveBeenCalledWith(values, props.collection);
     });

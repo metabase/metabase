@@ -1,17 +1,18 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import type { ReactElement } from "react";
 import { t } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
+import PopoverS from "metabase/components/Popover/Popover.module.css";
+import CS from "metabase/css/core/index.css";
 import { getCurrencySymbol } from "metabase/lib/formatting";
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
-} from "metabase-lib/operators/utils";
-import type Filter from "metabase-lib/queries/structured/Filter";
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
-import { isCurrency } from "metabase-lib/types/utils/isa";
+} from "metabase-lib/v1/operators/utils";
+import type Filter from "metabase-lib/v1/queries/structured/Filter";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
+import { isCurrency } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
 import NumberPicker from "../NumberPicker";
@@ -20,26 +21,10 @@ import TextPicker from "../TextPicker";
 
 import {
   BetweenLayoutContainer,
-  BetweenLayoutFieldSeparator,
   BetweenLayoutFieldContainer,
+  BetweenLayoutFieldSeparator,
   DefaultPickerContainer,
 } from "./DefaultPicker.styled";
-
-const defaultPickerPropTypes = {
-  filter: PropTypes.array,
-  setValue: PropTypes.func,
-  setValues: PropTypes.func,
-  onCommit: PropTypes.func,
-  className: PropTypes.string,
-  minWidth: PropTypes.number,
-  maxWidth: PropTypes.number,
-  checkedColor: PropTypes.string,
-};
-
-const defaultLayoutPropTypes = {
-  className: PropTypes.string,
-  fieldWidgets: PropTypes.array,
-};
 
 export interface DefaultPickerProps {
   filter: Filter;
@@ -79,11 +64,9 @@ export function DefaultPicker({
     ?.question()
     ?.settings();
 
-  const key = dimension?.column?.()
-    ? getColumnKey(dimension.column() as DatasetColumn)
-    : "";
-
-  const columnSettings = visualizationSettings?.column_settings?.[key];
+  const column = dimension?.column?.();
+  const columnSettings =
+    column && getColumnSettings(visualizationSettings, column as DatasetColumn);
 
   const fieldMetadata = field?.metadata?.fields[field?.id as FieldId];
   const fieldSettings = {
@@ -135,7 +118,6 @@ export function DefaultPicker({
         return (
           <FieldValuesWidget
             key={index}
-            className="input"
             value={values}
             onChange={onValuesChange}
             multi={operator.multi}
@@ -193,14 +175,12 @@ export function DefaultPicker({
   return (
     <DefaultPickerContainer
       data-testid="default-picker-container"
-      className={cx(className, "PopoverBody--marginBottom")}
+      className={cx(className, PopoverS.PopoverBodyMarginBottom)}
     >
       {layout}
     </DefaultPickerContainer>
   );
 }
-
-DefaultPicker.propTypes = defaultPickerPropTypes;
 
 const DefaultLayout = ({
   fieldWidgets,
@@ -209,14 +189,15 @@ const DefaultLayout = ({
 }) => (
   <div>
     {fieldWidgets.map((fieldWidget, index) => (
-      <div key={index} className={index < fieldWidgets.length - 1 ? "mb1" : ""}>
+      <div
+        key={index}
+        className={index < fieldWidgets.length - 1 ? CS.mb1 : ""}
+      >
         {fieldWidget}
       </div>
     ))}
   </div>
 );
-
-DefaultLayout.propTypes = defaultLayoutPropTypes;
 
 const BetweenLayout = ({
   fieldWidgets,

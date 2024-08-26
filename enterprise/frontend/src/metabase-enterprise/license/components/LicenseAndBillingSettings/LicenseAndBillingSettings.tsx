@@ -1,6 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import {
@@ -14,8 +14,8 @@ import { ExplorePlansIllustration } from "metabase/admin/settings/components/Set
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { getUpgradeUrl } from "metabase/selectors/settings";
+import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { showLicenseAcceptedToast } from "metabase-enterprise/license/actions";
-import { useBillingInfo } from "metabase-enterprise/settings/hooks/use-billing-info";
 import type { TokenStatus } from "metabase-enterprise/settings/hooks/use-license";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { SettingDefinition } from "metabase-types/api";
@@ -96,10 +96,12 @@ const LicenseAndBillingSettings = ({
     !licenseLoading && !isInvalidToken && isStoreManagedBilling;
 
   const {
-    loading: billingLoading,
+    isLoading: billingLoading,
     error: billingError,
-    billingInfo,
-  } = useBillingInfo(shouldFetchBillingInfo);
+    data: billingInfo,
+  } = useGetBillingInfoQuery(undefined, {
+    skip: !shouldFetchBillingInfo,
+  });
 
   const isLoading = licenseLoading || billingLoading;
 
@@ -127,7 +129,7 @@ const LicenseAndBillingSettings = ({
         isStoreManagedBilling={isStoreManagedBilling}
         hasToken={hasToken}
         billingInfo={billingInfo}
-        error={billingError}
+        error={!!billingError}
       />
 
       {shouldShowLicenseInput && (
@@ -171,7 +173,7 @@ const LicenseAndBillingSettings = ({
 export default connect(
   (state: State): StateProps => ({
     settingValues: state.admin.settings.settings,
-    upgradeUrl: getUpgradeUrl(state, { utm_media: "license" }),
+    upgradeUrl: getUpgradeUrl(state, { utm_content: "license" }),
   }),
   {
     showLicenseAcceptedToast,

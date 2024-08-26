@@ -1,7 +1,7 @@
-import { css } from "@emotion/react";
+import { type Theme, css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { getDashboardBodyBgColor } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 
 export interface DashCardRootProps {
   isNightMode: boolean;
@@ -11,12 +11,12 @@ export interface DashCardRootProps {
 }
 
 const rootNightModeStyle = css`
-  border-color: ${color("bg-night")};
-  background-color: ${color("bg-night")};
+  border-color: var(--mb-color-bg-night);
+  background-color: var(--mb-color-bg-night);
 `;
 
-const rootSlowCardStyle = css`
-  border-color: ${color("accent4")};
+const getRootSlowCardStyle = (theme: Theme) => css`
+  border-color: ${theme.fn.themeColor("accent4")};
 `;
 
 const rootTransparentBackgroundStyle = css`
@@ -26,15 +26,15 @@ const rootTransparentBackgroundStyle = css`
 `;
 
 const hiddenBackgroundStyle = css`
-  background: ${color("bg-light")};
+  background: ${getDashboardBodyBgColor(false)};
   box-shadow: none !important;
 `;
 
 export const DashCardRoot = styled.div<DashCardRootProps>`
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-dashboard-card);
 
   ${({ isNightMode }) => isNightMode && rootNightModeStyle}
-  ${({ isUsuallySlow }) => isUsuallySlow && rootSlowCardStyle}
+  ${({ isUsuallySlow, theme }) => isUsuallySlow && getRootSlowCardStyle(theme)}
   ${({ hasHiddenBackground }) =>
     hasHiddenBackground && rootTransparentBackgroundStyle}
 
@@ -50,6 +50,6 @@ export const VirtualDashCardOverlayRoot = styled.div`
 `;
 
 export const VirtualDashCardOverlayText = styled.h4`
-  color: ${color("text-medium")};
-  padding: 1.5rem;
+  color: var(--mb-color-text-medium);
+  padding: 1rem;
 `;

@@ -2,16 +2,24 @@
   (:refer-clojure :exclude [ancestors descendants])
   (:require
    [clojure.math.combinatorics :as math.combo]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [metabase.api.common :refer [*current-user-permissions-set*]]
+   [metabase.audit :as audit]
    [metabase.models
-    :refer [Card Collection Dashboard NativeQuerySnippet Permissions
-            PermissionsGroup Pulse User]]
+    :refer [Card
+            Collection
+            Dashboard
+            NativeQuerySnippet
+            Permissions
+            PermissionsGroup
+            Pulse
+            User]]
    [metabase.models.collection :as collection]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -95,19 +103,27 @@
                              Collection c2 {:name "my_favorite Cards"}]
       (is (not= (:entity_id c1) (:entity_id c2))))))
 
+(defn- archive-collection! [col]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (collection/archive-or-unarchive-collection! col {:archived true})))
+
+(defn- unarchive-collection! [col]
+  (mt/with-current-user (mt/user->id :crowberto)
+    (collection/archive-or-unarchive-collection! col {:archived false})))
+
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"
     (t2.with-temp/with-temp [Collection collection {}
                              Card       card       {:collection_id (u/the-id collection)}]
-      (t2/update! Collection (u/the-id collection)
-                  {:archived true})
+      (archive-collection! collection)
       (is (true? (t2/select-one-fn :archived Card :id (u/the-id card))))))
 
   (testing "check that unarchiving a Collection unarchives its Cards as well"
-    (t2.with-temp/with-temp [Collection collection {:archived true}
-                             Card       card       {:collection_id (u/the-id collection), :archived true}]
-      (t2/update! Collection (u/the-id collection)
-                  {:archived false})
+    (t2.with-temp/with-temp [Collection collection {}
+                             Card       card       {:collection_id (u/the-id collection)}]
+      (archive-collection! collection)
+      (is (t2/select-one-fn :archived Card :id (u/the-id card)))
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
       (is (false? (t2/select-one-fn :archived Card :id (u/the-id card)))))))
 
 (deftest validate-name-test
@@ -124,12 +140,11 @@
            (t2/update! Collection (u/the-id collection)
                        {:name ""}))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections Helper Fns & Macros                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn do-with-collection-hierarchy [options a-fn]
+(defn do-with-collection-hierarchy! [options a-fn]
   (mt/with-non-admin-groups-no-root-collection-perms
     (t2.with-temp/with-temp [Collection a (merge options {:name "A"})
                              Collection b (merge options {:name "B", :location (collection/location-path a)})
@@ -140,7 +155,7 @@
                              Collection g (merge options {:name "G", :location (collection/location-path a c f)})]
       (a-fn {:a a, :b b, :c c, :d d, :e e, :f f, :g g}))))
 
-(defmacro with-collection-hierarchy
+(defmacro with-collection-hierarchy!
   "Run `body` with a hierarchy of Collections that looks like:
 
         +-> B
@@ -155,18 +170,35 @@
        ...)"
   {:style/indent 1}
   [[collections-binding options] & body]
-  `(do-with-collection-hierarchy ~options (fn [~collections-binding] ~@body)))
+  `(do-with-collection-hierarchy! ~options (fn [~collections-binding] ~@body)))
 
-(defmacro with-current-user-perms-for-collections
+(defn do-with-current-user-perms-for-collections*!
+  [collections-or-ids collections-or-ids-to-discard body-fn]
+  (if (seq collections-or-ids-to-discard)
+    (mt/with-discarded-collections-perms-changes (first collections-or-ids-to-discard)
+      (do-with-current-user-perms-for-collections*! collections-or-ids (next collections-or-ids-to-discard) body-fn))
+    (let [read-paths (map perms/collection-read-path collections-or-ids)
+          write-paths (map perms/collection-readwrite-path collections-or-ids)]
+      (t2/delete! :model/Permissions :object [:in (concat read-paths write-paths)])
+      (t2/insert! :model/Permissions (map (fn [c-or-id]
+                                            {:group_id (u/the-id (perms-group/all-users))
+                                             :object (perms/collection-read-path c-or-id)})
+                                          collections-or-ids))
+      (mt/with-test-user :rasta
+        (body-fn)))))
+
+(defn do-with-current-user-perms-for-collections!
+  [collections-or-ids body-fn]
+  (do-with-current-user-perms-for-collections*! collections-or-ids collections-or-ids body-fn))
+
+(defmacro with-current-user-perms-for-collections!
   "Run `body` with the current User permissions for `collections-or-ids`.
 
      (with-current-user-perms-for-collections [a b c]
        ...)"
   {:style/indent 1}
   [collections-or-ids & body]
-  `(binding [*current-user-permissions-set* (atom #{~@(for [collection-or-id collections-or-ids]
-                                                        `(perms/collection-read-path ~collection-or-id))})]
-     ~@body))
+  `(do-with-current-user-perms-for-collections! ~collections-or-ids (fn [] ~@body)))
 
 (defn location-path-ids->names
   "Given a Collection location `path` replace all the IDs with the names of the Collections they represent. Done to make
@@ -184,7 +216,6 @@
           (recur
            (str/replace path (re-pattern (str "/" id "/")) (str "/" (id->name id) "/"))
            more))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Nested Collections: Location Paths                                       |
@@ -265,82 +296,94 @@
              Exception
              (collection/children-location collection)))))))
 
-(deftest ^:parallel permissions-set->visible-collection-ids-test
-  (testing "Make sure we can look at the current user's permissions set and figure out which Collections they're allowed to see"
-    (is (= #{8 9}
-           (collection/permissions-set->visible-collection-ids
-            #{"/db/1/"
-              "/db/2/native/"
-              "/db/4/schema/"
-              "/db/5/schema/PUBLIC/"
-              "/db/6/schema/PUBLIC/table/7/"
-              "/collection/8/"
-              "/collection/9/read/"}))))
+(deftest visible-collection-ids-test
+  (with-collection-hierarchy! [{:keys [a b c d e f g]}]
+    (let [->names (fn [id-set]
+                    (let [root (when (contains? id-set "root") #{"root"})
+                          others (when-let [non-root-ids (seq (disj id-set "root"))]
+                                   (t2/select-fn-set :name :model/Collection :id [:in non-root-ids]))]
+                      (set/union root others)))
+          visible-collection-ids (fn []
+                                   (->names
+                                    (set/intersection (collection/visible-collection-ids {})
+                                                      (set (conj (map :id [a b c d e f g]) "root")))))]
+      (testing "All permissions => all the collections!"
+        (with-current-user-perms-for-collections! [a b c d e f g]
+          (is (= #{"A" "B" "C" "D" "E" "F" "G"} (visible-collection-ids)))))
+      (testing "Some permissions => some of the collections!"
+        (with-current-user-perms-for-collections! [a b c]
+          (is (= #{"A" "B" "C"}
+                 (visible-collection-ids)))))
+      (testing "Some other permissions => some other collections"
+        (with-current-user-perms-for-collections! [d e f]
+          (is (= #{"D" "E" "F"}
+                 (visible-collection-ids)))))
+      (testing "If the current user is an admin, it should return *all* collections"
+        (mt/with-test-user :crowberto
+          (is (= #{"A" "B" "C" "D" "E" "F" "G" "root"}
+                 (visible-collection-ids))))))))
 
-  (testing "If the current user has root permissions then make sure the function returns `:all`, which signifies that they are able to see all Collections"
-    (is (= :all
-           (collection/permissions-set->visible-collection-ids
-            #{"/"
-              "/db/2/native/"
-              "/collection/9/read/"}))))
+(deftest permissions-set->visible-collection-ids-test-with-config
+  (mt/with-temp [:model/Collection {c1 :id} {:archived false :archive_operation_id nil}
+                 :model/Collection {c2 :id} {:archived true :archive_operation_id "1234"}
+                 :model/Collection {c3 :id} {:archived true :archive_operation_id "1234"}
+                 :model/Collection {c4 :id} {:archived true :archive_operation_id "5678"}]
+    (let [visible-collection-ids (fn [c] (set/intersection (collection/visible-collection-ids c)
+                                                           #{c1 c2 c3 c4 (collection/trash-collection-id) "root"}))]
+      (with-current-user-perms-for-collections! [c1 c2 c3 c4]
+        (testing "Archived"
+          (testing "Default"
+            (is (= #{"root" c1} (visible-collection-ids {}))))
+          (testing "Only"
+            (is (= #{c2 c3 c4} (visible-collection-ids {:include-archived-items :only}))))
+          (testing "Exclude"
+            (is (= #{"root" c1} (visible-collection-ids {:include-archived-items :exclude}))))
+          (testing "All"
+            (is (= #{c1 c2 c3 c4 "root"}
+                   (visible-collection-ids {:include-archived-items :all})))))
+        (testing "Include trash?"
+          (testing "true"
+            (is (= #{c1 "root" (collection/trash-collection-id)}
+                   (visible-collection-ids {:include-trash-collection? true}))))
+          (testing "false"
+            (is (= #{c1 "root"}
+                   (visible-collection-ids {:include-trash-collection? false})
+                   ;; default
+                   (visible-collection-ids {})))))
+        (testing "archive operation id"
+          (testing "can filter down to a particular archive operation id"
+            (is (= #{c2 c3}
+                   (visible-collection-ids {:archive-operation-id "1234"
+                                            :include-archived-items :all})))
+            (is (= #{c4}
+                   (visible-collection-ids {:archive-operation-id "5678"
+                                            :include-archived-items :all}))))
+          (testing "can get the trash in the same call"
+            (is (= #{c2 c3 (collection/trash-collection-id)}
+                   (visible-collection-ids {:archive-operation-id "1234"
+                                            :include-archived-items :all
+                                            :include-trash-collection? true})))))))))
 
-  (testing "for the Root Collection we should return `root`"
-    (is (= #{8 9 "root"}
-           (collection/permissions-set->visible-collection-ids
-            #{"/collection/8/"
-              "/collection/9/read/"
-              "/collection/root/"})))
+(deftest effective-location-path-test
+  (with-redefs [audit/is-collection-id-audit? (constantly false)]
+    (testing "valid input"
+      (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"
+                               ["/10/20/30/" #{10 30}]    "/10/30/"
+                               ["/10/20/30/" #{}]         "/"
+                               ["/10/20/30/" #{10 20 30}] "/10/20/30/"}]
+        (testing (pr-str (cons 'effective-location-path args))
+          (is (= expected
+                 (apply collection/effective-location-path args))))))
 
-    (is (= #{"root"}
-           (collection/permissions-set->visible-collection-ids
-            #{"/collection/root/read/"})))))
-
-(deftest ^:parallel effective-location-path-test
-  (testing "valid input"
-    (doseq [[args expected] {["/10/20/30/" #{10 20}]    "/10/20/"
-                             ["/10/20/30/" #{10 30}]    "/10/30/"
-                             ["/10/20/30/" #{}]         "/"
-                             ["/10/20/30/" #{10 20 30}] "/10/20/30/"
-                             ["/10/20/30/" :all]        "/10/20/30/"}]
-      (testing (pr-str (cons 'effective-location-path args))
-        (is (= expected
-               (apply collection/effective-location-path args))))))
-
-  (testing "invalid input"
-    (doseq [args [["/10/20/30/" nil]
-                  ["/10/20/30/" [20]]
-                  [nil #{}]
-                  [[10 20] #{}]]]
-      (testing (pr-str (cons 'effective-location-path args))
-        (is (thrown?
-             Exception
-             (apply collection/effective-location-path args))))))
-
-  (testing "Does the function also work if we call the single-arity version that powers hydration?"
-    (testing "mix of full and read perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/"})]
-        (is (= "/10/20/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "missing some perms"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/read/" "/collection/30/read/"})]
-        (is (= "/10/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "no perms"
-      (binding [*current-user-permissions-set* (atom #{})]
-        (is (= "/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "read perms for all"
-      (binding [*current-user-permissions-set* (atom #{"/collection/10/" "/collection/20/read/" "/collection/30/read/"})]
-        (is (= "/10/20/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))
-
-    (testing "root perms"
-      (binding [*current-user-permissions-set* (atom #{"/"})]
-        (is (= "/10/20/30/"
-               (collection/effective-location-path {:location "/10/20/30/"})))))))
+    (testing "invalid input"
+      (doseq [args [["/10/20/30/" nil]
+                    ["/10/20/30/" [20]]
+                    [nil #{}]
+                    [[10 20] #{}]]]
+        (testing (pr-str (cons 'effective-location-path args))
+          (is (thrown?
+               Exception
+               (apply collection/effective-location-path args))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Nested Collections: CRUD Constraints & Behavior                                 |
@@ -404,7 +447,7 @@
     ;; x -+-> C -+-> D -> E     ===>     x
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [{:keys [a b c d e f g]}]
+    (with-collection-hierarchy! [{:keys [a b c d e f g]}]
       (is (= 1
              (t2/delete! Collection :id (u/the-id a))))
       (is (= 0
@@ -418,58 +461,47 @@
     ;; A -+-> x -+-> D -> E     ===>     A -+
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [{:keys [a b c d e f g]}]
+    (with-collection-hierarchy! [{:keys [a b c d e f g]}]
       (t2/delete! Collection :id (u/the-id c))
       (is (= 2
              (t2/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Ancestors & Effective Ancestors                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ancestors [collection]
-  (map :name (#'collection/ancestors collection)))
-
-(deftest ancestors-test
-  (with-collection-hierarchy [{:keys [c d e]}]
-    (testing "Can we hydrate `ancestors` the way we'd hope?"
-      (is (= ["A" "C"]
-             (ancestors d)))
-      (is (= ["A" "C" "D"]
-             (ancestors e))))
-    (testing "trying it on C should give us only A"
-      (is (= ["A"]
-             (ancestors c))))))
-
-
 ;;; ---------------------------------------------- Effective Ancestors -----------------------------------------------
 
 (defn- effective-ancestors [collection]
-  (map :name (collection/effective-ancestors collection)))
+  (map :name (:effective_ancestors (t2/hydrate collection :effective_ancestors))))
 
 (deftest effective-ancestors-test
-  (with-collection-hierarchy [{:keys [a c d]}]
+  (with-collection-hierarchy! [{:keys [a c d]}]
     (testing "For D: if we don't have permissions for C, we should only see A"
-      (with-current-user-perms-for-collections [a d]
+      (with-current-user-perms-for-collections! [a d]
         (is (= ["A"]
                (effective-ancestors d)))))
 
     (testing "For D: if we don't have permissions for A, we should only see C"
-      (with-current-user-perms-for-collections [c d]
+      (with-current-user-perms-for-collections! [c d]
         (is (= ["C"]
                (effective-ancestors d)))))
 
     (testing "For D: if we have perms for all ancestors we should see them all"
-      (with-current-user-perms-for-collections [a c d]
+      (with-current-user-perms-for-collections! [a c d]
         (is (= ["A" "C"]
                (effective-ancestors d)))))
 
     (testing "For D: if we have permissions for no ancestors, we should see nothing"
-      (with-current-user-perms-for-collections [d]
+      (with-current-user-perms-for-collections! [d]
         (is (= []
                (effective-ancestors d)))))))
 
+(deftest effective-ancestors-root-collection-test
+  ;; happens if we do, e.g. `(t2/hydrate a-card-in-the-root-collection [:collection :effective_ancestors])`
+  (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
+    (is (= [[] []]
+           (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Descendants & Effective Children                              |
@@ -491,7 +523,7 @@
       format-collections))
 
 (deftest descendants-test
-  (with-collection-hierarchy [{:keys [a b c d]}]
+  (with-collection-hierarchy! [{:keys [a b c d]}]
     (testing "make sure we can fetch the descendants of a Collection in the hierarchy we'd expect"
       (is (= #{{:name "B", :id true, :location "/A/", :children #{}, :description nil}
                {:name        "C"
@@ -533,7 +565,7 @@
 
 (deftest root-collection-descendants-test
   (testing "For the *Root* Collection, can we get top-level Collections?"
-    (with-collection-hierarchy [_]
+    (with-collection-hierarchy! [_]
       (is (contains? (descendants collection/root-collection)
                      {:name        "A"
                       :id          true
@@ -567,8 +599,6 @@
                                       :location    "/A/"
                                       :children    #{}}}})))))
 
-
-
 (deftest descendant-ids-test
   (testing "double-check that descendant-ids is working right too"
     (t2.with-temp/with-temp [Collection a {}
@@ -577,89 +607,90 @@
       (is (= #{(u/the-id b) (u/the-id c)}
              (#'collection/descendant-ids a))))))
 
-
 ;;; ----------------------------------------------- Effective Children -----------------------------------------------
 
-(defn- effective-children [collection]
-  (set (map :name (collection/effective-children collection))))
-
 (deftest effective-children-test
-  (with-collection-hierarchy [{:keys [a b c d e f g]}]
-    (testing "If we *have* perms for everything we should just see B and C."
-      (with-current-user-perms-for-collections [a b c d e f g]
-        (is (= #{"B" "C"}
-               (effective-children a)))))
+  (with-collection-hierarchy! [{:keys [a b c d e f g]}]
+    (let [effective-children (fn [collection]
+                               (->> (collection/effective-children collection)
+                                    (filter #(contains? (set (map :id [a b c d e f g])) (:id %)))
+                                    (map :name)
+                                    set))]
 
-    (testing "make sure that `effective-children` isn't returning children or location of children! Those should get discarded."
-      (with-current-user-perms-for-collections [a b c d e f g]
-        (is (= #{:name :id :description}
-               (set (keys (first (collection/effective-children a))))))))
+      (testing "If we *have* perms for everything we should just see B and C."
+        (with-current-user-perms-for-collections! [a b c d e f g]
+          (is (= #{"B" "C"}
+                 (effective-children a)))))
 
-    (testing "If we don't have permissions for C, C's children (D and F) should be moved up one level"
-      ;;
-      ;;    +-> B                             +-> B
-      ;;    |                                 |
-      ;; A -+-> x -+-> D -> E     ===>     A -+-> D -> E
-      ;;           |                          |
-      ;;           +-> F -> G                 +-> F -> G
-      (with-current-user-perms-for-collections [a b d e f g]
+      (testing "make sure that `effective-children` isn't returning children or location of children! Those should get discarded."
+        (with-current-user-perms-for-collections! [a b c d e f g]
+          (is (= #{:name :id :description}
+                 (set (keys (first (collection/effective-children a))))))))
+
+      (testing "If we don't have permissions for C, C's children (D and F) should be moved up one level"
+        ;;
+        ;;    +-> B                             +-> B
+        ;;    |                                 |
+        ;; A -+-> x -+-> D -> E     ===>     A -+-> D -> E
+        ;;           |                          |
+        ;;           +-> F -> G                 +-> F -> G
+        (with-current-user-perms-for-collections! [a b d e f g]
+          (is (= #{"B" "D" "F"}
+                 (effective-children a)))))
+
+      (testing "If we also remove D, its child (F) should get moved up, for a total of 2 levels."
+        ;;
+        ;;    +-> B                             +-> B
+        ;;    |                                 |
+        ;; A -+-> x -+-> x -> E     ===>     A -+-> E
+        ;;           |                          |
+        ;;           +-> F -> G                 +-> F -> G
+        (with-current-user-perms-for-collections! [a b e f g]
+          (is (= #{"B" "E" "F"}
+                 (effective-children a)))))
+
+      (testing "If we remove C and both its children, both grandchildren should get get moved up"
+        ;;
+        ;;    +-> B                             +-> B
+        ;;    |                                 |
+        ;; A -+-> x -+-> x -> E     ===>     A -+-> E
+        ;;           |                          |
+        ;;           +-> x -> G                 +-> G
+        (with-current-user-perms-for-collections! [a b e g]
+          (is (= #{"B" "E" "G"}
+                 (effective-children a)))))
+
+      (testing "Now try with one of the Children. `effective-children` for C should be D & F"
+        ;;
+        ;; C -+-> D -> E              C -+-> D -> E
+        ;;    |              ===>        |
+        ;;    +-> F -> G                 +-> F -> G
+        (with-current-user-perms-for-collections! [b c d e f g]
+          (is (= #{"D" "F"}
+                 (effective-children c)))))
+
+      (testing "If we remove perms for D & F their respective children should get moved up"
+        ;;
+        ;; C -+-> x -> E              C -+-> E
+        ;;    |              ===>        |
+        ;;    +-> x -> G                 +-> G
+        (with-current-user-perms-for-collections! [b c e g]
+          (is (= #{"E" "G"}
+                 (effective-children c)))))
+
+      (testing "For the Root Collection: can we fetch its effective children?"
+        (with-current-user-perms-for-collections! [a b c d e f g]
+          (is (= #{"A"}
+                 (effective-children collection/root-collection)))))
+
+      (testing "For the Root Collection: if we don't have perms for A, we should get B and C as effective children"
+        (with-current-user-perms-for-collections! [b c d e f g]
+          (is (= #{"B" "C"}
+                 (effective-children collection/root-collection)))))
+
+      (testing "For the Root Collection: if we remove A and C we should get B, D and F"
         (is (= #{"B" "D" "F"}
-               (effective-children a)))))
-
-    (testing "If we also remove D, its child (F) should get moved up, for a total of 2 levels."
-      ;;
-      ;;    +-> B                             +-> B
-      ;;    |                                 |
-      ;; A -+-> x -+-> x -> E     ===>     A -+-> E
-      ;;           |                          |
-      ;;           +-> F -> G                 +-> F -> G
-      (with-current-user-perms-for-collections [a b e f g]
-        (is (= #{"B" "E" "F"}
-               (effective-children a)))))
-
-    (testing "If we remove C and both its children, both grandchildren should get get moved up"
-      ;;
-      ;;    +-> B                             +-> B
-      ;;    |                                 |
-      ;; A -+-> x -+-> x -> E     ===>     A -+-> E
-      ;;           |                          |
-      ;;           +-> x -> G                 +-> G
-      (with-current-user-perms-for-collections [a b e g]
-        (is (= #{"B" "E" "G"}
-               (effective-children a)))))
-
-    (testing "Now try with one of the Children. `effective-children` for C should be D & F"
-      ;;
-      ;; C -+-> D -> E              C -+-> D -> E
-      ;;    |              ===>        |
-      ;;    +-> F -> G                 +-> F -> G
-      (with-current-user-perms-for-collections [b c d e f g]
-        (is (= #{"D" "F"}
-               (effective-children c)))))
-
-    (testing "If we remove perms for D & F their respective children should get moved up"
-      ;;
-      ;; C -+-> x -> E              C -+-> E
-      ;;    |              ===>        |
-      ;;    +-> x -> G                 +-> G
-      (with-current-user-perms-for-collections [b c e g]
-        (is (= #{"E" "G"}
-               (effective-children c)))))
-
-    (testing "For the Root Collection: can we fetch its effective children?"
-      (with-current-user-perms-for-collections [a b c d e f g]
-        (is (= #{"A"}
-               (effective-children collection/root-collection)))))
-
-    (testing "For the Root Collection: if we don't have perms for A, we should get B and C as effective children"
-      (with-current-user-perms-for-collections [b c d e f g]
-        (is (= #{"B" "C"}
-               (effective-children collection/root-collection)))))
-
-    (testing "For the Root Collection: if we remove A and C we should get B, D and F"
-      (with-collection-hierarchy [{:keys [b d e f g]}]
-        (is (= #{"B" "D" "F"}
-               (with-current-user-perms-for-collections [b d e f g]
+               (with-current-user-perms-for-collections! [b d e f g]
                  (effective-children collection/root-collection))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -694,7 +725,7 @@
 ;;; ---------------------------------------------- Perms for Archiving -----------------------------------------------
 
 (deftest perms-for-archiving-test
-  (with-collection-hierarchy [{:keys [a b c d], :as collections}]
+  (with-collection-hierarchy! [{:keys [a b c d], :as collections}]
     (testing "To Archive A, you should need *write* perms for A and all of its descendants, and also the Root Collection..."
       (is (= #{"/collection/root/"
                "/collection/A/"
@@ -740,7 +771,7 @@
 
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (t2.with-temp/with-temp [Collection cr-collection {}]
-      (with-redefs [perms/default-custom-reports-collection (constantly cr-collection)]
+      (with-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
              #"You cannot archive the Custom Reports Collection."
@@ -759,13 +790,12 @@
              Exception
              (collection/perms-for-archiving input)))))))
 
-
 ;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
 
 ;; `*` marks the things that require permissions in charts below!
 
 (deftest perms-for-moving-test
-  (with-collection-hierarchy [{:keys [b c], :as collections}]
+  (with-collection-hierarchy! [{:keys [b c], :as collections}]
     (testing "If we want to move B into C, we should need perms for A, B, and C."
       ;; B because it is being moved; C we are moving
       ;; something into it, A because we are moving something out of it
@@ -830,7 +860,7 @@
                   (perms-path-ids->names collections)))))))
 
 (deftest perms-for-moving-exceptions-test
-  (with-collection-hierarchy [{:keys [a b], :as _collections}]
+  (with-collection-hierarchy! [{:keys [a b], :as _collections}]
     (testing "If you try to calculate permissions to move or archive the Root Collection, throw an Exception!"
       (is (thrown?
            Exception
@@ -863,7 +893,6 @@
         (is (thrown?
              Exception
              (collection/perms-for-moving collection new-parent)))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
@@ -898,7 +927,7 @@
     ;; A -+-> C -+-> D -> E
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [collections]
+    (with-collection-hierarchy! [collections]
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -911,7 +940,7 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+-> C -+-> D
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
-    (with-collection-hierarchy [{:keys [b e], :as collections}]
+    (with-collection-hierarchy! [{:keys [b e], :as collections}]
       (collection/move-collection! e (collection/children-location b))
       (is (= {"A" {"B" {"E" {}}
                    "C" {"D" {}
@@ -925,7 +954,7 @@
     ;; A -+-> C -+-> D -> E  ===>  A -+-> C -+
     ;;           |                           |
     ;;           +-> F -> G                  +-> F -> G
-    (with-collection-hierarchy [{:keys [b d], :as collections}]
+    (with-collection-hierarchy! [{:keys [b d], :as collections}]
       (collection/move-collection! d (collection/children-location b))
       (is (= {"A" {"B" {"D" {"E" {}}}
                    "C" {"F" {"G" {}}}}}
@@ -938,7 +967,7 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+-> C -> D -> E
     ;;           |
     ;;           +-> F -> G         F -> G
-    (with-collection-hierarchy [{:keys [f], :as collections}]
+    (with-collection-hierarchy! [{:keys [f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}}}
@@ -952,7 +981,7 @@
     ;; A -+-> C -+-> D -> E   ===>  F -+-> A -+-> C -+-> D -> E
     ;;           |                     |
     ;;           +-> F -> G            +-> G
-    (with-collection-hierarchy [{:keys [a f], :as collections}]
+    (with-collection-hierarchy! [{:keys [a f], :as collections}]
       (collection/move-collection! f (collection/children-location collection/root-collection))
       (collection/move-collection! a (collection/children-location (t2/select-one Collection :id (u/the-id f))))
       (is (= {"F" {"A" {"B" {}
@@ -960,14 +989,13 @@
                    "G" {}}}
              (collection-locations (vals collections)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Nested Collections: Archiving/Unarchiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest nested-collections-archiving-test
   (testing "Make sure the 'additional-conditions' for collection-locations is working normally"
-    (with-collection-hierarchy [collections]
+    (with-collection-hierarchy! [collections]
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -979,7 +1007,7 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+-> C -+-> D
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
-    (with-collection-hierarchy [{:keys [e], :as collections}]
+    (with-collection-hierarchy! [{:keys [e], :as collections}]
       (t2/update! Collection (u/the-id e) {:archived true})
       (is (= {"A" {"B" {}
                    "C" {"D" {}
@@ -992,8 +1020,8 @@
     ;; A -+-> C -+-> D -> E   ===>  A -+
     ;;           |
     ;;           +-> F -> G
-    (with-collection-hierarchy [{:keys [c], :as collections}]
-      (t2/update! Collection (u/the-id c) {:archived true})
+    (with-collection-hierarchy! [{:keys [c], :as collections}]
+      (archive-collection! c)
       (is (= {"A" {"B" {}}}
              (collection-locations (vals collections) :archived false))))))
 
@@ -1004,9 +1032,9 @@
     ;; A -+-> C -+-> D        ===>  A -+-> C -+-> D -> E
     ;;           |                            |
     ;;           +-> F -> G                   +-> F -> G
-    (with-collection-hierarchy [{:keys [e], :as collections}]
-      (t2/update! Collection (u/the-id e) {:archived true})
-      (t2/update! Collection (u/the-id e) {:archived false})
+    (with-collection-hierarchy! [{:keys [e], :as collections}]
+      (archive-collection! e)
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -1018,9 +1046,9 @@
     ;; A -+                   ===>  A -+-> C -+-> D -> E
     ;;                                        |
     ;;                                        +-> F -> G
-    (with-collection-hierarchy [{:keys [c], :as collections}]
-      (t2/update! Collection (u/the-id c) {:archived true})
-      (t2/update! Collection (u/the-id c) {:archived false})
+    (with-collection-hierarchy! [{:keys [c], :as collections}]
+      (archive-collection! c)
+      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
       (is (= {"A" {"B" {}
                    "C" {"D" {"E" {}}
                         "F" {"G" {}}}}}
@@ -1030,19 +1058,19 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that archiving applies to %ss" (name model))
       ;; object is in E; archiving E should cause object to be archived
-      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                  {:namespace "snippets"})]
+      (with-collection-hierarchy! [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                   {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
-          (t2/update! Collection (u/the-id e) {:archived true})
+          (archive-collection! e)
           (is (= true
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
-      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                    {:namespace "snippets"})]
+      (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                     {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
-          (t2/update! Collection (u/the-id c) {:archived true})
+          (archive-collection! c)
           (is (= true
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
 
@@ -1050,54 +1078,23 @@
   (doseq [model [Card Dashboard NativeQuerySnippet Pulse]]
     (testing (format "Test that unarchiving applies to %ss" (name model))
       ;; object is in E; unarchiving E should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                  {:namespace "snippets"})]
-        (t2/update! Collection (u/the-id e) {:archived true})
+      (with-collection-hierarchy! [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                   {:namespace "snippets"})]
+        (archive-collection! e)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
-          (t2/update! Collection (u/the-id e) {:archived false})
+          (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))
 
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
-      (with-collection-hierarchy [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                    {:namespace "snippets"})]
-        (t2/update! Collection (u/the-id c) {:archived true})
+      (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
+                                                                     {:namespace "snippets"})]
+        (archive-collection! c)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
-          (t2/update! Collection (u/the-id c) {:archived false})
+          (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
           (is (= false
                  (t2/select-one-fn :archived model :id (u/the-id object)))))))))
-
-(deftest archive-while-moving-test
-  (testing "Test that we cannot archive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (is (thrown?
-           Exception
-           (t2/update! Collection (u/the-id c) {:archived true, :location "/"})))))
-
-  (testing "Test that we cannot unarchive a Collection at the same time we are moving it"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (t2/update! Collection (u/the-id c) {:archived true})
-      (is (thrown?
-           Exception
-           (t2/update! Collection (u/the-id c) {:archived false, :location "/"})))))
-
-  (testing "Passing in a value of archived that is the same as the value in the DB shouldn't affect anything however!"
-    (with-collection-hierarchy [{:keys [c], :as _collections}]
-      (t2/update! Collection (u/the-id c) {:archived false, :location "/"})
-      (is (= "/"
-             (t2/select-one-fn :location Collection :id (u/the-id c)))))))
-
-(deftest archive-noop-shouldnt-affect-descendants-test
-  (testing "Check that attempting to unarchive a Card that's not archived doesn't affect archived descendants"
-    (with-collection-hierarchy [{:keys [c e], :as _collections}]
-      (t2/update! Collection (u/the-id e) {:archived true})
-      (t2/update! Collection (u/the-id c) {:archived false})
-      (is (= true
-             (t2/select-one-fn :archived Collection :id (u/the-id e)))))))
-
-;; TODO - can you unarchive a Card that is inside an archived Collection??
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Permissions Inheritance Upon Creation!                                     |
@@ -1109,12 +1106,12 @@
   ;; we can reuse the `perms-path-ids->names` helper function from above, just need to stick `collection` in a map
   ;; to simulate the output of the `with-collection-hierarchy` macro
   (perms-path-ids->names
-    (zipmap (map :name collections)
-            collections)
-    (t2/select-fn-set :object Permissions
-                      {:where [:and
-                               [:like :object "/collection/%"]
-                               [:= :group_id (u/the-id perms-group)]]})))
+   (zipmap (map :name collections)
+           collections)
+   (t2/select-fn-set :object Permissions
+                     {:where [:and
+                              [:like :object "/collection/%"]
+                              [:= :group_id (u/the-id perms-group)]]})))
 
 (deftest copy-root-collection-perms-test
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
@@ -1208,7 +1205,6 @@
                                Collection grandchild {:location (collection/children-location child)}]
         (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
         (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
@@ -1366,7 +1362,6 @@
                "/collection/C/"}
              (group->perms [a b c] group))))))
 
-
 ;;; --------------------------------------------- Impersonal -> Personal ---------------------------------------------
 
 (deftest move-from-impersonal-to-personal-test
@@ -1505,23 +1500,20 @@
            #"Collection does not exist"
            (collection/check-collection-namespace Card Integer/MAX_VALUE))))))
 
-(deftest delete-collection-set-children-collection-id-to-null-test
-  (testing "When deleting a Collection, should change collection_id of Children to nil instead of Cascading"
+(deftest delete-collection-cascades
+  (testing "When deleting a Collection, should delete things that used to be in that collection"
     (t2.with-temp/with-temp [Collection {coll-id :id}      {}
                              Card       {card-id :id}      {:collection_id coll-id}
                              Dashboard  {dashboard-id :id} {:collection_id coll-id}
                              Pulse      {pulse-id :id}     {:collection_id coll-id}]
       (t2/delete! Collection :id coll-id)
-      (is (t2/exists? Card :id card-id)
-          "Card")
-      (is (t2/exists? Dashboard :id dashboard-id)
-          "Dashboard")
-      (is (t2/exists? Pulse :id pulse-id)
-          "Pulse"))
+      (is (not (t2/exists? Card :id card-id)))
+      (is (not (t2/exists? Dashboard :id dashboard-id)))
+      (is (not (t2/exists? Pulse :id pulse-id))))
     (t2.with-temp/with-temp [Collection         {coll-id :id}    {:namespace "snippets"}
                              NativeQuerySnippet {snippet-id :id} {:collection_id coll-id}]
       (t2/delete! Collection :id coll-id)
-      (is (t2/exists? NativeQuerySnippet :id snippet-id)
+      (is (not (t2/exists? NativeQuerySnippet :id snippet-id))
           "Snippet"))))
 
 (deftest collections->tree-test
@@ -1546,8 +1538,8 @@
                                    :location "/1/3/"
                                    :here     #{:card}
                                    :children [{:name "G", :id 7, :location "/1/3/6/", :children []}]}]}]}
-          {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}
-          {:name "H", :id 8, :location "/", :children []}]
+          {:name "H", :id 8, :location "/", :children []}
+          {:name "aaa", :id 9, :location "/", :children [] :here #{:card}}]
          (collection/collections->tree
           {:dataset #{4 5} :card #{6 9}}
           [{:name "A", :id 1, :location "/"}
@@ -1596,28 +1588,40 @@
                                                   {:id 5, :name "a", :location "/3/1/2/"}
                                                   {:id 6, :name "a", :location "/3/"}])]
       (testing (format "Permutation: %s" (pr-str (map :id collections)))
-        (is (= [{:id       3
-                 :name     "a"
-                 :location "/"
-                 :children [{:id       1
-                             :name     "a"
-                             :location "/3/"
-                             :children [{:id       2
-                                         :name     "a"
-                                         :location "/3/1/"
-                                         :children [{:id       5
-                                                     :name     "a"
-                                                     :location "/3/1/2/"
-                                                     :children []}]}
-                                        {:id       4
-                                         :name     "a"
-                                         :location "/3/1/"
-                                         :children []}]}
-                            {:id       6
-                             :name     "a"
-                             :location "/3/"
-                             :children []}]}]
-               (collection/collections->tree {} collections)))))))
+        (let [id->idx (into {} (map-indexed
+                                (fn [i c]
+                                  [(:id c) i])
+                                collections))
+              correctly-order (fn [colls]
+                                (sort-by (comp id->idx :id) colls))]
+          (testing "sanity check: correctly-order puts collections into the order they were passed in"
+            (is (= collections (correctly-order collections))))
+          (testing "A correct tree is generated, with children ordered as they were passed in"
+            (is (= [{:id       3
+                     :name     "a"
+                     :location "/"
+                     :children (correctly-order
+                                [{:id       1
+                                  :name     "a"
+                                  :location "/3/"
+                                  :children (correctly-order
+                                             [{:id       2
+                                               :name     "a"
+                                               :location "/3/1/"
+                                               :children (correctly-order
+                                                          [{:id       5
+                                                            :name     "a"
+                                                            :location "/3/1/2/"
+                                                            :children []}])}
+                                              {:id       4
+                                               :name     "a"
+                                               :location "/3/1/"
+                                               :children []}])}
+                                 {:id       6
+                                  :name     "a"
+                                  :location "/3/"
+                                  :children []}])}]
+                   (collection/collections->tree {} collections)))))))))
 
 (deftest ^:parallel annotate-collections-test
   (let [collections [{:id 1, :name "a", :location "/"}
@@ -1686,8 +1690,8 @@
                              Collection cr-collection    {}
                              Card       cr-card          {:collection_id (:id cr-collection)}
                              Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (with-redefs [perms/default-audit-collection          (constantly audit-collection)
-                    perms/default-custom-reports-collection (constantly cr-collection)]
+      (with-redefs [audit/default-audit-collection          (constantly audit-collection)
+                    audit/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))

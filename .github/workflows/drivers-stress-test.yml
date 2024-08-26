@@ -21,7 +21,6 @@ on:
           - Athena
           - BigQuery
           - Druid
-          - Google Analytics
           - Google Classpath Test
           - Maria DB
           - Maria DB (latest)
@@ -108,42 +107,6 @@ jobs:
       with:
         junit-name: 'be-tests-druid-ee'
         test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
-
-  be-tests-googleanalytics-ee:
-    if: inputs.driver == 'Google Analytics'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: googleanalytics
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test Google Analytics driver
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-tests-googleanalytics-ee'
-        test-args: ":only ${{ inputs.test }} :times ${{ inputs.times }}"
-
-  be-google-related-drivers-classpath-test:
-    if: inputs.driver == 'Google Classpath Test'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    env:
-      CI: 'true'
-      DRIVERS: 'googleanalytics,bigquery-cloud-sdk'
-      MB_BIGQUERY_TEST_PROJECT_ID: ${{ secrets.BIGQUERY_TEST_PROJECT_ID }}
-      MB_BIGQUERY_TEST_CLIENT_ID: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_ID }}
-      MB_BIGQUERY_TEST_CLIENT_SECRET: ${{ secrets.MB_BIGQUERY_TEST_CLIENT_SECRET }}
-      MB_BIGQUERY_TEST_ACCESS_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_ACCESS_TOKEN }}
-      MB_BIGQUERY_TEST_REFRESH_TOKEN: ${{ secrets.MB_BIGQUERY_TEST_REFRESH_TOKEN }}
-      MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON: ${{ secrets.MB_BIGQUERY_CLOUD_SDK_TEST_SERVICE_ACCOUNT_JSON }}
-    steps:
-    - uses: actions/checkout@v4
-    - name: Test Google Related Drivers Classpath
-      uses: ./.github/actions/test-driver
-      with:
-        junit-name: 'be-google-related-drivers-classpath-test'
-        test-args: ':only "[metabase.query-processor-test.expressions-test metabase.driver.google-test metabase.driver.googleanalytics-test ${{ inputs.test }}] :times ${{ inputs.times }}"'
 
   be-tests-mariadb-10-2-ee:
     if: inputs.driver == 'Maria DB'

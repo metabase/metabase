@@ -15,6 +15,7 @@ export interface AppBarProps {
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
+  isEmbedded?: boolean;
   isNewButtonVisible?: boolean;
   isProfileLinkVisible?: boolean;
   isCollectionPathVisible?: boolean;
@@ -28,7 +29,11 @@ const AppBar = (props: AppBarProps): JSX.Element => {
   const isSmallScreen = useIsSmallScreen();
 
   return (
-    <AppBarRoot data-testid="app-bar" aria-label={t`Navigation bar`}>
+    <AppBarRoot
+      data-element-id="app-bar"
+      data-testid="app-bar"
+      aria-label={t`Navigation bar`}
+    >
       <ErrorBoundary>
         {isSmallScreen ? (
           <AppBarSmall {...props} />

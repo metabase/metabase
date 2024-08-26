@@ -10,8 +10,8 @@ import { ActionsApi } from "metabase/services";
 import type {
   WritebackAction,
   WritebackActionId,
-  WritebackQueryAction,
   WritebackImplicitQueryAction,
+  WritebackQueryAction,
 } from "metabase-types/api";
 import type { Dispatch } from "metabase-types/store";
 
@@ -92,6 +92,9 @@ const enableImplicitActionsForModel =
 const CREATE_PUBLIC_LINK = "metabase/entities/actions/CREATE_PUBLIC_LINK";
 const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Actions = createEntity({
   name: "actions",
   nameOne: "action",

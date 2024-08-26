@@ -5,13 +5,14 @@ import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
 import { turnQuestionIntoDataset } from "metabase/query_builder/actions";
 
 import {
-  FeatureOverviewContainer,
   DatasetImg,
   DatasetTitle,
   DatasetValueProp,
+  FeatureOverviewContainer,
 } from "./NewDatasetModal.styled";
 
 const propTypes = {
@@ -33,7 +34,7 @@ function NewDatasetModal({ turnQuestionIntoDataset, onClose }) {
     <ModalContent
       footer={[
         <Link
-          className="text-brand"
+          className={CS.textBrand}
           key="cancel"
           onClick={onClose}
         >{t`Cancel`}</Link>,

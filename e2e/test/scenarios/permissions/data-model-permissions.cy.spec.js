@@ -1,11 +1,11 @@
 import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  modal,
-  describeEE,
   assertPermissionForItem,
+  describeEE,
+  modal,
   modifyPermission,
+  restore,
   setTokenFeatures,
 } from "e2e/support/helpers";
 
@@ -30,7 +30,6 @@ describeEE("scenarios > admin > permissions", () => {
 
   it("allows data model permission for a table in database", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
     // Change permission
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
     modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
@@ -80,7 +79,6 @@ describeEE("scenarios > admin > permissions", () => {
 
   it("allows changing data model permission for an entire database", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
     // Change data model permission
     modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
@@ -115,12 +113,9 @@ describeEE("scenarios > admin > permissions", () => {
 
   it("shows `Field access denied` for foreign keys from tables user does not have access to (metabase#21762)", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
     // Change data model permission
     modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Granular");
     modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
-    modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
-    cy.button("Change").click();
 
     savePermissionsGraph();
 

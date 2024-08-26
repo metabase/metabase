@@ -2,25 +2,26 @@ import { assoc, assocIn } from "icepick";
 
 import { createMockEntitiesState } from "__support__/store";
 import {
-  getQuestion,
   getIsResultDirty,
   getNativeEditorCursorOffset,
   getNativeEditorSelectedText,
+  getQuestion,
   getQuestionDetailsTimelineDrawerState,
 } from "metabase/query_builder/selectors";
-import Question from "metabase-lib/Question";
+import Question from "metabase-lib/v1/Question";
 import { createMockTable } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import {
-  createMockState,
   createMockQueryBuilderState,
   createMockQueryBuilderUIControlsState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 function getBaseState({ uiControls = {}, ...state } = {}) {
@@ -75,13 +76,13 @@ describe("getQuestion", () => {
 
   it("should return composed dataset when dataset is open", () => {
     const card = {
-      id: 5,
+      id: 1,
       type: "model",
       dataset_query: {
-        database: 1,
+        database: SAMPLE_DB_ID,
         type: "query",
         query: {
-          "source-table": 1,
+          "source-table": ORDERS_ID,
         },
       },
     };
@@ -89,7 +90,7 @@ describe("getQuestion", () => {
     const question = getQuestion(getBaseState({ card }));
 
     expect(question.card()).toEqual(
-      assocIn(card, ["dataset_query", "query", "source-table"], "card__5"),
+      assocIn(card, ["dataset_query", "query", "source-table"], "card__1"),
     );
   });
 

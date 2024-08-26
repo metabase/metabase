@@ -1,24 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
+import { useGetPasswordResetTokenStatusQuery } from "metabase/api";
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 
-import {
-  resetPassword,
-  validatePassword,
-  validatePasswordToken,
-} from "../../actions";
+import { resetPassword, validatePassword } from "../../actions";
 import type { ResetPasswordData } from "../../types";
 import { AuthLayout } from "../AuthLayout";
 import { ResetPasswordForm } from "../ResetPasswordForm";
 
 import { InfoBody, InfoMessage, InfoTitle } from "./ResetPassword.styled";
-
-type ViewType = "none" | "form" | "expired";
 
 interface ResetPasswordQueryParams {
   token: string;
@@ -32,17 +27,9 @@ export const ResetPassword = ({
   params,
 }: ResetPasswordProps): JSX.Element | null => {
   const { token } = params;
-  const [view, setView] = useState<ViewType>("none");
   const dispatch = useDispatch();
-
-  const handleLoad = useCallback(async () => {
-    try {
-      await validatePasswordToken(token);
-      setView("form");
-    } catch (error) {
-      setView("expired");
-    }
-  }, [token]);
+  const { data: status, isLoading } =
+    useGetPasswordResetTokenStatusQuery(token);
 
   const handlePasswordSubmit = useCallback(
     async ({ password }: ResetPasswordData) => {
@@ -53,19 +40,20 @@ export const ResetPassword = ({
     [token, dispatch],
   );
 
-  useEffect(() => {
-    handleLoad();
-  }, [handleLoad]);
+  if (isLoading) {
+    return <AuthLayout />;
+  }
 
   return (
     <AuthLayout>
-      {view === "form" && (
+      {status?.valid ? (
         <ResetPasswordForm
           onValidatePassword={validatePassword}
           onSubmit={handlePasswordSubmit}
         />
+      ) : (
+        <ResetPasswordExpired />
       )}
-      {view === "expired" && <ResetPasswordExpired />}
     </AuthLayout>
   );
 };

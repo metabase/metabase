@@ -1,15 +1,52 @@
 import { t } from "ttag";
 
-import { createEntity, undo } from "metabase/lib/entities";
+import { alertApi } from "metabase/api";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  undo,
+} from "metabase/lib/entities";
 import { addUndo } from "metabase/redux/undo";
-import { AlertApi } from "metabase/services";
 
 export const UNSUBSCRIBE = "metabase/entities/alerts/unsubscribe";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Alerts = createEntity({
   name: "alerts",
   nameOne: "alert",
   path: "/api/alert",
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        alertApi.endpoints.listAlerts,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery.id,
+        dispatch,
+        alertApi.endpoints.listAlerts,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        alertApi.endpoints.createAlert,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        alertApi.endpoints.updateAlert,
+      ),
+    delete: () => {
+      throw new TypeError("Alerts.api.delete is not supported");
+    },
+  },
 
   actionTypes: {
     UNSUBSCRIBE,
@@ -27,7 +64,11 @@ const Alerts = createEntity({
     unsubscribe:
       ({ id }) =>
       async dispatch => {
-        await AlertApi.unsubscribe({ id });
+        await entityCompatibleQuery(
+          id,
+          dispatch,
+          alertApi.endpoints.deleteAlertSubscription,
+        );
         dispatch(addUndo({ message: t`Successfully unsubscribed` }));
         dispatch({ type: UNSUBSCRIBE, payload: { id } });
         dispatch({ type: Alerts.actionTypes.INVALIDATE_LISTS_ACTION });

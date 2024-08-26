@@ -1,13 +1,13 @@
 /* eslint-disable react/prop-types */
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import Value from "metabase/components/Value";
 import { color } from "metabase/lib/colors";
 import ViewPill from "metabase/query_builder/components/view/ViewPill";
-import { getFilterArgumentFormatOptions } from "metabase-lib/operators/utils";
-import { getFilterDimension } from "metabase-lib/queries/utils/dimension";
-import { hasFilterOptions } from "metabase-lib/queries/utils/filter";
-import { generateTimeFilterValuesDescriptions } from "metabase-lib/queries/utils/query-time";
+import { getFilterArgumentFormatOptions } from "metabase-lib/v1/operators/utils";
+import { getFilterDimension } from "metabase-lib/v1/queries/utils/dimension";
+import { hasFilterOptions } from "metabase-lib/v1/queries/utils/filter";
+import { generateTimeFilterValuesDescriptions } from "metabase-lib/v1/queries/utils/query-time";
 
 const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   const items = [field, operator, ...values];

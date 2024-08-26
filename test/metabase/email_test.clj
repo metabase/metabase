@@ -2,13 +2,14 @@
   "Various helper functions for testing email functionality."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.email :as email]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
-   [metabase.util :refer [prog1]]
+   [metabase.util :as u :refer [prog1]]
    [metabase.util.retry :as retry]
    [metabase.util.retry-test :as rt]
    [postal.message :as message])
@@ -45,7 +46,7 @@
     ;; sending the message. It will block that thread, counting the number of messages. If it has reached it's goal,
     ;; it will deliver the promise
     (add-watch inbox ::inbox-watcher
-               (fn [_ _ _ new-value]
+               (fn [_key _ref _old-value new-value]
                  (let [num-msgs (count (apply concat (vals new-value)))]
                    (when (<= n num-msgs)
                      (deliver p num-msgs)))))
@@ -68,7 +69,7 @@
   [n & body]
   `(do-with-expected-messages ~n (fn [] ~@body)))
 
-(defn do-with-fake-inbox
+(defn do-with-fake-inbox!
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
   [f]
   (with-redefs [email/send-email! fake-inbox-email-fn]
@@ -77,6 +78,8 @@
                                        email-smtp-port 587]
       (f))))
 
+;;; TODO -- rename to `with-fake-inbox!` since it's not thread-safe and remove the Kondo ignore below.
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-fake-inbox
   "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username`
    and `email-smtp-password` (which will cause `metabase.email/email-configured?` to return `true`, and execute `body`.
@@ -88,7 +91,7 @@
        @inbox)"
   [& body]
   {:style/indent 0}
-  `(do-with-fake-inbox (fn [] ~@body)))
+  `(do-with-fake-inbox! (fn [] ~@body)))
 
 (defn- create-email-body->regex-fn
   "Returns a function expecting the email body structure. It will apply the regexes in `regex-seq` over the body and
@@ -109,9 +112,9 @@
                              :let [matches (-> body first email-body->regex-boolean)]
                              :when (some true? (vals matches))]
                          (cond-> email
-                             (:to email)  (update :to set)
-                             (:bcc email) (update :bcc set)
-                             true         (assoc :body matches)))))
+                           (:to email)  (update :to set)
+                           (:bcc email) (update :bcc set)
+                           true         (assoc :body matches)))))
          (m/filter-vals seq))))
 
 (defn regex-email-bodies
@@ -171,29 +174,48 @@
       MimeType.
       .getBaseType))
 
+(defn- strip-timestamp
+  "Remove the timestamp portion of attachment filenames.
+  This is useful for creating stable filename keys in tests.
+  For example, see `summarize-attachment` below.
+
+  Eg. test_card_2024-03-05T22:30:24.077306Z.csv -> test_card.csv"
+  [fname]
+  (let [ext (last (str/split fname #"\."))
+        name-parts (butlast (str/split fname #"_"))]
+    (format "%s.%s" (str/join "_" name-parts) ext)))
+
 (defn- summarize-attachment [email-attachment]
   (-> email-attachment
       (update :content-type mime-type)
       (update :content class)
-      (update :content-id boolean)))
+      (update :content-id boolean)
+      (u/update-if-exists :file-name strip-timestamp)))
+
+(defn summarize-multipart-single-email
+  [email & regexes]
+  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)
+        body-or-content           (fn [email-body-seq]
+                                    (doall
+                                     (for [{email-type :type :as email-part} email-body-seq]
+                                       (if (string? email-type)
+                                         (email-body->regex-boolean email-part)
+                                         (summarize-attachment email-part)))))]
+    (cond-> email
+      (:recipients email) (update :recipients set)
+      (:to email)         (update :to set)
+      (:bcc email)        (update :bcc set)
+      (:message email)    (update :message body-or-content)
+      (:body email)       (update :body body-or-content))))
 
 (defn summarize-multipart-email
   "For text/html portions of an email, this is similar to `regex-email-bodies`, but for images in the attachments will
   summarize the contents for comparison in expects"
   [& regexes]
-  (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]
-    (m/map-vals (fn [emails-for-recipient]
-                  (for [email emails-for-recipient]
-                    (cond-> email
-                      (:to email)  (update :to set)
-                      (:bcc email) (update :bcc set)
-                      true         (update :body (fn [email-body-seq]
-                                                   (doall
-                                                    (for [{email-type :type :as email-part} email-body-seq]
-                                                      (if (string? email-type)
-                                                        (email-body->regex-boolean email-part)
-                                                        (summarize-attachment email-part)))))))))
-                @inbox)))
+  (m/map-vals (fn [emails-for-recipient]
+                (for [email emails-for-recipient]
+                  (apply summarize-multipart-single-email email regexes)))
+              @inbox))
 
 (defn email-to
   "Creates a default email map for `user-or-user-kwd`, as would be returned by `with-fake-inbox`."
@@ -212,8 +234,8 @@
 (defn temp-csv
   [file-basename content]
   (prog1 (File/createTempFile file-basename ".csv")
-    (with-open [file (io/writer <>)]
-      (.write ^java.io.Writer file ^String content))))
+         (with-open [file (io/writer <>)]
+           (.write ^java.io.Writer file ^String content))))
 
 (defn mock-send-email!
   "To stub out email sending, instead returning the would-be email contents as a string"
@@ -258,11 +280,11 @@
         (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
         (is (= 0 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "error metrics collection"
-      (let [calls (atom nil)]
-            (let [retry-config (assoc (#'retry/retry-configuration)
-                                  :max-attempts 1
-                                  :initial-interval-millis 1)
-              test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
+      (let [calls        (atom nil)
+            retry-config (assoc (#'retry/retry-configuration)
+                                :max-attempts 1
+                                :initial-interval-millis 1)
+            test-retry   (retry/random-exponential-backoff-retry "test-retry" retry-config)]
         (with-redefs [prometheus/inc    #(swap! calls conj %)
                       retry/decorate    (rt/test-retry-decorate-fn test-retry)
                       email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
@@ -272,7 +294,7 @@
            :message-type :html
            :message      "101. Metabase will make you a better person"))
         (is (= 1 (count (filter #{:metabase-email/messages} @calls))))
-        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls)))))))
+        (is (= 1 (count (filter #{:metabase-email/message-errors} @calls))))))
     (testing "basic sending without email-from-name"
       (tu/with-temporary-setting-values [email-from-name nil]
         (is (=

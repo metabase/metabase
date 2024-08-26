@@ -10,11 +10,12 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.config :as config]
-   [metabase.db.spec :as mdb.spec]
+   [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -22,7 +23,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -31,7 +31,7 @@
    [metabase.upload :as upload]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru trs]]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log])
   (:import
    (java.io File)
@@ -53,20 +53,24 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(doseq [[feature supported?] {:persist-models                         true
+(doseq [[feature supported?] {;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the
+                              ;; server and the columns themselves. Since this isn't something we can really change in
+                              ;; the query itself don't present the option to the users in the UI
+                              :case-sensitivity-string-filter-options false
                               :convert-timezone                       true
                               :datetime-diff                          true
-                              :now                                    true
-                              :regex                                  false
-                              :percentile-aggregations                false
                               :full-join                              false
-                              :uploads                                true
+                              :index-info                             true
+                              :now                                    true
+                              :percentile-aggregations                false
+                              :persist-models                         true
                               :schemas                                false
-                              ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
-                              ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
-                              ;; users in the UI
-                              :case-sensitivity-string-filter-options false
-                              :index-info                             true}]
+                              :uploads                                true
+                              :identifiers-with-spaces                true
+                              ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
+                              ;; fully support `offset` we need to do some kooky query transformations just for MySQL
+                              ;; and make this work.
+                              :window-functions/offset                false}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -121,15 +125,15 @@
      (fn [^java.sql.Connection conn]
        (when (unsupported-version? (.getMetaData conn))
          (log/warn
-          (u/format-color 'red
-                          (str
-                           "\n\n********************************************************************************\n"
-                           (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+          (u/format-color :red
+                          (str "\n\n********************************************************************************\n"
+                               (format
+                                "WARNING: Metabase only officially supports MySQL %s/MariaDB %s and above."
                                 min-supported-mysql-version
                                 min-supported-mariadb-version)
-                           "\n"
-                           (trs "All Metabase features may not work properly when using an unsupported version.")
-                           "\n********************************************************************************\n"))))))))
+                               "\n"
+                               "All Metabase features may not work properly when using an unsupported version."
+                               "\n********************************************************************************\n"))))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -254,6 +258,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver.sql/json-field-length :mysql
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :char]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
@@ -432,11 +440,11 @@
 (defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
   (str-to-date "%Y-%m-%d"
                (h2x/concat (h2x/year expr)
-                          (h2x/literal "-")
-                          (h2x/- (h2x/* (h2x/quarter expr)
-                                      3)
-                                2)
-                          (h2x/literal "-01"))))
+                           (h2x/literal "-")
+                           (h2x/- (h2x/* (h2x/quarter expr)
+                                         3)
+                                  2)
+                           (h2x/literal "-01"))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -477,7 +485,7 @@
     :DATETIME   :type/DateTime
     :DECIMAL    :type/Decimal
     :DOUBLE     :type/Float
-    :ENUM       :type/*
+    :ENUM       :type/MySQLEnum
     :FLOAT      :type/Float
     :INT        :type/Integer
     :INTEGER    :type/Integer
@@ -512,14 +520,21 @@
 
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."
-  { ;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
+  {;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
    :zeroDateTimeBehavior "convertToNull"
    ;; Force UTF-8 encoding of results
    :useUnicode           true
    :characterEncoding    "UTF8"
    :characterSetResults  "UTF8"
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
-   :useCompression       true})
+   :useCompression       true
+   ;; record transaction isolation level and auto-commit locally, and avoid hitting the DB if we do something like
+   ;; `.setTransactionIsolation()` to something we previously set it to. Since we do this every time we run a
+   ;; query (see [[metabase.driver.sql-jdbc.execute/set-best-transaction-level!]]) this should speed up things a bit by
+   ;; removing that overhead. See also
+   ;; https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-performance-extensions.html#cj-conn-prop_useLocalSessionState
+   ;; and #44507
+   :useLocalSessionState true})
 
 (defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
@@ -543,7 +558,7 @@
         ssl?          (or ssl? (= "true" (get addl-opts-map "useSSL")))
         ssl-cert?     (and ssl? (some? ssl-cert))]
     (when (and ssl? (not (contains? addl-opts-map "trustServerCertificate")))
-      (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
+      (log/info "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."))
     (merge
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
@@ -551,7 +566,7 @@
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
-       (-> (mdb.spec/spec :mysql details)
+       (-> (mdb/spec :mysql details)
            (maybe-add-program-name-option addl-opts-map)
            (sql-jdbc.common/handle-additional-options details))))))
 
@@ -647,7 +662,7 @@
       "UTC"
       offset)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetTime]
+(defmethod sql.qp/inline-value [:mysql OffsetTime]
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
   ;; it to the appropriate timezone
@@ -655,13 +670,13 @@
           (t/format "HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetDateTime]
+(defmethod sql.qp/inline-value [:mysql OffsetDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql ZonedDateTime]
+(defmethod sql.qp/inline-value [:mysql ZonedDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)

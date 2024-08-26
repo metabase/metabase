@@ -1,8 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export interface FilterWidgetRootProps {
   isSelected: boolean;
 }
@@ -12,11 +10,12 @@ export const FilterWidgetRoot = styled.div<FilterWidgetRootProps>`
   flex-shrink: 0;
   border: 2px solid transparent;
   border-radius: 0.5rem;
+  cursor: pointer;
 
   ${({ isSelected }) =>
     isSelected &&
     css`
-      border-color: ${color("filter")};
+      border-color: var(--mb-color-filter);
     `}
 `;
 
@@ -35,7 +34,7 @@ export const FilterSection = styled.div`
 `;
 
 export const FilterField = styled(FilterSection)`
-  color: ${color("filter")};
+  color: var(--mb-color-filter);
   font-weight: 700;
 
   &:hover {
@@ -43,14 +42,14 @@ export const FilterField = styled(FilterSection)`
   }
 
   ${QueryOption} {
-    color: ${color("filter")};
+    color: var(--mb-color-filter);
   }
 `;
 
 export const FilterOperator = styled(FilterSection)`
-  color: ${color("filter")};
+  color: var(--mb-color-filter);
 
   ${QueryOption} {
-    color: ${color("filter")};
+    color: var(--mb-color-filter);
   }
 `;

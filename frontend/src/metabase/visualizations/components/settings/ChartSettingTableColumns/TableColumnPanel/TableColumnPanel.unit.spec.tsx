@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,
@@ -43,26 +43,18 @@ const COLUMNS = [
 const COLUMN_SETTINGS = [
   createMockTableColumnOrderSetting({
     name: "TOTAL",
-    key: `["ref",["field",${ORDERS.TOTAL},null]]`,
-    fieldRef: ["field", ORDERS.TOTAL, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "ID",
-    key: `["ref",["field",${ORDERS.ID},null]]`,
-    fieldRef: ["field", ORDERS.ID, null],
     enabled: true,
   }),
   createMockTableColumnOrderSetting({
     name: "TAX",
-    key: `["ref",["field",${ORDERS.TAX},null]]`,
-    fieldRef: ["field", ORDERS.TAX, null],
     enabled: false,
   }),
   createMockTableColumnOrderSetting({
     name: "SUBTOTAL",
-    key: `["ref",["field",${ORDERS.SUBTOTAL},null]]`,
-    fieldRef: ["field", ORDERS.SUBTOTAL, null],
     enabled: false,
   }),
 ];
@@ -105,20 +97,10 @@ describe("DatasetColumnSelector", () => {
     expect(items[3]).toHaveTextContent("Subtotal");
   });
 
-  it("should display columns without matching setting", () => {
-    setup({ columnSettings: [] });
-    const items = screen.getAllByTestId(/draggable-item/);
-    expect(items).toHaveLength(4);
-    expect(items[0]).toHaveTextContent("ID");
-    expect(items[1]).toHaveTextContent("Total");
-    expect(items[2]).toHaveTextContent("Tax");
-    expect(items[3]).toHaveTextContent("Subtotal");
-  });
-
-  it("should allow to enable a column", () => {
+  it("should allow to enable a column", async () => {
     const { onChange } = setup();
 
-    enableColumn("Tax");
+    await enableColumn("Tax");
 
     const columnIndex = findColumnIndex("TAX", COLUMN_SETTINGS);
     const newSettings = [...COLUMN_SETTINGS];
@@ -126,10 +108,10 @@ describe("DatasetColumnSelector", () => {
     expect(onChange).toHaveBeenCalledWith(newSettings);
   });
 
-  it("should allow to disable a column", () => {
+  it("should allow to disable a column", async () => {
     const { onChange } = setup();
 
-    disableColumn("ID");
+    await disableColumn("ID");
 
     const columnIndex = findColumnIndex("ID", COLUMN_SETTINGS);
     const newSettings = [...COLUMN_SETTINGS];
@@ -138,12 +120,12 @@ describe("DatasetColumnSelector", () => {
   });
 });
 
-function enableColumn(columnName: string) {
-  userEvent.click(screen.getByTestId(`${columnName}-show-button`));
+async function enableColumn(columnName: string) {
+  await userEvent.click(screen.getByTestId(`${columnName}-show-button`));
 }
 
-function disableColumn(columnName: string) {
-  userEvent.click(screen.getByTestId(`${columnName}-hide-button`));
+async function disableColumn(columnName: string) {
+  await userEvent.click(screen.getByTestId(`${columnName}-hide-button`));
 }
 
 function findColumnIndex(

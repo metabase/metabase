@@ -1,11 +1,24 @@
 (ns metabase.test.data.redshift
+  "We use a single redshift database for all test runs in CI, so to isolate test runs and test databases we:
+   1. Use a unique session schema for the test run (unique-session-schema), and only sync tables in that schema.
+   2. Prefix table names with the database name, and for each database we only sync tables with the matching prefix.
+
+   e.g.
+   H2 Tests                                          | Redshift Tests
+   --------------------------------------------------+------------------------------------------------
+   `test-data`            PUBLIC.VENUES.ID           | <unique-session-schema>.test_data_venues.id
+   `test-data`            PUBLIC.CHECKINS.USER_ID    | <unique-session-schema>.test_data_checkins.user_id
+   `sad-toucan-incidents` PUBLIC.INCIDENTS.TIMESTAMP | <unique-session-schema>.sad_toucan_incidents.timestamp"
   (:require
    [clojure.string :as str]
+   [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase.driver :as driver]
+   [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
@@ -14,7 +27,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod tx/supports-time-type? :redshift [_driver] false)
+(defmethod driver/database-supports? [:redshift :test/time-type]
+  [_driver _feature _database]
+  false)
 
 ;; we don't need to add test extensions here because redshift derives from Postgres and thus already has test
 ;; extensions
@@ -39,19 +54,21 @@
   [_ _]
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
+(defn unique-session-schema []
+  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
+
 (def db-connection-details
-  (delay {:host     (tx/db-test-env-var-or-throw :redshift :host)
-          :port     (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
-          :db       (tx/db-test-env-var-or-throw :redshift :db)
-          :user     (tx/db-test-env-var-or-throw :redshift :user)
-          :password (tx/db-test-env-var-or-throw :redshift :password)}))
+  (delay {:host                    (tx/db-test-env-var-or-throw :redshift :host)
+          :port                    (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))
+          :db                      (tx/db-test-env-var-or-throw :redshift :db)
+          :user                    (tx/db-test-env-var-or-throw :redshift :user)
+          :password                (tx/db-test-env-var-or-throw :redshift :password)
+          :schema-filters-type     "inclusion"
+          :schema-filters-patterns (str "spectrum," (unique-session-schema))}))
 
 (defmethod tx/dbdef->connection-details :redshift
   [& _]
   @db-connection-details)
-
-(defn unique-session-schema []
-  (str (sql.tu.unique-prefix/unique-prefix) "schema"))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)
@@ -108,27 +125,26 @@
   [^java.sql.Connection conn schemas]
   (let [threshold (t/minus (t/instant) (t/hours hours-before-expired-threshold))]
     (with-open [stmt (.createStatement conn)]
-      (let [classify! (fn [schema-name]
-                        (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
-                                               schema-name)
-                                   rset (.executeQuery stmt sql)]
-                               (if (.next rset)
-                                 (let [date-string (.getString rset "value")
-                                       created-at  (java.time.Instant/parse date-string)]
-                                   (if (t/before? created-at threshold)
-                                     :expired
-                                     :recent))
-                                 :lacking-created-at))
-                             (catch com.amazon.redshift.util.RedshiftException e
-                               (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
-                                 :old-style-cache
-                                 (do (log/error "Error classifying cache schema" e)
-                                     :unknown-error)))
-                             (catch Exception e
-                               (log/error "Error classifying cache schema" e)
-                               :unknown-error)))]
-
-        (group-by classify! schemas)))))
+      (let [classify (fn [schema-name]
+                       (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
+                                              schema-name)]
+                              (with-open [rset (.executeQuery stmt sql)]
+                                (if (.next rset)
+                                  (let [date-string (.getString rset "value")
+                                        created-at  (java.time.Instant/parse date-string)]
+                                    (if (t/before? created-at threshold)
+                                      :expired
+                                      :recent))
+                                  :lacking-created-at)))
+                            (catch com.amazon.redshift.util.RedshiftException e
+                              (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+                                :old-style-cache
+                                (do (log/error e "Error classifying cache schema")
+                                    :unknown-error)))
+                            (catch Exception e
+                              (log/error e "Error classifying cache schema")
+                              :unknown-error)))]
+        (group-by classify schemas)))))
 
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
@@ -192,19 +208,52 @@
    {:write? true}
    delete-session-schema!))
 
-(defonce ^:private ^{:arglists '([driver connection metadata _ _])}
-  original-filtered-syncable-schemas
-  (get-method sql-jdbc.sync/filtered-syncable-schemas :redshift))
+(def ^:dynamic *override-describe-database-to-filter-by-db-name?*
+  "Whether to override the production implementation for `describe-database` with a special one that only syncs
+  the tables qualified by the database name. This is `true` by default during tests to fake database isolation.
+  See (metabase#40310)"
+  true)
 
-(def ^:dynamic *use-original-filtered-syncable-schemas-impl?*
-  "Whether to use the actual prod impl for `filtered-syncable-schemas` rather than the special test one that only syncs
-  the test schema."
-  false)
+(defonce ^:private ^{:arglists '([driver database])}
+  original-describe-database
+  (get-method driver/describe-database :redshift))
 
-;; replace the impl the `metabase.driver.redshift`. Only sync the current test schema and the external "spectrum"
-;; schema used for a specific test.
-(defmethod sql-jdbc.sync/filtered-syncable-schemas :redshift
-  [driver conn metadata schema-inclusion-filters schema-exclusion-filters]
-  (if *use-original-filtered-syncable-schemas-impl?*
-    (original-filtered-syncable-schemas driver conn metadata schema-inclusion-filters schema-exclusion-filters)
-    #{(unique-session-schema) "spectrum"}))
+;; For test databases, only sync the tables that are qualified by the db name
+(defmethod driver/describe-database :redshift
+  [driver database]
+  (if *override-describe-database-to-filter-by-db-name?*
+    (let [r                (original-describe-database driver database)
+          phyiscal-db-name (data.impl/database-source-dataset-name database)]
+      (update r :tables (fn [tables]
+                          (into #{}
+                                (filter #(or (tx/qualified-by-db-name? phyiscal-db-name (:name %))
+                                             ;; the `extsales` table is used for testing external tables
+                                             (= (:name %) "extsales")))
+                                tables))))
+    (original-describe-database driver database)))
+
+(defmethod ddl.i/format-name :redshift
+  [_driver s]
+  ;; Redshift is case-insensitive for identifiers and returns them in lower-case by default from system tables, even if
+  ;; you create the tables with upper-case characters.
+  (u/lower-case-en s))
+
+(defmethod tx/dataset-already-loaded? :redshift
+  [driver dbdef]
+  ;; check and make sure the first table in the dbdef has been created.
+  (let [session-schema (unique-session-schema)
+        tabledef       (first (:table-definitions dbdef))
+        ;; table-name should be something like test_data_venues
+        table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+     {:write? false}
+     (fn [^java.sql.Connection conn]
+       (with-open [rset (.getTables (.getMetaData conn)
+                                    #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
+                                    #_schema-pattern session-schema
+                                    #_table-pattern  table-name
+                                    #_types          (into-array String ["TABLE"]))]
+         ;; if the ResultSet returns anything we know the table is already loaded.
+         (.next rset))))))

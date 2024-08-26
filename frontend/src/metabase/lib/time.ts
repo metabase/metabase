@@ -1,4 +1,4 @@
-import type { DurationInputArg2, MomentInput } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
@@ -102,15 +102,6 @@ export function getDateStyleFromSettings() {
   return customFormattingSettings?.["type/Temporal"]?.date_style;
 }
 
-export function getDefaultTimezone() {
-  return moment.tz.guess();
-}
-
-export function getNumericDateStyleFromSettings() {
-  const dateStyle = getDateStyleFromSettings();
-  return /\//.test(dateStyle || "") ? dateStyle : "M/D/YYYY";
-}
-
 export function getRelativeTime(timestamp: string) {
   return moment(timestamp).fromNow();
 }
@@ -135,10 +126,6 @@ export function getTimeStyleFromSettings() {
 export function has24HourModeSetting() {
   const timeStyle = getTimeStyleFromSettings();
   return timeStyle === TIME_FORMAT_24_HOUR;
-}
-
-export function hasTimePart(date: moment.Moment | null) {
-  return date != null && (date.hours() !== 0 || date.minutes() !== 0);
 }
 
 export function hoursToSeconds(hours: number) {
@@ -186,8 +173,11 @@ type NUMERIC_UNIT_FORMATS_KEY_TYPE =
 
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
+/**
+ * @deprecated use dayjs version from ./time-dayjs.ts
+ */
 export function parseTimestamp(
-  value: MomentInput,
+  value: any,
   unit: DatetimeUnit | null = null,
   isLocal = false,
 ) {

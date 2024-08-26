@@ -1,0 +1,66 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Downloads results from questions and dashcards",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "downloads",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "download_results_clicked"
+      ],
+      "description": "The type of event being recorded."
+    },
+    "resource_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "question",
+        "dashcard",
+        "ad-hoc-question"
+      ],
+      "maxLength": 1024,
+      "description": "The type of resource: question, dashcard or ad-hoc-question"
+    },
+    "accessed_via": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024,
+      "enum": [
+        "internal",
+        "public-link",
+        "static-embed",
+        "interactive-iframe-embed",
+        "sdk-embed"
+      ],
+      "description": "How was the resource accessed: internal, public-link, static-embed, sdk or interactive embedding"
+    },
+    "export_type": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "csv",
+        "xlsx",
+        "json",
+        "png"
+      ],
+      "maxLength": 1024,
+      "description": "The export type, csv, png etc"
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

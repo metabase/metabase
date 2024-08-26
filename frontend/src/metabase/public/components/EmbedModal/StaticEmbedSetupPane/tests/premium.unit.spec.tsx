@@ -15,8 +15,8 @@ describe("Static Embed Setup phase - EE, with token", () => {
     },
   ])("$resourceType", ({ resourceType }) => {
     describe("Overview tab", () => {
-      it("should render content", () => {
-        setup({
+      it("should render content", async () => {
+        await setup({
           props: {
             resourceType,
           },
@@ -33,18 +33,18 @@ describe("Static Embed Setup phase - EE, with token", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=pro-self-hosted&utm_media=static-embed-settings-overview",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-overview&source_plan=pro-self-hosted",
         );
       });
     });
 
-    describe("Appearance tab", () => {
+    describe("Look and Feel tab", () => {
       it("should render Font selector", async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
@@ -52,15 +52,15 @@ describe("Static Embed Setup phase - EE, with token", () => {
         const fontSelect = screen.getByLabelText("Font");
         expect(fontSelect).toBeVisible();
 
-        userEvent.click(fontSelect);
+        await userEvent.click(fontSelect);
 
-        const popover = await screen.findByRole("grid");
+        const popover = await screen.findByRole("listbox", { name: "Font" });
 
         FONTS_MOCK_VALUES.forEach(fontName => {
           expect(within(popover).getByText(fontName)).toBeVisible();
         });
 
-        userEvent.click(within(popover).getByText(FONTS_MOCK_VALUES[0]));
+        await userEvent.click(within(popover).getByText(FONTS_MOCK_VALUES[0]));
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
           `font=${encodeURIComponent(FONTS_MOCK_VALUES[0])}`,
@@ -68,33 +68,31 @@ describe("Static Embed Setup phase - EE, with token", () => {
       });
 
       it('should not render "Powered by Metabase" banner caption', async () => {
-        setup({
+        await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
         expect(
-          screen.queryByText("Removing the “Powered by Metabase” banner"),
+          screen.queryByText("Removing the banner"),
         ).not.toBeInTheDocument();
       });
 
-      it("should render link to documentation", () => {
-        setup({
+      it("should render link to documentation", async () => {
+        await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
-        expect(
-          screen.getByText("Customizing your embed’s appearance"),
-        ).toBeVisible();
+        expect(screen.getByText("Customizing look and feel")).toBeVisible();
 
         const link = screen.getByRole("link", {
           name: "documentation",
@@ -102,32 +100,30 @@ describe("Static Embed Setup phase - EE, with token", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=pro-self-hosted&utm_media=static-embed-settings-appearance#customizing-the-appearance-of-static-embeds",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-look-and-feel&source_plan=pro-self-hosted#customizing-the-appearance-of-static-embeds",
         );
       });
 
-      if (resourceType === "question") {
-        it('should render "Download data" control', () => {
-          setup({
-            props: {
-              resourceType,
-              resource: getMockResource(resourceType, true),
-            },
-            activeTab: "Appearance",
-            hasEnterprisePlugins: true,
-            tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
-          });
-
-          expect(screen.getByText("Download data")).toBeVisible();
-          expect(screen.getByLabelText("Download data")).toBeChecked();
-
-          userEvent.click(screen.getByLabelText("Download data"));
-
-          expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-            `hide_download_button=true`,
-          );
+      it('should render "Download buttons" control', async () => {
+        await setup({
+          props: {
+            resourceType,
+            resource: getMockResource(resourceType, true),
+          },
+          activeTab: "Look and Feel",
+          hasEnterprisePlugins: true,
+          tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
-      }
+
+        expect(screen.getByText("Download buttons")).toBeVisible();
+        expect(screen.getByLabelText("Download buttons")).toBeChecked();
+
+        await userEvent.click(screen.getByLabelText("Download buttons"));
+
+        expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+          `downloads=false`,
+        );
+      });
     });
   });
 });

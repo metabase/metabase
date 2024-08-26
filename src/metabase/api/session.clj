@@ -21,7 +21,7 @@
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.request.util :as req.util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [deferred-tru trs tru]]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -29,13 +29,12 @@
    [throttle.core :as throttle]
    [toucan2.core :as t2])
   (:import
-   (com.unboundid.util LDAPSDKException)
-   (java.util UUID)))
+   (com.unboundid.util LDAPSDKException)))
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private record-login-history!
-  [session-id  :- (ms/InstanceOfClass UUID)
+(mu/defn- record-login-history!
+  [session-id  :- uuid?
    user-id     :- ms/PositiveInt
    device-info :- req.util/DeviceInfo]
   (t2/insert! LoginHistory (merge {:user_id    user-id
@@ -58,7 +57,7 @@
   [:and
    [:map-of :keyword :any]
    [:map
-    [:id   (ms/InstanceOfClass UUID)]
+    [:id   uuid?]
     [:type [:enum :normal :full-app-embed]]]])
 
 (mu/defmethod create-session! :sso :- SessionSchema
@@ -86,7 +85,6 @@
     (throw (ex-info (str (tru "Password login is disabled for this instance.")) {:status-code 400})))
   ((get-method create-session! :sso) session-type user device-info))
 
-
 ;;; ## API Endpoints
 
 (def ^:private login-throttlers
@@ -104,7 +102,7 @@
 (def ^:private fake-salt "ee169694-5eb6-4010-a145-3557252d7807")
 (def ^:private fake-hashed-password "$2a$10$owKjTym0ZGEEZOpxM0UyjekSvt66y1VvmOJddkAaMB37e0VAIVOX2")
 
-(mu/defn ^:private ldap-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
+(mu/defn- ldap-login :- [:maybe [:map [:id uuid?]]]
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
   authenticated."
   [username password device-info :- req.util/DeviceInfo]
@@ -125,9 +123,9 @@
                             {:status-code 401
                              :errors      {:_error disabled-account-snippet}})))))
       (catch LDAPSDKException e
-        (log/error e (trs "Problem connecting to LDAP server, will fall back to local authentication"))))))
+        (log/error e "Problem connecting to LDAP server, will fall back to local authentication")))))
 
-(mu/defn ^:private email-login :- [:maybe [:map [:id (ms/InstanceOfClass UUID)]]]
+(mu/defn- email-login :- [:maybe [:map [:id uuid?]]]
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username    :- ms/NonBlankString
    password    :- [:maybe ms/NonBlankString]
@@ -152,7 +150,7 @@
   (when-not throttling-disabled?
     (throttle/check throttler throttle-key)))
 
-(mu/defn ^:private login :- SessionSchema
+(mu/defn- login :- SessionSchema
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
   [username    :- ms/NonBlankString
@@ -177,6 +175,7 @@
 
 (defmacro http-401-on-error
   "Add `{:status-code 401}` to exception data thrown by `body`."
+  {:style/indent 0}
   [& body]
   `(do-http-401-on-error (fn [] ~@body)))
 
@@ -194,9 +193,9 @@
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
-       (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                  (login-throttlers :username)   username]
-           (do-login))))))
+        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
+                                   (login-throttlers :username)   username]
+          (do-login))))))
 
 (api/defendpoint DELETE "/"
   "Logout."
@@ -265,7 +264,7 @@
     (let [user-id (Integer/parseInt user-id)]
       (when-let [{:keys [reset_token reset_triggered], :as user} (t2/select-one [User :id :last_login :reset_triggered
                                                                                  :reset_token]
-                                                                   :id user-id, :is_active true)]
+                                                                                :id user-id, :is_active true)]
         ;; Make sure the plaintext token matches up with the hashed one for this user
         (when (u/ignore-exceptions
                 (u.password/bcrypt-verify token reset_token))
@@ -274,11 +273,17 @@
             (when (< token-age (reset-token-ttl-ms))
               user)))))))
 
+(def reset-password-throttler
+  "Throttler for password_reset. There's no good field to mark so use password as a default."
+  (throttle/make-throttler :password :attempts-threshold 10))
+
 (api/defendpoint POST "/reset_password"
   "Reset password with a reset token."
   [:as {{:keys [token password]} :body, :as request}]
   {token    ms/NonBlankString
    password ms/ValidPassword}
+  (let [request-source (req.util/ip-address request)]
+    (throttle-check reset-password-throttler request-source))
   (or (when-let [{user-id :id, :as user} (valid-reset-token->user token)]
         (let [reset-token (t2/select-one-fn :reset_token :model/User :id user-id)]
           (user/set-password! user-id password)
@@ -317,26 +322,26 @@
   (if throttling-disabled?
     (google/do-google-auth request)
     (http-401-on-error
-     (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
-       (let [user (google/do-google-auth request)
-             {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
-             response {:id (str session-uuid)}
-             user (t2/select-one [User :id :is_active], :email (:email user))]
-         (if (and user (:is_active user))
-           (mw.session/set-session-cookies request
-                                           response
-                                           session
-                                           (t/zoned-date-time (t/zone-id "GMT")))
-           (throw (ex-info (str disabled-account-message)
-                           {:status-code 401
-                            :errors      {:account disabled-account-snippet}}))))))))
+      (throttle/with-throttling [(login-throttlers :ip-address) (req.util/ip-address request)]
+        (let [user (google/do-google-auth request)
+              {session-uuid :id, :as session} (create-session! :sso user (req.util/device-info request))
+              response {:id (str session-uuid)}
+              user (t2/select-one [User :id :is_active], :email (:email user))]
+          (if (and user (:is_active user))
+            (mw.session/set-session-cookies request
+                                            response
+                                            session
+                                            (t/zoned-date-time (t/zone-id "GMT")))
+            (throw (ex-info (str disabled-account-message)
+                            {:status-code 401
+                             :errors      {:account disabled-account-snippet}}))))))))
 
 (defn- +log-all-request-failures [handler]
   (fn [request respond raise]
     (try
       (handler request respond raise)
       (catch Throwable e
-        (log/error e (trs "Authentication endpoint error"))
+        (log/error e "Authentication endpoint error")
         (throw e)))))
 
 ;;; ----------------------------------------------------- Unsubscribe non-users from pulses -----------------------------------------------

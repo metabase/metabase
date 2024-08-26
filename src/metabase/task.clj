@@ -16,14 +16,13 @@
    [clojurewerkz.quartzite.scheduler :as qs]
    [environ.core :as env]
    [metabase.db :as mdb]
-   [metabase.db.connection :as mdb.connection]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
-   (org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey)))
+   (org.quartz CronTrigger JobDetail JobKey JobPersistenceException Scheduler Trigger TriggerKey)))
 
 (set! *warn-on-reflection* true)
 
@@ -39,7 +38,6 @@
   "Fetch the instance of our Quartz scheduler."
   ^Scheduler []
   @*quartz-scheduler*)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FINDING & LOADING TASKS                                             |
@@ -77,10 +75,10 @@
     (try
       ;; don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
       ;; namespaces we can log it
-      (log/infof "Initializing task %s" (u/format-color 'green (name k)) (u/emoji "📆"))
+      (log/info "Initializing task" (u/format-color 'green (name k)) (u/emoji "📆"))
       (f k)
       (catch Throwable e
-        (log/error e "Error initializing task {0}" k)))))
+        (log/errorf e "Error initializing task %s" k)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Quartz Scheduler Connection Provider                                      |
@@ -102,12 +100,11 @@
     ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
     ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
     ;; Now that would be a useful macro!
-    (.getConnection mdb.connection/*application-db*))
+    (.getConnection (mdb/app-db)))
   (shutdown [_]))
 
 (when-not *compile-files*
   (System/setProperty "org.quartz.dataSource.db.connectionProvider.class" (.getName ConnectionProvider)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Quartz Scheduler Class Load Helper                                       |
@@ -129,7 +126,6 @@
 (when-not *compile-files*
   (System/setProperty "org.quartz.scheduler.classLoadHelper.class" (.getName ClassLoadHelper)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          STARTING/STOPPING SCHEDULER                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -141,6 +137,18 @@
   []
   (when (= (mdb/db-type) :postgres)
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
+
+(defn- delete-jobs-with-no-class!
+  "Delete any jobs that have been scheduled but whose class is no longer available."
+  []
+  (when-let [scheduler (scheduler)]
+    (doseq [job-key (.getJobKeys scheduler nil)]
+      (try
+        (qs/get-job scheduler job-key)
+        (catch JobPersistenceException e
+          (when (instance? ClassNotFoundException (.getCause e))
+            (log/infof "Deleting job %s due to class not found" (.getName ^JobKey job-key))
+            (qs/delete-job scheduler job-key)))))))
 
 (defn- init-scheduler!
   "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
@@ -154,6 +162,7 @@
         (find-and-load-task-namespaces!)
         (qs/standby new-scheduler)
         (log/info "Task scheduler initialized into standby mode.")
+        (delete-jobs-with-no-class!)
         (init-tasks!)))))
 
 ;;; this is a function mostly to facilitate testing.
@@ -176,20 +185,30 @@
     (when old-scheduler
       (qs/shutdown old-scheduler))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private reschedule-task!
-  [job :- (ms/InstanceOfClass JobDetail) new-trigger :- (ms/InstanceOfClass Trigger)]
+(mu/defn- reschedule-task!
+  [job         :- (ms/InstanceOfClass JobDetail)
+   new-trigger :- (ms/InstanceOfClass Trigger)]
   (try
     (when-let [scheduler (scheduler)]
+      ;; TODO: a job could have multiple triggers, so the first trigger is not guaranteed to be the one we want to
+      ;; replace. Should we check that the key name is matching?
       (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey ^JobDetail job)))]
         (log/debugf "Rescheduling job %s" (-> ^JobDetail job .getKey .getName))
         (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
     (catch Throwable e
       (log/error e "Error rescheduling job"))))
+
+(mu/defn reschedule-trigger!
+  "Reschedule a trigger with the same key as the given trigger.
+
+  Used to update trigger properties like priority."
+  [trigger :- (ms/InstanceOfClass Trigger)]
+  (when-let [scheduler (scheduler)]
+    (.rescheduleJob scheduler (.getKey ^Trigger trigger) trigger)))
 
 (mu/defn schedule-task!
   "Add a given job and trigger to our scheduler."
@@ -201,8 +220,17 @@
         (log/debug "Job already exists:" (-> ^JobDetail job .getKey .getName))
         (reschedule-task! job trigger)))))
 
+(mu/defn trigger-now!
+  "Immediatley trigger exeuction of task"
+  [job-key :- (ms/InstanceOfClass JobKey)]
+  (try
+    (when-let [scheduler (scheduler)]
+      (.triggerJob scheduler job-key))
+    (catch Throwable e
+      (log/errorf e "Failed to trigger immediate execution of task %s" job-key))))
+
 (mu/defn delete-task!
-  "delete a task from the scheduler"
+  "Delete a task from the scheduler"
   [job-key :- (ms/InstanceOfClass JobKey) trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)
@@ -225,7 +253,6 @@
   [trigger-key :- (ms/InstanceOfClass TriggerKey)]
   (when-let [scheduler (scheduler)]
     (qs/delete-trigger scheduler trigger-key)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Scheduler Info                                                 |
@@ -255,7 +282,7 @@
    :priority           (.getPriority trigger)
    :start-time         (.getStartTime trigger)
    :may-fire-again?    (.mayFireAgain trigger)
-   :data               (.getJobDataMap trigger)})
+   :data               (into {} (.getJobDataMap trigger))})
 
 (defmethod trigger->info CronTrigger
   [^CronTrigger trigger]
@@ -263,6 +290,9 @@
    ((get-method trigger->info Trigger) trigger)
    :schedule
    (.getCronExpression trigger)
+
+   :timezone
+   (.getID (.getTimeZone trigger))
 
    :misfire-instruction
    ;; not 100% sure why `case` doesn't work here...

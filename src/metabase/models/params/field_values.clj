@@ -2,8 +2,7 @@
   "Code related to fetching FieldValues for Fields to populate parameter widgets. Always used by the field
   values (`GET /api/field/:id/values`) endpoint; used by the chain filter endpoints under certain circumstances."
   (:require
-   [medley.core :as m]
-   [metabase.db.util :as mdb.u]
+   [metabase.db.query :as mdb.query]
    [metabase.models.field :as field]
    [metabase.models.field-values :as field-values :refer [FieldValues]]
    [metabase.models.interface :as mi]
@@ -46,15 +45,12 @@
   "OSS implementation; used as a fallback for the EE implementation for any fields that aren't subject to sandboxing."
   [field-ids]
   (when (seq field-ids)
-    (not-empty
-     (let [fields       (-> (t2/select :model/Field :id [:in (set field-ids)])
-                            (field/readable-fields-only)
-                            (t2/hydrate :values))
-           field-values (->> (map #(select-keys (field-values/get-latest-full-field-values (:id %))
-                                    [:field_id :human_readable_values :values])
-                                  fields)
-                             (keep not-empty))]
-       (m/index-by :field_id field-values)))))
+    (let [field-ids (->> (t2/select :model/Field :id [:in (set field-ids)])
+                         field/readable-fields-only
+                         (map :id))]
+      (when (seq field-ids)
+        (update-vals (field-values/batched-get-latest-full-field-values field-ids)
+                     #(select-keys % [:field_id :human_readable_values :values]))))))
 
 (defenterprise field-id->field-values-for-current-user
   "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
@@ -129,8 +125,8 @@
   ([fv-type field constraints]
    (let [hash-key   (hash-key-for-advanced-field-values fv-type (:id field) constraints)
          select-kvs {:field_id (:id field) :type fv-type :hash_key hash-key}
-         fv         (mdb.u/select-or-insert! :model/FieldValues select-kvs
-                      #(prepare-advanced-field-values fv-type field hash-key constraints))]
+         fv         (mdb.query/select-or-insert! :model/FieldValues select-kvs
+                                                 #(prepare-advanced-field-values fv-type field hash-key constraints))]
      (cond
        (nil? fv) nil
 

@@ -79,7 +79,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
-  it("can change a string field to a numeric field", () => {
+  it("can change a string field to a numeric field", async () => {
     const formSettings: ActionFormSettings = {
       type: "form",
       fields: {
@@ -91,7 +91,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("radio", {
         name: /number/i,
       }),
@@ -122,8 +122,8 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
     });
 
     // click the settings cog then the number input type
-    userEvent.click(screen.getByLabelText("Field settings"));
-    userEvent.click(await screen.findByText("Long text"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
+    await userEvent.click(await screen.findByText("Long text"));
 
     expect(onChange).toHaveBeenCalledWith({
       ...formSettings,
@@ -136,7 +136,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
     });
   });
 
-  it("can change a numeric field to a date field", () => {
+  it("can change a numeric field to a date field", async () => {
     const formSettings: ActionFormSettings = {
       type: "form",
       fields: {
@@ -149,7 +149,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("radio", {
         name: /date/i,
       }),
@@ -178,7 +178,7 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    userEvent.click(
+    await userEvent.click(
       screen.getByRole("radio", {
         name: /number/i,
       }),
@@ -207,8 +207,8 @@ describe("actions > containers > ActionCreator > FormCreator", () => {
       formSettings,
     });
 
-    userEvent.click(screen.getByLabelText("Field settings"));
-    userEvent.click(await screen.findByRole("switch"));
+    await userEvent.click(screen.getByLabelText("Field settings"));
+    await userEvent.click(await screen.findByRole("switch"));
 
     expect(onChange).toHaveBeenCalledWith({
       ...formSettings,

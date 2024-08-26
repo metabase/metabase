@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Customizable font" %}
 
-On paid plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
+On Pro and Enterprise plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
 
 ## Included fonts
 
@@ -66,7 +66,7 @@ To get a URL for a [Google Font](https://fonts.google.com/), visit the Google Fo
 
 We'd paste the URL [https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap](https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap) into our browser's address bar. This URL will return a response like:
 
-```
+```css
 * cyrillic-ext */
 @font-face {
   font-family: 'Roboto Mono';
@@ -93,7 +93,6 @@ For latin text, we'd copy the relevant src URLs for each style, in this case:
 - For 400: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
 - For 700: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
 
-
 And paste those URLS in the relevant input fields in **Admin settings** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
 
 ## Hosting fonts on GitHub
@@ -110,7 +109,7 @@ Then the link you'll need is:
 
 Which follows the pattern:
 
-```
+```txt
 raw.githubusercontent.com/${user}/${repo}/${branch}/${path}
 ```
 

@@ -19,7 +19,7 @@ const setup = () => {
     const params = new URL(request.url).searchParams;
     const limit = parseInt(params.get("limit") ?? "0");
     const offset = parseInt(params.get("offset") ?? "0");
-    return MockUsers.slice(offset, offset + limit);
+    return { data: MockUsers.slice(offset, offset + limit) };
   });
   renderWithProviders(<UserCollectionList />);
 };
@@ -34,7 +34,7 @@ describe("UserCollectionList", () => {
     expect(await screen.findByText("1 - 27")).toBeInTheDocument();
 
     expect(await screen.findByTestId("previous-page-btn")).toBeDisabled();
-    userEvent.click(await screen.findByTestId("next-page-btn"));
+    await userEvent.click(await screen.findByTestId("next-page-btn"));
 
     expect(await screen.findByText("28 - 54")).toBeInTheDocument();
 

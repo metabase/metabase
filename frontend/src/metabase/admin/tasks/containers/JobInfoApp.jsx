@@ -1,26 +1,21 @@
 /* eslint-disable react/prop-types */
-import { Component } from "react";
-import { connect } from "react-redux";
+import cx from "classnames";
 import { t } from "ttag";
 
+import { useGetTasksInfoQuery } from "metabase/api";
 import AdminHeader from "metabase/components/AdminHeader";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Link from "metabase/core/components/Link";
-
-import { fetchJobInfo } from "../jobInfo";
-
-import {
-  JobInfoHeader,
-  JobInfoRoot,
-  JobSchedulerInfo,
-} from "./JobInfoApp.styled";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex } from "metabase/ui";
 
 const renderSchedulerInfo = scheduler => {
   return (
     scheduler && (
-      <JobSchedulerInfo>
+      <Flex align="center">
         <pre>{scheduler.join("\n")}</pre>
-      </JobSchedulerInfo>
+      </Flex>
     )
   );
 };
@@ -28,7 +23,7 @@ const renderSchedulerInfo = scheduler => {
 const renderJobsTable = jobs => {
   return (
     jobs && (
-      <table className="ContentTable mt2">
+      <table className={cx(AdminS.ContentTable, CS.mt2)}>
         <thead>
           <tr>
             <th>{t`Key`}</th>
@@ -41,13 +36,13 @@ const renderJobsTable = jobs => {
           {jobs &&
             jobs.map(job => (
               <tr key={job.key}>
-                <td className="text-bold">{job.key}</td>
+                <td className={CS.textBold}>{job.key}</td>
                 <td>{job.class}</td>
                 <td>{job.description}</td>
                 <td>{job.durable}</td>
                 <td>
                   <Link
-                    className="link"
+                    className={CS.link}
                     to={`/admin/troubleshooting/jobs/${job.key}`}
                   >
                     {t`View triggers`}
@@ -61,40 +56,22 @@ const renderJobsTable = jobs => {
   );
 };
 
-class JobInfoApp extends Component {
-  async componentDidMount() {
-    try {
-      const info = (await this.props.fetchJobInfo()).payload;
-      this.setState({
-        scheduler: info.scheduler,
-        jobs: info.jobs,
-        error: null,
-      });
-    } catch (error) {
-      this.setState({ error });
-    }
-  }
+export const JobInfoApp = ({ children }) => {
+  const { data, error, isFetching } = useGetTasksInfoQuery();
 
-  render() {
-    const { children } = this.props;
-    const { error, scheduler, jobs } = this.state || {};
-
-    return (
-      <LoadingAndErrorWrapper loading={!scheduler} error={error}>
-        <JobInfoRoot>
-          <JobInfoHeader>
-            <AdminHeader title={t`Scheduler Info`} />
-          </JobInfoHeader>
-          {renderSchedulerInfo(scheduler)}
-          {renderJobsTable(jobs)}
-          {
-            // render 'children' so that the invididual task modals show up
-            children
-          }
-        </JobInfoRoot>
-      </LoadingAndErrorWrapper>
-    );
-  }
-}
-
-export default connect(null, { fetchJobInfo })(JobInfoApp);
+  return (
+    <LoadingAndErrorWrapper loading={isFetching} error={error}>
+      <Box pl="md">
+        <Flex align="center">
+          <AdminHeader title={t`Scheduler Info`} />
+        </Flex>
+        {renderSchedulerInfo(data?.scheduler)}
+        {renderJobsTable(data?.jobs)}
+        {
+          // render 'children' so that the invididual task modals show up
+          children
+        }
+      </Box>
+    </LoadingAndErrorWrapper>
+  );
+};

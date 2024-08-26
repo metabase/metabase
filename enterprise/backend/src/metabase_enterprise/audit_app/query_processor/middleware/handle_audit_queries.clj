@@ -47,6 +47,7 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
@@ -70,9 +71,9 @@
   (for [[k v] metadata]
     (assoc v :name (name k))))
 
-(mu/defn ^:private format-results [{:keys [results metadata]} :- [:map
-                                                                  [:results  [:sequential :map]]
-                                                                  [:metadata audit.i/ResultsMetadata]]]
+(mu/defn- format-results [{:keys [results metadata]} :- [:map
+                                                         [:results  [:sequential :map]]
+                                                         [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
   {:cols (metadata->cols metadata)
    :rows (for [row results]
@@ -120,7 +121,7 @@
      reduce-reducible-results
      reduce-legacy-results) rff results))
 
-(mu/defn ^:private process-internal-query
+(mu/defn- process-internal-query
   [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
    rff                                           :- ::qp.schema/rff]
   ;; Make sure current user is a superuser or has monitoring permissions
@@ -138,7 +139,7 @@
   "Middleware that handles `:internal` (Audit App) type queries."
   :feature :audit-app
   [qp]
-  (fn [{query-type :type, :as query} rff]
-    (if (= :internal (keyword query-type))
+  (fn [query rff]
+    (if (qp.util/internal-query? query)
       (process-internal-query query rff)
       (qp query rff))))

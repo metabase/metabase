@@ -8,7 +8,6 @@
    [metabase.shared.formatting.constants :as constants]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (com.ibm.icu.text RuleBasedNumberFormat)
@@ -63,7 +62,8 @@
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
     (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
-        (all-cols-settings {::mb.viz/column-name (or field-id-or-name column-name)}))))
+        (all-cols-settings {::mb.viz/column-name field-id-or-name})
+        (all-cols-settings {::mb.viz/column-name column-name}))))
 
 (defn- determine-time-format
   "Given viz-settings with a time-style and possible time-enabled (precision) entry, create the format string.
@@ -71,10 +71,10 @@
   [{:keys [time-style] :or {time-style "h:mm A"} :as viz-settings}]
   ;; NOTE - If :time-enabled is present but nil it will return nil
   (when-some [base-time-format (case (get viz-settings :time-enabled "minutes")
-                               "minutes" "mm"
-                               "seconds" "mm:ss"
-                               "milliseconds" "mm:ss.SSS"
-                               nil nil)]
+                                 "minutes" "mm"
+                                 "seconds" "mm:ss"
+                                 "milliseconds" "mm:ss.SSS"
+                                 nil nil)]
     (case time-style
       "HH:mm" (format "HH:%s" base-time-format)
       ;; Deprecated time style which should be already converted to HH:mm when viz settings are
@@ -98,11 +98,17 @@
         (cond-> (-> date-style (str/replace #"dddd" "EEEE"))
           date-separator (str/replace #"/" date-separator)
           date-abbreviate (-> (str/replace #"MMMM" "MMM")
-                         (str/replace #"EEEE" "EEE")
-                         (str/replace #"DDD" "D")))]
+                              (str/replace #"EEEE" "EEE")
+                              (str/replace #"DDD" "D")))]
     (-> conditional-changes
         ;; 'D' formats as Day of year, we want Day of month, which is  'd' (issue #27469)
-        (str/replace #"D" "d"))))
+        (str/replace #"D" "d")
+        ;; 'YYYY' formats as 'week-based-year', we want 'yyyy' which formats by 'year-of-era'
+        ;; aka 'day-based-year'. We likely want that most (all?) of the time.
+        ;; 'week-based-year' can report the wrong year on dates near the start/end of a year based on how
+        ;; ISO-8601 defines what a week is: some days may end up in the 52nd or 1st week of the wrong year:
+        ;; https://stackoverflow.com/a/46395342 provides an explanation.
+        (str/replace #"YYYY" "yyyy"))))
 
 (def ^:private col-type
   "The dispatch function logic for format format-timestring.
@@ -110,7 +116,7 @@
   (some-fn :unit :semantic_type :effective_type :base_type))
 
 (defmulti format-timestring
-"Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
+  "Reformat a temporal literal string to the desired format based on column `:unit`, if provided, then on the column type.
 The type is the highest present of semantic, effective, or base type. This is currently expected to be one of:
 - `:type/Time` - The hour, minute, second, etc. portion of a day, not anchored to a date
 - `:type/Date` - A date without hour and minute information
@@ -121,13 +127,13 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
 
 (defmethod format-timestring :minute [timezone-id temporal-str _col {:keys [date-style time-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str
-                         (-> (or date-style "MMMM, yyyy")
+                         (-> (or date-style "MMMM d, yyyy")
                              (str ", " (fix-time-style time-style constants/default-time-style))
                              (post-process-date-style viz-settings))))
 
 (defmethod format-timestring :hour [timezone-id temporal-str _col {:keys [date-style time-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str
-                         (-> (or date-style "MMMM, yyyy")
+                         (-> (or date-style "MMMM d, yyyy")
                              (str ", " (fix-time-style time-style "h a"))
                              (post-process-date-style viz-settings))))
 
@@ -136,8 +142,16 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
                          (-> (or date-style "EEEE, MMMM d, YYYY")
                              (post-process-date-style viz-settings))))
 
-(defmethod format-timestring :week [timezone-id temporal-str _col _viz-settings]
-  (str (tru "Week ") (reformat-temporal-str timezone-id temporal-str "w - YYYY")))
+(defmethod format-timestring :week [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
+  (let [date-style (or date-style "MMMM d, YYYY")
+        end-temporal-str (-> temporal-str
+                             u.date/parse
+                             (u.date/add :day 6)
+                             u.date/format)]
+    (str
+     (reformat-temporal-str timezone-id temporal-str (post-process-date-style date-style viz-settings))
+     " - "
+     (reformat-temporal-str timezone-id end-temporal-str (post-process-date-style date-style viz-settings)))))
 
 (defmethod format-timestring :month [timezone-id temporal-str _col {:keys [date-style] :as viz-settings}]
   (reformat-temporal-str timezone-id temporal-str
@@ -223,7 +237,7 @@ If neither a unit nor a temporal type is provided, just bottom out by assuming a
   ([timezone-id temporal-str col viz-settings]
    (Locale/setDefault (Locale. (public-settings/site-locale)))
    (let [merged-viz-settings (common/normalize-keys
-                               (common/viz-settings-for-col col viz-settings))]
+                              (common/viz-settings-for-col col viz-settings))]
      (if (str/blank? temporal-str)
        ""
        (format-timestring timezone-id temporal-str col merged-viz-settings)))))

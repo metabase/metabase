@@ -130,13 +130,22 @@
            (when (= :default (:strategy binning-value))
              {:default true}))))
 
+(mu/defn binning= :- boolean?
+  "Given binning values (as returned by [[binning]]), check if they match."
+  [x :- [:maybe ::lib.schema.binning/binning]
+   y :- [:maybe ::lib.schema.binning/binning]]
+  (let [binning-keys (case (:strategy x)
+                       :num-bins  [:strategy :num-bins]
+                       :bin-width [:strategy :bin-width]
+                       [:strategy])]
+    (= (select-keys x binning-keys) (select-keys y binning-keys))))
+
 (mu/defn strategy= :- boolean?
   "Given a binning option (as returned by [[available-binning-strategies]]) and the binning value (possibly nil) from
   a column, check if they match."
   [binning-option :- ::lib.schema.binning/binning-option
    column-binning :- [:maybe ::lib.schema.binning/binning]]
-  (= (:mbql binning-option)
-     (select-keys column-binning [:strategy :num-bins :bin-width])))
+  (binning= (:mbql binning-option) column-binning))
 
 (mu/defn resolve-bin-width :- [:maybe [:map
                                        [:bin-width ::lib.schema.binning/bin-width]
@@ -147,15 +156,25 @@
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    column-metadata       :- ::lib.schema.metadata/column
    value                 :- number?]
+  ;; TODO: I think this function is taking the wrong approach. It uses the (global) :fingerprint for all cases, and if
+  ;; we're looking at nested bins (eg. bin a query, then zoom in on one of those bins) we have tighter min and max
+  ;; bounds on the column's own `binning-options`. We should be using those bounds everywhere if they exist, and falling
+  ;; back on the fingerprint only if they're not defined.
   (when-let [binning-options (binning column-metadata)]
     (case (:strategy binning-options)
       :num-bins
-      (when-let [{min-value :min, max-value :max, :as _number-fingerprint} (get-in column-metadata [:fingerprint :type :type/Number])]
-        (let [{:keys [num-bins]} binning-options
-              bin-width          (lib.binning.util/nicer-bin-width min-value max-value num-bins)]
-          {:bin-width bin-width
-           :min-value value
-           :max-value (+ value bin-width)}))
+      ;;   If the column is already binned, compute the width of this single bin based on its bounds and width.
+      (or (when-let [bin-width (:bin-width binning-options)]
+            {:bin-width bin-width
+             :min-value value
+             :max-value (+ value bin-width)})
+          ;; Otherwise use the fingerprint.
+          (when-let [{min-value :min, max-value :max, :as _number-fingerprint} (get-in column-metadata [:fingerprint :type :type/Number])]
+            (let [{:keys [num-bins]} binning-options
+                  bin-width          (lib.binning.util/nicer-bin-width min-value max-value num-bins)]
+              {:bin-width bin-width
+               :min-value value
+               :max-value (+ value bin-width)})))
 
       :bin-width
       (let [{:keys [bin-width]} binning-options]

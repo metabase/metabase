@@ -4,7 +4,12 @@ import type { BaseBucketPickerPopoverProps } from "./BaseBucketPickerPopover";
 
 type CommonProps = Pick<
   BaseBucketPickerPopoverProps,
-  "query" | "stageIndex" | "isEditing" | "color" | "hasArrowIcon"
+  | "query"
+  | "stageIndex"
+  | "isEditing"
+  | "color"
+  | "hasArrowIcon"
+  | "hasChevronDown"
 >;
 
 export interface CommonBucketPickerProps extends CommonProps {

@@ -1,11 +1,10 @@
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
-import { useCollectionListQuery } from "metabase/common/hooks";
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import ModalContent from "metabase/components/ModalContent";
-import { CreateCollectionOnTheGo } from "metabase/containers/CreateCollectionOnTheGo";
-import EntityForm from "metabase/entities/containers/EntityForm";
-import { Flex, Loader } from "metabase/ui";
+import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
+import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 
 interface EntityCopyModalProps {
   entityType: string;
@@ -13,7 +12,10 @@ interface EntityCopyModalProps {
   copy: (data: any) => void;
   title?: string;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (newEntityObject?: any) => void;
+  overwriteOnInitialValuesChange?: boolean;
+  onValuesChange?: (values: Record<string, unknown>) => void;
+  form?: any;
 }
 
 const EntityCopyModal = ({
@@ -25,38 +27,48 @@ const EntityCopyModal = ({
   onSaved,
   ...props
 }: EntityCopyModalProps) => {
-  const { data: collections } = useCollectionListQuery();
+  const resolvedObject =
+    typeof entityObject?.getPlainObject === "function"
+      ? entityObject.getPlainObject()
+      : entityObject;
+
+  const defaultCollectionId = useGetDefaultCollectionId(
+    resolvedObject?.collection?.id,
+  );
+
+  if (defaultCollectionId) {
+    resolvedObject.collection_id = defaultCollectionId;
+  }
+
+  const initialValues = {
+    ...dissoc(resolvedObject, "id"),
+    name: resolvedObject.name + " - " + t`Duplicate`,
+  };
 
   return (
-    <CreateCollectionOnTheGo>
-      {({ resumedValues }) => (
-        <ModalContent
-          title={title || t`Duplicate "${entityObject.name}"`}
+    <ModalContent
+      title={title || t`Duplicate "${resolvedObject.name}"`}
+      onClose={onClose}
+    >
+      {entityType === "dashboards" && (
+        <CopyDashboardFormConnected
+          onSubmit={copy}
           onClose={onClose}
-        >
-          {!collections?.length ? (
-            <Flex justify="center" p="lg">
-              <Loader />
-            </Flex>
-          ) : (
-            <EntityForm
-              resumedValues={resumedValues}
-              entityType={entityType}
-              entityObject={{
-                ...dissoc(entityObject, "id"),
-                name: entityObject.name + " - " + t`Duplicate`,
-              }}
-              onSubmit={copy}
-              onClose={onClose}
-              onSaved={onSaved}
-              submitTitle={t`Duplicate`}
-              collections={collections}
-              {...props}
-            />
-          )}
-        </ModalContent>
+          onSaved={onSaved}
+          initialValues={initialValues}
+          {...props}
+        />
       )}
-    </CreateCollectionOnTheGo>
+      {entityType === "questions" && (
+        <CopyQuestionForm
+          onSubmit={copy}
+          onCancel={onClose}
+          onSaved={onSaved}
+          initialValues={initialValues}
+          {...props}
+        />
+      )}
+    </ModalContent>
   );
 };
 

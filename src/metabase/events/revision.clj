@@ -17,17 +17,17 @@
     :as   _options}]
   (when event
     (try
-     (when-not (t2/instance-of? model object)
-       (throw (ex-info "object must be a model instance" {:object object :model model})))
-     (let [user-id (or user-id api/*current-user-id*)]
-       (revision/push-revision! {:entity       model
-                                 :id           (:id object)
-                                 :object       object
-                                 :user-id      user-id
-                                 :is-creation? is-creation?
-                                 :message      (:revision-message event)}))
-     (catch Throwable e
-       (log/warnf e "Failed to process revision event for model %s" model)))))
+      (when-not (t2/instance-of? model object)
+        (throw (ex-info "object must be a model instance" {:object object :model model})))
+      (let [user-id (or user-id api/*current-user-id*)]
+        (revision/push-revision! {:entity       model
+                                  :id           (:id object)
+                                  :object       object
+                                  :user-id      user-id
+                                  :is-creation? is-creation?
+                                  :message      (:revision-message event)}))
+      (catch Throwable e
+        (log/warnf e "Failed to process revision event for model %s" model)))))
 
 (derive ::card-event ::event)
 (derive :event/card-create ::card-event)
@@ -52,7 +52,7 @@
 
 (methodical/defmethod events/publish-event! ::metric-event
   [topic event]
-  (push-revision! :model/Metric event {:is-creation? (= topic :event/metric-create)}))
+  (push-revision! :model/LegacyMetric event {:is-creation? (= topic :event/metric-create)}))
 
 (derive ::segment-event ::event)
 (derive :event/segment-create ::segment-event)

@@ -3,9 +3,9 @@ import { createSelector } from "@reduxjs/toolkit";
 import type { Location } from "history";
 
 import {
-  getIsEditing as getIsEditingDashboard,
   getDashboard,
   getDashboardId,
+  getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
 import {
   getIsSavedQuestionChanged,
@@ -15,21 +15,29 @@ import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import type { State } from "metabase-types/store";
 
+import { getSetting } from "./settings";
+
 export interface RouterProps {
   location: Location;
 }
 
 const PATHS_WITHOUT_NAVBAR = [
+  /^\/setup/,
   /^\/auth/,
   /\/model\/.*\/query/,
   /\/model\/.*\/metadata/,
   /\/model\/query/,
   /\/model\/metadata/,
+  /\/metric\/.*\/query/,
+  /\/metric\/.*\/metadata/,
+  /\/metric\/query/,
+  /\/metric\/metadata/,
 ];
 
 const PATHS_WITH_COLLECTION_BREADCRUMBS = [
   /\/question\//,
   /\/model\//,
+  /\/metric\//,
   /\/dashboard\//,
 ];
 const PATHS_WITH_QUESTION_LINEAGE = [/\/question/, /\/model/];
@@ -203,3 +211,16 @@ export const getIsNavbarOpen: Selector<State, boolean> = createSelector(
     return isNavbarOpen;
   },
 );
+
+export const getIsDndAvailable = (state: State) => {
+  return state.app.isDndAvailable;
+};
+
+export const getCustomHomePageDashboardId = createSelector(
+  [getUser],
+  user => user?.custom_homepage?.dashboard_id || null,
+);
+
+export const getHasDismissedCustomHomePageToast = (state: State) => {
+  return getSetting(state, "dismissed-custom-dashboard-toast");
+};

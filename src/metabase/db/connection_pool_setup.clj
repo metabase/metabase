@@ -4,7 +4,8 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.connection-pool :as connection-pool]
-   [schema.core :as s])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
 
@@ -64,11 +65,11 @@
    (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
      {"maxPoolSize" max-pool-size})))
 
-(s/defn connection-pool-data-source :- PoolBackedDataSource
+(mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
   `data-source` is already pooled, this will return `data-source` as-is."
-  [db-type     :- s/Keyword
-   data-source :- javax.sql.DataSource]
+  ^PoolBackedDataSource [db-type :- :keyword
+                         ^PoolBackedDataSource data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (if (instance? PoolBackedDataSource data-source)
     data-source
     (let [ds-name    (format "metabase-%s-app-db" (name db-type))

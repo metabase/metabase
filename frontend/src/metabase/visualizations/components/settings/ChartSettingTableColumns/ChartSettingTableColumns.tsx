@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { FieldPanel } from "metabase/querying";
+import { FieldPanel } from "metabase/querying/fields/components/FieldPanel";
 import { Button } from "metabase/ui";
 import type * as Lib from "metabase-lib";
-import type Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
 import type {
   DatasetColumn,
   TableColumnOrderSetting,

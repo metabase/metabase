@@ -62,7 +62,6 @@
   [^Path path]
   (Files/isReadable path))
 
-
 ;;; ----------------------------------------------- Working with Dirs ------------------------------------------------
 
 (defn create-dir-if-not-exists!
@@ -78,7 +77,6 @@
   [^Path path]
   (iterator-seq (.iterator (Files/list path))))
 
-
 ;;; ------------------------------------------------- Copying Stuff --------------------------------------------------
 
 (defn- last-modified-timestamp ^java.time.Instant [^Path path]
@@ -90,7 +88,7 @@
   [^Path source ^Path dest]
   (when (or (not (exists? dest))
             (not= (last-modified-timestamp source) (last-modified-timestamp dest)))
-    (log/info (trs "Extract file {0} -> {1}" source dest))
+    (log/infof "Extract file %s -> %s" source dest)
     (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
                                                    StandardCopyOption/COPY_ATTRIBUTES]))))
 
@@ -103,8 +101,7 @@
     (try
       (copy-file! source target)
       (catch Throwable e
-        (log/error e (trs "Failed to copy file"))))))
-
+        (log/error e "Failed to copy file")))))
 
 ;;; ------------------------------------------ Opening filesystems for URLs ------------------------------------------
 
@@ -145,7 +142,6 @@
     ~resource-filename-str
     (fn [~(vary-meta path-binding assoc :tag java.nio.file.Path)]
       ~@body)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               JAR FILE CONTENTS                                                |

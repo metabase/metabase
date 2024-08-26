@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 
 import { testDataset } from "__support__/testDataset";
 import { DetailsTable } from "metabase/visualizations/components/ObjectDetail/ObjectDetailsTable";
-import { TYPE } from "metabase-lib/types/constants";
+import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockColumn,
   createMockDatasetData,
