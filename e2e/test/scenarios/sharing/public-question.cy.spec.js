@@ -4,6 +4,7 @@ import {
   createPublicQuestionLink,
   downloadAndAssert,
   filterWidget,
+  main,
   modal,
   openNativeEditor,
   openNewPublicLinkDropdown,
@@ -12,6 +13,8 @@ import {
   saveQuestion,
   visitQuestion,
 } from "e2e/support/helpers";
+
+import { ORDERS_QUESTION_ID } from "../../../support/cypress_sample_instance_data";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
@@ -193,6 +196,19 @@ describe("scenarios > public > question", () => {
         });
       });
     });
+  });
+
+  it("should allow to set locale from the `locale` query parameter", () => {
+    cy.request("POST", `/api/card/${ORDERS_QUESTION_ID}/public_link`).then(
+      ({ body: { uuid } }) => {
+        cy.visit(`/public/question/${uuid}?locale=de`);
+      },
+    );
+
+    main().findByText("Februar 11, 2025, 9:40 PM");
+    main().findByText("Zeilen", { exact: false });
+
+    cy.url().should("include", "locale=de");
   });
 });
 

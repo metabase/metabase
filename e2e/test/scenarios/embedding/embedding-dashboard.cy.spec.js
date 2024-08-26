@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
   assertEmbeddingParameter,
@@ -16,6 +17,7 @@ import {
   getIframeUrl,
   getRequiredToggle,
   goToTab,
+  main,
   modal,
   multiAutocompleteInput,
   openStaticEmbeddingModal,
@@ -938,6 +940,28 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
       const [iframe] = $iframe;
       expect(iframe.clientHeight).to.be.greaterThan(1000);
     });
+  });
+
+  it("should allow to set locale from the `locale` query parameter", () => {
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
+      enable_embedding: true,
+    });
+    cy.signOut();
+
+    visitEmbeddedPage(
+      {
+        resource: { dashboard: ORDERS_DASHBOARD_ID },
+        params: {},
+      },
+      { qs: { locale: "de" } },
+    );
+
+    main().findByText("Februar 11, 2025, 9:40 PM");
+    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
+    cy.findByText("exportieren", { exact: false });
+
+    cy.url().should("include", "locale=de");
   });
 });
 
