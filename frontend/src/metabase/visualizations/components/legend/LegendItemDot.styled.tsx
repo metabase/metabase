@@ -32,13 +32,15 @@ export const Button = styled.button`
   height: 12px;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
 
-  &:hover {
-    ${InnerCircle} {
-      transform: scale(0.8);
-      border-width: 0;
-    }
-    ${OuterCircle} {
-      transform: scale(1.3);
-    }
-  }
+  ${props =>
+    props.onClick &&
+    `&:hover {
+      ${InnerCircle} {
+        transform: scale(0.8);
+        border-width: 0;
+      }
+      ${OuterCircle} {
+        transform: scale(1.3);
+      }
+    }`}
 `;
