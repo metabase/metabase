@@ -13,6 +13,8 @@ import { JoinTablePicker } from "../JoinTablePicker";
 
 import { JoinCell, JoinConditionCell } from "./JoinDraft.styled";
 import { getDefaultJoinStrategy, getJoinFields } from "./utils";
+import { getColumnGroupName, getColumnGroupIcon } from "metabase/common/utils/column-groups";
+import { getDefaultJoinConditionOperator } from "../JoinConditionDraft/utils";
 
 interface JoinDraftProps {
   query: Lib.Query;
@@ -20,6 +22,7 @@ interface JoinDraftProps {
   color: string;
   initialStrategy?: Lib.JoinStrategy;
   initialRhsTable?: Lib.Joinable;
+  isCube: boolean;
   isReadOnly: boolean;
   onJoinChange: (join: Lib.Join) => void;
 }
@@ -30,12 +33,16 @@ export function JoinDraft({
   color,
   initialStrategy,
   initialRhsTable,
+  isCube,
   isReadOnly,
   onJoinChange,
 }: JoinDraftProps) {
   const databaseId = Lib.databaseID(query);
   const [strategy, setStrategy] = useState(
     () => initialStrategy ?? getDefaultJoinStrategy(query, stageIndex),
+  );
+  const [operator, setOperator] = useState(() =>
+    getDefaultJoinConditionOperator(query, stageIndex),
   );
   const [rhsTable, setRhsTable] = useState(initialRhsTable);
   const [rhsTableColumns, setRhsTableColumns] = useState(() =>
@@ -46,6 +53,7 @@ export function JoinDraft({
   const [selectedRhsTableColumns, setSelectedRhsTableColumns] =
     useState(rhsTableColumns);
   const [lhsColumn, setLhsColumn] = useState<Lib.ColumnMetadata>();
+  const [rhsColumn, setRhsColumn] = useState<Lib.ColumnMetadata>();
 
   const lhsTableName = useMemo(
     () => Lib.joinLHSDisplayName(query, stageIndex, rhsTable, lhsColumn),
@@ -59,6 +67,78 @@ export function JoinDraft({
         : undefined,
     [query, stageIndex, rhsTable],
   );
+
+  const lhsSections = useMemo(() => {
+    const columns = Lib.joinConditionLHSColumns(query, stageIndex, rhsTable, lhsColumn, rhsColumn);
+    const columnGroups = Lib.groupColumns(columns);
+    return columnGroups.map(group => {
+      const groupInfo = Lib.displayInfo(query, stageIndex, group);
+      const items = Lib.getColumnsFromColumnGroup(group).map(column => ({
+        ...Lib.displayInfo(query, stageIndex, column),
+        column,
+      }));
+      return {
+        name: getColumnGroupName(groupInfo),
+        icon: getColumnGroupIcon(groupInfo),
+        items,
+      };
+    });
+  }, [query, stageIndex, rhsTable, lhsColumn, rhsColumn]);
+
+  const rhsSections = useMemo(() => {
+    const columns = Lib.joinConditionRHSColumns(query, stageIndex, rhsTable, lhsColumn, rhsColumn);
+    const columnGroups = Lib.groupColumns(columns);
+    return columnGroups.map(group => {
+      const groupInfo = Lib.displayInfo(query, stageIndex, group);
+      const items = Lib.getColumnsFromColumnGroup(group).map(column => ({
+        ...Lib.displayInfo(query, stageIndex, column),
+        column,
+      }));
+      return {
+        name: getColumnGroupName(groupInfo),
+        icon: getColumnGroupIcon(groupInfo),
+        items,
+      };
+    });
+  }, [query, stageIndex, rhsTable, lhsColumn, rhsColumn]);
+
+  useEffect(() => {
+    if (!isCube) return;
+
+    for (const section of lhsSections) {
+      if (section.icon === "join_left_outer" || section.icon === "table") {
+        if (section.items.length > 0) {
+          const cubeField = section.items.find(item => item.displayName === "CubeJoinField");
+          const column = cubeField!.column;
+          setLhsColumn(column);
+
+          if (rhsColumn) {
+            handleConditionChange(Lib.joinConditionClause(query, stageIndex, operator, column, rhsColumn));
+          }
+          break;
+        }
+      }
+    }
+  }, [lhsSections, rhsColumn, isCube]);
+
+  useEffect(() => {
+    if (!isCube) return;
+
+    for (const section of rhsSections) {
+      if (section.icon === "join_left_outer" || section.icon === "table") {
+        if (section.items.length > 0) {
+          const cubeField = section.items.find(item => item.displayName === "CubeJoinField");
+          const column = cubeField!.column;
+          setRhsColumn(column);
+
+          if (lhsColumn) {
+            handleConditionChange(Lib.joinConditionClause(query, stageIndex, operator, lhsColumn, column));
+          }
+          break;
+        }
+      }
+    }
+  }, [rhsSections, lhsColumn, isCube]);
 
   const handleTableChange = (newTable: Lib.Joinable) => {
     const newConditions = Lib.suggestedJoinConditions(
@@ -97,6 +177,7 @@ export function JoinDraft({
     setRhsTableColumns(rhsTableColumns);
     setSelectedRhsTableColumns(rhsTableColumns);
     setLhsColumn(undefined);
+    setRhsColumn(undefined);
   });
 
   useEffect(
@@ -139,7 +220,7 @@ export function JoinDraft({
           />
         </Flex>
       </JoinCell>
-      {rhsTable && (
+      {rhsTable && isCube === false && (
         <>
           <Box mt="1.5rem">
             <Text color="brand" weight="bold">{t`on`}</Text>
