@@ -2,12 +2,17 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   chartPathWithFillColor,
+  getDraggableElements,
+  getNotebookStep,
   leftSidebar,
+  moveDnDKitElement,
+  openNotebook,
   pieSlices,
   popover,
   restore,
   tableHeaderClick,
   visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -108,11 +113,70 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    chartPathWithFillColor("#F9D45C").trigger("mousemove");
+    chartPathWithFillColor("#F9D45C").as("slice");
+    cy.get("@slice").trigger("mousemove");
 
     cy.findByTestId("query-visualization-root")
       .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
       .should("be.visible");
+  });
+
+  it("should add new slices to the chart if they appear in the query result", () => {
+    visitQuestionAdhoc({
+      dataset_query: getLimitedQuery(testQuery, 2),
+      display: "pie",
+    });
+
+    ensurePieChartRendered(["Gadget", "Doohickey"], 95);
+
+    changeRowLimit(2, 4);
+
+    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"], 200);
+  });
+
+  it("should preserve a slice's settings if its row is removed then reappears in the query result", () => {
+    visitQuestionAdhoc({
+      dataset_query: getLimitedQuery(testQuery, 4),
+      display: "pie",
+    });
+
+    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"], 200);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    // Open color picker
+    cy.findByLabelText("#F2A86F").click();
+
+    popover().within(() => {
+      // Change color
+      cy.findByLabelText("#509EE3").click();
+    });
+
+    cy.findByTestId("Widget-settings-button").click();
+
+    cy.findByDisplayValue("Widget").type("{selectall}Woooget").realPress("Tab");
+
+    moveDnDKitElement(getDraggableElements().contains("Woooget"), {
+      vertical: 100,
+    });
+
+    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"], 200);
+    chartPathWithFillColor("#509EE3").should("be.visible");
+
+    cy.findByTestId("chart-legend").within(() => {
+      cy.get("li").eq(2).contains("Woooget");
+    });
+
+    changeRowLimit(4, 2);
+    ensurePieChartRendered(["Gadget", "Doohickey"], 95);
+
+    changeRowLimit(2, 4);
+    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"], 200);
+    chartPathWithFillColor("#509EE3").should("be.visible");
+
+    cy.findByTestId("chart-legend").within(() => {
+      cy.get("li").eq(2).contains("Woooget");
+    });
   });
 });
 
@@ -136,4 +200,25 @@ function checkLegendItemAriaCurrent(title, value) {
   cy.findByTestId("chart-legend")
     .findByTestId(`legend-item-${title}`)
     .should("have.attr", "aria-current", value);
+}
+
+function getLimitedQuery(query, limit) {
+  return {
+    ...query,
+    query: {
+      ...query.query,
+      limit,
+    },
+  };
+}
+
+function changeRowLimit(from, to) {
+  openNotebook();
+  getNotebookStep("limit").within(() => {
+    cy.findByDisplayValue(String(from))
+      .type(`{selectall}${String(to)}`)
+      .realPress("Tab");
+  });
+
+  visualize();
 }
