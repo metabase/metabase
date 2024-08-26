@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 
 import ButtonBar from "metabase/components/ButtonBar";
