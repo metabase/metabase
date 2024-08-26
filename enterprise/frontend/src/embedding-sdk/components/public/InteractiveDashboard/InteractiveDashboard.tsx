@@ -4,6 +4,7 @@ import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
+import { useValidIdForEntity } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestion";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -25,7 +26,7 @@ export type InteractiveDashboardProps = {
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
-  dashboardId,
+  dashboardId: initId,
   initialParameterValues = {},
   withTitle = true,
   withCardTitle = true,
@@ -37,6 +38,11 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
 }: InteractiveDashboardProps) => {
+  const { id: dashboardId } = useValidIdForEntity({
+    type: "Dashboard",
+    id: initId,
+  });
+
   const {
     displayOptions,
     ref,

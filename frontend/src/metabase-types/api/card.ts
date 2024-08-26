@@ -1,4 +1,5 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { BaseEntityId } from "metabase-types/api/util";
 
 import type { Collection, CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
@@ -15,6 +16,7 @@ export type CardType = "model" | "question" | "metric";
 export interface Card<Q extends DatasetQuery = DatasetQuery>
   extends UnsavedCard<Q> {
   id: CardId;
+  entity_id: CardEntityId;
   created_at: string;
   updated_at: string;
   name: string;
@@ -223,6 +225,7 @@ export interface ModerationReview {
 }
 
 export type CardId = number;
+export type CardEntityId = BaseEntityId;
 export type ModerationReviewStatus = "verified" | null;
 
 export type CardFilterOption =
