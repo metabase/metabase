@@ -42,16 +42,20 @@ export const SliderInput = styled.input`
   outline: none;
   background: none;
   pointer-events: none;
+
   &::-webkit-slider-thumb {
     ${thumbStyles}
   }
+
   &::-moz-range-thumb {
     ${thumbStyles}
   }
+
   &:focus {
     &::-webkit-slider-thumb {
       ${activeThumbStyle}
     }
+
     &::-moz-range-thumb {
       ${activeThumbStyle}
     }

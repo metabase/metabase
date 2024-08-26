@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type * as React from "react";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
@@ -286,7 +286,6 @@ export function FilterPopover({
           className={className}
           filter={filter}
           dateShortcutOptions={dateShortcutOptions}
-          primaryColor={primaryColor}
           minWidth={MIN_WIDTH}
           maxWidth={MAX_WIDTH}
           onBack={onBack}

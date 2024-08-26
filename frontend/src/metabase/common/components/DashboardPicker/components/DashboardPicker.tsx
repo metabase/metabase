@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { useCallback, useState, forwardRef, useImperativeHandle } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 
 import {
@@ -12,9 +12,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/lib/redux";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
 import type {
-  ListCollectionItemsRequest,
   CollectionItemModel,
   Dashboard,
+  ListCollectionItemsRequest,
 } from "metabase-types/api";
 
 import { CollectionItemPickerResolver } from "../../CollectionPicker/components/CollectionItemPickerResolver";
@@ -24,7 +24,7 @@ import {
   NestedItemPicker,
   type PickerState,
 } from "../../EntityPicker";
-import type { DashboardPickerOptions, DashboardPickerItem } from "../types";
+import type { DashboardPickerItem, DashboardPickerOptions } from "../types";
 import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
 
 export const defaultOptions: DashboardPickerOptions = {

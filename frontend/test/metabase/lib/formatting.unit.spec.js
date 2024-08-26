@@ -6,14 +6,14 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import Link from "metabase/core/components/Link";
 import {
   capitalize,
-  formatNumber,
-  formatValue,
-  formatUrl,
   formatDateTimeWithUnit,
+  formatNumber,
   formatTime,
   formatTimeWithUnit,
-  slugify,
+  formatUrl,
+  formatValue,
   getCurrencySymbol,
+  slugify,
 } from "metabase/lib/formatting";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { createMockColumn } from "metabase-types/api/mocks";
@@ -95,15 +95,15 @@ describe("formatting", () => {
       });
       it("shouldn't display small numbers as 0", () => {
         expect(formatNumber(0.1, { compact: true })).toEqual("0.1");
-        expect(formatNumber(-0.1, { compact: true })).toEqual("-0.1");
+        expect(formatNumber(-0.1, { compact: true })).toEqual("−0.1");
         expect(formatNumber(0.01, { compact: true })).toEqual("0.01");
-        expect(formatNumber(-0.01, { compact: true })).toEqual("-0.01");
+        expect(formatNumber(-0.01, { compact: true })).toEqual("−0.01");
       });
       it("should round up and down", () => {
         expect(formatNumber(1.01, { compact: true })).toEqual("1.01");
-        expect(formatNumber(-1.01, { compact: true })).toEqual("-1.01");
+        expect(formatNumber(-1.01, { compact: true })).toEqual("−1.01");
         expect(formatNumber(1.9, { compact: true })).toEqual("1.9");
-        expect(formatNumber(-1.9, { compact: true })).toEqual("-1.9");
+        expect(formatNumber(-1.9, { compact: true })).toEqual("−1.9");
       });
       it("should format large numbers with metric units", () => {
         expect(formatNumber(1, { compact: true })).toEqual("1");
@@ -127,7 +127,7 @@ describe("formatting", () => {
         expect(formatNumber(0.019, options)).toEqual("1.9%");
         expect(formatNumber(0.021, options)).toEqual("2.1%");
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
-        expect(formatNumber(-0.22, options)).toEqual("-22%");
+        expect(formatNumber(-0.22, options)).toEqual("−22%");
       });
       it("should format scientific notation", () => {
         const options = { compact: true, number_style: "scientific" };
@@ -226,6 +226,16 @@ describe("formatting", () => {
   });
 
   describe("formatValue", () => {
+    it("should return null on nullish values by default", () => {
+      expect(formatValue(null)).toEqual(null);
+      expect(formatValue(undefined)).toEqual(null);
+    });
+    it("should format null as (empty) when stringifyNull option is true", () => {
+      expect(formatValue(null, { stringifyNull: true })).toEqual("(empty)");
+      expect(formatValue(undefined, { stringifyNull: true })).toEqual(
+        "(empty)",
+      );
+    });
     it("should format numbers with null column", () => {
       expect(formatValue(12345)).toEqual("12345");
     });

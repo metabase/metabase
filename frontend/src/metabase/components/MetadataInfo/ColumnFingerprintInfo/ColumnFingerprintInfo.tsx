@@ -75,7 +75,7 @@ export function QueryColumnFingerprintInfo({
 }: QueryColumnFingerprintInfoProps) {
   const { fingerprint } = Lib.displayInfo(query, stageIndex, column);
 
-  if (Lib.isDate(column)) {
+  if (Lib.isTemporal(column)) {
     return (
       <DateTimeFingerprint
         className={className}

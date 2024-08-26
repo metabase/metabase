@@ -10,6 +10,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.public-settings :as public-settings]
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.fetch-source-query
     :as fetch-source-query]
@@ -18,18 +19,23 @@
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]))
 
-(defn- resolve-source-cards [query]
-  (letfn [(thunk []
-            ;; Handle old tests written with legacy queries. Convert legacy query to pMBQL and then convert results
-            ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
-            (let [mlv2-query (lib.query/query (qp.store/metadata-provider) query)
-                  resolved   (fetch-source-query/resolve-source-cards mlv2-query)]
-              (cond-> resolved
-                (not (:lib/type query)) lib.convert/->legacy-MBQL)))]
+(defn resolve-source-cards* [query]
+  ;; Handle old tests written with legacy queries. Convert legacy query to pMBQL and then convert results
+  ;; back. That way we don't need to update all the tests immediately and can do so at our leisure.
+  (letfn [(thunk [] (let [mlv2-query (lib.query/query (qp.store/metadata-provider) query)
+                          resolved   (fetch-source-query/resolve-source-cards mlv2-query)]
+                      (cond-> resolved
+                        (not (:lib/type query)) lib.convert/->legacy-MBQL)))]
     (if (qp.store/initialized?)
       (thunk)
       (qp.store/with-metadata-provider meta/metadata-provider
         (thunk)))))
+
+(defn- resolve-source-cards [query & {:keys [enable-nested-queries?]}]
+  (if (false? enable-nested-queries?)
+    (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
+      (resolve-source-cards* query))
+    (resolve-source-cards* query)))
 
 (defn- wrap-inner-query [query]
   {:database lib.schema.id/saved-questions-virtual-database-id
@@ -106,20 +112,26 @@
                                   "2015-02-01"]}))))))))
 
 (deftest resolve-mbql-queries-test-4
-  (testing "respects `enable-nested-queries` server setting"
+  (testing "respects `enable-nested-queries` server setting when true"
     (qp.store/with-metadata-provider mock-metadata-provider
-      (mt/with-temporary-setting-values [enable-nested-queries true]
-        (is (some? (resolve-source-cards
-                    (lib.tu.macros/mbql-query nil
-                      {:source-table "card__1"})))))
-      (mt/with-temporary-setting-values [enable-nested-queries false]
-        (try (resolve-source-cards
-              (lib.tu.macros/mbql-query nil
-                {:source-table "card__1"}))
-             (is false "Nested queries disabled not honored")
-             (catch Exception e
-               (is (=? {:type :disabled-feature}
-                       (ex-data e)))))))))
+      ;; by default nested queries are enabled:
+      (is (true? (public-settings/enable-nested-queries)))
+      (is (some? (resolve-source-cards (lib.tu.macros/mbql-query nil {:source-table "card__1"})))))))
+
+(deftest resolve-mbql-queries-test-5
+  (testing "respects `enable-nested-queries` server setting when false"
+    ;; if the env var is set, the setting respects it:
+    (mt/with-temp-env-var-value! ["MB_ENABLE_NESTED_QUERIES" "false"]
+      (is (false? (public-settings/enable-nested-queries))))
+    (qp.store/with-metadata-provider mock-metadata-provider
+
+;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
+      (is (thrown-with-msg? Exception
+                            #"Nested queries are disabled"
+                            (resolve-source-cards
+                             {:database (meta/id), :type :query, :query {:source-table "card__1"}}
+                             :enable-nested-queries? false))
+          "Nested queries disabled not honored, lib.tu.macros/mbql-query should have thrown an exception."))))
 
 (deftest ^:parallel resolve-native-queries-test
   (testing "make sure that the `resolve-source-cards` middleware correctly resolves native queries"
@@ -206,10 +218,10 @@
   tests the actual contents of the metadata."
   [results]
   (letfn [(clean [sm] (map #(select-keys % [:field_ref]) sm))]
-   (update-in results [:query :joins]
-              (fn [joins]
-                (map (fn [join] (update join :source-metadata clean))
-                     joins)))))
+    (update-in results [:query :joins]
+               (fn [joins]
+                 (map (fn [join] (update join :source-metadata clean))
+                      joins)))))
 
 (def ^:private joins-metadata
   [{:name         "ID"
@@ -365,6 +377,9 @@
                        :qp/source-card-id 1)
                 (resolve-source-cards query)))))))
 
+;;; this is a proof-of-concept to make sure this stuff works for non-SQL drivers, that's why we're hardcoding `:mongo`
+;;; below.
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel card-id->source-query-and-metadata-test
   (testing "card-id->source-query-and-metadata-test should preserve non-SQL native queries"
     (let [query {:type     :native
@@ -391,6 +406,9 @@
                  :info              {:card-id 1}}
                 (resolve-source-cards (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1)))))))))
 
+;;; this is a proof-of-concept to make sure this stuff works for non-SQL drivers, that's why we're hardcoding `:mongo`
+;;; below.
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel card-id->source-query-and-metadata-test-2
   (testing "card-id->source-query-and-metadata-test should preserve mongodb native queries in string format (#30112)"
     (let [query-str (str "[{\"$project\":\n"

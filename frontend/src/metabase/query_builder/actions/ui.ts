@@ -1,6 +1,5 @@
 import { createAction } from "redux-actions";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { updateUserSetting } from "metabase/redux/settings";
@@ -19,7 +18,15 @@ export const resetUIControls = createAction(RESET_UI_CONTROLS);
 export const setQueryBuilderMode =
   (
     queryBuilderMode: QueryBuilderMode,
-    { shouldUpdateUrl = true, datasetEditorTab = "query" } = {},
+    {
+      shouldUpdateUrl = true,
+      datasetEditorTab = "query",
+      replaceState,
+    }: {
+      shouldUpdateUrl?: boolean;
+      datasetEditorTab?: "query" | "metadata";
+      replaceState?: boolean;
+    } = {},
   ) =>
   async (dispatch: Dispatch) => {
     await dispatch(
@@ -30,7 +37,9 @@ export const setQueryBuilderMode =
       }),
     );
     if (shouldUpdateUrl) {
-      await dispatch(updateUrl(null, { queryBuilderMode, datasetEditorTab }));
+      await dispatch(
+        updateUrl(null, { queryBuilderMode, datasetEditorTab, replaceState }),
+      );
     }
     if (queryBuilderMode === "notebook") {
       dispatch(cancelQuery());
@@ -67,7 +76,6 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
     // persist the fact that this user has seen the NewbModal
     const { currentUser } = getState();
     await UserApi.update_qbnewb({ id: checkNotNull(currentUser).id });
-    MetabaseAnalytics.trackStructEvent("QueryBuilder", "Close Newb Modal");
   };
 });
 

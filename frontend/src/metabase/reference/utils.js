@@ -2,7 +2,7 @@ import { assoc } from "icepick";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { t } from "ttag";
 
-import { titleize, humanize } from "metabase/lib/formatting";
+import { humanize, titleize } from "metabase/lib/formatting";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -66,7 +66,7 @@ export const getQuestion = ({
     let query = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
 
     if (getCount) {
-      query = Lib.aggregateByCount(query);
+      query = Lib.aggregateByCount(query, -1);
     }
 
     if (fieldId) {

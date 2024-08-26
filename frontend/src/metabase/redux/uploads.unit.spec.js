@@ -1,12 +1,12 @@
 import fetchMock from "fetch-mock";
 
 import {
-  uploadFile,
+  MAX_UPLOAD_STRING,
   UPLOAD_FILE_CLEAR,
   UPLOAD_FILE_END,
   UPLOAD_FILE_ERROR,
   UPLOAD_FILE_START,
-  MAX_UPLOAD_STRING,
+  uploadFile,
 } from "./uploads";
 
 const now = Date.now();

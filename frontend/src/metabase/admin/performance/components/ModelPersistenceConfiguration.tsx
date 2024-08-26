@@ -15,7 +15,9 @@ import {
   getShowMetabaseLinks,
 } from "metabase/selectors/whitelabel";
 import { PersistedModelsApi } from "metabase/services";
-import { Stack, Switch, Text } from "metabase/ui";
+import { Box, Stack, Switch, Text } from "metabase/ui";
+
+import ModelPersistenceConfigurationS from "./ModelPersistenceConfiguration.module.css";
 
 const modelCachingOptions = [
   {
@@ -134,7 +136,11 @@ export const ModelPersistenceConfiguration = () => {
 
   return (
     <Stack spacing="xl" maw="40rem">
-      <div>
+      <Box
+        mb="sm"
+        lh="1.5rem"
+        className={ModelPersistenceConfigurationS.Explanation}
+      >
         <p>
           {t`Enable model persistence to make your models (and the queries that use them) load faster.`}
         </p>
@@ -170,12 +176,12 @@ export const ModelPersistenceConfiguration = () => {
             checked={modelPersistenceEnabled}
           />
         </DelayedLoadingAndErrorWrapper>
-      </div>
+      </Box>
       {modelPersistenceEnabled && (
         <div>
           <ModelCachingScheduleWidget
             setting={modelCachingSetting}
-            onChange={async value => {
+            onChange={async (value: unknown) => {
               await resolveWithToasts([
                 PersistedModelsApi.setRefreshSchedule({ cron: value }),
                 dispatch(refreshSiteSettings({})),

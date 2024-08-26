@@ -1,9 +1,9 @@
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  questionInfoButton,
-  visitModel,
   echartsContainer,
+  questionInfoButton,
+  restore,
+  visitModel,
 } from "e2e/support/helpers";
 
 describe("scenarios > models > revision history", () => {
@@ -21,13 +21,11 @@ describe("scenarios > models > revision history", () => {
 
     openRevisionHistory();
     revertTo("You created this");
-    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
     echartsContainer();
 
     revertTo("You edited this");
-    cy.wait("@modelQuery" + ORDERS_BY_YEAR_QUESTION_ID);
 
     cy.location("pathname").should("match", /^\/model\/\d+/);
     cy.get("[data-testid=cell-data]");

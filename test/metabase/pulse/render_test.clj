@@ -1,11 +1,15 @@
 (ns metabase.pulse.render-test
   (:require
    [clojure.test :refer :all]
+   [hiccup.core :as hiccup]
+   [hickory.core :as hik]
+   [hickory.select :as hik.s]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models
     :refer [Card Dashboard DashboardCard DashboardCardSeries]]
    [metabase.pulse :as pulse]
    [metabase.pulse.render :as render]
+   [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -22,6 +26,13 @@
   ([card results]
    (render/render-pulse-card-for-display (pulse/defaulted-timezone card) card results)))
 
+(defn- hiccup->hickory
+  [content]
+  (-> content
+      hiccup/html
+      hik/parse
+      hik/as-hickory))
+
 (deftest render-test
   (testing "If the pulse renders correctly, it will have an img tag."
     (let [query {:database (mt/id)
@@ -35,15 +46,16 @@
                                           :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                    :graph.metrics    ["count"]}}]
         (is (some? (lib.util.match/match-one
-                       (render-pulse-card card)
+                     (render-pulse-card card)
                      [:img _])))))))
 
 (deftest render-error-test
   (testing "gives us a proper error if we have erroring card"
-    (is (= (get-in (render/render-pulse-card-for-display
-                    nil nil
-                    {:error "some error"}) [1 2 4 2 2])
-           "There was a problem with this question."))))
+    (let [rendered-card (render/render-pulse-card-for-display nil nil {:error "some error"})]
+      (is (= "There was a problem with this question."
+             (-> (render.tu/nodes-with-text rendered-card "There was a problem with this question.")
+                 first
+                 last))))))
 
 (deftest detect-pulse-chart-type-test
   (testing "Currently unsupported chart types for static-viz return `nil`."
@@ -115,8 +127,8 @@
                                                      {:base_type :type/Number}]
                                               :rows [["A" 2]
                                                      ["B" 3]]})))))
-  (testing "Pie charts are correctly identified and return `:categorical/donut`."
-    (is (= :categorical/donut
+  (testing "Pie charts are correctly identified and return `:javascript_visualization`."
+    (is (= :javascript_visualization
            (render/detect-pulse-chart-type {:display :pie}
                                            {}
                                            {:cols [{:base_type :type/Text}
@@ -142,12 +154,12 @@
                           Dashboard           dashboard {}
                           DashboardCard       dc1 {:dashboard_id (u/the-id dashboard) :card_id (u/the-id card1)}
                           DashboardCardSeries _   {:dashboardcard_id (u/the-id dc1) :card_id (u/the-id card2)}]
-           (render/detect-pulse-chart-type card1
-                                           dc1
-                                           {:cols [{:base_type :type/Temporal}
-                                                   {:base_type :type/Number}]
-                                            :rows [[#t "2020" 2]
-                                                   [#t "2021" 3]]}))))))
+             (render/detect-pulse-chart-type card1
+                                             dc1
+                                             {:cols [{:base_type :type/Temporal}
+                                                     {:base_type :type/Number}]
+                                              :rows [[#t "2020" 2]
+                                                     [#t "2021" 3]]}))))))
 
 (deftest make-description-if-needed-test
   (testing "Use Visualization Settings's description if it exists"
@@ -215,17 +227,16 @@
                                               (format "%.2f%%" (* 100 (peek row))))
                                             (get-in query-results [:data :rows]))
                         rendered-card (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil query-results)
-                        table         (get-in rendered-card [:content 1 2 4 2 1])
-                        tax-col       (->>
-                                        (rest (get-in table [2 1]))
-                                        (map-indexed (fn [i v] [i (last v)]))
-                                        (some (fn [[i v]] (when (= v "Tax Rate") i))))]
+                        doc           (hiccup->hickory (:content rendered-card))
+                        rows          (hik.s/select (hik.s/tag :tr) doc)
+                        tax-rate-col  2]
                     {:expected expected
-                     :actual   (->> (get-in table [3 1])
-                                    (map #(peek (get (vec (get % 2)) tax-col))))}))]
+                     :actual   (mapcat (fn [row]
+                                         (:content (nth row tax-rate-col)))
+                                       (map :content (rest rows)))}))]
           (testing "To apply the custom metadata to a model, you must explicitly pass the result metadata"
             (let [query-results (qp/process-query
-                                  (assoc-in model-query [:info :metadata/model-metadata] model-metadata))
+                                 (assoc-in model-query [:info :metadata/model-metadata] model-metadata))
                   {:keys [expected actual]} (create-comparison-results query-results model-card)]
               (is (= expected actual))))
           (testing "A question based on a model will use the underlying model's metadata"
@@ -241,4 +252,4 @@
         (let [rendered-card-content (:content (binding [render/*include-title* true]
                                                 (render/render-pulse-card :inline (pulse/defaulted-timezone card) card nil (qp/process-query (:dataset_query card)))))]
           (is (some? (lib.util.match/match-one rendered-card-content
-                                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
+                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))

@@ -1,10 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
-import _ from "underscore";
 
 import {
   setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -168,6 +168,7 @@ const commonSetup = () => {
   setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupSearchEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,

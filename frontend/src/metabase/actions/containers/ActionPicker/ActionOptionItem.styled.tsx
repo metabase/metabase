@@ -14,14 +14,11 @@ export const ActionOptionListItem = styled.div<ActionOptionProps>`
   background-color: ${props =>
     props.isSelected ? color("brand") : color("bg-white")};
   cursor: pointer;
-
   display: flex;
   align-items: ${props => (props.hasDescription ? "flex-start" : "center")};
   gap: ${space(1)};
-
   border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};
-
   padding: ${space(2)};
   margin: ${space(1)} ${space(0)};
 

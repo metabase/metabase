@@ -4,7 +4,10 @@ import {
   addCustomColumn,
   addSummaryField,
   addSummaryGroupingField,
+  createQuestion,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   filterField,
   getNotebookStep,
@@ -22,9 +25,6 @@ import {
   summarize,
   visitQuestionAdhoc,
   visualize,
-  createQuestion,
-  entityPickerModal,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -47,7 +47,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.button("Visualize").click();
 
@@ -630,6 +630,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell").should("contain", "Median of Price");
     });
 
@@ -660,6 +661,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell")
         .should("contain", "Median of Median of Mega price")
         .should("contain", "Median of Count");
@@ -829,7 +831,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.get("@metricId").then(metricId => {
       const questionDetails = {
         query: {
-          "source-table": `card__${metricId}`,
+          "source-table": ORDERS_ID,
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],
@@ -916,6 +918,56 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
             .should("eq", "50,072.98");
         });
     });
+  });
+
+  it.skip("should open only one bucketing popover at a time (metabase#45036)", () => {
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: { "source-table": PRODUCTS_ID, aggregation: [["count"]] },
+          parameters: [],
+        },
+      },
+      { mode: "notebook" },
+    );
+
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover()
+      .findByRole("option", { name: "Created At" })
+      .findByText("by month")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Year").should("be.visible");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").click();
+        cy.findByText("Hour of day").should("be.visible");
+      });
+
+    popover()
+      .first()
+      .findByRole("option", { name: "Price" })
+      .findByText("Auto bin")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Auto bin").should("be.visible");
+        cy.findByText("50 bins").should("be.visible");
+        cy.findByText("Don't bin").should("be.visible");
+
+        cy.findByText("Year").should("not.exist");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").should("not.exist");
+      });
   });
 });
 

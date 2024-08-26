@@ -1,5 +1,7 @@
-import { renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { SdkGlobalStylesWrapper } from "embedding-sdk/components/private/SdkGlobalStylesWrapper";
+import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
+import { Text } from "metabase/ui";
 import {
   createMockSettingsState,
   createMockState,
@@ -35,5 +37,25 @@ describe("SdkGlobalStylesWrapper", () => {
 
     expect(fontFaceRule).toBeDefined();
     expect(fontFaceRule.cssText).toContain("font-weight: 700");
+  });
+
+  // TODO: Add substitute tests since we can't test CSS custom properties with JSDom
+  // eslint-disable-next-line jest/no-disabled-tests
+  it.skip("should use foreground color from the theme", () => {
+    const theme = {
+      colors: { "text-primary": "rgb(255, 0, 255)" },
+    };
+
+    renderWithProviders(
+      <SdkThemeProvider theme={theme}>
+        <SdkGlobalStylesWrapper>
+          <Text>Hello world</Text>
+        </SdkGlobalStylesWrapper>
+      </SdkThemeProvider>,
+    );
+
+    expect(window.getComputedStyle(screen.getByText("Hello world")).color).toBe(
+      "rgb(255, 0, 255)",
+    );
   });
 });

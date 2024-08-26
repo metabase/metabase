@@ -2,15 +2,15 @@ import styled from "@emotion/styled";
 
 import {
   ItemLink,
-  hideResponsively,
   TableColumn,
+  hideResponsively,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { breakpoints } from "metabase/ui/theme";
 
 export const ModelTableRow = styled.tr<{ skeleton?: boolean }>`
-  :outline {
-    outline: 2px solid var(--mb-color-brand);
+  :focus {
+    outline: 2px solid var(--mb-color-focus);
   }
   ${props =>
     props.skeleton
@@ -35,9 +35,11 @@ export const ModelCell = styled.td<ResponsiveProps>`
 
 export const ModelNameColumn = styled(TableColumn)`
   width: 356px;
+
   @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
     width: 280px;
   }
+
   @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
     width: 200px;
   }

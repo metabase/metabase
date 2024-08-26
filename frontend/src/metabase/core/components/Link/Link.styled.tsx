@@ -27,6 +27,7 @@ export const variants = {
   default: "",
   brand: css`
     color: var(--mb-color-brand);
+
     &:hover {
       text-decoration: underline;
     }
@@ -34,6 +35,7 @@ export const variants = {
   brandBold: css`
     color: var(--mb-color-brand);
     font-weight: bold;
+
     &:hover {
       text-decoration: underline;
     }

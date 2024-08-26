@@ -8,7 +8,7 @@
     "\\.svg\\?(component|source)": "<rootDir>/frontend/test/__mocks__/svgMock.jsx"
   },
   "transformIgnorePatterns": [
-    "<rootDir>/node_modules/(?!rehype-external-links/)"
+    "<rootDir>/node_modules/(?!rehype-external-links|d3/)"
   ],
   "testMatch": ["<rootDir>/frontend/**/*.tz.unit.spec.{js,ts,jsx,tsx}"],
   "modulePaths": [

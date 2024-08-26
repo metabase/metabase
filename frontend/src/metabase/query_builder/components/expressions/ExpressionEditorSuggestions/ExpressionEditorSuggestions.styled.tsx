@@ -2,8 +2,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import {
-  HoverParent,
   PopoverHoverTarget as BasePopoverHoverTarget,
+  HoverParent,
 } from "metabase/components/MetadataInfo/InfoIcon";
 
 export const ExpressionList = styled.ul`
@@ -26,12 +26,12 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   padding-right: 0.5rem;
   cursor: pointer;
   height: 2rem;
+  color: var(--mb-color-text-dark);
 
   ${props => props.isHighlighted && highlighted}
 `;
 
 export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
-  background: white;
   height: 2rem;
   color: var(--mb-color-text-medium);
   display: flex;

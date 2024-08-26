@@ -5,8 +5,8 @@ import {
   type MantineThemeOverride,
   getSize,
   getStylesRef,
-  rem,
   px,
+  rem,
 } from "@mantine/core";
 
 import { SelectDropdown } from "./SelectDropdown";
@@ -29,7 +29,8 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       ...getSelectItemsOverrides(theme, size),
       // For epic (metabase#38699)
       dropdown: {
-        background: theme.fn.themeColor("bg-white"),
+        background: "var(--mb-color-background)",
+        borderColor: "var(--mb-color-border)",
         ">div": {
           maxHeight: "none !important",
         },
@@ -87,6 +88,8 @@ export const getSelectInputOverrides = (
     },
     input: {
       ref: getStylesRef("input"),
+      color: "var(--mb-color-text-primary)",
+      backgroundColor: "var(--mb-color-background)",
 
       "&[data-disabled]": {
         opacity: 1,
@@ -94,7 +97,7 @@ export const getSelectInputOverrides = (
     },
     rightSection: {
       ref: getStylesRef("rightSection"),
-      color: theme.fn.themeColor("text-dark"),
+      color: "var(--mb-color-text-primary)",
 
       svg: {
         color: "inherit !important",
@@ -126,17 +129,17 @@ export const getSelectItemsOverrides = (
       padding: "0.75rem",
     },
     item: {
-      color: theme.fn.themeColor("text-dark"),
+      color: "var(--mb-color-text-primary)",
       fontSize: getItemFontSize(size),
       lineHeight: getItemLineHeight(size),
       padding: theme.spacing.sm,
       "&[data-hovered]": {
-        color: theme.fn.themeColor("brand"),
-        backgroundColor: theme.fn.themeColor("brand-lighter"),
+        color: "var(--mb-color-text-hover)",
+        backgroundColor: "var(--mb-color-background-hover)",
       },
       "&[data-selected]": {
-        color: theme.fn.themeColor("text-white"),
-        backgroundColor: theme.fn.themeColor("brand"),
+        color: "var(--mb-color-text-selected)",
+        backgroundColor: "var(--mb-color-background-selected)",
       },
       "&[data-disabled]": {
         color: theme.fn.themeColor("text-light"),

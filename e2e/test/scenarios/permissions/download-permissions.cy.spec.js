@@ -5,18 +5,18 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  describeEE,
   assertPermissionForItem,
-  modifyPermission,
-  downloadAndAssert,
   assertSheetRowsCount,
-  sidebar,
-  visitQuestion,
-  visitDashboard,
+  describeEE,
+  downloadAndAssert,
+  modal,
+  modifyPermission,
   popover,
+  restore,
   setTokenFeatures,
+  sidebar,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP } = USER_GROUPS;
@@ -95,7 +95,6 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
 
   it("respects 'no download' permissions when 'All users' group data permissions are set to `Blocked` (metabase#22408)", () => {
     cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
-
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Blocked");
 
     cy.button("Save changes").click();

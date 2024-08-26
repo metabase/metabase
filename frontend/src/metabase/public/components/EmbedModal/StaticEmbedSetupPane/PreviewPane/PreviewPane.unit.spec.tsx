@@ -5,18 +5,14 @@ import { PreviewPane } from "./PreviewPane";
 const MOCK_PREVIEW_URL = "https://www.example.com/";
 
 type MockPreviewPaneProps = {
-  isTransparent?: boolean;
   hidden?: boolean;
 };
 
-const setup = ({
-  isTransparent = false,
-  hidden = false,
-}: MockPreviewPaneProps = {}) => {
+const setup = ({ hidden = false }: MockPreviewPaneProps = {}) => {
   render(
     <PreviewPane
       previewUrl={MOCK_PREVIEW_URL}
-      isTransparent={isTransparent}
+      backgroundType="no-background"
       hidden={hidden}
     />,
   );

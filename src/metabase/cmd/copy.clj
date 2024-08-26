@@ -166,6 +166,9 @@
     ;; Never create dumps with read-only-mode turned on.
     ;; It will be confusing to restore from and prevent key rotation.
     (remove (fn [{k :key}] (= k "read-only-mode")))
+    :model/Field
+    ;; unique_field_helper is a computed/generated column
+    (map #(dissoc % :unique_field_helper))
     ;; else
     identity))
 
@@ -361,7 +364,6 @@
             (throw (ex-info (format "Error updating sequence values for %s: %s" model (ex-message e))
                             {:model model}
                             e))))))))
-
 
 (defmethod update-sequence-values! :h2
   [_db-type data-source]

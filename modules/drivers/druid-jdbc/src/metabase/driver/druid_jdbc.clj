@@ -12,7 +12,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -119,7 +118,7 @@
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (format-datetime t)))
 
-(defmethod unprepare/unprepare-value [:druid-jdbc ZonedDateTime]
+(defmethod sql.qp/inline-value [:druid-jdbc ZonedDateTime]
   [_driver t]
   (format "'%s'" (format-datetime t)))
 
@@ -127,7 +126,7 @@
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (format-datetime t)))
 
-(defmethod unprepare/unprepare-value [:druid-jdbc LocalDateTime]
+(defmethod sql.qp/inline-value [:druid-jdbc LocalDateTime]
   [_driver t]
   (format "'%s'" (format-datetime t)))
 

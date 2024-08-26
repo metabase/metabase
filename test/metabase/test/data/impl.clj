@@ -128,14 +128,14 @@
 ;;;     [nil "NAME"]        78
 ;;;     [nil "ID"]          69}
 
-(mu/defn ^:private build-table-lookup-map
+(mu/defn- build-table-lookup-map
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn->pk (juxt (constantly database-id) :name)
                     [:model/Table :id :name]
                     :db_id  database-id
                     :active true))
 
-(mu/defn ^:private build-field-lookup-map
+(mu/defn- build-field-lookup-map
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn->pk (juxt :parent_id :name)
                     [:model/Field :id :name :parent_id]
@@ -154,14 +154,19 @@
 (defn- cached-field-id [table-id parent-id field-name]
   (get (field-lookup-map table-id) [parent-id field-name]))
 
+(def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
+  "The database definition used to create the currently bound test database. For those rare occasions when you need to
+  refer back to it."
+  nil)
+
 (mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
   [db    :- [:map [:id ::lib.schema.id/database]]
    thunk :- fn?]
-  (binding [*db-fn*    (constantly db)
-            *db-id-fn* (constantly (u/the-id db))]
+  (binding [*db-fn*                   (constantly db)
+            *db-id-fn*                (constantly (u/the-id db))
+            *dbdef-used-to-create-db* nil]
     (thunk)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                       id                                                       |
@@ -178,13 +183,18 @@
                          (pr-str table-name) driver db-id (pr-str db-name)
                          (u/pprint-to-str (t2/select-pk->fn :name Table, :db_id db-id, :active true)))))))
 
+(mu/defn database-source-dataset-name :- :string
+  "Get the name of the test dataset this Database was created from, e.g. `test-data`."
+  [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
+  (get-in database [:settings :database-source-dataset-name]))
+
 (mu/defn the-table-id :- ::lib.schema.id/table
   "Internal impl of `(data/id table)."
   [db-id      :- ::lib.schema.id/database
    table-name :- :string]
   (or (cached-table-id db-id table-name)
       (table-id-from-app-db db-id table-name)
-      (let [db-name              (t2/select-one-fn :name [:model/Database :name] :id db-id)
+      (let [db-name              (database-source-dataset-name (t2/select-one [:model/Database :settings] :id db-id))
             qualified-table-name (tx/db-qualified-table-name db-name table-name)]
         (cached-table-id db-id qualified-table-name)
         (table-id-from-app-db db-id qualified-table-name))
@@ -245,22 +255,22 @@
 
 (defn- copy-table-fields! [old-table-id new-table-id]
   (t2/insert! Field
-    (for [field (t2/select Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
-      (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
+              (for [field (t2/select Field :table_id old-table-id, :active true, {:order-by [[:id :asc]]})]
+                (-> field (dissoc :id :fk_target_field_id) (assoc :table_id new-table-id))))
   ;; now copy the FieldValues as well.
   (let [old-field-id->name (t2/select-pk->fn :name Field :table_id old-table-id :active true)
         new-field-name->id (t2/select-fn->pk :name Field :table_id new-table-id :active true)
         old-field-values   (t2/select FieldValues :field_id [:in (set (keys old-field-id->name))])]
     (t2/insert! FieldValues
-      (for [{old-field-id :field_id, :as field-values} old-field-values
-            :let                                       [field-name (get old-field-id->name old-field-id)]]
-        (-> field-values
-            (dissoc :id)
-            (assoc :field_id (get new-field-name->id field-name))
+                (for [{old-field-id :field_id, :as field-values} old-field-values
+                      :let                                       [field-name (get old-field-id->name old-field-id)]]
+                  (-> field-values
+                      (dissoc :id)
+                      (assoc :field_id (get new-field-name->id field-name))
             ;; Toucan after-select for FieldValues returns NULL human_readable_values as [] for FE-friendliness..
             ;; preserve NULL in the app DB copy so we don't end up changing things that rely on checking whether its
             ;; NULL like [[metabase.models.params.chain-filter/search-cached-field-values?]]
-            (update :human_readable_values not-empty))))))
+                      (update :human_readable_values not-empty))))))
 
 (defn- copy-db-tables! [old-db-id new-db-id]
   (let [old-tables    (t2/select Table :db_id old-db-id, :active true, {:order-by [[:id :asc]]})
@@ -317,20 +327,21 @@
                :details
                (reduce (fn [details [id-prop old-id]]
                          (assoc details id-prop (get old-id->new-id old-id)))
-                 (:details database)
-                 prop->old-id)))
+                       (:details database)
+                       prop->old-id)))
       database)))
 
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
+;;; TODO -- this doesn't seem safe in parallel tests, right? Should this be renamed `do-with-temp-copy-of-db!`?
 (defn do-with-temp-copy-of-db
   "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
-        original-db (-> old-db copy-secrets (select-keys [:details :engine :name]))
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings]))
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)
@@ -339,7 +350,6 @@
         (do-with-db new-db f))
       (finally
         (t2/delete! Database :id new-db-id)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    dataset                                                     |
@@ -367,6 +377,7 @@
                                (assert (pos-int? (:id db)))
                                db)))
         db-fn             #(get-db-for-driver (tx/driver))]
-    (binding [*db-fn*    db-fn
-              *db-id-fn* #(u/the-id (db-fn))]
+    (binding [*db-fn*                   db-fn
+              *db-id-fn*                #(u/the-id (db-fn))
+              *dbdef-used-to-create-db* dbdef]
       (f))))

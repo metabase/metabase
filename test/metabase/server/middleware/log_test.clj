@@ -10,11 +10,11 @@
 (deftest log-info-input-tests
   (testing "log-info handles nil status input"
     (is (true?
-          (try
-            (#'mw.log/log-info nil)
-            true
-            (catch Throwable _
-              false)))))) ; Make sure it didn't throw NPE
+         (try
+           (#'mw.log/log-info nil)
+           true
+           (catch Throwable _
+             false)))))) ; Make sure it didn't throw NPE
 
 ;; just make sure `stats-test` can report application DB information correctly without barfing.
 (deftest stats-test

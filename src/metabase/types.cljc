@@ -50,11 +50,11 @@
 
   These are used to record the semantic purpose of a Table."
   (:require
+   #?@(:cljs
+       [[metabase.util :as u]])
    [clojure.set :as set]
    [metabase.types.coercion-hierarchies :as coercion-hierarchies]
-   [metabase.util.malli :as mu]
-   #?@(:cljs
-       [[metabase.util :as u]])))
+   [metabase.util.malli :as mu]))
 
 ;;; Table (entity) Types
 
@@ -66,6 +66,20 @@
 (derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
 
+;;; Modifier Types
+
+;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
+;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
+(derive :type/field-values-unsupported :type/*)
+
+;; `:type/fingerprint-unsupported` enables driver developers to opt out of fingerprinting for specific
+;; fields.
+(derive :type/fingerprint-unsupported :type/*)
+
+;; `:type/Large` enables driver developers to signal that the field values can be relatively large and can use a lot of
+;; memory. These types will be excluded from scanning and fingerprinting, and possibly other features in the future.
+(derive :type/Large :type/field-values-unsupported)
+(derive :type/Large :type/fingerprint-unsupported)
 
 ;;; Numeric Types
 
@@ -168,9 +182,13 @@
 
 (derive :type/PostgresEnum :type/Text)
 
+(derive :type/OracleCLOB :type/Text)
+(derive :type/OracleCLOB :type/Large)
+
 ;;; DateTime Types
 
 (derive :type/Temporal :type/*)
+(derive :type/Temporal :type/field-values-unsupported)
 
 (derive :type/Date :type/Temporal)
 ;; You could have Dates with TZ info but it's not supported by JSR-310 so we'll not worry about that for now.
@@ -192,7 +210,6 @@
 ;; `Instant` if differentiated from other `DateTimeWithLocalTZ` columns in the same way `java.time.Instant` is
 ;; different from `java.time.OffsetDateTime`;
 (derive :type/Instant :type/DateTimeWithLocalTZ)
-
 
 ;; TODO -- shouldn't we have a `:type/LocalDateTime` as well?
 
@@ -245,20 +262,24 @@
 
 (derive :type/Boolean :type/*)
 (derive :type/DruidHyperUnique :type/*)
-
-;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
-;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
-(derive :type/field-values-unsupported :type/*)
-
 (derive :type/DruidHyperUnique :type/field-values-unsupported)
-(derive :type/DruidJSON :type/field-values-unsupported)
+
+;;; The Snowflake `VARIANT` type is allowed to be anything, so just mark it as deriving from the core root types so
+;;; we're allowed to use any sort of filter with it (whether it makes sense or not). See
+;;; https://docs.snowflake.com/en/sql-reference/data-types-semistructured
+(doseq [t [:type/Number
+           :type/Text
+           :type/Temporal
+           :type/Boolean
+           :type/Collection]]
+  (derive :type/SnowflakeVariant t))
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
 ;;; filter options like starts with / contains
 
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
-(derive :type/MySQLEnum :type/TextLike)
+(derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses
 (derive :type/IPAddress :type/TextLike)
@@ -267,7 +288,9 @@
 ;;; Structured/Collections
 
 (derive :type/Collection :type/*)
+(derive :type/Collection :type/Large)
 (derive :type/Structured :type/*)
+(derive :type/Structured :type/Large)
 
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
@@ -276,7 +299,6 @@
 (derive :type/JSON :type/Structured)
 (derive :type/JSON :type/Collection)
 
-;; DruidJSON is specific -- it derives also :type/field-values-unsupported
 (derive :type/DruidJSON :type/JSON)
 
 ;; `:type/XML` -- an actual native XML data column
@@ -292,7 +314,6 @@
 ;;
 ;; but for the time being we'll have to live with these being "weird" semantic types.
 (derive :type/Structured :Semantic/*)
-(derive :type/Structured :type/Text)
 
 (derive :type/SerializedJSON :type/Structured)
 (derive :type/XML :type/Structured)
@@ -479,11 +500,11 @@
 (defn ^:export coercions_for_type
   "Coercions available for a type. In cljs will return a js array of strings like [\"Coercion/ISO8601->Time\" ...]. In
   clojure will return a sequence of keywords."
-   [base-type]
+  [base-type]
   (let [applicable (into () (comp (distinct) cat)
                          (vals (coercion-possibilities (keyword base-type))))]
-     #?(:cljs
-        (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
-                      applicable))
-        :clj
-        applicable)))
+    #?(:cljs
+       (clj->js (map (fn [kw] (str (namespace kw) "/" (name kw)))
+                     applicable))
+       :clj
+       applicable)))

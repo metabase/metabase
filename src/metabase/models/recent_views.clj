@@ -35,6 +35,7 @@
    [malli.error :as me]
    [medley.core :as m]
    [metabase.config :as config]
+   [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -79,14 +80,15 @@
 
 (def rv-models
   "These are models for which we will retrieve recency."
-  [:card :model ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
-                ;; needed to distinguish between them.
+  [:card :dataset :metric
+   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
+   ;; needed to distinguish between them.
    :dashboard :table :collection])
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (get {:model      :model/Card
+  (get {:dataset    :model/Card
         :card       :model/Card
         :dashboard  :model/Dashboard
         :table      :model/Table
@@ -99,13 +101,13 @@
                     {:select [:rv.id]
                      :from [[:recent_views :rv]]
                      :where [:and
-                             [:= :rv.model (get {:model "card"} model (name model))]
+                             [:= :rv.model (get {:dataset "card"} model (name model))]
                              [:= :rv.user_id user-id]
                              [:= :rv.context (h2x/literal (name context))]
-                             (when (#{:card :model} model) ;; TODO add metric
+                             (when (#{:card :dataset} model) ;; TODO add metric
                                [:= :rc.type (cond (= model :card) (h2x/literal "question")
                                                   ;; TODO add metric
-                                                  (= model :model) (h2x/literal "model"))])]
+                                                  (= model :dataset) (h2x/literal "model"))])]
                      :left-join [[:report_card :rc]
                                  [:and
                                   [:= :rc.id :rv.model_id]
@@ -152,8 +154,11 @@
    {:where    [:and
                [:= :user_id user-id]
                [:= :model (h2x/literal "dashboard")]
-               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
-    :order-by [[:id :desc]]}))
+               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]
+               [:not= :d.archived true]]
+    :order-by [[:recent_views.id :desc]]
+    :left-join [[:report_dashboard :d]
+                [:= :recent_views.model_id :d.id]]}))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
@@ -174,9 +179,11 @@
     [:multi {:dispatch :model}
      [:card [:map
              [:display :string]
+             [:database_id :int]
              [:parent_collection ::pc]
              [:moderated_status ::verified]]]
      [:dataset [:map
+                [:database_id :int]
                 [:parent_collection ::pc]
                 [:moderated_status ::verified]]]
      [:metric [:map
@@ -222,7 +229,7 @@
 ;; ================== Recent Cards ==================
 
 (defn card-recents
-  "Query to select card data"
+  "Query to select `report_card` data"
   [card-ids]
   (if-not (seq card-ids)
     []
@@ -231,6 +238,7 @@
                          :card.description
                          :card.archived
                          :card.id
+                         :card.database_id
                          :card.display
                          [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
@@ -272,6 +280,7 @@
                    (ellide-archived model_object))]
     {:id model_id
      :name (:name card)
+     :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
      :model :card
@@ -288,6 +297,7 @@
                       (ellide-archived model_object))]
     {:id model_id
      :name (:name dataset)
+     :database_id (:database_id dataset)
      :description (:description dataset)
      :model :dataset
      :can_write (mi/can-write? dataset)
@@ -309,11 +319,7 @@
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status metric)
-     :parent_collection (if (:collection-id metric)
-                          {:id (:collection-id metric)
-                           :name (:collection-name metric)
-                           :authority_level (:collection-authority-level metric)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll metric)}))
 
 ;; ================== Recent Dashboards ==================
 
@@ -357,7 +363,7 @@
   [collection-ids]
   (if-not (seq collection-ids)
     []
-    (let [ ;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
+    (let [;; these have their parent collection id in effective_location, but we need the id, name, and authority_level.
           collections (t2/select :model/Collection
                                  {:select [:id :name :description :authority_level
                                            :archived :location]
@@ -429,17 +435,34 @@
     (throw (ex-info "context must be non-empty" {:context context})))
   (t2/select :model/RecentViews {:select    [:rv.* [:rc.type :card_type]]
                                  :from      [[:recent_views :rv]]
-                                 :where     (into [:and
-                                                   [:= :rv.user_id user-id]
-                                                   [:in :rv.context (map query-context->recent-context context)]])
+                                 :where     [:and
+                                             [:= :rv.user_id user-id]
+                                             [:in :rv.context (map query-context->recent-context context)]
+                                             ;; include non-collections, or collections without a namespace/type.
+                                             [:or
+                                              [:= :coll.id nil]
+                                              [:and
+                                               ;; trash collection is never returned
+                                               [:or [:= nil :coll.type] [:not= :coll.type collection/trash-collection-type]]
+                                               ;; collections in a different namespace can't interact with collections
+                                               ;; in the normal NULL namespace.
+                                               [:= nil :coll.namespace]
+                                               ;; exclude instance analytics for selects
+                                               (when (contains? (set context) :selections)
+                                                 [:or [:= nil :coll.type] [:not= :coll.type collection/instance-analytics-collection-type]])]]]
                                  :left-join [[:report_card :rc]
                                              [:and
                                               ;; only want to join on card_type if it's a card
                                               [:= :rv.model "card"]
-                                              [:= :rc.id :rv.model_id]]]
+                                              [:= :rc.id :rv.model_id]]
+
+                                             [:collection :coll]
+                                             [:and
+                                              [:= :rv.model "collection"]
+                                              [:= :coll.id :rv.model_id]]]
                                  :order-by  [[:rv.timestamp :desc]]}))
 
-(mu/defn ^:private model->return-model [model :- :keyword]
+(mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
 
 (defn- post-process [entity->id->data recent-view]

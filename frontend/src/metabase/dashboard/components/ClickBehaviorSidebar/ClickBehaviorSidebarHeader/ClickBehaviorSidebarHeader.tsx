@@ -1,15 +1,15 @@
 import type * as React from "react";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { isTableDisplay } from "metabase/lib/click-behavior";
 import { Icon } from "metabase/ui";
-import type { QuestionDashboardCard, DatasetColumn } from "metabase-types/api";
+import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 
 import { Heading, SidebarHeader } from "../ClickBehaviorSidebar.styled";
 
 import {
-  ColumnClickBehaviorHeader,
   ChevronIconContainer,
+  ColumnClickBehaviorHeader,
   ItemName,
 } from "./ClickBehaviorSidebarHeader.styled";
 
@@ -22,7 +22,7 @@ function DefaultHeader({ children }: { children: React.ReactNode }) {
 }
 
 interface Props {
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   selectedColumn?: DatasetColumn | null;
   onUnsetColumn: () => void;
 }

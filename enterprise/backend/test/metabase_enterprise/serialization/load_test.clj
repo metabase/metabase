@@ -295,12 +295,15 @@
   [entity _]
   entity)
 
+;; If this test fails after adding a new column, add the column to the list of columns in `metabase-enterprise.serialization.serialize/strip-crud`
 (deftest dump-load-entities-test
   (try
     ;; in case it already exists
     (u/ignore-exceptions
       (delete-directory! dump-dir))
-    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions :foreign-keys)
+    ;; TODO: Examine whether the test could work without :metadata/key-constraints.
+    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions
+                                                         :metadata/key-constraints)
                          ;; We will run this roundtrip test against any database supporting these features ^ except
                          ;; certain ones for specific reasons, outlined below.
                          ;;
@@ -319,10 +322,7 @@
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
                                :vertica   ; bare table name doesn't work; it's test_data_venues instead of venues
-                               :sqlite    ; foreign-keys is not supported by this driver
-                               :sparksql  ; foreign-keys is not supported by this driver
-                               ;; foreign-keys is not supported by the below driver even though it has joins
-                               :bigquery-cloud-sdk))
+                               ))
       (mt/with-premium-features #{:serialization}
         (let [fingerprint (ts/with-world
                             (v1-dump! dump-dir {:user        (:email (test.users/fetch-user :crowberto))
@@ -413,7 +413,7 @@
                             (assert-loaded-entity loaded fingerprint))
                           (and (-> entity :archived) ; archived card hasn't been dump-loaded
                                (= (:name entity) "My Arch Card"))
-                          ;; Rasta's Personal Collection was not loaded
+                                         ;; Rasta's Personal Collection was not loaded
                           (= "Felicia's Personal Collection" (:name entity)))
                       (str " failed " (pr-str entity)))))
               fingerprint)))))

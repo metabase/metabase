@@ -114,10 +114,10 @@
      (instance-of SiteLocalizedString)]))
 
 (defn- valid-str-form?
- [str-form]
- (and
-  (= (first str-form) 'str)
-  (every? string? (rest str-form))))
+  [str-form]
+  (and
+   (= (first str-form) 'str)
+   (every? string? (rest str-form))))
 
 (defn- validate-number-of-args
   "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
@@ -150,6 +150,7 @@
   split a long string over multiple lines.
 
   Calling `str` on the results of this invocation will lookup the translated version of the string."
+  {:style/indent [:form]}
   [format-string-or-str & args]
   (validate-number-of-args format-string-or-str args)
   `(UserLocalizedString. ~format-string-or-str ~(vec args) {}))
@@ -162,6 +163,7 @@
   split a long string over multiple lines.
 
   Calling `str` on the results of this invocation will lookup the translated version of the string."
+  {:style/indent [:form]}
   [format-string & args]
   (validate-number-of-args format-string args)
   `(SiteLocalizedString. ~format-string ~(vec args) {}))

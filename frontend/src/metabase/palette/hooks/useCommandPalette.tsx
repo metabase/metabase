@@ -1,11 +1,12 @@
 import type { Query } from "history";
-import { useRegisterActions, useKBar, Priority } from "kbar";
+import { Priority, useKBar, useRegisterActions } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -16,6 +17,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -23,7 +25,8 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import type { IconName } from "metabase/ui";
+import { Icon, type IconName } from "metabase/ui";
+import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -147,6 +150,7 @@ export const useCommandPalette = ({
           name: t`Loading...`,
           keywords: searchQuery,
           section: "search",
+          disabled: true,
         },
       ];
     } else if (searchError) {
@@ -155,6 +159,7 @@ export const useCommandPalette = ({
           id: "search-error",
           name: t`Could not load search results`,
           section: "search",
+          disabled: true,
         },
       ];
     } else if (debouncedSearchText) {
@@ -192,11 +197,10 @@ export const useCommandPalette = ({
                 dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
-                parentCollection: wrappedResult.getCollection().name,
                 isVerified: result.moderated_status === "verified",
-                database: result.database_name,
                 href: wrappedResult.getUrl(),
                 iconColor: icon.color,
+                subtext: getSearchResultSubtext(wrappedResult),
               },
             };
           }),
@@ -208,6 +212,7 @@ export const useCommandPalette = ({
             name: t`No results for “${debouncedSearchText}”`,
             keywords: debouncedSearchText,
             section: "search",
+            disabled: true,
           },
         ];
       }
@@ -242,22 +247,13 @@ export const useCommandPalette = ({
               dispatch(push(href));
             }
           },
-          extra:
-            item.model === "table"
-              ? {
-                  database: item.database.name,
-                  href: Urls.modelToUrl(item),
-                  iconColor: icon.color,
-                }
-              : {
-                  parentCollection:
-                    item.parent_collection.id === null
-                      ? ROOT_COLLECTION.name
-                      : item.parent_collection.name,
-                  isVerified: item.moderated_status === "verified",
-                  href: Urls.modelToUrl(item),
-                  iconColor: icon.color,
-                },
+          extra: {
+            isVerified:
+              item.model !== "table" && item.moderated_status === "verified",
+            href: Urls.modelToUrl(item),
+            iconColor: icon.color,
+            subtext: getRecentItemSubtext(item),
+          },
         };
       }) || []
     );
@@ -269,7 +265,13 @@ export const useCommandPalette = ({
   ]);
 
   const adminActions = useMemo<PaletteAction[]>(() => {
-    return adminPaths.map(adminPath => ({
+    // Subpaths - i.e. paths to items within the main Admin tabs - are needed
+    // in the command palette but are not part of the main list of admin paths
+    const adminSubpaths = getPerformanceAdminPaths(
+      PLUGIN_CACHING.getTabMetadata(),
+    );
+    const paths = [...adminPaths, ...adminSubpaths];
+    return paths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
       name: `${adminPath.name}`,
       icon: "gear",
@@ -289,7 +291,7 @@ export const useCommandPalette = ({
       })
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
-        name: `Settings - ${section.name}`,
+        name: `${t`Settings`} - ${section.name}`,
         icon: "gear",
         perform: () => dispatch(push(`/admin/settings/${slug}`)),
         section: "admin",
@@ -300,4 +302,33 @@ export const useCommandPalette = ({
     hasQuery ? [...adminActions, ...adminSettingsActions] : [],
     [adminActions, adminSettingsActions, hasQuery],
   );
+};
+
+export const getSearchResultSubtext = (wrappedSearchResult: any) => {
+  if (wrappedSearchResult.model === "indexed-entity") {
+    return jt`a record in ${(
+      <Icon
+        name="model"
+        style={{
+          verticalAlign: "bottom",
+          marginInlineStart: "0.25rem",
+        }}
+      />
+    )} ${wrappedSearchResult.model_name}`;
+  } else {
+    return (
+      wrappedSearchResult.getCollection().name ||
+      wrappedSearchResult.database_name
+    );
+  }
+};
+
+export const getRecentItemSubtext = (item: RecentItem) => {
+  if (item.model === "table") {
+    return item.database.name;
+  } else if (item.parent_collection.id === null) {
+    return ROOT_COLLECTION.name;
+  } else {
+    return item.parent_collection.name;
+  }
 };

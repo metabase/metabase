@@ -15,8 +15,8 @@ import type { Group } from "metabase-types/api";
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
 import type {
   ApplicationPermissionKey,
-  ApplicationPermissions,
   ApplicationPermissionValue,
+  ApplicationPermissions,
 } from "./types/permissions";
 import type { ApplicationPermissionsState } from "./types/state";
 
@@ -32,8 +32,10 @@ export function getPermissionWarning(
   return null;
 }
 
-export const canManageSubscriptions = (state: ApplicationPermissionsState) =>
-  state.currentUser.permissions?.can_access_subscription ?? false;
+export const canManageSubscriptions = createSelector(
+  (state: ApplicationPermissionsState) => state.currentUser,
+  user => user?.permissions?.can_access_subscription ?? false,
+);
 
 const getApplicationPermission = (
   permissions: ApplicationPermissions,

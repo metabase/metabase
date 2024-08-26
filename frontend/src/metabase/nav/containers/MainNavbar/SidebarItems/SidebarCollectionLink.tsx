@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { forwardRef, useEffect, useCallback, useRef } from "react";
+import { forwardRef, useCallback, useEffect, useRef } from "react";
 import { usePrevious } from "react-use";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
@@ -11,7 +11,6 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { Collection } from "metabase-types/api";
 
 import {
-  CollectionLinkRoot,
   CollectionNodeRoot,
   ExpandToggleButton,
   FullWidthLink,
@@ -122,7 +121,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
   ) {
     const collection = item as unknown as Collection;
     return (
-      <CollectionLinkRoot data-testid="sidebar-collection-link-root">
+      <div data-testid="sidebar-collection-link-root">
         <CollectionDropTarget collection={collection}>
           {(droppableProps: DroppableProps) => (
             <SidebarCollectionLink
@@ -133,7 +132,7 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
             />
           )}
         </CollectionDropTarget>
-      </CollectionLinkRoot>
+      </div>
     );
   },
 );

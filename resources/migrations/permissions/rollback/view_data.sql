@@ -20,6 +20,12 @@ WHERE EXISTS
        AND dp.perm_type = 'perms/create-queries'
        AND dp.perm_value = 'no'
        AND s.table_id IS NOT NULL )
+       OR EXISTS (SELECT 1
+                  FROM data_permissions dp_block
+                  WHERE dp_block.group_id = pg.id
+                    AND dp_block.db_id = mt.db_id
+                    AND dp_block.perm_type = 'perms/view-data'
+                    AND dp_block.perm_value = 'blocked')
   AND pg.name != 'Administrators'
   AND NOT EXISTS
     (SELECT 1
@@ -118,3 +124,11 @@ WHERE pg.name != 'Administrators'
      WHERE dp.group_id = pg.id
        AND dp.table_id = mt.id
        AND dp.perm_type = 'perms/create-queries');
+
+DELETE
+FROM data_permissions
+WHERE perm_type = 'perms/view-data';
+
+DELETE
+FROM data_permissions
+WHERE perm_type = 'perms/create-queries';

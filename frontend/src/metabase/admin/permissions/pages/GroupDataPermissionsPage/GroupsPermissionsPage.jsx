@@ -8,29 +8,31 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
-import { useSelector, useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { getSetting } from "metabase/selectors/settings";
 import { PermissionsApi } from "metabase/services";
-import { Loader, Center } from "metabase/ui";
+import { Center, Loader } from "metabase/ui";
 
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
+import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 import { PermissionsSidebar } from "../../components/PermissionsSidebar";
 import {
-  updateDataPermission,
   LOAD_DATA_PERMISSIONS_FOR_GROUP,
+  updateDataPermission,
 } from "../../permissions";
 import {
   getDatabasesPermissionEditor,
+  getGroupsSidebar,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
-  getGroupsSidebar,
 } from "../../selectors/data-permissions";
 import {
-  getGroupFocusPermissionsUrl,
   GROUPS_BASE_PATH,
+  getGroupFocusPermissionsUrl,
 } from "../../utils/urls";
 
 const mapDispatchToProps = dispatch => ({
@@ -100,6 +102,9 @@ function GroupsPermissionsPage({
 
   const permissionEditor = useSelector(state =>
     getDatabasesPermissionEditor(state, { params }),
+  );
+  const showSplitPermsMessage = useSelector(state =>
+    getSetting(state, "show-updated-permission-banner"),
   );
 
   const handleEntityChange = useCallback(
@@ -177,7 +182,12 @@ function GroupsPermissionsPage({
           onChange={handlePermissionChange}
           onAction={handleAction}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
-          warnings={() => (
+          preHeaderContent={() => (
+            <>
+              {showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />}
+            </>
+          )}
+          postHeaderContent={() => (
             <>
               {showLegacyNoSelfServiceWarning && (
                 <PermissionsEditorLegacyNoSelfServiceWarning />

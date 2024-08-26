@@ -31,7 +31,6 @@
 
 (defn function
   "Create a JavaScript function with `args` and `body`."
-  {:style/indent 1}
   ^String [args & body]
   (str "function" (argslist args) " { "
        (apply str body)
@@ -58,7 +57,6 @@
 (def ^{:arglists '([x])} ^String parse-float
   "Generate a call to the JavaScript `parseFloat` function."
   (partial fn-call :parseFloat))
-
 
 (defn or
   "Interpose the JavaScript or operator (`||`) between `args`, and wrap the entire expression in parens.

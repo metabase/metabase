@@ -30,7 +30,6 @@ export const AggregationName = styled.span`
 export const RemoveIcon = styled(Icon)`
   display: flex;
   margin-left: auto;
-
   opacity: 0.4;
   transition: opacity 0.3s;
 

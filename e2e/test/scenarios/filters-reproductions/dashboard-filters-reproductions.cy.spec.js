@@ -13,8 +13,10 @@ import {
   assertQueryBuilderRowCount,
   commandPalette,
   commandPaletteSearch,
+  createDashboardWithTabs,
   createNativeQuestion,
   createQuestion,
+  dashboardParameterSidebar,
   dashboardParametersContainer,
   editDashboard,
   filterWidget,
@@ -29,11 +31,15 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  setModelMetadata,
   sidebar,
+  tableHeaderClick,
+  tableInteractive,
   undoToast,
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
+  visitModel,
   visitPublicDashboard,
 } from "e2e/support/helpers";
 import {
@@ -143,7 +149,7 @@ describe("issue 8030 + 32444", () => {
   };
 
   const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
-    cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as("getDashboard");
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as("getDashboard");
     cy.intercept(
       "POST",
       `/api/dashboard/${dashboard_id}/dashcard/*/card/${card1_id}/query`,
@@ -235,7 +241,7 @@ describe("issue 8030 + 32444", () => {
   });
 });
 
-describe("issue 12720", () => {
+describe("issue 12720, issue 47172", () => {
   function clickThrough(title) {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("dashcard-container").contains(title).click();
@@ -286,7 +292,7 @@ describe("issue 12720", () => {
             {
               card_id: SQL_ID,
               row: 0,
-              col: 6, // making sure it doesn't overlap the existing card
+              col: 8, // making sure it doesn't overlap the existing card
               size_x: 7,
               size_y: 5,
               parameter_mappings: [
@@ -324,6 +330,33 @@ describe("issue 12720", () => {
 
     clickThrough("12720_SQL");
     clickThrough("Orders");
+  });
+
+  it("should apply the specific (before|after) filter on a native question with field filter (metabase#47172)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    getDashboardCard(1).within(() => {
+      cy.findByTestId("TableFooter").should("exist");
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
+
+      cy.log("Drill down to the question");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.findByText(questionDetails.name).click();
+    });
+
+    cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible").and("contain", "97.44");
+    cy.findByTestId("question-row-count").should(
+      "not.have.text",
+      "Showing 0 rows",
+    );
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 1,980 rows",
+    );
   });
 });
 
@@ -552,7 +585,7 @@ describe("issues 15119 and 16112", () => {
     cy.button("Add filter").click();
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
-    cy.location("search").should("eq", "?reviewer=adam&rating=");
+    cy.location("search").should("eq", "?rating=&reviewer=adam");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();
@@ -562,7 +595,7 @@ describe("issues 15119 and 16112", () => {
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
     cy.findByTestId("dashcard-container").should("contain", "5");
-    cy.location("search").should("eq", "?reviewer=adam&rating=5");
+    cy.location("search").should("eq", "?rating=5&reviewer=adam");
   });
 });
 
@@ -945,6 +978,30 @@ describe("issue 19494", () => {
   });
 });
 
+describe("issue 16177", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+      semantic_type: null,
+    });
+  });
+
+  it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Date picker", "All Options");
+    selectDashboardFilter(getDashboardCard(), "Quantity");
+    dashboardParameterSidebar().findByText("No default").click();
+    popover().findByText("Yesterday").click();
+    saveDashboard();
+    filterWidget().findByText("Yesterday").should("be.visible");
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    filterWidget().findByText("Yesterday").should("be.visible");
+  });
+});
+
 describe("issue 20656", () => {
   const filter = {
     name: "ID",
@@ -1153,7 +1210,7 @@ describe("issue 22482", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -1210,8 +1267,10 @@ describe("issue 22788", () => {
 
   function addFilterAndAssert() {
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Gizmo");
     cy.findAllByText("Doohickey").should("not.exist");
@@ -1376,23 +1435,27 @@ describe("issues 15279 and 24500", () => {
     sectionId: "string",
   };
 
-  // This filter is corrupted because it's missing `name` and `slug`
+  // Back when this issue was originally reported (around v47),
+  // it was enough to have a filter without `name` and `slug` in order to corrupt it.
+  // It seems that the backend validation is missing today or it's more relaxed.
+  // We're adding invalid `type` and `sectionId` to make sure the filter is still considered corrupted.
   const corruptedFilter = {
     name: "",
     slug: "",
     id: "af72ce9c",
-    type: "string/=",
-    sectionId: "string",
+    type: "foo",
+    sectionId: "bar",
   };
 
   const parameters = [listFilter, searchFilter, corruptedFilter];
 
   const questionDetails = {
     name: "15279",
-    query: { "source-table": PEOPLE_ID },
+    query: { "source-table": PEOPLE_ID, limit: 2 },
   };
 
   const dashboardDetails = { parameters };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1433,52 +1496,68 @@ describe("issues 15279 and 24500", () => {
       },
     );
 
-    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
-
-    // Check that list filter works
+    cy.log("Make sure the list filter works");
     filterWidget().contains("List").click();
-    cy.wait("@values");
 
-    cy.findByPlaceholderText("Search the list").type("Or").blur();
-    popover().contains("Organic").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByTextEnsureVisible("Organic").click();
+      cy.findByTestId("Organic-filter-value").should("be.checked");
+      cy.button("Add filter").click();
+    });
 
     cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("contain", "Dagmar Fay");
 
-    // Check that the search filter works
+    cy.log("Make sure the search filter works");
     filterWidget().contains("Search").click();
-    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.button("Add filter").click();
+    });
 
     cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("not.contain", "Dagmar Fay");
 
-    // The corrupted filter is now present in the UI, but it doesn't work (as expected)
-    // People can now easily remove it
+    cy.log("Make sure corrupted filter cannot connect to any field");
+    // The corrupted filter is only visible when editing the dashboard
     editDashboard();
     cy.findByTestId("edit-dashboard-parameters-widget-container")
       .findByText("unnamed")
       .icon("gear")
       .click();
-    cy.findByRole("button", { name: "Remove" }).click();
+    cy.findByTestId("parameter-mapper-container").should(
+      "contain",
+      "No valid fields",
+    );
+
+    cy.log("Remove corrupted filter");
+    cy.findByTestId("dashboard-parameter-sidebar").button("Remove").click();
+
+    cy.log("Make sure UI updated before we save the dashboard");
+    cy.findByTestId("dashcard-container")
+      .should("contain", "Lora Cronin")
+      .and("not.contain", "Dagmar Fay");
+
     saveDashboard();
 
-    // Check the list filter again
-    filterWidget().contains("List").parent().click();
-    cy.wait("@values");
+    cy.log("Make sure the list filter still works");
+    filterWidget().contains("Organic").click();
+    popover().findByTestId("Organic-filter-value").should("be.checked");
 
-    cy.log("Check that the search filter works");
-
+    cy.log("Make sure the search filter still works");
     // reset filter value
     filterWidget().contains("Search").parent().icon("close").click();
+    cy.findByTestId("dashcard-container")
+      .should("contain", "Lora Cronin")
+      .and("contain", "Dagmar Fay");
 
     filterWidget().contains("Search").click();
-
-    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.button("Add filter").click();
+    });
 
     cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
@@ -1730,8 +1809,7 @@ describe("issue 25374", () => {
 
   it("should pass comma-separated values down to the connected question (metabase#25374-1)", () => {
     // Drill-through and go to the question
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(questionDetails.name).click();
+    getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
     cy.get("[data-testid=cell-data]")
@@ -1755,7 +1833,59 @@ describe("issue 25374", () => {
     // Make sure URL search params are correct
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
   });
+
+  it("should retain comma-separated values when reverting to default (metabase#25374-3)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Equal to")
+      .click();
+    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
+    saveDashboard();
+
+    cy.button("Clear").click();
+    cy.location("search").should("eq", "?equal_to=");
+
+    cy.button("Reset filter to default state").click();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+
+    // Drill-through and go to the question
+    getDashboardCard(0).findByText(questionDetails.name).click();
+    cy.wait("@cardQuery");
+
+    cy.get("[data-testid=cell-data]")
+      .should("contain", "COUNT(*)")
+      .and("contain", "3");
+
+    cy.location("search").should("eq", "?num=1%2C2%2C3");
+  });
+
+  it("should retain comma-separated values when reverting to default via 'Reset all filters' (metabase#25374-4)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Equal to")
+      .click();
+    dashboardParameterSidebar().findByLabelText("Default value").type("1,2,3");
+    saveDashboard();
+
+    cy.button("Clear").click();
+    cy.location("search").should("eq", "?equal_to=");
+
+    cy.button("Move, trash, and more…").click();
+    popover().findByText("Reset all filters").should("be.visible").click();
+    cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+
+    // Drill-through and go to the question
+    getDashboardCard(0).findByText(questionDetails.name).click();
+    cy.wait("@cardQuery");
+
+    cy.get("[data-testid=cell-data]")
+      .should("contain", "COUNT(*)")
+      .and("contain", "3");
+
+    cy.location("search").should("eq", "?num=1%2C2%2C3");
+  });
 });
+
 describe("issue 25908", () => {
   const questionDetails = {
     name: "25908",
@@ -2030,8 +2160,10 @@ describe("issue 27768", () => {
     saveDashboard();
 
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Doohickey").should("not.exist");
 
@@ -2330,16 +2462,6 @@ describe("issue 31662", () => {
   });
 });
 describe("issue 38245", () => {
-  function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
-    return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-        ...dashboard,
-        dashcards,
-        tabs,
-      }).then(({ body: dashboard }) => cy.wrap(dashboard));
-    });
-  }
-
   function filterPanel() {
     return cy.findByTestId("edit-dashboard-parameters-widget-container");
   }
@@ -2484,6 +2606,128 @@ describe("issue 43154", () => {
   });
 });
 
+describe("issue 42829", () => {
+  const modelDetails = {
+    name: "SQL model",
+    type: "model",
+    native: {
+      query: "SELECT * FROM PEOPLE",
+    },
+  };
+
+  const stateFieldDetails = {
+    id: PEOPLE.STATE,
+    display_name: "State",
+    semantic_type: "type/State",
+  };
+
+  const getQuestionDetails = modelId => ({
+    name: "SQL model-based question",
+    type: "question",
+    query: {
+      "source-table": `card__${modelId}`,
+      aggregation: [
+        ["distinct", ["field", "STATE", { "base-type": "type/Text" }]],
+      ],
+    },
+    display: "scalar",
+  });
+
+  const parameterDetails = {
+    name: "State",
+    slug: "state",
+    id: "5aefc725",
+    type: "string/=",
+    sectionId: "location",
+  };
+
+  const dashboardDetails = {
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  const getParameterMapping = questionId => ({
+    parameter_id: parameterDetails.id,
+    card_id: questionId,
+    target: ["dimension", ["field", "STATE", { "base-type": "type/Text" }]],
+  });
+
+  function filterAndVerifyResults() {
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("AK").click();
+      cy.findByText("AR").click();
+      cy.button("Add filter").click();
+    });
+    getDashboardCard().findByTestId("scalar-value").should("have.text", "2");
+  }
+
+  function drillAndVerifyResults() {
+    getDashboardCard().findByText("SQL model-based question").click();
+    cy.findByTestId("qb-filters-panel").findByText("State is 2 selections");
+    cy.findByTestId("scalar-value").should("have.text", "2");
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createNativeQuestion(modelDetails).then(({ body: model }) => {
+      // populate result_metadata
+      cy.request("POST", `/api/card/${model.id}/query`);
+      setModelMetadata(model.id, field => {
+        if (field.display_name === "STATE") {
+          return { ...field, ...stateFieldDetails };
+        }
+        return field;
+      });
+      cy.createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [getQuestionDetails(model.id)],
+      }).then(({ dashboard, questions: [question] }) => {
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: question.id,
+              parameter_mappings: [getParameterMapping(question.id)],
+            },
+          ],
+        });
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+    });
+  });
+
+  it("should be able to get field values coming from a sql model-based question in a regular dashboard (metabase#42829)", () => {
+    visitDashboard("@dashboardId");
+    filterAndVerifyResults();
+    drillAndVerifyResults();
+  });
+
+  // param_fields is null for public dashboards, should be fixed on the BE
+  it.skip("should be able to get field values coming from a sql model-based question in a public dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitPublicDashboard(dashboardId),
+    );
+    filterAndVerifyResults();
+  });
+
+  // param_fields is null for embedded dashboards, should be fixed on the BE
+  it.skip("should be able to get field values coming from a sql model-based question in a embedded dashboard (metabase#42829)", () => {
+    cy.get("@dashboardId").then(dashboardId =>
+      visitEmbeddedPage({
+        resource: { dashboard: dashboardId },
+        params: {},
+      }),
+    );
+    filterAndVerifyResults();
+  });
+});
+
 describe("issue 43799", () => {
   const modelDetails = {
     name: "43799",
@@ -2568,7 +2812,9 @@ describe("issue 43799", () => {
       },
     );
     editDashboard();
-    cy.findByTestId("dashboard-header").findByLabelText("Add a filter").click();
+    cy.findByTestId("dashboard-header")
+      .findByLabelText("Add a filter or parameter")
+      .click();
     popover().findByText("Text or Category").click();
     getDashboardCard().findByText("Select…").click();
     popover().findByText("People - User → Source").click();
@@ -2698,7 +2944,7 @@ describe("issue 44288", () => {
     visitDashboard("@dashboardId");
     editDashboard();
     verifyMapping();
-    saveDashboard();
+    saveDashboard({ awaitRequest: false });
     verifyFilter();
     cy.signOut();
 
@@ -2717,6 +2963,30 @@ describe("issue 44288", () => {
       }),
     );
     verifyFilter();
+  });
+});
+
+describe("issue 27579", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should be able to remove the last exclude hour option (metabase#27579)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Date picker", "All Options");
+    selectDashboardFilter(getDashboardCard(), "Created At");
+    saveDashboard();
+    filterWidget().click();
+    popover().within(() => {
+      cy.findByText("Exclude...").click();
+      cy.findByText("Hours of the day...").click();
+      cy.findByLabelText("12 AM").should("be.checked");
+
+      cy.findByText("Select none...").click();
+      cy.findByLabelText("12 AM").should("not.be.checked");
+    });
   });
 });
 
@@ -3054,6 +3324,86 @@ describe("44047", () => {
   });
 });
 
+describe("issue 45659", () => {
+  const parameterDetails = {
+    name: "ID",
+    slug: "id",
+    id: "f8ec7c71",
+    type: "id",
+    sectionId: "id",
+    default: [10],
+  };
+
+  const questionDetails = {
+    name: "People",
+    query: { "source-table": PEOPLE_ID },
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  function createDashboard() {
+    return cy
+      .createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [questionDetails],
+      })
+      .then(({ dashboard, questions: [card] }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: dashboard.id,
+          card_id: card.id,
+          card: {
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: parameterDetails.id,
+                target: [
+                  "dimension",
+                  ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+                ],
+              },
+            ],
+          },
+        }).then(() => ({ dashboard }));
+      });
+  }
+
+  function verifyFilterWithRemapping() {
+    filterWidget().findByText("Tressa White").should("be.visible");
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${PEOPLE.ID}`, {
+      has_field_values: "list",
+    });
+  });
+
+  it("should remap initial parameter values in public dashboards (metabase#45659)", () => {
+    createDashboard().then(({ dashboard }) =>
+      visitPublicDashboard(dashboard.id),
+    );
+    verifyFilterWithRemapping();
+  });
+
+  it("should remap initial parameter values in embedded dashboards (metabase#45659)", () => {
+    createDashboard().then(({ dashboard }) =>
+      visitEmbeddedPage({
+        resource: { dashboard: dashboard.id },
+        params: {},
+      }),
+    );
+    verifyFilterWithRemapping();
+  });
+});
+
 describe("44266", () => {
   const filterDetails = {
     name: "Equal to",
@@ -3112,4 +3462,320 @@ describe("44266", () => {
       getDashboardCard(1).findByText("Price").should("be.visible");
     });
   });
+});
+
+describe("issue 44790", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should handle string values passed to number and id filters (metabase#44790)", () => {
+    const idFilter = {
+      id: "92eb69ea",
+      name: "ID",
+      sectionId: "id",
+      slug: "id",
+      type: "id",
+    };
+
+    const numberFilter = {
+      id: "10c0d4ba",
+      name: "Equal to",
+      slug: "equal_to",
+      type: "number/=",
+      sectionId: "number",
+    };
+
+    const peopleQuestionDetails = {
+      query: { "source-table": PEOPLE_ID, limit: 5 },
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [idFilter, numberFilter],
+      },
+      questions: [peopleQuestionDetails],
+    }).then(({ dashboard, questions: cards }) => {
+      const [peopleCard] = cards;
+
+      cy.wrap(dashboard.id).as("dashboardId");
+
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: peopleCard.id,
+            parameter_mappings: [
+              {
+                parameter_id: idFilter.id,
+                card_id: peopleCard.id,
+                target: ["dimension", ["field", PEOPLE.ID, null]],
+              },
+              {
+                parameter_id: numberFilter.id,
+                card_id: peopleCard.id,
+                target: ["dimension", ["field", PEOPLE.LATITUDE, null]],
+              },
+            ],
+          },
+        ],
+      });
+    });
+
+    cy.log(
+      "wrong value for id filter should be handled and card should not hang",
+    );
+
+    visitDashboard("@dashboardId", {
+      params: {
+        [idFilter.slug]: "{{test}}",
+      },
+    });
+
+    getDashboardCard().should(
+      "contain",
+      "There was a problem displaying this chart.",
+    );
+
+    cy.log("wrong value for number filter should be ignored");
+    visitDashboard("@dashboardId", {
+      params: {
+        [numberFilter.slug]: "{{test}}",
+        [idFilter.slug]: "1",
+      },
+    });
+
+    getDashboardCard().should("contain", "borer-hudson@yahoo.com");
+  });
+});
+
+describe("issue 34955", () => {
+  const ccName = "Custom Created At";
+
+  const questionDetails = {
+    name: "34955",
+    query: {
+      "source-table": ORDERS_ID,
+      expressions: {
+        [ccName]: [
+          "field",
+          ORDERS.CREATED_AT,
+          { "base-type": "type/DateTime" },
+        ],
+      },
+      fields: [
+        [
+          "field",
+          ORDERS.ID,
+          {
+            "base-type": "type/BigInteger",
+          },
+        ],
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+        [
+          "expression",
+          ccName,
+          {
+            "base-type": "type/DateTime",
+          },
+        ],
+      ],
+      limit: 2,
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      cy.wrap(dashboard_id).as("dashboardId");
+
+      visitDashboard(dashboard_id);
+      editDashboard();
+
+      setFilter("Date picker", "Single Date", "On");
+      connectFilterToColumn(ccName);
+
+      setFilter("Date picker", "Date Range", "Between");
+      connectFilterToColumn(ccName);
+
+      saveDashboard();
+
+      cy.findAllByTestId("column-header")
+        .eq(-2)
+        .should("have.text", "Created At");
+      cy.findAllByTestId("column-header").eq(-1).should("have.text", ccName);
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(May 15, 2024, 8:04 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  it("should connect specific date filter (`Between`) to the temporal custom column (metabase#34955-1)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=&between=2024-01-01~2024-03-01`);
+      cy.findAllByTestId("field-set-content")
+        .last()
+        .should("contain", "January 1, 2024 - March 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  // TODO: Once the issue is fixed, merge into a single repro to avoid unnecessary overhead!
+  it.skip("should connect specific date filter (`On`) to the temporal custom column (metabase#34955-2)", () => {
+    cy.get("@dashboardId").then(dashboard_id => {
+      // Apply filter through URL to prevent the typing flakes
+      cy.visit(`/dashboard/${dashboard_id}?on=2024-01-01&between=`);
+      cy.findAllByTestId("field-set-content")
+        .first()
+        .should("contain", "January 1, 2024");
+
+      cy.findAllByTestId("cell-data")
+        .filter(":contains(January 1, 2024, 7:26 AM)")
+        .should("have.length", 2);
+    });
+  });
+
+  function connectFilterToColumn(column) {
+    getDashboardCard().within(() => {
+      cy.findByText("Column to filter on");
+      cy.findByText("Select…").click();
+    });
+
+    popover().within(() => {
+      cy.findByText(column).click();
+    });
+  }
+});
+
+describe("issue 35852", () => {
+  const model = {
+    name: "35852 - sql",
+    type: "model",
+    native: {
+      query: "SELECT * FROM PRODUCTS LIMIT 10",
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show filter values for a model based on sql query (metabase#35852)", () => {
+    createNativeQuestion(model).then(({ body: { id: modelId } }) => {
+      setModelMetadata(modelId, field => {
+        if (field.display_name === "CATEGORY") {
+          return {
+            ...field,
+            id: PRODUCTS.CATEGORY,
+            display_name: "Category",
+            semantic_type: "type/Category",
+            fk_target_field_id: null,
+          };
+        }
+
+        return field;
+      });
+
+      createDashboardWithFilterAndQuestionMapped(modelId);
+      visitModel(modelId);
+    });
+
+    tableHeaderClick("Category");
+    popover().findByText("Filter by this column").click();
+
+    cy.log("Verify filter values are available");
+
+    popover()
+      .should("contain", "Gizmo")
+      .should("contain", "Doohickey")
+      .should("contain", "Gadget")
+      .should("contain", "Widget");
+
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+
+    cy.log("Verify filter is applied");
+
+    cy.findAllByTestId("cell-data")
+      .filter(":contains(Gizmo)")
+      .should("have.length", 2);
+
+    visitDashboard("@dashboardId");
+
+    filterWidget().click();
+
+    popover().within(() => {
+      cy.findByText("Gizmo").click();
+      cy.button("Add filter").click();
+    });
+
+    getDashboardCard().findAllByText("Gizmo").should("have.length", 2);
+  });
+
+  function createDashboardWithFilterAndQuestionMapped(modelId) {
+    const parameterDetails = {
+      name: "Category",
+      slug: "category",
+      id: "2a12e66c",
+      type: "string/=",
+      sectionId: "string",
+    };
+
+    const dashboardDetails = {
+      parameters: [parameterDetails],
+    };
+
+    const questionDetails = {
+      name: "Q1",
+      query: { "source-table": `card__${modelId}`, limit: 10 },
+    };
+
+    cy.createDashboardWithQuestions({
+      dashboardDetails,
+      questions: [questionDetails],
+    }).then(({ dashboard, questions: [card] }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card.id,
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: parameterDetails.id,
+                target: [
+                  "dimension",
+                  ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+                ],
+              },
+            ],
+          },
+        ],
+      });
+    });
+  }
 });

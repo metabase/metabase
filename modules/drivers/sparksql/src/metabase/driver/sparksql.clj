@@ -15,7 +15,6 @@
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -86,7 +85,6 @@
   (let [{table-name :name, schema :schema} (lib.metadata/table (qp.store/metadata-provider) source-table-id)]
     (sql.helpers/from honeysql-form [(sql.qp/->honeysql driver (h2x/identifier :table schema table-name))
                                      [(sql.qp/->honeysql driver (h2x/identifier :table-alias source-table-alias))]])))
-
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
@@ -159,16 +157,48 @@
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :sparksql
   [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
+  (assert (empty? params) "Spark SQL does not support parameterized JDBC queries.")
   (let [inner-query (-> (assoc inner-query
-                               :remark (qp.util/query->remark :sparksql outer-query)
-                               :query  (if (seq params)
-                                         (binding [hive-like/*param-splice-style* :paranoid]
-                                           (unprepare/unprepare driver (cons sql params)))
-                                         sql)
+                               :remark   (qp.util/query->remark :sparksql outer-query)
+                               :query    sql
                                :max-rows (mbql.u/query->max-rows-limit outer-query))
                         (dissoc :params))
         query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
+
+(defmethod sql.qp/format-honeysql :sparksql
+  [driver honeysql-form]
+  ;; we're compiling a query for one of two reasons:
+  ;;
+  ;; 1. compiling a query to be executed, in which case [[driver/*compile-with-inline-parameters*]] will be falsely
+  ;;
+  ;; 2. compiling a query to power the "view the SQL" feature, which should be human-friendly with inlined parameters
+  ;;    and what not
+  ;;
+  ;; Spark SQL/Hive JDBC doesn't support JDBC parameterization and always need to compiled with inline parameters, but
+  ;; we want those parameters to be friendly like
+  ;;
+  ;;    WHERE bird_type = 'cockatiel'
+  ;;
+  ;; in human-friendly compilation for "view the SQL" and paranoid e.g.
+  ;;
+  ;;    WHERE bird_type = decode(unhex('776f77'), 'utf-8')
+  ;;
+  ;; if we're compiling the query for execution.
+  ;;
+  ;; Look at the value of [[driver/*compile-with-inline-parameters*]] to determine the type of compilation we're doing.
+  (let [compiling-for-execution? (not driver/*compile-with-inline-parameters*)]
+    (binding [driver/*compile-with-inline-parameters* true
+              hive-like/*inline-param-style*          (if compiling-for-execution?
+                                                        :paranoid
+                                                        :friendly)]
+      ((get-method sql.qp/format-honeysql :hive-like) driver honeysql-form))))
+
+(defmethod driver/execute-reducible-query :sparksql
+  [driver query context respond]
+  (assert (empty? (get-in query [:native :params]))
+          "Spark SQL queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
+  ((get-method driver/execute-reducible-query :hive-like) driver query context respond))
 
 ;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
 ;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
@@ -208,17 +238,13 @@
                               :expressions                     true
                               :native-parameters               true
                               :nested-queries                  true
+                              :parameterized-sql               false
                               :standard-deviation-aggregations true
                               :metadata/key-constraints        false
                               :test/jvm-timezone-setting       false
                               ;; disabled for now, see issue #40991 to fix this.
                               :window-functions/cumulative     false}]
   (defmethod driver/database-supports? [:sparksql feature] [_driver _feature _db] supported?))
-
-;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
-;; implementation, and we don't want to stomp over that if it was loaded already
-(when-not (get (methods driver/database-supports?) [:sparksql :foreign-keys])
-  (defmethod driver/database-supports? [:sparksql :foreign-keys] [_driver _feature _db] true))
 
 (defmethod sql.qp/quote-style :sparksql
   [_driver]

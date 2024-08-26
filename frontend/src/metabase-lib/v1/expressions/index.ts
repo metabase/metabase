@@ -6,10 +6,10 @@ import Dimension from "metabase-lib/v1/Dimension";
 import type { Expression } from "metabase-types/api";
 
 import {
-  OPERATORS,
-  FUNCTIONS,
-  EDITOR_QUOTES,
   EDITOR_FK_SYMBOLS,
+  EDITOR_QUOTES,
+  FUNCTIONS,
+  OPERATORS,
   getMBQLName,
 } from "./config";
 
@@ -331,7 +331,7 @@ export function isMetric(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     expr[0] === "metric" &&
-    expr.length === 2 &&
+    (expr.length === 2 || expr.length === 3) &&
     typeof expr[1] === "number"
   );
 }

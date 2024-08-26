@@ -17,20 +17,20 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
-(mu/defn ^:private query-type :- [:enum :query :native :internal :mbql/query]
+(mu/defn- query-type :- [:enum :query :native :internal :mbql/query]
   [query :- ::qp.schema/query]
   (or (some-> ((some-fn :lib/type :type) query) keyword)
       (throw (ex-info (i18n/tru "Invalid query: missing or invalid query type (:lib/type or :type)")
                       {:query query, :type qp.error-type/invalid-query}))))
 
-(mu/defn ^:private source-card-id-for-pmbql-query :- [:maybe ::lib.schema.id/card]
+(mu/defn- source-card-id-for-pmbql-query :- [:maybe ::lib.schema.id/card]
   [query :- ::qp.schema/query]
   (-> query :stages first :source-card))
 
-(mu/defn ^:private source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
+(mu/defn- source-card-id-for-legacy-query :- [:maybe ::lib.schema.id/card]
   [query :- ::qp.schema/query]
   (let [inner-query         (:query query)
         deepest-inner-query (loop [inner-query inner-query]
@@ -63,12 +63,12 @@
     nil)
   (metadatas-for-table [_this _metadata-type _table-id]
     nil)
-  (metadatas-for-tables [_this _metadata-type _table-ids]
+  (metadatas-for-card [_this _metadata-type _card-id]
     nil)
   (setting [_this _setting-key]
     nil))
 
-(mu/defn ^:private bootstrap-metadata-provider :- ::lib.schema.metadata/metadata-provider
+(mu/defn- bootstrap-metadata-provider :- ::lib.schema.metadata/metadata-provider
   "A super-basic metadata provider used only for resolving the database ID associated with a source Card, only for
   queries that use the [[lib.schema.id/saved-questions-virtual-database-id]] e.g.
 
@@ -82,14 +82,14 @@
     (qp.store/metadata-provider)
     (->BootstrapMetadataProvider)))
 
-(mu/defn ^:private resolve-database-id-for-source-card :- ::lib.schema.id/database
+(mu/defn- resolve-database-id-for-source-card :- ::lib.schema.id/database
   [source-card-id :- ::lib.schema.id/card]
   (let [card (or (lib.metadata.protocols/card (bootstrap-metadata-provider) source-card-id)
                  (throw (ex-info (i18n/tru "Card {0} does not exist." source-card-id)
                                  {:card-id source-card-id, :type qp.error-type/invalid-query, :status-code 404})))]
     (:database-id card)))
 
-(mu/defn ^:private source-card-id :- ::lib.schema.id/card
+(mu/defn- source-card-id :- ::lib.schema.id/card
   [query :- ::qp.schema/query]
   (case (query-type query)
     :mbql/query
@@ -102,7 +102,7 @@
     (throw (ex-info (i18n/tru "Invalid query: cannot use the Saved Questions Virtual Database ID unless query has a source Card")
                     {:query query, :type qp.error-type/invalid-query}))))
 
-(mu/defn ^:private resolve-database-id :- [:maybe ::lib.schema.id/database]
+(mu/defn- resolve-database-id :- [:maybe ::lib.schema.id/database]
   [query :- ::qp.schema/query]
   (when-not (= (query-type query) :internal)
     (let [database-id (:database query)]
@@ -117,7 +117,7 @@
         (throw (ex-info (i18n/tru "Invalid query: missing or invalid Database ID (:database)")
                         {:query query, :type qp.error-type/invalid-query}))))))
 
-(mu/defn ^:private do-with-resolved-database :- fn?
+(mu/defn- do-with-resolved-database :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (mu/fn
     [query :- ::qp.schema/query]
@@ -127,12 +127,12 @@
                         database-id (assoc :database database-id))]
       (f query))))
 
-(mu/defn ^:private maybe-attach-metadata-provider-to-query :- ::qp.schema/query
+(mu/defn- maybe-attach-metadata-provider-to-query :- ::qp.schema/query
   [query :- ::qp.schema/query]
   (cond-> query
     (= (:lib/type query) :mbql/query) (assoc :lib/metadata (qp.store/metadata-provider))))
 
-(mu/defn ^:private do-with-metadata-provider :- fn?
+(mu/defn- do-with-metadata-provider :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (fn [query]
     (cond
@@ -150,7 +150,7 @@
       (qp.store/with-metadata-provider (:database query)
         (f (maybe-attach-metadata-provider-to-query query))))))
 
-(mu/defn ^:private do-with-driver :- fn?
+(mu/defn- do-with-driver :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (fn [query]
     (cond
@@ -165,7 +165,7 @@
         (driver/with-driver driver
           (f query))))))
 
-(mu/defn ^:private do-with-database-local-settings :- fn?
+(mu/defn- do-with-database-local-settings :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (fn [query]
     (cond
@@ -180,7 +180,7 @@
         (binding [setting/*database-local-values* (or settings {})]
           (f query))))))
 
-(mu/defn ^:private do-with-canceled-chan :- fn?
+(mu/defn- do-with-canceled-chan :- fn?
   [f :- [:=> [:cat ::qp.schema/query] :any]]
   (fn [query]
     (if qp.pipeline/*canceled-chan*
@@ -245,4 +245,4 @@
   `(do-with-qp-setup
     ~query
     (^:once fn* [~query-binding]
-     ~@body)))
+      ~@body)))

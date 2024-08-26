@@ -7,7 +7,6 @@ import { Icon } from "metabase/ui";
 
 export const Container = styled.div`
   padding: 1.25rem 1rem 1.25rem;
-
   font-size: 0.875rem;
   line-height: 1.5rem;
 `;
@@ -15,7 +14,6 @@ export const Container = styled.div`
 export const FunctionHelpCode = styled.div`
   color: var(--mb-color-text-dark);
   font-family: ${monospaceFontFamily};
-
   font-size: 0.8125rem;
   line-height: 1.065rem;
 `;
@@ -32,11 +30,9 @@ export const Divider = styled.div`
 
 export const ArgumentsGrid = styled.div`
   margin: 1rem 0;
-
   display: grid;
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(4rem, max-content));
-
   font-size: 0.875rem;
   line-height: 1.25rem;
 `;
@@ -50,16 +46,13 @@ export const ArgumentTitle = styled.div`
 
 export const BlockSubtitleText = styled.div`
   margin-bottom: 0.5rem;
-
   color: var(--mb-color-text-light);
 `;
 
 export const ExampleCode = styled.div`
   padding: 0.5rem;
-
   background-color: var(--mb-color-bg-light);
   border-radius: 8px;
-
   font-size: 0.8125rem;
   line-height: 1.065rem;
   font-family: ${monospaceFontFamily};
@@ -69,7 +62,6 @@ export const DocumentationLink = styled(ExternalLink)`
   display: flex;
   align-items: center;
   margin-top: 1rem;
-
   color: var(--mb-color-brand);
   font-weight: 700;
 `;

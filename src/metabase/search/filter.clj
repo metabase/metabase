@@ -73,7 +73,7 @@
           "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
   (premium-features/sandboxed-or-impersonated-user?))
 
-(mu/defn ^:private search-string-clause-for-model
+(mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
    search-native-query  :- [:maybe true?]]
@@ -128,6 +128,11 @@
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
 
+(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
+  (defmethod build-optional-filter-query [:id model]
+    [_filter model query ids]
+    (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
+
 ;; Verified filters
 
 (defmethod build-optional-filter-query [:verified "card"]
@@ -156,26 +161,26 @@
 (defn- date-range-filter-clause
   [dt-col dt-val]
   (let [date-range (try
-                    (params.dates/date-string->range dt-val {:inclusive-end? false})
-                    (catch Exception _e
-                      (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
+                     (params.dates/date-string->range dt-val {:inclusive-end? false})
+                     (catch Exception _e
+                       (throw (ex-info (tru "Failed to parse datetime value: {0}" dt-val) {:status-code 400}))))
         start      (some-> (:start date-range) u.date/parse)
         end        (some-> (:end date-range) u.date/parse)
         dt-col     (if (some #(instance? LocalDate %) [start end])
                      [:cast dt-col :date]
                      dt-col)]
     (cond
-     (= start end)
-     [:= dt-col start]
+      (= start end)
+      [:= dt-col start]
 
-     (nil? start)
-     [:< dt-col end]
+      (nil? start)
+      [:< dt-col end]
 
-     (nil? end)
-     [:> dt-col start]
+      (nil? end)
+      [:> dt-col start]
 
-     :else
-     [:and [:>= dt-col start] [:< dt-col end]])))
+      :else
+      [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action"]]
   (defmethod build-optional-filter-query [:created-at model]
@@ -241,8 +246,8 @@
 (defmethod build-optional-filter-query [:last-edited-at "action"]
   [_filter model query last-edited-at]
   (sql.helpers/where query (date-range-filter-clause
-                              (search.config/column-with-model-alias model :updated_at)
-                              last-edited-at)))
+                            (search.config/column-with-model-alias model :updated_at)
+                            last-edited-at)))
 
 (defn- feature->supported-models
   "Return A map of filter to its support models.
@@ -295,14 +300,16 @@
   [honeysql-query :- :map
    model          :- SearchableModel
    search-context :- SearchContext]
-  (let [{:keys [archived?
+  (let [{:keys [models
+                archived?
                 created-at
                 created-by
                 last-edited-at
                 last-edited-by
                 search-string
                 search-native-query
-                verified]}    search-context]
+                verified
+                ids]}    search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
@@ -325,6 +332,10 @@
 
       (some? verified)
       (#(build-optional-filter-query :verified model % verified))
+
+      (and (some? ids)
+           (contains? models model))
+      (#(build-optional-filter-query :id model % ids))
 
       (= "table" model)
       (sql.helpers/where

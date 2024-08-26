@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
@@ -38,7 +39,6 @@
    (let [table-identifier (sql.qp/->honeysql driver (h2x/identifier :table (:schema table) (:name table)))]
      (query driver database (merge {:from [[table-identifier]]}
                                    honeysql-form)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |
@@ -218,6 +218,10 @@
 (defmethod driver/current-user-table-privileges :sql-jdbc
   [driver database & {:as args}]
   (sql-jdbc.sync/current-user-table-privileges
-    driver
-    (sql-jdbc.conn/db->pooled-connection-spec database)
-    args))
+   driver
+   (sql-jdbc.conn/db->pooled-connection-spec database)
+   args))
+
+(defmethod driver/query-result-metadata :sql-jdbc
+  [driver query]
+  (sql-jdbc.metadata/query-result-metadata driver query))

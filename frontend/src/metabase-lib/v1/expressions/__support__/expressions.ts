@@ -93,7 +93,6 @@ const database = createMockDatabase({
     "standard-deviation-aggregations",
     "expression-aggregations",
     "percentile-aggregations",
-    "foreign-keys",
     "native-parameters",
     "expressions",
     "advanced-math-expressions",

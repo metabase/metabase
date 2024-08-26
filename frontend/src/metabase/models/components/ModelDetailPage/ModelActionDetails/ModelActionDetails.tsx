@@ -21,18 +21,18 @@ import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
 
 import {
-  EmptyStateContainer,
-  EmptyStateTitle,
-  EmptyStateMessage,
   EmptyStateActionContainer,
+  EmptyStateContainer,
+  EmptyStateMessage,
+  EmptyStateTitle,
 } from "../EmptyState.styled";
 
 import {
-  Root,
-  ActionsHeader,
-  ActionMenu,
-  ActionList,
   ActionAlert,
+  ActionList,
+  ActionMenu,
+  ActionsHeader,
+  Root,
 } from "./ModelActionDetails.styled";
 import ModelActionListItem from "./ModelActionListItem";
 

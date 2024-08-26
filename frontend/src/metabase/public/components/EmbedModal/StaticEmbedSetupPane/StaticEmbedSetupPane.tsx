@@ -14,29 +14,27 @@ import {
   trackStaticEmbedUnpublished,
 } from "metabase/public/lib/analytics";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
-import {
-  getSignedPreviewUrlWithoutHash,
-  optionsToHashParams,
-} from "metabase/public/lib/embed";
+import { getIframeQueryWithoutDefaults } from "metabase/public/lib/code-templates";
+import { getSignedPreviewUrlWithoutHash } from "metabase/public/lib/embed";
 import type {
-  EmbeddingDisplayOptions,
-  EmbeddingParameters,
-  EmbeddingParametersValues,
-  EmbeddingParameterVisibility,
   EmbedResource,
   EmbedResourceParameter,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
+  EmbeddingParameterVisibility,
+  EmbeddingParameters,
+  EmbeddingParametersValues,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Stack, Tabs } from "metabase/ui";
 import { getParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-import { AppearanceSettings } from "./AppearanceSettings";
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";
+import { LookAndFeelSettings } from "./LookAndFeelSettings";
 import { OverviewSettings } from "./OverviewSettings";
 import { ParametersSettings } from "./ParametersSettings";
 import { PreviewModeSelector } from "./PreviewModeSelector";
-import { PreviewPane } from "./PreviewPane";
+import { type PreviewBackgroundType, PreviewPane } from "./PreviewPane";
 import { ServerEmbedCodePane } from "./ServerEmbedCodePane";
 import { SettingsTabLayout } from "./StaticEmbedSetupPane.styled";
 import { getDefaultDisplayOptions } from "./config";
@@ -89,7 +87,7 @@ export const StaticEmbedSetupPane = ({
     useState<EmbeddingParametersValues>({});
 
   const canWhitelabel = useSelector(getCanWhitelabel);
-  const shouldShowDownloadData = canWhitelabel && resourceType === "question";
+  const shouldShowDownloadData = canWhitelabel;
   const [displayOptions, setDisplayOptions] = useState<EmbeddingDisplayOptions>(
     getDefaultDisplayOptions(shouldShowDownloadData),
   );
@@ -155,7 +153,8 @@ export const StaticEmbedSetupPane = ({
     ],
   );
 
-  const iframeUrl = iframeUrlWithoutHash + optionsToHashParams(displayOptions);
+  const iframeUrl =
+    iframeUrlWithoutHash + getIframeQueryWithoutDefaults(displayOptions);
 
   const handleSave = async () => {
     if (!resource.enable_embedding) {
@@ -226,7 +225,7 @@ export const StaticEmbedSetupPane = ({
     const locationMap = {
       overview: "code_overview",
       parameters: "code_params",
-      appearance: "code_appearance",
+      lookAndFeel: "code_appearance",
     } as const;
     trackStaticEmbedCodeCopied({
       artifact: resourceType,
@@ -265,9 +264,9 @@ export const StaticEmbedSetupPane = ({
             onClick={() => setActiveTab(EMBED_MODAL_TABS.Parameters)}
           >{t`Parameters`}</Tabs.Tab>
           <Tabs.Tab
-            value={EMBED_MODAL_TABS.Appearance}
-            onClick={() => setActiveTab(EMBED_MODAL_TABS.Appearance)}
-          >{t`Appearance`}</Tabs.Tab>
+            value={EMBED_MODAL_TABS.LookAndFeel}
+            onClick={() => setActiveTab(EMBED_MODAL_TABS.LookAndFeel)}
+          >{t`Look and Feel`}</Tabs.Tab>
         </Tabs.List>
         {/**
          * Please do not add more than one `Tabs.Panel` here.
@@ -322,7 +321,11 @@ export const StaticEmbedSetupPane = ({
                     hidden={activePane !== "preview"}
                     className={CS.flexFull}
                     previewUrl={iframeUrl}
-                    isTransparent={displayOptions.theme === "transparent"}
+                    backgroundType={
+                      !displayOptions.background
+                        ? "checkerboard-light"
+                        : "no-background"
+                    }
                   />
                   {activePane === "code"
                     ? getServerEmbedCodePane(EMBED_MODAL_TABS.Parameters)
@@ -330,10 +333,10 @@ export const StaticEmbedSetupPane = ({
                 </>
               }
             />
-          ) : activeTab === EMBED_MODAL_TABS.Appearance ? (
+          ) : activeTab === EMBED_MODAL_TABS.LookAndFeel ? (
             <SettingsTabLayout
               settingsSlot={
-                <AppearanceSettings
+                <LookAndFeelSettings
                   resourceType={resourceType}
                   displayOptions={displayOptions}
                   onChangeDisplayOptions={setDisplayOptions}
@@ -349,10 +352,10 @@ export const StaticEmbedSetupPane = ({
                     hidden={activePane !== "preview"}
                     className={CS.flexFull}
                     previewUrl={iframeUrl}
-                    isTransparent={displayOptions.theme === "transparent"}
+                    backgroundType={getBackgroundType(displayOptions)}
                   />
                   {activePane === "code"
-                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.Appearance)
+                    ? getServerEmbedCodePane(EMBED_MODAL_TABS.LookAndFeel)
                     : null}
                 </>
               }
@@ -463,4 +466,19 @@ function convertResourceParametersToEmbeddingParams(
   }
 
   return embeddingParams;
+}
+
+function getBackgroundType(
+  displayOptions: Pick<EmbeddingDisplayOptions, "background" | "theme">,
+): PreviewBackgroundType {
+  if (displayOptions.background) {
+    return "no-background";
+  }
+
+  if (displayOptions.theme === "night") {
+    return "checkerboard-dark";
+  }
+
+  // `light` and `transparent` (backward compatible) theme
+  return "checkerboard-light";
 }

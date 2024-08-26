@@ -29,7 +29,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest describe-database-test
+(deftest ^:parallel describe-database-test
   (mt/test-driver :presto-jdbc
     (is (= {:tables #{{:name "test_data_categories" :schema "default"}
                       {:name "test_data_checkins" :schema "default"}
@@ -42,7 +42,7 @@
                                                                  "test_data_users"}
                                                                :name)))))))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (mt/test-driver :presto-jdbc
     (is (= {:name   "test_data_venues"
             :schema "default"
@@ -74,7 +74,7 @@
                        :database-position 0}}}
            (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-driver :presto-jdbc
     (is (= [[1 "Red Medicine"]
             [2 "Stout Burgers & Beers"]
@@ -82,20 +82,20 @@
             [4 "Wurstküche"]
             [5 "Brite Spot Family Restaurant"]]
            (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                  [(t2/select-one Field :id (mt/id :venues :id))
-                   (t2/select-one Field :id (mt/id :venues :name))]
-                  (constantly conj))
+                                                    [(t2/select-one Field :id (mt/id :venues :id))
+                                                     (t2/select-one Field :id (mt/id :venues :name))]
+                                                    (constantly conj))
                 (sort-by first)
                 (take 5))))))
 
 (deftest ^:parallel page-test
   (testing ":page clause"
     (let [honeysql (sql.qp/apply-top-level-clause :presto-jdbc :page
-                     {:select   [[:default.categories.name :name] [:default.categories.id :id]]
-                      :from     [:default.categories]
-                      :order-by [[:default.categories.id :asc]]}
-                     {:page {:page  2
-                             :items 5}})]
+                                                  {:select   [[:default.categories.name :name] [:default.categories.id :id]]
+                                                   :from     [:default.categories]
+                                                   :order-by [[:default.categories.id :asc]]}
+                                                  {:page {:page  2
+                                                          :items 5}})]
       (is (= [["SELECT"
                "  \"name\","
                "  \"id\""
@@ -132,15 +132,15 @@
         (is (= [[(t/local-date "2014-08-02")
                  (t/local-date "2014-08-02")]]
                (mt/rows
-                 (qp/process-query
-                   {:database     (mt/id)
-                    :type         :native
-                    :middleware   {:format-rows? false} ; turn off formatting so we can check the raw local date objs
-                    :native       {:query         "SELECT {{date}}, cast({{date}} AS date)"
-                                   :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
-                    :parameters   [{:type   "date/single"
-                                    :target ["variable" ["template-tag" "date"]]
-                                    :value  "2014-08-02"}]}))))))))
+                (qp/process-query
+                 {:database     (mt/id)
+                  :type         :native
+                  :middleware   {:format-rows? false} ; turn off formatting so we can check the raw local date objs
+                  :native       {:query         "SELECT {{date}}, cast({{date}} AS date)"
+                                 :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}
+                  :parameters   [{:type   "date/single"
+                                  :target ["variable" ["template-tag" "date"]]
+                                  :value  "2014-08-02"}]}))))))))
 
 (deftest ^:parallel splice-strings-test
   (mt/test-driver :presto-jdbc
@@ -151,7 +151,7 @@
         (is (= (str "SELECT COUNT(*) AS \"count\" "
                     "FROM \"default\".\"test_data_venues\" "
                     "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
-               (:query (qp.compile/compile-and-splice-parameters query))
+               (:query (qp.compile/compile-with-inline-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
 (deftest ^:parallel connection-tests
@@ -192,7 +192,7 @@
   (-> (:details (mt/db))
       (dissoc :ssl-keystore-id :ssl-keystore-password-id
               :ssl-truststore-id :ssl-truststore-password-id)
-      (merge (select-keys (data.presto-jdbc/dbdef->connection-details (:name (mt/db)))
+      (merge (select-keys (data.presto-jdbc/db-connection-details)
                           [:ssl-keystore-path :ssl-keystore-password-value
                            :ssl-truststore-path :ssl-truststore-password-value]))))
 

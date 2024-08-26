@@ -1,19 +1,21 @@
 import type {
-  SerializedError,
   AnyAction,
+  SerializedError,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 
-import type { SDKConfig } from "embedding-sdk";
+import type {
+  EmbeddingSessionToken,
+  FetchRequestTokenFn,
+  SDKConfig,
+} from "embedding-sdk";
+import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { State } from "metabase-types/store";
 
 export type EmbeddingSessionTokenState = {
-  token: {
-    id: string;
-    exp: number;
-  } | null;
+  token: EmbeddingSessionToken | null;
   loading: boolean;
   error: SerializedError | null;
 };
@@ -44,13 +46,20 @@ export type LoginStatus =
 
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
+export type SdkErrorComponentProps = { message: ReactNode };
+export type SdkErrorComponent = ({
+  message,
+}: SdkErrorComponentProps) => JSX.Element;
+
 export type SdkState = {
   metabaseInstanceUrl: SDKConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;
   plugins: null | SdkPluginsConfig;
+  eventHandlers: null | SdkEventHandlersConfig;
   loaderComponent: null | (() => JSX.Element);
-  errorComponent: null | (({ message }: { message: string }) => JSX.Element);
+  errorComponent: null | SdkErrorComponent;
+  fetchRefreshTokenFn: null | FetchRequestTokenFn;
 };
 
 export interface SdkStoreState extends State {

@@ -31,7 +31,7 @@
   (when (= group-id (:id (perms-group/all-users)))
     (when-not *allow-changing-all-users-group-members*
       (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
-               {:status-code 400})))))
+                      {:status-code 400})))))
 
 (defn- admin-count
   "The current number of non-archived admins (superusers)."

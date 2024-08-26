@@ -21,9 +21,9 @@
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (org.apache.poi.ss SpreadsheetVersion)
    (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook DataConsolidateFunction)
-   (org.apache.poi.xssf.usermodel XSSFWorkbook XSSFSheet XSSFRow XSSFPivotTable)
    (org.apache.poi.ss.util CellReference CellRangeAddress AreaReference)
-   (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
+   (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)
+   (org.apache.poi.xssf.usermodel XSSFWorkbook XSSFSheet XSSFRow XSSFPivotTable)))
 
 (set! *warn-on-reflection* true)
 
@@ -118,7 +118,7 @@
               base-strings)))]
     (map
      (fn [format-string]
-      (str
+       (str
         (when prefix (str "\"" prefix "\""))
         format-string
         (when suffix (str "\"" suffix "\""))))
@@ -140,19 +140,19 @@
 (defn- time-format
   [format-settings]
   (let [base-time-format (condp = (::mb.viz/time-enabled format-settings "minutes")
-                               "minutes"
-                               "h:mm"
+                           "minutes"
+                           "h:mm"
 
-                               "seconds"
-                               "h:mm:ss"
+                           "seconds"
+                           "h:mm:ss"
 
-                               "milliseconds"
-                               "h:mm:ss.000"
+                           "milliseconds"
+                           "h:mm:ss.000"
 
                                ;; {::mb.viz/time-enabled nil} indicates that time is explicitly disabled, rather than
                                ;; defaulting to "minutes"
-                               nil
-                               nil)]
+                           nil
+                           nil)]
     (when base-time-format
       (condp = (::mb.viz/time-style format-settings "h:mm A")
         "HH:mm"
@@ -177,8 +177,8 @@
           (= :default unit))
     (if-let [time-format (time-format format-settings)]
       (cond->> time-format
-               (seq format-string)
-               (str format-string ", "))
+        (seq format-string)
+        (str format-string ", "))
       format-string)
     format-string))
 
@@ -219,25 +219,25 @@
                     unit           :unit :as col}]
   (let [col-type (common/col-type col)]
     (u/one-or-many
-      (cond
+     (cond
         ;; Primary key or foreign key
-        (isa? col-type :Relation/*)
-        "0"
+       (isa? col-type :Relation/*)
+       "0"
 
-        (isa? semantic-type :type/Coordinate)
-        nil
+       (isa? semantic-type :type/Coordinate)
+       nil
 
         ;; This logic is a guard against someone setting the semantic type of a non-temporal value like 1.0 to temporal.
         ;; It will not apply formatting to the value in this case.
-        (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
-                 (isa? semantic-type :type/Temporal))
-             (or (isa? effective-type :type/Temporal)
-                 (isa? base-type :type/Temporal)))
-        (datetime-format-string format-settings unit)
+       (and (or (some #(contains? datetime-setting-keys %) (keys format-settings))
+                (isa? semantic-type :type/Temporal))
+            (or (isa? effective-type :type/Temporal)
+                (isa? base-type :type/Temporal)))
+       (datetime-format-string format-settings unit)
 
-        (or (some #(contains? number-setting-keys %) (keys format-settings))
-            (isa? col-type :type/Currency))
-        (number-format-strings format-settings)))))
+       (or (some #(contains? number-setting-keys %) (keys format-settings))
+           (isa? col-type :type/Currency))
+       (number-format-strings format-settings)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             XLSX export logic                                                  |
@@ -266,9 +266,9 @@
     (let [settings       (common/viz-settings-for-col col viz-settings)
           format-strings (format-settings->format-strings settings col)]
       (when (seq format-strings)
-        (map
-          (partial cell-string-format-style workbook data-format)
-          format-strings)))))
+        (mapv
+         (partial cell-string-format-style workbook data-format)
+         format-strings)))))
 
 (defn- default-format-strings
   "Default strings to use for datetime and number fields if custom format settings are not set."
@@ -285,8 +285,8 @@
   ;; These are tested, but does this happen IRL?
   [^Workbook workbook ^DataFormat data-format]
   (update-vals
-    (default-format-strings)
-    (partial cell-string-format-style workbook data-format)))
+   (default-format-strings)
+   (partial cell-string-format-style workbook data-format)))
 
 (defn- rounds-to-int?
   "Returns whether a number should be formatted as an integer after being rounded to 2 decimal places."
@@ -377,7 +377,7 @@
     (try (formatter/format-geographic-coordinates semantic_type value)
          ;; Fallback to plain string value if it couldn't be parsed
          (catch Exception _ value
-                            value))))
+                value))))
 
 (defn- maybe-parse-temporal-value
   "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
@@ -395,6 +395,35 @@
          (catch Exception _ value
                 value))))
 
+;; ColumnHelper hack.
+;;
+;; Starting with Apache POI 5.2.3, when a cell is added, its default style is computed from the styles of the whole
+;; column. When exporting big datasets, this creates a lot of unnecessary work. Unfortunately, there is no easy way to
+;; undo this other than hacking into private fields to replace the ColumnHelper object with our custom proxy.
+;;
+;; See https://github.com/apache/poi/blob/0dac5680/poi-ooxml/src/main/java/org/apache/poi/xssf/usermodel/helpers/ColumnHelper.java#L306.
+
+(defn- private-field ^java.lang.reflect.Field [object field-name]
+  (doto (.getDeclaredField (class object) field-name)
+    (.setAccessible true)))
+
+(defn- sxssfsheet->xssfsheet [sxssfsheet]
+  (.get (private-field sxssfsheet "_sh") sxssfsheet))
+
+(defn- xssfsheet->worksheet [xssfsheet]
+  (.get (private-field xssfsheet "worksheet") xssfsheet))
+
+(defn- no-style-column-helper
+  "Returns a proxy ColumnHelper that always returns `-1` (meaning empty style) as a default column style."
+  [worksheet]
+  (proxy [org.apache.poi.xssf.usermodel.helpers.ColumnHelper] [worksheet]
+    (getColDefaultStyle [idx] -1)))
+
+(defn- set-no-style-custom-helper [sxssfsheet]
+  (let [xssfsheet (sxssfsheet->xssfsheet sxssfsheet)
+        new-helper (no-style-column-helper (xssfsheet->worksheet xssfsheet))]
+    (.set (private-field xssfsheet "columnHelper") xssfsheet new-helper)))
+
 (defmulti ^:private add-row!
   "Adds a row of values to the spreadsheet. Values with the `scaled` viz setting are scaled prior to being added.
 
@@ -408,21 +437,31 @@
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
-        row     (.createRow sheet row-num)]
-    (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
-      (let [id-or-name   (or (:id col) (:name col))
-            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                             (get col-settings {::mb.viz/column-name id-or-name}))
-            scaled-val   (if (and value (::mb.viz/scale settings))
-                           (* value (::mb.viz/scale settings))
-                           value)
-            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
-            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-            parsed-value (or
-                          (maybe-parse-temporal-value value col)
-                          (maybe-parse-coordinate-value value col)
-                          scaled-val)]
-        (set-cell! (.createCell ^SXSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
+        row     (.createRow sheet row-num)
+        ;; Using iterators here to efficiently go over multiple collections at once.
+        val-it (.iterator ^Iterable values)
+        col-it (.iterator ^Iterable cols)
+        sty-it (.iterator ^Iterable cell-styles)]
+    (loop [index 0]
+      (when (.hasNext val-it)
+        (let [value (.next val-it)
+              col (.next col-it)
+              styles (.next sty-it)
+              id-or-name   (or (:id col) (:name col))
+              settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                               (get col-settings {::mb.viz/column-name id-or-name})
+                               (get col-settings {::mb.viz/column-name (:name col)}))
+              scaled-val   (if (and value (::mb.viz/scale settings))
+                             (* value (::mb.viz/scale settings))
+                             value)
+              ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+              ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+              parsed-value (or
+                            (maybe-parse-temporal-value value col)
+                            (maybe-parse-coordinate-value value col)
+                            scaled-val)]
+          (set-cell! (.createCell ^SXSSFRow row index) parsed-value styles typed-cell-styles))
+        (recur (inc index))))
     row))
 
 (defmethod add-row! org.apache.poi.xssf.usermodel.XSSFSheet
@@ -430,21 +469,31 @@
   (let [row-num (if (= 0 (.getPhysicalNumberOfRows sheet))
                   0
                   (inc (.getLastRowNum sheet)))
-        row     (.createRow sheet row-num)]
-    (doseq [[value col styles index] (map vector values cols cell-styles (range (count values)))]
-      (let [id-or-name   (or (:id col) (:name col))
-            settings     (or (get col-settings {::mb.viz/field-id id-or-name})
-                             (get col-settings {::mb.viz/column-name id-or-name}))
-            scaled-val   (if (and value (::mb.viz/scale settings))
-                           (* value (::mb.viz/scale settings))
-                           value)
-            ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
-            ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
-            parsed-value (or
-                           (maybe-parse-temporal-value value col)
-                           (maybe-parse-coordinate-value value col)
-                           scaled-val)]
-        (set-cell! (.createCell ^XSSFRow row ^Integer index) parsed-value styles typed-cell-styles)))
+        row     (.createRow sheet row-num)
+        ;; Using iterators here to efficiently go over multiple collections at once.
+        val-it (.iterator ^Iterable values)
+        col-it (.iterator ^Iterable cols)
+        sty-it (.iterator ^Iterable cell-styles)]
+    (loop [index 0]
+      (when (.hasNext val-it)
+        (let [value (.next val-it)
+              col (.next col-it)
+              styles (.next sty-it)
+              id-or-name   (or (:id col) (:name col))
+              settings     (or (get col-settings {::mb.viz/field-id id-or-name})
+                               (get col-settings {::mb.viz/column-name id-or-name})
+                               (get col-settings {::mb.viz/column-name (:name col)}))
+              scaled-val   (if (and value (::mb.viz/scale settings))
+                             (* value (::mb.viz/scale settings))
+                             value)
+              ;; Temporal values are converted into strings in the format-rows QP middleware, which is enabled during
+              ;; dashboard subscription/pulse generation. If so, we should parse them here so that formatting is applied.
+              parsed-value (or
+                            (maybe-parse-temporal-value value col)
+                            (maybe-parse-coordinate-value value col)
+                            scaled-val)]
+          (set-cell! (.createCell ^XSSFRow row index) parsed-value styles typed-cell-styles))
+        (recur (inc index))))
     row))
 
 (def ^:dynamic *auto-sizing-threshold*
@@ -483,11 +532,11 @@
   (let [x (dec (count (first rows)))
         y (dec (count rows))]
     (CellRangeAddress.
-         0 ;; first row
-         y ;; last row
-         0 ;; first col
-         x ;; last col
-         )))
+     0 ;; first row
+     y ;; last row
+     0 ;; first col
+     x ;; last col
+     )))
 
 (defn- cell-range->area-ref
   [cell-range]
@@ -569,6 +618,7 @@
   [_ ^OutputStream os]
   (let [workbook          (SXSSFWorkbook.)
         sheet             (spreadsheet/add-sheet! workbook (tru "Query result"))
+        _                 (set-no-style-custom-helper sheet)
         data-format       (. workbook createDataFormat)
         cell-styles       (volatile! nil)
         typed-cell-styles (volatile! nil)

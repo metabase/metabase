@@ -38,47 +38,47 @@
         dt-field (meta/field-metadata :users :last-login)
         #_#_boolean-field (lib/->= 1 (meta/field-metadata :venues :category-id))]
     (doseq [[expr typ] (partition-all
-                         2
-                         [(lib/+ 1.1 2 int-field) :type/Float
-                          (lib/- 1.1 2 int-field) :type/Float
-                          (lib/* 1.1 2 int-field) :type/Float
-                          (lib// 1.1 2 int-field) :type/Float
-                          #_#_(lib/case boolean-field int-field boolean-field int-field) :type/Integer
-                          (lib/coalesce string-field "abc") :type/Text
-                          (lib/abs int-field) :type/Integer
-                          (lib/log int-field) :type/Float
-                          (lib/exp int-field) :type/Float
-                          (lib/sqrt int-field) :type/Float
-                          (lib/ceil float-field) :type/Integer
-                          (lib/floor float-field) :type/Integer
-                          (lib/round float-field) :type/Integer
-                          (lib/power int-field float-field) :type/Float
-                          (lib/interval 1 :month) :type/Interval
-                          #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
-                          (lib/time "08:00:00" :hour) :type/Time
-                          #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
-                          (lib/now) :type/DateTimeWithTZ
-                          (lib/convert-timezone dt-field "US/Pacific" "US/Eastern") :type/DateTime
-                          #_#_(lib/get-week dt-field :iso) :type/Integer
-                          (lib/get-year dt-field) :type/Integer
-                          (lib/get-month dt-field) :type/Integer
-                          (lib/get-day dt-field) :type/Integer
-                          (lib/get-hour dt-field) :type/Integer
-                          (lib/get-minute dt-field) :type/Integer
-                          (lib/get-second dt-field) :type/Integer
-                          (lib/get-quarter dt-field) :type/Integer
-                          (lib/datetime-add dt-field 1 :month) :type/DateTime
-                          (lib/datetime-subtract dt-field 1 :month) :type/DateTime
-                          #_#_(lib/concat string-field "abc") :type/Text
-                          (lib/substring string-field 0 10) :type/Text
-                          (lib/replace string-field "abc" "def") :type/Text
-                          (lib/regexextract string-field "abc") :type/Text
-                          (lib/length string-field) :type/Integer
-                          (lib/trim string-field) :type/Text
-                          (lib/rtrim string-field) :type/Text
-                          (lib/ltrim string-field) :type/Text
-                          (lib/upper string-field) :type/Text
-                          (lib/lower string-field) :type/Text])]
+                        2
+                        [(lib/+ 1.1 2 int-field) :type/Float
+                         (lib/- 1.1 2 int-field) :type/Float
+                         (lib/* 1.1 2 int-field) :type/Float
+                         (lib// 1.1 2 int-field) :type/Float
+                         #_#_(lib/case boolean-field int-field boolean-field int-field) :type/Integer
+                         (lib/coalesce string-field "abc") :type/Text
+                         (lib/abs int-field) :type/Integer
+                         (lib/log int-field) :type/Float
+                         (lib/exp int-field) :type/Float
+                         (lib/sqrt int-field) :type/Float
+                         (lib/ceil float-field) :type/Integer
+                         (lib/floor float-field) :type/Integer
+                         (lib/round float-field) :type/Integer
+                         (lib/power int-field float-field) :type/Float
+                         (lib/interval 1 :month) :type/Interval
+                         #_#_(lib/relative-datetime "2020-01-01" :default) :type/DateTime
+                         (lib/time "08:00:00" :hour) :type/Time
+                         #_#_(lib/absolute-datetime "2020-01-01" :default) :type/DateTimeWithTZ
+                         (lib/now) :type/DateTimeWithTZ
+                         (lib/convert-timezone dt-field "US/Pacific" "US/Eastern") :type/DateTime
+                         #_#_(lib/get-week dt-field :iso) :type/Integer
+                         (lib/get-year dt-field) :type/Integer
+                         (lib/get-month dt-field) :type/Integer
+                         (lib/get-day dt-field) :type/Integer
+                         (lib/get-hour dt-field) :type/Integer
+                         (lib/get-minute dt-field) :type/Integer
+                         (lib/get-second dt-field) :type/Integer
+                         (lib/get-quarter dt-field) :type/Integer
+                         (lib/datetime-add dt-field 1 :month) :type/DateTime
+                         (lib/datetime-subtract dt-field 1 :month) :type/DateTime
+                         #_#_(lib/concat string-field "abc") :type/Text
+                         (lib/substring string-field 0 10) :type/Text
+                         (lib/replace string-field "abc" "def") :type/Text
+                         (lib/regex-match-first string-field "abc") :type/Text
+                         (lib/length string-field) :type/Integer
+                         (lib/trim string-field) :type/Text
+                         (lib/rtrim string-field) :type/Text
+                         (lib/ltrim string-field) :type/Text
+                         (lib/upper string-field) :type/Text
+                         (lib/lower string-field) :type/Text])]
       (testing (str "expression: " (pr-str expr))
         (let [query (-> lib.tu/venues-query
                         (lib/expression "myexpr" expr))
@@ -93,20 +93,20 @@
            :display-name "double-price"
            :lib/source   :source/expressions}
           (lib/metadata
-            (-> lib.tu/venues-query
-                (lib/expression "double-price"
-                                (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2)))
-            -1
-            [:expression {:lib/uuid (str (random-uuid))} "double-price"]))))
+           (-> lib.tu/venues-query
+               (lib/expression "double-price"
+                               (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2)))
+           -1
+           [:expression {:lib/uuid (str (random-uuid))} "double-price"]))))
 
 (deftest ^:parallel expression-references-in-fields-clause-test
   (let [query (lib.tu/venues-query-with-last-stage
-                {:expressions [[:+
-                                {:lib/uuid (str (random-uuid))
-                                 :lib/expression-name "prev_month"}
-                                (lib.tu/field-clause :users :last-login)
-                                [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
-                 :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
+               {:expressions [[:+
+                               {:lib/uuid (str (random-uuid))
+                                :lib/expression-name "prev_month"}
+                               (lib.tu/field-clause :users :last-login)
+                               [:interval {:lib/uuid (str (random-uuid))} -1 :month]]]
+                :fields      [[:expression {:base-type :type/DateTime, :lib/uuid (str (random-uuid))} "prev_month"]]})]
     (is (=? [{:name         "prev_month"
               :display-name "prev_month"
               :base-type    :type/DateTime
@@ -128,8 +128,8 @@
   (let [query (-> lib.tu/venues-query
                   (lib/expression "double-price"
                                   (lib/*
-                                    (lib.tu/field-clause :venues :price {:base-type :type/Integer})
-                                    2)))
+                                   (lib.tu/field-clause :venues :price {:base-type :type/Integer})
+                                   2)))
         expr  [:sum
                {:lib/uuid (str (random-uuid))}
                [:expression {:lib/uuid (str (random-uuid))} "double-price"]]]
@@ -148,10 +148,10 @@
 (defn- infer-first
   [expr]
   (lib/metadata
-    (-> lib.tu/venues-query
-        (lib/expression "expr" expr))
-    -1
-    [:expression {:lib/uuid (str (random-uuid))} "expr"]))
+   (-> lib.tu/venues-query
+       (lib/expression "expr" expr))
+   -1
+   [:expression {:lib/uuid (str (random-uuid))} "expr"]))
 
 (deftest ^:parallel infer-coalesce-test
   (testing "Coalesce"
@@ -208,13 +208,13 @@
 (deftest ^:parallel col-info-for-expression-error-message-test
   (testing "if there is no matching expression it should give a meaningful error message"
     (is (thrown-with-msg?
-          #?(:clj Throwable :cljs js/Error)
-          #"No expression named \"double-price\""
-          (lib/metadata
-            (-> lib.tu/venues-query
-                (lib/expression "one-hundred" (lib/+ 100 0)))
-            -1
-            [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
+         #?(:clj Throwable :cljs js/Error)
+         #"No expression named \"double-price\""
+         (lib/metadata
+          (-> lib.tu/venues-query
+              (lib/expression "one-hundred" (lib/+ 100 0)))
+          -1
+          [:expression {:lib/uuid (str (random-uuid))} "double-price"])))))
 
 (deftest ^:parallel arithmetic-expression-type-of-test
   (testing "Make sure we can calculate correct type information for arithmetic expression"
@@ -256,20 +256,19 @@
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
   ;; QP code, and it should be powered by MLv2 in due course.
-  #_
-  (testing "collisions with other column names are detected and rejected"
-    (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
-          ex    (try
-                  (lib/expression query "ID" (meta/field-metadata :categories :name))
-                  nil
-                  (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
-                    e))]
-      (is (some? ex)
-          "Expected adding a conflicting expression to throw")
-      (is (= "Expression name conflicts with a column in the same query stage"
-             (ex-message ex)))
-      (is (= {:expression-name "ID"}
-             (ex-data ex))))))
+  #_(testing "collisions with other column names are detected and rejected"
+      (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
+            ex    (try
+                    (lib/expression query "ID" (meta/field-metadata :categories :name))
+                    nil
+                    (catch #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) e
+                      e))]
+        (is (some? ex)
+            "Expected adding a conflicting expression to throw")
+        (is (= "Expression name conflicts with a column in the same query stage"
+               (ex-message ex)))
+        (is (= {:expression-name "ID"}
+               (ex-data ex))))))
 
 (deftest ^:parallel literal-expression-test
   (is (=? [{:lib/type :metadata/column,
@@ -296,8 +295,10 @@
         expressionable-expressions-for-position (fn [pos]
                                                   (some->> (lib/expressionable-columns query pos)
                                                            (map :lib/desired-column-alias)))]
-    (is (= ["ID" "NAME"] (expressionable-expressions-for-position 0)))
-    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
+    ;; Because of (the second problem in) #44584, the expression-position argument is ignored,
+    ;; so the first two calls behave the same as the last two.
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
@@ -518,7 +519,7 @@
 (deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
   (testing "adding/editing an expression using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:message "OFFSET is not supported in custom expressions"}
+      (is (=? {:message "OFFSET is not supported in custom columns"}
               (lib.expression/diagnose-expression query 0 :expression
                                                   (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                   nil))))))
@@ -532,3 +533,52 @@
                                                   (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                          100)
                                                   nil))))))
+
+(deftest ^:parallel date-and-time-string-literals-test-1-dates
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    #{:type/Date :type/Text} "2024-07-02"))
+
+(deftest ^:parallel date-and-time-string-literals-test-2-times
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; Times without time zones
+    #{:type/Time :type/Text} "12:34:56.789"
+    #{:type/Time :type/Text} "12:34:56"
+    #{:type/Time :type/Text} "12:34"
+    ;; Times in Zulu
+    #{:type/Time :type/Text} "12:34:56.789Z"
+    #{:type/Time :type/Text} "12:34:56Z"
+    #{:type/Time :type/Text} "12:34Z"
+    ;; Times with offsets
+    #{:type/Time :type/Text} "12:34:56.789+07:00"
+    #{:type/Time :type/Text} "12:34:56-03:00"
+    #{:type/Time :type/Text} "12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-3-datetimes-with-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34"
+    ;; DateTimes in Zulu time
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34Z"
+    ;; DateTimes with offsets
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-4-datetimes-without-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34"
+    ;; DateTimes in Zulu time and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34Z"
+    ;; DateTimes with offsets and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))

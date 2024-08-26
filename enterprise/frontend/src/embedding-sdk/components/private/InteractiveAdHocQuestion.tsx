@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 
-import type { SdkClickActionPluginsConfig } from "embedding-sdk";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { initializeQBRaw } from "metabase/query_builder/actions";
-import { getQueryResults } from "metabase/query_builder/selectors";
+import type { SdkPluginsConfig } from "embedding-sdk";
 
+import {
+  InteractiveQuestionProviderWithLocation,
+  type QuestionMockLocationParameters,
+} from "./InteractiveQuestion/context";
 import { InteractiveQuestionResult } from "./InteractiveQuestionResult";
 
 interface InteractiveAdHocQuestionProps {
@@ -13,7 +14,7 @@ interface InteractiveAdHocQuestionProps {
 
   withTitle?: boolean;
   height?: number;
-  plugins?: SdkClickActionPluginsConfig;
+  plugins?: SdkPluginsConfig;
 }
 
 export const InteractiveAdHocQuestion = ({
@@ -23,53 +24,31 @@ export const InteractiveAdHocQuestion = ({
   height,
   plugins,
 }: InteractiveAdHocQuestionProps) => {
-  const dispatch = useDispatch();
-
-  const queryResults = useSelector(getQueryResults);
-
-  const [isQuestionLoading, setIsQuestionLoading] = useState(true);
-
-  const loadQuestion = async (
-    dispatch: ReturnType<typeof useDispatch>,
-    questionUrl: string,
-  ) => {
-    setIsQuestionLoading(true);
-
-    const { location, params } = getQuestionParameters(questionUrl);
-    try {
-      await dispatch(initializeQBRaw(location, params));
-    } catch (e) {
-      console.error(`Failed to get question`, e);
-      setIsQuestionLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadQuestion(dispatch, questionPath);
-  }, [dispatch, questionPath]);
-
-  useEffect(() => {
-    if (queryResults) {
-      setIsQuestionLoading(false);
-    }
-  }, [queryResults]);
+  const { location, params } = useMemo(
+    () => getQuestionParameters(questionPath),
+    [questionPath],
+  );
 
   return (
-    <InteractiveQuestionResult
-      isQuestionLoading={isQuestionLoading}
-      onNavigateBack={onNavigateBack}
-      height={height}
+    <InteractiveQuestionProviderWithLocation
+      location={location}
+      params={params}
       componentPlugins={plugins}
-      withResetButton
-      onResetButtonClick={onNavigateBack}
-      withTitle={withTitle}
-    />
+      onNavigateBack={onNavigateBack}
+    >
+      <InteractiveQuestionResult height={height} withTitle={withTitle} />
+    </InteractiveQuestionProviderWithLocation>
   );
 };
 
-// This generates route parameters based on provided URL path to use it QB (QueryBuilder) initialization logic, which loads question and all it needs. See "initializeQBRaw" redux action.
-export const getQuestionParameters = (questionPath: string) => {
-  const url = new URL(`http://metabase.com${questionPath}`); // we use a dummy host name to fill-in full URL
+/**
+ * This generates route parameters based on the provided URL path
+ * to load the interactive questions. See [use-load-question.ts]
+ */
+export const getQuestionParameters = (
+  questionPath: string,
+): QuestionMockLocationParameters => {
+  const url = new URL(questionPath, "http://metabase.com"); // we use a dummy host name to fill-in full URL
   const pathSections = questionPath.split("/").slice(1); // remove first empty section
   const entityId = pathSections.length > 1 ? pathSections[1] : null; // extract possible question id if it is a saved question URL
 

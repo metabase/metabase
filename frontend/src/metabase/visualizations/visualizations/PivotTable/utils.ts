@@ -16,17 +16,17 @@ import type {
 } from "metabase-types/api";
 
 import {
-  ROW_TOGGLE_ICON_WIDTH,
+  CELL_HEIGHT,
   CELL_PADDING,
-  MIN_HEADER_CELL_WIDTH,
+  DEFAULT_CELL_WIDTH,
+  LEFT_HEADER_LEFT_SPACING,
   MAX_HEADER_CELL_WIDTH,
   MAX_ROWS_TO_MEASURE,
-  LEFT_HEADER_LEFT_SPACING,
-  CELL_HEIGHT,
-  DEFAULT_CELL_WIDTH,
+  MIN_HEADER_CELL_WIDTH,
+  ROW_TOGGLE_ICON_WIDTH,
 } from "./constants";
 import { partitions } from "./partitions";
-import type { PivotSetting, HeaderItem, CustomColumnWidth } from "./types";
+import type { CustomColumnWidth, HeaderItem, PivotSetting } from "./types";
 
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
@@ -276,8 +276,8 @@ export const topHeaderCellSizeAndPositionGetter = (
 
 export const getWidthForRange = (
   widths: CustomColumnWidth,
-  start: number,
-  end: number,
+  start?: number,
+  end?: number,
 ) => {
   let total = 0;
   for (let i = start ?? 0; i < (end ?? Object.keys(widths).length); i++) {

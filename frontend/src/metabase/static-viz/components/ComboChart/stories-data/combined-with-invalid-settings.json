@@ -1,0 +1,969 @@
+[
+  {
+    "data": {
+      "rows": [
+        ["2022-04-01T00:00:00-04:00", 0],
+        ["2022-05-01T00:00:00-04:00", 2],
+        ["2022-06-01T00:00:00-04:00", 2],
+        ["2022-07-01T00:00:00-04:00", 4],
+        ["2022-08-01T00:00:00-04:00", 13],
+        ["2022-09-01T00:00:00-04:00", 13],
+        ["2022-10-01T00:00:00-04:00", 13],
+        ["2022-11-01T00:00:00-04:00", 13],
+        ["2022-12-01T00:00:00-05:00", 11],
+        ["2023-01-01T00:00:00-05:00", 23],
+        ["2023-02-01T00:00:00-05:00", 23],
+        ["2023-03-01T00:00:00-05:00", 19],
+        ["2023-04-01T00:00:00-04:00", 17],
+        ["2023-05-01T00:00:00-04:00", 30],
+        ["2023-06-01T00:00:00-04:00", 32],
+        ["2023-07-01T00:00:00-04:00", 29],
+        ["2023-08-01T00:00:00-04:00", 33],
+        ["2023-09-01T00:00:00-04:00", 37],
+        ["2023-10-01T00:00:00-04:00", 38],
+        ["2023-11-01T00:00:00-04:00", 38],
+        ["2023-12-01T00:00:00-05:00", 42],
+        ["2024-01-01T00:00:00-05:00", 156],
+        ["2024-02-01T00:00:00-05:00", 145],
+        ["2024-03-01T00:00:00-05:00", 144],
+        ["2024-04-01T00:00:00-04:00", 140],
+        ["2024-05-01T00:00:00-04:00", 190],
+        ["2024-06-01T00:00:00-04:00", 171],
+        ["2024-07-01T00:00:00-04:00", 174],
+        ["2024-08-01T00:00:00-04:00", 177],
+        ["2024-09-01T00:00:00-04:00", 181],
+        ["2024-10-01T00:00:00-04:00", 191],
+        ["2024-11-01T00:00:00-04:00", 188],
+        ["2024-12-01T00:00:00-05:00", 199],
+        ["2025-01-01T00:00:00-05:00", 202],
+        ["2025-02-01T00:00:00-05:00", 186],
+        ["2025-03-01T00:00:00-05:00", 207],
+        ["2025-04-01T00:00:00-04:00", 197],
+        ["2025-05-01T00:00:00-04:00", 182],
+        ["2025-06-01T00:00:00-04:00", 182],
+        ["2025-07-01T00:00:00-04:00", 186],
+        ["2025-08-01T00:00:00-04:00", 204],
+        ["2025-09-01T00:00:00-04:00", 170],
+        ["2025-10-01T00:00:00-04:00", 174],
+        ["2025-11-01T00:00:00-04:00", 180],
+        ["2025-12-01T00:00:00-05:00", 196],
+        ["2026-01-01T00:00:00-05:00", 207],
+        ["2026-02-01T00:00:00-05:00", 175],
+        ["2026-03-01T00:00:00-05:00", 177],
+        ["2026-04-01T00:00:00-04:00", 118]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "database_type": "TIMESTAMP",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "database_type": "NUMERIC",
+          "semantic_type": "type/Quantity",
+          "name": "High tax",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Decimal",
+          "aggregation_index": 0,
+          "display_name": "High tax",
+          "base_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", SUM(CASE WHEN \"PUBLIC\".\"ORDERS\".\"TAX\" > 5 THEN 1 ELSE 0.0 END) AS \"High tax\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Toronto",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "High tax",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "High tax",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 38,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 23.775027839678177,
+                  "q3": 183.5,
+                  "max": 207,
+                  "sd": 81.07567117071751,
+                  "avg": 110.83673469387755
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 177,
+          "unit": "month",
+          "offset": -3151.016125584361,
+          "last-change": -0.3333333333333333,
+          "col": "High tax",
+          "slope": 0.164622314681815,
+          "last-value": 118,
+          "best-fit": [
+            "+",
+            -32225.60442308549,
+            ["*", 3268.315781175956, ["log", "x"]]
+          ]
+        }
+      ]
+    },
+    "cached": null,
+    "database_id": 1,
+    "started_at": "2024-07-03T17:19:50.26592-04:00",
+    "json_query": {
+      "constraints": {
+        "max-results": 10000,
+        "max-results-bare-rows": 2000
+      },
+      "type": "query",
+      "middleware": {
+        "js-int-to-string?": true,
+        "ignore-cached-results?": false,
+        "userland-query?": true
+      },
+      "cache-strategy": null,
+      "viz-settings": {},
+      "database": 1,
+      "query": {
+        "source-table": 5,
+        "breakout": [
+          [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ]
+        ],
+        "aggregation": [
+          [
+            "aggregation-options",
+            [
+              "count-where",
+              [
+                ">",
+                [
+                  "field",
+                  38,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ],
+                5
+              ]
+            ],
+            {
+              "name": "High tax",
+              "display-name": "High tax"
+            }
+          ]
+        ]
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "dashboard",
+    "row_count": 49,
+    "running_time": 54,
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 0,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "High tax",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "High tax",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 38,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 23.775027839678177,
+                "q3": 183.5,
+                "max": 207,
+                "sd": 81.07567117071751,
+                "avg": 110.83673469387755
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "to combine 1",
+      "last_used_at": null,
+      "type": "question",
+      "query_average_duration": 52,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-07-03T20:54:47.114503Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ]
+          ],
+          "aggregation": [
+            [
+              "aggregation-options",
+              [
+                "count-where",
+                [
+                  ">",
+                  [
+                    "field",
+                    38,
+                    {
+                      "base-type": "type/Float"
+                    }
+                  ],
+                  5
+                ]
+              ],
+              {
+                "name": "High tax",
+                "display-name": "High tax"
+              }
+            ]
+          ]
+        }
+      },
+      "id": 443,
+      "parameter_mappings": [],
+      "display": "line",
+      "archived_directly": false,
+      "entity_id": "NnzqtOaEKRjol6vh145FA",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count-where"]
+      },
+      "metabase_version": "v0.2.0-SNAPSHOT (95817d0)",
+      "parameters": [],
+      "created_at": "2024-07-03T20:35:14.381848Z",
+      "public_uuid": null
+    },
+    "isUsuallyFast": true
+  },
+  {
+    "data": {
+      "rows": [
+        ["2022-04-01T00:00:00-04:00", 0],
+        ["2022-05-01T00:00:00-04:00", 11],
+        ["2022-06-01T00:00:00-04:00", 17],
+        ["2022-07-01T00:00:00-04:00", 25],
+        ["2022-08-01T00:00:00-04:00", 42],
+        ["2022-09-01T00:00:00-04:00", 42],
+        ["2022-10-01T00:00:00-04:00", 62],
+        ["2022-11-01T00:00:00-04:00", 50],
+        ["2022-12-01T00:00:00-05:00", 70],
+        ["2023-01-01T00:00:00-05:00", 79],
+        ["2023-02-01T00:00:00-05:00", 83],
+        ["2023-03-01T00:00:00-05:00", 110],
+        ["2023-04-01T00:00:00-04:00", 102],
+        ["2023-05-01T00:00:00-04:00", 129],
+        ["2023-06-01T00:00:00-04:00", 128],
+        ["2023-07-01T00:00:00-04:00", 151],
+        ["2023-08-01T00:00:00-04:00", 158],
+        ["2023-09-01T00:00:00-04:00", 152],
+        ["2023-10-01T00:00:00-04:00", 168],
+        ["2023-11-01T00:00:00-04:00", 186],
+        ["2023-12-01T00:00:00-05:00", 222],
+        ["2024-01-01T00:00:00-05:00", 348],
+        ["2024-02-01T00:00:00-05:00", 306],
+        ["2024-03-01T00:00:00-05:00", 350],
+        ["2024-04-01T00:00:00-04:00", 328],
+        ["2024-05-01T00:00:00-04:00", 404],
+        ["2024-06-01T00:00:00-04:00", 354],
+        ["2024-07-01T00:00:00-04:00", 394],
+        ["2024-08-01T00:00:00-04:00", 403],
+        ["2024-09-01T00:00:00-04:00", 397],
+        ["2024-10-01T00:00:00-04:00", 425],
+        ["2024-11-01T00:00:00-04:00", 413],
+        ["2024-12-01T00:00:00-05:00", 430],
+        ["2025-01-01T00:00:00-05:00", 467],
+        ["2025-02-01T00:00:00-05:00", 418],
+        ["2025-03-01T00:00:00-05:00", 469],
+        ["2025-04-01T00:00:00-04:00", 433],
+        ["2025-05-01T00:00:00-04:00", 427],
+        ["2025-06-01T00:00:00-04:00", 412],
+        ["2025-07-01T00:00:00-04:00", 430],
+        ["2025-08-01T00:00:00-04:00", 451],
+        ["2025-09-01T00:00:00-04:00", 401],
+        ["2025-10-01T00:00:00-04:00", 417],
+        ["2025-11-01T00:00:00-04:00", 424],
+        ["2025-12-01T00:00:00-05:00", 435],
+        ["2026-01-01T00:00:00-05:00", 462],
+        ["2026-02-01T00:00:00-05:00", 431],
+        ["2026-03-01T00:00:00-05:00", 403],
+        ["2026-04-01T00:00:00-04:00", 269]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "database_type": "TIMESTAMP",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "database_type": "NUMERIC",
+          "semantic_type": "type/Quantity",
+          "name": "High total",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Decimal",
+          "aggregation_index": 0,
+          "display_name": "High total",
+          "base_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", SUM(CASE WHEN \"PUBLIC\".\"ORDERS\".\"TOTAL\" > 55 THEN 1 ELSE 0.0 END) AS \"High total\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Toronto",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "High total",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "High total",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 46,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 108,
+                  "q3": 419.5,
+                  "max": 469,
+                  "sd": 163.7425155375287,
+                  "avg": 271.18367346938777
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 403,
+          "unit": "month",
+          "offset": -6527.838804479533,
+          "last-change": -0.3325062034739454,
+          "col": "High total",
+          "slope": 0.34313957920167076,
+          "last-value": 269,
+          "best-fit": [
+            "+",
+            -67169.65704294406,
+            ["*", 6816.395253075054, ["log", "x"]]
+          ]
+        }
+      ]
+    },
+    "cached": null,
+    "database_id": 1,
+    "started_at": "2024-07-03T17:19:50.268507-04:00",
+    "json_query": {
+      "constraints": {
+        "max-results": 10000,
+        "max-results-bare-rows": 2000
+      },
+      "type": "query",
+      "middleware": {
+        "js-int-to-string?": true,
+        "ignore-cached-results?": false,
+        "userland-query?": true
+      },
+      "cache-strategy": null,
+      "viz-settings": {},
+      "database": 1,
+      "query": {
+        "source-table": 5,
+        "breakout": [
+          [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ]
+        ],
+        "aggregation": [
+          [
+            "aggregation-options",
+            [
+              "count-where",
+              [
+                ">",
+                [
+                  "field",
+                  42,
+                  {
+                    "base-type": "type/Float"
+                  }
+                ],
+                55
+              ]
+            ],
+            {
+              "name": "High total",
+              "display-name": "High total"
+            }
+          ]
+        ]
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "dashboard",
+    "row_count": 49,
+    "running_time": 52,
+    "card": {
+      "description": null,
+      "can_write": true,
+      "database_id": 1,
+      "collection_id": null,
+      "name": "to combine 2",
+      "type": "question",
+      "query_average_duration": 64,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ]
+          ],
+          "aggregation": [
+            [
+              "aggregation-options",
+              [
+                "count-where",
+                [
+                  ">",
+                  [
+                    "field",
+                    42,
+                    {
+                      "base-type": "type/Float"
+                    }
+                  ],
+                  55
+                ]
+              ],
+              {
+                "name": "High total",
+                "display-name": "High total"
+              }
+            ]
+          ]
+        }
+      },
+      "id": 444,
+      "display": "line",
+      "visualization_settings": {
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count-where"]
+      }
+    },
+    "isUsuallyFast": true
+  },
+  {
+    "data": {
+      "rows": [
+        ["2022-04-01T00:00:00-04:00", 1],
+        ["2022-05-01T00:00:00-04:00", 19],
+        ["2022-06-01T00:00:00-04:00", 37],
+        ["2022-07-01T00:00:00-04:00", 64],
+        ["2022-08-01T00:00:00-04:00", 79],
+        ["2022-09-01T00:00:00-04:00", 92],
+        ["2022-10-01T00:00:00-04:00", 137],
+        ["2022-11-01T00:00:00-04:00", 150],
+        ["2022-12-01T00:00:00-05:00", 165],
+        ["2023-01-01T00:00:00-05:00", 205],
+        ["2023-02-01T00:00:00-05:00", 206],
+        ["2023-03-01T00:00:00-05:00", 256],
+        ["2023-04-01T00:00:00-04:00", 238],
+        ["2023-05-01T00:00:00-04:00", 271],
+        ["2023-06-01T00:00:00-04:00", 264],
+        ["2023-07-01T00:00:00-04:00", 325],
+        ["2023-08-01T00:00:00-04:00", 333],
+        ["2023-09-01T00:00:00-04:00", 346],
+        ["2023-10-01T00:00:00-04:00", 354],
+        ["2023-11-01T00:00:00-04:00", 394],
+        ["2023-12-01T00:00:00-05:00", 418],
+        ["2024-01-01T00:00:00-05:00", 457],
+        ["2024-02-01T00:00:00-05:00", 404],
+        ["2024-03-01T00:00:00-05:00", 445],
+        ["2024-04-01T00:00:00-04:00", 439],
+        ["2024-05-01T00:00:00-04:00", 520],
+        ["2024-06-01T00:00:00-04:00", 455],
+        ["2024-07-01T00:00:00-04:00", 523],
+        ["2024-08-01T00:00:00-04:00", 501],
+        ["2024-09-01T00:00:00-04:00", 498],
+        ["2024-10-01T00:00:00-04:00", 533],
+        ["2024-11-01T00:00:00-04:00", 520],
+        ["2024-12-01T00:00:00-05:00", 539],
+        ["2025-01-01T00:00:00-05:00", 584],
+        ["2025-02-01T00:00:00-05:00", 533],
+        ["2025-03-01T00:00:00-05:00", 573],
+        ["2025-04-01T00:00:00-04:00", 533],
+        ["2025-05-01T00:00:00-04:00", 561],
+        ["2025-06-01T00:00:00-04:00", 521],
+        ["2025-07-01T00:00:00-04:00", 556],
+        ["2025-08-01T00:00:00-04:00", 566],
+        ["2025-09-01T00:00:00-04:00", 519],
+        ["2025-10-01T00:00:00-04:00", 540],
+        ["2025-11-01T00:00:00-04:00", 542],
+        ["2025-12-01T00:00:00-05:00", 550],
+        ["2026-01-01T00:00:00-05:00", 580],
+        ["2026-02-01T00:00:00-05:00", 543],
+        ["2026-03-01T00:00:00-05:00", 527],
+        ["2026-04-01T00:00:00-04:00", 344]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "database_type": "TIMESTAMP",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "database_type": "BIGINT",
+          "semantic_type": "type/Quantity",
+          "name": "count",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/BigInteger",
+          "aggregation_index": 0,
+          "display_name": "Count",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Toronto",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 46,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 251.5,
+                  "q3": 533.5147186257615,
+                  "max": 584,
+                  "sd": 179.31850155519373,
+                  "avg": 382.85714285714283
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 527,
+          "unit": "month",
+          "offset": -6953.68186948939,
+          "last-change": -0.34724857685009486,
+          "col": "count",
+          "slope": 0.37026747854680997,
+          "last-value": 344,
+          "best-fit": [
+            "+",
+            -72488.55514461428,
+            ["*", 7365.275158562869, ["log", "x"]]
+          ]
+        }
+      ]
+    },
+    "cached": null,
+    "database_id": 1,
+    "started_at": "2024-07-03T17:19:50.269137-04:00",
+    "json_query": {
+      "constraints": {
+        "max-results": 10000,
+        "max-results-bare-rows": 2000
+      },
+      "type": "query",
+      "middleware": {
+        "js-int-to-string?": true,
+        "ignore-cached-results?": false,
+        "userland-query?": true
+      },
+      "cache-strategy": null,
+      "viz-settings": {},
+      "database": 1,
+      "query": {
+        "source-table": 5,
+        "aggregation": [["count"]],
+        "breakout": [
+          [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ]
+        ]
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "dashboard",
+    "row_count": 49,
+    "running_time": 47,
+    "card": {
+      "description": null,
+      "can_write": true,
+      "database_id": 1,
+      "collection_id": null,
+      "name": "Orders by month",
+      "type": "question",
+      "query_average_duration": 33,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ]
+          ]
+        }
+      },
+      "id": 43,
+      "display": "line",
+      "visualization_settings": {
+        "table.cell_column": "SUBTOTAL",
+        "graph.show_goal": false,
+        "graph.goal_value": 2,
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["count"]
+      }
+    },
+    "isUsuallyFast": true
+  }
+]

@@ -54,7 +54,6 @@
    [saml20-clj.core :as saml]
    [toucan2.core :as t2])
   (:import
-   (java.net URI URISyntaxException)
    (java.util Base64)))
 
 (set! *warn-on-reflection* true)
@@ -84,7 +83,7 @@
                                                    (group-names->ids group-names)
                                                    (all-mapped-group-ids)))))
 
-(mu/defn ^:private fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
+(mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)
@@ -127,12 +126,7 @@
 
 (defn- check-saml-enabled []
   (api/check (sso-settings/saml-enabled)
-    [400 (tru "SAML has not been enabled and/or configured")]))
-
-(defn- has-host? [uri]
-  (try
-    (-> uri URI. .getHost some?)
-    (catch URISyntaxException _ false)))
+             [400 (tru "SAML has not been enabled and/or configured")]))
 
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
@@ -145,25 +139,25 @@
                        (do
                          (log/warn "Warning: expected `redirect` param, but none is present")
                          (public-settings/site-url))
-                       (if (has-host? redirect)
-                         redirect
-                         (str (public-settings/site-url) redirect)))]
+                       (if (sso-utils/relative-uri? redirect)
+                         (str (public-settings/site-url) redirect)
+                         redirect))]
     (sso-utils/check-sso-redirect redirect-url)
     (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
-                           {:request-id (str "id-" (random-uuid))
-                            :sp-name    (sso-settings/saml-application-name)
-                            :issuer     (sso-settings/saml-application-name)
-                            :acs-url    (acs-url)
-                            :idp-url    idp-url
-                            :credential (sp-cert-keystore-details)})
+                          {:request-id (str "id-" (random-uuid))
+                           :sp-name    (sso-settings/saml-application-name)
+                           :issuer     (sso-settings/saml-application-name)
+                           :acs-url    (acs-url)
+                           :idp-url    idp-url
+                           :credential (sp-cert-keystore-details)})
             relay-state  (saml/str->base64 redirect-url)]
         (saml/idp-redirect-response saml-request idp-url relay-state))
-     (catch Throwable e
-       (let [msg (trs "Error generating SAML request")]
-         (log/error e msg)
-         (throw (ex-info msg {:status-code 500} e)))))))
+      (catch Throwable e
+        (let [msg (trs "Error generating SAML request")]
+          (log/error e msg)
+          (throw (ex-info msg {:status-code 500} e)))))))
 
 (defn- validate-response [response]
   (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)
@@ -203,7 +197,7 @@
 (defn- base64-decode [^String s]
   (when (u/base64-string? s)
     (codecs/bytes->str
-      (.decode (Base64/getMimeDecoder) s))))
+     (.decode (Base64/getMimeDecoder) s))))
 
 (defmethod sso.i/sso-post :saml
   ;; Does the verification of the IDP's response and 'logs the user in'. The attributes are available in the response:
@@ -224,12 +218,12 @@
           last-name     (get attrs (sso-settings/saml-attribute-lastname))
           groups        (get attrs (sso-settings/saml-attribute-group))
           session       (fetch-or-create-user!
-                          {:first-name      first-name
-                           :last-name       last-name
-                           :email           email
-                           :group-names     groups
-                           :user-attributes attrs
-                           :device-info     (req.util/device-info request)})
+                         {:first-name      first-name
+                          :last-name       last-name
+                          :email           email
+                          :group-names     groups
+                          :user-attributes attrs
+                          :device-info     (req.util/device-info request)})
           response      (response/redirect (or continue-url (public-settings/site-url)))]
       (mw.session/set-session-cookies request response session (t/zoned-date-time (t/zone-id "GMT"))))))
 
@@ -251,9 +245,11 @@
 
 (defmethod sso.i/sso-handle-slo :saml
   [{:keys [cookies params]}]
-  (let [xml-str (base64-decode (:SAMLResponse params))
-        success? (slo-success? xml-str)]
-    (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
-      (do (t2/delete! :model/Session :id metabase-session-id)
-          (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
-      {:status 500 :body "SAML logout failed."})))
+  (if (sso-settings/saml-slo-enabled)
+    (let [xml-str (base64-decode (:SAMLResponse params))
+          success? (slo-success? xml-str)]
+      (if-let [metabase-session-id (and success? (get-in cookies [mw.session/metabase-session-cookie :value]))]
+        (do (t2/delete! :model/Session :id metabase-session-id)
+            (mw.session/clear-session-cookie (response/redirect (urls/site-url))))
+        {:status 500 :body "SAML logout failed."}))
+    (log/warn "SAML SLO is not enabled, not continuing Single Log Out flow.")))

@@ -1,10 +1,10 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
   changeBinningForDimension,
-  visualize,
+  restore,
   summarize,
   visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 /**

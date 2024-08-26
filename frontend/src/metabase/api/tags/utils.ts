@@ -6,10 +6,13 @@ import type {
   ApiKey,
   Bookmark,
   Card,
+  CardId,
+  CardQueryMetadata,
   Collection,
   CollectionItem,
   CollectionItemModel,
   Dashboard,
+  DashboardQueryMetadata,
   DashboardSubscription,
   Database,
   DatabaseXray,
@@ -19,8 +22,9 @@ import type {
   ForeignKey,
   GroupListQuery,
   ListDashboardsResponse,
-  NativeQuerySnippet,
   ModelCacheRefreshStatus,
+  ModelIndex,
+  NativeQuerySnippet,
   PopularItem,
   RecentItem,
   Revision,
@@ -32,9 +36,6 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
-  DashboardQueryMetadata,
-  CardQueryMetadata,
-  CardId,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -188,6 +189,21 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideModelIndexTags(
+  modelIndex: ModelIndex,
+): TagDescription<TagType>[] {
+  return [idTag("model-index", modelIndex.id)];
+}
+
+export function provideModelIndexListTags(
+  modelIndexes: ModelIndex[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("model-index"),
+    ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+  ];
 }
 
 export function provideDatabaseCandidateListTags(
@@ -417,6 +433,10 @@ export function provideSubscriptionListTags(
     listTag("subscription"),
     ...subscriptions.flatMap(provideSubscriptionTags),
   ];
+}
+
+export function provideSubscriptionChannelListTags(): TagDescription<TagType>[] {
+  return [listTag("subscription-channel")];
 }
 
 export function provideSubscriptionTags(

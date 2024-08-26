@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 
-import { SyncedParametersList } from "../../parameters/components/ParametersList";
+import { SyncedParametersList } from "./SyncedParametersList";
 
 export const FilterButton = styled(Button)`
   color: var(--mb-color-brand);
@@ -38,10 +38,8 @@ export const ParametersListContainer = styled.div<ParametersListContainerProps>`
       position: absolute;
       top: 0;
       left: 0;
-
       width: 100%;
       border-bottom: 1px solid var(--mb-color-border);
-
       overflow-y: auto;
       bottom: ${isShowingMobile ? "0" : "100%"};
       padding-bottom: ${isShowingMobile ? "0.5rem" : "0"};

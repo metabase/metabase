@@ -158,18 +158,18 @@
     (when (seq ip-addresses)
       (let [url (str "https://get.geojs.io/v1/ip/geo.json?ip=" (str/join "," ip-addresses))]
         (try
-         (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
-                                           :socket-timeout     gecode-ip-address-timeout-ms
-                                           :connection-timeout gecode-ip-address-timeout-ms})
-                            :body
-                            (json/parse-string true))]
-           (into {} (for [info response]
-                      [(:ip info) {:description (or (describe-location info)
-                                                    "Unknown location")
-                                   :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
-         (catch Throwable e
-           (log/error e "Error geocoding IP addresses" {:url url})
-           nil))))))
+          (let [response (-> (http/get url {:headers            {"User-Agent" config/mb-app-id-string}
+                                            :socket-timeout     gecode-ip-address-timeout-ms
+                                            :connection-timeout gecode-ip-address-timeout-ms})
+                             :body
+                             (json/parse-string true))]
+            (into {} (for [info response]
+                       [(:ip info) {:description (or (describe-location info)
+                                                     "Unknown location")
+                                    :timezone    (u/ignore-exceptions (some-> (:timezone info) t/zone-id))}])))
+          (catch Throwable e
+            (log/error e "Error geocoding IP addresses" {:url url})
+            nil))))))
 
 (def response-unauthentic
   "Generic `401 (Unauthenticated)` Ring response map."

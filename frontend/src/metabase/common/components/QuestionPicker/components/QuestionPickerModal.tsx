@@ -7,12 +7,13 @@ import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
+import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   QuestionPickerItem,
-  QuestionPickerOptions,
   QuestionPickerModel,
-  QuestionPickerValueItem,
+  QuestionPickerOptions,
   QuestionPickerValue,
+  QuestionPickerValueItem,
 } from "../types";
 
 import {
@@ -58,21 +59,30 @@ export const QuestionPickerModal = ({
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
     null,
   );
+  const { tryLogRecentItem } = useLogRecentItem();
+
+  const handleOnChange = useCallback(
+    (item: QuestionPickerValueItem) => {
+      onChange(item);
+      tryLogRecentItem(item);
+    },
+    [onChange, tryLogRecentItem],
+  );
 
   const handleItemSelect = useCallback(
     (item: QuestionPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else if (canSelectItem(item)) {
-        onChange(item);
+        handleOnChange(item);
       }
     },
-    [onChange, options],
+    [handleOnChange, options],
   );
 
   const handleConfirm = () => {
     if (selectedItem && canSelectItem(selectedItem)) {
-      onChange(selectedItem);
+      handleOnChange(selectedItem);
     }
   };
 

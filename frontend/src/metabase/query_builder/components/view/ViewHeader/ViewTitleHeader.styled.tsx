@@ -2,13 +2,13 @@ import styled from "@emotion/styled";
 
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 import Button from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { APP_SUBHEADER_HEIGHT } from "metabase/nav/constants";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
-import { Button as MantineButton, type ButtonProps } from "metabase/ui";
+import { type ButtonProps, Button as MantineButton } from "metabase/ui";
 
 import RunButtonWithTooltip from "../../RunButtonWithTooltip";
-import ViewSection, { ViewSubHeading, ViewHeading } from "../ViewSection";
+import ViewSection, { ViewHeading, ViewSubHeading } from "../ViewSection";
 
 import { QuestionDataSource } from "./components/QuestionDataSource";
 
@@ -85,11 +85,14 @@ export const HeaderButton = styled(Button)<{
   background-color: ${({ active, color = getDefaultColor() }) =>
     active ? color : "transparent"};
   color: ${({ active }) => (active ? color("text-white") : color("text-dark"))};
+
   &:hover {
     background-color: ${({ color = getDefaultColor() }) => alpha(color, 0.15)};
     color: ${({ color }) => color};
   }
+
   transition: background 300ms linear, border 300ms linear;
+
   > .Icon {
     opacity: 0.6;
   }
@@ -147,7 +150,7 @@ export const SavedQuestionLeftSideRoot = styled.div<{
   &:hover,
   &:focus-within {
     ${SavedQuestionHeaderButtonContainer} {
-      top: 0px;
+      top: 0;
     }
 
     ${ViewHeaderLeftSubHeading} {
@@ -159,7 +162,7 @@ export const SavedQuestionLeftSideRoot = styled.div<{
     padding: 0 1.25rem;
 
     ${SavedQuestionHeaderButtonContainer} {
-      top: 0px;
+      top: 0;
     }
 
     ${ViewHeaderLeftSubHeading} {

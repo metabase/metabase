@@ -1,25 +1,26 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  describeEE,
-  onlyOnOSS,
-  assertPermissionTable,
   assertPermissionOptions,
-  modifyPermission,
-  selectSidebarItem,
+  assertPermissionTable,
   assertSidebarItems,
-  visitQuestion,
-  visitDashboard,
+  describeEE,
+  modal,
+  modifyPermission,
+  onlyOnOSS,
+  restore,
   selectPermissionRow,
+  selectSidebarItem,
   setTokenFeatures,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
-const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =
+  USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
@@ -51,6 +52,16 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       ["Products", "No"],
       ["Reviews", "No"],
     ]);
+  });
+
+  it("should not show view data column on OSS", () => {
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    cy.findByTestId("permission-table").within(() => {
+      cy.findByText("Database name").should("exist");
+      cy.findByText("View data").should("not.exist");
+      cy.findByText("Create queries").should("exist");
+    });
   });
 
   it("should display error on failed save", () => {
@@ -578,6 +589,186 @@ describe("scenarios > admin > permissions", () => {
 
     cy.get("@permissionsHelpContent").within(() => {
       cy.findByText("Data permissions");
+    });
+  });
+
+  it("should show a dismissable modal and banner showing split permisson changes (#metabase#45073", () => {
+    // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
+    // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
+    // we set them to false and ensure a modal is shown explaining the new permissions structure
+    const tempState = {
+      "show-updated-permission-modal": true,
+      "show-updated-permission-banner": true,
+    };
+
+    // When the app calls for session properties, give them a modified API response
+    cy.intercept("/api/session/properties", req => {
+      req.continue(res => {
+        res.body = { ...res.body, ...tempState };
+      });
+    }).as("sessionProps");
+
+    // These calls are setting the permission to false, so update the local state. When the settings are refreshed
+    // from the browser, they will get the new values from local state
+    cy.intercept("api/setting/show-updated-permission-modal", () => {
+      tempState["show-updated-permission-modal"] = false;
+    });
+
+    cy.intercept("api/setting/show-updated-permission-banner", () => {
+      tempState["show-updated-permission-banner"] = false;
+    });
+
+    cy.visit("/admin/permissions/");
+    //Both the command palette and the admin app call refresh settings
+    cy.wait(["@sessionProps", "@sessionProps"]);
+
+    cy.findByRole("dialog", { name: /permissions may look different/ })
+      .findByRole("button", { name: "Got it" })
+      .click();
+    cy.wait("@sessionProps");
+
+    cy.findByRole("menuitem", { name: "All Users" }).click();
+    cy.findByRole("alert").should(
+      "contain.text",
+      "Your data permissions may look different",
+    );
+    cy.findByRole("alert").findByRole("button").click();
+
+    //Cypress will error if the page refreshes while it's also intercepting a request
+    cy.wait("@sessionProps");
+
+    cy.reload();
+
+    cy.findByRole("dialog", { name: /permissions may look different/ }).should(
+      "not.exist",
+    );
+    cy.findByRole("alert").should("not.exist");
+  });
+
+  it("split permisson change modal should dismiss even if network request fails", () => {
+    // We need a way to pass true values for these settings in CI. Generally in CI, these values will always be false
+    // because we always start with a fresh instance. However, to test the flow of someone who has upgraded from 49 -> current
+    // we set them to false and ensure a modal is shown explaining the new permissions structure
+    const tempState = {
+      "show-updated-permission-modal": true,
+    };
+
+    // When the app calls for session properties, give them a modified API response
+    cy.intercept("/api/session/properties", req => {
+      req.continue(res => {
+        res.body = { ...res.body, ...tempState };
+      });
+    }).as("sessionProps");
+
+    // These calls are setting the permission to false, so update the local state. When the settings are refreshed
+    // from the browser, they will get the new values from local state
+    cy.intercept("api/setting/show-updated-permission-modal", {
+      statusCode: 500,
+    });
+
+    cy.visit("/admin/permissions/");
+    //Both the command palette and the admin app call refresh settings
+    cy.wait(["@sessionProps", "@sessionProps"]);
+
+    cy.findByRole("dialog", { name: /permissions may look different/ })
+      .findByRole("button", { name: "Got it" })
+      .click();
+    cy.wait("@sessionProps");
+
+    cy.findByRole("menuitem", { name: "All Users" }).click();
+  });
+});
+
+describe("scenarios > admin > permissions", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  context("partial updates", () => {
+    it("partial data permission updates should not remove permissions from other unmodified groups", () => {
+      // check the we have an expected initial state
+      cy.visit(`admin/permissions/data/group/${DATA_GROUP}`);
+      assertPermissionTable([["Sample Database", "Query builder and native"]]);
+
+      // make a change to the permissions of another group
+      selectSidebarItem("nosql");
+      assertPermissionTable([["Sample Database", "Query builder only"]]);
+      modifyPermission(
+        "Sample Database",
+        NATIVE_QUERIES_PERMISSION_INDEX,
+        "No",
+      );
+
+      // observe the save change request and assert that we don't get back
+      // values for groups we did not modify
+      cy.intercept("PUT", "/api/permissions/graph").as("updateGraph");
+
+      // save changes
+      cy.button("Save changes").click();
+      modal().within(() => {
+        cy.button("Yes").click();
+      });
+
+      cy.wait("@updateGraph").then(interception => {
+        const requestGroupIds = Object.keys(interception.request.body.groups);
+        const responseGroupIds = Object.keys(interception.response.body.groups);
+        expect(requestGroupIds).to.deep.equal(responseGroupIds);
+      });
+
+      // make sure that our other group's permission data did not get changed
+      selectSidebarItem("data");
+      assertPermissionTable([["Sample Database", "Query builder and native"]]);
+    });
+
+    it("partial collection permission updates should not prevent user from making further changes", () => {
+      cy.visit("/admin/permissions/collections");
+
+      selectSidebarItem("First collection");
+
+      modifyPermission(
+        "All Users",
+        COLLECTION_ACCESS_PERMISSION_INDEX,
+        "View",
+        true,
+      );
+
+      cy.intercept("PUT", "/api/collection/graph").as("updateGraph");
+
+      cy.button("Save changes").click();
+      modal().within(() => {
+        cy.button("Yes").click();
+      });
+
+      cy.wait("@updateGraph").then(interception => {
+        cy.log("should skip graph in request and response");
+        expect(interception.request.body.skip_graph).to.equal(true);
+        expect(interception.response.body).to.not.haveOwnProperty("groups");
+      });
+
+      selectSidebarItem("First collection");
+
+      modifyPermission(
+        "nosql",
+        COLLECTION_ACCESS_PERMISSION_INDEX,
+        "Curate",
+        true,
+      );
+
+      cy.button("Save changes").click();
+      modal().within(() => {
+        cy.button("Yes").click();
+      });
+
+      cy.wait("@updateGraph").then(interception => {
+        cy.log("should not send previously saved edits");
+        expect(interception.request.body.groups).to.not.haveOwnProperty(
+          USER_GROUPS.ALL_USERS_GROUP,
+        );
+
+        cy.log("should not fail when making multiple rounds of edits");
+        expect(interception.response.statusCode).to.equal(200);
+      });
     });
   });
 });

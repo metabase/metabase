@@ -15,11 +15,12 @@ import {
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
-  screen,
   renderWithProviders,
+  screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { DashboardAppConnected } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
@@ -62,8 +63,7 @@ async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
-  const channelData = { channels: {} };
-  fetchMock.get("path:/api/pulse/form_input", channelData);
+  setupNotificationChannelsEndpoints({});
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
@@ -237,5 +237,34 @@ describe("DashboardApp", () => {
         screen.getByText(/there's nothing here, yet./i),
       ).toBeInTheDocument();
     });
+  });
+
+  /**
+   * passing the same uuid in the URL is required to enable metadata cache
+   * sharing on BE
+   */
+  it("should pass dashboard_load_id to dashboard and query_metadata endpoints", async () => {
+    const { dashboardId } = await setup();
+
+    const dashboardURL = fetchMock.lastUrl(
+      `path:/api/dashboard/${dashboardId}`,
+    );
+    const queryMetadataURL = fetchMock.lastUrl(
+      `path:/api/dashboard/${dashboardId}/query_metadata`,
+    );
+
+    const dashboardSearchParams = new URLSearchParams(
+      dashboardURL?.split("?")[1],
+    );
+    const queryMetadataSearchParams = new URLSearchParams(
+      queryMetadataURL?.split("?")[1],
+    );
+
+    expect(dashboardSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
+    expect(queryMetadataSearchParams.get("dashboard_load_id")).toHaveLength(36); // uuid length
+
+    expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
+      dashboardSearchParams.get("dashboard_load_id"),
+    );
   });
 });

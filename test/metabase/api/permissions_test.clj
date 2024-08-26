@@ -2,6 +2,7 @@
   "Tests for `/api/permissions` endpoints."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.permissions :as api.permissions]
@@ -72,7 +73,7 @@
              (mt/user-http-request :crowberto :get 200 "permissions/group" :offset "1"))))
     (testing "Limit and offset pagination works for permissions list"
       (is (partial= [{:id (:id (perms-group/all-users)), :name "All Users"}]
-             (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
+                    (mt/user-http-request :crowberto :get 200 "permissions/group" :limit "1" :offset "1"))))))
 
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"
@@ -102,7 +103,7 @@
                   (get id->member (mt/user->id :rasta))))
       (testing "Should *not* include inactive users"
         (is (nil?
-               (get id->member :trashbird)))))
+             (get id->member :trashbird)))))
 
     (testing "returns 404 for nonexistent id"
       (is (= "Not found."
@@ -137,8 +138,8 @@
 
     (testing "requires superuser"
       (t2.with-temp/with-temp [PermissionsGroup {group-id :id} {:name "Test group"}]
-         (is (= "You don't have permissions to do that."
-                (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (format "permissions/group/%d" group-id))))))))
 
 (deftest fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
@@ -378,3 +379,38 @@
 
       (testing "Delete membership successfully"
         (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))))))
+
+(let [->expected {{:new-admin? true :setting-value true} false
+                  {:new-admin? true :setting-value false} false
+                  {:new-admin? false :setting-value true} true
+                  {:new-admin? false :setting-value false} false}]
+  (deftest show-updated-permission-modal-test
+    (doseq [instance-creation-time [(t/local-date-time 2020) (t/local-date-time 2022)]
+            fifty-migration-time [(t/local-date-time 2021) (t/local-date-time 2023)]
+            modal-setting-value [true false]]
+      (testing (str "instance-creation-time: " instance-creation-time
+                    ", migration-time: " fifty-migration-time
+                    ", modal-setting-value: " modal-setting-value)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (api.permissions/show-updated-permission-modal! modal-setting-value)
+          (with-redefs [api.permissions/instance-create-time (constantly instance-creation-time)
+                        api.permissions/v-fifty-migration-time (constantly fifty-migration-time)]
+            (let [expected-modal-value (get ->expected
+                                            {:new-admin? (t/after? instance-creation-time fifty-migration-time)
+                                             :setting-value modal-setting-value})]
+              (is (= expected-modal-value (api.permissions/show-updated-permission-modal)))))))))
+  (deftest show-updated-permission-banner-test
+    (doseq [instance-creation-time [(t/local-date-time 2020) (t/local-date-time 2022)]
+            fifty-migration-time [(t/local-date-time 2021) (t/local-date-time 2023)]
+            banner-setting-value [true false]]
+      (testing (str "instance-creation-time: " instance-creation-time
+                    ", migration-time: " fifty-migration-time
+                    ", banner-setting-value: " banner-setting-value)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (api.permissions/show-updated-permission-banner! banner-setting-value)
+          (with-redefs [api.permissions/instance-create-time (constantly instance-creation-time)
+                        api.permissions/v-fifty-migration-time (constantly fifty-migration-time)]
+            (let [expected-banner-value (get ->expected
+                                             {:new-admin? (t/after? instance-creation-time fifty-migration-time)
+                                              :setting-value banner-setting-value})]
+              (is (= expected-banner-value (api.permissions/show-updated-permission-banner))))))))))

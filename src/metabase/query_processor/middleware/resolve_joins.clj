@@ -45,14 +45,14 @@
 ;;; |                                 Resolving Tables & Fields / Saving in QP Store                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private resolve-fields! :- :nil
+(mu/defn- resolve-fields! :- :nil
   [joins :- Joins]
   (lib.metadata/bulk-metadata-or-throw (qp.store/metadata-provider)
                                        :metadata/column
                                        (lib.util.match/match joins [:field (id :guard integer?) _] id))
   nil)
 
-(mu/defn ^:private resolve-tables! :- :nil
+(mu/defn- resolve-tables! :- :nil
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
   because their Table references are added after `resolve-source-tables` runs."
   [joins :- Joins]
@@ -61,14 +61,13 @@
                                        (remove nil? (map :source-table joins)))
   nil)
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             :Joins Transformations                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private default-join-alias "__join")
 
-(mu/defn ^:private merge-defaults :- mbql.s/Join
+(mu/defn- merge-defaults :- mbql.s/Join
   [join]
   (merge {:alias default-join-alias, :strategy :left-join} join))
 
@@ -87,7 +86,7 @@
         [:field field-id   {:join-alias alias}]
         [:field field-name {:base-type base-type, :join-alias alias}]))))
 
-(mu/defn ^:private handle-all-fields :- mbql.s/Join
+(mu/defn- handle-all-fields :- mbql.s/Join
   "Replace `:fields :all` in a join with an appropriate list of Fields."
   [{:keys [source-table source-query alias fields source-metadata], :as join} :- mbql.s/Join]
   (merge
@@ -98,7 +97,7 @@
                 (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
                   [:field id-or-name (assoc opts :join-alias alias)]))})))
 
-(mu/defn ^:private resolve-references :- Joins
+(mu/defn- resolve-references :- Joins
   [joins :- Joins]
   (resolve-tables! joins)
   (u/prog1 (into []
@@ -109,12 +108,11 @@
 
 (declare resolve-joins-in-mbql-query-all-levels)
 
-(mu/defn ^:private resolve-join-source-queries :- Joins
+(mu/defn- resolve-join-source-queries :- Joins
   [joins :- Joins]
   (for [{:keys [source-query], :as join} joins]
     (cond-> join
       source-query resolve-joins-in-mbql-query-all-levels)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           MBQL-Query Transformations                                           |
@@ -157,7 +155,7 @@
   (cond-> inner-query
     (seq join-fields) (update :fields append-join-fields join-fields)))
 
-(mu/defn ^:private merge-joins-fields :- UnresolvedMBQLQuery
+(mu/defn- merge-joins-fields :- UnresolvedMBQLQuery
   "Append the `:fields` from `:joins` into their parent level as appropriate so joined columns appear in the final
   query results, and remove the `:fields` entry for all joins.
 
@@ -174,12 +172,11 @@
                                                        joins)))]
     (append-join-fields-to-fields inner-query join-fields)))
 
-(mu/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
+(mu/defn- resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [query :- mbql.s/MBQLQuery]
   (-> query
       (update :joins (comp resolve-join-source-queries resolve-references))
       merge-joins-fields))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |

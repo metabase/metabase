@@ -1,6 +1,14 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require
+   #?@(:clj ([clojure.math.numeric-tower :as math]
+             [me.flowthing.pp :as pp]
+             [metabase.config :as config]
+             #_{:clj-kondo/ignore [:discouraged-namespace]}
+             [metabase.util.jvm :as u.jvm]
+             [metabase.util.string :as u.str]
+             [potemkin :as p]
+             [ring.util.codec :as codec]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
    [clojure.pprint :as pprint]
@@ -15,15 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.memoize :as memoize]
    [net.cgrand.macrovich :as macros]
-   [weavejester.dependency :as dep]
-   #?@(:clj  ([clojure.math.numeric-tower :as math]
-              [me.flowthing.pp :as pp]
-              [metabase.config :as config]
-              #_{:clj-kondo/ignore [:discouraged-namespace]}
-              [metabase.util.jvm :as u.jvm]
-              [metabase.util.string :as u.str]
-              [potemkin :as p]
-              [ring.util.codec :as codec])))
+   [weavejester.dependency :as dep])
   #?(:clj (:import
            (clojure.lang Reflector)
            (java.text Normalizer Normalizer$Form)
@@ -35,7 +35,7 @@
 #?(:clj (set! *warn-on-reflection* true))
 
 (u.ns/import-fns
-  [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
+ [u.format colorize format-bytes format-color format-milliseconds format-nanoseconds format-seconds])
 
 #?(:clj (p/import-vars [u.jvm
                         all-ex-data
@@ -48,6 +48,7 @@
                         full-exception-chain
                         generate-nano-id
                         host-port-up?
+                        parse-currency
                         poll
                         host-up?
                         ip-address?
@@ -146,15 +147,16 @@
 
 (defn add-period
   "Fixes strings that don't terminate in a period; also accounts for strings
-  that end in `:`. Used for formatting docs."
+  that end in `:` and triple backticks (e.g., if a string ends in codeblock).
+   Used for formatting docs."
   [s]
   (let [text (str s)]
-    (if (or (str/blank? text)
-            (#{\. \? \!} (last text)))
-      text
-      (if (str/ends-with? text ":")
-        (str (subs text 0 (- (count text) 1)) ".")
-        (str text ".")))))
+    (cond
+      (str/blank? text) text
+      (#{\. \? \!} (last text)) text
+      (str/ends-with? text "```") text
+      (str/ends-with? text ":") (str (subs text 0 (- (count text) 1)) ".")
+      :else (str text "."))))
 
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
@@ -218,24 +220,26 @@
 (def ^{:arglists '([x])} ->kebab-case-en
   "Like [[camel-snake-kebab.core/->kebab-case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (memoize/lru (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*) :lru/threshold 256))
+  (memoize/fast-bounded (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->kebab-case-en*)
+                        :bounded/threshold 10000))
 
 (def ^{:arglists '([x])} ->snake_case_en
   "Like [[camel-snake-kebab.core/->snake_case]], but always uses English for lower-casing, supports keywords with
   namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (memoize/lru (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->snake_case_en*) :lru/threshold 256))
+  (memoize/fast-bounded (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->snake_case_en*)
+                        :bounded/threshold 10000))
 
 (def ^{:arglists '([x])} ->camelCaseEn
   "Like [[camel-snake-kebab.core/->camelCase]], but always uses English for upper- and lower-casing, supports keywords
   with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (memoize/lru (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*) :lru/threshold 256))
-
+  (memoize/fast-bounded (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->camelCaseEn*)
+                        :bounded/threshold 10000))
 
 (def ^{:arglists '([x])} ->SCREAMING_SNAKE_CASE_EN
   "Like [[camel-snake-kebab.core/->SCREAMING_SNAKE_CASE]], but always uses English for upper- and lower-casing, supports
   keywords with namespaces, and returns `nil` when passed `nil` (rather than throwing an exception)."
-  (memoize/lru (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->SCREAMING_SNAKE_CASE_EN*)
-               :lru/threshold 256))
+  (memoize/fast-bounded (wrap-csk-conversion-fn-to-handle-nil-and-namespaced-keywords ->SCREAMING_SNAKE_CASE_EN*)
+                        :bounded/threshold 10000))
 
 (defn capitalize-first-char
   "Like string/capitalize, only it ignores the rest of the string
@@ -532,7 +536,6 @@
        :present #{:a :b :c}
        :non-nil #{:d :e :f})
      ;; -> {:a 100, :b nil, :d 200}"
-  {:style/indent 1}
   [m & {:keys [present non-nil], :as options}]
   {:pre [(every? #{:present :non-nil} (keys options))]}
   (merge (select-keys m present)
@@ -635,18 +638,18 @@
      (pprint-to-str 'green some-obj)"
   (^String [x]
    (#?@
-    (:clj
-     (with-out-str
-       #_{:clj-kondo/ignore [:discouraged-var]}
-       (pp/pprint x {:max-width 120}))
+     (:clj
+      (with-out-str
+        #_{:clj-kondo/ignore [:discouraged-var]}
+        (pp/pprint x {:max-width 120}))
 
-     :cljs
+      :cljs
      ;; we try to set this permanently above, but it doesn't seem to work in Cljs, so just bind it every time. The
      ;; default value wastes too much space, 120 is a little easier to read actually.
-     (binding [pprint/*print-right-margin* 120]
-       (with-out-str
-         #_{:clj-kondo/ignore [:discouraged-var]}
-         (pprint/pprint x))))))
+      (binding [pprint/*print-right-margin* 120]
+        (with-out-str
+          #_{:clj-kondo/ignore [:discouraged-var]}
+          (pprint/pprint x))))))
 
   (^String [color-symb x]
    (u.format/colorize color-symb (pprint-to-str x))))
@@ -722,30 +725,6 @@
   "Convert `hours` to milliseconds. More readable than doing this math inline."
   [hours]
   (-> (* 60 hours) minutes->seconds seconds->ms))
-
-(defn parse-currency
-  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
-
-    $1,000.00
-    -£127.54
-    -127,54 €
-    kr-127,54
-    € 127,54-
-    ¥200"
-  ^java.math.BigDecimal [^String s]
-  (when-not (str/blank? s)
-    (#?(:clj bigdec :cljs js/parseFloat)
-     (reduce
-      (partial apply str/replace)
-      s
-      [;; strip out any current symbols
-       [#"[^\d,.-]+"          ""]
-       ;; now strip out any thousands separators
-       [#"(?<=\d)[,.](\d{3})" "$1"]
-       ;; now replace a comma decimal seperator with a period
-       [#","                  "."]
-       ;; move minus sign at end to front
-       [#"(^[^-]+)-$"         "-$1"]]))))
 
 (defn email->domain
   "Extract the domain portion of an `email-address`.
@@ -954,11 +933,30 @@
    nil
    coll))
 
+(defn reduce-preserving-reduced
+  "Like [[reduce]] but preserves the [[reduced]] wrapper around the result. This is important because we have some
+  cases where we want to call [[reduce]] on some rf, but still be able to tell if it returned early.
+
+  Returns a vanilla value if all the `xs` were consumed and `(reduced result)` on an early exit."
+  [rf init xs]
+  (if (reduced? init)
+    init
+    (reduce
+     (fn [acc x]
+       ;; HACK: Wrap the reduced value in [[reduced]] again! [[reduce]] will unwrap the outer layer but we'll still
+       ;; see the inner one.
+       (let [acc' (rf acc x)]
+         (if (reduced? acc')
+           (reduced acc')
+           acc')))
+     init
+     xs)))
+
 #?(:clj
    (let [sym->enum (fn ^Enum [sym]
-                    (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
-                                                  "valueOf"
-                                                  (to-array [(name sym)])))
+                     (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
+                                                   "valueOf"
+                                                   (to-array [(name sym)])))
          ordinal (fn [^Enum e] (.ordinal e))]
      (defmacro case-enum
        "Like `case`, but explicitly dispatch on Java enum ordinals.
@@ -989,3 +987,61 @@
                          (transient {})
                          m))]
      (with-meta ret (meta m)))))
+
+(def conjv
+  "Like `conj` but returns a vector instead of a list"
+  (fnil conj []))
+
+(defn string-byte-count
+  "Number of bytes in a string using UTF-8 encoding."
+  [s]
+  #?(:clj (count (.getBytes (str s) "UTF-8"))
+     :cljs (.. (js/TextEncoder.) (encode s) -length)))
+
+#?(:clj
+   (defn ^:private string-character-at
+     [s i]
+     (str (.charAt ^String s i))))
+
+(defn truncate-string-to-byte-count
+  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of *characters*)."
+  [s max-length-bytes]
+  #?(:clj
+     (loop [i 0, cumulative-byte-count 0]
+       (cond
+         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
+         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
+         (>= i (count s))                           s
+         :else                                      (recur (inc i)
+                                                           (long (+
+                                                                  cumulative-byte-count
+                                                                  (string-byte-count (string-character-at s i)))))))
+
+     :cljs
+     (let [buf (js/Uint8Array. max-length-bytes)
+           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
+       (subs s 0 (.-read result)))))
+
+#?(:clj
+   (defn start-timer
+     "Start and return a timer. Treat the \"timer\" as an opaque object, the implementation may change."
+     []
+     (System/nanoTime)))
+
+#?(:clj
+   (defn since-ms
+     "Return how many milliseconds have elapsed since the given timer was started."
+     [timer]
+     (/ (- (System/nanoTime) timer) 1e6)))
+
+(defn index-by
+  "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
+  ([kf coll]
+   (reduce (fn [acc v] (assoc acc (kf v) v)) {} coll))
+  ([kf vf coll]
+   (reduce (fn [acc v] (assoc acc (kf v) (vf v))) {} coll)))
+
+(defn rfirst
+  "Return first item from Reducible"
+  [reducible]
+  (reduce (fn [_ fst] (reduced fst)) nil reducible))

@@ -36,7 +36,7 @@ export function FieldSet({
             CS.textUppercase,
             CS.px1,
             CS.textNoWrap,
-            CS.textMedium,
+            CS.textSecondary,
           )}
         >
           {legend}

@@ -77,15 +77,14 @@
     ;; MSSQL
     #"^syncobj_0x.*"})
 
-(mu/defn ^:private is-crufty-table?
+(mu/defn- is-crufty-table?
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
-  [table :- i/DatabaseMetadataTable]
-  (some #(re-find % (u/lower-case-en (:name table))) crufty-table-patterns))
-
+  [table-name]
+  (some #(re-find % (u/lower-case-en table-name)) crufty-table-patterns))
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
-(mu/defn ^:private update-database-metadata!
+(mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
@@ -94,38 +93,43 @@
               {:details
                (assoc (:details database) :version (:version db-metadata))}))
 
+(defn- cruft-dependent-columns [table-name]
+  ;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
+  (let [is-crufty? (is-crufty-table? table-name)]
+    {:initial_sync_status (if is-crufty? "complete" "incomplete")
+     :visibility_type     (when is-crufty? :cruft)}))
+
+(defn create-table!
+  "Creates a new table in the database, ready to be synced.
+   Throws an exception if there is already a table with the same name, schema and database ID."
+  [database table]
+  (t2/insert-returning-instance!
+   Table
+   (merge (cruft-dependent-columns (:name table))
+          {:active                  true
+           :db_id                   (:id database)
+           :schema                  (:schema table)
+           :description             (:description table)
+           :database_require_filter (:database_require_filter table)
+           :display_name            (or (:display_name table) (humanization/name->human-readable-name (:name table)))
+           :name                    (:name table)})))
+
 (defn create-or-reactivate-table!
   "Create a single new table in the database, or mark it as active if it already exists."
   [database {schema :schema table-name :name :as table}]
-  (let [;; if this is a crufty table, mark initial sync as complete since we'll skip the subsequent sync steps
-        is-crufty?          (is-crufty-table? table)
-        initial-sync-status (if is-crufty? "complete" "incomplete")
-        visibility-type     (when is-crufty? :cruft)]
-    (if-let [existing-id (t2/select-one-pk Table
-                                           :db_id (u/the-id database)
-                                           :schema schema
-                                           :name table-name
-                                           :active false)]
-      ;; if the table already exists but is marked *inactive*, mark it as *active*
-      (t2/update! Table existing-id
-                  {:active              true
-                   :visibility_type     visibility-type
-                   :initial_sync_status initial-sync-status})
-      ;; otherwise create a new Table
-      (first (t2/insert-returning-instances! Table
-                                             :db_id (u/the-id database)
-                                             :schema schema
-                                             :description (:description table)
-                                             :database_require_filter (:database_require_filter table)
-                                             :name table-name
-                                             :display_name (humanization/name->human-readable-name table-name)
-                                             :active true
-                                             :visibility_type visibility-type
-                                             :initial_sync_status initial-sync-status)))))
+  (if-let [existing-id (t2/select-one-pk Table
+                                         :db_id (u/the-id database)
+                                         :schema schema
+                                         :name table-name
+                                         :active false)]
+    ;; if the table already exists but is marked *inactive*, mark it as *active*
+    (t2/update! Table existing-id (assoc (cruft-dependent-columns (:name table)) :active true))
+    ;; otherwise create a new Table
+    (create-table! database table)))
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
-(mu/defn ^:private create-or-reactivate-tables!
+(mu/defn- create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
    new-tables :- [:set i/DatabaseMetadataTable]]
@@ -135,7 +139,7 @@
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
 
-(mu/defn ^:private retire-tables!
+(mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
   [database   :- i/DatabaseInstance
    old-tables :- [:set [:map
@@ -151,7 +155,7 @@
                        :active true}
                 {:active false})))
 
-(mu/defn ^:private update-table-metadata-if-needed!
+(mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)]
@@ -177,7 +181,7 @@
     (when (seq changes)
       (t2/update! :model/Table (:id metabase-table) changes))))
 
-(mu/defn ^:private update-tables-metadata-if-needed!
+(mu/defn- update-tables-metadata-if-needed!
   [table-metadatas :- [:set i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
@@ -185,7 +189,7 @@
     (doseq [name+schema (set/intersection (set (keys name+schema->table-metadata)) (set (keys name+schema->metabase-table)))]
       (update-table-metadata-if-needed! (name+schema->table-metadata name+schema) (name+schema->metabase-table name+schema)))))
 
-(mu/defn ^:private table-set :- [:set i/DatabaseMetadataTable]
+(mu/defn- table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
   Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
@@ -193,7 +197,7 @@
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
-(mu/defn ^:private db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
+(mu/defn- db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count]

@@ -1,11 +1,10 @@
-import type { AnyAction, ThunkDispatch } from "@reduxjs/toolkit";
 import { within } from "@testing-library/react";
 
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
@@ -16,12 +15,9 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
+import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
-import {
-  clearQueryResult,
-  runQuestionQuery,
-} from "metabase/query_builder/actions";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -32,12 +28,10 @@ import {
   createMockTable,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
 
-import {
-  getQuestionParameters,
-  InteractiveQuestion,
-} from "./InteractiveQuestion";
+import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
+
+import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
@@ -50,12 +44,25 @@ const TEST_COLUMN = createMockColumn({
   display_name: "Test Column",
   name: "Test Column",
 });
+
 const TEST_DATASET = createMockDataset({
   data: createMockDatasetData({
     cols: [TEST_COLUMN],
     rows: [["Test Row"]],
   }),
 });
+
+// Provides a button to re-run the query
+function InteractiveQuestionTestResult() {
+  const { resetQuestion } = useInteractiveQuestionContext();
+
+  return (
+    <div>
+      <button onClick={resetQuestion}>Run Query</button>
+      <InteractiveQuestionResult withTitle />
+    </div>
+  );
+}
 
 const setup = ({
   isValidCard = true,
@@ -86,12 +93,16 @@ const setup = ({
   setupCardQueryEndpoints(TEST_CARD, TEST_DATASET);
 
   return renderWithProviders(
-    <InteractiveQuestion questionId={TEST_CARD.id} />,
+    <InteractiveQuestion questionId={TEST_CARD.id}>
+      <InteractiveQuestionTestResult />
+    </InteractiveQuestion>,
     {
       mode: "sdk",
-      sdkConfig: createMockConfig({
-        jwtProviderUri: "http://TEST_URI/sso/metabase",
-      }),
+      sdkProviderProps: {
+        config: createMockJwtConfig({
+          jwtProviderUri: "http://TEST_URI/sso/metabase",
+        }),
+      },
       storeInitialState: state,
     },
   );
@@ -119,8 +130,8 @@ describe("InteractiveQuestion", () => {
     ).toBeInTheDocument();
   });
 
-  it("should render loading state when drilling down", async () => {
-    const { store } = setup();
+  it("should render loading state when rerunning the query", async () => {
+    setup();
 
     await waitForLoaderToBeRemoved();
 
@@ -134,16 +145,9 @@ describe("InteractiveQuestion", () => {
     ).toBeInTheDocument();
 
     expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-    // Mimicking drilling down by rerunning the query again
-    const storeDispatch = store.dispatch as unknown as ThunkDispatch<
-      State,
-      void,
-      AnyAction
-    >;
-    act(() => {
-      storeDispatch(clearQueryResult());
-      storeDispatch(runQuestionQuery());
-    });
+
+    // Simulate drilling down by re-running the query again
+    act(() => screen.getByText("Run Query").click());
 
     expect(screen.queryByText("Question not found")).not.toBeInTheDocument();
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
@@ -168,20 +172,5 @@ describe("InteractiveQuestion", () => {
 
     expect(screen.getByText("Error")).toBeInTheDocument();
     expect(screen.getByText("Question not found")).toBeInTheDocument();
-  });
-
-  describe("getQuestionParameters", () => {
-    it("should generate proper URL params", () => {
-      const questionId = 109;
-
-      expect(getQuestionParameters(questionId)).toEqual({
-        location: {
-          query: {},
-          hash: "",
-          pathname: "/question/109",
-        },
-        params: { slug: "109" },
-      });
-    });
   });
 });

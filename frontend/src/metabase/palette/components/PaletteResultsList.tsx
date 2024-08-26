@@ -7,10 +7,11 @@
  * Original can be found at https://github.com/timc1/kbar/blob/846b2c1a89f6cbff1ce947b82d04cb96a5066fbb/src/KBarResults.tsx
  */
 
-import { useKBar, KBAR_LISTBOX, getListboxItemId } from "kbar";
+import { KBAR_LISTBOX, getListboxItemId, useKBar } from "kbar";
 import * as React from "react";
 
 import type { PaletteActionImpl } from "../types";
+import { navigateActionIndex } from "../utils";
 
 const START_INDEX = 0;
 
@@ -52,15 +53,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         event.preventDefault();
         event.stopPropagation();
         query.setActiveIndex(index => {
-          let nextIndex = index > START_INDEX ? index - 1 : index;
-          // avoid setting active index on a group
-          if (typeof itemsRef.current[nextIndex] === "string") {
-            if (nextIndex === 0) {
-              return index;
-            }
-            nextIndex -= 1;
-          }
-          return nextIndex;
+          return navigateActionIndex(itemsRef.current, index, -1);
         });
       } else if (
         event.key === "ArrowDown" ||
@@ -69,16 +62,7 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         event.preventDefault();
         event.stopPropagation();
         query.setActiveIndex(index => {
-          let nextIndex =
-            index < itemsRef.current.length - 1 ? index + 1 : index;
-          // avoid setting active index on a group
-          if (typeof itemsRef.current[nextIndex] === "string") {
-            if (nextIndex === itemsRef.current.length - 1) {
-              return index;
-            }
-            nextIndex += 1;
-          }
-          return nextIndex;
+          return navigateActionIndex(itemsRef.current, index, 1);
         });
       } else if (event.key === "Enter") {
         event.preventDefault();
@@ -154,12 +138,13 @@ export const PaletteResultList: React.FC<PaletteResultListProps> = props => {
         }}
       >
         {props.items.map((item, index) => {
-          const handlers = typeof item !== "string" && {
-            onPointerMove: () =>
-              activeIndex !== index && query.setActiveIndex(index),
-            onPointerDown: () => query.setActiveIndex(index),
-            onClick: () => execute(item),
-          };
+          const handlers = typeof item !== "string" &&
+            item.disabled !== true && {
+              onPointerMove: () =>
+                activeIndex !== index && query.setActiveIndex(index),
+              onPointerDown: () => query.setActiveIndex(index),
+              onClick: () => execute(item),
+            };
           const active = index === activeIndex;
 
           return (

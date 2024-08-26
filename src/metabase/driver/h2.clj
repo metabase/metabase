@@ -74,6 +74,7 @@
                               :percentile-aggregations   false
                               :regex                     true
                               :test/jvm-timezone-setting false
+                              :uuid-type                 true
                               :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
@@ -171,7 +172,6 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type qp.error-type/db})))))))
 
-
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
   ^Parser [h2-db-id]
@@ -183,10 +183,10 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(mu/defn ^:private classify-query :- [:maybe
-                                      [:map
-                                       [:command-types [:vector pos-int?]]
-                                       [:remaining-sql [:maybe :string]]]]
+(mu/defn- classify-query :- [:maybe
+                             [:map
+                              [:command-types [:vector pos-int?]]
+                              [:remaining-sql [:maybe :string]]]]
   "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
    More info on command types here:
    https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
@@ -321,7 +321,6 @@
   ;; where the driver is loaded.
   (System/getProperty "user.timezone"))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -433,7 +432,6 @@
 (defmethod sql.qp/datetime-diff [:h2 :minute] [_driver _unit x y] (datediff :minute x y))
 (defmethod sql.qp/datetime-diff [:h2 :second] [_driver _unit x y] (datediff :second x y))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -467,8 +465,8 @@
                                 (#{CHARACTER CHAR} LARGE OBJECT)
                                 CLOB
                                 (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT)
-                                NCLOB
-                                UUID}
+                                NCLOB}
+    :type/UUID                #{UUID}
     :type/*                   #{ARRAY
                                 BINARY
                                 "BINARY VARYING"

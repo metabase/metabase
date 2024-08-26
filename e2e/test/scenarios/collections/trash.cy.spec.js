@@ -1,20 +1,29 @@
 import {
-  READ_ONLY_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+  READ_ONLY_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
   createNativeQuestion as _createNativeQuestion,
-  selectSidebarItem,
   createQuestion as _createQuestion,
-  modifyPermission,
   archiveQuestion,
-  sidebar,
   entityPickerModal,
-  modal,
-  navigationSidebar,
-  restore,
   entityPickerModalTab,
+  main,
+  modal,
+  modifyPermission,
+  navigationSidebar,
+  openNavigationSidebar,
+  popover,
+  restore,
+  selectSidebarItem,
+  sharingMenuButton,
+  sidebar,
+  undo,
+  visitCollection,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > collections > trash", () => {
@@ -514,31 +523,29 @@ describe("scenarios > collections > trash", () => {
     ).as("question");
 
     cy.get("@question").then(question => {
-      cy.visit(`/question/${question.id}-question-a`);
+      visitQuestion(question.id);
       // should not have disabled actions in top navbar
       cy.findAllByTestId("qb-header-action-panel").within(() => {
         cy.findByText("Filter").should("not.exist");
         cy.findByText("Summarize").should("not.exist");
-        cy.icon("notebook").should("not.exist");
+        cy.findByTestId("notebook-button").should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");
+        sharingMenuButton().should("not.exist");
       });
 
       // should not have disabled action in bottom footer
       cy.findAllByTestId("view-footer").within(() => {
         cy.findByText("Visualization").should("not.exist");
-        cy.icon("bell").should("not.exist");
-        cy.icon("share").should("not.exist");
       });
     });
 
     cy.get("@dashboard").then(dashboard => {
-      cy.visit(`/dashboard/${dashboard.id}-dashboard-a`);
+      visitDashboard(dashboard.id);
 
       cy.findAllByTestId("dashboard-header").within(() => {
         cy.icon("pencil").should("not.exist");
-        cy.icon("subscription").should("not.exist");
-        cy.icon("share").should("not.exist");
+        sharingMenuButton().should("not.exist");
         cy.icon("clock").should("not.exist");
         cy.icon("bookmark").should("not.exist");
         cy.icon("ellipsis").should("not.exist");
@@ -589,7 +596,7 @@ describe("scenarios > collections > trash", () => {
     cy.signInAsNormalUser();
 
     cy.get("@collection").then(collection => {
-      cy.visit(`/collection/${collection.id}-collection-a`);
+      visitCollection(collection.id);
       archiveBanner().findByText("Restore").should("not.exist");
       archiveBanner().findByText("Move").should("not.exist");
       archiveBanner().findByText("Delete permanently").should("not.exist");
@@ -637,9 +644,146 @@ describe("scenarios > collections > trash", () => {
       cy.findByText(CURATEABLE_NAME).should("be.visible");
     });
   });
-});
 
-describe("Restoring items", () => {});
+  it("should highlight the trash in the navbar when viewing root trash collection or an entity in the trash", () => {
+    createCollection({ name: "Collection A" }, true).as("collection");
+    createDashboard({ name: "Dashboard A" }, true).as("dashboard");
+    createNativeQuestion(
+      {
+        name: "Question A",
+        native: { query: "select 1;" },
+      },
+      true,
+    ).as("question");
+
+    cy.log("Make sure trash is selected for root trash collection");
+    cy.visit("/trash");
+    assertTrashSelectedInNavigationSidebar();
+
+    cy.log("Make sure trash is selected for a trashed collection");
+    cy.get("@collection").then(collection => {
+      cy.intercept("GET", `/api/collection/${collection.id}`).as(
+        "getCollection",
+      );
+      visitCollection(collection.id);
+      cy.wait("@getCollection");
+      assertTrashSelectedInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed dashboard");
+    cy.get("@dashboard").then(dashboard => {
+      cy.intercept("GET", `/api/dashboard/${dashboard.id}*`).as("getDashboard");
+      visitDashboard(dashboard.id);
+      cy.wait("@getDashboard");
+      openNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
+    });
+
+    cy.log("Make sure trash is selected for a trashed question");
+    cy.get("@question").then(question => {
+      cy.log(question.id);
+      cy.intercept("POST", `/api/card/${question.id}/query`).as(
+        "getQuestionResult",
+      );
+      visitQuestion(question.id);
+      cy.wait("@getQuestionResult");
+      openNavigationSidebar();
+      assertTrashSelectedInNavigationSidebar();
+    });
+  });
+
+  describe("sidebar drag and drop", () => {
+    it("should not allow items in the trash to be moved into the trash", () => {
+      createDashboard({ name: "Dashboard A" }, true);
+      cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+      cy.visit("/trash");
+
+      dragAndDrop(
+        main().findByText("Dashboard A"),
+        navigationSidebar().findByText("Trash"),
+      );
+
+      cy.wait(100); // small wait to make sure a network request could have gone out
+      // assert no update request went out
+      cy.get("@updateDashboard.all").should("have.length", 0);
+      cy.findByTestId("toast-undo").should("not.exist");
+      main(() => {
+        cy.findByText(/Deleted items will appear here/).should("not.exist");
+        cy.findByText("Dashboard A").should("exist");
+      });
+    });
+
+    it("should allow items in the trash to be moved out of the trash and allow it to be undone", () => {
+      createDashboard({ name: "Dashboard A" }, true);
+      cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+      cy.visit("/trash");
+
+      dragAndDrop(
+        main().findByText("Dashboard A"),
+        navigationSidebar().findByText("First collection"),
+      );
+
+      cy.get("@updateDashboard.all").should("have.length", 1);
+      main()
+        .findByText(/Deleted items will appear here/)
+        .should("exist");
+      cy.findByTestId("toast-undo").should("exist");
+      undo();
+
+      cy.get("@updateDashboard.all").should("have.length", 2);
+      main().within(() => {
+        cy.findByText(/Deleted items will appear here/).should("not.exist");
+        cy.findByText("Dashboard A").should("exist");
+      });
+    });
+
+    it("should allow items outside the trash to be moved in the trash and allow it to be undone", () => {
+      createDashboard({
+        name: "Dashboard A",
+        collection_id: FIRST_COLLECTION_ID,
+      });
+      cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
+      visitCollection(FIRST_COLLECTION_ID);
+
+      dragAndDrop(
+        main().findByText("Dashboard A"),
+        navigationSidebar().findByText("Trash"),
+      );
+
+      cy.get("@updateDashboard.all").should("have.length", 1);
+      main().findByText("Dashboard A").should("not.exist");
+      cy.findByTestId("toast-undo").should("exist");
+      undo();
+
+      cy.get("@updateDashboard.all").should("have.length", 2);
+      main().within(() => {
+        cy.findByText("Dashboard A").should("exist");
+      });
+    });
+  });
+
+  it("should open only one context menu at a time (metabase#44910)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      archived: true,
+    });
+    cy.visit("/trash");
+
+    toggleEllipsisMenuFor("Orders");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
+
+    toggleEllipsisMenuFor("Orders, Count");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
+  });
+});
 
 function toggleEllipsisMenuFor(item) {
   collectionTable().within(() => {
@@ -720,8 +864,23 @@ function selectItem(name) {
     .within(() => cy.findByRole("checkbox").click());
 }
 
+function assertTrashSelectedInNavigationSidebar() {
+  navigationSidebar().within(() => {
+    cy.findByText("Trash")
+      .parents("li")
+      .should("have.attr", "aria-selected", "true");
+  });
+}
+
 function ensureBookmarkVisible(bookmark) {
   cy.findByRole("tab", { name: /bookmarks/i })
     .findByText(bookmark)
     .should("be.visible");
+}
+
+function dragAndDrop(subjectEl, targetEl) {
+  const dataTransfer = new DataTransfer();
+  subjectEl.trigger("dragstart", { dataTransfer });
+  targetEl.trigger("drop", { dataTransfer });
+  subjectEl.trigger("dragend");
 }

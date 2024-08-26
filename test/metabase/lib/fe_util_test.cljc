@@ -42,13 +42,13 @@
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :checkins)
                                                  [(lib/=
-                                                    (meta/field-metadata :checkins :user-id)
-                                                    (meta/field-metadata :users :id))])
+                                                   (meta/field-metadata :checkins :user-id)
+                                                   (meta/field-metadata :users :id))])
                                 (lib/with-join-fields :all)))
                   (lib/join (-> (lib/join-clause (meta/table-metadata :venues)
                                                  [(lib/=
-                                                    (meta/field-metadata :checkins :venue-id)
-                                                    (meta/field-metadata :venues :id))])
+                                                   (meta/field-metadata :checkins :venue-id)
+                                                   (meta/field-metadata :venues :id))])
                                 (lib/with-join-fields :all))))
         cols (m/index-by :id (lib/filterable-columns query))
         user-id-col (cols (meta/id :users :id))
@@ -96,11 +96,11 @@
                    :args [{:lib/type :metadata/column}
                           {:lib/type :metadata/column}
                           1]}]}
-        (lib/expression-parts (lib/query meta/metadata-provider (meta/table-metadata :products))
-                              (lib/= (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :day)
-                                     (lib/+ (meta/field-metadata :products :id)
-                                            (meta/field-metadata :products :id)
-                                            1))))))
+          (lib/expression-parts (lib/query meta/metadata-provider (meta/table-metadata :products))
+                                (lib/= (lib/with-temporal-bucket (meta/field-metadata :products :created-at) :day)
+                                       (lib/+ (meta/field-metadata :products :id)
+                                              (meta/field-metadata :products :id)
+                                              1))))))
 
 (deftest ^:parallel expression-clause-test
   (is (=? [:= {:lib/uuid string?} [:field {:lib/uuid string?} (meta/id :products :id)] 1]

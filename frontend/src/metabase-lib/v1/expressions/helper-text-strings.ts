@@ -13,7 +13,7 @@ const getDescriptionForNow: HelpTextConfig["description"] = (
   database,
   reportTimezone,
 ) => {
-  const hasTimezoneFeatureFlag = database.features.includes("set-timezone");
+  const hasTimezoneFeatureFlag = database.features?.includes("set-timezone");
   const timezone = hasTimezoneFeatureFlag ? reportTimezone : "UTC";
   const nowAtTimezone = getNowAtTimezone(timezone, reportTimezone);
 

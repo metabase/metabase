@@ -1,20 +1,20 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
-  ORDERS_DASHBOARD_ID,
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  openCommandPalette,
-  commandPalette,
-  commandPaletteInput,
   closeCommandPalette,
-  visitFullAppEmbeddingUrl,
+  commandPalette,
+  commandPaletteButton,
+  commandPaletteInput,
+  openCommandPalette,
+  pressEnd,
+  pressHome,
   pressPageDown,
   pressPageUp,
-  pressHome,
-  pressEnd,
-  commandPaletteButton,
+  restore,
+  visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -141,14 +141,14 @@ describe("command palette", () => {
     openCommandPalette();
 
     commandPalette().within(() => {
-      commandPaletteInput().type("Nested");
-      cy.findByRole("option", { name: "Enable Nested Queries" }).click();
+      commandPaletteInput().type("Custom Homepage");
+      cy.findByRole("option", { name: "Custom Homepage" }).click();
     });
 
-    cy.findByTestId("enable-nested-queries-setting").should("be.visible");
+    cy.findByTestId("custom-homepage-setting").should("be.visible");
 
     cy.location("pathname").should("contain", "settings/general");
-    cy.location("hash").should("contain", "#enable-nested-queries");
+    cy.location("hash").should("contain", "#custom-homepage");
 
     openCommandPalette();
 

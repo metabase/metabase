@@ -53,10 +53,10 @@ import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
 
 import {
-  RowVisualizationRoot,
   RowChartContainer,
   RowChartLegendLayout,
   RowLegendCaption,
+  RowVisualizationRoot,
 } from "./RowChart.styled";
 import {
   getColumnValueFormatter,
@@ -102,6 +102,7 @@ const RowChartVisualization = ({
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  isDashboard,
   onRender,
   onHoverChange,
   showTitle,
@@ -109,8 +110,9 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
-  width,
-  href,
+  width: outerWidth,
+  height: outerHeight,
+  getHref,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -137,7 +139,7 @@ const RowChartVisualization = ({
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
   const stackOffset = getStackOffset(settings);
-  const theme = useRowChartTheme(fontFamily);
+  const theme = useRowChartTheme(fontFamily, isDashboard, isFullscreen);
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),
@@ -216,12 +218,18 @@ const RowChartVisualization = ({
       chartColumns,
     );
 
+    const areMultipleCards = rawMultipleSeries.length > 1;
+    if (areMultipleCards) {
+      openQuestion();
+      return;
+    }
+
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
       onVisualizationClick({
         ...clickData,
         element: event.currentTarget,
       });
-    } else {
+    } else if (isDashboard) {
       openQuestion();
     }
   };
@@ -279,11 +287,13 @@ const RowChartVisualization = ({
           icon={headerIcon}
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
-          width={width}
-          href={href}
+          width={outerWidth}
+          getHref={getHref}
         />
       )}
       <RowChartLegendLayout
+        width={outerWidth}
+        height={outerHeight}
         hasLegend={hasLegend}
         items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}

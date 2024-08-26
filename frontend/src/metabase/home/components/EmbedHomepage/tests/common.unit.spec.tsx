@@ -3,10 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { screen, waitForElementToBeRemoved } from "__support__/ui";
 
 import {
-  queryFeedbackModal,
-  getLastHomepageSettingSettingCall,
-  setup,
   getLastFeedbackCall,
+  getLastHomepageSettingSettingCall,
+  queryFeedbackModal,
+  setup,
 } from "./setup";
 
 describe("EmbedHomepage (OSS)", () => {
@@ -203,8 +203,6 @@ describe("EmbedHomepage (OSS)", () => {
         email: "user@example.org",
         source: "embedding-homepage-dismiss",
       });
-
-      await waitForElementToBeRemoved(() => queryFeedbackModal());
 
       expect(
         screen.getByText("Your feedback was submitted, thank you."),

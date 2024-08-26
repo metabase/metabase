@@ -12,16 +12,16 @@ import { CollectionInstanceAnalyticsIcon } from "./components/CollectionInstance
 import { FormCollectionAuthorityLevel } from "./components/FormCollectionAuthorityLevel";
 import {
   AUTHORITY_LEVELS,
-  REGULAR_COLLECTION,
-  OFFICIAL_COLLECTION,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
+  OFFICIAL_COLLECTION,
+  REGULAR_COLLECTION,
 } from "./constants";
+import { useGetDefaultCollectionId } from "./use-get-default-collection-id";
 import {
-  getCollectionType,
-  isRegularCollection,
-  getInstanceAnalyticsCustomCollection,
-  getIcon,
   filterOutItemsFromInstanceAnalytics,
+  getCollectionType,
+  getIcon,
+  isRegularCollection,
 } from "./utils";
 
 if (hasPremiumFeature("official_collections")) {
@@ -77,8 +77,7 @@ if (hasPremiumFeature("audit_app")) {
     CollectionInstanceAnalyticsIcon;
 
   PLUGIN_COLLECTIONS.getCollectionType = getCollectionType;
-  PLUGIN_COLLECTIONS.getInstanceAnalyticsCustomCollection =
-    getInstanceAnalyticsCustomCollection;
+  PLUGIN_COLLECTIONS.useGetDefaultCollectionId = useGetDefaultCollectionId;
   PLUGIN_COLLECTIONS.CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID =
     CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID;
 

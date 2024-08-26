@@ -39,7 +39,6 @@ export const ExplainerList = styled.ul`
 export const ExplainerLink = styled(ExternalLink)`
   font-weight: 700;
   margin-top: ${space(2)};
-
   color: var(--mb-color-brand);
 
   &:hover {

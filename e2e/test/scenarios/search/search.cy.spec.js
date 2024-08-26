@@ -7,10 +7,10 @@ import {
   assertIsEllipsified,
   expectSearchResultContent,
   getSearchBar,
+  isScrollableHorizontally,
   main,
   restore,
   visitFullAppEmbeddingUrl,
-  isScrollableHorizontally,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, PEOPLE_ID, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -224,9 +224,7 @@ describe("scenarios > search", () => {
 
   describe("accessing full page search with `Enter`", () => {
     it("should not render full page search if user has not entered a text query", () => {
-      cy.intercept("GET", "/api/activity/recents?context=views").as(
-        "getRecentViews",
-      );
+      cy.intercept("GET", "/api/activity/recents?*").as("getRecentViews");
 
       visitEmbeddingWithSearch("/");
 

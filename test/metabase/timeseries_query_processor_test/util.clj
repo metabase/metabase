@@ -24,9 +24,9 @@
 
 (defn do-test-timeseries-drivers [thunk]
   (mt/test-drivers
-   (timeseries-drivers)
-   (with-flattened-dbdef
-     (thunk))))
+    (timeseries-drivers)
+    (with-flattened-dbdef
+      (thunk))))
 
 (defmacro test-timeseries-drivers {:style/indent 0} [& body]
   `(do-test-timeseries-drivers (fn [] ~@body)))

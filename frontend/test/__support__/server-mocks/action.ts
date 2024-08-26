@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 
 import type { CardId, WritebackAction } from "metabase-types/api";
 import {
-  createMockQueryAction,
   createMockImplicitQueryAction,
+  createMockQueryAction,
 } from "metabase-types/api/mocks";
 
 export function setupActionEndpoints(action: WritebackAction) {

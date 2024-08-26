@@ -25,8 +25,9 @@
      db-id
      (:table_id instance))))
 
-(defenterprise current-user-can-read-schema?
-  "Enterprise version. Returns a boolean whether the current user can read the given schema"
+(defenterprise current-user-can-manage-schema-metadata?
+  "Enterprise version. Returns a boolean whether the current user has permission to edit table metadata for any tables
+  in the schema"
   :feature :advanced-permissions
   [db-id schema-name]
   (data-perms/user-has-permission-for-schema?
@@ -80,7 +81,7 @@
   "Return true if current-user is a manager of `group-or-id`."
   [group-or-id]
   (t2/select-one-fn :is_group_manager PermissionsGroupMembership
-                       :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
+                    :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms
   "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions."
@@ -147,7 +148,7 @@
          (if tables
            (conj result (update db :tables filter-tables-by-data-model-perms))
            (conj result db))
-        result))
+         result))
      []
      dbs)))
 

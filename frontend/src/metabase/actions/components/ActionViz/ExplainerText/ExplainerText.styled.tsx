@@ -6,7 +6,6 @@ import { space } from "metabase/styled-components/theme";
 export const ExplainerTextContainer = styled.p`
   margin-left: ${space(3)};
   margin-right: ${space(3)};
-
   color: var(--mb-color-text-medium);
 `;
 

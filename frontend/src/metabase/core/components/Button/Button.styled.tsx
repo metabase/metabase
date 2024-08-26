@@ -12,6 +12,7 @@ export interface ButtonRootProps {
 export const ButtonRoot = styled.button<ButtonRootProps>`
   transition: all 200ms linear;
   flex-shrink: 0;
+
   @media (prefers-reduced-motion) {
     &,
     &:hover {
@@ -38,7 +39,6 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
     css`
       border: none;
       padding: 0;
-
       color: var(--mb-color-brand);
 
       &:hover {
@@ -53,7 +53,6 @@ export const ButtonRoot = styled.button<ButtonRootProps>`
       height: fit-content;
       line-height: 1.5rem;
       padding: 0.5rem;
-
       color: var(--mb-color-brand);
 
       &:hover {

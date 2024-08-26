@@ -424,7 +424,6 @@ describe("QuestionPickerModal", () => {
       "true",
     );
 
-    await screen.findByText(/loading/i);
     await screen.findByText(/Didn't find anything/i);
   });
 
@@ -448,7 +447,6 @@ describe("QuestionPickerModal", () => {
       "true",
     );
 
-    await screen.findByText(/loading/i);
     await screen.findByText(/Didn't find anything/i);
 
     await userEvent.clear(searchInput);

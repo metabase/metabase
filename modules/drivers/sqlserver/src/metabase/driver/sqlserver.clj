@@ -16,7 +16,6 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.interface :as qp.i]
@@ -224,9 +223,9 @@
                         "datetimeoffset"
                         "datetime")]
     (h2x/cast original-type
-      (date-add :day
-                (h2x/- 1 (date-part :weekday expr))
-                (h2x/->date expr)))))
+              (date-add :day
+                        (h2x/- 1 (date-part :weekday expr))
+                        (h2x/->date expr)))))
 
 (defmethod sql.qp/date [:sqlserver :week]
   [driver _ expr]
@@ -381,8 +380,8 @@
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset [:raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
-                                               (* items (dec page))
-                                               items)]))
+                                             (* items (dec page))
+                                             items)]))
 
 (defn- optimized-temporal-buckets
   "If `field-clause` is being truncated temporally to `:year`, `:month`, or `:day`, return a optimized set of
@@ -711,8 +710,8 @@
 (defmethod sql-jdbc.execute/statement :sqlserver
   [_ ^Connection conn]
   (let [stmt (.createStatement conn
-               ResultSet/TYPE_FORWARD_ONLY
-               ResultSet/CONCUR_READ_ONLY)]
+                               ResultSet/TYPE_FORWARD_ONLY
+                               ResultSet/CONCUR_READ_ONLY)]
     (try
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
@@ -723,24 +722,24 @@
         (.close stmt)
         (throw e)))))
 
-(defmethod unprepare/unprepare-value [:sqlserver LocalDate]
+(defmethod sql.qp/inline-value [:sqlserver LocalDate]
   [_ ^LocalDate t]
   ;; datefromparts(year, month, day)
   ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datefromparts-transact-sql?view=sql-server-ver15
   (format "DateFromParts(%d, %d, %d)" (.getYear t) (.getMonthValue t) (.getDayOfMonth t)))
 
-(defmethod unprepare/unprepare-value [:sqlserver LocalTime]
+(defmethod sql.qp/inline-value [:sqlserver LocalTime]
   [_ ^LocalTime t]
   ;; timefromparts(hour, minute, seconds, fraction, precision)
   ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/timefromparts-transact-sql?view=sql-server-ver15
   ;; precision = 7 which means the fraction is 100 nanoseconds, smallest supported by SQL Server
   (format "TimeFromParts(%d, %d, %d, %d, 7)" (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))))
 
-(defmethod unprepare/unprepare-value [:sqlserver OffsetTime]
+(defmethod sql.qp/inline-value [:sqlserver OffsetTime]
   [driver t]
-  (unprepare/unprepare-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+  (sql.qp/inline-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
-(defmethod unprepare/unprepare-value [:sqlserver OffsetDateTime]
+(defmethod sql.qp/inline-value [:sqlserver OffsetDateTime]
   [_ ^OffsetDateTime t]
   ;; DateTimeOffsetFromParts(year, month, day, hour, minute, seconds, fractions, hour_offset, minute_offset, precision)
   (let [offset-minutes (long (/ (.getTotalSeconds (.getOffset t)) 60))
@@ -751,11 +750,11 @@
             (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))
             hour-offset minute-offset)))
 
-(defmethod unprepare/unprepare-value [:sqlserver ZonedDateTime]
+(defmethod sql.qp/inline-value [:sqlserver ZonedDateTime]
   [driver t]
-  (unprepare/unprepare-value driver (t/offset-date-time t)))
+  (sql.qp/inline-value driver (t/offset-date-time t)))
 
-(defmethod unprepare/unprepare-value [:sqlserver LocalDateTime]
+(defmethod sql.qp/inline-value [:sqlserver LocalDateTime]
   [_ ^LocalDateTime t]
   ;; DateTime2FromParts(year, month, day, hour, minute, seconds, fractions, precision)
   (format "DateTime2FromParts(%d, %d, %d, %d, %d, %d, %d, 7)"
@@ -773,7 +772,7 @@
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
-  [_^ResultSet rs _ ^Integer i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (.getObject rs i OffsetDateTime)))
 
@@ -781,12 +780,3 @@
 (defmethod driver.sql/->prepared-substitution [:sqlserver Boolean]
   [driver bool]
   (driver.sql/->prepared-substitution driver (if bool 1 0)))
-
-(defmethod driver/normalize-db-details :sqlserver
-  [_ database]
-  (if-let [rowcount-override (-> database :details :rowcount-override)]
-    ;; if the user has set the rowcount-override connection property, it ends up in the details map, but it actually
-    ;; needs to be moved over to the settings map (which is where DB local settings go, as per #19399)
-    (-> (update database :details #(dissoc % :rowcount-override))
-        (update :settings #(assoc % :unaggregated-query-row-limit rowcount-override)))
-    database))

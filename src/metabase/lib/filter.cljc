@@ -45,9 +45,9 @@
   (when-let [filters (clojure.core/not-empty (:filters (lib.util/query-stage query stage-number)))]
     (i18n/tru "Filtered by {0}"
               (lib.util/join-strings-with-conjunction
-                (i18n/tru "and")
-                (for [filter filters]
-                  (lib.metadata.calculation/display-name query stage-number filter :long))))))
+               (i18n/tru "and")
+               (for [filter filters]
+                 (lib.metadata.calculation/display-name query stage-number filter :long))))))
 
 ;;; Display names for filter clauses are only really used in generating descriptions for `:case` aggregations or for
 ;;; generating the suggested name for a query.
@@ -66,18 +66,18 @@
   (let [->display-name #(lib.metadata.calculation/display-name query stage-number % style)
         ->temporal-name lib.temporal-bucket/describe-temporal-pair
         numeric? #(clojure.core/and (lib.util/original-isa? % :type/Number)
-                    (lib.util/clause? %)
-                    (-> (lib.metadata.calculation/metadata query stage-number %)
-                        lib.types.isa/id?
-                        clojure.core/not))
+                                    (lib.util/clause? %)
+                                    (-> (lib.metadata.calculation/metadata query stage-number %)
+                                        lib.types.isa/id?
+                                        clojure.core/not))
         temporal? #(lib.util/original-isa? % :type/Temporal)
         unit-is (fn [unit-or-units]
                   (let [units (set (u/one-or-many unit-or-units))]
                     (fn [a]
                       (clojure.core/and
-                        (temporal? a)
-                        (lib.util/clause? a)
-                        (clojure.core/contains? units (:temporal-unit (second a)))))))
+                       (temporal? a)
+                       (lib.util/clause? a)
+                       (clojure.core/contains? units (:temporal-unit (second a)))))))
         ->unbucketed-display-name #(-> %
                                        (update 1 dissoc :temporal-unit)
                                        ->display-name)
@@ -264,16 +264,28 @@
 (defmethod lib.metadata.calculation/display-name-method :time-interval
   [query stage-number [_tag _opts expr n unit] style]
   (if (clojure.core/or
-        (clojure.core/= n :current)
-        (clojure.core/and
-          (clojure.core/= (abs n) 1)
-          (clojure.core/= unit :day)))
+       (clojure.core/= n :current)
+       (clojure.core/and
+        (clojure.core/= (abs n) 1)
+        (clojure.core/= unit :day)))
     (i18n/tru "{0} is {1}"
               (lib.metadata.calculation/display-name query stage-number expr style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))
     (i18n/tru "{0} is in the {1}"
               (lib.metadata.calculation/display-name query stage-number expr style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))))
+
+(defmethod lib.metadata.calculation/display-name-method :relative-time-interval
+  [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
+  (if (neg? offset-value)
+    (i18n/tru "{0} is in the {1}, starting {2} ago"
+              (lib.metadata.calculation/display-name query stage-number column style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
+              (inflections/pluralize (abs offset-value) (name offset-bucket)))
+    (i18n/tru "{0} is in the {1}, starting {2} from now"
+              (lib.metadata.calculation/display-name query stage-number column style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
+              (inflections/pluralize (abs offset-value) (name offset-bucket)))))
 
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]
@@ -302,10 +314,11 @@
 (lib.common/defop ends-with [whole part])
 (lib.common/defop contains [whole part])
 (lib.common/defop does-not-contain [whole part])
+(lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
 (lib.common/defop segment [segment-id])
 
-(mu/defn ^:private add-filter-to-stage
+(mu/defn- add-filter-to-stage
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
   [stage      :- ::lib.schema/stage
    new-filter :- [:maybe ::lib.schema.expression/boolean]]
@@ -478,7 +491,6 @@
      (clojure.core/or (m/find-first #(clojure.core/= (:short %) op)
                                     (lib.filter.operator/filter-operators col))
                       (lib.filter.operator/operator-def op)))))
-
 
 (mu/defn find-filter-for-legacy-filter :- [:maybe ::lib.schema.expression/boolean]
   "Return the filter clause in `query` at stage `stage-number` matching the legacy

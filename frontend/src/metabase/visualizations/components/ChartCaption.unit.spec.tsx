@@ -2,7 +2,12 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentPropsWithoutRef } from "react";
 import _ from "underscore";
 
-import { render, screen, getIcon, queryIcon } from "__support__/ui";
+import {
+  getIcon,
+  queryIcon,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
 import type { Card, Series } from "metabase-types/api";
 import {
   createMockCard,
@@ -51,7 +56,7 @@ const setup = (props: Partial<Props> = {}) => {
     width = 200,
   } = props;
 
-  render(
+  renderWithProviders(
     <ChartCaption
       series={series}
       onChangeCardAndRun={onChangeCardAndRun}

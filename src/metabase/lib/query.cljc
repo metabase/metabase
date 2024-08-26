@@ -3,6 +3,7 @@
   (:require
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.cache :as lib.cache]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
    [metabase.lib.expression :as lib.expression]
@@ -65,8 +66,8 @@
 (defmethod can-run-method :mbql.stage/mbql
   [query card-type]
   (or (not= card-type :metric)
-      (let [last-stage (lib.util/query-stage query -1)]
-        (= (-> last-stage :aggregation count) 1))))
+      (and (= (stage-count query) 1)
+           (= (-> (lib.util/query-stage query 0) :aggregation count) 1))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."
@@ -102,8 +103,8 @@
        ;; Either it contains no expressions with `:offset`, or there is at least one order-by.
        (every? (fn [stage]
                  (boolean
-                   (or (seq (:order-by stage))
-                       (not (lib.util.match/match-one (:expressions stage) :offset)))))
+                  (or (seq (:order-by stage))
+                      (not (lib.util.match/match-one (:expressions stage) :offset)))))
                (:stages query))))
 
 (defn add-types-to-fields
@@ -119,25 +120,25 @@
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
         (lib.util.match/replace
-         x
-         [:field
-          (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-          (id :guard integer? pos?)]
-         (if (some #{:mbql/stage-metadata} &parents)
-           &match
-           (update &match 1 merge
+          x
+          [:field
+           (options :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+           (id :guard integer? pos?)]
+          (if (some #{:mbql/stage-metadata} &parents)
+            &match
+            (update &match 1 merge
                    ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
                    ;;       case no change is performed. Find a way how to handle this properly!
-                   (when-not (and (some? (:base-type options))
-                                  (not= (:base-type options)
-                                        (:base-type (lib.metadata/field metadata-provider id))))
+                    (when-not (and (some? (:base-type options))
+                                   (not= (:base-type options)
+                                         (:base-type (lib.metadata/field metadata-provider id))))
                      ;; Following key is used to track which base-types we added during `query` call. It is used in
                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
                      ;; as legacy -> pmbql -> legacy looks closer to the original.
-                     (merge (when-not (contains? options :base-type)
-                              {::transformation-added-base-type true})
-                            (-> (lib.metadata/field metadata-provider id)
-                                (select-keys [:base-type :effective-type]))))))))
+                      (merge (when-not (contains? options :base-type)
+                               {::transformation-added-base-type true})
+                             (-> (lib.metadata/field metadata-provider id)
+                                 (select-keys [:base-type :effective-type]))))))))
     x))
 
 (mu/defn query-with-stages :- ::lib.schema/query
@@ -207,20 +208,20 @@
                (-> stage
                    (add-types-to-fields metadata-provider)
                    (lib.util.match/replace
-                    [:expression
-                     (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
-                     expression-name]
-                    (let [found-ref (try
-                                      (m/remove-vals
-                                       #(= :type/* %)
-                                       (-> (lib.expression/expression-ref query stage-number expression-name)
-                                           second
-                                           (select-keys [:base-type :effective-type])))
-                                      (catch #?(:clj Exception :cljs :default) _
+                     [:expression
+                      (opts :guard (every-pred map? (complement (every-pred :base-type :effective-type))))
+                      expression-name]
+                     (let [found-ref (try
+                                       (m/remove-vals
+                                        #(= :type/* %)
+                                        (-> (lib.expression/expression-ref query stage-number expression-name)
+                                            second
+                                            (select-keys [:base-type :effective-type])))
+                                       (catch #?(:clj Exception :cljs :default) _
                                         ;; This currently does not find expressions defined in join stages
-                                        nil))]
+                                         nil))]
                       ;; Fallback if metadata is missing
-                      [:expression (merge found-ref opts) expression-name]))))
+                       [:expression (merge found-ref opts) expression-name]))))
              (m/indexed stages))))))
 
 (defmethod query-method :metadata/table
@@ -234,16 +235,14 @@
 (defn- metric-query
   [metadata-providerable card-metadata]
   (let [card-id (u/the-id card-metadata)
+        metric-first-stage (-> (query metadata-providerable (:dataset-query card-metadata))
+                               (lib.util/query-stage 0))
         base-query (query-with-stages metadata-providerable
-                                      [{:lib/type :mbql.stage/mbql
-                                        :source-card card-id}])
-        metric-breakouts (-> (query metadata-providerable (:dataset-query card-metadata))
-                             (lib.util/query-stage -1)
-                             :breakout)
+                                      [(select-keys metric-first-stage [:lib/type :source-card :source-table])])
         base-query (reduce
                     #(lib.util/add-summary-clause %1 0 :breakout %2)
                     base-query
-                    metric-breakouts)]
+                    (:breakout metric-first-stage))]
     (-> base-query
         (lib.util/add-summary-clause
          0 :aggregation
@@ -276,7 +275,7 @@
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    x]
-  (query-method metadata-providerable x))
+  (lib.cache/attach-query-cache (query-method metadata-providerable x)))
 
 (mu/defn query-from-legacy-inner-query :- ::lib.schema/query
   "Create a pMBQL query from a legacy inner query."
@@ -298,7 +297,7 @@
   [original-query :- ::lib.schema/query
    table-id :- [:or ::lib.schema.id/table :string]]
   (let [metadata-provider (lib.metadata/->metadata-provider original-query)]
-   (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))
+    (query metadata-provider (lib.metadata/table-or-card metadata-provider table-id))))
 
 (defn- occurs-in-expression?
   [expression-clause clause-type expression-body]

@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [load])
   (:require
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
@@ -27,28 +26,31 @@
    [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private Mode
   (mu/with-api-error-message [:enum :skip :update]
-    (deferred-trs "invalid --mode value")))
+                             (deferred-trs "invalid --mode value")))
 
 (def ^:private OnError
   (mu/with-api-error-message [:enum :continue :abort]
-    (deferred-trs "invalid --on-error value")))
+                             (deferred-trs "invalid --on-error value")))
 
 (def ^:private Context
   (mu/with-api-error-message
-    [:map {:closed true}
-     [:on-error {:optional true} OnError]
-     [:mode     {:optional true} Mode]]
-    (deferred-trs "invalid context seed value")))
+   [:map {:closed true}
+    [:on-error {:optional true} OnError]
+    [:mode     {:optional true} Mode]]
+   (deferred-trs "invalid context seed value")))
 
 (defn- check-premium-token! []
   (premium-features/assert-has-feature :serialization (trs "Serialization")))
@@ -86,12 +88,17 @@
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
-   & {:keys [token-check?]
-      :or   {token-check? true}}]
+   & {:keys [token-check?
+             require-initialized-db?]
+      :or   {token-check? true
+             require-initialized-db? true}}]
   (plugins/load-plugins!)
   (mdb/setup-db! :create-sample-content? false)
+  (when (and require-initialized-db? (not (setup/has-user-setup)))
+    (throw (ex-info "You cannot `import` into an empty database. Please set up Metabase normally, then retry." {})))
   (when token-check?
     (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
@@ -101,28 +108,38 @@
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
+(defn- stripped-error [e]
+  (let [m (ex-data e)]
+    (ex-info (ex-message e) m)))
+
 (mu/defn v2-load!
   "SerDes v2 load entry point.
 
    opts are passed to load-metabase"
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]]
-  (let [start    (System/nanoTime)
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :int]]]]
+  (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
                    (v2-load-internal! path opts :token-check? true)
+                   (catch ExceptionInfo e
+                     (if (:error (ex-data e))
+                       (reset! err (stripped-error e))
+                       (reset! err e)))
                    (catch Exception e
                      (reset! err e)))
         imported (into (sorted-set) (map (comp :model last)) (:seen report))]
     (snowplow/track-event! ::snowplow/serialization nil
                            {:direction     "import"
                             :source        "cli"
-                            :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                            :duration_ms   (int (u/since-ms timer))
                             :models        (str/join "," imported)
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
                                              (count (:seen report)))
+                            :error_count   (count (:errors report))
                             :success       (nil? @err)
                             :error_message (some-> @err str)})
     (when @err
@@ -166,20 +183,19 @@
                             :all nil
                             :active [:= :archived false])
          base-collections (t2/select Collection {:where [:and [:= :location "/"]
-                                                              [:or [:= :personal_owner_id nil]
-                                                                   [:= :personal_owner_id
-                                                                       (some-> users first u/the-id)]]
-                                                              state-filter]})]
+                                                         [:or [:= :personal_owner_id nil]
+                                                          [:= :personal_owner_id
+                                                           (some-> users first u/the-id)]]
+                                                         state-filter]})]
      (if (empty? base-collections)
        []
        (-> (t2/select Collection
-                             {:where [:and
-                                      (reduce (fn [acc coll]
-                                                (conj acc [:like :location (format "/%d/%%" (:id coll))]))
-                                              [:or] base-collections)
-                                      state-filter]})
+                      {:where [:and
+                               (reduce (fn [acc coll]
+                                         (conj acc [:like :location (format "/%d/%%" (:id coll))]))
+                                       [:or] base-collections)
+                               state-filter]})
            (into base-collections))))))
-
 
 (defn v1-dump!
   "Legacy Metabase app data dump"
@@ -232,30 +248,23 @@
     (.mkdirs f)
     (when-not (.canWrite f)
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
-  (let [start                (System/nanoTime)
-        ;; we _ALWAYS_ export the Trash. Its descendants are empty, so we won't export anything extra as a result, but
-        ;; we will export items that are currently in the Trash, assuming they were trashed *from* a place we're
-        ;; exporting.
-        collection-ids+trash (set/union collection-ids
-                                        #{(collection/trash-collection-id)})
-        err                  (atom nil)
-        report               (try
-                               (serdes/with-cache
-                                 (-> (cond-> opts
-                                       (seq collection-ids)
-                                       (assoc :targets
-                                              (v2.extract/make-targets-of-type
-                                               "Collection"
-                                               collection-ids+trash)))
-                                     v2.extract/extract
-                                     (v2.storage/store! path)))
-                               (catch Exception e
-                                 (reset! err e)))]
+  (let [start  (System/nanoTime)
+        err    (atom nil)
+        opts   (cond-> opts
+                 (seq collection-ids)
+                 (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
+        report (try
+                 (serdes/with-cache
+                   (-> (v2.extract/extract opts)
+                       (v2.storage/store! path)))
+                 (catch Exception e
+                   (reset! err e)))]
     (snowplow/track-event! ::snowplow/serialization nil
                            {:direction       "export"
                             :source          "cli"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
+                            :error_count     (count (:errors report))
                             :collection      (str/join "," collection-ids)
                             :all_collections (and (empty? collection-ids)
                                                   (not (:no-collections opts)))

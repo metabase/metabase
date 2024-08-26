@@ -109,7 +109,7 @@
                         deduped-cols)]
     [ordered-cols output-order]))
 
-(mu/defn ^:private streaming-rff :- ::qp.schema/rff
+(mu/defn- streaming-rff :- ::qp.schema/rff
   [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
@@ -133,7 +133,7 @@
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
-(mu/defn ^:private streaming-result-fn :- fn?
+(mu/defn- streaming-result-fn :- fn?
   [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
    ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
   (let [orig qp.pipeline/*result*]
@@ -171,17 +171,17 @@
     (do-with-streaming-rff
      export-format os
      (^:once fn* [rff]
-      (let [result (try
-                     (f rff)
-                     (catch Throwable e
-                       e))]
-        (assert (some? result) "QP unexpectedly returned nil.")
+       (let [result (try
+                      (f rff)
+                      (catch Throwable e
+                        e))]
+         (assert (some? result) "QP unexpectedly returned nil.")
         ;; if you see this, it's because it's old code written before the changes in #35465... rework the code in
         ;; question to return a response directly instead of a core.async channel
-        (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
-        (when (or (instance? Throwable result)
-                  (= (:status result) :failed))
-          (streaming-response/write-error! os result)))))))
+         (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
+         (when (or (instance? Throwable result)
+                   (= (:status result) :failed))
+           (streaming-response/write-error! os result)))))))
 
 (defmacro streaming-response
   "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure

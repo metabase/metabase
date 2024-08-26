@@ -1,11 +1,8 @@
 (ns metabase.query-processor.middleware.cache
   "Middleware that returns cached results for queries when applicable.
 
-  If caching is enabled (`enable-query-caching` is `true`) cached results will be returned for Cards if possible.
-  There's a global default TTL defined by the setting `query-caching-default-ttl`, but individual Cards can override
-  this value with custom TTLs with a value for `:cache_ttl`.
-
-  For all other queries, caching is skipped.
+  If query caching is enabled, cache strategy has been passed and it's not a `{:type :nocache}`, THEN cached results
+  will be returned for Cards if available or stored if applicable. For all other queries, caching is skipped.
 
   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
   `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
@@ -40,7 +37,6 @@
 (def ^:dynamic *backend*
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
-
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
@@ -122,7 +118,6 @@
        (vreset! has-rows? true)
        (rf acc row)))))
 
-
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
 (defn- cached-results-rff
@@ -152,11 +147,11 @@
            (vreset! final-metadata row)
            (rf acc row)))))))
 
-(mu/defn ^:private maybe-reduce-cached-results :- [:tuple
-                                                   #_status
-                                                   [:enum ::ok ::miss ::canceled]
-                                                   #_result
-                                                   :any]
+(mu/defn- maybe-reduce-cached-results :- [:tuple
+                                          #_status
+                                          [:enum ::ok ::miss ::canceled]
+                                          #_result
+                                          :any]
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
   [ignore-cache? query-hash strategy rff]
   (try
@@ -185,10 +180,9 @@
                   (ex-message e))
       [::miss nil])))
 
-
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(mu/defn ^:private run-query-with-cache :- :some
+(mu/defn- run-query-with-cache :- :some
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated
@@ -220,7 +214,9 @@
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-strategy]}]
-  (some? cache-strategy))
+  (and (public-settings/enable-query-caching)
+       (some? cache-strategy)
+       (not= (:type cache-strategy) :nocache)))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
@@ -228,6 +224,7 @@
 
      *  Caching (the `enable-query-caching` Setting) must be enabled
      *  The query must pass a `:cache-strategy` value
+     *  This strategy should not be of type `:nocache`
      *  The query must already be permissions-checked. Since the cache bypasses the normal
         query processor pipeline, the ad-hoc permissions-checking middleware isn't applied for cached results.
         (The various `/api/card/` endpoints that make use of caching do `can-read?` checks for the Card *before*

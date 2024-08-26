@@ -2,20 +2,24 @@ import { t } from "ttag";
 
 import { useSdkSelector } from "embedding-sdk/store";
 import { getErrorComponent } from "embedding-sdk/store/selectors";
+import type { SdkErrorComponentProps } from "embedding-sdk/store/types";
+import { Center } from "metabase/ui";
 
-export type SdkErrorProps = { message: string };
-
-export const SdkError = ({ message }: SdkErrorProps) => {
+export const SdkError = ({ message }: SdkErrorComponentProps) => {
   const CustomError = useSdkSelector(getErrorComponent);
 
-  if (CustomError) {
-    return <CustomError message={message} />;
-  }
+  const ErrorMessageComponent = CustomError || DefaultErrorMessage;
 
   return (
-    <div>
-      <div>{t`Error`}</div>
-      <div>{message}</div>
-    </div>
+    <Center h="100%" w="100%" mx="auto">
+      <ErrorMessageComponent message={message} />
+    </Center>
   );
 };
+
+const DefaultErrorMessage = ({ message }: SdkErrorComponentProps) => (
+  <div>
+    <div>{t`Error`}</div>
+    <div>{message}</div>
+  </div>
+);

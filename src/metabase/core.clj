@@ -188,9 +188,9 @@
       (log/error e "Metabase Initialization FAILED")
       (System/exit 1))))
 
-(defn- run-cmd [cmd args]
+(defn- run-cmd [cmd init-fn args]
   (classloader/require 'metabase.cmd)
-  ((resolve 'metabase.cmd/run-cmd) cmd args))
+  ((resolve 'metabase.cmd/run-cmd) cmd init-fn args))
 
 ;;; -------------------------------------------------- Tracing -------------------------------------------------------
 
@@ -212,5 +212,5 @@
   [& [cmd & args]]
   (maybe-enable-tracing)
   (if cmd
-    (run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `clojure -M:run migrate release-locks`
+    (run-cmd cmd init! args) ; run a command like `java -jar metabase.jar migrate release-locks` or `clojure -M:run migrate release-locks`
     (start-normally))) ; with no command line args just start Metabase normally

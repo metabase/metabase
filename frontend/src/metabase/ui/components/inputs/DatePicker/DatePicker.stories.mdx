@@ -1,6 +1,7 @@
 import { Fragment } from "react";
 import { Canvas, Story, Meta } from "@storybook/addon-docs";
-import { DatePicker } from "metabase/ui";
+import { DatePicker, Box } from "metabase/ui";
+import { SdkVisualizationWrapper } from "__support__/storybook";
 
 export const args = {
   type: "default",
@@ -99,6 +100,38 @@ DatesRange.args = {
 
 <Canvas>
   <Story name="Dates range">{DatesRange}</Story>
+</Canvas>
+
+### Dates range (SDK theme)
+
+export const DatesRangeSdk = DefaultTemplate.bind({});
+DatesRangeSdk.args = {
+  type: "range",
+  defaultValue: [sampleArgs.date1, sampleArgs.date2],
+  defaultDate: sampleArgs.date1,
+};
+
+export const theme = {
+  colors: {
+    brand: "#DF75E9",
+    filter: "#7ABBF9",
+    "text-primary": "#E3E7E4",
+    "text-secondary": "#E3E7E4",
+    "text-tertiary": "#E3E7E4",
+    border: "#3B3F3F",
+    background: "#151C20",
+    "background-hover": "#4C4A48",
+  },
+};
+
+<Canvas>
+  <Story name="Dates range SDK">
+    <SdkVisualizationWrapper theme={theme}>
+      <Box bg="background">
+        <DatesRangeSdk {...DatesRangeSdk.args} />
+      </Box>
+    </SdkVisualizationWrapper>
+  </Story>
 </Canvas>
 
 ### Single date in range

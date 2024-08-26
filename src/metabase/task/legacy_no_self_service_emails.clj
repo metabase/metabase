@@ -30,7 +30,7 @@
   (when (and config/ee-available? (email/email-configured?))
     (when-let [groups (not-empty (legacy-no-self-service-groups))]
       (log/info "Sending email to admins about deprecation of `no-self-service`")
-      (doseq [admin (t2/select :model/User :is_superuser true)]
+      (doseq [admin (t2/select :model/User :is_superuser true :is_active true)]
         (email/send-email-retrying!
          {:recipients   [(:email admin)]
           :message-type :html

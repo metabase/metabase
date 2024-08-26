@@ -4,16 +4,18 @@ import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/components/tree/types";
 import { isNotNull } from "metabase/lib/types";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database as DatabaseType } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 import type { EntityId, RawDataRouteParams } from "../../types";
 import {
-  getTableEntityId,
-  getSchemaEntityId,
   getDatabaseEntityId,
+  getSchemaEntityId,
+  getTableEntityId,
 } from "../../utils/data-entity-id";
 import { getDatabase } from "../../utils/metadata";
 
@@ -51,6 +53,7 @@ const getTableId = (id: string | number) => `table:${id}`;
 const getDatabasesSidebar = (metadata: Metadata): DataSidebarProps => {
   const entities = metadata
     .databasesList({ savedQuestions: false })
+    .filter(db => !PLUGIN_AUDIT.isAuditDb(db as DatabaseType))
     .map(database => ({
       id: database.id,
       name: database.name,

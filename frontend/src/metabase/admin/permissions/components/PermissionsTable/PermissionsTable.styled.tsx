@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 
 import Label from "metabase/components/type/Label";
 import Link from "metabase/core/components/Link";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 const getTableBorder = (theme: Theme) =>
@@ -66,6 +66,7 @@ export const PermissionTableHeaderCell = styled(
   &:first-of-type {
     background: ${({ theme }) => getHeaderBackground(theme)};
     z-index: 2;
+
     &:after {
       display: none;
     }

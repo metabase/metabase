@@ -1,17 +1,14 @@
 import { createAction } from "redux-actions";
 import { t } from "ttag";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { syncVizSettingsWithSeries } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
-import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   getCard,
@@ -20,7 +17,6 @@ import {
   getIsRunning,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
-  getQueryBuilderMode,
   getQueryResults,
   getQuestion,
   getTimeoutId,
@@ -106,40 +102,35 @@ export const runQuestionQuery = ({
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
-    const cardIsDirty = originalQuestion
+    const isCardDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
         question.id() == null
       : true;
 
+    const isQueryDirty = originalQuestion
+      ? question.isQueryDirtyComparedTo(originalQuestion)
+      : true;
+
     if (shouldUpdateUrl) {
-      const isAdHocModelOrMetric =
-        (question.type() === "model" || question.type() === "metric") &&
-        isAdHocModelQuestion(question, originalQuestion);
+      const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
+        question,
+        originalQuestion,
+      );
 
       dispatch(
-        updateUrl(question, { dirty: !isAdHocModelOrMetric && cardIsDirty }),
+        updateUrl(question, { dirty: !isAdHocModelOrMetric && isCardDirty }),
       );
     }
 
     const startTime = new Date();
     const cancelQueryDeferred = defer();
 
-    const queryTimer = startTimer();
-
     apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
-      isDirty: cardIsDirty,
+      isDirty: isQueryDirty,
     })
       .then(queryResults => {
-        queryTimer(duration =>
-          MetabaseAnalytics.trackStructEvent(
-            "QueryBuilder",
-            "Run Query",
-            question.datasetQuery().type,
-            duration,
-          ),
-        );
         return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
@@ -192,9 +183,16 @@ export const queryCompleted = (question, queryResults) => {
         prevCard && (prevData || prevError)
           ? [{ card: prevCard, data: prevData, error: prevError }]
           : null;
-      question = question.setSettings(
-        syncVizSettingsWithSeries(question.settings(), series, previousSeries),
-      );
+      if (series && previousSeries) {
+        question = question.setSettings(
+          syncVizSettingsWithSeries(
+            question.settings(),
+            question.query(),
+            series,
+            previousSeries,
+          ),
+        );
+      }
 
       question = question.maybeResetDisplay(
         data,
@@ -205,52 +203,16 @@ export const queryCompleted = (question, queryResults) => {
 
     const card = question.card();
 
-    const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
-    const isEditingSavedModel = isEditingModel && !!originalQuestion;
-    const modelMetadata = isEditingSavedModel
-      ? preserveModelMetadata(queryResults, originalQuestion)
-      : undefined;
-
     dispatch({
       type: QUERY_COMPLETED,
       payload: {
         card,
         queryResults,
-        modelMetadata,
       },
     });
     dispatch(loadCompleteUIControls());
   };
 };
-
-function preserveModelMetadata(queryResults, originalModel) {
-  const [{ data }] = queryResults;
-  const queryMetadata = data?.results_metadata?.columns || [];
-  const modelMetadata = originalModel.getResultMetadata();
-
-  const mergedMetadata = mergeQueryMetadataWithModelMetadata(
-    queryMetadata,
-    modelMetadata,
-  );
-
-  return {
-    columns: mergedMetadata,
-  };
-}
-
-function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
-  return queryMetadata.map((queryCol, index) => {
-    const modelCol = modelMetadata.find(modelCol => {
-      return isSameField(modelCol.field_ref, queryCol.field_ref);
-    });
-
-    if (modelCol) {
-      return modelCol;
-    }
-
-    return queryCol;
-  });
-}
 
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(

@@ -1,14 +1,14 @@
 import type { DisplayTheme } from "metabase/public/lib/types";
 import type {
-  Dashboard,
-  DashboardId,
-  DashCardId,
   DashCardDataMap,
-  ParameterId,
-  ParameterValueOrArray,
+  DashCardId,
+  Dashboard,
+  DashboardCard,
+  DashboardId,
   DashboardTab,
   DashboardTabId,
-  DashboardCard,
+  ParameterId,
+  ParameterValueOrArray,
 } from "metabase-types/api";
 
 export type DashboardSidebarName =
@@ -86,6 +86,7 @@ export type DashboardCardsLoadingState = {
 };
 
 export type DashboardLoadingControls = {
+  isLoading: boolean;
   documentTitle?: string;
   showLoadCompleteFavicon?: boolean;
 };

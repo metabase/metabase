@@ -18,7 +18,6 @@ import {
 import {
   compose,
   withAction,
-  withAnalytics,
   withNormalize,
   withRequestState,
 } from "metabase/lib/redux";
@@ -129,7 +128,6 @@ const Dashboards = createEntity({
         dashboard.id,
         "copy",
       ]),
-      withAnalytics("entities", "dashboard", "copy"),
     )(
       (entityObject, overrides, { notify } = {}) =>
         async (dispatch, getState) => {
@@ -177,10 +175,10 @@ const Dashboards = createEntity({
         dashboards: [DashboardSchema],
       }),
     )(
-      ({ id }) =>
+      ({ id, ...params }) =>
         dispatch =>
           entityCompatibleQuery(
-            id,
+            { id, ...params },
             dispatch,
             dashboardApi.endpoints.getDashboardQueryMetadata,
             { forceRefetch: false },
@@ -197,10 +195,10 @@ const Dashboards = createEntity({
         dashboards: [DashboardSchema],
       }),
     )(
-      ({ entity, entityId }) =>
+      ({ entity, entityId, dashboard_load_id }) =>
         dispatch =>
           entityCompatibleQuery(
-            { entity, entityId },
+            { entity, entityId, dashboard_load_id },
             dispatch,
             automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),

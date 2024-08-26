@@ -1,34 +1,50 @@
 import { dissocIn } from "icepick";
 import _ from "underscore";
 
+import {
+  createModelIndex,
+  deleteModelIndex,
+  listModelIndexes,
+} from "metabase/api";
 import type Question from "metabase-lib/v1/Question";
-import type { FieldReference, Field } from "metabase-types/api";
+import type { Field, FieldReference } from "metabase-types/api";
 import type { ModelIndex } from "metabase-types/api/modelIndexes";
 import type { Dispatch } from "metabase-types/store";
 
-import { ModelIndexes } from "./model-indexes";
+import { getPkRef } from "./utils";
 
 export type FieldWithMaybeIndex = Field & {
   should_index?: boolean;
-  field_ref?: FieldReference;
+};
+
+type FieldWithIndexAndRef = Field & {
+  should_index: boolean;
+  field_ref: FieldReference;
+};
+
+const filterForRefAndShouldIndex = (
+  field: FieldWithMaybeIndex,
+): field is FieldWithIndexAndRef => {
+  return field.should_index !== undefined && !!field.field_ref;
 };
 
 export const updateModelIndexes =
-  (model: Question) => async (dispatch: Dispatch, getState: any) => {
+  (model: Question) => async (dispatch: Dispatch) => {
     const fields = model.getResultMetadata();
 
-    const fieldsWithIndexFlags = fields.filter(
-      (field: FieldWithMaybeIndex) => field.should_index !== undefined,
-    );
+    const fieldsWithIndexFlags = fields.filter(filterForRefAndShouldIndex);
 
     if (fieldsWithIndexFlags.length === 0) {
       return;
     }
 
-    const existingIndexes: ModelIndex[] =
-      ModelIndexes.selectors.getList(getState(), {
-        entityQuery: { model_id: model.id() },
-      }) ?? [];
+    const { data: existingIndexes = [], error } = await (dispatch(
+      listModelIndexes.initiate({ model_id: model.id() }),
+    ) as Promise<{ data: ModelIndex[]; error: unknown }>);
+
+    if (error) {
+      throw new Error("Could not fetch model indexes");
+    }
 
     const newFieldsToIndex = getFieldsToIndex(
       fieldsWithIndexFlags,
@@ -40,17 +56,19 @@ export const updateModelIndexes =
     );
 
     if (newFieldsToIndex.length) {
-      const pkRef = ModelIndexes.utils.getPkRef(fields);
+      const pkRef = getPkRef(fields);
 
       if (pkRef) {
         await Promise.all(
-          newFieldsToIndex.map(field =>
-            ModelIndexes.api.create({
-              model_id: model.id(),
-              value_ref: field.field_ref,
-              pk_ref: pkRef,
-            }),
-          ),
+          newFieldsToIndex.map(field => {
+            return dispatch(
+              createModelIndex.initiate({
+                model_id: model.id(),
+                value_ref: field.field_ref,
+                pk_ref: pkRef,
+              }),
+            );
+          }),
         );
       }
     }
@@ -58,16 +76,14 @@ export const updateModelIndexes =
     if (indexIdsToRemove.length) {
       await Promise.all(
         indexIdsToRemove.map(indexId =>
-          ModelIndexes.api.delete({ id: indexId }),
+          dispatch(deleteModelIndex.initiate({ id: indexId })),
         ),
       );
     }
-
-    dispatch(ModelIndexes.actions.invalidateLists());
   };
 
 function getFieldsToIndex(
-  fieldsWithIndexFlags: FieldWithMaybeIndex[],
+  fieldsWithIndexFlags: FieldWithIndexAndRef[],
   existingIndexes: ModelIndex[],
 ) {
   // make sure none of these fields are already indexed by this model
@@ -83,7 +99,7 @@ function getFieldsToIndex(
 }
 
 function getIndexIdsToRemove(
-  fieldsWithIndexFlags: FieldWithMaybeIndex[],
+  fieldsWithIndexFlags: FieldWithIndexAndRef[],
   existingIndexes: ModelIndex[],
 ) {
   const indexIdsToRemove = fieldsWithIndexFlags.reduce(

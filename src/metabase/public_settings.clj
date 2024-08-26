@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -94,7 +95,7 @@
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
-    (application-name-for-setting-descriptions))
+                (application-name-for-setting-descriptions))
   :default    "Metabase"
   :audit      :getter
   :visibility :settings-manager
@@ -162,8 +163,8 @@
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
   (deferred-tru
-    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
-         "so changing it could break functionality or get you locked out of this instance."))
+   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+        "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :audit      :getter
   :getter     (fn []
@@ -184,9 +185,9 @@
 
 (defsetting site-locale
   (deferred-tru
-    (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
-         "Users can individually override this default language from their own account settings.")
-    (application-name-for-setting-descriptions))
+   (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
+        "Users can individually override this default language from their own account settings.")
+   (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
   :export?    true
@@ -208,7 +209,7 @@
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-    (application-name-for-setting-descriptions))
+                (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
   :encryption :never
@@ -257,14 +258,18 @@
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
   :default    true
+  :setter     :none
   :visibility :authenticated
   :export?    true
+  :getter     (fn enable-nested-queries-getter []
+                ;; only false if explicitly set `false` by the environment
+                (not= "false" (u/lower-case-en (env/env :mb-enable-nested-queries))))
   :audit      :getter)
 
 (defsetting enable-query-caching
-  (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
+  (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :authenticated
   :audit      :getter)
 
@@ -525,10 +530,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting help-link
   (deferred-tru
-    (str
-     "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
-     "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
-     "or be hidden if it is not set."))
+   (str
+    "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
+    "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
+    "or be hidden if it is not set."))
   :type       :keyword
   :audit      :getter
   :visibility :public
@@ -590,8 +595,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting breakout-bins-num
   (deferred-tru
-    (str "When using the default binning strategy and a number of bins is not provided, "
-         "this number will be used as the default."))
+   (str "When using the default binning strategy and a number of bins is not provided, "
+        "this number will be used as the default."))
   :type    :integer
   :export? true
   :default 8
@@ -599,8 +604,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting breakout-bin-width
   (deferred-tru
-    (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
-         "this number will be used as the default bin width (in degrees)."))
+   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+        "this number will be used as the default bin width (in degrees)."))
   :type    :double
   :default 10.0
   :audit   :getter)
@@ -623,8 +628,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-data
   (deferred-tru
-    (str "Whether or not to display data on the homepage. "
-         "Admins might turn this off in order to direct users to better content than raw data"))
+   (str "Whether or not to display data on the homepage. "
+        "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -633,8 +638,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-xrays
   (deferred-tru
-    (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
-         "pinned. Admins might hide this to direct users to better content than raw data"))
+   (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -643,8 +648,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-pin-message
   (deferred-tru
-    (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
-         "pinned. Admins might hide this to direct users to better content than raw data"))
+   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -731,6 +736,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
+                      :collection_cleanup             (premium-features/enable-collection-cleanup?)
                       :config_text_file               (premium-features/enable-config-text-file?)
                       :content_verification           (premium-features/enable-content-verification?)
                       :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
@@ -741,6 +747,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :hosting                        (premium-features/is-hosted?)
                       :official_collections           (premium-features/enable-official-collections?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
+                      :scim                           (premium-features/enable-scim?)
                       :session_timeout_config         (premium-features/enable-session-timeout-config?)
                       :snippet_collections            (premium-features/enable-snippet-collections?)
                       :sso_google                     (premium-features/enable-sso-google?)
@@ -769,9 +776,9 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting start-of-week
   (deferred-tru
-    (str "This will affect things like grouping by week or filtering in GUI queries. "
-         "It won''t affect most SQL queries, "
-         "although it is used to set the WEEK_START session variable in Snowflake."))
+   (str "This will affect things like grouping by week or filtering in GUI queries. "
+        "It won''t affect most SQL queries, "
+        "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :export?    true
   :type       :keyword
@@ -801,8 +808,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-database-syncing-modal
   (deferred-tru
-    (str "Whether an introductory modal should be shown after the next database connection is added. "
-         "Defaults to false if any non-default database has already finished syncing for this instance."))
+   (str "Whether an introductory modal should be shown after the next database connection is added. "
+        "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :audit      :never
@@ -881,6 +888,8 @@ See [fonts](../configuring-metabase/fonts.md).")
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (cond
+                  (premium-features/has-feature? :attached-dwh)
+                  (api/throw-403)
                   (nil? db_id)
                   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil
@@ -926,3 +935,16 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    true
   :type       :boolean)
+
+(defsetting query-analysis-enabled
+  (deferred-tru "Whether or not we analyze any queries at all")
+  :visibility :admin
+  :export?    false
+  :default    true
+  :type       :boolean)
+
+(defsetting download-row-limit
+  (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
+  :visibility :internal
+  :export?    true
+  :type       :integer)

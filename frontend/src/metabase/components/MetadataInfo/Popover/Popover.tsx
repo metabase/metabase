@@ -1,4 +1,4 @@
-import type { ReactNode, MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
@@ -8,7 +8,11 @@ import { HoverCard, useDelayGroup } from "metabase/ui";
 export const POPOVER_DELAY: [number, number] = [250, 150];
 export const POPOVER_TRANSITION_DURATION = 150;
 
-import { WidthBound, Dropdown, Target } from "./Popover.styled";
+import {
+  Dropdown,
+  HackyInvisibleTargetFiller,
+  WidthBound,
+} from "./Popover.styled";
 
 // When switching to another hover target in the same delay group,
 // we don't close immediately but delay by a short amount to avoid flicker.
@@ -73,7 +77,7 @@ export function Popover({
       >
         {/* HACK: adds an element between the target and the card */}
         {/* to avoid the card from disappearing */}
-        <Target />
+        <HackyInvisibleTargetFiller />
         <WidthBound
           width={width}
           ref={node => {

@@ -1,15 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
-  visitQuestion,
-  saveQuestion,
-  downloadAndAssert,
   assertSheetRowsCount,
-  openNewPublicLinkDropdown,
   createPublicQuestionLink,
+  downloadAndAssert,
+  filterWidget,
   modal,
   openNativeEditor,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  restore,
+  saveQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -86,9 +87,9 @@ describe("scenarios > public > question", () => {
       cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.get("@uuid").then(publicUid => {
+      cy.get("@uuid").then(publicUuid => {
         downloadAndAssert(
-          { fileType: "xlsx", questionId: id, publicUid },
+          { fileType: "xlsx", questionId: id, publicUuid },
           assertSheetRowsCount(5),
         );
       });
@@ -102,7 +103,7 @@ describe("scenarios > public > question", () => {
       cy.signInAsNormalUser().then(() => {
         visitQuestion(id);
 
-        cy.icon("share").click();
+        openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");

@@ -316,12 +316,16 @@
 
 (defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
   (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings]
-    (if-let [new-value (cond
-                         legend?  "inside"
-                         percent? "legend")]
-      (assoc viz-settings :pie.percent_visibility new-value)
-      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+         legend?  :pie.show_legend} viz-settings
+        new-visibility              (cond
+                                      legend?  "inside"
+                                      percent? "legend")
+        new-linktype                (when (= "page" (-> viz-settings :click_behavior :linkType))
+                                      "dashboard")]
+    (cond-> viz-settings
+      ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+      new-visibility (assoc :pie.percent_visibility new-visibility)
+      new-linktype   (assoc-in [:click_behavior :linkType] new-linktype))))
 
 (defn- migrate-viz-settings
   [viz-settings]
@@ -367,7 +371,6 @@
     (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
       (validate-legacy-metric-segment-definition <>))))
 
-
 (def transform-legacy-metric-segment-definition
   "Transform for inner queries like those in Metric definitions."
   {:in  (comp json-in normalize-legacy-metric-segment-definition)
@@ -412,7 +415,7 @@
   []
   (classloader/require 'metabase.driver.sql.query-processor)
   (let [db-type ((requiring-resolve 'metabase.db/db-type))]
-   ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
+    ((resolve 'metabase.driver.sql.query-processor/current-datetime-honeysql-form) db-type)))
 
 (defn- add-created-at-timestamp [obj & _]
   (cond-> obj
@@ -425,7 +428,6 @@
                                               (:updated_at obj))]
     (cond-> obj
       (not changes-already-include-updated-at?) (assoc :updated_at (now)))))
-
 
 (t2/define-before-insert :hook/timestamped?
   [instance]
@@ -701,6 +703,7 @@
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
 (mu/defn instances-with-hydrated-data
+  ;; TODO: this example is wrong, we don't get a vector of tables
   "Helper function to write batched hydrations.
   Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
 

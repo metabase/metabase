@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import React, { type CSSProperties } from "react";
 import { t } from "ttag";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
@@ -7,30 +7,38 @@ import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapp
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 
-export const PublicComponentWrapper = ({
-  children,
-}: {
-  children: JSX.Element;
-}) => {
+type PublicComponentWrapperProps = {
+  children: React.ReactNode;
+  className?: string;
+  style?: CSSProperties;
+};
+export const PublicComponentWrapper = React.forwardRef<
+  HTMLDivElement,
+  PublicComponentWrapperProps
+>(function PublicComponentWrapper({ children, className, style }, ref) {
   const loginStatus = useSdkSelector(getLoginStatus);
 
+  let content = children;
+
   if (loginStatus.status === "uninitialized") {
-    return <div>{t`Initializing…`}</div>;
+    content = <div>{t`Initializing…`}</div>;
   }
 
   if (loginStatus.status === "validated") {
-    return <div>{t`JWT is valid.`}</div>;
+    content = <div>{t`JWT is valid.`}</div>;
   }
 
   if (loginStatus.status === "loading") {
-    return <SdkLoader />;
+    content = <SdkLoader />;
   }
 
   if (loginStatus.status === "error") {
-    return <SdkError message={loginStatus.error.message} />;
+    content = <SdkError message={loginStatus.error.message} />;
   }
 
   return (
-    <PublicComponentStylesWrapper>{children}</PublicComponentStylesWrapper>
+    <PublicComponentStylesWrapper className={className} style={style} ref={ref}>
+      {content}
+    </PublicComponentStylesWrapper>
   );
-};
+});

@@ -4,6 +4,8 @@ import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import Dashboards from "./dashboards";
 import Questions from "./questions";
 
+const REVERT = "metabase/entities/revisions/REVERT_REVISION";
+
 /**
  * @deprecated use "metabase/api" instead
  */
@@ -26,6 +28,10 @@ const Revision = createEntity({
         ),
   },
 
+  actionTypes: {
+    REVERT,
+  },
+
   objectActions: {
     // use thunk since we don't actually want to dispatch an action
     revert: revision => async dispatch => {
@@ -39,7 +45,8 @@ const Revision = createEntity({
         revisionApi.endpoints.revertRevision,
       );
 
-      return dispatch(Revision.actions.invalidateLists());
+      dispatch(Revision.actions.invalidateLists());
+      dispatch({ type: REVERT, payload: revision });
     },
   },
 

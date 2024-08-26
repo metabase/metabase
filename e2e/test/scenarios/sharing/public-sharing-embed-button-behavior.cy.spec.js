@@ -10,14 +10,13 @@ import {
   expectNoBadSnowplowEvents,
   getEmbedModalSharingPane,
   modal,
-  openEmbedModalFromMenu,
-  openNewPublicLinkDropdown,
-  openPublicLinkPopoverFromMenu,
+  openSharingMenu,
   openStaticEmbeddingModal,
   popover,
   resetSnowplow,
   restore,
   setTokenFeatures,
+  sharingMenu,
   startNewQuestion,
   visitDashboard,
   visitQuestion,
@@ -46,11 +45,8 @@ import {
             visitResource(resource, id);
           });
 
-          cy.findByTestId("resource-embed-button").click();
-          cy.findByTestId("embed-header-menu").within(() => {
-            cy.findByTestId("embed-menu-embed-modal-item").should(
-              "be.disabled",
-            );
+          openSharingMenu();
+          sharingMenu().within(() => {
             cy.findByText("Embedding is off").should("be.visible");
             cy.findByText("Enable it in settings").should("be.visible");
           });
@@ -58,16 +54,15 @@ import {
       });
 
       describe("when user is non-admin", () => {
-        it(`should show disabled embed button and tooltip for ${resource}`, () => {
+        it(`should not show embed button for ${resource}`, () => {
           cy.signInAsNormalUser();
 
           cy.get("@resourceId").then(id => {
             visitResource(resource, id);
           });
 
-          expectDisabledButtonWithTooltipLabel(
-            "Ask your admin to create a public link",
-          );
+          openSharingMenu();
+          sharingMenu().findByText(/embed/i).should("not.exist");
         });
       });
     });
@@ -87,8 +82,8 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
-            cy.findByTestId("embed-header-menu").should("be.visible");
+            openSharingMenu("Embed");
+            modal().findByText("Embed Metabase").should("be.visible");
           });
 
           it(`should let the user create a public link for ${resource}`, () => {
@@ -97,32 +92,31 @@ import {
               visitResource(resource, id);
             });
 
-            openPublicLinkPopoverFromMenu();
+            openSharingMenu(/public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
           });
         });
 
         describe("when user is non-admin", () => {
-          it(`should show a disabled embed button if the ${resource} doesn't have a public link`, () => {
+          it(`should show a disabled public link button if the ${resource} doesn't have a public link`, () => {
             cy.signInAsNormalUser();
 
             cy.get("@resourceId").then(id => {
               visitResource(resource, id);
             });
 
-            expectDisabledButtonWithTooltipLabel(
-              "Ask your admin to create a public link",
-            );
+            openSharingMenu();
+            sharingMenu().findByText("Ask your admin to create a public link");
           });
 
-          it(`should show the embed button if the ${resource} has a public link`, () => {
+          it(`should show the public link button if the ${resource} has a public link`, () => {
             cy.get("@resourceId").then(id => {
               createPublicResourceLink(resource, id);
               visitResource(resource, id);
             });
 
-            openPublicLinkPopoverFromMenu();
+            openSharingMenu(/public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
@@ -132,7 +126,7 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openSharingMenu("Public link");
 
             assertValidPublicLink({
               resource,
@@ -156,9 +150,9 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openSharingMenu();
 
-            cy.findByTestId("embed-menu-public-link-item").within(() => {
+            sharingMenu().within(() => {
               cy.findByText("Public links are off").should("be.visible");
               cy.findByText("Enable them in settings").should("be.visible");
             });
@@ -179,7 +173,8 @@ import {
               visitResource(resource, id);
             });
 
-            expectDisabledButtonWithTooltipLabel("Public links are disabled");
+            openSharingMenu();
+            sharingMenu().findByText("Ask your admin to create a public link");
           });
         });
       });
@@ -202,7 +197,7 @@ describe("embed modal display", () => {
       setTokenFeatures("all");
       visitDashboard("@dashboardId");
 
-      openEmbedModalFromMenu();
+      openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embed").should("be.visible");
@@ -229,7 +224,7 @@ describe("embed modal display", () => {
     it("should display a link to the product page for embedded analytics", () => {
       cy.signInAsAdmin();
       visitDashboard("@dashboardId");
-      openEmbedModalFromMenu();
+      openSharingMenu("Embed");
 
       getEmbedModalSharingPane().within(() => {
         cy.findByText("Static embed").should("be.visible");
@@ -244,7 +239,7 @@ describe("embed modal display", () => {
         cy.findByTestId("interactive-embedding-cta").should(
           "have.attr",
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=static-embed-popover",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
         );
       });
     });
@@ -266,14 +261,14 @@ describe("#39152 sharing an unsaved question", () => {
     });
     visualize();
 
-    cy.findByTestId("resource-embed-button").click();
+    openSharingMenu();
 
     modal().within(() => {
       cy.findByText("First, save your question").should("be.visible");
       cy.findByText("Save").click();
     });
 
-    openNewPublicLinkDropdown("card");
+    openSharingMenu("Create a public link");
 
     assertValidPublicLink({ resource: "question", shouldHaveRemoveLink: true });
   });
@@ -304,7 +299,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             expectGoodSnowplowEvent({
@@ -352,7 +347,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           popover().button("Remove public link").click();
           expectGoodSnowplowEvent({
             event: "public_link_removed",
@@ -368,7 +363,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          openEmbedModalFromMenu();
+          openSharingMenu("Embed");
           cy.findByTestId("sharing-pane-public-embed-button").within(() => {
             cy.findByText("Get an embed link").click();
             cy.findByTestId("copy-button").realClick();
@@ -385,7 +380,7 @@ describe("#39152 sharing an unsaved question", () => {
             visitResource(resource, id);
           });
 
-          openEmbedModalFromMenu();
+          openSharingMenu("Embed");
           cy.findByTestId("sharing-pane-public-embed-button").within(() => {
             cy.findByText("Get an embed link").click();
             cy.button("Remove public URL").click();
@@ -416,11 +411,12 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_overview",
             code: "backend",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
               theme: "light",
-              hide_download_button: null,
+              downloads: null,
             },
           });
 
@@ -434,11 +430,12 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_overview",
             code: "view",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
               theme: "light",
-              hide_download_button: null,
+              downloads: null,
             },
           });
 
@@ -459,17 +456,18 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_params",
             code: "backend",
             appearance: {
+              background: true,
               bordered: true,
               titled: true,
               font: "instance",
               theme: "light",
-              hide_download_button: null,
+              downloads: null,
             },
           });
 
           cy.log("Assert copying code in Appearance tab");
           modal().within(() => {
-            cy.findByRole("tab", { name: "Appearance" }).click();
+            cy.findByRole("tab", { name: "Look and Feel" }).click();
 
             cy.findByText("Ruby").click();
           });
@@ -480,11 +478,12 @@ describe("#39152 sharing an unsaved question", () => {
             cy.findByLabelText("Dark").click({ force: true });
             if (resource === "dashboard") {
               cy.findByLabelText("Dashboard title").click({ force: true });
+              cy.findByLabelText("Dashboard border").click({ force: true });
             }
             if (resource === "question") {
               cy.findByLabelText("Question title").click({ force: true });
+              cy.findByLabelText("Question border").click({ force: true });
             }
-            cy.findByLabelText("Border").click({ force: true });
           });
 
           cy.findByTestId("embed-backend")
@@ -497,13 +496,38 @@ describe("#39152 sharing an unsaved question", () => {
             location: "code_appearance",
             code: "backend",
             appearance: {
+              background: true,
               bordered: false,
               titled: false,
               font: "instance",
               theme: "night",
-              hide_download_button: null,
+              downloads: null,
             },
           });
+
+          // Question don't have an option to disable background (metabase#43838)
+          if (resource === "dashboard") {
+            cy.findByLabelText("Dashboard background").click({ force: true });
+
+            cy.findByTestId("embed-backend")
+              .findByTestId("copy-button")
+              .realClick();
+            expectGoodSnowplowEvent({
+              event: "static_embed_code_copied",
+              artifact: resource,
+              language: "python",
+              location: "code_appearance",
+              code: "backend",
+              appearance: {
+                background: false,
+                bordered: false,
+                titled: false,
+                font: "instance",
+                theme: "night",
+                downloads: null,
+              },
+            });
+          }
         });
 
         describeEE("Pro/EE instances", () => {
@@ -528,11 +552,12 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_overview",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                downloads: true,
               },
             });
 
@@ -546,11 +571,12 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_overview",
               code: "view",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                downloads: true,
               },
             });
 
@@ -571,17 +597,18 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_params",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: true,
                 titled: true,
                 font: "instance",
                 theme: "light",
-                hide_download_button: resource === "question" ? false : null,
+                downloads: true,
               },
             });
 
             cy.log("Assert copying code in Appearance tab");
             modal().within(() => {
-              cy.findByRole("tab", { name: "Appearance" }).click();
+              cy.findByRole("tab", { name: "Look and Feel" }).click();
 
               cy.findByText("Ruby").click();
             });
@@ -592,19 +619,21 @@ describe("#39152 sharing an unsaved question", () => {
               cy.findByLabelText("Dark").click({ force: true });
               if (resource === "dashboard") {
                 cy.findByLabelText("Dashboard title").click({ force: true });
+                cy.findByLabelText("Dashboard border").click({ force: true });
               }
               if (resource === "question") {
                 cy.findByLabelText("Question title").click({ force: true });
+                cy.findByLabelText("Question border").click({ force: true });
               }
-              cy.findByLabelText("Border").click({ force: true });
               cy.findByLabelText("Font").click();
             });
 
             popover().findByText("Oswald").click();
 
-            if (resource === "question") {
-              modal().findByLabelText("Download data").click({ force: true });
-            }
+            cy.log(
+              "Assert that it sends `downloads: false` when downloads are disabled",
+            );
+            modal().findByLabelText("Download buttons").click({ force: true });
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
@@ -616,11 +645,12 @@ describe("#39152 sharing an unsaved question", () => {
               location: "code_appearance",
               code: "backend",
               appearance: {
+                background: true,
                 bordered: false,
                 titled: false,
                 font: "custom",
                 theme: "night",
-                hide_download_button: resource === "question" ? true : null,
+                downloads: false,
               },
             });
           });
@@ -741,12 +771,6 @@ describe("#39152 sharing an unsaved question", () => {
 
 function toSecond(milliseconds) {
   return Math.round(milliseconds / 1000);
-}
-
-function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
-  cy.findByTestId("resource-embed-button").should("be.disabled");
-  cy.findByTestId("resource-embed-button").realHover();
-  cy.findByRole("tooltip").findByText(tooltipLabel).should("be.visible");
 }
 
 function createResource(resource) {

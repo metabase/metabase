@@ -7,11 +7,10 @@ import ReactDOM from "react-dom";
 import { t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
-import { Icon } from "metabase/ui";
+import { Box, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { FilterPopover } from "../FilterPopover";
@@ -26,12 +25,12 @@ export class GuiQueryEditor extends Component {
   constructor(props) {
     super(props);
 
-    this.filterPopover = createRef();
     this.guiBuilder = createRef();
   }
 
   state = {
     expanded: true,
+    isFilterPopoverOpen: false,
   };
 
   static propTypes = {
@@ -139,23 +138,34 @@ export class GuiQueryEditor extends Component {
       >
         <div className={QueryBuilderS.QueryFilters}>{filterList}</div>
         <div className={CS.mx2}>
-          <PopoverWithTrigger
-            id="FilterPopover"
-            ref={this.filterPopover}
-            triggerElement={addFilterButton}
-            triggerClasses={cx(CS.flex, CS.alignCenter)}
-            horizontalAttachments={["left", "center"]}
-            autoWidth
+          <Popover
+            opened={this.state.isFilterPopoverOpen}
+            onClose={() => {
+              this.setState({ isFilterPopoverOpen: false });
+            }}
           >
-            <FilterPopover
-              isNew
-              query={legacyQuery}
-              onChangeFilter={filter =>
-                setDatasetQuery(legacyQuery.filter(filter))
-              }
-              onClose={() => this.filterPopover.current.close()}
-            />
-          </PopoverWithTrigger>
+            <Popover.Target>
+              <Box
+                onClick={() =>
+                  this.setState({
+                    isFilterPopoverOpen: !this.state.isFilterPopoverOpen,
+                  })
+                }
+              >
+                {addFilterButton}
+              </Box>
+            </Popover.Target>
+            <Popover.Dropdown>
+              <FilterPopover
+                isNew
+                query={legacyQuery}
+                onChangeFilter={filter =>
+                  setDatasetQuery(legacyQuery.filter(filter))
+                }
+                onClose={() => this.setState({ isFilterPopoverOpen: false })}
+              />
+            </Popover.Dropdown>
+          </Popover>
         </div>
       </div>
     );

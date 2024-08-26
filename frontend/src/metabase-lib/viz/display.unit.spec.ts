@@ -182,7 +182,32 @@ describe("defaultDisplay", () => {
     expect(defaultDisplay(query)).toEqual({ display: "line" });
   });
 
-  it("returns 'map' display for queries with 1 aggregation and 2 breakouts by coordinates", () => {
+  it("returns 'map' display with 'grid' type for queries with 1 aggregation and 2 binned breakouts by coordinates", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        {
+          columnName: "LATITUDE",
+          tableName: "PEOPLE",
+          binningStrategyName: "Auto bin",
+        },
+        {
+          columnName: "LONGITUDE",
+          tableName: "PEOPLE",
+          binningStrategyName: "Auto bin",
+        },
+      ],
+    });
+
+    expect(defaultDisplay(query)).toEqual({
+      display: "map",
+      settings: {
+        "map.type": "grid",
+      },
+    });
+  });
+
+  it("returns 'map' display with 'pin' type for queries with 1 aggregation and 2 un-binned breakouts by coordinates", () => {
     const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
       breakouts: [
@@ -194,7 +219,28 @@ describe("defaultDisplay", () => {
     expect(defaultDisplay(query)).toEqual({
       display: "map",
       settings: {
-        "map.type": "grid",
+        "map.type": "pin",
+      },
+    });
+  });
+
+  it("returns 'map' display with 'pin' type for queries with 1 aggregation and 2 breakouts by coordinates - 1 binned, 1 unbinned", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        {
+          columnName: "LATITUDE",
+          tableName: "PEOPLE",
+          binningStrategyName: "Auto bin",
+        },
+        { columnName: "LONGITUDE", tableName: "PEOPLE" },
+      ],
+    });
+
+    expect(defaultDisplay(query)).toEqual({
+      display: "map",
+      settings: {
+        "map.type": "pin",
       },
     });
   });

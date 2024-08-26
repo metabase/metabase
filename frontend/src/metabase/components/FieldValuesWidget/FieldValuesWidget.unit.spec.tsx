@@ -1,4 +1,9 @@
-import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
+import userEvent from "@testing-library/user-event";
+
+import {
+  setupFieldSearchValuesEndpoint,
+  setupParameterValuesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
@@ -9,21 +14,22 @@ import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 import Fields from "metabase/entities/fields";
 import { checkNotNull, isNotNull } from "metabase/lib/types";
 import type Field from "metabase-lib/v1/metadata/Field";
+import { createMockParameter } from "metabase-types/api/mocks";
 import {
   ORDERS,
-  PRODUCTS,
   PEOPLE,
-  PRODUCT_CATEGORY_VALUES,
   PEOPLE_SOURCE_VALUES,
+  PRODUCTS,
+  PRODUCT_CATEGORY_VALUES,
 } from "metabase-types/api/mocks/presets";
 
 import {
-  state,
-  metadata,
+  EXPRESSION_FIELD_ID,
   LISTABLE_PK_FIELD_ID,
   LISTABLE_PK_FIELD_VALUE,
   SEARCHABLE_FK_FIELD_ID,
-  EXPRESSION_FIELD_ID,
+  metadata,
+  state,
 } from "./testMocks";
 
 async function setup({
@@ -45,9 +51,17 @@ async function setup({
     .spyOn(Fields.objectActions, "fetchFieldValues")
     .mockImplementation(fetchFieldValues);
 
+  const onChange = jest.fn();
+
+  setupParameterValuesEndpoints({
+    values: [],
+    has_more_values: false,
+  });
+
   if (searchValue) {
     fields.forEach(field => {
-      setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
+      const fieldId = field?.id as number;
+      setupFieldSearchValuesEndpoint(fieldId, fieldId, searchValue);
     });
   }
 
@@ -55,7 +69,7 @@ async function setup({
     <FieldValuesWidget
       value={[]}
       fields={fields.filter(isNotNull)}
-      onChange={jest.fn()}
+      onChange={onChange}
       prefix={prefix}
       {...props}
     />,
@@ -66,7 +80,7 @@ async function setup({
 
   await waitForLoaderToBeRemoved();
 
-  return { fetchFieldValues };
+  return { fetchFieldValues, onChange };
 }
 
 describe("FieldValuesWidget", () => {
@@ -266,6 +280,30 @@ describe("FieldValuesWidget", () => {
           table_id: expressionField.table_id,
         }),
       );
+    });
+  });
+
+  describe("custom labels", () => {
+    it("should use custom labels if provided", async () => {
+      const valuesField = checkNotNull(metadata.field(LISTABLE_PK_FIELD_ID));
+      const { onChange } = await setup({
+        fields: [valuesField],
+        parameter: createMockParameter({
+          values_source_type: "static-list",
+          values_source_config: {
+            values: [
+              ["A", "Foo"],
+              ["B", "Bar"],
+            ],
+          },
+        }),
+      });
+
+      const input = screen.getByRole("searchbox");
+
+      await userEvent.type(input, "Foo,");
+
+      expect(onChange).toHaveBeenLastCalledWith(["A"]);
     });
   });
 });

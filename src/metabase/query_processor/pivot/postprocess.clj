@@ -17,7 +17,6 @@
 ;;  - pivot-measures -> vector of indices into raw pivot rows where the aggregated value comes from. This
 ;;    the values from these indices (often just 1 idx) are what end up in the table's 'cells' (the stuff making up the bulk of the table)
 
-
 ;; an example of what a raw pivot row might look like, with header shown for clarity:
 ;; {:Cat A "AA", :Cat B "BA", :Cat C "CA", :Cat D "DA", :pivot-grouping 0, :Sum of Measure 1}
 ;; [Cat A Cat B Cat C Cat D pivot-grouping Sum of Measure]
@@ -45,17 +44,17 @@
   (let [all-vals (distinct (mapv #(get % idx) rows))]
     (concat (vec (remove nil? all-vals)) (when include-nil? [nil]))))
 
-(mu/defn ^:private pivot-row-titles
+(mu/defn- pivot-row-titles
   [{:keys [column-titles pivot-rows pivot-cols]} :- ::pivot-spec]
   (if (seq pivot-rows)
     (mapv #(get column-titles %) pivot-rows)
     [(get column-titles (first pivot-cols) "")]))
 
-(mu/defn ^:private pivot-measure-titles
+(mu/defn- pivot-measure-titles
   [{:keys [column-titles pivot-measures]} :- ::pivot-spec]
   (mapv #(get column-titles %) pivot-measures))
 
-(mu/defn ^:private header-builder
+(mu/defn- header-builder
   "Construct the export-style pivot headers from the raw pivot rows, according to the indices specified in `pivot-spec`."
   [rows {:keys [pivot-cols pivot-measures] :as pivot-spec} :- ::pivot-spec]
   (let [row-titles                 (pivot-row-titles pivot-spec)
@@ -96,7 +95,7 @@
                  (repeat (max 1 n-measures) "Row totals"))))))
      header-indices)))
 
-(mu/defn ^:private col-grouper
+(mu/defn- col-grouper
   "Map of raw pivot rows keyed by [pivot-cols]. Use it per row-group.
   This constructs a map where you can use a pivot-cols-value tuple to find the row-builder
   That is, suppose we have 2 pivot-cols, and valid values might be 'AA' and 'BA'. To get the
@@ -109,7 +108,7 @@
     (let [cols-groups (group-by (apply juxt (map (fn [k] #(get % k)) pivot-cols)) rows)]
       cols-groups)))
 
-(mu/defn ^:private row-grouper
+(mu/defn- row-grouper
   "Map of raw pivot rows keyed by [pivot-rows]. The logic for how the map is initially constructed is the same
   as in `col-grouper`. Then, each map entry value (which is a subset of rows) is updated by running the `sub-rows-fn` on the subset.
   This sub-rows-fn does the following:
@@ -150,7 +149,7 @@
     (-> rows-groups
         (update-vals sub-rows-fn))))
 
-(mu/defn ^:private totals-row-fn
+(mu/defn- totals-row-fn
   "Given a work in progress pivot export row (NOT a raw pivot row), add Totals labels if appropriate."
   [export-style-row {:keys [pivot-rows]} :- ::pivot-spec]
   (let [n-row-cols       (count pivot-rows)
@@ -178,7 +177,7 @@
   ;; we can use map-invert to create the map
   (get (set/map-invert (vec column-titles)) "pivot-grouping"))
 
-(mu/defn ^:private pivot-measures
+(mu/defn- pivot-measures
   "Get the indices into the raw pivot rows corresponding to the pivot table's measure(s)."
   [{:keys [pivot-rows pivot-cols column-titles]} :- ::pivot-spec]
   (-> (set/difference
@@ -195,7 +194,7 @@
   [pivot-spec :- ::pivot-spec]
   (assoc pivot-spec :pivot-measures (pivot-measures pivot-spec)))
 
-(mu/defn ^:private row-builder
+(mu/defn- row-builder
   "Construct the export-style pivot rows from the raw pivot rows, according to the indices specified in `pivot-spec`.
 
   This function:

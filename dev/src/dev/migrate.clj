@@ -1,12 +1,23 @@
 (ns dev.migrate
   (:gen-class)
   (:require
+   [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.db.liquibase :as liquibase]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (liquibase Liquibase)))
+   (liquibase Contexts Liquibase RuntimeEnvironment)
+   (liquibase.change Change)
+   (liquibase.changelog ChangeLogIterator ChangeSet DatabaseChangeLog)
+   (liquibase.changelog.filter ChangeSetFilter)
+   (liquibase.changelog.visitor ListVisitor)
+   (liquibase.database Database)
+   (liquibase.database.core H2Database MySQLDatabase PostgresDatabase MariaDBDatabase)
+   (liquibase.exception RollbackImpossibleException)
+   (liquibase.sql Sql)
+   (liquibase.sqlgenerator SqlGeneratorFactory)
+   (liquibase.statement SqlStatement)))
 
 (set! *warn-on-reflection* true)
 
@@ -42,7 +53,7 @@
                       :where  [:> :orderexecuted {:select   [:orderexecuted]
                                                   :from     [:databasechangelog]
                                                   :where    [:like :id (format "%s%%" id)]
-                                                  :order-by [:orderexecuted :desc]
+                                                  :order-by [[:orderexecuted :desc]]
                                                   :limit    1}]
                       :limit 1})
        :count
@@ -101,3 +112,50 @@
 
       (throw (ex-info "Invalid command" {:command cmd
                                          :args    args})))))
+
+(defn- stmts-to-sql
+  [stmts sql-generator-factory database]
+  (str/join "\n" (for [stmt stmts
+                       sql (.generateSql ^SqlGeneratorFactory sql-generator-factory ^SqlStatement stmt ^Database database)]
+                   (.toString ^Sql sql))))
+
+(defn- change->sql
+  [^Change change sql-generator-factory database]
+  {:forward  (stmts-to-sql (.generateStatements change database) sql-generator-factory database)
+   :rollback (try (stmts-to-sql (.generateRollbackStatements change database) sql-generator-factory database)
+                  (catch RollbackImpossibleException e
+                    (str "Rollback impossible " e)))})
+
+(defn- liquibase-database [db-type]
+  (case db-type
+    :postgres (PostgresDatabase.)
+    :mysql    (MySQLDatabase.)
+    :mariadb  (MariaDBDatabase.)
+    :h2       (H2Database.)))
+
+(mu/defn migration-sql-by-id
+  "Get the sql statements for a specific migration ID and DB type. If no DB type is provided, it will use the current
+   application DB type.
+    (migration-sql-by-id \"v51.2024-06-12T18:53:02\" :postgres)
+    ;; =>
+      {:forward \"DROP INDEX public.idx_user_id_device_id;\",
+       :rollback \"CREATE INDEX idx_user_id_device_id ON public.login_history(session_id, device_id);\"}"
+  ([id]
+   (migration-sql-by-id id (mdb/db-type)))
+  ([id db-type :- [:enum :postgres :mysql :mariadb :h2]]
+   (t2/with-connection [conn]
+     (liquibase/with-liquibase [^Liquibase liquibase conn]
+       (let [database              (liquibase-database db-type)
+             change-log-iterator   (ChangeLogIterator. ^DatabaseChangeLog (.getDatabaseChangeLog liquibase)
+                                                       ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter []))
+             list-visistor         (ListVisitor.)
+             runtime-env           (RuntimeEnvironment. database (Contexts.) nil)
+             _                     (.run change-log-iterator list-visistor runtime-env)
+             ^ChangeSet change-set (first (filter #(= id (.getId ^ChangeSet %)) (.getSeenChangeSets list-visistor)))
+             sql-generator-factory (SqlGeneratorFactory/getInstance)]
+         (reduce (fn [acc data]
+                  ;; merge all changes in one change set into one single :forward and :rollback
+                   (merge-with (fn [x y]
+                                 (str x "\n" y)) acc data))
+                 {}
+                 (map #(change->sql % sql-generator-factory database) (.getChanges change-set))))))))

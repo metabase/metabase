@@ -352,7 +352,6 @@
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (core/get old changed-setting) (core/get new changed-setting))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -429,7 +428,7 @@
 (defn- has-feature?
   [feature]
   (u/ignore-exceptions
-   (classloader/require 'metabase.public-settings.premium-features))
+    (classloader/require 'metabase.public-settings.premium-features))
   (let [has-feature?' (resolve 'metabase.public-settings.premium-features/has-feature?)]
     (has-feature?' feature)))
 
@@ -529,16 +528,16 @@
     ;; cannot use db (and cache populated from db) if db is not set up
     (when (and (db-is-set-up?) (allows-site-wide-values? setting))
       (not-empty
-        (if config/*disable-setting-cache*
-          (db-value setting)
-          (do
+       (if config/*disable-setting-cache*
+         (db-value setting)
+         (do
             ;; gotcha - returns immediately if another process is restoring it, i.e. before it's been populated
-            (setting.cache/restore-cache-if-needed!)
-            (let [cache (setting.cache/cache)]
-              (if (nil? cache)
+           (setting.cache/restore-cache-if-needed!)
+           (let [cache (setting.cache/cache)]
+             (if (nil? cache)
                 ;; nil if we returned early above, and the cache is still being restored - in that case hit the db
-                (db-value setting)
-                (core/get cache (setting-name setting-definition-or-name))))))))))
+               (db-value setting)
+               (core/get cache (setting-name setting-definition-or-name))))))))))
 
 (defonce ^:private ^ReentrantLock init-lock (ReentrantLock.))
 
@@ -925,7 +924,7 @@
                               :getter (getter))
             previous-value (audit-value-fn)]
         (u/prog1 (setter new-value)
-                 (audit-setting-change! setting previous-value (audit-value-fn))))
+          (audit-setting-change! setting previous-value (audit-value-fn))))
       (setter new-value))))
 
 (defn set!
@@ -953,7 +952,6 @@
         (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name)))))
     (binding [config/*disable-setting-cache* (not cache?)]
       (set-with-audit-logging! setting new-value bypass-read-only?))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               register-setting!                                                |
@@ -1219,14 +1217,17 @@
   will happen, in [[call-on-change]] below.
 
   ###### `:feature`
+
   If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
   the setting will behave the same as if `enabled?` returns `false` (see below).
 
   ###### `enabled?`
+
   Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
   exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
 
   ###### `audit`
+
   Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
   `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
   should be used for most non-sensitive settings, and will log the value returned by its getter, which may be
@@ -1235,6 +1236,7 @@
   and `:sensitive` settings.)
 
   ###### `base`
+
   A map which can provide values for any of the above options, except for :export?.
   Any top level options will override what's in this base map.
   The use case for this map is sharing strongly coupled options between similar settings, see [[uuid-nonce-base]].
@@ -1373,10 +1375,10 @@
   "Returns the user facing view of the registered settings satisfying the given predicate"
   [pred options]
   (into
-    []
-    (comp (filter pred)
-          (map #(m/mapply user-facing-info % options)))
-    (sort-by :name (vals @registered-settings))))
+   []
+   (comp (filter pred)
+         (map #(m/mapply user-facing-info % options)))
+   (sort-by :name (vals @registered-settings))))
 
 (defn writable-settings
   "Return a sequence of site-wide Settings maps in a format suitable for consumption by the frontend.
@@ -1395,10 +1397,10 @@
   (let [writable-visibilities (current-user-writable-visibilities)]
     (binding [*database-local-values* nil]
       (user-facing-settings-matching
-        (fn [setting]
-          (and (contains? writable-visibilities (:visibility setting))
-               (not= (:database-local setting) :only)))
-        options))))
+       (fn [setting]
+         (and (contains? writable-visibilities (:visibility setting))
+              (not= (:database-local setting) :only)))
+       options))))
 
 (defn admin-writable-site-wide-settings
   "Returns a sequence of site-wide Settings maps, similar to [[writable-settings]]. However, this function
@@ -1413,10 +1415,10 @@
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
     (user-facing-settings-matching
-      (fn [setting]
-        (and (not= (:visibility setting) :internal)
-             (allows-site-wide-values? setting)))
-      options)))
+     (fn [setting]
+       (and (not= (:visibility setting) :internal)
+            (allows-site-wide-values? setting)))
+     options)))
 
 (defn can-read-setting?
   "Returns true if a setting can be read according to the provided set of `allowed-visibilities`, and false otherwise.
@@ -1503,8 +1505,8 @@
             parse-error (redact-sensitive-tokens parse-error setting)
             env-var?    (set-via-env-var? setting)]
         (assoc (select-keys setting [:name :type])
-          :parse-error parse-error
-          :env-var? env-var?)))))
+               :parse-error parse-error
+               :env-var? env-var?)))))
 
 (defn validate-settings-formatting!
   "Check whether there are any issues with the format of application settings, e.g. an invalid JSON string.

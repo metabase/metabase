@@ -1,5 +1,5 @@
 .text {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: bold;
 }
 

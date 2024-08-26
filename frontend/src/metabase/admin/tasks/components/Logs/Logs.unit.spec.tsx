@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { UtilApi } from "metabase/services";
 
-import { Logs } from "./Logs";
+import { DEFAULT_POLLING_DURATION_MS, Logs } from "./Logs";
 import { maybeMergeLogs } from "./utils";
 
 const log = {
@@ -49,7 +49,7 @@ describe("Logs", () => {
         expect(utilSpy).toHaveBeenCalledTimes(1),
       ]);
       act(() => {
-        jest.advanceTimersByTime(1100); // wait longer than polling period
+        jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
       expect(utilSpy).toHaveBeenCalledTimes(1); // should not have been called
       act(() => {
@@ -61,7 +61,7 @@ describe("Logs", () => {
         ).toBeInTheDocument();
       });
       act(() => {
-        jest.advanceTimersByTime(1100);
+        jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
       });
       expect(utilSpy).toHaveBeenCalledTimes(2); // should have issued new request
     });
@@ -97,6 +97,20 @@ describe("Logs", () => {
         expect(screen.getByText(errMsg)).toBeInTheDocument();
       });
     });
+
+    it("should stop polling on unmount", async () => {
+      fetchMock.get("path:/api/util/logs", [log]);
+      const { unmount } = render(<Logs />);
+      expect(
+        await screen.findByText(new RegExp(log.process_uuid)),
+      ).toBeInTheDocument();
+
+      unmount();
+      act(() => {
+        jest.advanceTimersByTime(DEFAULT_POLLING_DURATION_MS + 100);
+      });
+      expect(utilSpy).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("log processing", () => {
@@ -104,10 +118,10 @@ describe("Logs", () => {
       const originalLogs = [log];
       const shouldNotBeMerged = maybeMergeLogs(originalLogs, [log]);
       expect(shouldNotBeMerged).toBe(originalLogs);
-      const shoudlBeMerged = maybeMergeLogs(originalLogs, [
+      const shouldBeMerged = maybeMergeLogs(originalLogs, [
         { ...log, msg: "different" },
       ]);
-      expect(shoudlBeMerged).not.toBe(originalLogs);
+      expect(shouldBeMerged).not.toBe(originalLogs);
     });
   });
 });

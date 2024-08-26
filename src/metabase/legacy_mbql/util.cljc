@@ -2,6 +2,10 @@
   "Utilitiy functions for working with MBQL queries."
   (:refer-clojure :exclude [replace])
   (:require
+   #?@(:clj
+       [[metabase.legacy-mbql.jvm-util :as mbql.jvm-u]
+        [metabase.models.dispatch :as models.dispatch]
+        [metabase.util.i18n]])
    [clojure.string :as str]
    [metabase.legacy-mbql.predicates :as mbql.preds]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -12,10 +16,7 @@
    [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   #?@(:clj
-       [[metabase.models.dispatch :as models.dispatch]
-        [metabase.util.i18n]])))
+   [metabase.util.malli :as mu]))
 
 (mu/defn normalize-token :- :keyword
   "Convert a string or keyword in various cases (`lisp-case`, `snake_case`, or `SCREAMING_SNAKE_CASE`) to a lisp-cased
@@ -125,19 +126,49 @@
   [filter-clause & more-filter-clauses]
   (simplify-compound-filter (cons :and (cons filter-clause more-filter-clauses))))
 
+(defn- legacy-last-stage-number
+  "Returns the canonical stage number of the last stage of the legacy `inner-query`."
+  [inner-query]
+  (loop [{:keys [source-query]} inner-query, n 0]
+    (if-not source-query
+      n
+      (recur source-query (inc n)))))
+
+(defn- stage-path
+  "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
+  specified by `stage-number`.
+
+  Stage numbers are used as described in [[add-filter-clause]]."
+  [inner-query stage-number]
+  (let [elements (if (neg? stage-number)
+                   (dec (- stage-number))
+                   (- (legacy-last-stage-number inner-query) stage-number))]
+    (into [] (repeat elements :source-query))))
+
 (mu/defn add-filter-clause-to-inner-query :- mbql.s/MBQLQuery
   "Add a additional filter clause to an *inner* MBQL query, merging with the existing filter clause with `:and` if
-  needed."
-  [inner-query :- mbql.s/MBQLQuery
-   new-clause  :- [:maybe mbql.s/Filter]]
-  (if-not new-clause
+  needed.
+
+  Stage numbers work as in [[add-filter-clause]]."
+  [inner-query  :- mbql.s/MBQLQuery
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (if (not new-clause)
     inner-query
-    (update inner-query :filter combine-filter-clauses new-clause)))
+    (let [path (if-not stage-number
+                 []
+                 (stage-path inner-query stage-number))]
+      (update-in inner-query (conj path :filter) combine-filter-clauses new-clause))))
 
 (mu/defn add-filter-clause :- mbql.s/Query
-  "Add an additional filter clause to an `outer-query`. If `new-clause` is `nil` this is a no-op."
-  [outer-query :- mbql.s/Query new-clause :- [:maybe mbql.s/Filter]]
-  (update outer-query :query add-filter-clause-to-inner-query new-clause))
+  "Add an additional filter clause to an `outer-query` at stage `stage-number`
+  or at the last stage if `stage-number` is `nil`. If `new-clause` is `nil` this is a no-op.
+
+  Stage numbers can be negative: `-1` refers to the last stage, `-2` to the penultimate stage, etc."
+  [outer-query  :- mbql.s/Query
+   stage-number :- [:maybe number?]
+   new-clause   :- [:maybe mbql.s/Filter]]
+  (update outer-query :query add-filter-clause-to-inner-query stage-number new-clause))
 
 (defn desugar-inside
   "Rewrite `:inside` filter clauses as a pair of `:between` clauses."
@@ -233,6 +264,27 @@
      [:relative-datetime 1 unit]
      [:relative-datetime n unit]]))
 
+(defn desugar-relative-time-interval
+  "Transform `:relative-time-interval` to `:and` expression."
+  [m]
+  (lib.util.match/replace
+    m
+    [:relative-time-interval col value bucket offset-value offset-bucket]
+    (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
+                                     (update 2 assoc :temporal-unit :default))
+          offset [:interval offset-value offset-bucket]
+          lower-bound (if (neg? value)
+                        [:relative-datetime value bucket]
+                        [:relative-datetime 1 bucket])
+          upper-bound (if (neg? value)
+                        [:relative-datetime 0 bucket]
+                        [:relative-datetime (inc value) bucket])
+          lower-with-offset [:+ lower-bound offset]
+          upper-with-offset [:+ upper-bound offset]]
+      [:and
+       [:>= col-default-bucket lower-with-offset]
+       [:<  col-default-bucket upper-with-offset]])))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -271,9 +323,9 @@
      field x y & more]
     (let [tail (when (seq opts) [opts])]
       (apply vector
-           (if (= op :does-not-contain) :and :or)
-           (for [x (concat [x y] more)]
-             (into [op field x] tail))))))
+             (if (= op :does-not-contain) :and :or)
+             (for [x (concat [x y] more)]
+               (into [op field x] tail))))))
 
 (defn desugar-current-relative-datetime
   "Replace `relative-datetime` clauses like `[:relative-datetime :current]` with `[:relative-datetime 0 <unit>]`.
@@ -320,91 +372,6 @@
     [:/ x y z & more]
     (recur (into [:/ [:/ x y]] (cons z more)))))
 
-(def ^:private host-regex
-  ;; Extracts the "host" from a URL or an email.
-  ;; By host we mean the main domain name and the TLD, eg. metabase.com, amazon.co.jp, bbc.co.uk.
-  ;; For a URL, this is not the RFC3986 "host", which would include any subdomains and the optional `:3000` port number.
-  ;;
-  ;; For an email, this is generally the part after the @, but it will skip any subdomains:
-  ;;   someone@email.mycompany.net -> mycompany.net
-  ;;
-  ;; Referencing the indexes below:
-  ;; 1.  Positive lookbehind:
-  ;;       Just past one of:
-  ;; 2.      @  from an email or URL userinfo@ prefix
-  ;; 3.      // from a URL scheme
-  ;; 4.      .  from a previous subdomain segment
-  ;; 5.      Start of string
-  ;; 6.  Negative lookahead: don't capture www as part of the domain
-  ;; 7.  Main domain segment
-  ;; 8.  Ending in a dot
-  ;; 9.  Optional short final segment (eg. co in .co.uk)
-  ;; 10. Top-level domain
-  ;; 11. Optional :port, /path, ?query or #hash
-  ;; 12. Anchor to the end
-  ;;1   2 3  4  5 6        7          8 9                     10         11           12
-  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+\.(?:[^@\.:/?#]{1,3}\.)?[^@\.:/?#]+(?=[:/?#].*$|$)")
-
-(def ^:private domain-regex
-  ;; Deliberately no ^ at the start; there might be several subdomains before this spot.
-  ;; By "short tail" below, I mean a pseudo-TLD nested under a proper TLD. For example, mycompany.co.uk.
-  ;; This can accidentally capture a short domain name, eg. "subdomain.aol.com" -> "subdomain", oops.
-  ;; But there's a load of these, not a short list we can include here, so it's either preprocess the (huge) master list
-  ;; from Mozilla or accept that this regex is a bit best-effort.
-  ;; Referencing the indexes below:
-  ;; 1.  Positive lookbehind:
-  ;;       Just past one of:
-  ;; 2.      @  from an email or URL userinfo@ prefix
-  ;; 3.      // from a URL scheme
-  ;; 4.      .  from a previous subdomain segment
-  ;; 5.      Start of string
-  ;; 6.  Negative lookahead: don't capture www as the domain
-  ;; 7.  One domain segment
-  ;; 8.  Positive lookahead:
-  ;;       Either:
-  ;; 9.      Short final segment (eg. .co.uk)
-  ;; 10.     Top-level domain
-  ;; 11.     Optional :port, /path, ?query or #hash
-  ;; 12.     Anchor to end
-  ;;       Or:
-  ;; 13.     Top-level domain
-  ;; 14.     Optional :port, /path, ?query or #hash
-  ;; 15.     Anchor to end
-  ;;1   2 3  4  5 6        7          (8   9                10         11          12|  13         14           15)
-  #"(?<=@|//|\.|^)(?!www\.)[^@\.:/?#]+(?=\.[^@\.:/?#]{1,3}\.[^@\.:/?#]+(?:[:/?#].*)?$|\.[^@\.:/?#]+(?:[:/?#].*)?$)")
-
-(def ^:private subdomain-regex
-  ;; This grabs the first segment that isn't "www", AND excludes the main domain name.
-  ;; See [[domain-regex]] for more details about how those are matched.
-  ;; Referencing the indexes below:
-  ;; 1.  Positive lookbehind:
-  ;;       Just past one of:
-  ;; 2.      @  from an email or URL userinfo@ prefix
-  ;; 3.      // from a URL scheme
-  ;; 4.      .  from a previous subdomain segment
-  ;; 5.      Start of string
-  ;; 6.  Negative lookahead: don't capture www as the domain
-  ;; 7.  Negative lookahead: don't capture the main domain name or part of the TLD
-  ;;       That would look like:
-  ;; 8.      The next segment we *would* capture as the subdomain
-  ;; 9.      Optional short segment, like "co" in .co.uk
-  ;; 10.     Top-level domain
-  ;; 11.     Optionally more URL things: :port or /path or ?query or #fragment
-  ;; 12.     End of string
-  ;; 13. Match the actual subdomain
-  ;; 14. Positive lookahead: the . after the subdomain, which we want to detect but not capture.
-  ;;1   2 3  4  5 6        7  8           9                    10        11           12 13       14
-  #"(?<=@|//|\.|^)(?!www\.)(?![^\.:/?#]+\.(?:[^\.:/?#]{1,3}\.)?[^\.:/?#]+(?:[:/?#].*)?$)[^\.:/?#]+(?=\.)")
-
-(defn- desugar-host-and-domain [expression]
-  (lib.util.match/replace expression
-    [:host column]
-    (recur [:regex-match-first column (str host-regex)])
-    [:domain column]
-    (recur [:regex-match-first column (str domain-regex)])
-    [:subdomain column]
-    (recur [:regex-match-first column (str subdomain-regex)])))
-
 (defn- temporal-case-expression
   "Creates a `:case` expression with a condition for each value of the given unit."
   [column unit n]
@@ -434,10 +401,16 @@
   "Rewrite various 'syntactic sugar' expressions like `:/` with more than two args into something simpler for drivers
   to compile."
   [expression :- ::mbql.s/FieldOrExpressionDef]
-  (-> expression
-      desugar-divide-with-extra-args
-      desugar-host-and-domain
-      desugar-temporal-names))
+  ;; The `mbql.jvm-u/desugar-host-and-domain` is implemented only for jvm because regexes are not compatible with
+  ;; Safari.
+  (let [desugar-host-and-domain* #?(:clj  mbql.jvm-u/desugar-host-and-domain
+                                    :cljs (fn [x]
+                                            (log/warn "`desugar-host-and-domain` implemented only on JVM.")
+                                            x))]
+    (-> expression
+        desugar-divide-with-extra-args
+        desugar-host-and-domain*
+        desugar-temporal-names)))
 
 (defn- maybe-desugar-expression [clause]
   (cond-> clause
@@ -454,6 +427,7 @@
       desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
+      desugar-relative-time-interval
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
@@ -878,15 +852,17 @@
 (defn matching-locations
   "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
   [form pred]
-  (loop [stack [[[] form]], matches []]
+  ;; Surprisingly enough, a list works better as a stack here than a vector.
+  (loop [stack (list [[] form]), matches []]
     (if-let [[loc form :as top] (peek stack)]
       (let [stack (pop stack)
-            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
+            map-onto-stack #(transduce (map (fn [[k v]] [(conj loc k) v])) conj stack %)
+            seq-onto-stack #(transduce (map-indexed (fn [i v] [(conj loc i) v])) conj stack %)]
         (cond
-          (pred form)        (recur stack                                  (conj matches top))
-          (map? form)        (recur (onto-stack form)                      matches)
-          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
-          :else              (recur stack                                  matches)))
+          (pred form)        (recur stack                 (conj matches top))
+          (map? form)        (recur (map-onto-stack form) matches)
+          (sequential? form) (recur (seq-onto-stack form) matches)
+          :else              (recur stack                 matches)))
       matches)))
 
 (defn wrap-field-id-if-needed

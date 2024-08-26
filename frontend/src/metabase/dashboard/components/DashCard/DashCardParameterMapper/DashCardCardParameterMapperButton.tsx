@@ -1,21 +1,21 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import DeprecatedTooltip from "metabase/core/components/Tooltip";
 import ParameterTargetList from "metabase/parameters/components/ParameterTargetList";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, ParameterTarget } from "metabase-types/api";
 
 import {
+  ChevrondownIcon,
+  CloseIconButton,
+  KeyIcon,
   TargetButton,
   TargetButtonText,
-  CloseIconButton,
-  ChevrondownIcon,
-  KeyIcon,
 } from "./DashCardCardParameterMapper.styled";
 
 interface DashCardCardParameterMapperButtonProps {
@@ -56,7 +56,8 @@ export const DashCardCardParameterMapperButton = ({
       return false;
     }
 
-    return question.canRunAdhocQuery();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return isEditable;
   }, [isVirtual, isQuestion, question, card.dataset_query]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
@@ -103,6 +104,7 @@ export const DashCardCardParameterMapperButton = ({
           buttonText: t`Unknown Field`,
           buttonIcon: (
             <CloseIconButton
+              aria-label={t`Disconnect`}
               onClick={e => {
                 handleChangeTarget(null);
                 e.stopPropagation();

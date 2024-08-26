@@ -20,22 +20,24 @@ import { getParameterColumns } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type { ClickObjectDataRow } from "metabase-lib/v1/queries/drills/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import { isa, isDate } from "metabase-lib/v1/types/utils/isa";
+import { isDate, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   ClickBehavior,
   ClickBehaviorDimensionTarget,
   ClickBehaviorSource,
   ClickBehaviorTarget,
   Dashboard,
-  QuestionDashboardCard,
   DashboardId,
   DatasetColumn,
   DatetimeUnit,
   Parameter,
   ParameterValueOrArray,
+  QuestionDashboardCard,
   UserAttribute,
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
+
+import { parseParameterValue } from "./parameter-parsing";
 
 interface Target {
   id: Parameter["id"];
@@ -291,6 +293,7 @@ function baseTypeFilterForParameterType(parameterType: string) {
     id: [TYPE.Integer, TYPE.UUID],
     category: [TYPE.Text, TYPE.Integer],
     location: [TYPE.Text],
+    "temporal-unit": [TYPE.Text, TYPE.TextLike],
   }[typePrefix];
   if (allowedTypes === undefined) {
     // default to showing everything
@@ -372,6 +375,12 @@ export function formatSourceForTarget(
   },
 ) {
   const datum = data[source.type][source.id.toLowerCase()] || {};
+  const parameter = getParameter(target, { extraData, clickBehavior });
+
+  if (parameter?.type === "temporal-unit") {
+    return parseParameterValue(datum.value, parameter);
+  }
+
   if (
     "column" in datum &&
     datum.column &&
@@ -382,7 +391,6 @@ export function formatSourceForTarget(
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
-      const parameter = getParameter(target, { extraData, clickBehavior });
       if (parameter) {
         return formatDateForParameterType(
           datum.value,

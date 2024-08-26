@@ -14,6 +14,7 @@
    [metabase.db.data-source :as mdb.data-source]
    [metabase.db.env :as mdb.env]
    [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
+   [metabase.db.liquibase :as liquibase]
    [metabase.db.setup :as mdb.setup]
    [metabase.db.spec :as mdb.spec]
    [potemkin :as p]))
@@ -21,32 +22,35 @@
 (set! *warn-on-reflection* true)
 
 (p/import-vars
-  [mdb.connection
-   application-db
-   data-source
-   db-type
-   quoting-style
-   unique-identifier]
+ [mdb.connection
+  application-db
+  data-source
+  db-type
+  quoting-style
+  unique-identifier]
 
-  [mdb.connection-pool-setup
-   recent-activity?]
+ [mdb.connection-pool-setup
+  recent-activity?]
 
-  [mdb.data-source
-   broken-out-details->DataSource]
+ [mdb.data-source
+  broken-out-details->DataSource]
 
-  [mdb.env
-   db-file]
+ [mdb.env
+  db-file]
 
-  [mdb.jdbc-protocols
-   clob->str]
+ [mdb.jdbc-protocols
+  clob->str]
 
-  [mdb.setup
-   migrate!
-   quote-for-application-db]
+ [mdb.setup
+  migrate!
+  quote-for-application-db]
 
-  [mdb.spec
-   make-subname
-   spec])
+ [mdb.spec
+  make-subname
+  spec]
+
+ [liquibase
+  changelog-by-id])
 
 ;; TODO -- consider whether we can just do this automatically when `getConnection` is called on
 ;; [[mdb.connection/*application-db*]] (or its data source)

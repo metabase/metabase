@@ -25,7 +25,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-
 (set! *warn-on-reflection* true)
 
 (def ^:private uninitialized-store
@@ -110,13 +109,13 @@
    ::lib.schema.id/database
    ::lib.schema.metadata/metadata-providerable])
 
-(mu/defn ^:private ->metadata-provider :- ::lib.schema.metadata/metadata-provider
+(mu/defn- ->metadata-provider :- ::lib.schema.metadata/metadata-provider
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (if (integer? database-id-or-metadata-providerable)
     (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
     database-id-or-metadata-providerable))
 
-(mu/defn ^:private validate-existing-provider
+(mu/defn- validate-existing-provider
   "Impl for [[with-metadata-provider]]; if there's already a provider, just make sure we're not trying to change the
   Database. We don't need to replace it."
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
@@ -135,7 +134,7 @@
                            :new-id      new-database-id
                            :type        qp.error-type/invalid-query})))))))
 
-(mu/defn ^:private set-metadata-provider!
+(mu/defn- set-metadata-provider!
   "Create a new metadata provider and save it."
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (let [new-provider (->metadata-provider database-id-or-metadata-providerable)]
@@ -195,8 +194,8 @@
   [mlv2-metadata]
   (let [model (case (:lib/type mlv2-metadata)
                 :metadata/database :model/Database
-                :metadata/table :model/Table
-                :metadata/column :model/Field)]
+                :metadata/table    :model/Table
+                :metadata/column   :model/Field)]
     (-> mlv2-metadata
         (dissoc :lib/type)
         (update-keys u/->snake_case_en)

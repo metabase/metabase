@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
+   [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Field Table]]
@@ -15,6 +17,7 @@
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
@@ -24,6 +27,9 @@
 
 (defonce ^:private dataset-locks
   (atom {}))
+
+(defonce ^:private session-init-time
+  (t/offset-date-time))
 
 (defmulti dataset-lock
   "We'll have a very bad time if any sort of test runs that calls [[metabase.test.data/db]] for the first time calls it
@@ -79,10 +85,11 @@
       (finally
         (.. lock readLock unlock)))))
 
-(defn- add-extra-metadata!
+(mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} db]
-  {:pre [(seq table-definitions)]}
+  [{:keys [table-definitions], :as _database-definition} :- [:map
+                                                             [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
+   db                                                    :- :map]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
@@ -121,7 +128,12 @@
         (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                            (if full-sync? "Sync" "QUICK sync") driver database-name reference-duration)
           ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-          (binding [sync-util/*log-exceptions-and-continue?* false]
+          ;;
+          ;; MEGA SUPER HACK !!! I'm experimenting with this so Redshift tests stop being so flaky on CI! It seems like
+          ;; if we ever delete a table sometimes Redshift still thinks it's there for a bit and sync can fail because it
+          ;; tries to sync a Table that is gone! So enable normal resilient sync behavior for Redshift tests to fix the
+          ;; flakes. If this fixes things I'll try to come up with a more robust solution. -- Cam 2024-07-19. See #45874
+          (binding [sync-util/*log-exceptions-and-continue?* (= driver :redshift)]
             (sync/sync-database! db {:scan (if full-sync? :full :schema)}))
           ;; add extra metadata for fields
           (try
@@ -147,26 +159,121 @@
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
 
+(defn- extract-dbdef-info
+  "Return dbdef info, map with table-name, field-name, fk-table-name keys, required for `fk-field-infos` construction
+  in [[dbdef->fk-field-infos]]."
+  [driver dbdef]
+  (let [database-name (:database-name dbdef)
+        ;; Following is required for presto. It names tables as `<db-name>_<table-name>` by use
+        ;; of `qualified-name-components`.
+        table-name-fn  (or (some-> (get-method @(requiring-resolve 'metabase.test.data.sql/qualified-name-components)
+                                               driver)
+                                   (partial driver database-name)
+                                   (->> (comp last)))
+                           identity)
+        field-defs-with-table-name (fn [{:keys [table-name field-definitions] :as _table-definition}]
+                                     (for [fd field-definitions]
+                                       (assoc fd :table-name table-name)))
+        field-def->info (fn [{:keys [table-name field-name fk] :as _field-definition}]
+                          {:table-name (table-name-fn table-name)
+                           :field-name field-name
+                           :target-table-name (table-name-fn (name fk))})]
+    (into []
+          (comp (mapcat field-defs-with-table-name)
+                (filter (comp some? :fk))
+                (map field-def->info))
+          (:table-definitions dbdef))))
+
+(defn- dbdef->fk-field-infos
+  "Generate `fk-field-infos` structure. It is a seq of maps of 2 keys: :id and :fk-target-field-id. Existing database,
+  tables and fields in app db are examined to get the required info."
+  [driver dbdef db]
+  ;; dbdef-infos require only dbdef to be generated, while fk-field-infos get additional information querying app db.
+  (when-some [dbdef-infos (not-empty (extract-dbdef-info driver dbdef))]
+    (let [tables (t2/select :model/Table :db_id (:id db))
+          fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
+          table-id->table (m/index-by :id tables)
+          table-name->field-name->field (-> (group-by (comp :name table-id->table :table_id) fields)
+                                            (update-vals (partial m/index-by :name)))
+          table-name->pk-field (into {}
+                                     (keep (fn [{:keys [name semantic_type table_id] :as field}]
+                                             (when (or
+                                                    ;; Following works on mongo.
+                                                    (= semantic_type :type/PK)
+                                                    ;; Heuristic for other dbs.
+                                                    (= (u/lower-case-en name) "id"))
+                                               [(get-in table-id->table [table_id :name]) field])))
+                                     fields)]
+      (map (fn [{:keys [table-name field-name target-table-name]}]
+             {:id (get-in table-name->field-name->field [table-name field-name :id])
+              :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
+           dbdef-infos))))
+
+(defn- add-foreign-key-relationships!
+  "Add foreign key relationships _to app db manually_. To be used with dbmses that do not support
+  `:metadata/key-constraints`.
+
+  `:metadata/key-constraints` driver feature signals that underlying dbms _is capable of reporting_ some columns
+  as having foregin key relationship to other columns. If that's the case, sync infers those relationships.
+
+  However, users can freely define those relationships also for dbmses that do not support that (eg. Mongo)
+  in Metabase.
+
+  This function simulates those user added fks, based on dataset definition. Therefore, it enables tests for eg.
+  implicit joins to work."
+  [driver dbdef db]
+  (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
+    (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
+      (t2/update! :model/Field :id id {:semantic_type :type/FK
+                                       :fk_target_field_id fk-target-field-id}))))
+
+(defn- load-dataset-data-if-needed!
+  "Create the test dataset and load its data if needed. No-ops if this was already done successfully during this
+  session.
+
+  You can use this from the REPL like
+
+    (load-dataset-data-if-needed!
+     driver
+     (tx/get-dataset-definition metabase.test.data.dataset-definitions/test-data))"
+  [driver {:keys [database-name], :as dbdef}]
+  (log/infof "Checking if test data for %s %s has already been loaded..." driver (pr-str database-name))
+  ;; there's locking around this stuff elsewhere.
+  (if (tx/dataset-already-loaded? driver dbdef)
+    (log/infof "test dataset %s already loaded for driver %s; not reloading data."
+               (pr-str database-name)
+               driver)
+    (do
+      (log/info "Data has not been loaded yet. Loading...")
+      (u/with-timeout create-database-timeout-ms
+      ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
+        (test.tz/with-system-timezone-id! "UTC"
+          (tx/create-db! driver dbdef))))))
+
+(mu/defn- create-and-sync-Database!
+  "Add DB object to Metabase DB. Return an instance of `:model/Database`."
+  [driver                                           :- :keyword
+   {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]
+  (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
+        db                 (first (t2/insert-returning-instances! :model/Database
+                                                                  (merge
+                                                                   (t2.with-temp/with-temp-defaults :model/Database)
+                                                                   {:name     (tx/database-display-name-for-driver driver database-name)
+                                                                    :engine   driver
+                                                                    :details  connection-details
+                                                                    :settings {:database-source-dataset-name database-name}})))]
+    (sync-newly-created-database! driver database-definition connection-details db)
+    (when (not (driver/database-supports? driver :metadata/key-constraints nil))
+      (add-foreign-key-relationships! driver database-definition db))
+    (set-test-db-permissions! (u/the-id db))
+    ;; make sure we're returing an up-to-date copy of the DB
+    (t2/select-one Database :id (u/the-id db))))
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
-    ;; Create the database and load its data
-    ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-    (u/with-timeout create-database-timeout-ms
-      (test.tz/with-system-timezone-id! "UTC"
-        (tx/create-db! driver database-definition)))
-    ;; Add DB object to Metabase DB
-    (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
-          db                 (first (t2/insert-returning-instances! Database
-                                                                    (merge
-                                                                     (t2.with-temp/with-temp-defaults :model/Database)
-                                                                     {:name    database-name
-                                                                      :engine  (u/qualified-name driver)
-                                                                      :details connection-details})))]
-      (sync-newly-created-database! driver database-definition connection-details db)
-      (set-test-db-permissions! (u/the-id db))
-      ;; make sure we're returing an up-to-date copy of the DB
-      (t2/select-one Database :id (u/the-id db)))
+    (load-dataset-data-if-needed! driver database-definition)
+    (create-and-sync-Database! driver database-definition)
     (catch Throwable e
       (log/errorf e "create-database! failed; destroying %s database %s" driver (pr-str database-name))
       (tx/destroy-db! driver database-definition)
@@ -182,12 +289,12 @@
     ;;
     ;; require/resolve used here to avoid circular refs
     (if (driver/report-timezone)
-      ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value)
+      ((requiring-resolve 'metabase.test.util/do-with-temporary-setting-value!)
        :report-timezone nil
        thunk)
       (thunk))))
 
-(defn- create-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]
+(defn- create-and-sync-database-with-write-lock! [driver {:keys [database-name], :as dbdef}]
   (let [lock (dataset-lock driver database-name)]
     (try
       (.. lock writeLock lock)
@@ -197,11 +304,40 @@
       (finally
         (.. lock writeLock unlock)))))
 
+(defn- reload-data-if-needed!
+  "If a test dataset was loaded before [[session-init-time]], get the write lock and
+  call [[load-dataset-data-if-needed!]] to make sure the test data is loaded; update the `created_at` timestamp so we
+  don't need to check again next time around."
+  [driver {:keys [database-name], :as dbdef} existing-database]
+  (log/debugf "Test data %s %s was loaded at %s; session started at %s"
+              driver (pr-str database-name) (:created_at existing-database) session-init-time)
+  (when (t/before? (:created_at existing-database) session-init-time)
+    (log/infof "Test data for %s %s was loaded by previous session, checking to see if data needs to be reloaded..."
+               driver
+               (pr-str database-name))
+    (let [lock (dataset-lock driver database-name)]
+      (try
+        (.. lock writeLock lock)
+        ;; once we acquire the write lock, check that the value of `created_at` hasn't been updated by another thread
+        ;; before reloading the data.
+        (when-let [created-at (t2/select-one-fn :created_at :model/Database :id (u/the-id existing-database))]
+          (when (t/before? created-at session-init-time)
+            (log/infof "Reloading test data for %s %s if needed..." driver (pr-str database-name))
+            ;; load the data again if needed.
+            (load-dataset-data-if-needed! driver dbdef)
+            ;; update the `created_at` timestamp for the test data so the next call to `get-or-create-database!` doesn't
+            ;; need to go thru this again.
+            (t2/update! :model/Database (u/the-id existing-database) {:created_at (t/offset-date-time)})))
+        (finally
+          (.. lock writeLock unlock))))))
+
 (defn default-get-or-create-database!
   "Default implementation of [[metabase.test.data.impl/get-or-create-database!]]."
   [driver dbdef]
   (initialize/initialize-if-needed! :plugins :db)
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
-     (get-existing-database-with-read-lock driver dbdef)
-     (create-database-with-write-lock! driver dbdef))))
+     (when-let [existing-database (get-existing-database-with-read-lock driver dbdef)]
+       (reload-data-if-needed! driver dbdef existing-database)
+       existing-database)
+     (create-and-sync-database-with-write-lock! driver dbdef))))

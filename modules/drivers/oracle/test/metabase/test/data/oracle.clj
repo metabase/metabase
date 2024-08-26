@@ -7,6 +7,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -69,7 +70,9 @@
 
 (defmethod tx/sorts-nil-first? :oracle [_ _] false)
 
-(defmethod tx/supports-time-type? :oracle [_driver] false)
+(defmethod driver/database-supports? [:oracle :test/time-type]
+  [_driver _feature _database]
+  false)
 
 (doseq [[base-type sql-type] {:type/BigInteger             "NUMBER(*,0)"
                               :type/Boolean                "NUMBER(1)"
@@ -120,9 +123,9 @@
 
 (defmethod tx/id-field-type :oracle [_] :type/Decimal)
 
-(defmethod load-data/load-data! :oracle
-  [driver dbdef tabledef]
-  (load-data/load-data-maybe-add-ids-chunked! driver dbdef tabledef))
+(defmethod load-data/row-xform :oracle
+  [_driver _dbdef tabledef]
+  (load-data/maybe-add-ids-xform tabledef))
 
 ;; Oracle has weird syntax for inserting multiple rows, it looks like
 ;;
@@ -205,7 +208,6 @@
                (update 0 (partial driver/prettify-native-form :oracle))
                (update 0 str/split-lines))))))
 
-
 ;;; Clear out the session schema before and after tests run
 ;; TL;DR Oracle schema == Oracle user. Create new user for session-schema
 (defn- execute! [format-string & args]
@@ -225,7 +227,7 @@
 
 (defn drop-user! [username]
   (u/ignore-exceptions
-   (execute! "DROP USER \"%s\" CASCADE" username)))
+    (execute! "DROP USER \"%s\" CASCADE" username)))
 
 (defmethod tx/before-run :oracle
   [_]
@@ -244,3 +246,22 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Decimal}))))
+
+(defmethod tx/dataset-already-loaded? :oracle
+  [driver dbdef]
+  ;; check and make sure the first table in the dbdef has been created.
+  (let [tabledef       (first (:table-definitions dbdef))
+        ;; table-name should be something like test_data_venues
+        table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (sql-jdbc.conn/connection-details->spec driver (connection-details))
+     {:write? false}
+     (fn [^java.sql.Connection conn]
+       (with-open [rset (.getTables (.getMetaData conn)
+                                    #_catalog        nil
+                                    #_schema-pattern session-schema
+                                    #_table-pattern  table-name
+                                    #_types          (into-array String ["TABLE"]))]
+         ;; if the ResultSet returns anything we know the table is already loaded.
+         (.next rset))))))

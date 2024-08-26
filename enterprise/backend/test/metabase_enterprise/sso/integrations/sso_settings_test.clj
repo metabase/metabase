@@ -116,7 +116,18 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting saml-enabled is not enabled because feature :sso-saml is not available"
-           (sso-settings/saml-enabled! true))))))
+           (sso-settings/saml-enabled! true)))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting saml-slo-enabled is not enabled because feature :sso-saml is not available"
+           (sso-settings/saml-slo-enabled! true))))))
+
+(deftest saml-scim-user-provisioning
+  (testing "SAML user provisioning is disabled when SCIM is enabled"
+    (mt/with-premium-features #{:sso-saml :scim}
+      (mt/with-temporary-setting-values [saml-user-provisioning-enabled? true
+                                         scim-enabled                    true]
+        (is (false? (sso-settings/saml-user-provisioning-enabled?)))))))
 
 (deftest jwt-settings-token-features-test
   (testing "Getting JWT settings should return their default values without :sso-jwt feature flag enabled"
@@ -167,25 +178,25 @@
            #"Setting jwt-attribute-email is not enabled because feature :sso-jwt is not available"
            (sso-settings/jwt-attribute-email! "email")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-attribute-firstname is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-attribute-firstname! "first_name")))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-attribute-firstname is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-attribute-firstname! "first_name")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-attribute-lastname is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-attribute-lastname! "last_name")))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-attribute-lastname is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-attribute-lastname! "last_name")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-group-sync is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-group-sync! true)))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-group-sync is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-group-sync! true)))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-attribute-groups is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-attribute-groups! "groups")))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-attribute-groups is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-attribute-groups! "groups")))
       (is (thrown-with-msg?
-            clojure.lang.ExceptionInfo
-            #"Setting jwt-group-mappings is not enabled because feature :sso-jwt is not available"
-            (sso-settings/jwt-group-mappings! {:group_id [1]})))
+           clojure.lang.ExceptionInfo
+           #"Setting jwt-group-mappings is not enabled because feature :sso-jwt is not available"
+           (sso-settings/jwt-group-mappings! {:group_id [1]})))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Setting jwt-enabled is not enabled because feature :sso-jwt is not available"

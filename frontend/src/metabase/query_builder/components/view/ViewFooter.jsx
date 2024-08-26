@@ -4,16 +4,13 @@ import { t } from "ttag";
 
 import ButtonBar from "metabase/components/ButtonBar";
 import CS from "metabase/css/core/index.css";
-import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
-import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
-import QuestionAlertWidget from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
-import QuestionLastUpdated from "./QuestionLastUpdated";
+import { QuestionLastUpdated } from "./QuestionLastUpdated/QuestionLastUpdated";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import ViewButton from "./ViewButton";
@@ -27,15 +24,12 @@ const ViewFooter = ({
   isShowingChartSettingsSidebar,
   isShowingRawTable,
   onOpenChartType,
-  onOpenModal,
   onCloseChartType,
   onOpenChartSettings,
   onCloseChartSettings,
   setUIControls,
   isObjectDetail,
-  questionAlerts,
   visualizationSettings,
-  canManageSubscriptions,
   isVisualized,
   isTimeseries,
   isShowingTimelineSidebar,
@@ -49,7 +43,6 @@ const ViewFooter = ({
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hideChartSettings =
     (result.error && !isEditable) || question.isArchived();
-  const type = question.type();
 
   return (
     <ViewFooterRoot
@@ -109,69 +102,35 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
-          <ExecutionTime key="execution_time" time={result.running_time} />,
-          QuestionLastUpdated.shouldRender({ result }) && (
-            <QuestionLastUpdated
-              key="last-updated"
-              className={cx(CS.hide, CS.smShow)}
-              result={result}
-            />
+          ExecutionTime.shouldRender({ result }) && (
+            <ExecutionTime key="execution_time" time={result.running_time} />
           ),
-          QueryDownloadWidget.shouldRender({ result }) && (
-            <QueryDownloadWidget
-              key="download"
-              className={cx(CS.hide, CS.smShow)}
-              question={question}
-              result={result}
-              visualizationSettings={visualizationSettings}
-              dashcardId={question.card().dashcardId}
-              dashboardId={question.card().dashboardId}
-            />
-          ),
-          QuestionAlertWidget.shouldRender({
-            question,
-            visualizationSettings,
-          }) && (
-            <QuestionAlertWidget
-              key="alerts"
-              className={cx(CS.hide, CS.smShow)}
-              canManageSubscriptions={canManageSubscriptions}
-              question={question}
-              questionAlerts={questionAlerts}
-              onCreateAlert={() =>
-                question.isSaved()
-                  ? onOpenModal("create-alert")
-                  : onOpenModal("save-question-before-alert")
-              }
-            />
-          ),
-          type === "question" &&
-            !question.isArchived() &&
-            (question.isSaved() ? (
-              <EmbedMenu
-                key="embed"
-                resource={question}
-                resourceType="question"
-                hasPublicLink={!!question.publicUUID()}
-                onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
+          <Group key="button-group" spacing="sm" noWrap>
+            {QuestionLastUpdated.shouldRender({ result }) && (
+              <QuestionLastUpdated
+                className={cx(CS.hide, CS.smShow)}
+                result={result}
               />
-            ) : (
-              <ResourceEmbedButton
-                hasBackground={false}
-                onClick={() =>
-                  onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED)
-                }
+            )}
+            {QueryDownloadWidget.shouldRender({ result }) && (
+              <QueryDownloadWidget
+                className={cx(CS.hide, CS.smShow)}
+                question={question}
+                result={result}
+                visualizationSettings={visualizationSettings}
+                dashcardId={question.card().dashcardId}
+                dashboardId={question.card().dashboardId}
               />
-            )),
-          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
-            <QuestionTimelineWidget
-              key="timelines"
-              className={cx(CS.hide, CS.smShow)}
-              isShowingTimelineSidebar={isShowingTimelineSidebar}
-              onOpenTimelines={onOpenTimelines}
-              onCloseTimelines={onCloseTimelines}
-            />
-          ),
+            )}
+            {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
+              <QuestionTimelineWidget
+                className={cx(CS.hide, CS.smShow)}
+                isShowingTimelineSidebar={isShowingTimelineSidebar}
+                onOpenTimelines={onOpenTimelines}
+                onCloseTimelines={onCloseTimelines}
+              />
+            )}
+          </Group>,
         ]}
       />
     </ViewFooterRoot>

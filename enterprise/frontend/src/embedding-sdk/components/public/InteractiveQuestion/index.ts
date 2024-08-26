@@ -1,1 +1,4 @@
-export * from "./InteractiveQuestion";
+export {
+  InteractiveQuestion,
+  type InteractiveQuestionProps,
+} from "./InteractiveQuestion";

@@ -39,10 +39,10 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-(mu/defn prepare-query-for-drill-addition :- [:map
-                                              [:query ::lib.schema/query]
-                                              [:stage-number :int]
-                                              [:column lib.filter/ColumnWithOperators]]
+(mu/defn prepare-query-for-drill-addition :- [:maybe [:map
+                                                      [:query ::lib.schema/query]
+                                                      [:stage-number :int]
+                                                      [:column lib.filter/ColumnWithOperators]]]
   "If the column we're filtering on is an aggregation, the filtering must happen in a later stage. This function returns
   a map with that possibly-updated `:query` and `:stage-number`, plus the `:column` for filtering in that stage (with
   filter operators, as returned by [[lib.filter/filterable-columns]]).
@@ -81,11 +81,13 @@
                                     :stage-number -1})
         columns       (lib.filter/filterable-columns (:query base) (:stage-number base))
         filter-column (or (lib.equality/find-matching-column
-                            (:query base) (:stage-number base) column-ref columns)
+                           (:query base) (:stage-number base) column-ref columns)
                           (and (:lib/source-uuid column)
                                (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
                                              columns)))]
-    (assoc base :column filter-column)))
+    ;; If we cannot find the matching column, don't allow to drill
+    (when filter-column
+      (assoc base :column filter-column))))
 
 (mu/defn column-filter-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.column-filter]
   "Filtering at the column level, based on its type. Displays a submenu of eg. \"Today\", \"This Week\", etc. for date
@@ -96,22 +98,21 @@
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [column column-ref value]} :- ::lib.schema.drill-thru/context]
-  ;; Note: original code uses an addition `clicked.column.field_ref != null` condition.
   (when (and (lib.drill-thru.common/mbql-stage? query stage-number)
              column
              (nil? value)
              (not (lib.types.isa/structured? column)))
-    (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
-                       (-> (lib.filter.operator/filter-operators column)
-                           first
-                           (assoc :lib/type :operator/filter)))]
-
-      (merge
-        {:lib/type   :metabase.lib.drill-thru/drill-thru
-         :type       :drill-thru/column-filter
-         :initial-op initial-op}
-        ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
-        (prepare-query-for-drill-addition query stage-number column column-ref :filter)))))
+    ;; When the column we would be filtering on is an aggregation, it can't be filtered without adding a stage.
+    (when-let [drill-details (prepare-query-for-drill-addition query stage-number column column-ref :filter)]
+      (let [initial-op (when-not (lib.types.isa/temporal? column) ; Date fields have special handling in the FE.
+                         (-> (lib.filter.operator/filter-operators column)
+                             first
+                             (assoc :lib/type :operator/filter)))]
+        (merge
+         drill-details
+         {:lib/type   :metabase.lib.drill-thru/drill-thru
+          :type       :drill-thru/column-filter
+          :initial-op initial-op})))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-filter
   [_query _stage-number {:keys [initial-op]}]

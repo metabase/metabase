@@ -41,7 +41,7 @@
 
 (deftest tasks-test
   (testing "Sync tasks should get scheduled for a newly created Database"
-    (mt/with-temp-scheduler
+    (mt/with-temp-scheduler!
       (task/init! ::task.sync-databases/SyncDatabases)
       (t2.with-temp/with-temp [Database {db-id :id}]
         (is (=? {:description         (format "sync-and-analyze Database %d" db-id)
@@ -315,8 +315,8 @@
   ;; when it should return true.
   (testing "Make sure selecting a database calls `driver/database-supports?` with a database instance"
     (mt/with-temp [Database {db-id :id} {:engine (u/qualified-name ::test)}]
-      (mt/with-dynamic-redefs [driver/database-supports? (fn [_ _ db]
-                                                           (is (true? (mi/instance-of? :model/Database db))))]
+      (mt/with-dynamic-redefs [driver.u/supports? (fn [_ _ db]
+                                                    (is (true? (mi/instance-of? :model/Database db))))]
         (is (some? (t2/select-one-fn :features Database :id db-id)))))))
 
 (deftest hydrate-tables-test
@@ -328,7 +328,7 @@
           "REVIEWS"
           "USERS"
           "VENUES"]
-       (-> (mt/db)
-           (t2/hydrate :tables)
-           :tables
-           (#(map :name %))))))
+         (-> (mt/db)
+             (t2/hydrate :tables)
+             :tables
+             (#(map :name %))))))

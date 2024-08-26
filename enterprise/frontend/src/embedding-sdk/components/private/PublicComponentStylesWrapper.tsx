@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
-import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 /**
@@ -11,11 +10,13 @@ import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image
  */
 export const PublicComponentStylesWrapper = styled.div`
   width: 100%;
+  height: 100%;
+
+  position: relative;
+
   font-weight: 400;
   color: var(--mb-color-text-dark);
   font-family: var(--mb-default-font-family), sans-serif;
-
-  ${({ theme }) => getMetabaseCssVariables(theme)}
 
   ${aceEditorStyles}
   ${saveDomImageStyles}

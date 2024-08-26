@@ -53,7 +53,7 @@
   "Filter function for valid tuples for indexing: an id and a value."
   [[id v]] (and id v))
 
-(mu/defn ^:private fix-expression-refs :- mbql.s/Field
+(mu/defn- fix-expression-refs :- mbql.s/Field
   "Convert expression ref into a field ref.
 
 Expression refs (`[:expression \"full-name\"]`) are how the _query_ refers to a custom column. But nested queries
@@ -145,7 +145,6 @@ don't, (and shouldn't) care that those are expressions. They are just another fi
                       {:state      "error"
                        :error      (ex-message e)
                        :indexed_at :%now}))))))
-
 
 ;;;; creation
 

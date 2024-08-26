@@ -7,16 +7,16 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  verifyItem,
-  removeReview,
   getIconForReview,
+  getLatestModerationReview,
+  getModerationTimelineEvents,
+  getRemovedReviewStatusIcon,
+  getStatusIcon,
+  getStatusIconForQuestion,
   getTextForReviewBanner,
   isItemVerified,
-  getLatestModerationReview,
-  getStatusIconForQuestion,
-  getModerationTimelineEvents,
-  getStatusIcon,
-  getRemovedReviewStatusIcon,
+  removeReview,
+  verifyItem,
 } from "./service";
 
 jest.mock("metabase/services", () => ({
