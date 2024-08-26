@@ -107,9 +107,9 @@
   User could be a keyword like `:rasta` or a user object."
   [user]
   (cond
-   (keyword user)       (user-descriptor (fetch-user user))
-   (:is_superuser user) "admin"
-   :else                "non-admin"))
+    (keyword user)       (user-descriptor (fetch-user user))
+    (:is_superuser user) "admin"
+    :else                "non-admin"))
 
 (mu/defn user->credentials :- [:map
                                [:username [:fn
@@ -134,7 +134,7 @@
       (locking tokens
         (or (@tokens username)
             (u/prog1 (client/authenticate (user->credentials username))
-                     (swap! tokens assoc username <>))))
+              (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
 
@@ -169,8 +169,8 @@
   [the-client user & args]
   (if (keyword? user)
     (do
-     (fetch-user user)
-     (apply client-fn the-client user args))
+      (fetch-user user)
+      (apply client-fn the-client user args))
     (let [user-id (u/the-id user)]
       (when-not (t2/exists? :model/User :id user-id)
         (throw (ex-info "User does not exist" {:user user})))

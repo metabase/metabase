@@ -21,14 +21,14 @@
         ;; Pre-emptively __wrapping__ try block in [[driver.tu/wrap-notify-all-databases-updated]]. I'm not sure that
         ;; is currently necessary and I'm doing that to avoid surprises as with issue #36852 in future.
         (driver.tu/wrap-notify-all-databases-updated!
-          (try
-            (TimeZone/setDefault new-timezone)
-            (System/setProperty "user.timezone" timezone-id)
-            (t/testing (format "JVM timezone set to %s" timezone-id)
-              (thunk))
-            (finally
-              (TimeZone/setDefault original-timezone)
-              (System/setProperty "user.timezone" original-system-property))))))))
+         (try
+           (TimeZone/setDefault new-timezone)
+           (System/setProperty "user.timezone" timezone-id)
+           (t/testing (format "JVM timezone set to %s" timezone-id)
+             (thunk))
+           (finally
+             (TimeZone/setDefault original-timezone)
+             (System/setProperty "user.timezone" original-system-property))))))))
 
 (defmacro with-system-timezone-id!
   "Execute `body` with the system time zone temporarily changed to the time zone named by `timezone-id`."

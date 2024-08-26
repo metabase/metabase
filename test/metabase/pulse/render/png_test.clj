@@ -46,7 +46,7 @@
                         :margin           0
                         :padding          0
                         :background-color :white})}
-                                 content]]
+        content]]
       hiccup/html
       (#'png/render-to-png width)))
 

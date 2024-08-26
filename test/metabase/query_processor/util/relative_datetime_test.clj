@@ -94,10 +94,10 @@
                     [7 "Conchúr Tihomir" "2014-08-02T09:30:00-04:00"]
                     [6 "Shad Ferdynand" "2014-08-02T12:30:00-04:00"]]
                    (->> (mt/run-mbql-query
-                         users
-                         {:fields [$id $name $last_login]
-                          :filter [:and
-                                   [:>= $last_login [:relative-datetime -1 :week]]
-                                   [:< $last_login [:relative-datetime 0 :week]]]
-                          :order-by [[:asc $last_login]]})
+                          users
+                          {:fields [$id $name $last_login]
+                           :filter [:and
+                                    [:>= $last_login [:relative-datetime -1 :week]]
+                                    [:< $last_login [:relative-datetime 0 :week]]]
+                           :order-by [[:asc $last_login]]})
                         (mt/formatted-rows [int str str]))))))))))

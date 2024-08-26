@@ -60,7 +60,7 @@
 (deftest ^:parallel infer-semantic-type-test
   (let [infer (fn infer [column-name & [base-type]]
                 (classifiers.name/infer-semantic-type-by-name
-                  {:name column-name, :base_type (or base-type :type/Text)}))]
+                 {:name column-name, :base_type (or base-type :type/Text)}))]
     (testing "standard checks"
       ;; not exhausting but a place for edge cases in the future
       (are [expected info] (= expected (apply infer info))
