@@ -69,12 +69,15 @@
           (let [conn-impersonation (first conn-impersonations)
                 role-attribute     (:attribute conn-impersonation)
                 user-attributes    (:login_attributes @api/*current-user*)
-                role               (get user-attributes role-attribute)]
-            (if (str/blank? role)
+                role               (get user-attributes role-attribute)
+                role_str (if (coll? role)
+                    (str/join "," role)
+                    role)]
+            (if (str/blank? role_str)
               (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
                               {:user-id api/*current-user-id*
                                :conn-impersonations conn-impersonations}))
-              role)))))))
+              role_str)))))))
 
 (defenterprise hash-key-for-impersonation
   "Returns a hash-key for FieldValues if the current user uses impersonation for the database."
