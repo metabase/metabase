@@ -207,7 +207,7 @@
 (deftest ^:parallel metrics-inherit-the-name-of-the-aggregation-test
   (testing "Metrics inherit the name of the aggregation to be in sync with the QP (#40355)"
     (let [query  (lib/query metadata-provider (meta/table-metadata :venues))
-          metric (first (lib/available-metrics query))
+          metric (first (lib/available-legacy-metrics query))
           query  (-> query
                      (lib/aggregate metric)
                      (lib/append-stage))

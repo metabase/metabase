@@ -126,7 +126,7 @@
   [query stage-number [_ _opts metric-id :as metric-ref]]
   (if (string? metric-id)
     ((get-method lib.metadata.calculation/metadata-method :default) query stage-number metric-ref)
-    (let [metric-aggregation (-> (lib.metadata/metric query metric-id)
+    (let [metric-aggregation (-> (lib.metadata/legacy-metric query metric-id)
                                  :definition
                                  mbql.normalize/normalize
                                  lib.convert/->pMBQL
