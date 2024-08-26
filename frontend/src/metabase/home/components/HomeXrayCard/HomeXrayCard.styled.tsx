@@ -6,12 +6,15 @@ import { Icon } from "metabase/ui";
 // Updated styles for the card layout
 export const CardContainer = styled.div`
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: start;
   padding: 16px;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  background-color: #fff;
+  background-color: #f9fbfc;
   width: 100%;
+  height: 160px;
   flex: 1 1 30%;
   margin: 0 8px;
 `;
@@ -31,13 +34,13 @@ export const CardTitle = styled(Ellipsified)`
 `;
 
 export const CardTitlePrimary = styled.span`
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--mb-color-text-dark);
 `;
 
 export const CardTitleSecondary = styled.span`
-  font-size: 14px;
+  font-size: 16px;
   color: var(--mb-color-text-medium);
   margin-top: 4px;
 `;

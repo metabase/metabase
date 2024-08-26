@@ -29,7 +29,7 @@ export const BrowseChat = () => {
           <Stack
             mb="lg"
             spacing="xs"
-            style={{ width: "300px", marginTop: "1rem" }}
+            style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
           >
             <ChatHistory
               setSelectedChatHistory={setSelectedChatHistory}

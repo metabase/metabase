@@ -1,8 +1,8 @@
 import React from "react";
-import { Icon } from "metabase/ui";
+import { Icon, Button } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-const Message = ({ message, isLoading }) => {
+const Message = ({ message, isLoading, onFeedbackClick }) => {
   const isUser = message.sender === "user";
   const hasError =
     message.text.toLowerCase().includes("error") ||
@@ -40,6 +40,8 @@ const Message = ({ message, isLoading }) => {
           wordWrap: "break-word",
           color: hasError ? "#D32F2F" : "#333",
           position: "relative",
+          display: "flex",
+          alignItems: "center",
         }}
       >
         <span style={{ fontSize: "16px" }}>{message.text}</span>
@@ -54,6 +56,37 @@ const Message = ({ message, isLoading }) => {
           >
             <LoadingSpinner />
           </div>
+        )}
+        {hasError && (
+          <Button
+            variant="outlined"
+            style={{
+              cursor: "pointer",
+              border: "1px solid #E0E0E0",
+              borderRadius: "8px",
+              color: "#F04848",
+              backgroundColor: "#F6D2D2",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginLeft: "auto", // Aligns the button to the right
+              padding: "0.6rem 1rem",
+              lineHeight: "1",
+              marginRight: "10px",
+              fontWeight: "bold",
+            }}
+            onClick={onFeedbackClick} // Trigger feedback logic
+          >
+            <span
+              style={{
+                fontSize: "14px",
+                fontWeight: "lighter",
+                verticalAlign: "middle",
+              }}
+            >
+              Provide feedback
+            </span>
+          </Button>
         )}
       </div>
     </div>

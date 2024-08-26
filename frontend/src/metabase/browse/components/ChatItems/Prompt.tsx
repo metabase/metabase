@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button, Icon } from "metabase/ui";
-import Input from "metabase/core/components/Input";
+import TextArea from "metabase/core/components/TextArea";
 
 const PromptGreeting = () => {
   return (
@@ -14,9 +14,6 @@ const PromptGreeting = () => {
       }}
     >
       <div style={{ fontSize: "20px", color: "#5B26D3", fontWeight: "bolder" }}>
-        Talk data to me
-      </div>
-      <div style={{ fontSize: "16px", color: "#5D6064" }}>
         Ask a question or make a request to get started
       </div>
     </div>
@@ -25,17 +22,28 @@ const PromptGreeting = () => {
 
 const ChatPrompt = () => {
   const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<any>(null);
   const canSubmit = inputValue.length > 0;
 
   const handleKeyPress = (e: any) => {
-    if (e.charCode === 13 && inputValue.trim()) {
+    if (e.key === "Enter" && !e.shiftKey && inputValue.trim()) {
+      e.preventDefault(); // Prevent creating a new line
       sendMessage();
     }
   };
 
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = "100px"; // Set a minimum height
+      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`; // Adjust the height based on content
+    }
+  }, [inputValue]);
+
   const sendMessage = () => {
     if (!inputValue.trim()) return;
     console.log("🚀 ~ ChatPrompt ~ inputValue:", inputValue);
+    // Clear the input after sending the message
+    setInputValue("");
   };
 
   return (
@@ -44,40 +52,62 @@ const ChatPrompt = () => {
       <PromptGreeting />
 
       {/* Input and Button section */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <Input
-          id="1"
-          type="text"
-          fullWidth
-          size="large"
-          placeholder="Enter a prompt here..."
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8px",
+          border: "1px solid #E0E0E0",
+          borderRadius: "8px",
+          backgroundColor: "#F8FAFD",
+          position: "relative", // Make the parent relative to position the button inside
+        }}
+      >
+        <TextArea
+          ref={inputRef}
           value={inputValue}
           onChange={e => setInputValue(e.target.value)}
           onKeyPress={handleKeyPress}
-          style={{ marginRight: "8px" }}
+          placeholder="Enter a prompt here..."
+          style={{
+            width: "100%",
+            resize: "none",
+            overflowY: "auto",
+            minHeight: "100px",
+            maxHeight: "220px",
+            padding: "12px",
+            paddingRight: "60px", // Space for the send button
+            lineHeight: "24px",
+            border: "none",
+            outline: "none",
+            boxSizing: "border-box",
+            borderRadius: "8px",
+            backgroundColor: "transparent",
+          }}
         />
         <Button
           variant="filled"
           disabled={!canSubmit}
           onClick={sendMessage}
           style={{
-            borderRadius: "12px",
-            padding: "0px",
-            backgroundColor: !canSubmit ? "#F1EBFF" : "#8A64DF",
+            position: "absolute",
+            right: "16px",
+            bottom: "16px",
+            borderRadius: "8px",
+            width: "40px",
+            height: "40px",
+            padding: "0",
+            minWidth: "0",
+            backgroundColor: canSubmit ? "#8A64DF" : "#F1EBFF",
             color: "#FFF",
             border: "none",
+            cursor: canSubmit ? "pointer" : "not-allowed",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          <Icon
-            size={26}
-            style={{
-              padding: "6px",
-              marginTop: "4px",
-              marginLeft: "4px",
-              marginRight: "4px",
-            }}
-            name="sendChat"
-          />
+          <Icon size={26} name="sendChat" />
         </Button>
       </div>
     </div>

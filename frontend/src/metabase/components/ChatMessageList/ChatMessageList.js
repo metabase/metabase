@@ -1,6 +1,6 @@
 import Message from "./Message";
 
-const ChatMessageList = ({ messages, isLoading }) => {
+const ChatMessageList = ({ messages, isLoading, onFeedbackClick }) => {
   return (
     <div
       style={{
@@ -19,9 +19,11 @@ const ChatMessageList = ({ messages, isLoading }) => {
             message.sender === "server" &&
             message.text === "Please wait until we generate the response...."
           }
+          onFeedbackClick={onFeedbackClick} // Pass the callback to each Message
         />
       ))}
     </div>
   );
 };
+
 export default ChatMessageList;

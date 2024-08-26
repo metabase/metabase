@@ -21,7 +21,7 @@ export const HomeXrayCard = ({
 }: HomeXrayCardProps): JSX.Element => {
   return (
     <CardContainer as={HomeCard}>
-      <CardIcon name="bolt_filled" />
+      <CardIcon name="bolt_filled" size={24} />
       <CardTitle>
         <CardTitlePrimary>{title}</CardTitlePrimary>
         <CardTitleSecondary>{message}</CardTitleSecondary>
