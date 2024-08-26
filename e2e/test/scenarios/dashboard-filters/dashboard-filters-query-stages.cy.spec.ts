@@ -948,6 +948,85 @@ describe("scenarios > dashboard > filters > query stages", () => {
         verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
       }
     });
+
+    describe("3-stage queries", () => {
+      describe("Q9 - join, custom column, 2 aggregations, 2 breakouts", () => {
+        beforeEach(() => {
+          createAndVisitDashboardWithCardMatrix(createQ9Query);
+        });
+
+        it("allows to map to all relevant columns", () => {
+          editDashboard();
+
+          cy.log("## date columns");
+          getFilter("Date").click();
+          verifyDateMappingOptions();
+
+          cy.log("## text columns");
+          getFilter("Text").click();
+          verifyTextMappingOptions();
+
+          cy.log("## number columns");
+          getFilter("Number").click();
+          verifyNumberMappingOptions();
+        });
+
+        function verifyDateMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+            ["Review", REVIEWS_DATE_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Summaries", ["Created At: Month", "Created At: Year"]],
+            ["Review", REVIEWS_DATE_COLUMNS],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+
+        function verifyTextMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Summaries", ["Category", "Reviewer", "Category"]],
+            ["Review", REVIEWS_TEXT_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Summaries", ["Category", "Reviewer", "Category"]],
+            ["Review", REVIEWS_TEXT_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_MODEL_INDEX, [
+            [
+              NAMELESS_SECTION,
+              [
+                "Reviews - Created At: Month → Reviewer",
+                "Products Via Product ID Category",
+              ],
+            ],
+          ]);
+        }
+
+        function verifyNumberMappingOptions() {
+          verifyDashcardMappingOptions(QUESTION_BASED_QUESTION_INDEX, [
+            ["Summaries", ["Count", "Sum of Total", "5 * Count", "Count"]],
+            ["Review", REVIEWS_NUMBER_COLUMNS],
+          ]);
+          verifyDashcardMappingOptions(MODEL_BASED_QUESTION_INDEX, [
+            ["Summaries", ["Count", "Sum of Total", "5 * Count", "Count"]],
+            ["Review", REVIEWS_NUMBER_COLUMNS],
+          ]);
+          verifyNoDashcardMappingOptions(QUESTION_BASED_MODEL_INDEX);
+          verifyNoDashcardMappingOptions(MODEL_BASED_MODEL_INDEX);
+        }
+      });
+    });
   });
 });
 
@@ -1170,6 +1249,16 @@ function createQ8Query(source: Card): StructuredQuery {
         ],
       ],
     ],
+  };
+}
+
+// Q9 - Q8 + 3rd stage with 1 aggregation
+// Sanity check, mainly to verify that columns from the 1st stage are not exposed here
+function createQ9Query(source: Card): StructuredQuery {
+  return {
+    "source-query": createQ8Query(source),
+    ...createQ8Query(source),
+    aggregation: [["count"]],
   };
 }
 
