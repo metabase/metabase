@@ -11,6 +11,7 @@ import {
 } from "metabase/lib/formatting";
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
 import MetabaseSettings from "metabase/lib/settings";
+import { getVisualizationRaw } from "metabase/visualizations";
 import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
 import {
@@ -37,12 +38,6 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 
 import { nestedSettings } from "./nested";
-
-// HACK: cyclical dependency causing errors in unit tests
-// import { getVisualizationRaw } from "metabase/visualizations";
-function getVisualizationRaw(...args) {
-  return require("metabase/visualizations").getVisualizationRaw(...args);
-}
 
 function getCurrency(currency, currencyStyle) {
   return (0)
