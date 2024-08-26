@@ -111,7 +111,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   describe("base queries", () => {
     beforeEach(() => {
       cy.then(function () {
-        createAndVisitTestDashboard([
+        createAndVisitDashboard([
           this.ordersQuestion,
           this.baseQuestion,
           this.baseModel,
@@ -190,36 +190,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   describe("1-stage queries", () => {
     describe("Q1 - join, custom column, no aggregations, no breakouts", () => {
       beforeEach(() => {
-        cy.then(function () {
-          createQuestion({
-            type: "question",
-            query: createQ1Query(this.baseQuestion),
-            name: "Question-based Question",
-          }).then(response => cy.wrap(response.body).as("qbq"));
-
-          createQuestion({
-            type: "question",
-            query: createQ1Query(this.baseModel),
-            name: "Model-based Question",
-          }).then(response => cy.wrap(response.body).as("mbq"));
-
-          createQuestion({
-            type: "model",
-            name: "Question-based Model",
-            query: createQ1Query(this.baseQuestion),
-          }).then(response => cy.wrap(response.body).as("qbm"));
-
-          createQuestion({
-            type: "model",
-            name: "Model-based Model",
-            query: createQ1Query(this.baseModel),
-          }).then(response => cy.wrap(response.body).as("mbm"));
-        });
-
-        cy.then(function () {
-          const cards = [this.qbq, this.mbq, this.qbm, this.mbm];
-          createAndVisitTestDashboard(cards);
-        });
+        createAndVisitDashboardWithQueryMatrix(createQ1Query);
       });
 
       it("allows to map to all relevant columns", () => {
@@ -344,36 +315,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     describe("Q2 - join, custom column, 2 aggregations, no breakouts", () => {
       beforeEach(() => {
-        cy.then(function () {
-          createQuestion({
-            type: "question",
-            query: createQ2Query(this.baseQuestion),
-            name: "Question-based Question",
-          }).then(response => cy.wrap(response.body).as("qbq"));
-
-          createQuestion({
-            type: "question",
-            query: createQ2Query(this.baseModel),
-            name: "Model-based Question",
-          }).then(response => cy.wrap(response.body).as("mbq"));
-
-          createQuestion({
-            type: "model",
-            name: "Question-based Model",
-            query: createQ2Query(this.baseQuestion),
-          }).then(response => cy.wrap(response.body).as("qbm"));
-
-          createQuestion({
-            type: "model",
-            name: "Model-based Model",
-            query: createQ2Query(this.baseModel),
-          }).then(response => cy.wrap(response.body).as("mbm"));
-        });
-
-        cy.then(function () {
-          const cards = [this.qbq, this.mbq, this.qbm, this.mbm];
-          createAndVisitTestDashboard(cards);
-        });
+        createAndVisitDashboardWithQueryMatrix(createQ2Query);
       });
 
       it("allows to map to all relevant columns", () => {
@@ -452,36 +394,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     describe("Q3 - join, custom column, no aggregations, 2 breakouts", () => {
       beforeEach(() => {
-        cy.then(function () {
-          createQuestion({
-            type: "question",
-            query: createQ3Query(this.baseQuestion),
-            name: "Question-based Question",
-          }).then(response => cy.wrap(response.body).as("qbq"));
-
-          createQuestion({
-            type: "question",
-            query: createQ3Query(this.baseModel),
-            name: "Model-based Question",
-          }).then(response => cy.wrap(response.body).as("mbq"));
-
-          createQuestion({
-            type: "model",
-            name: "Question-based Model",
-            query: createQ3Query(this.baseQuestion),
-          }).then(response => cy.wrap(response.body).as("qbm"));
-
-          createQuestion({
-            type: "model",
-            name: "Model-based Model",
-            query: createQ3Query(this.baseModel),
-          }).then(response => cy.wrap(response.body).as("mbm"));
-        });
-
-        cy.then(function () {
-          const cards = [this.qbq, this.mbq, this.qbm, this.mbm];
-          createAndVisitTestDashboard(cards);
-        });
+        createAndVisitDashboardWithQueryMatrix(createQ3Query);
       });
 
       it("allows to map to all relevant columns", () => {
@@ -658,8 +571,43 @@ function createQ3Query(source: Card): StructuredQuery {
   };
 }
 
+type CreateQuery = (source: Card) => StructuredQuery;
+
+function createAndVisitDashboardWithQueryMatrix(createQuery: CreateQuery) {
+  cy.then(function () {
+    createQuestion({
+      type: "question",
+      query: createQuery(this.baseQuestion),
+      name: "Question-based Question",
+    }).then(response => cy.wrap(response.body).as("qbq"));
+
+    createQuestion({
+      type: "question",
+      query: createQuery(this.baseModel),
+      name: "Model-based Question",
+    }).then(response => cy.wrap(response.body).as("mbq"));
+
+    createQuestion({
+      type: "model",
+      name: "Question-based Model",
+      query: createQuery(this.baseQuestion),
+    }).then(response => cy.wrap(response.body).as("qbm"));
+
+    createQuestion({
+      type: "model",
+      name: "Model-based Model",
+      query: createQuery(this.baseModel),
+    }).then(response => cy.wrap(response.body).as("mbm"));
+  });
+
+  cy.then(function () {
+    const cards = [this.qbq, this.mbq, this.qbm, this.mbm];
+    createAndVisitDashboard(cards);
+  });
+}
+
 // TODO: use createDashboardWithQuestions
-function createAndVisitTestDashboard(cards: Card[]) {
+function createAndVisitDashboard(cards: Card[]) {
   let id = 0;
   const getNextId = () => --id;
 
