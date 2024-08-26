@@ -28,12 +28,12 @@
   ([analyze-fn]
    (let [cards (t2/reducible-select [:model/Card :id]
                                     {:left-join [[:query_analysis :qa]
-                                                 [:= :qa.card_id :report_card.id]]
+                                                 [:and
+                                                  [:= :qa.card_id :report_card.id]
+                                                  [:= :qa.status "complete"]]]
                                      :where     [:and
                                                  [:not :report_card.archived]
-                                                 [:or
-                                                  [:= :qa.id nil]
-                                                  [:not= [:coalesce :qa.status "missing"] "complete"]]]})]
+                                                 [:= :qa.id nil]]})]
      (run! analyze-fn cards))))
 
 (defn- analyze-stale-cards!
