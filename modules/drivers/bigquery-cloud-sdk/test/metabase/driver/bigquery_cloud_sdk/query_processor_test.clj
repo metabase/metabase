@@ -310,7 +310,7 @@
 (deftest ^:parallel temporal-type-test
   (testing "Make sure we can detect temporal types correctly"
     (are [expr expected-type] (= expected-type
-                                 (#'bigquery.qp/xxx-temporal-type expr))
+                                 (h2x/database-type expr))
       [:field "x" {:base-type :type/DateTime}]                              :datetime
       [:field "x" {:base-type :type/DateTime, :temporal-unit :day-of-week}] nil
       (meta/field-metadata :checkins :date)                                 :date)))
@@ -414,7 +414,7 @@
                               (#'bigquery.qp/->temporal-type t))]
                 (testing "Should have correct type metadata after reconciliation"
                   (is (= t
-                         (#'bigquery.qp/xxx-temporal-type hsql))))
+                         (h2x/database-type hsql))))
                 (testing "Should get converted to the correct SQL"
                   (is (= [(str "WHERE " expected-sql)]
                          (sql.qp/format-honeysql :bigquery-cloud-sdk
@@ -455,7 +455,7 @@
                                 (#'bigquery.qp/->temporal-type t))]
                   (testing "Should have correct type metadata after reconciliation"
                     (is (= t
-                           (#'bigquery.qp/xxx-temporal-type hsql))))
+                           (h2x/database-type hsql))))
                   (testing "Should get converted to the correct SQL"
                     (is (= expected-sql
                            (->> (sql/format-expr hsql)
@@ -477,7 +477,7 @@
                                                                          [:relative-datetime -1 :year]])]
               (testing (format "\nclause = %s" (pr-str clause))
                 (is (= expected-type
-                       (#'bigquery.qp/xxx-temporal-type relative-datetime)))))))))))
+                       (h2x/database-type relative-datetime)))))))))))
 
 (deftest field-literal-trunc-form-test
   (testing "`:field` clauses with literal string names should be quoted correctly when doing date truncation (#20806)"
@@ -698,7 +698,7 @@
           (mt/with-report-timezone-id! report-timezone
             (let [form (sql.qp/current-datetime-honeysql-form :bigquery-cloud-sdk)]
               (is (= nil
-                     (#'bigquery.qp/xxx-temporal-type form))
+                     (h2x/database-type form))
                   "When created the temporal type should be unspecified. The world's your oyster!")
               (is (= ["CURRENT_TIMESTAMP()"]
                      (sql/format-expr form))
@@ -709,7 +709,7 @@
                                                     :timestamp "CURRENT_TIMESTAMP()"}]
                 (testing (format "temporal type = %s" temporal-type)
                   (is (= temporal-type
-                         (#'bigquery.qp/xxx-temporal-type (#'bigquery.qp/->temporal-type temporal-type form)))
+                         (h2x/database-type (#'bigquery.qp/->temporal-type temporal-type form)))
                       "Should be possible to convert to another temporal type/should report its type correctly")
                   (is (= [expected-sql]
                          (sql/format-expr (#'bigquery.qp/->temporal-type temporal-type form)))
@@ -731,7 +731,7 @@
                                                     :timestamp "CURRENT_TIMESTAMP()"}]
                 (testing (format "temporal type = %s" temporal-type)
                   (is (= temporal-type
-                         (#'bigquery.qp/xxx-temporal-type (#'bigquery.qp/->temporal-type temporal-type form)))
+                         (h2x/database-type (#'bigquery.qp/->temporal-type temporal-type form)))
                       "Should be possible to convert to another temporal type/should report its type correctly")
                   (is (= [expected-sql]
                          (sql/format-expr (#'bigquery.qp/->temporal-type temporal-type form)))
@@ -754,14 +754,14 @@
                                     :day)]]
           (testing (format "initial form = %s" (pr-str form))
             (is (= initial-type
-                   (#'bigquery.qp/xxx-temporal-type form))
+                   (h2x/database-type form))
                 "Should have the temporal-type of the form it wraps when created.")
             (doseq [[new-type expected-sql] {:date      "DATE_ADD(CURRENT_DATE(), INTERVAL -1 day)"
                                              :datetime  "DATETIME_ADD(CURRENT_DATETIME(), INTERVAL -1 day)"
                                              :timestamp "TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL -1 day)"}]
               (testing (format "\nconvert from %s -> %s" initial-type new-type)
                 (is (= new-type
-                       (#'bigquery.qp/xxx-temporal-type (#'bigquery.qp/->temporal-type new-type form)))
+                       (h2x/database-type (#'bigquery.qp/->temporal-type new-type form)))
                     "Should be possible to convert to another temporal type/should report its type correctly")
                 (is (= [expected-sql]
                        (sql/format-expr (#'bigquery.qp/->temporal-type new-type form)))
