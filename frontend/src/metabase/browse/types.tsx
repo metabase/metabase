@@ -19,3 +19,6 @@ export const isRecentModel = (item: RecentItem): item is RecentModel =>
  * This type is needed so that our filtering functions can
  * filter arrays of models retrieved from either endpoint. */
 export type FilterableModel = ModelResult | RecentModel;
+
+/** Metric retrieved through the search endpoint */
+export type MetricResult = SearchResult<number, "dataset">;

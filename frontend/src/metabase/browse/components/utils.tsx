@@ -4,12 +4,22 @@ import { getCollectionPathAsString } from "metabase/collections/utils";
 import type { SearchResult } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import type { ModelResult } from "../types";
+import type { MetricResult, ModelResult } from "../types";
 
 export const isModel = (item: SearchResult) => item.model === "dataset";
 
 export const getModelDescription = (item: SearchResult) => {
   if (item.collection && isModel(item) && !item.description?.trim()) {
+    return t`A model`;
+  } else {
+    return item.description;
+  }
+};
+
+export const isMetric = (item: SearchResult) => item.model === "metric";
+
+export const getMetricDescription = (item: SearchResult) => {
+  if (item.collection && isMetric(item) && !item.description?.trim()) {
     return t`A model`;
   } else {
     return item.description;
@@ -63,6 +73,37 @@ export const sortModels = (
       const sort_column2 = getSecondarySortColumn(sort_column);
       const a2 = getValueForSorting(modelA, sort_column2);
       const b2 = getValueForSorting(modelB, sort_column2);
+      result = compare(a2, b2);
+    }
+
+    return sort_direction === SortDirection.Asc ? result : -result;
+  });
+};
+
+export const sortMetrics = (
+  metrics: MetricResult[],
+  sortingOptions: SortingOptions,
+  localeCode: string = "en",
+) => {
+  const { sort_column, sort_direction } = sortingOptions;
+
+  if (!isValidSortColumn(sort_column)) {
+    console.error("Invalid sort column", sort_column);
+    return metrics;
+  }
+
+  const compare = (a: string, b: string) =>
+    a.localeCompare(b, localeCode, { sensitivity: "base" });
+
+  return [...metrics].sort((metricA, metricB) => {
+    const a = getValueForSorting(metricA, sort_column);
+    const b = getValueForSorting(metricB, sort_column);
+
+    let result = compare(a, b);
+    if (result === 0) {
+      const sort_column2 = getSecondarySortColumn(sort_column);
+      const a2 = getValueForSorting(metricA, sort_column2);
+      const b2 = getValueForSorting(metricB, sort_column2);
       result = compare(a2, b2);
     }
 
