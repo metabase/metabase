@@ -317,6 +317,7 @@
           :cards [{:id            metric-id
                    :name          "Sum of Cans"
                    :database-id   (meta/id)
+                   :table-id      (meta/id :venues)
                    :dataset-query metric-definition
                    :description   "Number of toucans plus number of pelicans"
                    :type          :metric}]})
