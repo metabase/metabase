@@ -109,46 +109,25 @@
                                               "2022-04-01T00:00:00"]]}]}
                     query''))))))))
 
-(deftest ^:parallel returns-zoom-in-timeseries-test-1
-  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
-    (lib.drill-thru.tu/test-returns-drill
-     {:drill-type  :drill-thru/zoom-in.timeseries
-      :click-type  :cell
-      :query-type  :aggregated
-      :column-name "count"
-      :expected    {:type :drill-thru/zoom-in.timeseries}})))
+(defn- valid-current-units-for-field
+  [table field]
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata table))
+                  (lib/aggregate (lib/count))
+                  (lib/breakout (-> (meta/field-metadata table field)
+                                    (lib/with-temporal-bucket :year))))
+        breakout (first (lib/breakouts query))]
+    (#'lib.drill-thru.zoom-in-timeseries/valid-current-units query -1 breakout)))
 
-(deftest ^:parallel returns-zoom-in-timeseries-test-2
-  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
-    (lib.drill-thru.tu/test-returns-drill
-     {:drill-type  :drill-thru/zoom-in.timeseries
-      :click-type  :cell
-      :query-type  :aggregated
-      :column-name "max"
-      :expected    {:type :drill-thru/zoom-in.timeseries}})))
+(def ^:private datetime-unit-pairs
+  (partition 2 1 (valid-current-units-for-field :orders :created-at)))
 
-(deftest ^:parallel returns-zoom-in-timeseries-test-3
-  (testing "zoom-in.timeseries should be returned for aggregated query metric click (#33811)"
-    (lib.drill-thru.tu/test-returns-drill
-     {:drill-type  :drill-thru/zoom-in.timeseries
-      :click-type  :cell
-      :query-type  :aggregated
-      :column-name "sum"
-      :expected    {:type :drill-thru/zoom-in.timeseries}})))
-
-(def ^:private metadata-provider-with-orders-created-at-as-date
-  (merged-mock/merged-mock-metadata-provider
-   meta/metadata-provider
-   {:fields [{:id             (meta/id :orders :created-at)
-              :base-type      :type/Date
-              :effective-type :type/Date
-              :semantic-type  :type/CreationDate
-              :database-type  "DATE"}]}))
+(def ^:private date-unit-pairs
+  (partition 2 1 (valid-current-units-for-field :people :birth-date)))
 
 (defn- zoom-in-timeseries-drill-for-orders-created-at
-  ([column-name temporal-unit]
-   (zoom-in-timeseries-drill-for-orders-created-at meta/metadata-provider column-name temporal-unit))
-  ([metadata-provider column-name temporal-unit]
+  ([column-name temporal-unit custom-row]
+   (zoom-in-timeseries-drill-for-orders-created-at meta/metadata-provider column-name temporal-unit custom-row))
+  ([metadata-provider column-name temporal-unit custom-row]
    {:drill-type   :drill-thru/zoom-in.timeseries
     :click-type   :cell
     :query-type   :aggregated
@@ -160,56 +139,55 @@
                       (lib/aggregate (lib/max (lib.metadata/field metadata-provider (meta/id :orders :discount))))
                       (lib/breakout (-> (lib.metadata/field metadata-provider (meta/id :orders :created-at))
                                         (lib/with-temporal-bucket temporal-unit))))
-    :custom-row   {"count" 77, "sum" 1, "max" nil, "CREATED_AT" "2022-12-01"}
+    :custom-row   (merge {"count" 77, "sum" 1, "max" nil} custom-row)
     :expected     {:type :drill-thru/zoom-in.timeseries}}))
 
-(deftest ^:parallel returns-zoom-in-timeseries-test-4
+(deftest ^:parallel returns-zoom-in-timeseries-for-datetime-column-test
+  (testing "zoom-in.timeseries should be returned for DateTime dimension (#33811)"
+    (doseq [aggregation ["count" "sum" "max"]
+            bucketing   (map first datetime-unit-pairs)]
+      (testing (str "aggregation = " aggregation ", bucketing = " bucketing)
+        (lib.drill-thru.tu/test-returns-drill
+         (zoom-in-timeseries-drill-for-orders-created-at
+          meta/metadata-provider
+          aggregation
+          bucketing
+          {"CREATED_AT" "2022-12-01T00:00:00+02:00"}))))))
+
+(def ^:private metadata-provider-with-orders-created-at-as-date
+  (merged-mock/merged-mock-metadata-provider
+   meta/metadata-provider
+   {:fields [{:id             (meta/id :orders :created-at)
+              :base-type      :type/Date
+              :effective-type :type/Date
+              :semantic-type  :type/CreationDate
+              :database-type  "DATE"}]}))
+
+(deftest ^:parallel returns-zoom-in-timeseries-for-date-column-test
   (testing "zoom-in.timeseries should be returned for Date dimension (#33811, #39366)"
-    (lib.drill-thru.tu/test-returns-drill
-     (zoom-in-timeseries-drill-for-orders-created-at
-      metadata-provider-with-orders-created-at-as-date
-      "count"
-      :month))))
+    (doseq [aggregation ["count" "sum" "max"]
+            bucketing   (map first date-unit-pairs)]
+      (testing (str "aggregation = " aggregation ", bucketing = " bucketing)
+        (lib.drill-thru.tu/test-returns-drill
+         (zoom-in-timeseries-drill-for-orders-created-at
+          metadata-provider-with-orders-created-at-as-date
+          aggregation
+          bucketing
+          {"CREATED_AT" "2022-12-01"}))))))
 
-(deftest ^:parallel returns-zoom-in-timeseries-test-5
+(deftest ^:parallel does-not-return-zoom-in-timeseries-for-date-column-with-time-temporal-unit-test
   (testing "zoom-in.timeseries should be returned for Date dimension (#33811, #39366)"
-    (lib.drill-thru.tu/test-returns-drill
-     (zoom-in-timeseries-drill-for-orders-created-at
-      metadata-provider-with-orders-created-at-as-date
-      "sum"
-      :month))))
-
-(deftest ^:parallel returns-zoom-in-timeseries-test-6
-  (testing "zoom-in.timeseries should be returned for Date dimension (#33811, #39366)"
-    (lib.drill-thru.tu/test-returns-drill
-     (zoom-in-timeseries-drill-for-orders-created-at
-      metadata-provider-with-orders-created-at-as-date
-      "max"
-      :month))))
-
-(deftest ^:parallel returns-zoom-in-timeseries-test-7
-  (testing "zoom-in.timeseries should NOT be returned for Date dimension bucketed by :day (#33811, #39366)"
-    (lib.drill-thru.tu/test-drill-not-returned
-     (zoom-in-timeseries-drill-for-orders-created-at
-      metadata-provider-with-orders-created-at-as-date
-      "count"
-      :day))))
-
-(deftest ^:parallel returns-zoom-in-timeseries-test-8
-  (testing "zoom-in.timeseries should NOT be returned for Date dimension bucketed by :day (#33811, #39366)"
-    (lib.drill-thru.tu/test-drill-not-returned
-     (zoom-in-timeseries-drill-for-orders-created-at
-      metadata-provider-with-orders-created-at-as-date
-      "sum"
-      :day))))
-
-(deftest ^:parallel returns-zoom-in-timeseries-test-9
-  (testing "zoom-in.timeseries should NOT be returned for Date dimension bucketed by :day (#33811, #39366)"
-    (lib.drill-thru.tu/test-drill-not-returned
-     (zoom-in-timeseries-drill-for-orders-created-at
-      metadata-provider-with-orders-created-at-as-date
-      "max"
-      :day))))
+    (doseq [aggregation ["count" "sum" "max"]
+            ;; :day is valid as a *current* unit, but the next unit will be :hour, which is invalid for a Date column,
+            ;; and hence no zoom-in-timeseries drill thru should be returned.
+            bucketing   [:day :hour]]
+      (testing (str "aggregation = " aggregation ", bucketing = " bucketing)
+        (lib.drill-thru.tu/test-drill-not-returned
+         (zoom-in-timeseries-drill-for-orders-created-at
+          metadata-provider-with-orders-created-at-as-date
+          aggregation
+          bucketing
+          {"CREATED_AT" "2022-12-01"}))))))
 
 (deftest ^:parallel returns-zoom-in-timeseries-e2e-test-2
   (testing "zoom-in.timeseries should be returned for a"
@@ -254,21 +232,6 @@
                                               [:field {:temporal-unit :year} (meta/id :orders :created-at)]
                                               "2022-12-01T00:00:00+02:00"]]}]}
                     (lib/drill-thru query -1 drill)))))))))
-
-(defn- valid-current-units-for-field
-  [table field]
-  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata table))
-                  (lib/aggregate (lib/count))
-                  (lib/breakout (-> (meta/field-metadata table field)
-                                    (lib/with-temporal-bucket :year))))
-        breakout (first (lib/breakouts query))]
-    (#'lib.drill-thru.zoom-in-timeseries/valid-current-units query -1 breakout)))
-
-(def ^:private datetime-unit-pairs
-  (partition 2 1 (valid-current-units-for-field :orders :created-at)))
-
-(def ^:private date-unit-pairs
-  (partition 2 1 (valid-current-units-for-field :people :birth-date)))
 
 (deftest ^:parallel zoom-in-timeseries-unit-tower-test
   (doseq [[unit1 unit2] datetime-unit-pairs]
