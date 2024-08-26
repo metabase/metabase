@@ -10,9 +10,9 @@ import type { ClickObject } from "metabase-lib";
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
 import type { PieChartModel } from "../pie/model/types";
 
-const TOOLTIP_POINTER_MARGIN = 10;
+export const TOOLTIP_POINTER_MARGIN = 10;
 
-const getTooltipPositionFn =
+export const getTooltipPositionFn =
   (containerRef: React.RefObject<HTMLDivElement>) =>
   (
     relativePoint: [number, number],
@@ -38,7 +38,7 @@ const getTooltipPositionFn =
     if (hasRightSpace) {
       tooltipAbsoluteX = mouseX + TOOLTIP_POINTER_MARGIN;
     } else if (hasLeftSpace) {
-      tooltipAbsoluteX = mouseX - tooltipTotalHeight;
+      tooltipAbsoluteX = mouseX - tooltipTotalWidth;
     }
 
     let tooltipAbsoluteY = 0;
@@ -52,9 +52,9 @@ const getTooltipPositionFn =
     }
 
     const tooltipRelativeX = tooltipAbsoluteX - containerX;
-    const tooltipRelativey = tooltipAbsoluteY - containerY;
+    const tooltipRelativeY = tooltipAbsoluteY - containerY;
 
-    return [tooltipRelativeX, tooltipRelativey];
+    return [tooltipRelativeX, tooltipRelativeY];
   };
 
 export const getTooltipBaseOption = (

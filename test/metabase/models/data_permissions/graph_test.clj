@@ -181,13 +181,13 @@
 
           ;; Setting block permissions for the database also sets :create-queries and :download-results to :no
           {group-id-1
-            {database-id-1
-             {:view-data :blocked}}}
+           {database-id-1
+            {:view-data :blocked}}}
           {group-id-1
-            {database-id-1
-             {:perms/create-queries :no
-              :perms/view-data :blocked
-              :perms/download-results :no}}})))))
+           {database-id-1
+            {:perms/create-queries :no
+             :perms/view-data :blocked
+             :perms/download-results :no}}})))))
 
 (deftest update-db-level-download-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
@@ -344,7 +344,6 @@
         {group-id-1
          {database-id-1
           {:perms/manage-database :no}}}))))
-
 
 ;; ------------------------------ API Graph Tests ------------------------------
 

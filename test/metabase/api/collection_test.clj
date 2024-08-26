@@ -617,13 +617,13 @@
 (defn- collection-item [collection-name & {:as extra-keypairs}]
   (let [personal-collection (str/ends-with? collection-name "Personal Collection")]
     (merge (cond->
-             {:id              true
-              :description     nil
-              :can_write       personal-collection
-              :model           "collection"
-              :authority_level nil
-              :entity_id       true
-              :name            collection-name}
+            {:id              true
+             :description     nil
+             :can_write       personal-collection
+             :model           "collection"
+             :authority_level nil
+             :entity_id       true
+             :name            collection-name}
              personal-collection (assoc :personal_owner_id personal-collection))
            extra-keypairs)))
 
@@ -788,9 +788,9 @@
           (let [response (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id c3)))]
             (is (= 1 (:total response)))
             (let [{:keys [location effective_location]} (-> response :data first)]
-             (is (= (path c1 c2 c3) location))
-             (testing "the unreadable collections are removed from the `ui-logical-path`"
-               (is (= (path c3) effective_location))))))))))
+              (is (= (path c1 c2 c3) location))
+              (testing "the unreadable collections are removed from the `ui-logical-path`"
+                (is (= (path c3) effective_location))))))))))
 
 (defn- get-items
   "A helper function to get a list of items in a collection from the collection API. User is a keyword like `:rasta` or
@@ -801,8 +801,8 @@
 
 (deftest collections-are-moved-to-trash-when-archived
   (let [set-of-item-names (fn [user coll] (->> (get-items user coll)
-                                           (map :name)
-                                           set))]
+                                               (map :name)
+                                               set))]
     (testing "I can trash something by marking it as archived"
       (t2.with-temp/with-temp [Collection collection {:name "Art Collection"}
                                Collection _ {:name "Baby Collection"
@@ -958,18 +958,18 @@
                    (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_at&sort_direction=desc"))
                         :data
                         (map :name))))))
-       (testing "Results can be ordered by last-edited-by"
-         (testing "ascending"
+        (testing "Results can be ordered by last-edited-by"
+          (testing "ascending"
            ;; card with history 2 has user Test AAAA, history 1 user Test ZZZZ
-           (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
-                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
-                       :data
-                       (map :name)))))
-         (testing "descending"
-           (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
-                  (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
-                       :data
-                       (map :name))))))))))
+            (is (= ["Card with history 2" "Card with history 1" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=asc"))
+                        :data
+                        (map :name)))))
+          (testing "descending"
+            (is (= ["Card with history 1" "Card with history 2" "AA" "ZZ"]
+                   (->> (mt/user-http-request :rasta :get 200 (str "collection/" collection-id "/items?sort_column=last_edited_by&sort_direction=desc"))
+                        :data
+                        (map :name))))))))))
 
 (deftest collection-items-order-by-model-test
   (testing "GET /api/collection/:id/items"
@@ -1076,7 +1076,7 @@
   (testing "GET /api/collection/:id/items"
     (t2.with-temp/with-temp [:model/Collection {id1 :id} {:name "Collection with Items"}
                              :model/Collection {id2 :id} {:name "subcollection"
-                                                                       :location (format "/%d/" id1)}]
+                                                          :location (format "/%d/" id1)}]
       (let [item #(first (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" id1))))]
         (testing "the item has nothing in or below it"
           (is (nil? (:here (item))))
@@ -1140,9 +1140,9 @@
   (testing "Sorting by last-edited-by"
     (is (= [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
             [[[:case
-                 [:= :collection_type nil] 0
-                 [:= :collection_type collection/trash-collection-type] 1
-                 :else 2]] :asc]
+               [:= :collection_type nil] 0
+               [:= :collection_type collection/trash-collection-type] 1
+               :else 2]] :asc]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
@@ -1290,7 +1290,6 @@
     (testing "sub-Collections of other's Personal Collections should show up for admins as well"
       (is (partial= lucky-personal-subcollection-item
                     (api-get-lucky-personal-collection-with-subcollection :crowberto))))))
-
 
 ;;; ------------------------------------ Effective Ancestors & Effective Children ------------------------------------
 
@@ -1677,7 +1676,6 @@
                               :data
                               (results-matching {:name "Business Card", :model "card"}))))))))))
 
-
 ;;; ----------------------------------- Effective Children, Ancestors, & Location ------------------------------------
 
 (defn- api-get-root-collection-children
@@ -1709,7 +1707,7 @@
     (testing "does `archived` work on Collections as well?"
       (with-collection-hierarchy! [a b d e f g]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
-                            {:archived true})
+                              {:archived true})
         (is (= [] (remove-non-test-collections (api-get-root-collection-children)))))
       (with-collection-hierarchy! [a b d e f g]
         (mt/user-http-request :crowberto :put 200 (str "collection/" (u/the-id a))
@@ -2249,7 +2247,7 @@
   (testing "can_restore is correctly populated for things in other collections"
     (t2.with-temp/with-temp [:model/Collection collection {:name "container"}
                              :model/Dashboard dashboard {:name "Dashboard" :collection_id (u/the-id collection)}]
-      (is (contains? (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard)) :can_restore ))
+      (is (contains? (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard)) :can_restore))
       (is (false? (:can_restore (get-item-with-id-in-coll (u/the-id collection) (u/the-id dashboard))))))))
 
 (deftest nothing-can-be-moved-to-the-trash

@@ -40,7 +40,7 @@
                                              (mt/id :checkins :id)]))))
   (testing "Only active fields should be considerd when checking field order"
     (one-off-dbs/with-blank-db
-      (doseq [statement [ ;; H2 needs that 'guest' user for QP purposes. Set that up
+      (doseq [statement [;; H2 needs that 'guest' user for QP purposes. Set that up
                          "CREATE USER IF NOT EXISTS GUEST PASSWORD 'guest';"
                          ;; Keep DB open until we say otherwise :)
                          "SET DB_CLOSE_DELAY -1;"
@@ -108,11 +108,11 @@
         (is (partial=
              {group-id
               {db-id
-                 {:perms/view-data             :unrestricted
-                  :perms/create-queries        :query-builder-and-native
-                  :perms/download-results      :one-million-rows
-                  :perms/manage-table-metadata :no
-                  :perms/manage-database       :no}}}
+               {:perms/view-data             :unrestricted
+                :perms/create-queries        :query-builder-and-native
+                :perms/download-results      :one-million-rows
+                :perms/manage-table-metadata :no
+                :perms/manage-database       :no}}}
              (data-perms/data-permissions-graph :group-id group-id :db-id db-id)))
 
         (testing "A new table has appropriate defaults, when perms are already set granularly for the DB"
