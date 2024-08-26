@@ -6,6 +6,7 @@ import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
+import { SETUP_PRO_LICENSE_MESSAGE } from "../constants/messages";
 import { printEmptyLines, printInfo, printWithPadding } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
@@ -13,8 +14,19 @@ const trialUrl = `https://store.metabase.com/checkout?plan=pro&deployment=self-h
 const trialUrlWithUtm = `${trialUrl}&utm_source=product&utm_medium=checkout&utm_campaign=embedding-sdk&utm_content=embedding-sdk-cli`;
 
 export const setupLicense: CliStepMethod = async state => {
+  printWithPadding(SETUP_PRO_LICENSE_MESSAGE);
+
+  const shouldSetupLicense = await toggle({
+    message: "Do you want to set up a Pro license?",
+    default: true,
+  });
+
+  if (!shouldSetupLicense) {
+    return [{ type: "success" }, state];
+  }
+
   const hasLicenseKey = await toggle({
-    message: "Do you already have a Metabase Pro license key?",
+    message: "Do you already have a Metabase Pro or Enterprise license key?",
     default: false,
   });
 

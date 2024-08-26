@@ -82,3 +82,11 @@ export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
   At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
   You can add your tenant's IDs to the "${USER_ATTRIBUTE_CUSTOMER_ID}" user attribute in settings.
 `;
+
+export const SETUP_PRO_LICENSE_MESSAGE = `
+  This tool can set up permissions for multi-tenancy and a mock back-end server that
+  signs users into Metabase to emulate the experience from different tenants.
+
+  To proceed, you will need a Pro license.
+  If you skip, we will proceed without multi-tenancy or SSO.
+`;
