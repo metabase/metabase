@@ -318,8 +318,7 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     filterWidget().click();
     popover().within(() => {
-      cy.findByRole("textbox").type("14");
-      cy.findByText("14").click();
+      cy.findByRole("searchbox").type("14");
       cy.button("Add filter").click();
     });
   }
