@@ -2,7 +2,7 @@ import React from "react";
 import { Icon, Button } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-const Message = ({ message, isLoading, onFeedbackClick }) => {
+const Message = ({ message, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick }) => {
   const isUser = message.sender === "user";
   const hasError =
     message.text.toLowerCase().includes("error") ||
@@ -44,7 +44,7 @@ const Message = ({ message, isLoading, onFeedbackClick }) => {
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: "16px" }}>{message.text}</span>
+        <span style={{ fontSize: "16px", whiteSpace: "pre-wrap" }}>{message.text}</span>
         {isLoading && (
           <div
             style={{
@@ -87,6 +87,73 @@ const Message = ({ message, isLoading, onFeedbackClick }) => {
               Provide feedback
             </span>
           </Button>
+        )}
+
+        {approvalChangeButtons && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              marginLeft: "auto",
+            }}
+          >
+            <Button
+              variant="outlined"
+              style={{
+                cursor: "pointer",
+                border: "1px solid #E0E0E0",
+                borderRadius: "8px",
+                color: "#FFF",
+                backgroundColor: "#4CAF50",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.6rem 1rem",
+                lineHeight: "1",
+                marginRight: "10px",
+                fontWeight: "bold",
+              }}
+              onClick={onApproveClick}
+            >
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "lighter",
+                  verticalAlign: "middle",
+                }}
+              >
+                Accept
+              </span>
+            </Button>
+
+            <Button
+              variant="outlined"
+              style={{
+                cursor: "pointer",
+                border: "1px solid #E0E0E0",
+                borderRadius: "8px",
+                color: "#FFF",
+                backgroundColor: "#F04848",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0.6rem 1rem",
+                lineHeight: "1",
+                fontWeight: "bold",
+              }}
+              onClick={onDenyClick}
+            >
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "lighter",
+                  verticalAlign: "middle",
+                }}
+              >
+                Deny
+              </span>
+            </Button>
+          </div>
         )}
       </div>
     </div>
