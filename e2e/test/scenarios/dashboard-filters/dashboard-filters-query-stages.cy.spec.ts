@@ -14,7 +14,8 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, REVIEWS, REVIEWS_ID } =
+  SAMPLE_DATABASE;
 
 const CARD_HEIGHT = 4;
 const CARD_WIDTH = 12;
@@ -605,6 +606,7 @@ function createBaseQuestions() {
   });
 }
 
+// Q1 - join, custom column, no aggregations, no breakouts
 function createQ1Query(source: Card): StructuredQuery {
   return {
     "source-table": `card__${source.id}`,
@@ -634,6 +636,7 @@ function createQ1Query(source: Card): StructuredQuery {
   };
 }
 
+// Q2 - join, custom column, 2 aggregations, no breakouts
 function createQ2Query(source: Card): StructuredQuery {
   return {
     ...createQ1Query(source),
@@ -641,6 +644,7 @@ function createQ2Query(source: Card): StructuredQuery {
   };
 }
 
+// Q3 - join, custom column, no aggregations, 2 breakouts
 function createQ3Query(source: Card): StructuredQuery {
   return {
     ...createQ1Query(source),
@@ -674,10 +678,124 @@ function createQ3Query(source: Card): StructuredQuery {
   };
 }
 
+// Q4 - join, custom column, 2 aggregations, 2 breakouts
 function createQ4Query(source: Card): StructuredQuery {
   return {
     ...createQ3Query(source),
     aggregation: [["count"], ["sum", TOTAL_FIELD]],
+  };
+}
+
+// Q5 - Q4 + 2nd stage with join, custom column, no aggregations, no breakouts
+function createQ5Query(source: Card): StructuredQuery {
+  return {
+    "source-query": createQ4Query(source),
+    expressions: {
+      "5 * Count": [
+        "*",
+        5,
+        [
+          "field",
+          "count",
+          {
+            "base-type": "type/Integer",
+          },
+        ],
+      ],
+    },
+    joins: [
+      {
+        strategy: "left-join",
+        alias: "Reviews - Created At: Month",
+        condition: [
+          "=",
+          [
+            "field",
+            "CREATED_AT",
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+            },
+          ],
+          [
+            "field",
+            REVIEWS.CREATED_AT,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month",
+              "join-alias": "Reviews - Created At: Month",
+            },
+          ],
+        ],
+        "source-table": REVIEWS_ID,
+      },
+    ],
+  };
+}
+
+// Q6 - Q4 + 2nd stage with join, custom column, 2 aggregations, no breakouts
+function createQ6Query(source: Card): StructuredQuery {
+  return {
+    ...createQ5Query(source),
+    aggregation: [
+      ["count"],
+      [
+        "sum",
+        [
+          "field",
+          REVIEWS.RATING,
+          {
+            "base-type": "type/Integer",
+            "join-alias": "Reviews - Created At: Month",
+          },
+        ],
+      ],
+    ],
+  };
+}
+
+// Q7 - Q4 + 2nd stage with join, custom column, no aggregations, 2 breakouts
+function createQ7Query(source: Card): StructuredQuery {
+  return {
+    ...createQ5Query(source),
+    breakout: [
+      [
+        "field",
+        REVIEWS.REVIEWER,
+        {
+          "base-type": "type/Text",
+          "join-alias": "Reviews - Created At: Month",
+        },
+      ],
+      [
+        "field",
+        "PRODUCTS__via__PRODUCT_ID__CATEGORY",
+        {
+          "base-type": "type/Text",
+        },
+      ],
+    ],
+  };
+}
+
+// Q8 - Q4 + 2nd stage with join, custom column, 2 aggregations, 2 breakouts
+function createQ8Query(source: Card): StructuredQuery {
+  return {
+    ...createQ7Query(source),
+    aggregation: [
+      ["count"],
+      [
+        "sum",
+        [
+          "field",
+          REVIEWS.RATING,
+          {
+            "base-type": "type/Integer",
+            "join-alias": "Reviews - Created At: Month",
+          },
+        ],
+      ],
+    ],
   };
 }
 
