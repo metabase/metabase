@@ -211,7 +211,11 @@ export function coordinateFilterParts(
   }
 
   const [column, ...otherArgs] = args;
-  if (!isColumnMetadata(column) || !isCoordinate(column)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isNumeric(column) ||
+    !isCoordinate(column)
+  ) {
     return null;
   }
 
