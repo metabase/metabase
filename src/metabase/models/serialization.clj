@@ -1631,12 +1631,6 @@
   (constantly
    {:export u.date/format :import #(if (string? %) (u.date/parse %) %)}))
 
-(defn maybe
-  "Transform a value only if it is present"
-  [{export-fn :export import-fn :import}]
-  {:export #(when (some? %) (export-fn %))
-   :import #(when (some? %) (import-fn %))})
-
 (def kw "Transformer for keywordized values.
 
   Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
