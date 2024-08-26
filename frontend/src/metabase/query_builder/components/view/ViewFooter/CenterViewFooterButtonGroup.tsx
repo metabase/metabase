@@ -1,25 +1,25 @@
 import CS from "metabase/css/core/index.css";
-import type { QueryBuilderUIControls } from "metabase-types/store";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
+import { getQuestion, getUiControls } from "metabase/query_builder/selectors";
 
-import type { QuestionDisplayToggleProps } from "../QuestionDisplayToggle";
 import QuestionDisplayToggle from "../QuestionDisplayToggle";
 
-export type CenterViewFooterButtonGroupProps = {
-  setUIControls: (uiControls: Partial<QueryBuilderUIControls>) => void;
-} & Pick<QuestionDisplayToggleProps, "question" | "isShowingRawTable">;
-
-export const CenterViewFooterButtonGroup = ({
-  question,
-  isShowingRawTable,
-  setUIControls,
-}: CenterViewFooterButtonGroupProps) => (
-  <QuestionDisplayToggle
-    key="viz-table-toggle"
-    className={CS.mx1}
-    question={question}
-    isShowingRawTable={isShowingRawTable}
-    onToggleRawTable={isShowingRawTable => {
-      setUIControls({ isShowingRawTable });
-    }}
-  />
-);
+export const CenterViewFooterButtonGroup = () => {
+  const dispatch = useDispatch();
+  const question = useSelector(getQuestion);
+  const { isShowingRawTable } = useSelector(getUiControls);
+  return (
+    question && (
+      <QuestionDisplayToggle
+        key="viz-table-toggle"
+        className={CS.mx1}
+        question={question}
+        isShowingRawTable={isShowingRawTable}
+        onToggleRawTable={isShowingRawTable => {
+          dispatch(setUIControls({ isShowingRawTable }));
+        }}
+      />
+    )
+  );
+};
