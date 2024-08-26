@@ -355,7 +355,7 @@ describe("issue 12720, issue 47172", () => {
     );
     cy.findByTestId("question-row-count").should(
       "have.text",
-      "Showing 1980 rows",
+      "Showing 1,980 rows",
     );
   });
 });
