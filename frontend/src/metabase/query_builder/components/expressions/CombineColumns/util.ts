@@ -160,7 +160,7 @@ const getColumnExample = (
     return "2042-01-01";
   }
 
-  if (Lib.isDate(column)) {
+  if (Lib.isDateOrDateTime(column)) {
     return "2042-01-01 12:34:56.789";
   }
 

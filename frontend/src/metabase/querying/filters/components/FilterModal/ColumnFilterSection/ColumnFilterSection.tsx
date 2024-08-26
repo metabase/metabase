@@ -53,7 +53,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isTime(column)) {
     return TimeFilterEditor;
   }
-  if (Lib.isDate(column)) {
+  if (Lib.isDateOrDateTime(column)) {
     return DateFilterEditor;
   }
   if (Lib.isNumeric(column)) {
