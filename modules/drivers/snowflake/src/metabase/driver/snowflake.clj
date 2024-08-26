@@ -224,7 +224,7 @@
     :TIMESTAMP                  :type/DateTime
     ;; This is a weird one. A timestamp with local time zone, stored without time zone but treated as being in the
     ;; Session time zone for filtering purposes etc.
-    :TIMESTAMPLTZ               :type/DateTime
+    :TIMESTAMPLTZ               :type/DateTimeWithTZ
     ;; timestamp with no time zone
     :TIMESTAMPNTZ               :type/DateTime
     ;; timestamp with time zone normalized to UTC, similar to Postgres
@@ -476,7 +476,9 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :relative-datetime]
   [driver [_ amount unit]]
-  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
+  (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql
+   driver unit amount
+   sql.qp/*parent-honeysql-col-type-info*))
 
 (defmethod sql.qp/->honeysql [:snowflake LocalDate]
   [_driver t]
