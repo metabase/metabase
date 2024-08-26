@@ -88,7 +88,11 @@ const REVIEWS_DATE_COLUMNS = ["Created At"];
 const REVIEWS_TEXT_COLUMNS = ["Reviewer", "Body"];
 const REVIEWS_NUMBER_COLUMNS = ["Rating"];
 
-const NAMELESS_SECTION = ""; // https://github.com/metabase/metabase/issues/47218
+/**
+ * Empty section title element is rendered.
+ * See https://github.com/metabase/metabase/issues/47218
+ */
+const NAMELESS_SECTION = "";
 
 /**
  * Abbreviations used for card aliases in this test suite:
