@@ -9120,14 +9120,19 @@ databaseChangeLog:
       id: v51.2024-08-26T08:53:46
       author: crisptrutski
       comment: Add a status column to track the progress and outcome of query analysis
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_analysis
+              columnName: status
       changes:
         - addColumn:
+            tableName: query_analysis
             columns:
               - column:
                   name: status
                   type: ${text.type}
                   remarks: running, failed, or completed
-            tableName: query_analysis
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
