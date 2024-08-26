@@ -108,6 +108,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
     createBaseQuestions();
   });
 
+  // Sanity checks. If the base queries tests fail then something is very wrong.
   describe("base queries", () => {
     beforeEach(() => {
       cy.then(function () {
