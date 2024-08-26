@@ -107,9 +107,9 @@
                    (nqa/references-for-native query)
                    (catch Exception e
                      (log/debug e "Failed to analyze native query" query)))
-       ;; For now, all model references are resolved transitively to the ultimate field ids.
-       ;; We may want to change to record model references directly rather than resolving them.
-       ;; This would remove the need to invalidate consuming cards when a given model changes.
+     ;; For now, all model references are resolved transitively to the ultimate field ids.
+     ;; We may want to change to record model references directly rather than resolving them.
+     ;; This would remove the need to invalidate consuming cards when a given model changes.
      :query      (explicit-references (mbql.u/referenced-field-ids query))
      :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
 
