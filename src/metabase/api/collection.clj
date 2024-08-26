@@ -83,7 +83,7 @@
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -96,9 +96,12 @@
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
-                       (collection/visible-collection-ids->honeysql-filter-clause
+                       (collection/visible-collection-filter-clause
                         :id
-                        (collection/permissions-set->visible-collection-ids permissions-set))]
+                        {:include-archived-items (if archived
+                                                   :only
+                                                   :exclude)
+                         :permission-level :read})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case [:= :type nil] 0 :else 1]] :asc]
@@ -126,8 +129,7 @@
                         :exclude-other-user-collections exclude-other-user-collections
                         :namespace                      namespace
                         :shallow                        false
-                        :personal-only                  personal-only
-                        :permissions-set                @api/*current-user-permissions-set*}) collections
+                        :personal-only                  personal-only}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
     (if (or archived personal-only)
       collections
@@ -198,8 +200,7 @@
                                          :exclude-other-user-collections exclude-other-user-collections
                                          :namespace                      namespace
                                          :shallow                        shallow
-                                         :collection-id                  collection-id
-                                         :permissions-set                @api/*current-user-permissions-set*})]
+                                         :collection-id                  collection-id})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
@@ -407,6 +408,11 @@
                                    [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)})
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
                    (case card-type
@@ -506,6 +512,11 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)})
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]]}
       (sql.helpers/where (pinned-state->clause pinned-state))))
@@ -560,12 +571,8 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids
-                                @api/*current-user-permissions-set*)
-
-        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
-                                                                         :id
-                                                                         visible-collection-ids))
+  (let [visible-collection-ids (collection/visible-collection-ids {:include-archived-items :all})
+        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause :id))
 
         descendant-collection-ids (map u/the-id descendant-collections)
 
