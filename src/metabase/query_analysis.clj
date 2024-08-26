@@ -143,7 +143,7 @@
 
           (if-not success?
             (do
-              (log/errorf "Failed to analysis query for card %s" card-id)
+              (log/errorf "Failed to analyze query for card %s" card-id)
               (t2/update! :model/QueryAnalysis analysis-id {:status "failed"}))
             (do
               (t2/insert! :model/QueryField (map field->row (:fields references)))
