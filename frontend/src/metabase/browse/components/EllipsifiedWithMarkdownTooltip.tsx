@@ -14,7 +14,9 @@ export const EllipsifiedWithMarkdownTooltip = ({
         </Markdown>
       }
     >
-      {children}
+      <Markdown disallowHeading unstyleLinks lineClamp={1}>
+        {children}
+      </Markdown>
     </Ellipsified>
   );
 };
