@@ -60,8 +60,9 @@
 
 (def models-of-interest
   "These are models for which we will retrieve recency."
-  [:card :model ;; note: these are both stored in recent_views as "card", and a join with report_card is needed to
-                ;;       distinguish between them.
+  [:card :dataset :metric
+   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
+   ;; needed to distinguish between them.
    :dashboard :table :collection])
 
 (defn- ids-to-prune-for-user+model [user-id model]
@@ -263,7 +264,19 @@
      :moderated_status (:moderated-status dataset)
      :parent_collection (fill-parent-coll dataset)}))
 
-;; == Recent Dashboards ==
+(defmethod fill-recent-view-info :metric [{:keys [_model model_id timestamp model_object]}]
+  (when-let [metric (and
+                     (mi/can-read? model_object)
+                     (ellide-archived model_object))]
+    {:id model_id
+     :name (:name metric)
+     :description (:description metric)
+     :display (some-> metric :display name)
+     :model :metric
+     :can_write (mi/can-write? metric)
+     :timestamp (str timestamp)
+     :moderated_status (:moderated-status metric)
+     :parent_collection (fill-parent-coll metric)}))
 
 (defn- dashboard-recents
   "Query to select recent dashboard data"
