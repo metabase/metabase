@@ -65,7 +65,10 @@ export interface DatabaseData {
   id?: DatabaseId;
   name: string;
   engine: string | undefined;
-  details: Record<string, unknown>;
+  // If current user lacks write permission to database, `details` will be
+  // missing in responses from the backend, cf. implementation of
+  // [[metabase.models.interface/to-json]] for `:model/Database`:
+  details?: Record<string, unknown>;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;

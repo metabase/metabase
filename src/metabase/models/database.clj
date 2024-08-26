@@ -88,6 +88,8 @@
   (mi/superuser?))
 
 (defmethod mi/can-write? :model/Database
+  ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
+  ;; cf. the implementation of [[metabase.models.interface/to-json]] for `:model/Database`.
   ([instance]
    (mi/can-write? :model/Database (u/the-id instance)))
   ([_model pk]
