@@ -1,6 +1,6 @@
 import {
-  partialMatch,
   enclosingFunction,
+  partialMatch,
 } from "metabase-lib/v1/expressions/completer";
 
 describe("metabase-lib/v1/expressions/completer", () => {

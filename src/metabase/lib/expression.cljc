@@ -235,10 +235,10 @@
          (throw (ex-info "Expression name conflicts with a column in the same query stage"
                          {:expression-name expression-name})))
      (lib.util/update-query-stage
-       query stage-number
-       add-expression-to-stage
-       (lib.util/top-level-expression-clause expressionable expression-name)
-       options))))
+      query stage-number
+      add-expression-to-stage
+      (lib.util/top-level-expression-clause expressionable expression-name)
+      options))))
 
 (lib.common/defop + [x y & more])
 (lib.common/defop - [x y & more])
@@ -297,6 +297,13 @@
    expression-definition :- ::lib.schema.expression/expression]
   (let [expression-name (lib.util/expression-name expression-definition)]
     (-> (lib.metadata.calculation/metadata query stage-number expression-definition)
+        ;; We strip any properties a general expression cannot have, e.g. `:id` and
+        ;; `:join-alias`. Keeping all properties a field can have would make it difficult
+        ;; to distinguish the field column from an expression aliasing that field down the
+        ;; line. It also doesn't make sense to keep the ID and the join alias, as they are
+        ;; not the properties of the expression.
+        (select-keys [:base-type :effective-type :lib/desired-column-alias
+                      :lib/source-column-alias :lib/source-uuid :lib/type])
         (assoc :lib/source   :source/expressions
                :name         expression-name
                :display-name expression-name))))

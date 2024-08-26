@@ -3,6 +3,14 @@ import type { MantineThemeOverride } from "@mantine/core";
 export const getActionIconOverrides =
   (): MantineThemeOverride["components"] => ({
     ActionIcon: {
+      styles: () => ({
+        root: {
+          "&[data-disabled]": {
+            color: "var(--mb-color-text-light)",
+            pointerEvents: "all",
+          },
+        },
+      }),
       variants: {
         // Default variant is "subtle"
         subtle: () => ({
@@ -37,6 +45,18 @@ export const getActionIconOverrides =
               color: theme.fn.themeColor("brand"),
               backgroundColor: theme.fn.themeColor("bg-medium"),
               border: "1px solid transparent",
+            },
+            "&:disabled, &[data-disabled]": {
+              color: theme.fn.themeColor("text-light"),
+              backgroundColor: "transparent",
+            },
+          },
+        }),
+        viewFooter: theme => ({
+          root: {
+            color: theme.fn.themeColor("text-medium"),
+            "&:hover": {
+              color: theme.fn.themeColor("brand"),
             },
             "&:disabled, &[data-disabled]": {
               color: theme.fn.themeColor("text-light"),

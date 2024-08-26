@@ -21,10 +21,10 @@ import {
   AdminLogoContainer,
   AdminLogoLink,
   AdminLogoText,
+  AdminMobileNavBarItems,
+  AdminMobileNavbar,
   AdminNavbarItems,
   AdminNavbarRoot,
-  AdminMobileNavbar,
-  AdminMobileNavBarItems,
   MobileHide,
 } from "./AdminNavbar.styled";
 
@@ -56,7 +56,7 @@ export const AdminNavbar = ({
       <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
 
       <MobileHide>
-        <AdminNavbarItems>
+        <AdminNavbarItems data-testid="admin-navbar-items">
           {adminPaths.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}

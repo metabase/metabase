@@ -1,6 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import PropTypes from "prop-types";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 
 import ConfirmContent from "metabase/components/ConfirmContent";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";

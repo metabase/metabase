@@ -1,9 +1,9 @@
 import { c } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { Flex, FixedSizeIcon, Tooltip, type FlexProps } from "metabase/ui";
+import { FixedSizeIcon, Flex, type FlexProps, Tooltip } from "metabase/ui";
 
-import { getTimePassedSince, getAbbreviatedRelativeTimeStrings } from "./utils";
+import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";
 
 export const QuestionLastUpdated = ({
   result,

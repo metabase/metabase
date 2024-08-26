@@ -22,7 +22,7 @@
     }
    }")
 
-(defmacro ^:private with-test-js-engine
+(defmacro ^:private with-test-js-engine!
   "Setup a javascript engine with a stubbed script useful making sure `get-background-color` works independently from
   the real color picking script"
   [script & body]
@@ -33,7 +33,7 @@
 
 (deftest color-test
   (testing "The test script above should return red on even rows, green on odd rows"
-    (with-test-js-engine test-script
+    (with-test-js-engine! test-script
       (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
                                                        :rows [[1] [2] [3] [4]]}
                                                       {"even" red, "odd" green})]
@@ -44,7 +44,7 @@
 (deftest convert-keywords-test
   (testing (str "Same test as above, but make sure we convert any keywords as keywords don't get converted to "
                 "strings automatically when passed to a JavaScript function")
-    (with-test-js-engine test-script
+    (with-test-js-engine! test-script
       (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
                                                        :rows [[1] [2] [3] [4]]}
                                                       {:even red, :odd  green})]
@@ -59,10 +59,10 @@
                (fn []
                  (color/get-background-color (color/make-color-selector {:cols [{:name "test"}]
                                                                          :rows [[5] [5]]}
-                                                                        {:table.column_formatting[{:columns ["test"],
-                                                                                                   :type :single,
-                                                                                                   :operator "=",
-                                                                                                   :value 5,
-                                                                                                   :color "#ff0000",
-                                                                                                   :highlight_row true}]})
+                                                                        {:table.column_formatting [{:columns ["test"],
+                                                                                                    :type :single,
+                                                                                                    :operator "=",
+                                                                                                    :value 5,
+                                                                                                    :color "#ff0000",
+                                                                                                    :highlight_row true}]})
                                              "any value" "test" 1))))))

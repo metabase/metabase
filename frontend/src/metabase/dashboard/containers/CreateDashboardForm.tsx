@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 import * as Yup from "yup";
@@ -104,6 +103,7 @@ function CreateDashboardForm({
   return (
     <FormProvider
       initialValues={computedInitialValues}
+      enableReinitialize
       validationSchema={DASHBOARD_SCHEMA}
       onSubmit={handleCreate}
     >
@@ -140,6 +140,5 @@ function CreateDashboardForm({
 }
 
 export const CreateDashboardFormConnected = _.compose(
-  withRouter,
   connect(mapStateToProps, mapDispatchToProps),
 )(CreateDashboardForm);

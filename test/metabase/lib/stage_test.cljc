@@ -1,5 +1,6 @@
 (ns metabase.lib.stage-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [malli.core :as mc]
    [metabase.lib.core :as lib]
@@ -7,8 +8,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.stage :as lib.stage]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-util :as lib.tu]))
 
 #?(:cljs
    (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))

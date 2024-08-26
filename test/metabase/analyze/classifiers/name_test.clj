@@ -5,7 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.table :as table :refer [Table]]))
 
-(deftest ^:paralell semantic-type-for-name-and-base-type-test
+(deftest ^:parallel semantic-type-for-name-and-base-type-test
   (doseq [[input expected] {["id"      :type/Integer] :type/PK
                             ;; other pattern matches based on type/regex (remember, base_type matters in matching!)
                             ["rating"        :type/Integer] :type/Score
@@ -60,7 +60,7 @@
 (deftest ^:parallel infer-semantic-type-test
   (let [infer (fn infer [column-name & [base-type]]
                 (classifiers.name/infer-semantic-type-by-name
-                  {:name column-name, :base_type (or base-type :type/Text)}))]
+                 {:name column-name, :base_type (or base-type :type/Text)}))]
     (testing "standard checks"
       ;; not exhausting but a place for edge cases in the future
       (are [expected info] (= expected (apply infer info))

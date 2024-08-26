@@ -228,7 +228,7 @@
             (let [truncated (lib.util/truncate-alias s max-bytes)]
               (is (<= (u/string-byte-count truncated) max-bytes))
               truncated))]
-    (doseq [[s max-bytes->expected] { ;; 20-character plain ASCII string
+    (doseq [[s max-bytes->expected] {;; 20-character plain ASCII string
                                      "01234567890123456789"
                                      {12 "012_fc89bad5"
                                       15 "012345_fc89bad5"

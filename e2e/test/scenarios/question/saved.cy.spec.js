@@ -4,22 +4,23 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addSummaryGroupingField,
-  restore,
-  popover,
-  modal,
-  openOrdersTable,
-  summarize,
-  visitQuestion,
-  openQuestionActions,
-  questionInfoButton,
-  rightSidebar,
   appBar,
-  queryBuilderHeader,
-  openNotebook,
-  selectFilterOperator,
-  entityPickerModal,
   collectionOnTheGoModal,
+  entityPickerModal,
+  entityPickerModalTab,
+  modal,
+  openNotebook,
+  openOrdersTable,
+  openQuestionActions,
+  popover,
+  queryBuilderHeader,
+  questionInfoButton,
+  restore,
+  rightSidebar,
+  selectFilterOperator,
+  summarize,
   tableHeaderClick,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -245,40 +246,44 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
-    cy.signIn("readonly");
-    visitQuestion(ORDERS_QUESTION_ID);
+  it(
+    "'read-only' user should be able to resize column width (metabase#9772)",
+    { tags: "@flaky" },
+    () => {
+      cy.signIn("readonly");
+      visitQuestion(ORDERS_QUESTION_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax")
-      .closest(".test-TableInteractive-headerCellData")
-      .as("headerCell")
-      .then($cell => {
-        const originalWidth = $cell[0].getBoundingClientRect().width;
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Tax")
+        .closest(".test-TableInteractive-headerCellData")
+        .as("headerCell")
+        .then($cell => {
+          const originalWidth = $cell[0].getBoundingClientRect().width;
 
-        // Retries the assertion a few times to ensure it waits for DOM changes
-        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
-        function assertColumnResized(attempt = 0) {
-          cy.get("@headerCell").then($newCell => {
-            const newWidth = $newCell[0].getBoundingClientRect().width;
-            if (newWidth === originalWidth && attempt < 3) {
-              cy.wait(100);
-              assertColumnResized(++attempt);
-            } else {
-              expect(newWidth).to.be.gt(originalWidth);
-            }
-          });
-        }
+          // Retries the assertion a few times to ensure it waits for DOM changes
+          // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
+          function assertColumnResized(attempt = 0) {
+            cy.get("@headerCell").then($newCell => {
+              const newWidth = $newCell[0].getBoundingClientRect().width;
+              if (newWidth === originalWidth && attempt < 3) {
+                cy.wait(100);
+                assertColumnResized(++attempt);
+              } else {
+                expect(newWidth).to.be.gt(originalWidth);
+              }
+            });
+          }
 
-        cy.wrap($cell)
-          .find(".react-draggable")
-          .trigger("mousedown", 0, 0, { force: true })
-          .trigger("mousemove", 100, 0, { force: true })
-          .trigger("mouseup", 100, 0, { force: true });
+          cy.wrap($cell)
+            .find(".react-draggable")
+            .trigger("mousedown", 0, 0, { force: true })
+            .trigger("mousemove", 100, 0, { force: true })
+            .trigger("mouseup", 100, 0, { force: true });
 
-        assertColumnResized();
-      });
-  });
+          assertColumnResized();
+        });
+    },
+  );
 
   it("should always be possible to view the full title text of the saved question", () => {
     visitQuestion(ORDERS_QUESTION_ID);
@@ -294,6 +299,30 @@ describe("scenarios > question > saved", () => {
       // scrollHeight: height of the text content, including content not visible on the screen
       const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
       expect(heightDifference).to.eq(0);
+    });
+  });
+
+  it("should not show '- Modified' suffix after we click 'Save' on a new model (metabase#42773)", () => {
+    cy.log("Use UI to create a model based on the Products table");
+    cy.visit("/model/new");
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Products").click();
+    });
+
+    cy.findByTestId("dataset-edit-bar").button("Save").click();
+
+    cy.findByTestId("save-question-modal").within(() => {
+      cy.button("Save").click();
+      cy.wait("@cardCreate");
+      // It is important to have extremely short timeout in order to catch the issue
+      cy.findByDisplayValue("Products - Modified", { timeout: 10 }).should(
+        "not.exist",
+      );
     });
   });
 });

@@ -7,8 +7,8 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import {
-  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
+  PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";

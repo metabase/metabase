@@ -8,9 +8,9 @@ import { Icon } from "metabase/ui";
 import type { FieldType, FieldValueOptions } from "metabase-types/api";
 
 import {
-  OptionEditorContainer,
   AddMorePrompt,
   ErrorMessage,
+  OptionEditorContainer,
   TextArea,
 } from "./OptionEditor.styled";
 

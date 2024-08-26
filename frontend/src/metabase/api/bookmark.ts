@@ -7,10 +7,10 @@ import type {
 
 import { Api } from "./api";
 import {
-  provideBookmarkListTags,
   idTag,
   invalidateTags,
   listTag,
+  provideBookmarkListTags,
 } from "./tags";
 
 export const bookmarkApi = Api.injectEndpoints({

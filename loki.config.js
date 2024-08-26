@@ -6,6 +6,7 @@ module.exports = {
     "^visualizations/shared",
     "^embed",
     "^design system",
+    "^Inputs/DatePicker Dates range",
   ].join("|"),
   configurations: {
     "chrome.laptop": {

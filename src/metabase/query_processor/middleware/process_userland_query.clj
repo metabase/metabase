@@ -18,7 +18,7 @@
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -104,7 +104,6 @@
     (save-execution-metadata! (assoc query-execution :error (str message)) nil)
     (catch Throwable e
       (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

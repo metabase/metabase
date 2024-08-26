@@ -38,9 +38,8 @@
     (testing "Invalid Setting (does not exist) should log a warning and continue."
       (binding [advanced-config.file/*config* {:version 1
                                                :config  {:settings {:config-from-file-settings-test-setting-FAKE 1000}}}]
-
-        (let [log-messages (mt/with-log-messages-for-level [metabase-enterprise.advanced-config.file.settings :warn]
-                             (is (= :ok
-                                    (advanced-config.file/initialize!))))]
-          (is (= [[:warn nil (u/colorize :yellow "Ignoring unknown setting in config: config-from-file-settings-test-setting-FAKE.")]]
-                 log-messages)))))))
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.settings :warn]]
+          (is (= :ok
+                 (advanced-config.file/initialize!)))
+          (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown setting in config: config-from-file-settings-test-setting-FAKE.")}]
+                  (messages))))))))

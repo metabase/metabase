@@ -28,7 +28,7 @@
     (assert (#{:oss :ee} edition))
     (u/step (format "Building all drivers in parallel (%s edition)" (pr-str edition))
       (doall  ; Force evaluation of pmap
-        (pmap #(build-driver/build-driver! % edition) (all-drivers)))
+       (pmap #(build-driver/build-driver! % edition) (all-drivers)))
       (u/announce "Successfully built all drivers."))))
 
 (defn build-drivers

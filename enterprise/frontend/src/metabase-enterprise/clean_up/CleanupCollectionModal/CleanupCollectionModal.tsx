@@ -24,8 +24,8 @@ import {
   type DateFilter,
   getDateFilterLabel,
   getDateFilterValue,
-  itemKeyFn,
   getModalHeightCalc,
+  itemKeyFn,
 } from "./utils";
 
 interface CleanupCollectionModalProps {

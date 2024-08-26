@@ -1,4 +1,4 @@
-import { assoc, dissoc, assocIn, updateIn, chain, merge } from "icepick";
+import { assoc, assocIn, chain, dissoc, merge, updateIn } from "icepick";
 import produce from "immer";
 import reduceReducers from "reduce-reducers";
 import _ from "underscore";
@@ -7,37 +7,37 @@ import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import Revisions from "metabase/entities/revisions";
-import { handleActions, combineReducers } from "metabase/lib/redux";
+import { combineReducers, handleActions } from "metabase/lib/redux";
 
 import {
-  INITIALIZE,
-  SET_DASHBOARD_ATTRIBUTES,
   ADD_CARD_TO_DASH,
   ADD_MANY_CARDS_TO_DASH,
+  CANCEL_FETCH_CARD_DATA,
+  CLEAR_CARD_DATA,
   CREATE_PUBLIC_LINK,
   DELETE_PUBLIC_LINK,
-  UPDATE_EMBEDDING_PARAMS,
-  UPDATE_ENABLE_EMBEDDING,
+  FETCH_CARD_DATA,
+  FETCH_CARD_DATA_PENDING,
+  FETCH_DASHBOARD_CARD_DATA,
+  INITIALIZE,
+  MARK_NEW_CARD_SEEN,
+  REMOVE_CARD_FROM_DASH,
+  REMOVE_PARAMETER,
+  REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
+  RESET,
+  RESET_PARAMETERS,
+  SET_DASHBOARD_ATTRIBUTES,
   SET_DASHCARD_ATTRIBUTES,
   SET_MULTIPLE_DASHCARD_ATTRIBUTES,
+  SET_PARAMETER_VALUE,
+  SET_PARAMETER_VALUES,
+  UNDO_REMOVE_CARD_FROM_DASH,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS_FOR_COLUMN,
-  REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
-  REMOVE_CARD_FROM_DASH,
-  MARK_NEW_CARD_SEEN,
-  REMOVE_PARAMETER,
-  FETCH_CARD_DATA,
-  CLEAR_CARD_DATA,
-  SET_PARAMETER_VALUE,
-  FETCH_DASHBOARD_CARD_DATA,
-  CANCEL_FETCH_CARD_DATA,
-  RESET,
-  SET_PARAMETER_VALUES,
-  RESET_PARAMETERS,
-  UNDO_REMOVE_CARD_FROM_DASH,
-  tabsReducer,
-  FETCH_CARD_DATA_PENDING,
+  UPDATE_EMBEDDING_PARAMS,
+  UPDATE_ENABLE_EMBEDDING,
   fetchDashboard,
+  tabsReducer,
 } from "./actions";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import * as typedReducers from "./reducers-typed";

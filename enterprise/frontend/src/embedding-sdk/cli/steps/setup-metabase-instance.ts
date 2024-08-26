@@ -4,19 +4,14 @@ import toggle from "inquirer-toggle";
 import ora from "ora";
 import { promisify } from "util";
 
-import type { CliOutput, CliStepMethod } from "embedding-sdk/cli/types/cli";
-import {
-  OUTPUT_STYLES,
-  printEmptyLines,
-  printInfo,
-} from "embedding-sdk/cli/utils/print";
-
 import { CONTAINER_NAME, SITE_NAME } from "../constants/config";
 import { EMBEDDING_DEMO_SETUP_TOKEN } from "../constants/env";
 import {
   EMBEDDING_FAILED_MESSAGE,
   INSTANCE_CONFIGURED_MESSAGE,
 } from "../constants/messages";
+import type { CliOutput, CliStepMethod } from "../types/cli";
+import { OUTPUT_STYLES, printEmptyLines } from "../utils/print";
 import { retry } from "../utils/retry";
 
 const exec = promisify(execCallback);
@@ -38,10 +33,9 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
   // If the instance we are configuring is not clean,
   // therefore we cannot ensure the setup steps are performed.
   const onInstanceConfigured = async (): Promise<CliOutput> => {
-    spinner.fail();
     printEmptyLines();
-    printInfo(
-      "The instance is already configured. Do you want to delete the container and start over?",
+    console.log(
+      "  The instance is already configured. Delete the container and start over?",
     );
     const shouldRestartSetup = await toggle({
       message: `${OUTPUT_STYLES.error("WARNING: This will delete all data.")}`,
@@ -87,13 +81,14 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
             },
           }),
           headers: { "content-type": "application/json" },
-          signal: AbortSignal.timeout(2500),
+          signal: AbortSignal.timeout(15_000),
         }),
-      { retries: 20, delay: 1000 },
+      { retries: 5, delay: 1000 },
     );
 
     if (!res.ok) {
       const errorMessage = await res.text();
+      spinner.fail();
 
       // Error message: The /api/setup route can only be used to create the first user, however a user currently exists.
       if (errorMessage.includes("a user currently exists")) {
@@ -162,6 +157,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
 
     if (!res.ok) {
       const errorMessage = await res.text();
+      spinner.fail();
 
       if (errorMessage.includes("Unauthenticated")) {
         return onInstanceConfigured();

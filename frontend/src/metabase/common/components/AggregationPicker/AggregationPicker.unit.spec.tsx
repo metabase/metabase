@@ -18,6 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   ORDERS,
+  PRODUCTS,
   SAMPLE_DB_ID,
   createOrdersTable,
   createPeopleTable,
@@ -104,6 +105,41 @@ function createQueryWithInlineExpressionWithOperator() {
   });
 }
 
+function createQueryWithDateExpressionAndAggregation() {
+  return createQuery({
+    query: {
+      database: SAMPLE_DB_ID,
+      type: "query",
+      query: {
+        expressions: {
+          "Created At plus one month": [
+            "datetime-add",
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              {
+                "base-type": "type/DateTime",
+              },
+            ],
+            1,
+            "month",
+          ],
+        },
+        aggregation: [["count"]],
+        breakout: [
+          [
+            "expression",
+            "Created At plus one month",
+            {
+              "base-type": "type/DateTime",
+            },
+          ],
+        ],
+      },
+    },
+  });
+}
+
 function createMetadata({
   hasExpressionSupport = true,
 }: { hasExpressionSupport?: boolean } = {}) {
@@ -152,8 +188,7 @@ function setup({
     ? Lib.selectedAggregationOperators(baseOperators, clause)
     : baseOperators;
 
-  const onSelect = jest.fn();
-  const onAdd = jest.fn();
+  const onQueryChange = jest.fn();
 
   renderWithProviders(
     <AggregationPicker
@@ -162,20 +197,23 @@ function setup({
       stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
-      onAdd={onAdd}
-      onSelect={onSelect}
+      onQueryChange={onQueryChange}
     />,
     { storeInitialState: state },
   );
 
-  function getRecentClause(): Lib.Clause {
-    expect(onSelect).toHaveBeenCalledWith(expect.anything());
-    const [clause] = onSelect.mock.lastCall;
-    return clause;
+  function getRecentClause(index: number = -1): Lib.Clause | undefined {
+    expect(onQueryChange).toHaveBeenCalledWith(expect.anything());
+    const [query] = onQueryChange.mock.lastCall;
+    return Lib.aggregations(query, stageIndex).at(index);
   }
 
-  function getRecentClauseInfo() {
-    return Lib.displayInfo(query, stageIndex, getRecentClause());
+  function getRecentClauseInfo(index: number = -1) {
+    const clause = getRecentClause(index);
+    if (clause) {
+      return Lib.displayInfo(query, stageIndex, clause);
+    }
+    return null;
   }
 
   return {
@@ -183,8 +221,7 @@ function setup({
     query,
     stageIndex,
     getRecentClauseInfo,
-    onAdd,
-    onSelect,
+    onQueryChange,
   };
 }
 
@@ -207,6 +244,30 @@ describe("AggregationPicker", () => {
         "Maximum of ...",
       ].forEach(name => {
         expect(screen.getByRole("option", { name })).toBeInTheDocument();
+      });
+    });
+
+    it("should have a working global search", async () => {
+      setup();
+
+      expect(screen.getByPlaceholderText("Find...")).toBeInTheDocument();
+
+      await userEvent.type(screen.getByPlaceholderText("Find..."), "Count");
+
+      ["Count of rows", "Cumulative count of rows"].forEach(name => {
+        expect(screen.getByRole("option", { name })).toBeInTheDocument();
+      });
+
+      [
+        "Sum of ...",
+        "Average of ...",
+        "Number of distinct values of ...",
+        "Cumulative sum of ...",
+        "Standard deviation of ...",
+        "Minimum of ...",
+        "Maximum of ...",
+      ].forEach(name => {
+        expect(screen.queryByRole("option", { name })).not.toBeInTheDocument();
       });
     });
 
@@ -320,7 +381,7 @@ describe("AggregationPicker", () => {
       await userEvent.type(screen.getByLabelText("Expression"), expression);
       await userEvent.type(screen.getByLabelText("Name"), expressionName);
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
-      expect(getRecentClauseInfo().displayName).toBe(expressionName);
+      expect(getRecentClauseInfo()?.displayName).toBe(expressionName);
     });
 
     it("should open the editor when a named expression without operator is used", async () => {
@@ -382,6 +443,13 @@ describe("AggregationPicker", () => {
       expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
     });
 
+    it("does not display the shortcut if there are no possible breakouts to use", () => {
+      setup({
+        query: createQueryWithDateExpressionAndAggregation(),
+      });
+      expect(screen.queryByText(/compare/i)).not.toBeInTheDocument();
+    });
+
     it("displays the shortcut with correct label if there is 1 aggregation", () => {
       setup({ query: createQueryWithCountAggregation() });
       expect(screen.getByText("Compare to the past")).toBeInTheDocument();
@@ -392,22 +460,15 @@ describe("AggregationPicker", () => {
       expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
-    it("calls 'onAdd' on submit", async () => {
-      const { onAdd } = setup({ query: createQueryWithCountAggregation() });
+    it("calls 'onQueryChange' on submit", async () => {
+      const { onQueryChange } = setup({
+        query: createQueryWithCountAggregation(),
+      });
 
       await userEvent.click(screen.getByText("Compare to the past"));
       await userEvent.click(screen.getByText("Done"));
 
-      expect(onAdd).toHaveBeenCalled();
-    });
-
-    it("does not call 'onSelect' on submit", async () => {
-      const { onSelect } = setup({ query: createQueryWithCountAggregation() });
-
-      await userEvent.click(screen.getByText("Compare to the past"));
-      await userEvent.click(screen.getByText("Done"));
-
-      expect(onSelect).not.toHaveBeenCalled();
+      expect(onQueryChange).toHaveBeenCalled();
     });
   });
 });

@@ -8,6 +8,10 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS,
+  SAMPLE_DB_ID,
   createOrdersCreatedAtField,
   createOrdersIdField,
   createOrdersProductIdField,
@@ -19,10 +23,6 @@ import {
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
-  ORDERS,
-  ORDERS_ID,
-  PRODUCTS,
-  SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 
 const ANOTHER_DB_ID = SAMPLE_DB_ID + 1;

@@ -125,8 +125,7 @@
       (is (false? (public-settings/enable-nested-queries))))
     (qp.store/with-metadata-provider mock-metadata-provider
 
-
-      ;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
+;; resolve-source-cards doesn't respect [[mt/with-temp-env-var-value!]], so set it inside the thunk:
       (is (thrown-with-msg? Exception
                             #"Nested queries are disabled"
                             (resolve-source-cards
@@ -219,10 +218,10 @@
   tests the actual contents of the metadata."
   [results]
   (letfn [(clean [sm] (map #(select-keys % [:field_ref]) sm))]
-   (update-in results [:query :joins]
-              (fn [joins]
-                (map (fn [join] (update join :source-metadata clean))
-                     joins)))))
+    (update-in results [:query :joins]
+               (fn [joins]
+                 (map (fn [join] (update join :source-metadata clean))
+                      joins)))))
 
 (def ^:private joins-metadata
   [{:name         "ID"
@@ -378,6 +377,9 @@
                        :qp/source-card-id 1)
                 (resolve-source-cards query)))))))
 
+;;; this is a proof-of-concept to make sure this stuff works for non-SQL drivers, that's why we're hardcoding `:mongo`
+;;; below.
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel card-id->source-query-and-metadata-test
   (testing "card-id->source-query-and-metadata-test should preserve non-SQL native queries"
     (let [query {:type     :native
@@ -404,6 +406,9 @@
                  :info              {:card-id 1}}
                 (resolve-source-cards (lib/query (qp.store/metadata-provider) (lib.metadata/card (qp.store/metadata-provider) 1)))))))))
 
+;;; this is a proof-of-concept to make sure this stuff works for non-SQL drivers, that's why we're hardcoding `:mongo`
+;;; below.
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel card-id->source-query-and-metadata-test-2
   (testing "card-id->source-query-and-metadata-test should preserve mongodb native queries in string format (#30112)"
     (let [query-str (str "[{\"$project\":\n"

@@ -8,18 +8,17 @@ import _ from "underscore";
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
-  getVisualizationTransformed,
   extractRemappings,
+  getVisualizationTransformed,
 } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { updateSeriesColor } from "metabase/visualizations/lib/series";
 import {
-  updateSettings,
   getClickBehaviorSettings,
   getComputedSettings,
   getSettingsWidgets,
+  updateSettings,
 } from "metabase/visualizations/lib/settings";
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
@@ -27,14 +26,14 @@ import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/setting
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
-  SectionContainer,
-  SectionWarnings,
-  ChartSettingsRoot,
+  ChartSettingsFooterRoot,
+  ChartSettingsListContainer,
   ChartSettingsMenu,
   ChartSettingsPreview,
-  ChartSettingsListContainer,
+  ChartSettingsRoot,
   ChartSettingsVisualizationContainer,
-  ChartSettingsFooterRoot,
+  SectionContainer,
+  SectionWarnings,
 } from "./ChartSettings.styled";
 import ChartSettingsWidgetList from "./ChartSettingsWidgetList";
 import ChartSettingsWidgetPopover from "./ChartSettingsWidgetPopover";
@@ -115,8 +114,6 @@ class ChartSettings extends Component {
   };
 
   handleResetSettings = () => {
-    MetabaseAnalytics.trackStructEvent("Chart Settings", "Reset Settings");
-
     const originalCardSettings =
       this.props.dashcard.card.visualization_settings;
     const clickBehaviorSettings = getClickBehaviorSettings(this._getSettings());

@@ -24,20 +24,20 @@
    string?
    (mu/with-api-error-message
     [:fn #(actions/apply-json-query {} %)]
-     (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
+    (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
   (mu/with-api-error-message
-    [:enum "http" "query" "implicit"]
-    (deferred-tru "Unsupported action type")))
+   [:enum "http" "query" "implicit"]
+   (deferred-tru "Unsupported action type")))
 
 (def ^:private implicit-action-kind
   (mu/with-api-error-message
-    (into [:enum]
-          (for [ns ["row" "bulk"]
-                action ["create" "update" "delete"]]
-            (str ns "/" action)))
-    (deferred-tru "Unsupported implicit action kind")))
+   (into [:enum]
+         (for [ns ["row" "bulk"]
+               action ["create" "update" "delete"]]
+           (str ns "/" action)))
+   (deferred-tru "Unsupported implicit action kind")))
 
 (def ^:private http-action-template
   [:map {:closed true}
@@ -56,9 +56,9 @@
   (letfn [(actions-for [models]
             (if (seq models)
               (t2/hydrate (action/select-actions models
-                                              :model_id [:in (map :id models)]
-                                              :archived false)
-                       :creator)
+                                                 :model_id [:in (map :id models)]
+                                                 :archived false)
+                          :creator)
               []))]
     ;; We don't check the permissions on the actions, we assume they are readable if the model is readable.
     (let [models (if model-id

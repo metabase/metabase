@@ -4,9 +4,9 @@ import { DEFAULT_FONT } from "embedding-sdk/config";
 import type { MantineThemeOverride } from "metabase/ui";
 
 import type {
-  MetabaseTheme,
   MetabaseColor,
   MetabaseComponentTheme,
+  MetabaseTheme,
 } from "../../types/theme";
 
 import { colorTuple } from "./color-tuple";

@@ -3,8 +3,8 @@ import type { Query } from "history";
 import { denormalize, normalize, schema } from "normalizr";
 
 import {
-  getDashboardById,
   getDashCardById,
+  getDashboardById,
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import {

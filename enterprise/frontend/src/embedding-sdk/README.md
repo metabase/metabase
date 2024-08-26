@@ -25,11 +25,12 @@ Features currently supported:
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
+- editing dashboards - requires upgrade to metabase v50
+- creating dashboards
 
 Features not yet supported:
 
 - letting users create new questions from scratch
-- creating and editing dashboards
 
 # Changelog
 
@@ -44,6 +45,17 @@ Features not yet supported:
   supported versions at this time.
 
 # Getting started
+
+## Quickstart
+
+Run `npx @metabase/embedding-sdk-react start` in your React project to get started.
+
+This will start a local Metabase instance with Docker and generate sample dashboard components from your data. First run of this command will take 1 - 2 minutes to install the dependencies.
+
+Prerequisites:
+
+- [Node.js 18.x LTS](https://nodejs.org/en) or higher
+- [Docker](https://docker.com)
 
 ## Start Metabase
 
@@ -97,11 +109,11 @@ const metabaseConfig = {
 ### JWT Authentication
 
 1. Go to Admin settings > Authentication > JWT
-    1. Set JWT Identity Provider URI to your JWT endpoint
-    1. Generate JWT signing key and take note of this value. You will need it later.
+   1. Set JWT Identity Provider URI to your JWT endpoint
+   1. Generate JWT signing key and take note of this value. You will need it later.
 1. Go to Admin settings > Embedding
-    1. Enable embedding if not already enabled
-    1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
+   1. Enable embedding if not already enabled
+   1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
 
 ## Authenticate users from your back-end
 
@@ -235,7 +247,7 @@ const theme = {
 
 export default function App() {
   return (
-    <MetabaseProvider config={config} theme={theme}>
+    <MetabaseProvider config={config} theme={theme} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );
@@ -272,7 +284,7 @@ the [SQL parameters](https://www.metabase.com/docs/v0.50/questions/native-editor
 documentation for more information.
 
 ```jsx
-<StaticQuestion questionId={questionId} parameterValues={{product_id: 50}} />
+<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
 ```
 
 ### Embedding an interactive question (with drill-down)
@@ -352,7 +364,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (i.e. `<InteractiveQuestion.ComponentName />`)
 
 | Component               | Info                                                                                                                         |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -432,7 +444,7 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 - **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question
   level.
 - **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
-  drill-down menu. [See this](#implementing-custom-actions) for more details
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
 - **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all
   visible cards and their content.
 - **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
@@ -454,16 +466,132 @@ export default function App() {
 
   return (
     <MetabaseProvider config={config}>
-        <InteractiveDashboard
-          dashboardId={dashboardId}
-          initialParameterValues={initialParameterValues}
-          withTitle={false}
-          withDownloads={false}
-          hiddenParameters={hideParameters}
-        />
+      <InteractiveDashboard
+        dashboardId={dashboardId}
+        initialParameterValues={initialParameterValues}
+        withTitle={false}
+        withDownloads={false}
+        hiddenParameters={hideParameters}
+      />
     </MetabaseProvider>
   );
 }
+```
+
+### Creating a Question
+
+With the `CreateQuestion` component, you can create a new question from scratch using the Metabase Notebook Editor.
+
+#### Parameters
+
+- **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
+
+```tsx
+import React from "react";
+import { MetabaseProvider, CreateQuestion } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  return (
+    <MetabaseProvider config={config}>
+      <CreateQuestion />
+    </MetabaseProvider>
+  );
+}
+
+```
+
+### Modifying a Question
+
+With the `ModifyQuestion` component, you can edit an existing question using the Metabase Notebook Editor.
+
+#### Parameters
+- **questionId**: `number` (required) – The ID of the question you want to modify.
+- **plugins**: `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
+
+```tsx
+import React from "react";
+import { MetabaseProvider, ModifyQuestion } from "@metabase/embedding-sdk-react";
+
+const config = {...}
+
+export default function App() {
+  return (
+    <MetabaseProvider config={config}>
+      <ModifyQuestion questionId={1} />
+    </MetabaseProvider>
+  );
+}
+
+```
+
+
+### Editing dashboards
+
+Dashboards that support editing if a user has permissions for this, could be embedded using `EditableDashboard` component.
+
+#### Parameters
+
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard
+  link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single
+  option, use a `string` value, and use a list of strings for multiple options.
+- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question
+  level.
+- **plugins** `{ dashcardMenu?: Object, mapQuestionClickActions?: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all
+  visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
+  but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
+  loaded.
+
+### Creating Dashboards
+
+Creating dashboard could be done with `useCreateDashboardApi` hook or `CreateDashboardModal` component.
+
+#### Hook
+
+Supported parameters:
+
+- **name**: `string` (required) - dashboard title
+- **description**: `string | null` - optional dashboard description
+- **collectionId**: `number | 'root' | 'personal' | null` - collection where to create a new dashboard. You can use predefined system values like `root` or `personal`.
+
+```typescript jsx
+const { createDashboard } = useCreateDashboardApi();
+
+const handleDashboardCreate = async () => {
+    const dashboard = await createDashboard(props);
+
+    // do something with created empty dashboard, e.g. use it in EditableDashboard component
+};
+
+return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>
+```
+
+#### Component
+
+Supported props:
+
+- **collectionId?** : `number | 'root' | 'personal' | null` - initial collection field value. You can use predefined system values like `root` or `personal`.
+- **onCreate**: `(dashboard: Dashboard) => void`; - handler to react on dashboard creation.
+- **onClose?**: `() => void`; - handler to close modal component
+
+```typescript jsx
+const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+
+if (dashboard) {
+    return <EditableDashboard dashboardId={dashboard.id} />;
+}
+
+return (
+    <CreateDashboardModal onClose={handleClose} onCreate={setDashboard} />
+);
 ```
 
 ### Embedding the collection browser
@@ -784,7 +912,7 @@ const plugins = {
       customItems: [],
     },
   },
-}
+};
 ```
 
 and can be used in the InteractiveDashboard like this:
@@ -811,11 +939,11 @@ dashcard menu, set `withEditLink` to `false`.
 const plugins = {
   dashboard: {
     dashcardMenu: {
-       withDownloads: false,
-       withEditLink: false,
-       customItems: [],
-    }
-  }
+      withDownloads: false,
+      withEditLink: false,
+      customItems: [],
+    },
+  },
 };
 ```
 
@@ -912,10 +1040,10 @@ This is useful if you want to completely hide Metabase components when the user 
 This hook can only be used within components wrapped by `MetabaseProvider`.
 
 ```jsx
-const auth = useMetabaseAuthStatus()
+const auth = useMetabaseAuthStatus();
 
 if (auth.status === "error") {
-  return <div>Failed to authenticate: {auth.error.message}</div>
+  return <div>Failed to authenticate: {auth.error.message}</div>;
 }
 
 if (auth.status === "success") {
@@ -990,12 +1118,12 @@ const config = { fetchRefreshToken };
 # Known limitations
 
 - The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-    - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components
-      are rendered on the client side.
-    - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
-      on Remix.
+  - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components
+    are rendered on the client side.
+  - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
+    on Remix.
 - Embedding multiple instances of interactive dashboards on the same page are not supported.
-    - Please use static dashboards if you need to embed multiple dashboards on the same page.
+  - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Feedback
 

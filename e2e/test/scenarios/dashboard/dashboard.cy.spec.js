@@ -9,48 +9,48 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
-  selectDashboardFilter,
-  editDashboard,
-  showDashboardCardActions,
-  filterWidget,
-  sidebar,
-  modal,
-  visitDashboard,
-  appBar,
-  rightSidebar,
-  getDashboardCardMenu,
   addOrUpdateDashboardCard,
-  openQuestionsSidebar,
-  describeWithSnowplow,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  closeNavigationSidebar,
-  saveDashboard,
-  queryBuilderHeader,
-  removeDashboardCard,
-  getDashboardCards,
-  getDashboardCard,
-  toggleDashboardInfoSidebar,
-  dashboardHeader,
-  openProductsTable,
-  updateDashboardCards,
-  getTextCardDetails,
-  openDashboardMenu,
-  openEmbedModalFromMenu,
+  appBar,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
-  createDashboardWithTabs,
-  entityPickerModal,
+  closeNavigationSidebar,
   collectionOnTheGoModal,
-  setFilter,
-  commandPaletteButton,
   commandPalette,
+  commandPaletteButton,
+  createDashboardWithTabs,
+  dashboardHeader,
   describeEE,
+  describeWithSnowplow,
+  editDashboard,
+  enableTracking,
+  entityPickerModal,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
+  getDashboardCard,
+  getDashboardCardMenu,
+  getDashboardCards,
+  getTextCardDetails,
+  modal,
+  openDashboardMenu,
+  openProductsTable,
+  openQuestionsSidebar,
+  openSharingMenu,
+  popover,
+  queryBuilderHeader,
+  removeDashboardCard,
+  resetSnowplow,
+  restore,
+  rightSidebar,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
   setTokenFeatures,
+  showDashboardCardActions,
+  sidebar,
+  toggleDashboardInfoSidebar,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
@@ -58,7 +58,7 @@ import {
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 
-import { interceptRoutes as interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
+import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
   durationRadioButton,
@@ -651,7 +651,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // and connect it to the card
     selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
@@ -929,7 +929,7 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
 
     modal().within(() => {
       cy.icon("close").click();

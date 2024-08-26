@@ -7,8 +7,8 @@
 
 (defn format [value viz]
   (str ((formatter/number-formatter {:id 1}
-                                 {::mb.viz/column-settings
-                                  {{::mb.viz/field-id 1} viz}})
+                                    {::mb.viz/column-settings
+                                     {{::mb.viz/field-id 1} viz}})
         value)))
 
 (deftest number-formatting-test
@@ -65,7 +65,16 @@
                             ::mb.viz/decimals     2})))
       (is (= "1.2346E4" (fmt {::mb.viz/number-style "scientific"
                               ::mb.viz/decimals     4})))
-      (is (= "-1.23E4" (format  -12345 {::mb.viz/number-style "scientific"}))))
+      (is (= "1E0" (format 1 {::mb.viz/number-style "scientific"})))
+      (is (= "1.2E1" (format 12 {::mb.viz/number-style "scientific"})))
+      (is (= "1.23E2" (format 123 {::mb.viz/number-style "scientific"})))
+      (is (= "1.23E3" (format 1234 {::mb.viz/number-style "scientific"})))
+      (is (= "1.23E4" (format 12345 {::mb.viz/number-style "scientific"})))
+      (is (= "-1E0" (format -1 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.2E1" (format -12 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.23E2" (format -123 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.23E3" (format -1234 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.23E4" (format -12345 {::mb.viz/number-style "scientific"}))))
     (testing "Percentage"
       (is (= "1,234,554.32%" (fmt {::mb.viz/number-style "percent"})))
       (is (= "1.234.554,3200%"
@@ -106,8 +115,8 @@
                                                           {::mb.viz/column-settings
                                                            {{::mb.viz/field-id 1}
                                                             (merge
-                                                              {:effective_type type}
-                                                              (when decimals {::mb.viz/decimals decimals}))}})]
+                                                             {:effective_type type}
+                                                             (when decimals {::mb.viz/decimals decimals}))}})]
                    (str (fmt-fn value)))))]
         (is (= "3" (fmt-with-type :type/Integer 3)))
         (is (= "3" (fmt-with-type :type/Integer 3.0)))
@@ -125,18 +134,18 @@
                                                           {::mb.viz/column-settings
                                                            {{::mb.viz/field-id 1}
                                                             (merge
-                                                              {:effective_type type}
-                                                              (when decimals {::mb.viz/decimals decimals}))}})]
+                                                             {:effective_type type}
+                                                             (when decimals {::mb.viz/decimals decimals}))}})]
                    (str (fmt-fn value)))))]
         (is (= "1000" (fmt-with-type :type/PK 1000)))
         (is (= "1000" (fmt-with-type :type/FK 1000)))))
     (testing "Does not throw on nils"
       (is (nil?
-            ((formatter/number-formatter {:id 1}
-                                         {::mb.viz/column-settings
-                                          {{::mb.viz/column-id 1}
-                                           {::mb.viz/number-style "percent"}}})
-             nil))))
+           ((formatter/number-formatter {:id 1}
+                                        {::mb.viz/column-settings
+                                         {{::mb.viz/column-id 1}
+                                          {::mb.viz/number-style "percent"}}})
+            nil))))
     (testing "Does not throw on non-numeric types"
       (is (= "bob"
              ((formatter/number-formatter {:id 1}

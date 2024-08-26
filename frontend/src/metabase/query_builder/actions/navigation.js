@@ -7,15 +7,15 @@ import { createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { getLocation } from "metabase/selectors/routing";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   getCard,
   getDatasetEditorTab,
-  getZoomedObjectId,
   getOriginalQuestion,
   getQueryBuilderMode,
   getQuestion,
+  getZoomedObjectId,
 } from "../selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
@@ -25,7 +25,7 @@ import {
 } from "../utils";
 
 import { initializeQB, setCardAndRun } from "./core";
-import { zoomInRow, resetRowZoom } from "./object-detail";
+import { resetRowZoom, zoomInRow } from "./object-detail";
 import { cancelQuery } from "./querying";
 import { resetUIControls, setQueryBuilderMode } from "./ui";
 
@@ -142,10 +142,14 @@ export const updateUrl = createThunkAction(
 
       if (dirty == null) {
         const originalQuestion = getOriginalQuestion(getState());
-        const isAdHocModel = isAdHocModelQuestion(question, originalQuestion);
+        const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
+          question,
+          originalQuestion,
+        );
         dirty =
           !originalQuestion ||
-          (!isAdHocModel && question.isDirtyComparedTo(originalQuestion));
+          (!isAdHocModelOrMetric &&
+            question.isDirtyComparedTo(originalQuestion));
       }
 
       const { isNative } = Lib.queryDisplayInfo(question.query());

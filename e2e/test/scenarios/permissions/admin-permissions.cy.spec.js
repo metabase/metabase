@@ -1,22 +1,22 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  ORDERS_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  modal,
-  describeEE,
-  onlyOnOSS,
-  assertPermissionTable,
   assertPermissionOptions,
-  modifyPermission,
-  selectSidebarItem,
+  assertPermissionTable,
   assertSidebarItems,
-  visitQuestion,
-  visitDashboard,
+  describeEE,
+  modal,
+  modifyPermission,
+  onlyOnOSS,
+  restore,
   selectPermissionRow,
+  selectSidebarItem,
   setTokenFeatures,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP, ADMIN_GROUP, COLLECTION_GROUP, DATA_GROUP } =
@@ -52,6 +52,16 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
       ["Products", "No"],
       ["Reviews", "No"],
     ]);
+  });
+
+  it("should not show view data column on OSS", () => {
+    cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+    cy.findByTestId("permission-table").within(() => {
+      cy.findByText("Database name").should("exist");
+      cy.findByText("View data").should("not.exist");
+      cy.findByText("Create queries").should("exist");
+    });
   });
 
   it("should display error on failed save", () => {

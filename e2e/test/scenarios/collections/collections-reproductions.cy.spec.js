@@ -1,24 +1,24 @@
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_QUESTION_ID,
-  ADMIN_PERSONAL_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
   assertPermissionTable,
-  modifyPermission,
-  modal,
-  navigationSidebar,
-  popover,
-  getCollectionActions,
+  describeEE,
   entityPickerModal,
   entityPickerModalTab,
-  startNewQuestion,
-  describeEE,
+  getCollectionActions,
+  modal,
+  modifyPermission,
   moveOpenedCollectionTo,
+  navigationSidebar,
   openCollectionMenu,
+  popover,
+  restore,
   setTokenFeatures,
+  startNewQuestion,
 } from "e2e/support/helpers";
 
 describe("issue 20911", () => {

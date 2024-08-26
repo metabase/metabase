@@ -44,15 +44,15 @@ import {
   getDashboardComplete,
   getDocumentTitle,
   getFavicon,
-  getIsAdditionalInfoVisible,
   getIsAddParameterPopoverOpen,
+  getIsAdditionalInfoVisible,
+  getIsDashCardsLoadingComplete,
+  getIsDashCardsRunning,
   getIsDirty,
   getIsEditing,
   getIsEditingParameter,
   getIsHeaderVisible,
-  getIsDashCardsLoadingComplete,
   getIsNavigatingBackToDashboard,
-  getIsDashCardsRunning,
   getIsSharing,
   getLoadingStartTime,
   getParameterValues,
@@ -217,7 +217,6 @@ const DashboardApp = (props: DashboardAppProps) => {
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
       <Dashboard
-        location={location}
         dashboardId={dashboardId}
         editingOnLoad={editingOnLoad}
         addCardOnLoad={addCardOnLoad}

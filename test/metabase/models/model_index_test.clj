@@ -21,7 +21,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(defmacro with-scheduler-setup [& body]
+(defmacro with-scheduler-setup! [& body]
   `(let [scheduler# (#'tu/in-memory-scheduler)]
      ;; need cross thread rebinding from with-redefs not a binding
      (with-redefs [task/scheduler (constantly scheduler#)]
@@ -37,12 +37,12 @@
          (finally (qs/shutdown scheduler#))))))
 
 (deftest quick-run-through
-  (with-scheduler-setup
+  (with-scheduler-setup!
     (mt/dataset test-data
       (let [query     (mt/mbql-query products
-                                     {:filter [:and
-                                               [:> $id 0]
-                                               [:< $id 10]]})
+                        {:filter [:and
+                                  [:> $id 0]
+                                  [:< $id 10]]})
             pk_ref    (mt/$ids $products.id)
             value_ref (mt/$ids $products.title)]
         (mt/with-model-cleanup [:model/Card]
@@ -79,9 +79,9 @@
               (t2/update! :model/Card
                           (:id model)
                           {:dataset_query (mt/mbql-query products
-                                                         {:filter [:and
-                                                                   [:> $id 10]
-                                                                   [:< $id 20]]})})
+                                            {:filter [:and
+                                                      [:> $id 10]
+                                                      [:< $id 20]]})})
               (model-index/add-values! model-index)
               (is (= 9 (count (t2/select ModelIndexValue :model_index_id (:id model-index)))))
               (is (= (into #{} cat (mt/rows (qp/process-query
@@ -177,32 +177,32 @@
               (remove nil?
                       [[:mbql (mt/mbql-query products {:fields [$id $title]})]
                        [:mbql-custom-column (mt/mbql-query products
-                                                           {:expressions
-                                                            {"inc-id"
-                                                             [:+ $id 1]
-                                                             "full-name"
-                                                             [:concat $title "custom"]}})
+                                              {:expressions
+                                               {"inc-id"
+                                                [:+ $id 1]
+                                                "full-name"
+                                                [:concat $title "custom"]}})
                         [[[:expression "inc-id"] [:expression "full-name"]]]]
                        [:native (mt/native-query
-                                 (qp.compile/compile
-                                  (mt/mbql-query products {:fields [$id $title]})))]
+                                  (qp.compile/compile
+                                   (mt/mbql-query products {:fields [$id $title]})))]
                        (when (driver.u/supports? (:engine (mt/db)) :left-join (mt/db))
                          [:join (mt/$ids
-                                 {:type     :query,
-                                  :query    {:source-table $$people,
-                                             :joins        [{:fields       :all,
-                                                             :source-table $$orders,
-                                                             :condition    [:=
-                                                                            $people.id
-                                                                            &Orders.orders.user_id],
-                                                             :alias        "Orders"}
-                                                            {:fields       :all,
-                                                             :source-table $$products,
-                                                             :condition    [:=
-                                                                            &Orders.orders.product_id
-                                                                            &Products.products.id],
-                                                             :alias        "Products"}]},
-                                  :database (mt/id)})
+                                  {:type     :query,
+                                   :query    {:source-table $$people,
+                                              :joins        [{:fields       :all,
+                                                              :source-table $$orders,
+                                                              :condition    [:=
+                                                                             $people.id
+                                                                             &Orders.orders.user_id],
+                                                              :alias        "Orders"}
+                                                             {:fields       :all,
+                                                              :source-table $$products,
+                                                              :condition    [:=
+                                                                             &Orders.orders.product_id
+                                                                             &Products.products.id],
+                                                              :alias        "Products"}]},
+                                   :database (mt/id)})
                           [(mt/$ids [&Products.products.id &Products.products.title])]])])]
         (t2.with-temp/with-temp [Card model (mt/card-with-source-metadata-for-query
                                              query)]
@@ -259,21 +259,21 @@
                    :scenario   :simple-table}))
     (testing "With joins"
       (test-index {:query      (mt/$ids
-                                {:type     :query,
-                                 :query    {:source-table $$people,
-                                            :joins        [{:fields       :all,
-                                                            :source-table $$orders,
-                                                            :condition    [:=
-                                                                           [:field $people.id nil]
-                                                                           [:field $orders.user_id {:join-alias "Orders"}]],
-                                                            :alias        "Orders"}
-                                                           {:fields       :all,
-                                                            :source-table $$products,
-                                                            :condition    [:=
-                                                                           [:field $orders.product_id {:join-alias "Orders"}]
-                                                                           [:field $products.id {:join-alias "Products"}]],
-                                                            :alias        "Products"}]},
-                                 :database (mt/id)})
+                                 {:type     :query,
+                                  :query    {:source-table $$people,
+                                             :joins        [{:fields       :all,
+                                                             :source-table $$orders,
+                                                             :condition    [:=
+                                                                            [:field $people.id nil]
+                                                                            [:field $orders.user_id {:join-alias "Orders"}]],
+                                                             :alias        "Orders"}
+                                                            {:fields       :all,
+                                                             :source-table $$products,
+                                                             :condition    [:=
+                                                                            [:field $orders.product_id {:join-alias "Orders"}]
+                                                                            [:field $products.id {:join-alias "Products"}]],
+                                                             :alias        "Products"}]},
+                                  :database (mt/id)})
                    :pk-name    "Products → ID"
                    :value-name "Products → Title"
                    :quantity   200

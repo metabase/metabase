@@ -24,7 +24,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
    (clojure.lang PersistentList)
@@ -210,7 +210,7 @@
                         :let  [^TableId                 table-id   (.getTableId table)
                                ^String                  dataset-id (.getDataset table-id)
                                ^TableDefinition         tabledef   (.getDefinition table)
-                                                        table-name (str (.getTable table-id))]]
+                               table-name (str (.getTable table-id))]]
                     {:schema                  dataset-id
                      :name                    table-name
                      :database_require_filter
@@ -254,15 +254,30 @@
       "BIGNUMERIC" :type/Decimal
       :type/*)))
 
-(mu/defn- table-schema->metabase-field-info
-  [^Schema schema :- (lib.schema.common/instance-of-class Schema)]
-  (for [[idx ^Field field] (m/indexed (.getFields schema))]
-    (let [type-name (.. field getType name)
-          f-mode    (.getMode field)]
-      {:name              (.getName field)
-       :database-type     type-name
-       :base-type         (bigquery-type->base-type f-mode type-name)
-       :database-position idx})))
+(mu/defn- fields->metabase-field-info
+  ([fields]
+   (fields->metabase-field-info nil nil fields))
+  ([database-position nfc-path fields]
+   (into
+    []
+    (map
+     (fn [[idx ^Field field]]
+       (let [type-name (.. field getType name)
+             f-mode    (.getMode field)
+             database-position (or database-position idx)
+             field-name (.getName field)
+             base-type (bigquery-type->base-type f-mode type-name)]
+         (into
+          (cond-> {:name              field-name
+                   :database-type     type-name
+                   :base-type         base-type
+                   :database-position database-position}
+            nfc-path (assoc :nfc-path nfc-path)
+            (= :type/Dictionary base-type) (assoc :nested-fields (set (fields->metabase-field-info
+                                                                       database-position
+                                                                       (conj (vec nfc-path) field-name)
+                                                                       (.getSubFields field)))))))))
+    (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name
   "The name of pseudo-column for tables that are partitioned by ingestion time.
@@ -282,12 +297,12 @@
         is-partitioned?           (table-is-partitioned? tabledef)
         ;; a table can only have one partitioned field
         partitioned-field-name    (when is-partitioned?
-                                   (or (some-> ^RangePartitioning (tabledef->range-partition tabledef) .getField)
-                                       (some-> ^TimePartitioning (tabledef->time-partition tabledef) .getField)))
+                                    (or (some-> ^RangePartitioning (tabledef->range-partition tabledef) .getField)
+                                        (some-> ^TimePartitioning (tabledef->time-partition tabledef) .getField)))
         fields                    (set
                                    (map
                                     #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
-                                    (table-schema->metabase-field-info (. tabledef getSchema))))]
+                                    (fields->metabase-field-info (.. tabledef getSchema getFields))))]
     {:schema dataset-id
      :name   table-name
      :fields (cond-> fields
@@ -320,7 +335,7 @@
                      (let [column-name (.getName field)]
                        (log/warnf "Warning: missing type mapping for parsing BigQuery results column %s of type %s."
                                   column-name column-type)))
-                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
+                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id* field))))
           (.getFields schema))))
 
 (defn- parse-field-value [^FieldValue cell parser]
@@ -352,13 +367,13 @@
         parsers     (mapv all-parsers field-idxs)
         page        (.list bq-table (u/varargs BigQuery$TableDataListOption))]
     (transduce
-      (comp (take metadata-queries/max-sample-rows)
-            (map (partial extract-fingerprint field-idxs parsers)))
+     (comp (take metadata-queries/max-sample-rows)
+           (map (partial extract-fingerprint field-idxs parsers)))
       ;; Instead of passing on fields, we could recalculate the
       ;; metadata from the schema, but that probably makes no
       ;; difference and currently the metadata is ignored anyway.
-      (rff {:cols fields})
-      (reducible-bigquery-results page nil))))
+     (rff {:cols fields})
+     (reducible-bigquery-results page nil))))
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
@@ -393,20 +408,20 @@
 
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-           {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
-           e)))
+                  {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
+                  e)))
 
 (defn- build-bigquery-request [^String sql parameters]
   (.build
-    (doto (QueryJobConfiguration/newBuilder sql)
+   (doto (QueryJobConfiguration/newBuilder sql)
       ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
-      (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
-      (bigquery.params/set-parameters! parameters)
+     (.setUseLegacySql (str/includes? (u/lower-case-en sql) "#legacysql"))
+     (bigquery.params/set-parameters! parameters)
       ;; .setMaxResults is very misleading; it's actually the page size, and it only takes
       ;; effect for RPC (a.k.a. "fast") calls
       ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
       ;; realizing more rows as per the maximum result size
-      (.setMaxResults *page-size*))))
+     (.setMaxResults *page-size*))))
 
 (defn- execute-bigquery-off-thread
   [^BigQuery client ^QueryJobConfiguration request result-promise]
@@ -493,7 +508,7 @@
         (get-field-parsers schema)
 
         columns
-        (for [column (table-schema->metabase-field-info schema)]
+        (for [column (fields->metabase-field-info (.. resp getSchema getFields))]
           (-> column
               (set/rename-keys {:base-type :base_type})
               (dissoc :database-type :database-position)))]
@@ -515,10 +530,10 @@
   (let [thunk (fn []
                 (post-process-native respond
                                      (execute-bigquery-on-db
-                                       database
-                                       sql
-                                       parameters
-                                       cancel-chan)
+                                      database
+                                      sql
+                                      parameters
+                                      cancel-chan)
                                      cancel-chan))]
     (try
       (thunk)
@@ -549,6 +564,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone         true
+                              :nested-fields            true
                               :datetime-diff            true
                               :expressions              true
                               :now                      true

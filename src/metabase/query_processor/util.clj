@@ -59,7 +59,6 @@
   [_ query]
   (default-query->remark query))
 
-
 ;;; ------------------------------------------------- Normalization --------------------------------------------------
 
 ;; TODO - this has been moved to `metabase.legacy-mbql.util`; use that implementation instead.
@@ -71,7 +70,6 @@
       u/lower-case-en
       (str/replace #"_" "-")
       keyword))
-
 
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
@@ -128,7 +126,6 @@
                                   e))))]
     (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query)))))
 
-
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------
 
 (defn query->source-card-id
@@ -154,7 +151,7 @@
 
 (defn- field-normalizer
   [field]
-  (let [[type id-or-name options ] (mbql.normalize/normalize-tokens field)]
+  (let [[type id-or-name options] (mbql.normalize/normalize-tokens field)]
     [type id-or-name (select-keys options field-options-for-identification)]))
 
 (defn field->field-info
@@ -163,19 +160,19 @@
   (let [[_ttype id-or-name options :as field] (field-normalizer field)]
     (or
       ;; try match field_ref first
-      (first (filter (fn [field-info]
-                       (= field
-                          (-> field-info
-                              :field_ref
-                              field-normalizer)))
-                     result-metadata))
+     (first (filter (fn [field-info]
+                      (= field
+                         (-> field-info
+                             :field_ref
+                             field-normalizer)))
+                    result-metadata))
       ;; if not match name and base type for aggregation or field with string id
-      (first (filter (fn [field-info]
-                       (and (= (:name field-info)
-                               id-or-name)
-                            (= (:base-type options)
-                               (:base_type field-info))))
-                     result-metadata)))))
+     (first (filter (fn [field-info]
+                      (and (= (:name field-info)
+                              id-or-name)
+                           (= (:base-type options)
+                              (:base_type field-info))))
+                    result-metadata)))))
 
 (def preserved-keys
   "Keys that can survive merging metadata from the database onto metadata computed from the query. When merging

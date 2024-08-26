@@ -1,11 +1,12 @@
 import type { Query } from "history";
-import { useRegisterActions, useKBar, Priority } from "kbar";
+import { Priority, useKBar, useRegisterActions } from "kbar";
 import { useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { useDebounce } from "react-use";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
+import { getPerformanceAdminPaths } from "metabase/admin/performance/constants/complex";
 import { getSectionsWithPlugins } from "metabase/admin/settings/selectors";
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
@@ -16,6 +17,7 @@ import { getIcon } from "metabase/lib/icon";
 import { getName } from "metabase/lib/name";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
+import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
   getDocsSearchUrl,
@@ -23,7 +25,7 @@ import {
   getSettings,
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { type IconName, Icon } from "metabase/ui";
+import { Icon, type IconName } from "metabase/ui";
 import type { RecentItem } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
@@ -263,7 +265,13 @@ export const useCommandPalette = ({
   ]);
 
   const adminActions = useMemo<PaletteAction[]>(() => {
-    return adminPaths.map(adminPath => ({
+    // Subpaths - i.e. paths to items within the main Admin tabs - are needed
+    // in the command palette but are not part of the main list of admin paths
+    const adminSubpaths = getPerformanceAdminPaths(
+      PLUGIN_CACHING.getTabMetadata(),
+    );
+    const paths = [...adminPaths, ...adminSubpaths];
+    return paths.map(adminPath => ({
       id: `admin-page-${adminPath.key}`,
       name: `${adminPath.name}`,
       icon: "gear",

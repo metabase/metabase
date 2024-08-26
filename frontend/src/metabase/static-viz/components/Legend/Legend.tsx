@@ -4,10 +4,10 @@ import { Text } from "metabase/static-viz/components/Text";
 import { measureTextWidth, truncateText } from "metabase/static-viz/lib/text";
 
 import {
-  LEGEND_CIRCLE_MARGIN_RIGHT,
-  LEGEND_CIRCLE_SIZE,
   DEFAULT_LEGEND_FONT_SIZE,
   DEFAULT_LEGEND_FONT_WEIGHT,
+  LEGEND_CIRCLE_MARGIN_RIGHT,
+  LEGEND_CIRCLE_SIZE,
   LEGEND_ITEM_MARGIN_RIGHT,
 } from "./constants";
 import type { PositionedLegendItem } from "./types";

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
 import PropTypes from "prop-types";
-import { createRef, Component } from "react";
+import { Component, createRef } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -20,9 +20,9 @@ import { getHasDataAccess } from "metabase/selectors/data";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
-  isVirtualCardId,
-  getQuestionIdFromVirtualTableId,
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  getQuestionIdFromVirtualTableId,
+  isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 
@@ -37,8 +37,8 @@ import FieldPicker from "./DataSelectorFieldPicker";
 import SchemaPicker from "./DataSelectorSchemaPicker";
 import TablePicker from "./DataSelectorTablePicker";
 import {
-  FieldTrigger,
   DatabaseTrigger,
+  FieldTrigger,
   TableTrigger,
   Trigger,
 } from "./TriggerComponents";

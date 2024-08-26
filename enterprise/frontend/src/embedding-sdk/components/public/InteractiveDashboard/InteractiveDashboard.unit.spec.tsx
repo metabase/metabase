@@ -30,8 +30,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 

@@ -19,13 +19,8 @@
 
 (deftest ^:parallel test-round
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (if (or (not= driver/*driver* :mongo)
-            ;; mongo supports $round since version 4.2
-            (driver.u/semantic-version-gte
-             (-> (mt/db) :dbms_version :semantic-version)
-             [4 2]))
-      (is (= 1.0 (test-math-expression [:round 0.7])))
-      (is (= 0 0)))))
+    (is (= 1.0
+           (test-math-expression [:round 0.7])))))
 
 (deftest ^:parallel test-floor
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -74,8 +69,9 @@
       (mt/with-native-query-testing-context query
         (is (= expected
                (ffirst
-                (mt/formatted-rows [1.0]
-                  (mt/process-query query))))))))
+                (mt/formatted-rows
+                 [1.0]
+                 (mt/process-query query))))))))
   (when (driver.u/supports? driver/*driver* :expression-aggregations (mt/db))
     (testing "Inside an expression aggregation"
       (let [query (mt/mbql-query venues
@@ -83,8 +79,9 @@
         (mt/with-native-query-testing-context query
           (is (= (+ expected 1.0)
                  (ffirst
-                  (mt/formatted-rows [1.0]
-                    (mt/process-query query))))))))))
+                  (mt/formatted-rows
+                   [1.0]
+                   (mt/process-query query))))))))))
 
 ;;; there is a test for standard deviation itself
 ;;; in [[metabase.query-processor-test.aggregation-test/standard-deviation-test]]

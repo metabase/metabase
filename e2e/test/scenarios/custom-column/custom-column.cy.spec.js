@@ -12,6 +12,8 @@ import {
   getNotebookStep,
   openOrdersTable,
   openPeopleTable,
+  openProductsTable,
+  openTable,
   popover,
   queryBuilderMain,
   restore,
@@ -20,8 +22,6 @@ import {
   tableHeaderClick,
   visitQuestionAdhoc,
   visualize,
-  openProductsTable,
-  openTable,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE_ID } = SAMPLE_DATABASE;

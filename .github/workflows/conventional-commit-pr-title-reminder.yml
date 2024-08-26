@@ -34,6 +34,7 @@ jobs:
           ref: ${{ github.head_ref }}
 
       - name: Remind PR authors to use conventional commit in the title
+        if: ${{ steps.is-conventional-commit.outputs.result != 'true' }}
         uses: actions/github-script@v7
         with:
           script: |

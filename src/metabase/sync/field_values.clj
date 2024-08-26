@@ -29,7 +29,7 @@
     (if (field-values/inactive? field-values)
       (log/debugf "Field %s has not been used since %s. Skipping..."
                   (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
-      (field-values/create-or-update-full-field-values! field))))
+      (field-values/create-or-update-full-field-values! field :field-values field-values))))
 
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)
@@ -67,7 +67,7 @@
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors"
-       updated created deleted errors))
+          updated created deleted errors))
 
 (defn- delete-expired-advanced-field-values-summary [{:keys [deleted]}]
   (format "Deleted %d expired advanced fieldvalues" deleted))

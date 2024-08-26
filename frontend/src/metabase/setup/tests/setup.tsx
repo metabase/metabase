@@ -7,6 +7,7 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import type {
   SettingDefinition,
@@ -18,7 +19,6 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import {
-  createMockSettingsState,
   createMockSetupState,
   createMockState,
 } from "metabase-types/store/mocks";
@@ -45,10 +45,12 @@ export async function setup({
     setup: createMockSetupState({
       step: "welcome",
     }),
-    settings: createMockSettingsState({
-      "token-features": tokenFeatures,
-      "available-locales": [["en", "English"]],
-    }),
+    settings: mockSettings(
+      createMockSettings({
+        "token-features": tokenFeatures,
+        "available-locales": [["en", "English"]],
+      }),
+    ),
   });
 
   if (hasEnterprisePlugins) {
@@ -156,3 +158,6 @@ export const getLastSettingsPutPayload = async () => {
 
   return JSON.parse((await lastSettingsCall![1]!.body!) as string);
 };
+
+export const skipTokenStep = async () =>
+  await userEvent.click(screen.getByRole("button", { name: "Skip" }));

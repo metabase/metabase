@@ -242,11 +242,12 @@
   (mi/instances-with-hydrated-data
    cards k
    #(group-by :source_card_id
-              (t2/select :model/Card
-                         :source_card_id [:in (map :id cards)],
-                         :archived false,
-                         :type :metric,
-                         {:order-by [[:name :asc]]}))
+              (->> (t2/select :model/Card
+                              :source_card_id [:in (map :id cards)],
+                              :archived false,
+                              :type :metric,
+                              {:order-by [[:name :asc]]})
+                   (filter mi/can-read?)))
    :id))
 
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
@@ -415,7 +416,7 @@
       (collection/check-collection-namespace Card (:collection_id card)))))
 
 (defenterprise pre-update-check-sandbox-constraints
- "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
+  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_])
 
@@ -434,23 +435,23 @@
               {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
               affected-param-ids-set (cond
                                       ;; update all parameters that use this card as source
-                                      (:archived changes)
-                                      (set (map :parameter_id param-cards))
+                                       (:archived changes)
+                                       (set (map :parameter_id param-cards))
 
                                       ;; update only parameters that have value_field no longer in this card
-                                      (:result_metadata changes)
-                                      (let [param-id->parameter (m/index-by :id parameters)]
-                                        (->> param-cards
-                                             (filter (fn [param-card]
+                                       (:result_metadata changes)
+                                       (let [param-id->parameter (m/index-by :id parameters)]
+                                         (->> param-cards
+                                              (filter (fn [param-card]
                                                        ;; if cant find the value-field in result_metadata, then we should
                                                        ;; remove it
-                                                       (nil? (qp.util/field->field-info
-                                                              (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
-                                                              (:result_metadata changes)))))
-                                             (map :parameter_id)
-                                             set))
+                                                        (nil? (qp.util/field->field-info
+                                                               (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
+                                                               (:result_metadata changes)))))
+                                              (map :parameter_id)
+                                              set))
 
-                                      :else #{})
+                                       :else #{})
               new-parameters (map (fn [parameter]
                                     (if (affected-param-ids-set (:id parameter))
                                       (-> parameter
@@ -534,7 +535,6 @@
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
 
-
 (t2/define-after-select :model/Card
   [card]
   (-> card
@@ -574,8 +574,8 @@
       ;; change for a native query, populate-result-metadata removes it (set to nil) unless prevented by the
       ;; verified-result-metadata? flag (see #37009).
       (cond-> #_changes
-        (or (empty? (:result_metadata card))
-            (not verified-result-metadata?))
+       (or (empty? (:result_metadata card))
+           (not verified-result-metadata?))
         card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
@@ -813,16 +813,14 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defmethod serdes/extract-query "Card" [_ opts]
-  (serdes/extract-query-collections Card opts))
-
 (defn- export-result-metadata [metadata]
   (when metadata
     (for [m metadata]
       (-> (dissoc m :fingerprint)
           (m/update-existing :table_id  serdes/*export-table-fk*)
           (m/update-existing :id        serdes/*export-field-fk*)
-          (m/update-existing :field_ref serdes/export-mbql)))))
+          (m/update-existing :field_ref serdes/export-mbql)
+          (m/update-existing :fk_target_field_id serdes/*export-field-fk*)))))
 
 (defn- import-result-metadata [metadata]
   (when metadata
@@ -830,22 +828,29 @@
       (-> m
           (m/update-existing :table_id  serdes/*import-table-fk*)
           (m/update-existing :id        serdes/*import-field-fk*)
-          (m/update-existing :field_ref serdes/import-mbql)))))
+          (m/update-existing :field_ref serdes/import-mbql)
+          ;; FIXME: remove that `if` after v52
+          (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
 
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
-    (reduce set/union #{} (for [m (seq metadata)]
-                            (reduce set/union (serdes/mbql-deps (:field_ref m))
-                                    [(when (:table_id m) #{(serdes/table->path (:table_id m))})
-                                     (when (:id m)       #{(serdes/field->path (:id m))})])))))
+    (-> (reduce into #{} (for [m metadata]
+                           (conj (serdes/mbql-deps (:field_ref m))
+                                 (when (:table_id m)
+                                   (serdes/table->path (:table_id m)))
+                                 (when (:id m)
+                                   (serdes/field->path (:id m)))
+                                 (when (and (:fk_target_field_id m)
+                                            ;; FIXME: remove that check after v52
+                                            (not (number? (:fk_target_field_id m))))
+                                   (serdes/field->path (:fk_target_field_id m))))))
+        (disj nil))))
 
 (defmethod serdes/make-spec "Card"
-  [_model-name]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
+  [_model-name _opts]
+  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
-   :skip [;; always instance-specific
-          :id :updated_at
-          ;; cache invalidation is instance-specific
+   :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
           :view_count :last_used_at :initially_published_at
@@ -854,28 +859,18 @@
           ;; this column is not used anymore
           :cache_ttl]
    :transform
-   {:database_id            [#(serdes/*export-fk-keyed* % 'Database :name)
-                             #(serdes/*import-fk-keyed* % 'Database :name)]
-    :table_id               [serdes/*export-table-fk*
-                             serdes/*import-table-fk*]
-    :source_card_id         [#(serdes/*export-fk* % :model/Card)
-                             #(serdes/*import-fk* % :model/Card)]
-    :collection_id          [#(serdes/*export-fk* % 'Collection)
-                             #(serdes/*import-fk* % 'Collection)]
-    :creator_id             [serdes/*export-user*
-                             serdes/*import-user*]
-    :made_public_by_id      [serdes/*export-user*
-                             serdes/*import-user*]
-    :dataset_query          [serdes/export-mbql
-                             serdes/import-mbql]
-    :parameters             [serdes/export-parameters
-                             serdes/import-parameters]
-    :parameter_mappings     [serdes/export-parameter-mappings
-                             serdes/import-parameter-mappings]
-    :visualization_settings [serdes/export-visualization-settings
-                             serdes/import-visualization-settings]
-    :result_metadata        [export-result-metadata
-                             import-result-metadata]}})
+   {:created_at             (serdes/date)
+    :database_id            (serdes/fk :model/Database :name)
+    :table_id               (serdes/fk :model/Table)
+    :source_card_id         (serdes/fk :model/Card)
+    :collection_id          (serdes/fk :model/Collection)
+    :creator_id             (serdes/fk :model/User)
+    :made_public_by_id      (serdes/fk :model/User)
+    :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
+    :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
+    :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
+    :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
+    :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
@@ -909,7 +904,6 @@
         ["Card" card-id])
       (for [snippet-id snippets]
         ["NativeQuerySnippet" snippet-id])))))
-
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 

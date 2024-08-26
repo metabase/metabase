@@ -5,9 +5,9 @@ import _ from "underscore";
 import type { OnMoveWithOneItem } from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
+  type CollectionPickerItem,
   CollectionPickerModal,
   type CollectionPickerValueItem,
-  type CollectionPickerItem,
 } from "metabase/common/components/CollectionPicker";
 import type {
   CollectionId,

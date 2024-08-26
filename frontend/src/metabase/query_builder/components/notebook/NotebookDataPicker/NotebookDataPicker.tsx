@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { type MouseEvent, useMemo, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -7,13 +7,14 @@ import {
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
 import { METAKEY } from "metabase/lib/browser";
-import { useDispatch, useStore } from "metabase/lib/redux";
+import { useDispatch, useSelector, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
-import { Group, Icon, UnstyledButton, Tooltip } from "metabase/ui";
+import { Group, Icon, Tooltip, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
@@ -52,6 +53,8 @@ export function NotebookDataPicker({
   const dispatch = useDispatch();
   const onChangeRef = useLatest(onChange);
 
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+
   const tableInfo = useMemo(
     () => table && Lib.displayInfo(query, stageIndex, table),
     [query, stageIndex, table],
@@ -86,20 +89,24 @@ export function NotebookDataPicker({
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
 
-    isCtrlOrMetaClick ? openDataSourceInNewTab() : setIsOpen(true);
+    isCtrlOrMetaClick && !isEmbeddingSdk
+      ? openDataSourceInNewTab()
+      : setIsOpen(true);
   };
 
   const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isMiddleClick = event.button === 1;
 
-    isMiddleClick ? openDataSourceInNewTab() : setIsOpen(true);
+    isMiddleClick && !isEmbeddingSdk
+      ? openDataSourceInNewTab()
+      : setIsOpen(true);
   };
 
   return (
     <>
       <Tooltip
         label={t`${METAKEY}+click to open in new tab`}
-        hidden={!table}
+        hidden={!table || isEmbeddingSdk}
         events={{
           hover: true,
           focus: false,

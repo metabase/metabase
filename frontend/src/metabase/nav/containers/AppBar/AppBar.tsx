@@ -7,10 +7,10 @@ import Collections from "metabase/entities/collections";
 import { closeNavbar, toggleNavbar } from "metabase/redux/app";
 import type { RouterProps } from "metabase/selectors/app";
 import {
-  getIsNavbarOpen,
   getIsCollectionPathVisible,
   getIsLogoVisible,
   getIsNavBarEnabled,
+  getIsNavbarOpen,
   getIsNewButtonVisible,
   getIsProfileLinkVisible,
   getIsQuestionLineageVisible,

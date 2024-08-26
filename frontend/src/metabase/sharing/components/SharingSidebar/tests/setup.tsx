@@ -3,17 +3,18 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
+import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
 import {
-  createMockDashboard,
   createMockActionDashboardCard,
-  createMockDashboardCard,
-  createMockUser,
   createMockCard,
+  createMockDashboard,
+  createMockDashboardCard,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import type { DashboardState } from "metabase-types/store";
 import { createMockState } from "metabase-types/store/mocks";
@@ -103,7 +104,7 @@ export function setup(
     };
   }
 
-  fetchMock.get("path:/api/pulse/form_input", channelData);
+  setupNotificationChannelsEndpoints(channelData.channels);
 
   setupUserRecipientsEndpoint({
     users: [user],

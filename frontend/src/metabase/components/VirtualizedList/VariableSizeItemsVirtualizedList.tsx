@@ -1,4 +1,4 @@
-import { useVirtualizer, type VirtualItem } from "@tanstack/react-virtual";
+import { type VirtualItem, useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
 import { useMount } from "react-use";
 

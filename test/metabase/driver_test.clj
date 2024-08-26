@@ -26,9 +26,9 @@
   (is (not (driver/database-supports? ::test-driver :metadata/key-constraints "not-dummy")))
   (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
   (is (thrown-with-msg?
-        java.lang.Exception
-        #"Invalid driver feature: .*"
-        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+       java.lang.Exception
+       #"Invalid driver feature: .*"
+       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
@@ -121,14 +121,15 @@
         (mt/dataset dbdef
           (let [db (mt/db)
                 cant-sync-logged? (fn []
-                                    (some?
-                                     (some
-                                      (fn [[log-level throwable message]]
-                                        (and (= log-level :warn)
-                                             (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
-                                      (mt/with-log-messages-for-level :warn
-                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+                                    (mt/with-log-messages-for-level [messages :warn]
+                                      (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
+                                      (some?
+                                       (some
+                                        (fn [{:keys [level e message]}]
+                                          (and (= level :warn)
+                                               (instance? clojure.lang.ExceptionInfo e)
+                                               (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
+                                        (messages)))))]
             (testing "sense checks before deleting the database"
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
                 (is (false? (cant-sync-logged?))))

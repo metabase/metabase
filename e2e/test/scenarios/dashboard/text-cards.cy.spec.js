@@ -1,24 +1,24 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  getDashboardCard,
-  popover,
-  visitDashboard,
+  addHeadingWhileEditing,
   addTextBox,
+  addTextBoxWhileEditing,
+  describeWithSnowplow,
   editDashboard,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
+  getDashboardCard,
+  multiAutocompleteInput,
+  popover,
+  resetSnowplow,
+  restore,
   saveDashboard,
   selectDashboardFilter,
-  describeWithSnowplow,
-  enableTracking,
-  resetSnowplow,
-  expectNoBadSnowplowEvents,
-  expectGoodSnowplowEvent,
   setFilter,
-  filterWidget,
-  addTextBoxWhileEditing,
-  addHeadingWhileEditing,
-  multiAutocompleteInput,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -353,7 +353,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     addHeadingWhileEditing("Variable: {{foo}}", {
       parseSpecialCharSequences: false,
     });
-    setFilter("Time", "Relative Date");
+    setFilter("Date picker", "Relative Date");
 
     getDashboardCard(0).findByText("Select…").click();
     popover().findByText("foo").click();

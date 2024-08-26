@@ -10,8 +10,8 @@ import {
   idTag,
   invalidateTags,
   listTag,
-  tag,
   provideTimelineEventTags,
+  tag,
 } from "./tags";
 
 export const timelineEventApi = Api.injectEndpoints({

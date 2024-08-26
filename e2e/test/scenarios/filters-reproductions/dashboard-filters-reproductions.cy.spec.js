@@ -16,6 +16,7 @@ import {
   createDashboardWithTabs,
   createNativeQuestion,
   createQuestion,
+  dashboardParameterSidebar,
   dashboardParametersContainer,
   editDashboard,
   filterWidget,
@@ -30,16 +31,15 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  setModelMetadata,
   sidebar,
+  tableHeaderClick,
   undoToast,
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
   visitModel,
   visitPublicDashboard,
-  setModelMetadata,
-  tableHeaderClick,
-  dashboardParameterSidebar,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -963,7 +963,7 @@ describe("issue 16177", () => {
   it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Quantity");
     dashboardParameterSidebar().findByText("No default").click();
     popover().findByText("Yesterday").click();
@@ -1182,7 +1182,7 @@ describe("issue 22482", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -1239,8 +1239,10 @@ describe("issue 22788", () => {
 
   function addFilterAndAssert() {
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Gizmo");
     cy.findAllByText("Doohickey").should("not.exist");
@@ -2130,8 +2132,10 @@ describe("issue 27768", () => {
     saveDashboard();
 
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Doohickey").should("not.exist");
 
@@ -2780,7 +2784,9 @@ describe("issue 43799", () => {
       },
     );
     editDashboard();
-    cy.findByTestId("dashboard-header").findByLabelText("Add a filter").click();
+    cy.findByTestId("dashboard-header")
+      .findByLabelText("Add a filter or parameter")
+      .click();
     popover().findByText("Text or Category").click();
     getDashboardCard().findByText("Select…").click();
     popover().findByText("People - User → Source").click();
@@ -2941,7 +2947,7 @@ describe("issue 27579", () => {
   it("should be able to remove the last exclude hour option (metabase#27579)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Created At");
     saveDashboard();
     filterWidget().click();
@@ -3573,10 +3579,10 @@ describe("issue 34955", () => {
       visitDashboard(dashboard_id);
       editDashboard();
 
-      setFilter("Time", "Single Date", "On");
+      setFilter("Date picker", "Single Date", "On");
       connectFilterToColumn(ccName);
 
-      setFilter("Time", "Date Range", "Between");
+      setFilter("Date picker", "Date Range", "Between");
       connectFilterToColumn(ccName);
 
       saveDashboard();

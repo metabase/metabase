@@ -1,20 +1,20 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  sidebar,
-  cartesianChartCircle,
-  openNativeEditor,
-  runNativeQuery,
   POPOVER_ELEMENT,
-  visitQuestion,
-  modal,
-  popover,
   addPostgresDatabase,
-  focusNativeEditor,
+  cartesianChartCircle,
   createQuestion,
+  focusNativeEditor,
+  modal,
+  openNativeEditor,
+  popover,
+  restore,
+  runNativeQuery,
+  sidebar,
   startNewNativeModel,
+  visitQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 import {
