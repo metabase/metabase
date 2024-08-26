@@ -8969,10 +8969,6 @@ databaseChangeLog:
             - columnExists:
                 tableName: permissions
                 columnName: perm_value
-  - changeSet:
-      id: v51.2024-08-26T08:53:46
-      author: crisptrutski
-      comment: Add a status column to track the progress and outcome of query analysis
       changes:
         - addColumn:
             columns:
