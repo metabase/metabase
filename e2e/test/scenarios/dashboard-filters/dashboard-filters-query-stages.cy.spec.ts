@@ -551,8 +551,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["User", PEOPLE_NUMBER_COLUMNS],
           ["Summaries", ["Count", "Sum of Total"]],
         ]);
-        verifyNoDashcardMappingOptions(2);
-        verifyNoDashcardMappingOptions(3);
+        /**
+         * TODO: https://github.com/metabase/metabase/issues/47184
+         * TODO: uncomment next two verifyDashcardMappingOptions calls once the issue is fixed
+         */
+        // verifyDashcardMappingOptions(2, [
+        //   [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+        // ]);
+        // verifyDashcardMappingOptions(3, [
+        //   [NAMELESS_SECTION, ["Count", "Sum of Total"]],
+        // ]);
       }
     });
   });
