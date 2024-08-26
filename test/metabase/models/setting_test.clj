@@ -105,6 +105,13 @@
   :encryption :never
   :feature    :test-feature)
 
+(defsetting test-boolean-encrypted-setting
+  "Setting to test that a boolean setting can be encrypted, even though the default is not to. This only shows up in dev."
+  :visibility :internal
+  :type       :boolean
+  :encryption :maybe
+  :feature    :test-feature)
+
 ;; ## HELPER FUNCTIONS
 
 (defn db-fetch-setting
@@ -1556,3 +1563,9 @@
       (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting)))
       (setting/migrate-encrypted-settings!)
       (is (not= "foobar" (actual-value-in-db :test-never-encrypted-setting))))))
+
+(deftest boolean-settings-default-to-never-encrypted
+  (testing "Boolean settings default to never encrypted"
+    (is (= :never (:encryption (setting/resolve-setting :test-boolean-setting)))))
+  (testing "Boolean settings can be encrypted"
+    (is (= :maybe (:encryption (setting/resolve-setting :test-boolean-encrypted-setting))))))
