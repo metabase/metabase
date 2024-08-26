@@ -20,7 +20,7 @@ import { PreviewQueryModal } from "metabase/query_builder/components/view/Previe
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getQuestionWithParameters } from "metabase/query_builder/selectors";
-import { FilterModal } from "metabase/querying";
+import { FilterModal } from "metabase/querying/filters";
 import QuestionMoveToast from "metabase/questions/components/QuestionMoveToast";
 import ArchiveQuestionModal from "metabase/questions/containers/ArchiveQuestionModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";

@@ -1239,8 +1239,10 @@ describe("issue 22788", () => {
 
   function addFilterAndAssert() {
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Gizmo");
     cy.findAllByText("Doohickey").should("not.exist");
@@ -2130,8 +2132,10 @@ describe("issue 27768", () => {
     saveDashboard();
 
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Doohickey").should("not.exist");
 

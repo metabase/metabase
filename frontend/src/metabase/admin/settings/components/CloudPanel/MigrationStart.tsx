@@ -45,7 +45,7 @@ export const MigrationStart = ({
       <Modal.Root
         opened={isModalOpen}
         onClose={closeModal}
-        size={"36rem"}
+        size="36rem"
         data-testid="new-cloud-migration-confirmation"
       >
         <Modal.Overlay />

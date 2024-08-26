@@ -72,7 +72,6 @@ export const ErrorDiagnosticModal = ({
       opened
       onClose={onClose}
       title={t`Download diagnostic information`}
-      padding="xl"
       size="lg"
     >
       <FormProvider
