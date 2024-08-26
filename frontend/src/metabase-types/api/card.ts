@@ -305,7 +305,6 @@ export type InvalidCard = Pick<
   | "collection_position"
   | "dataset_query"
   | "description"
-  | "display"
   | "id"
   | "name"
   | "updated_at"
@@ -315,6 +314,7 @@ export type InvalidCard = Pick<
   collection_preview: boolean;
   entity_id: string;
   errors: CardError[];
+  display: CardDisplayType;
 };
 
 export type InvalidCardResponse = {

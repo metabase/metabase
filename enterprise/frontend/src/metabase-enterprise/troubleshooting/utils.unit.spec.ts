@@ -80,4 +80,24 @@ describe("formatting card errors to string", () => {
       "Table Orders, Products is inactive",
     );
   });
+
+  it("should not error if a new error is introduced", () => {
+    const surpriseError: CardError = {
+      table: "Orders",
+      type: "surprise-error" as CardError["type"],
+    };
+
+    const productsError: CardError = {
+      table: "Products",
+      type: "inactive-table",
+    };
+
+    expect(formatErrorString([surpriseError])).toBe(
+      "I don't know what's wrong, but it's broken",
+    );
+
+    expect(formatErrorString([surpriseError, productsError])).toBe(
+      "Table Products is inactive",
+    );
+  });
 });

@@ -4,8 +4,10 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { getCollectionPathString } from "metabase/browse/components/utils";
-import { getCollectionName } from "metabase/collections/utils";
+import {
+  getCollectionName,
+  getCollectionPathAsString,
+} from "metabase/collections/utils";
 import {
   CollectionPickerModal,
   type CollectionPickerValueItem,
@@ -17,7 +19,16 @@ import CS from "metabase/css/core/index.css";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import * as Urls from "metabase/lib/urls";
-import { Box, Button, FixedSizeIcon, Flex, Icon, Title } from "metabase/ui";
+import {
+  Box,
+  Button,
+  FixedSizeIcon,
+  Flex,
+  Icon,
+  type IconName,
+  Title,
+} from "metabase/ui";
+import { getIconForVisualizationType } from "metabase/visualizations";
 import { useGetInvalidCardsQuery } from "metabase-enterprise/api";
 import type { CollectionId } from "metabase-types/api";
 import { SortDirection } from "metabase-types/api/sorting";
@@ -35,6 +46,19 @@ const COLUMNS = [
 ];
 
 const PAGE_SIZE = 15;
+
+type TableRow = {
+  name: string;
+  created_by: string;
+  collectionTooltip: string;
+  collection_path: string[];
+  error: string;
+  last_edited_at: string;
+  id: number;
+  icon: IconName;
+  questionLink: string;
+  collectionLink: string;
+};
 
 export const QueryValidator = () => {
   const [sortColumn, setSortColumn] = useState<string>("name");
@@ -75,22 +99,22 @@ export const QueryValidator = () => {
     setCollectionPickerOpen(false);
   };
 
-  const processedData = useMemo(
+  const processedData: TableRow[] = useMemo(
     () =>
-      invalidCards?.data.map(d => ({
-        name: d.name,
-        created_by: d.creator?.common_name,
-        collectionTooltip: getCollectionPathString(d.collection),
+      invalidCards?.data.map(card => ({
+        name: card.name,
+        created_by: card.creator?.common_name || "",
+        collectionTooltip: getCollectionPathAsString(card.collection),
         collection_path: [
-          ...(d.collection?.effective_ancestors || []),
-          d.collection,
+          ...(card.collection?.effective_ancestors || []),
+          card.collection,
         ].map(c => getCollectionName(c)),
-        error: formatErrorString(d.errors),
-        last_edited_at: d.updated_at,
-        id: d.id,
-        icon: d.display,
-        questionLink: Urls.question(d),
-        collectionLink: Urls.collection(d.collection),
+        error: formatErrorString(card.errors),
+        last_edited_at: card.updated_at,
+        id: card.id,
+        icon: getIconForVisualizationType(card.display),
+        questionLink: Urls.question(card),
+        collectionLink: Urls.collection(card.collection),
       })) || [],
     [invalidCards],
   );
@@ -155,7 +179,7 @@ export const QueryValidator = () => {
   );
 };
 
-const QueryValidatorRow = ({ row }: { row: any }) => {
+const QueryValidatorRow = ({ row }: { row: TableRow }) => {
   return (
     <tr>
       <td className={`${CS.textBold} ${CS.py2}`}>

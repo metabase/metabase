@@ -1,46 +1,51 @@
 import { t } from "ttag";
+import _ from "underscore";
 
 import type { CardError } from "metabase-types/api";
 
+const ERROR_DICTIONARY = {
+  "inactive-field": {
+    entity: t`Field`,
+    messageProp: "field" as const,
+    problem: t`is inactive`,
+  },
+  "unknown-field": {
+    entity: t`Field`,
+    messageProp: "field" as const,
+    problem: t`is unknown`,
+  },
+  "inactive-table": {
+    entity: t`Table`,
+    messageProp: "table" as const,
+    problem: t`is inactive`,
+  },
+  "unknown-table": {
+    entity: t`Table`,
+    messageProp: "table" as const,
+    problem: t`is unknown`,
+  },
+};
+
 export const formatErrorString = (errors: CardError[]) => {
-  const messages = [];
+  const messages: string[] = [];
 
-  const inactiveFields = errors.filter(
-    error => error.type === "inactive-field",
-  );
-  const unknownFields = errors.filter(error => error.type === "unknown-field");
-  const inactiveTables = errors.filter(
-    error => error.type === "inactive-table",
-  );
-  const unknownTables = errors.filter(error => error.type === "unknown-table");
+  const errorsByType = _.groupBy(errors, "type");
 
-  if (inactiveFields.length > 0) {
-    messages.push(
-      t`Field ${inactiveFields
-        .map(field => field.field)
-        .join(", ")} is inactive`,
-    );
-  }
+  const errorTypes = Object.keys(
+    ERROR_DICTIONARY,
+  ) as (keyof typeof ERROR_DICTIONARY)[];
 
-  if (inactiveTables.length > 0) {
-    messages.push(
-      t`Table ${inactiveTables
-        .map(table => table.table)
-        .join(", ")} is inactive`,
-    );
-  }
+  errorTypes.forEach(errorType => {
+    if (errorsByType[errorType]) {
+      const errorDef = ERROR_DICTIONARY[errorType];
 
-  if (unknownFields.length > 0) {
-    messages.push(
-      t`Field ${unknownFields.map(field => field.field).join(", ")} is unknown`,
-    );
-  }
-
-  if (unknownTables.length > 0) {
-    messages.push(
-      t`Table ${unknownTables.map(table => table.table).join(", ")} is unknown`,
-    );
-  }
+      messages.push(
+        `${errorDef.entity} ${errorsByType[errorType]
+          .map(error => error[errorDef.messageProp])
+          .join(", ")} ${errorDef.problem}`,
+      );
+    }
+  });
 
   if (messages.length > 0) {
     return messages.join(", ");
