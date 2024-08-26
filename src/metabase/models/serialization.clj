@@ -73,7 +73,7 @@
 ;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
 ;;;      hashing).
 
-(def ^:private ^:dynamic *current* "Instance/map being exported/imported currently" nil)
+(def ^:dynamic *current* "Instance/map being exported/imported currently" nil)
 
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
@@ -331,10 +331,17 @@
             ;; won't assoc if `generate-path` returned `nil`
             (m/assoc-some :serdes/meta (generate-path model-name instance))
             (into (for [[k transform] (:transform spec)
-                        :let [res ((:export transform) (get instance k))]
-                        ;; include only non-nil `transform` results
-                        :when res]
-                    [k res])))))
+                        :let  [res ((:export transform) (get instance k))]
+                        :when (not= res ::skip)]
+                    (do
+                      (when (and (not (contains? instance k))
+                                 (::nested transform))
+                        (throw (ex-info (format "Key %s not found, make sure it was hydrated" k)
+                                        {:model    model-name
+                                         :key      k
+                                         :instance instance})))
+
+                      [k res]))))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
                       (assoc (ex-data e) :model model-name :id (:id instance))
@@ -447,10 +454,11 @@
             (nil? (-> spec :transform :collection_id)))
       ;; either no collections specified or our model has no collection
       (t2/reducible-select model {:where (or where true)})
-      (t2/reducible-select model {:where [:or
-                                          [:in :collection_id collection-set]
-                                          (when (contains? collection-set nil)
-                                            [:= :collection_id nil])
+      (t2/reducible-select model {:where [:and
+                                          [:or
+                                           [:in :collection_id collection-set]
+                                           (when (contains? collection-set nil)
+                                             [:= :collection_id nil])]
                                           (when where
                                             where)]}))))
 
@@ -733,13 +741,15 @@
 (defn- xform-by-spec [model-name ingested]
   (let [spec (make-spec model-name nil)]
     (when spec
-      (-> (select-keys ingested (:copy spec))
-          (into (for [[k transform] (:transform spec)
-                      :when         (not (::nested transform))
-                      :let          [res ((:import transform) (get ingested k))]
-                      ;; do not try to insert nil values if transformer returns nothing
-                      :when         res]
-                  [k res]))))))
+      (binding [*current* ingested]
+        (-> (select-keys ingested (:copy spec))
+            (into (for [[k transform] (:transform spec)
+                        :when         (not (::nested transform))
+                        :let          [res ((:import transform) (get ingested k))]
+                        :when         (and (not= res ::skip)
+                                           (or (some? res)
+                                               (contains? ingested k)))]
+                    [k res])))))))
 
 (defn- spec-nested! [model-name ingested instance]
   (binding [*current* instance]
@@ -951,7 +961,9 @@
   The input might be nil, in which case so is the output. This is legal for a native question."
   [[db-name schema table-name :as table-id]]
   (when table-id
-    (t2/select-one-fn :id 'Table :name table-name :schema schema :db_id (t2/select-one-fn :id 'Database :name db-name))))
+    (or (t2/select-one-fn :id 'Table :name table-name :schema schema :db_id (t2/select-one-fn :id 'Database :name db-name))
+        (throw (ex-info (format "table id present, but no table found: %s" table-id)
+                        {:table-id table-id})))))
 
 (defn table->path
   "Given a `table_id` as exported by [[export-table-fk]], turn it into a `[{:model ...}]` path for the Table.
@@ -1610,11 +1622,19 @@
                           (doseq [ingested lst]
                             (load-one! (enrich ingested) (get local (entity-id model-name ingested))))))))}))
 
-(defn parent-ref "Transformer for parent id for nested entities" []
-  {::fk true :export (constantly nil) :import identity})
+(def parent-ref "Transformer for parent id for nested entities."
+  (constantly
+   {::fk true :export (constantly ::skip) :import identity}))
 
-(defn date "Transformer to parse the dates" []
-  {:export identity :import #(if (string? %) (u.date/parse %) %)})
+(def date "Transformer to parse the dates."
+  (constantly
+   {:export u.date/format :import #(if (string? %) (u.date/parse %) %)}))
+
+(def kw "Transformer for keywordized values.
+
+  Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
+  (constantly
+   {:export name :import keyword}))
 
 ;;; ## Memoizing appdb lookups
 
