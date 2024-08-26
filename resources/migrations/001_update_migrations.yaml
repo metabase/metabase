@@ -8969,6 +8969,10 @@ databaseChangeLog:
             - columnExists:
                 tableName: permissions
                 columnName: perm_value
+  - changeSet:
+      id: v51.2024-08-26T08:53:46
+      author: crisptrutski
+      comment: Add a status column to track the progress and outcome of query analysis
       changes:
         - addColumn:
             columns:
@@ -9110,6 +9114,20 @@ databaseChangeLog:
               - column:
                   name: perm_value
             indexName: idx_permissions_perm_value
+
+
+- changeSet:
+      id: v51.2024-08-26T08:53:46
+      author: crisptrutski
+      comment: Add a status column to track the progress and outcome of query analysis
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: status
+                  type: ${text.type}
+                  remarks: running, failed, or completed
+            tableName: query_analysis
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
