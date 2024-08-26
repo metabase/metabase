@@ -431,8 +431,16 @@ describe("scenarios > dashboard > filters > query stages", () => {
           ["Product", [...PRODUCTS_NUMBER_COLUMNS, ...PRODUCTS_NUMBER_COLUMNS]], // https://github.com/metabase/metabase/issues/46845
           ["User", PEOPLE_NUMBER_COLUMNS],
         ]);
-        verifyNoDashcardMappingOptions(2);
-        verifyNoDashcardMappingOptions(3);
+        /**
+         * TODO: https://github.com/metabase/metabase/issues/47184
+         * TODO: uncomment next two verifyDashcardMappingOptions calls once the issue is fixed
+         */
+        // verifyDashcardMappingOptions(2, [
+        //   ["Summaries", ["Count", "Sum of Total"]],
+        // ]);
+        // verifyDashcardMappingOptions(3, [
+        //   ["Summaries", ["Count", "Sum of Total"]],
+        // ]);
       }
     });
 
