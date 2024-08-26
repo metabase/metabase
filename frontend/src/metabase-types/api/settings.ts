@@ -167,6 +167,7 @@ export const tokenFeatures = [
   "email_restrict_recipients",
   "upload_management",
   "collection_cleanup",
+  "query_reference_validation",
 ] as const;
 
 export type TokenFeature = typeof tokenFeatures[number];
