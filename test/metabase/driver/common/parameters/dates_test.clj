@@ -95,9 +95,9 @@
                 "2016-06-07T23:00:00Z"]
                (params.dates/date-string->filter "exclude-hours-0-23" [:field "field" {:base-type :type/DateTime}])))
         (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-\""
-               (params.dates/date-string->filter "exclude-hours-" [:field "field" {:base-type :type/DateTime}])))
+                     (params.dates/date-string->filter "exclude-hours-" [:field "field" {:base-type :type/DateTime}])))
         (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-hours-24-3\""
-               (params.dates/date-string->filter "exclude-hours-24-3" [:field "field" {:base-type :type/DateTime}]))))
+                     (params.dates/date-string->filter "exclude-hours-24-3" [:field "field" {:base-type :type/DateTime}]))))
       (testing "quarters"
         (is (= [:!=
                 [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter-of-year}]
@@ -110,7 +110,7 @@
                 "2016-10-01"]
                (params.dates/date-string->filter "exclude-quarters-2-3-4" [:field "field" {:base-type :type/DateTime}])))
         (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-quarters-Q1\""
-               (params.dates/date-string->filter "exclude-quarters-Q1" [:field "field" {:base-type :type/DateTime}]))))
+                     (params.dates/date-string->filter "exclude-quarters-Q1" [:field "field" {:base-type :type/DateTime}]))))
       (testing "days"
         (is (= [:!=
                 [:field "field" {:base-type :type/DateTime, :temporal-unit :day-of-week}]
@@ -118,7 +118,7 @@
                 "2016-06-07"]
                (params.dates/date-string->filter "exclude-days-Fri-Tue" [:field "field" {:base-type :type/DateTime}])))
         (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-days-Friday\""
-               (params.dates/date-string->filter "exclude-days-Friday" [:field "field" {:base-type :type/DateTime}]))))
+                     (params.dates/date-string->filter "exclude-days-Friday" [:field "field" {:base-type :type/DateTime}]))))
       (testing "months"
         (is (= [:!=
                 [:field "field" {:base-type :type/DateTime, :temporal-unit :month-of-year}]
@@ -130,7 +130,7 @@
                      (params.dates/date-string->filter "exclude-months-April" [:field "field" {:base-type :type/DateTime}]))))
       (testing "minutes"
         (is (thrown? clojure.lang.ExceptionInfo #"Don't know how to parse date string \"exclude-minutes-15-30\""
-               (params.dates/date-string->filter "exclude-minutes-15-30" [:field "field" {:base-type :type/DateTime}])))))))
+                     (params.dates/date-string->filter "exclude-minutes-15-30" [:field "field" {:base-type :type/DateTime}])))))))
 
 (defn do-date-string-range-test
   [s->expected]
@@ -143,7 +143,6 @@
       (testing (format "%s with options %s should parse to %s" (pr-str s) (pr-str option) (pr-str ranges))
         (is (= expected-range
                (params.dates/date-string->range s option)))))))
-
 
 (deftest ^:parallel date-string->range-absolute-datetimes-test
   (do-date-string-range-test

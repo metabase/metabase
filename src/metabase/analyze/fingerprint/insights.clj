@@ -178,9 +178,9 @@
 (defn- ->millis-from-epoch [t]
   (when t
     (condp instance? t
-      Instant        (t/to-millis-from-epoch t)
-      OffsetDateTime (t/to-millis-from-epoch t)
-      ZonedDateTime  (t/to-millis-from-epoch t)
+      Instant        (.toEpochMilli ^Instant t)
+      OffsetDateTime (.toEpochMilli (.toInstant ^OffsetDateTime t))
+      ZonedDateTime  (.toEpochMilli (.toInstant ^ZonedDateTime t))
       LocalDate      (->millis-from-epoch (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
       LocalDateTime  (->millis-from-epoch (t/offset-date-time t (t/zone-offset 0)))
       LocalTime      (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))

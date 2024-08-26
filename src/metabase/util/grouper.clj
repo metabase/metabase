@@ -11,7 +11,7 @@
 
   Batch processing can be disabled by setting the environment variable `MB_DISABLE_GROUPER_BATCH_PROCESSING=true`."
   (:require
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [grouper.core :as grouper]
    [metabase.models.setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]

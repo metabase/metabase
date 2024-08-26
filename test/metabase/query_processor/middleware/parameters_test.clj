@@ -32,19 +32,19 @@
               :info            {:metadata/model-metadata []}
               :user-parameters ["My Param"]}
              (#'parameters/move-top-level-params-to-inner-query
-               {:type       :query
-                :query      {:source-table 5}
-                :parameters ["My Param"]
-                :info       {:metadata/model-metadata []}}))))
+              {:type       :query
+               :query      {:source-table 5}
+               :parameters ["My Param"]
+               :info       {:metadata/model-metadata []}}))))
     (testing "without parameters, leave the model at the top level"
       (is (= {:type            :query
               :query           {:source-table 5
                                 :parameters   ["My Param"]}
               :user-parameters ["My Param"]}
              (#'parameters/move-top-level-params-to-inner-query
-               {:type       :query
-                :query      {:source-table 5}
-                :parameters ["My Param"]}))))))
+              {:type       :query
+               :query      {:source-table 5}
+               :parameters ["My Param"]}))))))
 
 (defn- substitute-params [query]
   (letfn [(thunk []
@@ -63,8 +63,8 @@
               :filter      [:= $price 1]})
            (substitute-params
             (mt/mbql-query venues
-             {:aggregation [[:count]]
-              :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
+              {:aggregation [[:count]]
+               :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
 
 (deftest ^:parallel expand-native-top-level-params-test
   (testing "can we expand native params if they are specified at the top level?"
