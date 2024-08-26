@@ -21,4 +21,8 @@ export const isRecentModel = (item: RecentItem): item is RecentModel =>
 export type FilterableModel = ModelResult | RecentModel;
 
 /** Metric retrieved through the search endpoint */
-export type MetricResult = SearchResult<number, "dataset">;
+export type MetricResult = SearchResult<number, "metric">;
+
+export interface RecentMetric extends RecentCollectionItem {
+  model: "metric";
+}
