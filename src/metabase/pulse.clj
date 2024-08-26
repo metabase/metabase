@@ -272,6 +272,11 @@
      (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
      [])))
 
+(defn- should-retry-sending?
+  [exception channel-type]
+  (and (= :channel/slack channel-type)
+       (contains? (:errors (ex-data exception)) :slack-token)))
+
 (defn- send-retrying!
   [pulse-id channel message]
   (try
@@ -288,22 +293,19 @@
                            (catch Exception e
                              (vswap! retry-errors conj e)
                              ;; Token errors have already been logged and we should not retry.
-                             (when-not (and (= :channel/slack (:type channel))
-                                            (contains? (:errors (ex-data e)) :slack-token))
-                               (throw e)))))
-          task-details {:retry-config retry-config
-                        :channel-type (:type channel)
-                        :channel-id   (:id channel)
-                        :pulse-id     pulse-id}]
-
+                             (when-not (should-retry-sending? e (:type channel))
+                               (throw e)))))]
       (task-history/with-task-history {:task            "channel-send"
                                        :on-success-info (fn [update-map _result]
                                                           (cond-> update-map
                                                             (seq @retry-errors)
-                                                            (assoc :task_details (merge task-details (retry-report)))))
+                                                            (update :task_details merge (retry-report))))
                                        :on-fail-info    (fn [update-map _result]
                                                           (update update-map :task_details #(merge % (retry-report))))
-                                       :task_details    task-details}
+                                       :task_details    {:retry-config retry-config
+                                                         :channel-type (:type channel)
+                                                         :channel-id   (:id channel)
+                                                         :pulse-id     pulse-id}}
         ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))))
     (catch Throwable e
       (log/error e "Error sending notification!"))))

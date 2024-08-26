@@ -83,13 +83,18 @@
 ;;; |                                            with-task-history macro                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private TaskHistoryCallBackInfo
+  [:map {:closed true}
+   [:status                        (into [:enum] task-history-status)]
+   [:task_details {:optional true} [:maybe :map]]])
+
 (def ^:private TaskHistoryInfo
   "Schema for `info` passed to the `with-task-history` macro."
   [:map {:closed true}
    [:task                             ms/NonBlankString] ; task name, i.e. `send-pulses`. Conventionally lisp-cased
    [:db_id           {:optional true} [:maybe :int]]     ; DB involved, for sync operations or other tasks where this is applicable.
-   [:on-success-info {:optional true} [:maybe [:=> [:cat :map :any] :map]]]
-   [:on-fail-info    {:optional true} [:maybe [:=> [:cat :map :any] :map]]]
+   [:on-success-info {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
+   [:on-fail-info    {:optional true} [:maybe [:=> [:cat TaskHistoryCallBackInfo :any] :map]]]
    [:task_details    {:optional true} [:maybe :map]]])   ; additional map of details to include in the recorded row
 
 (def ^:private ns->ms #(int (/ % 1e6)))
@@ -114,7 +119,9 @@
                                                         :started_at (t/instant)))]
     (try
       (u/prog1 (f)
-        (update-task-history! th-id start-time-ns (on-success-info {:status :success} <>)))
+        (update-task-history! th-id start-time-ns (on-success-info {:status       :success
+                                                                    :task_details (:task_details info)}
+                                                                   <>)))
       (catch Throwable e
         (update-task-history! th-id start-time-ns
                               (on-fail-info {:task_details {:status        :failed
@@ -134,8 +141,8 @@
 
     (with-task-history {:task \"send-pulses\"
                         :db_id 1
-                        :on-success-info (fn [update-map thunk-result] (assoc-in [update-map] [:task-details :thunk-result] thunk-result)})
-                        :on-fail-info (fn [update-map e] (assoc-in [update-map] [:task-details :exception-class] (class e)))}
+                        :on-success-info (fn [info thunk-result] (assoc-in info [:task-details :thunk-result] thunk-result)})
+                        :on-fail-info (fn [info e] (assoc-in info [:task-details :exception-class] (class e)))}
       ...)
 
   Optionally takes:
