@@ -52,6 +52,7 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
+import { BrowseMetrics } from "./browse/components/BrowseMetrics";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
@@ -206,6 +207,7 @@ export const getRoutes = store => {
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
+            <Route path="metrics" component={BrowseMetrics} />
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
             <Route path="databases/:slug" component={BrowseSchemas} />
