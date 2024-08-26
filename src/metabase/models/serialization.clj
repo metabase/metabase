@@ -331,7 +331,8 @@
             ;; won't assoc if `generate-path` returned `nil`
             (m/assoc-some :serdes/meta (generate-path model-name instance))
             (into (for [[k transform] (:transform spec)
-                        :let  [res ((:export transform) (get instance k))]
+                        :let  [export-k (or (:as transform) k)
+                               res ((:export transform) (get instance k))]
                         :when (not= res ::skip)]
                     (do
                       (when-not (contains? instance k)
@@ -340,7 +341,7 @@
                                          :key      k
                                          :instance instance})))
 
-                      [k res]))))))
+                      [export-k res]))))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
                       (assoc (ex-data e) :model model-name :id (:id instance))
@@ -744,10 +745,11 @@
         (-> (select-keys ingested (:copy spec))
             (into (for [[k transform] (:transform spec)
                         :when         (not (::nested transform))
-                        :let          [res ((:import transform) (get ingested k))]
+                        :let          [import-k (or (:as transform) k)
+                                       res ((:import transform) (get ingested import-k))]
                         :when         (and (not= res ::skip)
                                            (or (some? res)
-                                               (contains? ingested k)))]
+                                               (contains? ingested import-k)))]
                     [k res])))))))
 
 (defn- spec-nested! [model-name ingested instance]
@@ -1629,11 +1631,28 @@
   (constantly
    {:export u.date/format :import #(if (string? %) (u.date/parse %) %)}))
 
+(defn maybe
+  "Transform a value only if it is present"
+  [{:keys [export import]}]
+  {:export #(when (some? %) (export %))
+   :import #(when (some? %) (import %))})
+
 (def kw "Transformer for keywordized values.
 
   Used so various comparisons in hooks work, like `t2/changes` will not indicate a changed property."
   (constantly
    {:export name :import keyword}))
+
+(defn as
+  "Serialize this field under the given key instead, typically because it has been logically transformed."
+  [k xform]
+  (assoc xform :as k))
+
+(defn compose
+  "Compose two transformations."
+  [inner-xform outer-xform]
+  {:export (comp (:export inner-xform) (:export outer-xform))
+   :import (comp (:import outer-xform) (:import inner-xform))})
 
 ;;; ## Memoizing appdb lookups
 
