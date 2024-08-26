@@ -3241,7 +3241,7 @@
     polished "^4.2.2"
     ts-dedent "^2.2.0"
 
-"@storybook/addon-links@6.5.16":
+"@storybook/addon-links@^6.5.16":
   version "6.5.16"
   resolved "https://registry.yarnpkg.com/@storybook/addon-links/-/addon-links-6.5.16.tgz#cacb20cd0656f0681a874709d428d3f3577828c3"
   integrity sha512-P/mmqK57NGXnR0i3d/T5B0rIt0Lg8Yq+qionRr3LK3AwG/4yGnYt4GNomLEknn/eEwABYq1Q/Z1aOpgIhNdq5A==
