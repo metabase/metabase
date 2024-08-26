@@ -8986,8 +8986,8 @@ databaseChangeLog:
 
 
   - changeSet:
-        id: v51.2024-08-21T14:35:00-1
-        author: jordigiam
+        id: v51.2024-08-26T14:35:00-1
+        author: flavius
         comment: Enable pgvector extension and create documents table with match_documents function
         changes:
           - sql:
