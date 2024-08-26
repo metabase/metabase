@@ -34,7 +34,8 @@
 (deftest simple-get-list-card-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Card       {card-id         :id} {:type "question" :name "name" :display "display" :collection_id coll-id}]
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
@@ -44,7 +45,8 @@
              :id card-id,
              :display "display",
              :timestamp String
-             :model :card}]
+             :model :card
+             :database_id db-id}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -52,7 +54,8 @@
 (deftest simple-get-list-dataset-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id}]
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
@@ -61,7 +64,27 @@
              :moderated_status nil,
              :id card-id,
              :timestamp String
-             :model :dataset}]
+             :model :dataset
+             :database_id db-id}]
+           (mt/with-test-user :rasta
+             (mapv fixup
+                   (recent-views (mt/user->id :rasta))))))))
+
+(deftest simple-get-list-metric-test
+  (mt/with-temp
+    [:model/Collection {coll-id :id} {:name "my coll"}
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id         :id} {:type "metric" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
+    (is (= [{:description nil,
+             :can_write true,
+             :name "name",
+             :parent_collection {:id coll-id, :name "my coll", :authority_level nil},
+             :moderated_status nil,
+             :id card-id,
+             :display "display",
+             :timestamp java.lang.String,
+             :model :metric}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -157,7 +180,6 @@
                      (mt/with-test-user :rasta
                        (recent-views (mt/user->id :rasta))))))))))
 
-
 (deftest update-users-recent-views!-duplicates-test
   (testing "`update-users-recent-views!` prunes duplicates of a certain model.`"
     (mt/with-temp [:model/Card {card-id :id} {:type "question"}]
@@ -174,17 +196,17 @@
       (mt/with-full-data-perms-for-all-users!
         (mt/with-temp
           [:model/Collection {parent-coll-id :id} {:name "parent"}
-           :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id}
-           :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id}
+           :model/Database   {db-id :id} {:name "My DB"} ;; just needed for temp tables and card's db:
 
+           :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id :database_id db-id}
+           :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id :database_id db-id}
+           :model/Card       {metric-id :id} {:type "metric" :name "my metric" :display "Metric" :collection_id parent-coll-id :database_id db-id}
            :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash" :collection_id parent-coll-id}
-
            :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (->location parent-coll-id)}
-
-           :model/Database   {db-id :id} {:name "My DB"} ;; just needed for these temp tables
            :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
           (doseq [[model model-id] [[:model/Card card-id]
                                     [:model/Card model-id]
+                                    [:model/Card metric-id]
                                     [:model/Dashboard dashboard-id]
                                     [:model/Collection collection-id]
                                     [:model/Table table-id]]]
@@ -210,13 +232,22 @@
                    :model :dashboard,
                    :can_write true,
                    :parent_collection {:id "ID", :name "parent", :authority_level nil}}
+                  {:description nil,
+                   :can_write true,
+                   :name "my metric",
+                   :parent_collection {:id "ID", :name "parent", :authority_level nil},
+                   :moderated_status nil,
+                   :id "ID",
+                   :display "Metric",
+                   :model :metric}
                   {:id "ID",
                    :name "my model",
                    :description "this is my model",
                    :model :dataset,
                    :can_write true,
                    :moderated_status nil,
-                   :parent_collection {:id "ID", :name "parent", :authority_level nil}}
+                   :parent_collection {:id "ID", :name "parent", :authority_level nil}
+                   :database_id db-id}
                   {:description "this is my card",
                    :can_write true,
                    :name "my card",
@@ -224,7 +255,8 @@
                    :moderated_status nil,
                    :id "ID",
                    :display "table",
-                   :model :card}]
+                   :model :card
+                   :database_id db-id}]
                  (mt/with-test-user :rasta
                    (with-redefs [mi/can-read? (constantly true)
                                  mi/can-write? (fn ([id] (not= id table-id))

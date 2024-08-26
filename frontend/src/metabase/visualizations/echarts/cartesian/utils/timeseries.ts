@@ -4,10 +4,7 @@ import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time-dayjs";
 import { isNotNull } from "metabase/lib/types";
-import type {
-  TimeSeriesInterval,
-  ShowWarning,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { TimeSeriesInterval } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   multipleTimezoneWarning,
   unexpectedTimezoneWarning,
@@ -18,6 +15,8 @@ import type {
   RawSeries,
   RowValue,
 } from "metabase-types/api";
+
+import type { ShowWarning } from "../../types";
 
 export const tryGetDate = (rowValue: RowValue): Dayjs | null => {
   if (typeof rowValue === "boolean") {

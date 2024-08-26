@@ -34,11 +34,15 @@
 
 (defmethod format-exception ExceptionInfo
   [e]
-  (let [{error-type :type, :as data} (ex-data e)]
+  ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
+  ;; to be shown to the user. It is used by FE.
+  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)]
     (merge
      ((get-method format-exception Throwable) e)
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
+     (when is-curated
+       {:error_is_curated is-curated})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
      {:ex-data data})))
 
@@ -54,7 +58,7 @@
   [e]
   (reverse (u/full-exception-chain e)))
 
-(mu/defn ^:private best-top-level-error
+(mu/defn- best-top-level-error
   "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
   usually want to show SQLExceptions at the top level since they contain more useful information."
   [maps :- [:sequential {:min 1} :map]]
@@ -89,11 +93,11 @@
       :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
                       native)})))
 
-(mu/defn ^:private query-execution-info :- :map
+(mu/defn- query-execution-info :- :map
   [query-execution :- :map]
   (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
 
-(mu/defn ^:private format-exception* :- [:map [:status :keyword]]
+(mu/defn- format-exception* :- [:map [:status :keyword]]
   "Format a `Throwable` into the usual userland error-response format."
   [query        :- :map
    ^Throwable e :- (lib.schema.common/instance-of-class Throwable)

@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { BoldCode } from "metabase/components/Code";
 import Link from "metabase/core/components/Link";

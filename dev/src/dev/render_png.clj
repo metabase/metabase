@@ -4,7 +4,7 @@
   (:require
     [clojure.data.csv :as csv]
     [clojure.java.io :as io]
-    [clojure.java.shell :as sh]
+    [dev.util :as dev.u]
     [hiccup.core :as hiccup]
     [metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
@@ -23,33 +23,6 @@
 (set! *warn-on-reflection* true)
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
-(defn- os
-  "Returns :win, :mac, :unix, or nil"
-  []
-  (condp
-   #(<= 0 (.indexOf ^String %2 ^String %1))
-   (.toLowerCase (System/getProperty "os.name"))
-   "win" :win
-   "mac" :mac
-   "nix" :unix
-   "nux" :unix
-   nil))
-
-;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
-(defn- open
-  "Opens the given file (a string, File, or file URI) in the default
-  application for the current desktop environment. Returns nil"
-  [f]
-  (let [f (io/file f)]
-    ;; There's an 'open' method in java.awt.Desktop but it hangs on Windows
-    ;; using Clojure Box and turns the process into a GUI process on Max OS X.
-    ;; Maybe it's ok for Linux?
-    (condp = (os)
-      :mac  (sh/sh "open" (str f))
-      :win  (sh/sh "cmd" (str "/c start " (-> f .toURI .toURL str)))
-      :unix (sh/sh "xdg-open" (str f)))
-    nil))
-
 (defn render-card-to-png
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
@@ -67,7 +40,7 @@
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes png-bytes))
     (.deleteOnExit tmp-file)
-    (open tmp-file)))
+    (dev.u/os-open tmp-file)))
 
 (defn render-pulse-card
   "Render a pulse card as a data structure"
@@ -87,7 +60,7 @@
     (with-open [w (io/writer tmp-file)]
       (.write w ^String html-str))
     (.deleteOnExit tmp-file)
-    (open tmp-file)))
+    (dev.u/os-open tmp-file)))
 
 (defn open-hiccup-as-html
   "Take a hiccup data structure, render it as html, then open it in the browser."
@@ -118,7 +91,7 @@
         (with-open [w (java.io.FileOutputStream. tmp-file)]
           (.write w ^bytes png-bytes))
         (.deleteOnExit tmp-file)
-        (open tmp-file)))))
+        (dev.u/os-open tmp-file)))))
 
 (def ^:private table-style-map
   {:border          "1px solid black"
@@ -208,7 +181,7 @@
     (with-open [w (io/writer tmp-file)]
       (.write w ^String html-str))
     (.deleteOnExit tmp-file)
-    (open tmp-file)))
+    (dev.u/os-open tmp-file)))
 
 (comment
   ;; This form has 3 cards:

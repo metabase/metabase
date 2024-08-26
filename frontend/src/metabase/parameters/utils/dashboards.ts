@@ -7,8 +7,8 @@ import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
-  UiParameter,
   FieldFilterUiParameter,
+  UiParameter,
 } from "metabase-lib/v1/parameters/types";
 import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
@@ -17,14 +17,14 @@ import {
 } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
+  CardId,
+  DashCardId,
   Dashboard,
   DashboardParameterMapping,
-  QuestionDashboardCard,
   Parameter,
   ParameterMappingOptions,
-  DashCardId,
-  CardId,
   ParameterTarget,
+  QuestionDashboardCard,
 } from "metabase-types/api";
 
 type ExtendedMapping = DashboardParameterMapping & {
@@ -72,7 +72,13 @@ export function setParameterType(
   sectionId: string,
 ): Parameter {
   // reset default value
-  const { default: _, ...rest } = parameter;
+  const {
+    default: _,
+    values_source_type,
+    values_source_config,
+    values_query_type,
+    ...rest
+  } = parameter;
 
   return {
     ...rest,

@@ -1,6 +1,6 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { LicenseInput } from "metabase/admin/settings/components/LicenseInput";
 import {
@@ -173,7 +173,7 @@ const LicenseAndBillingSettings = ({
 export default connect(
   (state: State): StateProps => ({
     settingValues: state.admin.settings.settings,
-    upgradeUrl: getUpgradeUrl(state, { utm_media: "license" }),
+    upgradeUrl: getUpgradeUrl(state, { utm_content: "license" }),
   }),
   {
     showLicenseAcceptedToast,

@@ -19,7 +19,7 @@
   given the corresponding semantic type (such as `:type/State`)"
   0.7)
 
-(mu/defn ^:private percent-key-above-threshold?
+(mu/defn- percent-key-above-threshold?
   "Is the value of `percent-key` inside `text-fingerprint` above the `percent-valid-threshold`?"
   [threshold        :- :double
    text-fingerprint :- fingerprint.schema/TextFingerprint
@@ -35,7 +35,7 @@
    :percent-email [:type/Email          percent-valid-threshold]
    :percent-state [:type/State          lower-percent-valid-threshold]})
 
-(mu/defn ^:private infer-semantic-type-for-text-fingerprint :- [:maybe ms/FieldType]
+(mu/defn- infer-semantic-type-for-text-fingerprint :- [:maybe ms/FieldType]
   "Check various percentages inside the `text-fingerprint` and return the corresponding semantic type to mark the Field
   as if the percent passes the threshold."
   [text-fingerprint :- fingerprint.schema/TextFingerprint]

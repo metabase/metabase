@@ -5,7 +5,8 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (deftest preprocess-caching-test
   (testing "`preprocess` should work the same even if query has cached results (#18579)"
@@ -40,6 +41,16 @@
 
 (driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
 
+(defmethod tx/create-db! ::custom-escape-spaces-to-underscores
+  [& _]
+  ;; no-op since we should be able to reuse the data from H2 tests
+  nil)
+
+(defmethod tx/destroy-db! ::custom-escape-spaces-to-underscores
+  [& _]
+  ;; no-op since we don't want to stomp on data used by H2 tests
+  nil)
+
 (defmethod driver/escape-alias ::custom-escape-spaces-to-underscores
   [driver field-alias]
   (-> ((get-method driver/escape-alias :h2) driver field-alias)
@@ -51,26 +62,26 @@
       (binding [driver/*driver* ::custom-escape-spaces-to-underscores]
         (let [query
               (mt/mbql-query
-                  products
-                  {:joins
-                   [{:source-query
-                     {:source-table $$orders
-                      :joins
-                      [{:source-table $$people
-                        :alias "People"
-                        :condition [:= $orders.user_id &People.people.id]
-                        :fields [&People.people.address]
-                        :strategy :left-join}]
-                      :fields [$orders.id &People.people.address]}
-                     :alias "Question 54"
-                     :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
-                     :fields [[:field %orders.id {:join-alias "Question 54"}]
-                              [:field %people.address {:join-alias "Question 54"}]]
-                     :strategy :left-join}]
-                   :fields
-                   [!default.created_at
-                    [:field %orders.id {:join-alias "Question 54"}]
-                    [:field %people.address {:join-alias "Question 54"}]]})]
+                products
+                {:joins
+                 [{:source-query
+                   {:source-table $$orders
+                    :joins
+                    [{:source-table $$people
+                      :alias "People"
+                      :condition [:= $orders.user_id &People.people.id]
+                      :fields [&People.people.address]
+                      :strategy :left-join}]
+                    :fields [$orders.id &People.people.address]}
+                   :alias "Question 54"
+                   :condition [:= $id [:field %orders.id {:join-alias "Question 54"}]]
+                   :fields [[:field %orders.id {:join-alias "Question 54"}]
+                            [:field %people.address {:join-alias "Question 54"}]]
+                   :strategy :left-join}]
+                 :fields
+                 [!default.created_at
+                  [:field %orders.id {:join-alias "Question 54"}]
+                  [:field %people.address {:join-alias "Question 54"}]]})]
           (is (=? [{:name "CREATED_AT"
                     :field_ref [:field (mt/id :products :created_at) {:temporal-unit :default}]
                     :display_name "Created At"}
@@ -100,10 +111,10 @@
   (testing "Sanity check: query->expected-cols should not include MLv2 dimension remapping keys"
     ;; Add column remapping from Orders Product ID -> Products.Title
     (mt/with-temp [:model/Dimension _ (mt/$ids orders
-                                               {:field_id                %product_id
-                                                :name                    "Product ID"
-                                                :type                    :external
-                                                :human_readable_field_id %products.title})]
+                                        {:field_id                %product_id
+                                         :name                    "Product ID"
+                                         :type                    :external
+                                         :human_readable_field_id %products.title})]
       (let [expected-cols (qp.preprocess/query->expected-cols (mt/mbql-query orders))]
         (is (not (some (some-fn :lib/external_remap :lib/internal_remap)
                        expected-cols)))))))

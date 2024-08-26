@@ -2,15 +2,15 @@ import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import { createMockSegment } from "metabase-types/api/mocks";
 import {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PRODUCTS,
   createOrdersTable,
   createPeopleTable,
   createProductsTable,
   createReviewsTable,
   createSampleDatabase,
-  ORDERS,
-  ORDERS_ID,
-  PEOPLE,
-  PRODUCTS,
 } from "metabase-types/api/mocks/presets";
 
 const SEGMENT_ID = 1;

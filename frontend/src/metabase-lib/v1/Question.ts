@@ -21,18 +21,18 @@ import type Table from "metabase-lib/v1/metadata/Table";
 import { sortObject } from "metabase-lib/v1/utils";
 
 import type {
-  Card as CardObject,
   CardDisplayType,
+  Card as CardObject,
   CardType,
   CollectionId,
-  DashboardId,
   DashCardId,
+  DashboardId,
   DatabaseId,
   DatasetData,
   DatasetQuery,
   Field,
-  Parameter as ParameterObject,
   ParameterId,
+  Parameter as ParameterObject,
   ParameterValues,
   TableId,
   VisualizationSettings,
@@ -375,16 +375,6 @@ class Question {
     return this._card && this._card.can_write;
   }
 
-  canRunAdhocQuery(): boolean {
-    if (this.isSaved()) {
-      return this._card.can_run_adhoc_query;
-    }
-
-    const query = this.query();
-    const { isEditable } = Lib.queryDisplayInfo(query);
-    return isEditable;
-  }
-
   canWriteActions(): boolean {
     const database = this.database();
 
@@ -469,6 +459,10 @@ class Question {
     const metadata = this.metadataProvider();
     const tableId = getQuestionVirtualTableId(this.id());
     const table = Lib.tableOrCardMetadata(metadata, tableId);
+    if (!table) {
+      return this;
+    }
+
     const query = Lib.queryFromTableOrCardMetadata(metadata, table);
     return this.setQuery(query);
   }
@@ -495,6 +489,10 @@ class Question {
 
   setDisplayName(name: string | null | undefined) {
     return this.setCard(assoc(this.card(), "name", name));
+  }
+
+  collection(): Collection | null | undefined {
+    return this?._card?.collection;
   }
 
   collectionId(): CollectionId | null | undefined {

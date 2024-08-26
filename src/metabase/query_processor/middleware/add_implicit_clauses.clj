@@ -44,7 +44,7 @@
                                   {:temporal-unit :default})])
      fields)))
 
-(mu/defn ^:private source-metadata->fields :- mbql.s/Fields
+(mu/defn- source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- [:sequential {:min 1} mbql.s/SourceQueryMetadata]]
   (distinct
@@ -66,7 +66,7 @@
            ;; expression. We don't need to mark as ignore-coercion here because these won't grab the field metadata
            [:field field-name {:base-type base-type}])))))
 
-(mu/defn ^:private should-add-implicit-fields?
+(mu/defn- should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
 
   *  The query has either a `:source-table`, *or* a `:source-query` with `:source-metadata` for it
@@ -90,7 +90,7 @@
            (and source-query (seq source-metadata)))
        (every? empty? [aggregations breakouts fields])))
 
-(mu/defn ^:private add-implicit-fields
+(mu/defn- add-implicit-fields
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
   [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query}]
@@ -111,7 +111,6 @@
                         {:type qp.error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
@@ -151,7 +150,7 @@
                                          order-by-elm))]
       (update inner-query :order-by (partial mapv maybe-convert-order-by-ref)))))
 
-(mu/defn ^:private add-implicit-breakout-order-by :- mbql.s/MBQLQuery
+(mu/defn- add-implicit-breakout-order-by :- mbql.s/MBQLQuery
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
   [inner-query :- mbql.s/MBQLQuery]
@@ -160,7 +159,6 @@
   (let [{breakouts :breakout, :as inner-query} (fix-order-by-field-refs inner-query)]
     (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
                                                      [:asc breakout]))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |

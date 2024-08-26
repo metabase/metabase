@@ -1,20 +1,21 @@
 import { useEffect } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 
-import type { EmbeddingSessionToken } from "embedding-sdk";
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
+import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
-  getOrRefreshSession,
   setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-import type { SdkDispatch } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
+import { useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -23,46 +24,50 @@ interface InitDataLoaderParameters {
   config: SDKConfig;
 }
 
-const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
-
-const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
-  api.onBeforeRequest = async () => {
-    const tokenState = await dispatch(
-      getOrRefreshSession(config.jwtProviderUri),
-    );
-
-    api.sessionToken = (tokenState.payload as EmbeddingSessionToken | null)?.id;
-  };
-};
-
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
+  const appName = useSelector(getApplicationName);
 
   useEffect(() => {
     registerVisualizationsOnce();
-  }, [dispatch]);
+
+    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+    api.requestClient = {
+      name: "embedding-sdk-react",
+      version: EMBEDDING_SDK_VERSION,
+    };
+
+    // eslint-disable-next-line no-console
+    console.log(
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
+    );
+  }, []);
 
   useEffect(() => {
-    if (loginStatus.status === "uninitialized") {
-      api.basename = config.metabaseInstanceUrl;
+    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+  }, [dispatch, config.fetchRequestToken]);
 
-      dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
-
-      if (isValidJwtAuth(config)) {
-        setupJwtAuth(config, dispatch);
-        dispatch(setLoginStatus({ status: "validated" }));
-      } else {
-        dispatch(
-          setLoginStatus({
-            status: "error",
-            error: new Error(t`Invalid JWT URI provided.`),
-          }),
-        );
-      }
+  useEffect(() => {
+    if (loginStatus.status !== "uninitialized") {
+      return;
     }
-  }, [config, dispatch, loginStatus.status]);
+
+    api.basename = config.metabaseInstanceUrl;
+
+    const authErrorMessage = getAuthConfiguration(config, dispatch, appName);
+
+    if (authErrorMessage) {
+      dispatch(
+        setLoginStatus({
+          status: "error",
+          error: new Error(authErrorMessage),
+        }),
+      );
+    }
+  }, [appName, config, dispatch, loginStatus.status]);
 
   useEffect(() => {
     if (loginStatus.status === "validated") {
@@ -82,9 +87,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
             dispatch(
               setLoginStatus({
                 status: "error",
-                error: new Error(
-                  t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
-                ),
+                error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
               }),
             );
             return;
@@ -95,9 +98,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
           dispatch(
             setLoginStatus({
               status: "error",
-              error: new Error(
-                t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
-              ),
+              error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
             }),
           );
         }

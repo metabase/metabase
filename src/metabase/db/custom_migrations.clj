@@ -1102,7 +1102,7 @@
 
     :mysql
     (do
-     (t2/query ["UPDATE revision
+      (t2/query ["UPDATE revision
                  SET object = JSON_SET(
                      object,
                      '$.dataset',
@@ -1111,7 +1111,7 @@
                          THEN true ELSE false
                      END)
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"])
-     (t2/query ["UPDATE revision
+      (t2/query ["UPDATE revision
                  SET object = JSON_REMOVE(object, '$.type')
                  WHERE model = 'Card' AND JSON_UNQUOTE(JSON_EXTRACT(object, '$.type')) IS NOT NULL;"]))
 
@@ -1314,7 +1314,6 @@
   ;; - if you have created content manually, find-replace :creator_id <your user-id> with :creator_id 13371338 (the internal user ID)
   ;; - replace metabase_version "<version>" with metabase_version nil
 
-
 ;; This was renamed to TruncateAuditTables, so we need to delete the old job & trigger
 (define-migration DeleteTruncateAuditLogTask
   (classloader/the-classloader)
@@ -1341,12 +1340,12 @@
 (define-reversible-migration DeleteSendPulseTaskOnDowngrade
   (log/info "No forward migration for DeleteSendPulseTaskOnDowngrade")
   (do
-   (classloader/the-classloader)
-   (set-jdbc-backend-properties!)
-   (let [scheduler (qs/initialize)]
-     (qs/start scheduler)
-     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
-     (qs/shutdown scheduler))))
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
+      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.send-pulse.job"))
+      (qs/shutdown scheduler))))
 
 ;; The InitSendPulseTriggers is a migration in disguise, it runs once per instance
 ;; To make sure when someone migrate up -> migrate down -> migrate up again, this job is re-run
@@ -1354,13 +1353,13 @@
 (define-reversible-migration DeleteInitSendPulseTriggersOnDowngrade
   (log/info "No forward migration for DeleteInitSendPulseTriggersOnDowngrade")
   (do
-   (classloader/the-classloader)
-   (set-jdbc-backend-properties!)
-   (let [scheduler (qs/initialize)]
-     (qs/start scheduler)
+    (classloader/the-classloader)
+    (set-jdbc-backend-properties!)
+    (let [scheduler (qs/initialize)]
+      (qs/start scheduler)
      ;; delete the job will also delete all of its triggers
-     (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
-     (qs/shutdown scheduler))))
+      (qs/delete-job scheduler (jobs/key "metabase.task.send-pulses.init-send-pulse-triggers.job"))
+      (qs/shutdown scheduler))))
 
 ;; when card display is area or bar,
 ;; 1. set the display key to :stackable.stack_display value OR leave it the same
@@ -1465,3 +1464,104 @@
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
+
+(defn- column->column-key
+  "Computes a modern viz setting column key for a `column`. The modern format is [\"name\",`name`]."
+  [{name "name"}]
+  (when name
+    (json/generate-string ["name" name])))
+
+(defn- column->legacy-column-key
+  "Computes a legacy viz setting column key for a `column`.
+  If the `field_ref` has a field name and not a field id, or if the `field_ref` is for an aggregation column, returns a
+  column key of the modern format [\"name\",`name`].
+  In other cases returns a legacy column key of the format [\"ref\",`field_ref`] where `:binning` and `:temporal-unit`
+  options are removed from the `field_ref`."
+  [{name "name" field-ref "field_ref" :as column}]
+  (let [field-ref (or field-ref (when name ["field" name nil]))
+        [ref-type field-id-or-name ref-options] field-ref
+        field-ref (if (and (#{"field" "expression" "aggregation"} ref-type) ref-options)
+                    [ref-type field-id-or-name (not-empty (dissoc ref-options "binning" "temporal-unit"))]
+                    field-ref)]
+    (cond
+      (or (and (= ref-type "field") (string? field-id-or-name)) (= ref-type "aggregation"))
+      (column->column-key column)
+
+      field-ref
+      (json/generate-string ["ref" field-ref]))))
+
+(defn- update-legacy-column-keys-in-viz-settings
+  "Updates `:column_settings` keys. Unmatched keys are retained."
+  [viz-settings result-metadata old-key-fn new-key-fn]
+  (let [key->column (m/index-by old-key-fn result-metadata)]
+    (m/update-existing viz-settings "column_settings" update-keys
+                       (fn [key]
+                         (if-let [column (get key->column key)]
+                           (or (new-key-fn column) key)
+                           key)))))
+
+(defn- migrate-legacy-column-keys-in-viz-settings
+  "Migrates legacy `:column_settings` keys that have serialized field refs to name-based column keys. Unmatched keys are
+  retained."
+  [viz-settings result-metadata]
+  (update-legacy-column-keys-in-viz-settings viz-settings result-metadata column->legacy-column-key column->column-key))
+
+(defn- rollback-legacy-column-keys-in-viz-settings
+  "Rollbacks changes to `:column_settings` keys and brings field ref-based column keys back. Unmatched keys are
+  retained."
+  [viz-settings result-metadata]
+  (update-legacy-column-keys-in-viz-settings viz-settings result-metadata column->column-key column->legacy-column-key))
+
+(defn- json-column-key-like-clause
+  [key column]
+  [:or [:like column (str "%\\\\\"" key "\\\\\"%")]
+       ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+   [:like column (str "%\\\\\\\"" key "\\\\\\\"%")]])
+
+(defn- update-legacy-column-keys-in-card-viz-settings
+  "Updates `:visualization_settings` of each card that contains `:column_settings` by calling `update-viz-settings`
+  function. Can be used to both migrate and rollback the viz settings changes. `:result_metadata` of each card is used
+  to find the deduplicated column name by the field reference and compute the new column key."
+  [column-key-tag update-viz-settings-fn]
+  (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
+                      (let [viz-settings         (json/parse-string viz-settings)
+                            result-metadata      (json/parse-string result-metadata)
+                            updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
+                        (when (not= viz-settings updated-viz-settings)
+                          (t2/query-one {:update :report_card
+                                         :set    {:visualization_settings (json/generate-string updated-viz-settings)}
+                                         :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                           :from   [:report_card]
+                                           :where  [:and [:not= :result_metadata nil]
+                                                    [:like :visualization_settings "%column_settings%"]
+                                                    (json-column-key-like-clause column-key-tag :visualization_settings)]}))))
+
+(define-reversible-migration MigrateLegacyColumnKeysInCardVizSettings
+  (update-legacy-column-keys-in-card-viz-settings "ref" migrate-legacy-column-keys-in-viz-settings)
+  (update-legacy-column-keys-in-card-viz-settings "name" rollback-legacy-column-keys-in-viz-settings))
+
+(defn- update-legacy-column-keys-in-dashboard-card-viz-settings
+  "Updates `:visualization_settings` of each dashboard card that contains `:column_settings` by calling
+  `update-viz-settings` function. Can be used to both migrate and rollback the viz settings changes. `:result_metadata`
+  of each referenced card is used to find the deduplicated column name by the field reference and compute the new column
+  key."
+  [column-key-tag update-viz-settings-fn]
+  (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
+                      (let [viz-settings         (json/parse-string viz-settings)
+                            result-metadata      (json/parse-string result-metadata)
+                            updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
+                        (when (not= viz-settings updated-viz-settings)
+                          (t2/query-one {:update :report_dashboardcard
+                                         :set    {:visualization_settings (json/generate-string updated-viz-settings)}
+                                         :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
+                                           :from   [[:report_card :c]]
+                                           :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
+                                           :where  [:and [:not= :c.result_metadata nil]
+                                                    [:like :dc.visualization_settings "%column_settings%"]
+                                                    (json-column-key-like-clause column-key-tag :dc.visualization_settings)]}))))
+
+(define-reversible-migration MigrateLegacyColumnKeysInDashboardCardVizSettings
+  (update-legacy-column-keys-in-dashboard-card-viz-settings "ref" migrate-legacy-column-keys-in-viz-settings)
+  (update-legacy-column-keys-in-dashboard-card-viz-settings "name" rollback-legacy-column-keys-in-viz-settings))

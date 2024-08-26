@@ -70,7 +70,6 @@
               {:name      "value"
                :base-type :type/Text}}}})
 
-
 (driver/register! ::moviedb, :abstract? true)
 
 (defmethod driver/describe-database ::moviedb [_ {:keys [exclude-tables]}]
@@ -97,4 +96,4 @@
      {:keypath "movies.description", :value "A cinematic adventure."}
      {:keypath "description", :value "Information about movies"}]))
 
-(defmethod driver/database-supports? [::moviedb :foreign-keys] [_driver _feature _db] true)
+(defmethod driver/database-supports? [::moviedb :metadata/key-constraints] [_driver _feature _db] true)

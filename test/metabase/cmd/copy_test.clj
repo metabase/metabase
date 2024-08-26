@@ -34,9 +34,11 @@
     :model/LegacyMetric
     :model/LegacyMetricImportantField
     :model/Query
+    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField
+    :model/QueryTable
     :model/TaskHistory})
 
 (defn- all-model-names []
@@ -45,7 +47,7 @@
               (remove models-to-exclude))
         (descendants :metabase/model)))
 
-(deftest ^:paralell all-models-accounted-for-test
+(deftest ^:parallel all-models-accounted-for-test
   ;; make sure the entire system is loaded before running this test, to make sure we account for all the models.
   (doseq [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
           :when   (and (str/starts-with? ns-symb "metabase")

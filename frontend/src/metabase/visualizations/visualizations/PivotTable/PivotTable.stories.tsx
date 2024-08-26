@@ -4,10 +4,11 @@ import {
   SdkVisualizationWrapper,
   VisualizationWrapper,
 } from "__support__/storybook";
+import { Box } from "metabase/ui";
 
 import { PivotTable } from "./PivotTable";
 import { PivotTableTestWrapper } from "./pivot-table-test-mocks";
-import { HORIZONTAL_SCROLL_43215 } from "./stories-data";
+import { PIVOT_3_ROWS_NO_COLUMNS } from "./stories-data";
 
 export default {
   title: "viz/PivotTable",
@@ -55,10 +56,27 @@ export const EmbeddingTheme: Story = () => {
 export const HorizontalScroll43215: Story = () => {
   return (
     <VisualizationWrapper>
-      <PivotTableTestWrapper
-        data={HORIZONTAL_SCROLL_43215.data}
-        initialSettings={HORIZONTAL_SCROLL_43215.initialSettings}
-      />
+      <Box h="400px" w="600px">
+        <PivotTableTestWrapper
+          data={PIVOT_3_ROWS_NO_COLUMNS.data}
+          initialSettings={PIVOT_3_ROWS_NO_COLUMNS.initialSettings}
+        />
+      </Box>
+    </VisualizationWrapper>
+  );
+};
+
+export const OuterHorizontalScroll: Story = () => {
+  return (
+    <VisualizationWrapper>
+      <Box h="400px" w="320px">
+        <PivotTableTestWrapper
+          data={PIVOT_3_ROWS_NO_COLUMNS.data}
+          initialSettings={PIVOT_3_ROWS_NO_COLUMNS.initialSettings}
+          containerWidth
+          containerHeight
+        />
+      </Box>
     </VisualizationWrapper>
   );
 };

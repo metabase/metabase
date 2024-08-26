@@ -1,52 +1,43 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
+import { t } from "ttag";
 
-import { Flex, NumberInput, Text } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import { NumberInput } from "metabase/ui";
+
+import type { ComparisonType } from "../../types";
 
 import S from "./OffsetInput.module.css";
-import { getHelp, getLabel } from "./utils";
 
 interface Props {
-  query: Lib.Query;
-  stageIndex: number;
   value: number | "";
   onChange: (value: number | "") => void;
+  comparisonType: ComparisonType;
 }
 
-export const OffsetInput = ({ query, stageIndex, value, onChange }: Props) => {
-  const label = useMemo(() => getLabel(query, stageIndex), [query, stageIndex]);
-  const help = useMemo(() => getHelp(query, stageIndex), [query, stageIndex]);
+export const OffsetInput = ({ value, onChange, comparisonType }: Props) => {
+  const minimum = comparisonType === "offset" ? 1 : 2;
 
   const handleChange = useCallback(
     (value: number | "") => {
       if (typeof value === "number") {
-        onChange(Math.floor(Math.max(Math.abs(value), 1)));
+        onChange(Math.floor(Math.max(Math.abs(value), minimum)));
       } else {
         onChange(value);
       }
     },
-    [onChange],
+    [onChange, minimum],
   );
 
   return (
-    <Flex align="flex-end" pos="relative">
-      <NumberInput
-        classNames={{
-          input: S.input,
-          wrapper: S.wrapper,
-        }}
-        label={label}
-        min={1}
-        precision={0}
-        size="md"
-        step={1}
-        type="number"
-        value={value}
-        onChange={handleChange}
-      />
-      <Text className={S.help} c="text-light" p="sm">
-        {help}
-      </Text>
-    </Flex>
+    <NumberInput
+      classNames={{ input: S.input }}
+      min={minimum}
+      precision={0}
+      size="md"
+      step={1}
+      type="number"
+      value={value}
+      onChange={handleChange}
+      aria-label={t`Offset`}
+    />
   );
 };

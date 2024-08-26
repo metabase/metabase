@@ -1,6 +1,6 @@
-import { useState, useLayoutEffect } from "react";
+import { useLayoutEffect, useState } from "react";
 
-const HIDE_DELAY = 6000;
+export const HIDE_DELAY = 6000;
 
 const useStatusVisibility = (isActive: boolean) => {
   const [isVisible, setIsVisible] = useState(isActive);

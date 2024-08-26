@@ -17,7 +17,7 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
-import { Text, Stack, Switch } from "metabase/ui";
+import { Stack, Switch, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -28,11 +28,12 @@ import {
   HistoryHeader,
 } from "./DashboardInfoSidebar.styled";
 
-type DashboardAttributeType = string | number | null | boolean;
-
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
-  setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
+  setDashboardAttribute: <Key extends keyof Dashboard>(
+    attribute: Key,
+    value: Dashboard[Key],
+  ) => void;
 }
 
 export function DashboardInfoSidebar({
@@ -117,7 +118,7 @@ const DashboardInfoSidebarBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
   const isCacheable = isDashboardCacheable(dashboard);
 
-  const showCaching = canWrite && PLUGIN_CACHING.isEnabled();
+  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
 
   return (
     <>

@@ -8,9 +8,9 @@ import {
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
-import { screen, renderWithProviders } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
-import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
@@ -22,8 +22,8 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
@@ -99,7 +99,7 @@ const setup = async (options: SetupOptions = {}) => {
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockConfig({
+        config: createMockJwtConfig({
           jwtProviderUri: "http://TEST_URI/sso/metabase",
         }),
         ...providerProps,

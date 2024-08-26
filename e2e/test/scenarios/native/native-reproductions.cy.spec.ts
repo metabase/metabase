@@ -1,11 +1,13 @@
 import {
-  restore,
-  withDatabase,
   adhocQuestionHash,
-  runNativeQuery,
-  openNativeEditor,
   createNativeQuestion,
+  openNativeEditor,
+  restore,
+  runNativeQuery,
+  withDatabase,
 } from "e2e/support/helpers";
+
+import { getRunQueryButton } from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("issue 11727", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
@@ -107,5 +109,48 @@ describe("issue 38083", () => {
       .within(() => {
         cy.icon("time_history").should("not.exist");
       });
+  });
+});
+
+describe("issue 33327", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should recover from a visualization error (metabase#33327)", () => {
+    const query = "SELECT 1";
+    createNativeQuestion(
+      { native: { query }, display: "scalar" },
+      {
+        visitQuestion: true,
+      },
+    );
+
+    cy.findByTestId("scalar-value").should("have.text", "1");
+
+    cy.findByTestId("visibility-toggler").click();
+    cy.findByTestId("native-query-editor")
+      .should("contain", query)
+      .type("{leftarrow}--");
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.findByTestId("native-query-editor").should("contain", "SELECT --1");
+    getRunQueryButton().click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("visualization-root").icon("warning").should("be.visible");
+    cy.findByTestId("scalar-value").should("not.exist");
+
+    cy.findByTestId("native-query-editor")
+      .should("contain", "SELECT --1")
+      .type("{leftarrow}{backspace}{backspace}");
+    cy.findByTestId("native-query-editor").should("contain", query);
+
+    getRunQueryButton().click();
+    cy.wait("@dataset");
+
+    cy.findByTestId("scalar-value").should("have.text", "1");
+    cy.findByTestId("visualization-root").icon("warning").should("not.exist");
   });
 });

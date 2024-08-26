@@ -28,9 +28,10 @@
   `:source-field` field in corresponding `:source-query` would be the one, that uses remappings. See
   [[metabase.models.params.custom-values-test/with-mbql-card-test]]."
   [x]
-  (set (lib.util.match/match x [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
-                     (when-not (some #{:source-metadata} &parents)
-                       &match))))
+  (set (lib.util.match/match x
+         [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))]
+         (when-not (some #{:source-metadata} &parents)
+           &match))))
 
 (defn- join-alias [dest-table-name source-fk-field-name]
   (str dest-table-name "__via__" source-fk-field-name))
@@ -44,7 +45,7 @@
    [:condition    mbql.s/=]
    [:fk-field-id  ::lib.schema.id/field]])
 
-(mu/defn ^:private fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
+(mu/defn- fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-ids`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
@@ -100,9 +101,9 @@
        [:field id-or-name (not-empty (dissoc opts :base-type :effective-type))]))
    fields))
 
-(mu/defn ^:private construct-fk-field-id->join-alias :- [:map-of
-                                                         ::lib.schema.id/field
-                                                         ::lib.schema.common/non-blank-string]
+(mu/defn- construct-fk-field-id->join-alias :- [:map-of
+                                                ::lib.schema.id/field
+                                                ::lib.schema.common/non-blank-string]
   [form]
   ;; Build a map of FK Field ID -> alias used for IMPLICIT joins. Only implicit joins have `:fk-field-id`
   (into {}
@@ -213,7 +214,7 @@
   "Sort `joins` by topological dependency order: joins that are referenced by the `:condition` of another will be sorted
   first. If no dependencies exist between joins, preserve the existing order."
   [joins]
-  (let [ ;; make a map of join alias -> immediate dependencies
+  (let [;; make a map of join alias -> immediate dependencies
         join->immediate-deps (into {}
                                    (map (fn [join]
                                           [(:alias join) (join-dependencies join)]))
@@ -232,9 +233,10 @@
         depends-on?          (fn [join-1 join-2]
                                (contains? (join->all-deps (:alias join-1))
                                           (:alias join-2)))]
-    (->> ;; add a key to each join to record its original position
+    (->> joins
+         ;; add a key to each join to record its original position
          (map-indexed (fn [i join]
-                        (assoc join ::original-position i)) joins)
+                        (assoc join ::original-position i)))
          ;; sort the joins by topological order falling back to preserving original position
          (sort (fn [join-1 join-2]
                  (cond
@@ -291,8 +293,8 @@
   [query]
   (if (lib.util.match/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver.u/supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
-        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
+      (when-not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database (qp.store/metadata-provider)))
+        (throw (ex-info (tru "{0} driver does not support left join." driver/*driver*)
                         {:driver driver/*driver*
                          :type   qp.error-type/unsupported-feature})))
       (update query :query resolve-implicit-joins))

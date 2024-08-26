@@ -21,6 +21,11 @@ const VALUE_SIZES = {
   md: rem(28),
 };
 
+const RIGHT_SECTION_SIZES = {
+  default: rem(40),
+  unstyled: rem(28),
+};
+
 export const getMultiSelectOverrides =
   (): MantineThemeOverride["components"] => ({
     MultiSelect: {
@@ -33,11 +38,12 @@ export const getMultiSelectOverrides =
         clearButtonProps: {
           color: "text-dark",
         },
+        "data-testid": "multi-select",
       },
       styles: (
         theme,
         { invalid }: MultiSelectStylesParams,
-        { size = "md" },
+        { size = "md", variant = "default" },
       ) => ({
         ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
@@ -46,7 +52,13 @@ export const getMultiSelectOverrides =
           minHeight: getSize({ size, sizes: SIZES }),
           marginLeft: 0,
           gap: theme.spacing.xs,
-          padding: theme.spacing.xs,
+          paddingTop: theme.spacing.xs,
+          paddingLeft: theme.spacing.xs,
+          paddingBottom: theme.spacing.xs,
+          paddingRight:
+            variant === "unstyled"
+              ? RIGHT_SECTION_SIZES.unstyled
+              : RIGHT_SECTION_SIZES.default,
           alignItems: "center",
           "[data-with-icon=true] &": {
             paddingLeft: 0,
@@ -57,6 +69,11 @@ export const getMultiSelectOverrides =
           boxSizing: "border-box",
           "&[data-with-icon]": {
             paddingLeft: theme.spacing.lg,
+          },
+          background: "var(--mb-color-background)",
+          color: "var(--mb-color-text-primary)",
+          "&::placeholder": {
+            color: "var(--mb-color-text-secondary)",
           },
         },
         icon: {
@@ -88,11 +105,11 @@ export const getMultiSelectOverrides =
           fontWeight: "bold",
           fontSize: getSize({ size, sizes: theme.fontSizes }),
           borderRadius: theme.radius.xs,
-          color: theme.fn.themeColor("brand"),
-          backgroundColor: theme.fn.themeColor("bg-medium"),
+          color: "var(--mb-color-text-selected)",
+          backgroundColor: "var(--mb-color-background-selected)",
         },
         defaultValueRemove: {
-          color: theme.fn.themeColor("brand"),
+          color: "var(--mb-color-text-selected)",
           width: rem(12),
           height: rem(12),
           minWidth: rem(12),
@@ -104,6 +121,10 @@ export const getMultiSelectOverrides =
             width: "100% !important",
             height: "100% !important",
           },
+        },
+        dropdown: {
+          backgroundColor: "var(--mb-color-background)",
+          borderColor: "var(--mb-color-border)",
         },
       }),
       variants: {

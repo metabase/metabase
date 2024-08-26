@@ -2,7 +2,7 @@
 import cx from "classnames";
 import { useEffect, useMemo, useRef } from "react";
 import innerText from "react-innertext";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -14,7 +14,7 @@ import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Box, Flex, Title, Text, useMantineTheme } from "metabase/ui";
+import { Box, Flex, Text, Title, useMantineTheme } from "metabase/ui";
 import ScalarValue, {
   ScalarWrapper,
 } from "metabase/visualizations/components/ScalarValue";
@@ -32,7 +32,7 @@ import { ScalarContainer } from "../Scalar/Scalar.styled";
 
 import { SmartScalarComparisonWidget } from "./SettingsComponents/SmartScalarSettingsWidgets";
 import { VariationIcon, VariationValue } from "./SmartScalar.styled";
-import { computeTrend, CHANGE_TYPE_OPTIONS } from "./compute";
+import { CHANGE_TYPE_OPTIONS, computeTrend } from "./compute";
 import {
   DASHCARD_HEADER_HEIGHT,
   ICON_MARGIN_RIGHT,
@@ -43,12 +43,12 @@ import {
   VIZ_SETTINGS_DEFAULTS,
 } from "./constants";
 import {
-  getDefaultComparison,
+  formatChangeAutoPrecision,
+  getChangeWidth,
   getColumnsForComparison,
   getComparisonOptions,
-  formatChangeAutoPrecision,
   getComparisons,
-  getChangeWidth,
+  getDefaultComparison,
   getValueHeight,
   getValueWidth,
   isPeriodVisible,
@@ -258,10 +258,7 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
-    const descColor =
-      isNightMode || inTooltip
-        ? lighten(theme.fn.themeColor("text-medium"), 0.45)
-        : "text-light";
+    const descColor = "var(--mb-color-text-secondary)";
 
     if (isEmpty(comparisonDescStr)) {
       return (
@@ -316,10 +313,7 @@ function PreviousValueComparison({
       return null;
     }
 
-    const detailColor =
-      isNightMode || inTooltip
-        ? lighten(theme.fn.themeColor("text-light"), 0.25)
-        : "text-medium";
+    const detailColor = "var(--mb-color-text-secondary)";
 
     return (
       <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>
@@ -450,7 +444,7 @@ Object.assign(SmartScalar, {
   ) {
     if (!insights || insights.length === 0) {
       throw new NoBreakoutError(
-        t`Group by a time field to see how this has changed over time`,
+        t`Group only by a time field to see how this has changed over time`,
       );
     }
   },

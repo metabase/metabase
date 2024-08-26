@@ -10,7 +10,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private external-remapped-column :- ::lib.schema.metadata/column
+(mu/defn- external-remapped-column :- ::lib.schema.metadata/column
   "Add an 'external' 'Human Readable Values' remap from values of `original` Field to values of `remapped` Field."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    original          :- ::lib.schema.metadata/column
@@ -24,7 +24,7 @@
                     :field-id (u/the-id remapped)}]
     (assoc original :lib/external-remap remap-info)))
 
-(mu/defn ^:private internal-remapped-column :- ::lib.schema.metadata/column
+(mu/defn- internal-remapped-column :- ::lib.schema.metadata/column
   "Add an 'internal' 'FieldValues' remap from values of `original` Field to hardcoded `remap` values."
   [original :- ::lib.schema.metadata/column
    remap    :- [:or
@@ -43,7 +43,7 @@
                          :human-readable-values remapped-values}]
     (assoc original :lib/internal-remap remap-info)))
 
-(mu/defn ^:private remapped-column :- ::lib.schema.metadata/column
+(mu/defn- remapped-column :- ::lib.schema.metadata/column
   "Add a remap to an `original` column metadata. Type of remap added depends of value of `remap`:
 
     * Field ID: external remap with values of original replaced by values of remapped Field with ID

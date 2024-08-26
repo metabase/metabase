@@ -26,7 +26,6 @@
 
 ;;; -------------------- Bind dimensions, candidate bindings, field candidates, and related --------------------
 
-
 (defn field [table column]
   (or (t2/select-one Field :id (mt/id table column))
       (throw (ex-info (format "Did not find %s.%s" (name table) (name column))
@@ -550,8 +549,8 @@
                  :metric-definition {:aggregation [["count"]]}
                  :dimension-name->field {}}]
                (interesting/grounded-metrics
-                 test-metrics
-                 {"Count" {:matches []}}))))
+                test-metrics
+                {"Count" {:matches []}}))))
       (testing "When we can match on a dimension, we produce every matching metric (2 for GenericNumber)"
         (is (=? [{:metric-name       "Sum",
                   :metric-definition {:aggregation [["sum" "TOTAL"]]}}
@@ -559,9 +558,9 @@
                   :metric-definition {:aggregation [["avg" "TOTAL"]]}}]
                 (interesting/grounded-metrics
                   ;; Drop Count
-                  (rest test-metrics)
-                  {"Count"         {:matches []}
-                   "GenericNumber" {:matches [total-field]}}))))
+                 (rest test-metrics)
+                 {"Count"         {:matches []}
+                  "GenericNumber" {:matches [total-field]}}))))
       (testing "The addition of Discount doesn't add more matches as we need
                  Income as well to add the metric that uses Discount"
         (is (=? [{:metric-name       "Sum"
@@ -569,21 +568,21 @@
                  {:metric-name       "Avg"
                   :metric-definition {:aggregation [["avg" "TOTAL"]]}}]
                 (interesting/grounded-metrics
-                  (rest test-metrics)
-                  {"Count"         {:matches []}
-                   "GenericNumber" {:matches [total-field]}
-                   "Discount"      {:matches [discount-field]}}))))
+                 (rest test-metrics)
+                 {"Count"         {:matches []}
+                  "GenericNumber" {:matches [total-field]}
+                  "Discount"      {:matches [discount-field]}}))))
       (testing "Discount and Income will add the satisfied AvgDiscount grounded metric"
         (is (=? [{:metric-name       "AvgDiscount",
                   :metric-definition {:aggregation [["/" "DISCOUNT" "INCOME"]]}}
                  {:metric-name "Sum"}
                  {:metric-name "Avg"}]
                 (interesting/grounded-metrics
-                  (rest test-metrics)
-                  {"Count"         {:matches []}
-                   "GenericNumber" {:matches [total-field]}
-                   "Discount"      {:matches [discount-field]}
-                   "Income"        {:matches [income-field]}})))))))
+                 (rest test-metrics)
+                 {"Count"         {:matches []}
+                  "GenericNumber" {:matches [total-field]}
+                  "Discount"      {:matches [discount-field]}
+                  "Income"        {:matches [income-field]}})))))))
 
 (deftest ^:parallel normalize-seq-of-maps-test
   (testing "Convert a seq of size-1 nested maps to a seq of maps."
@@ -593,3 +592,52 @@
              (interesting/normalize-seq-of-maps :froobs froobs)))
       (is (= [{:nurnies-name "Baz" :size 100}]
              (interesting/normalize-seq-of-maps :nurnies nurnies))))))
+
+;;; ------------------- Datetime resolution inference -------------------
+
+(deftest ^:parallel optimal-temporal-resolution-test
+  (doseq [[m base-type expected] [[{:earliest "2015"
+                                    :latest   "2017"}
+                                   :type/DateTime
+                                   :month]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-03-04"}
+                                   :type/DateTime
+                                   :day]
+                                  [{:earliest "2005"
+                                    :latest   "2017"}
+                                   :type/DateTime
+                                   :year]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-01-02"}
+                                   :type/DateTime
+                                   :hour]
+                                  [{:earliest "2017-01-01T00:00:00"
+                                    :latest   "2017-01-01T00:02:00"}
+                                   :type/DateTime
+                                   :minute]
+                                  [{:earliest "2017-01-01T00:02:00"
+                                    :latest   "2017-01-01T00:02:00"}
+                                   :type/DateTime
+                                   :minute]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-01-01"}
+                                   :type/Date
+                                   :day]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2018-01-01"}
+                                   :type/Date
+                                   :month]
+                                  [{:earliest "00:02:00"
+                                    :latest   "00:02:00"}
+                                   :type/Time
+                                   :minute]
+                                  [{:earliest "00:02:00"
+                                    :latest   "10:02:00"}
+                                   :type/Time
+                                   :hour]]
+          :let         [fingerprint {:type {:type/DateTime m}}]]
+    (testing (format "base_type=%s, fingerprint = %s" base-type (pr-str fingerprint))
+      (is (= expected
+             (#'interesting/optimal-temporal-resolution {:fingerprint fingerprint
+                                                         :base_type   base-type}))))))

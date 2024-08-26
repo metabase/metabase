@@ -1,3 +1,7 @@
+import { t } from "ttag";
+
+import type { Dashboard } from "metabase-types/api";
+
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 export const saveDashboardPdf = async (
@@ -20,7 +24,7 @@ export const saveDashboardPdf = async (
       const title = doc.createElement("h2") as HTMLElement;
       title.innerHTML = dashboardName;
       title.style["borderBottom"] = "1px solid var(--mb-color-border)";
-      title.style["padding"] = "0 1rem 1rem 1rem";
+      title.style["padding"] = "2rem 1rem 1rem 1rem";
       node.insertBefore(title, node.firstChild);
     },
   });
@@ -39,7 +43,13 @@ export const saveDashboardPdf = async (
     orientation: pdfWidth > pdfHeight ? "l" : "p",
   });
 
-  pdf.addImage(image, "JPEG", 0, 60, imageWidth, imageHeight, "", "FAST", 0);
+  pdf.addImage(image, "JPEG", 0, 0, imageWidth, imageHeight, "", "FAST", 0);
 
   pdf.save(fileName);
+};
+
+export const getExportTabAsPdfButtonText = (tabs: Dashboard["tabs"]) => {
+  return Array.isArray(tabs) && tabs.length > 1
+    ? t`Export tab as PDF`
+    : t`Export as PDF`;
 };

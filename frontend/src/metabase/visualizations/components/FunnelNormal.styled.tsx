@@ -64,7 +64,7 @@ export const FunnelStart = styled.div<SharedProps>`
 
   ${Title} {
     font-weight: bold;
-    color: var(--mb-color-text-dark);
+    color: var(--mb-color-text-primary);
     ${props =>
       props.isNarrow
         ? css`
@@ -93,7 +93,7 @@ interface FunnelNormalRootProps {
 export const FunnelNormalRoot = styled.div<FunnelNormalRootProps>`
   display: flex;
   padding: ${props => (props.isSmall ? "0.5rem" : "1rem")};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 
   ${isDesktopSafari()
     ? css`

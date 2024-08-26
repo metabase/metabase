@@ -1,8 +1,8 @@
 import type { Story } from "@storybook/react";
 
 import {
-  VisualizationWrapper,
   SdkVisualizationWrapper,
+  VisualizationWrapper,
 } from "__support__/storybook";
 import type { MetabaseTheme } from "embedding-sdk";
 import { Box } from "metabase/ui";
@@ -26,8 +26,8 @@ export const EmbeddingTheme: Story = () => {
   const theme: MetabaseTheme = {
     colors: {
       brand: "#eccc68",
-      "text-primary": "#ffffff",
-      "text-secondary": "#ffffff",
+      "text-primary": "#4c5773",
+      "text-secondary": "#696e7b",
       "text-tertiary": "#ffffff",
     },
     components: {

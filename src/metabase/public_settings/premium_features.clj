@@ -88,8 +88,8 @@
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
-                 0
-                 (cached-active-users-count))))
+                  0
+                  (cached-active-users-count))))
 
 (defn- token-status-url [token base-url]
   (when (seq token)
@@ -149,7 +149,7 @@
     (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
       (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
-(mu/defn ^:private fetch-token-status* :- TokenStatus
+(mu/defn- fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- TokenStr]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
@@ -219,7 +219,7 @@
 
 (declare token-valid-now?)
 
-(mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
+(mu/defn- valid-token->features* :- [:set ms/NonBlankString]
   [token :- TokenStr]
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
@@ -254,7 +254,6 @@
   :audit      :never
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
@@ -363,10 +362,10 @@
                         :getter     `(default-premium-feature-getter ~(some-> feature name))}
                        options)]
     `(do
-      (swap! premium-features conj ~feature)
-      (defsetting ~setting-name
-        ~docstring
-        ~@(mapcat identity options)))))
+       (swap! premium-features conj ~feature)
+       (defsetting ~setting-name
+         ~docstring
+         ~@(mapcat identity options)))))
 
 (define-premium-feature hide-embed-branding?
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
@@ -472,9 +471,9 @@
   "Enable automatic descriptions of questions and dashboards by LLMs?"
   :llm-autodescription)
 
-(define-premium-feature ^{:added "0.51.0"} enable-query-field-validation?
+(define-premium-feature ^{:added "0.51.0"} enable-query-reference-validation?
   "Enable the Query Validator Tool?"
-  :query-field-validation)
+  :query-reference-validation)
 
 (define-premium-feature enable-upload-management?
   "Should we allow admins to clean up tables created from uploads?"
@@ -511,6 +510,10 @@
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
   :enhancements
   :getter #(and config/ee-available? (has-any-features?)))
+
+(define-premium-feature ^{:added "0.51.0"} enable-collection-cleanup?
+  "Should we enable Collection Cleanup?"
+  :collection-cleanup)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Defenterprise Macro                                                |
@@ -549,18 +552,19 @@
   availability of EE code and the necessary premium feature. Returns a fn which, when invoked, applies its args to one
   of the EE implementation, the OSS implementation, or the fallback function."
   [ee-ns ee-fn-name]
-  (fn [& args]
-    (u/ignore-exceptions (classloader/require ee-ns))
-    (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
-      (cond
-        (and ee (check-feature feature))
-        (apply ee args)
+  (let [try-require-ee-ns-once (delay (u/ignore-exceptions (classloader/require ee-ns)))]
+    (fn [& args]
+      @try-require-ee-ns-once
+      (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
+        (cond
+          (and ee (check-feature feature))
+          (apply ee args)
 
-        (and ee (fn? fallback))
-        (apply fallback args)
+          (and ee (fn? fallback))
+          (apply fallback args)
 
-        :else
-        (apply oss args)))))
+          :else
+          (apply oss args))))))
 
 (defn- validate-ee-args
   "Throws an exception if the required :feature option is not present."
@@ -629,7 +633,7 @@
 
 (s/def ::defenterprise-schema-args
   (s/cat :return-schema      (s/? (s/cat :- #{:-}
-                                             :schema any?))
+                                         :schema any?))
          :defenterprise-args (s/? ::defenterprise-args)))
 
 (defmacro defenterprise

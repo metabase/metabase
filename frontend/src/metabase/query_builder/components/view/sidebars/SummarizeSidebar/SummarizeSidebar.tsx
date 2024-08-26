@@ -6,9 +6,9 @@ import { Divider } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import {
-  useSummarizeQuery,
-  SummarizeBreakoutColumnList,
   SummarizeAggregationItemList,
+  SummarizeBreakoutColumnList,
+  useSummarizeQuery,
 } from "./SummarizeContent";
 import { SidebarView } from "./SummarizeSidebar.styled";
 
@@ -27,16 +27,18 @@ export function SummarizeSidebar({
 }: SummarizeSidebarProps) {
   const {
     query,
+    stageIndex,
     aggregations,
     hasAggregations,
-    handleAddAggregations,
-    handleUpdateAggregation,
-    handleRemoveAggregation,
+    handleQueryChange,
     handleAddBreakout,
     handleUpdateBreakout,
     handleRemoveBreakout,
     handleReplaceBreakouts,
-  } = useSummarizeQuery(initialQuery, onQueryChange);
+  } = useSummarizeQuery({
+    query: initialQuery,
+    onQueryChange,
+  });
 
   const handleDoneClick = useCallback(() => {
     onQueryChange(query);
@@ -53,16 +55,16 @@ export function SummarizeSidebar({
       <SummarizeAggregationItemList
         px="lg"
         query={query}
+        stageIndex={stageIndex}
         aggregations={aggregations}
-        onAddAggregations={handleAddAggregations}
-        onUpdateAggregation={handleUpdateAggregation}
-        onRemoveAggregation={handleRemoveAggregation}
+        onQueryChange={handleQueryChange}
       />
       <Divider my="lg" />
       {hasAggregations && (
         <SummarizeBreakoutColumnList
           px="lg"
           query={query}
+          stageIndex={stageIndex}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakout={handleUpdateBreakout}
           onRemoveBreakout={handleRemoveBreakout}

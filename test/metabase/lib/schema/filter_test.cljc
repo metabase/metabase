@@ -71,10 +71,11 @@
            [:time-interval field :last :hour]
            [:time-interval field 4 :hour]
            [:time-interval {:include-current true} field :next :day]
+           [:relative-time-interval field 10 :day 10 :day]
            [:segment 1]]]
       (doseq [op (filter-ops filter-expr)]
-          (is (not (identical? (get-method expression/type-of-method op)
-        (testing (str op " is a registered MBQL clause (a type-of-method method is registered for it)")
+        (is (not (identical? (get-method expression/type-of-method op)
+                             (testing (str op " is a registered MBQL clause (a type-of-method method is registered for it)")
                                (get-method expression/type-of-method :default))))))
       ;; test all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
       (doseq [filter-clause (rest filter-expr)

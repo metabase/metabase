@@ -7,7 +7,7 @@ import { useState } from "react";
 import { color } from "metabase/lib/colors";
 
 import { Sortable } from "../Sortable";
-import type { TabButtonMenuItem, TabButtonMenuAction } from "../TabButton";
+import type { TabButtonMenuAction, TabButtonMenuItem } from "../TabButton";
 import { TabButton } from "../TabButton";
 import TabLink from "../TabLink";
 

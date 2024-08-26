@@ -20,21 +20,20 @@ import {
 } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
   AxisFormatter,
-  DataKey,
-  Extent,
   ChartDataset,
+  DataKey,
+  DateRange,
+  DimensionModel,
+  Extent,
+  NumericAxisScaleTransforms,
+  NumericXAxisModel,
   SeriesExtents,
   SeriesModel,
+  StackModel,
+  TimeSeriesInterval,
+  TimeSeriesXAxisModel,
   XAxisModel,
   YAxisModel,
-  DimensionModel,
-  TimeSeriesInterval,
-  DateRange,
-  TimeSeriesXAxisModel,
-  NumericXAxisModel,
-  ShowWarning,
-  NumericAxisScaleTransforms,
-  StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import {
   computeTimeseriesDataInverval,
@@ -48,16 +47,18 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
+  DatasetColumn,
   DateTimeAbsoluteUnit,
+  NumericScale,
+  RawSeries,
+  RowValue,
   SeriesSettings,
   StackType,
-  DatasetColumn,
-  RowValue,
-  RawSeries,
-  NumericScale,
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
+import type { ShowWarning } from "../../types";
 
 import { getAxisTransforms } from "./transforms";
 import { getFormattingOptionsWithoutScaling } from "./util";

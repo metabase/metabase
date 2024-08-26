@@ -1,6 +1,8 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
+import { openSharingMenu } from "./e2e-sharing-helpers";
+
 /**
  * @typedef {object} QuestionResource
  * @property {number} question - ID of a question we are embedding
@@ -17,16 +19,17 @@ import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
  * @property {string} hide_parameters
  *
  * @typedef {object} PageStyle
- * @property {boolean} bordered
- * @property {boolean} titled
- * @property {boolean} hide_download_button - EE/PRO only feature to disable downloads
+ * @property {boolean} [bordered]
+ * @property {boolean} [titled]
+ * @property {boolean} [hide_download_button] - EE/PRO only feature to disable downloads
+ * @property {boolean} [downloads] - EE/PRO only feature to disable downloads
  */
 
 /**
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {{setFilters: object, pageStyle: PageStyle, hideFilters: string[]}} options
+ * @param {{[setFilters]: object, pageStyle: PageStyle, [hideFilters]: string[]}} options
  *
  * @example
  * visitEmbeddedPage(payload, {
@@ -37,7 +40,7 @@ import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = {}, hideFilters = [], pageStyle = {} } = {},
+  { setFilters = {}, hideFilters = [], pageStyle = {}, onBeforeLoad } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
 
@@ -62,6 +65,7 @@ export function visitEmbeddedPage(
       url: urlRoot,
       qs: setFilters,
       onBeforeLoad: window => {
+        onBeforeLoad?.(window);
         if (urlHash) {
           window.location.hash = urlHash;
         }
@@ -103,18 +107,24 @@ export function visitEmbeddedPage(
   }
 }
 
+export function getIframeUrl() {
+  modal().findByText("Preview").click();
+
+  return cy.document().then(doc => {
+    const iframe = doc.querySelector("iframe");
+
+    return iframe.src;
+  });
+}
+
 /**
  * Grab an iframe `src` via UI and open it,
  * but make sure user is signed out.
  */
 export function visitIframe() {
-  modal().findByText("Preview").click();
-
-  cy.document().then(doc => {
-    const iframe = doc.querySelector("iframe");
-
+  getIframeUrl().then(iframeUrl => {
     cy.signOut();
-    cy.visit(iframe.src);
+    cy.visit(iframeUrl);
   });
 }
 
@@ -136,24 +146,10 @@ export function getEmbedModalSharingPane() {
   return cy.findByTestId("sharing-pane-container");
 }
 
-export function openPublicLinkPopoverFromMenu() {
-  cy.icon("share").click();
-  cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-public-link-item")
-    .click();
-}
-
-export function openEmbedModalFromMenu() {
-  cy.icon("share").click();
-  cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-embed-modal-item")
-    .click();
-}
-
 /**
  * Open Static Embedding setup modal
  * @param {object} params
- * @param {("overview"|"parameters"|"appearance")} [params.activeTab] - modal tab to open
+ * @param {("overview"|"parameters"|"lookAndFeel")} [params.activeTab] - modal tab to open
  * @param {("code"|"preview")} [params.previewMode] - preview mode type to activate
  * @param {boolean} [params.acceptTerms] - whether we need to go through the legalese step
  */
@@ -163,7 +159,7 @@ export function openStaticEmbeddingModal({
   acceptTerms = true,
   confirmSave,
 } = {}) {
-  openEmbedModalFromMenu();
+  openSharingMenu("Embed");
 
   if (confirmSave) {
     cy.findByRole("button", { name: "Save" }).click();
@@ -180,7 +176,7 @@ export function openStaticEmbeddingModal({
       const tabKeyToNameMap = {
         overview: "Overview",
         parameters: "Parameters",
-        appearance: "Appearance",
+        lookAndFeel: "Look and Feel",
       };
 
       cy.findByRole("tab", { name: tabKeyToNameMap[activeTab] }).click();
@@ -241,7 +237,7 @@ export function openNewPublicLinkDropdown(resourceType) {
     "sharingEnabled",
   );
 
-  openPublicLinkPopoverFromMenu();
+  openSharingMenu(/public link/i);
 
   cy.wait("@sharingEnabled").then(
     ({

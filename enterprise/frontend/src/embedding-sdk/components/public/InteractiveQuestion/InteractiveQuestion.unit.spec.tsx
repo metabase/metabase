@@ -3,8 +3,8 @@ import { within } from "@testing-library/react";
 import {
   setupAlertsEndpoints,
   setupCardEndpoints,
-  setupCardQueryMetadataEndpoint,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupDatabaseEndpoints,
   setupTableEndpoints,
   setupUnauthorizedCardEndpoints,
@@ -16,8 +16,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
@@ -30,10 +29,9 @@ import {
   createMockUser,
 } from "metabase-types/api/mocks";
 
-import {
-  getQuestionParameters,
-  InteractiveQuestion,
-} from "./InteractiveQuestion";
+import { useInteractiveQuestionContext } from "../../private/InteractiveQuestion/context";
+
+import { InteractiveQuestion } from "./InteractiveQuestion";
 
 const TEST_USER = createMockUser();
 const TEST_DB_ID = 1;
@@ -101,7 +99,7 @@ const setup = ({
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockConfig({
+        config: createMockJwtConfig({
           jwtProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
@@ -174,20 +172,5 @@ describe("InteractiveQuestion", () => {
 
     expect(screen.getByText("Error")).toBeInTheDocument();
     expect(screen.getByText("Question not found")).toBeInTheDocument();
-  });
-
-  describe("getQuestionParameters", () => {
-    it("should generate proper URL params", () => {
-      const questionId = 109;
-
-      expect(getQuestionParameters(questionId)).toEqual({
-        location: {
-          query: {},
-          hash: "",
-          pathname: "/question/109",
-        },
-        params: { slug: "109" },
-      });
-    });
   });
 });

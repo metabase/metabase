@@ -1,8 +1,8 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 
 import type { Collection, CollectionId } from "./collection";
-import type { DashboardId, DashCardId } from "./dashboard";
-import type { DatabaseId, Database } from "./database";
+import type { DashCardId, DashboardId } from "./dashboard";
+import type { Database, DatabaseId } from "./database";
 import type { Field } from "./field";
 import type { Parameter } from "./parameters";
 import type { DatasetQuery, FieldReference, PublicDatasetQuery } from "./query";
@@ -26,7 +26,6 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   enable_embedding: boolean;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
-  can_run_adhoc_query: boolean;
   can_restore: boolean;
   can_delete: boolean;
   initially_published_at: string | null;
@@ -127,6 +126,15 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
 
+export interface ColumnSettings {
+  column_title?: string;
+  number_separators?: string;
+  currency?: string;
+
+  // some options are untyped
+  [key: string]: any;
+}
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
@@ -134,6 +142,9 @@ export type VisualizationSettings = {
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
+  // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
+  // Use `getColumnSettings` which checks for both keys.
+  column_settings?: Record<string, ColumnSettings>;
 
   // X-axis
   "graph.x_axis.title_text"?: string;
@@ -190,6 +201,16 @@ export type VisualizationSettings = {
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
+
+  // Pie Settings
+  "pie.dimension"?: string;
+  "pie.metric"?: string;
+  "pie.show_legend"?: boolean;
+  "pie.show_total"?: boolean;
+  "pie.percent_visibility"?: "off" | "legend" | "inside" | "both";
+  "pie.decimal_places"?: number;
+  "pie.slice_threshold"?: number;
+  "pie.colors"?: Record<string, string>;
 
   [key: string]: any;
 };

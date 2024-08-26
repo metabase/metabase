@@ -37,18 +37,22 @@ import {
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
-  normalizeParameters,
   normalizeParameterValue,
+  normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import Question from "metabase-lib/v1/Question";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
-import { createRawSeries } from "./utils";
+import { createRawSeries, getWritableColumnProperties } from "./utils";
+import {
+  isQuestionDirty,
+  isQuestionRunnable,
+  isSavedQuestionChanged,
+} from "./utils/question";
 
 export const getUiControls = state => state.qb.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
@@ -111,8 +115,40 @@ export const getIsBookmarked = (state, props) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );
 
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);
+
+const getCardResultMetadata = createSelector(
+  [getCard],
+  card => card?.result_metadata,
+);
+
+const getModelMetadataDiff = createSelector(
+  [getCardResultMetadata, getMetadataDiff, getQueryBuilderMode],
+  (resultMetadata, metadataDiff, queryBuilderMode) => {
+    if (!resultMetadata || queryBuilderMode !== "dataset") {
+      return metadataDiff;
+    }
+
+    return {
+      ...metadataDiff,
+      ...Object.fromEntries(
+        resultMetadata.map(column => [
+          column.name,
+          {
+            ...getWritableColumnProperties(column),
+            ...metadataDiff[column.name],
+          },
+        ]),
+      ),
+    };
+  },
+);
+
 export const getQueryResults = createSelector(
-  [getRawQueryResults, getMetadataDiff],
+  [getRawQueryResults, getModelMetadataDiff],
   (queryResults, metadataDiff) => {
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
@@ -223,11 +259,13 @@ export const getDatabaseId = createSelector(
 export const getTableForeignKeyReferences = state =>
   state.qb.tableForeignKeyReferences;
 
+const getDatabasesListDefaultValue = [];
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
     entityQuery: { include: "tables", saved: true },
-  }) || [];
+  }) || getDatabasesListDefaultValue;
 
+const getTablesDefaultValue = [];
 export const getTables = createSelector(
   [getDatabaseId, getDatabasesList],
   (databaseId, databases) => {
@@ -238,7 +276,7 @@ export const getTables = createSelector(
       }
     }
 
-    return [];
+    return getTablesDefaultValue;
   },
 );
 
@@ -308,11 +346,6 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
 export const getNextRunParameters = createSelector(
   [getParameters],
   parameters => normalizeParameters(parameters),
-);
-
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
 );
 
 export const getPreviousQueryBuilderMode = createSelector(
@@ -431,7 +464,7 @@ function areComposedEntitiesEquivalent({
   return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
 }
 
-function areQueriesEquivalent({
+export function areQueriesEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
@@ -569,47 +602,17 @@ export const getIsObjectDetail = createSelector(
 
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) => {
-    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
-    // (it's necessary for datasets to behave like tables opened in simple mode)
-    // We need to escape the isDirty check as it will always be true in this case,
-    // and the page will always be covered with a 'rerun' overlay.
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
-      return false;
-    }
-    return question.isDirtyComparedToWithoutParameters(originalQuestion);
-  },
+  isQuestionDirty,
 );
 
 export const getIsSavedQuestionChanged = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) => {
-    const isSavedQuestion = originalQuestion != null;
-    const hasChanges = question != null;
-    const wereChangesSaved = question?.isSaved();
-    const hasUnsavedChanges = hasChanges && !wereChangesSaved;
-
-    return (
-      isSavedQuestion &&
-      hasUnsavedChanges &&
-      originalQuestion.type() === "question"
-    );
-  },
+  isSavedQuestionChanged,
 );
 
 export const getIsRunnable = createSelector(
   [getQuestion, getIsDirty],
-  (question, isDirty) => {
-    if (!question) {
-      return false;
-    }
-    if (!question.isSaved() || isDirty) {
-      const { isEditable } = Lib.queryDisplayInfo(question.query());
-      return question.canRun() && isEditable;
-    }
-    return question.canRun();
-  },
+  isQuestionRunnable,
 );
 
 export const getQuestionAlerts = createSelector(
@@ -686,14 +689,35 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [getQuestion, getQueryResults, getLastRunDatasetQuery, getIsShowingRawTable],
-  (question, results, lastRunDatasetQuery, isShowingRawTable) => {
-    return createRawSeries({
+  [
+    getQuestion,
+    getFirstQueryResult,
+    getLastRunDatasetQuery,
+    getIsShowingRawTable,
+  ],
+  (question, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+    const rawSeries = createRawSeries({
       question,
-      queryResult: results?.[0],
+      queryResult,
       datasetQuery: lastRunDatasetQuery,
-      showRawTable: isShowingRawTable,
     });
+    if (isShowingRawTable && rawSeries?.length > 0) {
+      const [{ card, data }] = rawSeries;
+      return [
+        {
+          card: {
+            ...card,
+            display: "table",
+            visualization_settings: {
+              ...card.visualization_settings,
+              "table.pivot": false,
+            },
+          },
+          data,
+        },
+      ];
+    }
+    return rawSeries;
   },
 );
 
@@ -1076,7 +1100,16 @@ export function getEmbeddedParameterVisibility(state, slug) {
 }
 
 export const getSubmittableQuestion = (state, question) => {
-  const series = getTransformedSeries(state);
+  const rawSeries = createRawSeries({
+    question: getQuestion(state),
+    queryResult: getFirstQueryResult(state),
+    datasetQuery: getLastRunDatasetQuery(state),
+  });
+
+  const series = rawSeries
+    ? getVisualizationTransformed(extractRemappings(rawSeries)).series
+    : null;
+
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
 

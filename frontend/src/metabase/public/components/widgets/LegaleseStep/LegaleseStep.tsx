@@ -4,7 +4,7 @@ import { updateSetting } from "metabase/admin/settings/settings";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useDispatch } from "metabase/lib/redux";
 import { LegaleseStepDetailsContainer } from "metabase/public/components/widgets/LegaleseStep/LegaleseStep.styled";
-import { Text, Button, Center, Stack, Title } from "metabase/ui";
+import { Button, Center, Stack, Text, Title } from "metabase/ui";
 
 export const LegaleseStep = ({
   goToNextStep,

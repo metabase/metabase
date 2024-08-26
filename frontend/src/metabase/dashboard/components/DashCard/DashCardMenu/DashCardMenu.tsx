@@ -24,8 +24,8 @@ import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {
-  DashboardId,
   DashCardId,
+  DashboardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -40,6 +40,7 @@ interface DashCardMenuProps {
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
+  downloadsEnabled: boolean;
 }
 
 export type DashCardMenuItem = {
@@ -152,19 +153,19 @@ interface QueryDownloadWidgetOpts {
   question: Question;
   result?: Dataset;
   isXray?: boolean;
-  isEmbed: boolean;
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
+  downloadsEnabled: boolean;
 }
 
 DashCardMenu.shouldRender = ({
   question,
   result,
   isXray,
-  isEmbed,
   isPublicOrEmbedded,
   isEditing,
+  downloadsEnabled,
 }: QueryDownloadWidgetOpts) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
   // MLv2 doesn't handle `internal` queries used for Audit V1.
@@ -172,12 +173,11 @@ DashCardMenu.shouldRender = ({
     question.datasetQuery(),
   );
 
-  if (isEmbed) {
-    return isEmbed;
+  if (isPublicOrEmbedded) {
+    return downloadsEnabled && !!result?.data && !result?.error;
   }
   return (
     !isInternalQuery &&
-    !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
     (canEditQuestion(question) || canDownloadResults(result))

@@ -2,14 +2,14 @@ import { USERS } from "e2e/support/cypress_data";
 import {
   describeWithSnowplow,
   enableTracking,
+  entityPickerModal,
   expectGoodSnowplowEvents,
   expectNoBadSnowplowEvents,
+  getFullName,
+  modal,
+  popover,
   resetSnowplow,
   restore,
-  getFullName,
-  popover,
-  modal,
-  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;

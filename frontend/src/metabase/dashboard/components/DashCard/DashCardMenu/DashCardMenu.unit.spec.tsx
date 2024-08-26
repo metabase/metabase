@@ -14,9 +14,9 @@ import {
   createMockStructuredDatasetQuery,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS_ID,
   SAMPLE_DB_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -48,7 +48,6 @@ const TEST_CARD_NO_DATA_ACCESS = createMockCard({
     database: SAMPLE_DB_ID,
     query: {},
   }),
-  can_run_adhoc_query: false,
 });
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
@@ -92,7 +91,9 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
     <>
       <Route
         path="dashboard/:slug"
-        component={() => <DashCardMenu question={question} result={result} />}
+        component={() => (
+          <DashCardMenu question={question} result={result} downloadsEnabled />
+        )}
       />
       <Route path="question/:slug" component={() => <div />} />
       <Route path="question/:slug/notebook" component={() => <div />} />
@@ -153,6 +154,15 @@ describe("DashCardMenu", () => {
     await userEvent.click(await screen.findByText("Download results"));
 
     expect(screen.getByText("Download full results")).toBeInTheDocument();
+  });
+
+  it("should not display query export options when query is running", async () => {
+    setup({ result: {} as any });
+
+    await userEvent.click(getIcon("ellipsis"));
+
+    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(screen.queryByText("Download results")).not.toBeInTheDocument();
   });
 
   it("should not display query export options when there is a query error", async () => {

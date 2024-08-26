@@ -6,7 +6,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models :refer [Card Field]]
    [metabase.models.params :as params]
-   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
@@ -18,7 +17,6 @@
     (testing x
       (is (= expected
              (mbql.u/wrap-field-id-if-needed x))))))
-
 
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------
 
@@ -64,7 +62,6 @@
                (t2/hydrate :name_field)
                mt/derecordize)))))
 
-
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 
 (deftest ^:parallel hydrate-param-fields-for-card-test
@@ -101,7 +98,7 @@
 
 (deftest hydate-param-fields-for-dashboard-test
   (testing "check that we can hydrate param_fields for a Dashboard"
-    (public-test/with-sharing-enabled-and-temp-dashcard-referencing :venues :id [dashboard]
+    (public-test/with-sharing-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
       (is (= {(mt/id :venues :id) {:id                 (mt/id :venues :id)
                                    :table_id           (mt/id :venues)
                                    :display_name       "ID"
@@ -173,18 +170,3 @@
     (is (= {}
            (params/get-linked-field-ids
             [{:parameter_mappings []}])))))
-
-(deftest ^:parallel param-target->field-id-test
-  (let [q (mt/native-query {:query "SELECT state FROM PEOPLE;"})
-        result-metadata (-> (get-in (qp/process-query q) [:data :results_metadata :columns])
-                            (assoc-in [0 :id] (mt/id :people :state)))]
-    (mt/with-temp [:model/Card card {:dataset_query q
-                                     :result_metadata result-metadata
-                                     :database_id (mt/id)
-                                     :type :model}
-                   :model/Card question {:dataset_query {:database (mt/id)
-                                                         :type :query
-                                                         :query {:source-table (str "card__" (:id card))
-                                                                 :aggregation [[:distinct [:field "STATE" {:base-type :type/Text}]]]}}}]
-      (is (= (mt/id :people :state)
-             (params/param-target->field-id [:field "STATE" {:base-type :type/Text}] question))))))

@@ -2,27 +2,28 @@ import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
+  expressionEditorWidget,
+  getTable,
+  hovercard,
   isScrollableHorizontally,
+  leftSidebar,
+  moveDnDKitElement,
   openNativeEditor,
   openOrdersTable,
   openPeopleTable,
   popover,
-  hovercard,
-  restore,
-  summarize,
-  visualize,
   resetTestTable,
+  restore,
   resyncDatabase,
-  visitQuestionAdhoc,
-  getTable,
-  leftSidebar,
-  sidebar,
-  moveDnDKitElement,
   selectFilterOperator,
-  expressionEditorWidget,
-  entityPickerModal,
-  entityPickerModalTab,
+  sidebar,
+  startNewNativeQuestion,
+  summarize,
   tableHeaderClick,
+  visitQuestionAdhoc,
+  visualize,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -291,15 +292,19 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata hovercards for native query tables", () => {
-    openNativeEditor().type("select * from products");
+    startNewNativeQuestion({ query: "select * from products limit 1" });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.get("[data-testid=cell-data]").contains("CATEGORY").realHover();
+    cy.log("Wait for the table to load");
+    cy.findAllByTestId("cell-data")
+      .should("be.visible")
+      .and("contain", "Gizmo");
 
-    hovercard().within(() => {
-      cy.contains("No special type");
-      cy.findByText("No description");
-    });
+    cy.log("Assert");
+    cy.findAllByTestId("header-cell").filter(":contains(CATEGORY)").realHover();
+    hovercard()
+      .should("contain", "No special type")
+      .and("contain", "No description");
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {

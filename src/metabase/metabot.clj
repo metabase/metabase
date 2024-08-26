@@ -9,6 +9,7 @@
    [metabase.metabot.settings :as metabot-settings]
    [metabase.metabot.util :as metabot-util]
    [metabase.models :refer [Table]]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [potemkin :as p]
    [toucan2.core :as t2]))
@@ -117,7 +118,7 @@
                      database-id user_prompt best-model-id)
           (update model
                   :prompt_template_versions
-                  (fnil conj [])
+                  u/conjv
                   (format "%s:%s" prompt_template version)))
         (log/infof "No model inferred for database '%s' with prompt '%s'." database-id user_prompt)))
     (log/warn "Metabot is not enabled")))

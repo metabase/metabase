@@ -14,16 +14,17 @@ import type { AdminPath } from "metabase-types/store";
 import StoreLink from "../StoreLink";
 
 import { AdminNavItem } from "./AdminNavItem";
+import { AdminNavLink } from "./AdminNavItem.styled";
 import AdminNavCS from "./AdminNavbar.module.css";
 import {
   AdminExitLink,
   AdminLogoContainer,
   AdminLogoLink,
   AdminLogoText,
+  AdminMobileNavBarItems,
+  AdminMobileNavbar,
   AdminNavbarItems,
   AdminNavbarRoot,
-  AdminMobileNavbar,
-  AdminMobileNavBarItems,
   MobileHide,
 } from "./AdminNavbar.styled";
 
@@ -37,7 +38,7 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
-  const isPaidPlain = useSelector(getIsPaidPlan);
+  const isPaidPlan = useSelector(getIsPaidPlan);
 
   return (
     <AdminNavbarRoot
@@ -55,7 +56,7 @@ export const AdminNavbar = ({
       <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
 
       <MobileHide>
-        <AdminNavbarItems>
+        <AdminNavbarItems data-testid="admin-navbar-items">
           {adminPaths.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}
@@ -66,7 +67,7 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!isPaidPlain && <StoreLink />}
+        {!isPaidPlan && <StoreLink />}
         <AdminExitLink
           to="/"
           data-testid="exit-admin"
@@ -102,12 +103,14 @@ const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
       {mobileNavOpen && (
         <AdminMobileNavBarItems aria-label={t`Navigation links`}>
           {adminPaths.map(({ name, key, path }) => (
-            <AdminNavItem
-              name={name}
-              path={path}
+            <AdminNavLink
+              to={path}
               key={key}
-              currentPath={currentPath}
-            />
+              isSelected={currentPath.startsWith(path)}
+              isInMobileNav
+            >
+              {name}
+            </AdminNavLink>
           ))}
           <AdminExitLink to="/">{t`Exit admin`}</AdminExitLink>
         </AdminMobileNavBarItems>

@@ -1,14 +1,14 @@
 import cx from "classnames";
-import { useMemo, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 import type {
-  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
+  DashboardCard,
   DatasetColumn,
 } from "metabase-types/api";
 
@@ -30,7 +30,7 @@ type ColumnGroup = [
 
 function explainClickBehaviorType(
   type: ClickBehaviorType,
-  dashcard: QuestionDashboardCard,
+  dashcard: DashboardCard,
 ) {
   return {
     action: t`Execute an action`,
@@ -44,7 +44,7 @@ function explainClickBehaviorType(
 
 interface Props {
   columns: DatasetColumn[];
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   getClickBehaviorForColumn: (
     column: DatasetColumn,
   ) => ClickBehavior | undefined;

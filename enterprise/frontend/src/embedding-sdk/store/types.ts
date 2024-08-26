@@ -1,14 +1,14 @@
 import type {
-  SerializedError,
   AnyAction,
+  SerializedError,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 
 import type {
-  SDKConfig,
-  FetchRequestTokenFn,
   EmbeddingSessionToken,
+  FetchRequestTokenFn,
+  SDKConfig,
 } from "embedding-sdk";
 import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
@@ -46,6 +46,11 @@ export type LoginStatus =
 
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
+export type SdkErrorComponentProps = { message: ReactNode };
+export type SdkErrorComponent = ({
+  message,
+}: SdkErrorComponentProps) => JSX.Element;
+
 export type SdkState = {
   metabaseInstanceUrl: SDKConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
@@ -53,7 +58,7 @@ export type SdkState = {
   plugins: null | SdkPluginsConfig;
   eventHandlers: null | SdkEventHandlersConfig;
   loaderComponent: null | (() => JSX.Element);
-  errorComponent: null | (({ message }: { message: string }) => JSX.Element);
+  errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | FetchRequestTokenFn;
 };
 

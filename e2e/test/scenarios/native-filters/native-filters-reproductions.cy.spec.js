@@ -1,18 +1,18 @@
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  openNativeEditor,
-  moveDnDKitElement,
   filterWidget,
-  popover,
-  visitQuestionAdhoc,
-  visitQuestion,
-  openPublicLinkPopoverFromMenu,
-  queryBuilderMain,
-  visitDashboard,
   getDashboardCard,
+  moveDnDKitElement,
+  openNativeEditor,
+  openSharingMenu,
+  popover,
+  queryBuilderMain,
   removeMultiAutocompleteValue,
+  restore,
+  visitDashboard,
+  visitQuestion,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -730,7 +730,7 @@ describe("issue 17019", () => {
   });
 
   it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    openPublicLinkPopoverFromMenu();
+    openSharingMenu(/public link/i);
 
     cy.findByTestId("public-link-popover-content")
       .findByTestId("public-link-input")
@@ -1062,7 +1062,7 @@ describe("issue 31606", { tags: "@external" }, () => {
       cy.findByText("Enter a default value…").should("not.exist");
       cy.findByText("Default filter widget value")
         .next()
-        .find("a")
+        .find("div")
         .first()
         .click();
     });

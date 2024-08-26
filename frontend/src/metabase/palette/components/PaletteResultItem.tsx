@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
-import { Flex, Text, Icon, Box } from "metabase/ui";
+import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import type { PaletteActionImpl } from "../types";
 import { getCommandPaletteIcon } from "../utils";
@@ -32,7 +32,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       gap="0.5rem"
       fw={700}
       style={{
-        cursor: "pointer",
+        cursor: item.disabled ? "default" : "cursor",
         borderRadius: "0.5rem",
         flexGrow: 1,
         flexBasis: 0,
@@ -40,6 +40,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
       bg={active ? color("brand") : "none"}
       c={active ? color("text-white") : color("text-dark")}
       aria-label={item.name}
+      aria-disabled={item.disabled ? true : false}
     >
       {/** Icon Container */}
       {icon && (

@@ -15,6 +15,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -65,6 +66,7 @@
                               :persist-models                         true
                               :schemas                                false
                               :uploads                                true
+                              :identifiers-with-spaces                true
                               ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
                               ;; fully support `offset` we need to do some kooky query transformations just for MySQL
                               ;; and make this work.
@@ -257,6 +259,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver.sql/json-field-length :mysql
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :char]])
+
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
 
@@ -434,11 +440,11 @@
 (defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
   (str-to-date "%Y-%m-%d"
                (h2x/concat (h2x/year expr)
-                          (h2x/literal "-")
-                          (h2x/- (h2x/* (h2x/quarter expr)
-                                      3)
-                                2)
-                          (h2x/literal "-01"))))
+                           (h2x/literal "-")
+                           (h2x/- (h2x/* (h2x/quarter expr)
+                                         3)
+                                  2)
+                           (h2x/literal "-01"))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -514,7 +520,7 @@
 
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."
-  { ;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
+  {;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
    :zeroDateTimeBehavior "convertToNull"
    ;; Force UTF-8 encoding of results
    :useUnicode           true

@@ -73,10 +73,10 @@
    If the expression has an original-effective-type due to bucketing, check that."
   [expression typ]
   (isa?
-    (or (and (clause? expression)
-             (:metabase.lib.field/original-effective-type (second expression)))
-        (lib.schema.expression/type-of expression))
-    typ))
+   (or (and (clause? expression)
+            (:metabase.lib.field/original-effective-type (second expression)))
+       (lib.schema.expression/type-of expression))
+   typ))
 
 (defn expression-name
   "Returns the :lib/expression-name of `clause`. Returns nil if `clause` is not a clause."
@@ -190,7 +190,7 @@
   [m legacy-key pMBQL-key]
   (cond-> m
     (contains? m legacy-key) (update legacy-key #(if (and (vector? %)
-                                                       (= (first %) :and))
+                                                          (= (first %) :and))
                                                    (vec (drop 1 %))
                                                    [%]))
     (contains? m legacy-key) (set/rename-keys {legacy-key pMBQL-key})))
@@ -383,7 +383,7 @@
   ;; 8 bytes for the CRC32 plus one for the underscore
   9)
 
-(mu/defn ^:private crc32-checksum :- [:string {:min 8, :max 8}]
+(mu/defn- crc32-checksum :- [:string {:min 8, :max 8}]
   "Return a 4-byte CRC-32 checksum of string `s`, encoded as an 8-character hex string."
   [s :- :string]
   (let [s #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
@@ -446,7 +446,7 @@
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
-(mu/defn ^:private escape-and-truncate :- :string
+(mu/defn- escape-and-truncate :- :string
   [database :- [:maybe ::lib.schema.metadata/database]
    s        :- :string]
   (->> s
@@ -454,7 +454,7 @@
        ;; truncate alias to 60 characters (actually 51 characters plus a hash).
        truncate-alias))
 
-(mu/defn ^:private unique-alias :- :string
+(mu/defn- unique-alias :- :string
   [database :- [:maybe ::lib.schema.metadata/database]
    original :- :string
    suffix   :- :string]
@@ -541,18 +541,18 @@
         stage (query-stage query stage-number)
         new-summary? (not (or (seq (:aggregation stage)) (seq (:breakout stage))))
         new-query (update-query-stage
-                    query stage-number
-                    update location
-                    (fn [summary-clauses]
-                      (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
+                   query stage-number
+                   update location
+                   (fn [summary-clauses]
+                     (conj (vec summary-clauses) (lib.common/->op-arg a-summary-clause))))]
     (if new-summary?
       (-> new-query
           (update-query-stage
-            stage-number
-            (fn [stage]
-              (-> stage
-                  (dissoc :order-by :fields)
-                  (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
+           stage-number
+           (fn [stage]
+             (-> stage
+                 (dissoc :order-by :fields)
+                 (m/update-existing :joins (fn [joins] (mapv #(dissoc % :fields) joins))))))
           ;; subvec holds onto references, so create a new vector
           (update :stages (comp #(into [] %) subvec) 0 (inc (canonical-stage-index query stage-number))))
       new-query)))

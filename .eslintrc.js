@@ -62,6 +62,13 @@ module.exports = {
         warnOnUnassignedImports: false,
       },
     ],
+    "sort-imports": [
+      "error",
+      {
+        // allows this rule to work with import/order
+        ignoreDeclarationSort: true,
+      },
+    ],
     "no-console": [2, { allow: ["warn", "error", "errorBuffer"] }],
     "react/no-is-mounted": 2,
     "react/prefer-es6-class": 2,
@@ -78,9 +85,10 @@ module.exports = {
     "react/forbid-component-props": [2, { forbid: ["sx"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
-      { additionalHooks: "(useSyncedQueryString|useSafeAsyncFunction)" },
+      { additionalHooks: "(useSafeAsyncFunction)" },
     ],
     "prefer-const": [1, { destructuring: "all" }],
+    "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",
@@ -133,6 +141,7 @@ module.exports = {
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
+    "plugin:depend/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
@@ -160,6 +169,17 @@ module.exports = {
       rules: {
         "no-unconditional-metabase-links-render": "error",
         "no-literal-metabase-strings": "error",
+        "depend/ban-dependencies": [
+          "error",
+          {
+            allowed: [
+              "underscore",
+              "moment",
+              "lodash.orderby",
+              "lodash.debounce",
+            ],
+          },
+        ],
       },
     },
     {

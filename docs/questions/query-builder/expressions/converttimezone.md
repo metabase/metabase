@@ -86,7 +86,7 @@ For more gory details, see [Limitations](#limitations).
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `convertTimezone` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `convertTimezone` |
 | ------------------------------------------------------------------------------------------------ | ---------------------------- |
 | String                                                                                           | ❌                           |
 | Number                                                                                           | ❌                           |

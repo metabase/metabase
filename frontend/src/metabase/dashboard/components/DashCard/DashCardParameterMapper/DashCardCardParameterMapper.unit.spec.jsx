@@ -9,17 +9,17 @@ import * as parameterActions from "metabase/dashboard/actions/parameters";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import {
-  createMockCard,
-  createMockTemplateTag,
-  createMockDashboardCard,
   createMockActionDashboardCard,
+  createMockCard,
+  createMockDashboardCard,
   createMockHeadingDashboardCard,
-  createMockParameter,
-  createMockTextDashboardCard,
-  createMockStructuredDatasetQuery,
+  createMockLinkDashboardCard,
   createMockNativeDatasetQuery,
   createMockNativeQuery,
-  createMockLinkDashboardCard,
+  createMockParameter,
+  createMockStructuredDatasetQuery,
+  createMockTemplateTag,
+  createMockTextDashboardCard,
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
@@ -62,7 +62,6 @@ describe("DashCardCardParameterMapper", () => {
   it("should render an unauthorized state for a card with no dataset query", () => {
     const card = createMockCard({
       dataset_query: createMockStructuredDatasetQuery({ query: {} }),
-      can_run_adhoc_query: false,
     });
     setup({ card });
 

@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.athena :as athena]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -15,14 +14,19 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :athena)
 
-;; during unit tests don't treat athena as having FK support
-(defmethod driver/database-supports? [:athena :foreign-keys] [_driver _feature _db] (not config/is-test?))
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:athena feature]
+    [_driver _feature _database]
+    false))
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -89,7 +93,7 @@
 ;;;    enable [[*allow-database-creation*]] for this to work:
 ;;;
 ;;;    ```
-;;;    (t2/delete! 'Database :engine "athena", :name "test-data")
+;;;    (t2/delete! 'Database :engine "athena", :name "test-data (athena)")
 ;;;    (binding [metabase.test.data.athena/*allow-database-creation* true]
 ;;;      (metabase.driver/with-driver :athena
 ;;;        (metabase.test/dataset test-data
@@ -146,12 +150,13 @@
     ;; data twice. If you do, you'll have to manually delete those folders from the s3 bucket.
     ;;
     ;; -- Cam
-    (format #_"CREATE TABLE `%s`.`%s` (%s) LOCATION '%s' TBLPROPERTIES ('table_type'='ICEBERG');"
-            "CREATE EXTERNAL TABLE `%s`.`%s` (%s) LOCATION '%s';"
-            (ddl.i/format-name driver database-name)
-            (ddl.i/format-name driver table-name)
-            fields
-            (s3-location-for-table driver database-name table-name))))
+    (format
+     #_"CREATE TABLE `%s`.`%s` (%s) LOCATION '%s' TBLPROPERTIES ('table_type'='ICEBERG');"
+     "CREATE EXTERNAL TABLE `%s`.`%s` (%s) LOCATION '%s';"
+     (ddl.i/format-name driver database-name)
+     (ddl.i/format-name driver table-name)
+     fields
+     (s3-location-for-table driver database-name table-name))))
 
 (comment
   (let [test-data-dbdef (tx/get-dataset-definition @(requiring-resolve 'metabase.test.data.dataset-definitions/test-data))
@@ -163,10 +168,10 @@
 
 ;; The Athena JDBC driver doesn't support parameterized queries.
 ;; So go ahead and deparameterize all the statements for now.
-(defmethod ddl/insert-rows-ddl-statements :athena
-  [driver table-identifier row-or-rows]
+(defmethod ddl/insert-rows-dml-statements :athena
+  [driver table-identifier rows]
   (binding [driver/*compile-with-inline-parameters* true]
-    ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)))
+    ((get-method ddl/insert-rows-dml-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
 
 (doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
                               :type/Boolean        "BOOLEAN"
@@ -190,17 +195,17 @@
 ;; Might have to figure out autoincrement settings
 (defmethod sql.tx/pk-sql-type :athena [_] "INTEGER")
 
-;; Add IDs to the sample data
-(defmethod load-data/load-data! :athena
-  [& args]
-  ;;; 200 is super slow, and the query ends up being too large around 500 rows... for some reason the same dataset
-  ;;; orders table (about 17k rows) stalls out at row 10,000 when loading them 200 at a time. It works when you do 400
-  ;;; at a time tho. This is just going to have to be ok for now.
-  (binding [load-data/*chunk-size* 400
-            ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
-            ;; very fussy! See [[athena/*loading-data*]] for more info.
-            athena/*loading-data*  true]
-    (apply load-data/load-data-maybe-add-ids-chunked! args)))
+(defmethod load-data/row-xform :athena
+  [_driver _dbdef tabledef]
+  ;; Add IDs to the sample data
+  (load-data/maybe-add-ids-xform tabledef))
+
+;;; 200 is super slow, and the query ends up being too large around 500 rows... for some reason the same dataset orders
+;;; table (about 17k rows) stalls out at row 10,000 when loading them 200 at a time. It works when you do 400 at a time
+;;; tho. This is just going to have to be ok for now.
+(defmethod load-data/chunk-size :athena
+  [_driver _dbdef _tabledef]
+  400)
 
 (defn- server-connection-details []
   (tx/dbdef->connection-details :athena :server nil))
@@ -208,9 +213,7 @@
 (defn- server-connection-spec []
   (sql-jdbc.conn/connection-details->spec :athena (server-connection-details)))
 
-(defn- existing-databases
-  "Set of databases that already exist in our S3 bucket, so we don't try to create them a second time."
-  []
+(defn- existing-databases* []
   (sql-jdbc.execute/do-with-connection-with-options
    :athena
    (server-connection-spec)
@@ -219,6 +222,15 @@
      (let [dbs (into #{} (map :database_name) (jdbc/query {:connection conn} ["SHOW DATABASES;"]))]
        (log/infof "The following Athena databases have already been created: %s" (pr-str (sort dbs)))
        dbs))))
+
+(defonce ^:private cached-existing-databases (atom nil))
+
+(defn- existing-databases
+  "Set of databases that already exist in our S3 bucket, so we don't try to create them a second time."
+  []
+  (or @cached-existing-databases
+      (u/prog1 (existing-databases*)
+        (reset! cached-existing-databases <>))))
 
 (def ^:private ^:dynamic *allow-database-creation*
   "Whether to allow database creation. This is normally disabled to prevent people from accidentally loading duplicate
@@ -240,8 +252,11 @@
                   (pr-str database-name))
 
       :else
-      (do
+      (binding [;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
+                ;; very fussy! See [[athena/*loading-data*]] for more info.
+                athena/*loading-data*  true]
         (log/infof "Creating Athena database %s" (pr-str database-name))
+        (reset! cached-existing-databases nil)
         ;; call the default impl for SQL JDBC drivers
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))))
 
@@ -249,10 +264,8 @@
   [_driver _base-type]
   false)
 
-(defmethod tx/supports-time-type? :athena
-  [_driver]
-  false)
-
-(defmethod tx/supports-timestamptz-type? :athena
-  [_driver]
-  false)
+(mu/defmethod tx/dataset-already-loaded? :athena
+  [driver                              :- :keyword
+   {:keys [database-name], :as _dbdef} :- [:map [:database-name :string]]]
+  (let [physical-name (ddl.i/format-name driver database-name)]
+    (contains? (existing-databases) physical-name)))

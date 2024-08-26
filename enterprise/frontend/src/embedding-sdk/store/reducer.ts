@@ -1,4 +1,4 @@
-import { createReducer, createAction } from "@reduxjs/toolkit";
+import { createAction, createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { EmbeddingSessionToken, FetchRequestTokenFn } from "embedding-sdk";
@@ -7,6 +7,7 @@ import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { defaultGetRefreshTokenFn } from "embedding-sdk/store/refresh-token";
 import type {
   LoginStatus,
+  SdkErrorComponent,
   SdkState,
   SdkStoreState,
 } from "embedding-sdk/store/types";
@@ -27,9 +28,9 @@ export const setMetabaseClientUrl = createAction<string>(
 export const setLoaderComponent = createAction<null | (() => JSX.Element)>(
   SET_LOADER_COMPONENT,
 );
-export const setErrorComponent = createAction<
-  null | (({ message }: { message: string }) => JSX.Element)
->(SET_ERROR_COMPONENT);
+export const setErrorComponent = createAction<null | SdkErrorComponent>(
+  SET_ERROR_COMPONENT,
+);
 export const setFetchRefreshTokenFn = createAction<null | FetchRequestTokenFn>(
   SET_FETCH_REQUEST_TOKEN_FN,
 );

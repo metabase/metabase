@@ -12,9 +12,9 @@ import {
   isDateParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
-  setStartingFrom,
   EXCLUDE_OPTIONS,
   EXCLUDE_UNITS,
+  setStartingFrom,
 } from "metabase-lib/v1/queries/utils/query-time";
 import { isTemplateTagReference } from "metabase-lib/v1/references";
 import { isDimensionTarget } from "metabase-types/guards";
@@ -147,14 +147,20 @@ export function dateParameterValueToMBQL(parameterValue, fieldRef) {
 }
 
 export function stringParameterValueToMBQL(parameter, fieldRef) {
-  const parameterValue = parameter.value;
+  const parameterValue = Array.isArray(parameter.value)
+    ? parameter.value
+    : [parameter.value];
   const operator = deriveFieldOperatorFromParameter(parameter);
   const subtype = getParameterSubType(parameter);
   const operatorName = getParameterOperatorName(subtype);
+  const operatorOptions = operator?.optionsDefaults;
+  const hasMultipleValues = parameterValue.length > 1;
 
-  return [operatorName, fieldRef]
+  return [operatorName]
+    .concat(hasMultipleValues && operatorOptions ? operatorOptions : [])
+    .concat([fieldRef])
     .concat(parameterValue)
-    .concat(operator?.optionsDefaults ?? []);
+    .concat(!hasMultipleValues && operatorOptions ? operatorOptions : []);
 }
 
 export function numberParameterValueToMBQL(parameter, fieldRef) {

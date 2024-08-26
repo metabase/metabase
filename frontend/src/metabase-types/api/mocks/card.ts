@@ -1,14 +1,14 @@
 import type {
-  ModerationReview,
   Card,
-  UnsavedCard,
-  VisualizationSettings,
-  SeriesOrderSetting,
-  StructuredDatasetQuery,
+  CardQueryMetadata,
+  ModerationReview,
   NativeDatasetQuery,
   PublicCard,
+  SeriesOrderSetting,
+  StructuredDatasetQuery,
   TableColumnOrderSetting,
-  CardQueryMetadata,
+  UnsavedCard,
+  VisualizationSettings,
 } from "metabase-types/api";
 
 import {
@@ -29,7 +29,6 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   result_metadata: [],
   type: "question",
   can_write: true,
-  can_run_adhoc_query: true,
   can_restore: false,
   can_delete: false,
   cache_ttl: null,

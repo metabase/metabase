@@ -1,14 +1,15 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
-  restore,
-  modal,
-  popover,
+  collectionOnTheGoModal,
   describeEE,
+  entityPickerModal,
+  modal,
+  onlyOnOSS,
   openNativeEditor,
+  popover,
+  restore,
   rightSidebar,
   setTokenFeatures,
-  onlyOnOSS,
-  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { ALL_USERS_GROUP } = USER_GROUPS;
@@ -30,26 +31,26 @@ describe("scenarios > question > snippets", () => {
   });
 
   it("should let you create and use a snippet", () => {
+    cy.log("Type a query and highlight some of the text");
     openNativeEditor().type(
-      // Type a query and highlight some of the text
       "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
     );
 
-    // Add a snippet of that text
-    cy.icon("snippet").click();
+    cy.log("Add a snippet of that text");
+    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
     cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
     modal().within(() => {
       cy.findByLabelText("Give your snippet a name").type("stuff-snippet");
-      cy.findByText("Save").click();
+      cy.button("Save").click();
     });
 
-    // SQL editor should get updated automatically
-    cy.get("@editor").contains("select {{snippet: stuff-snippet}}");
+    cy.log("SQL editor should get updated automatically");
+    cy.get("@editor").should("contain", "select {{snippet: stuff-snippet}}");
 
-    // Run the query and check the value
+    cy.log("Run the query and check the value");
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.findByTestId("scalar-value").contains("stuff");
+    cy.findByTestId("scalar-value").should("have.text", "stuff");
   });
 
   it("should let you edit snippet", () => {
@@ -255,7 +256,6 @@ describeEE("scenarios > question > snippets (EE)", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     modal().within(() => cy.findByText("Top folder").click());
     entityPickerModal().within(() => {
-      cy.findByText("Collections").click();
       cy.findByText("my favorite snippets").click();
       cy.findByText("Select").click();
     });
@@ -273,6 +273,31 @@ describeEE("scenarios > question > snippets (EE)", () => {
     cy.findByText("my favorite snippets").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1");
+
+    cy.log("via collection picker (metabase#44930");
+
+    // Edit snippet folder
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("snippet 1").parent().parent().click();
+      cy.button(/Edit/).click();
+    });
+
+    modal().findByTestId("collection-picker-button").click();
+    entityPickerModal()
+      .findByRole("button", { name: /Create a new collection/ })
+      .click();
+    collectionOnTheGoModal()
+      .findByLabelText("Give it a name")
+      .type("my special snippets");
+    collectionOnTheGoModal().findByRole("button", { name: "Create" }).click();
+    entityPickerModal().findByRole("button", { name: "Select" }).click();
+    modal().findByRole("button", { name: "Save" }).click();
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("snippet 1").should("not.exist");
+      cy.findByText("my special snippets").click();
+      cy.findByText("snippet 1").should("exist");
+    });
   });
 
   ["admin", "nocollection"].map(user => {
@@ -304,7 +329,34 @@ describeEE("scenarios > question > snippets (EE)", () => {
         description: null,
         parent_id: null,
         namespace: "snippets",
+      }).then(({ body }) => {
+        cy.request("POST", "/api/collection", {
+          name: "Nested snippet Folder",
+          description: null,
+          parent_id: body.id,
+          namespace: "snippets",
+        });
       });
+    });
+
+    it("should not allow you to move a snippet collection into a itself or a child (metabase#44930)", () => {
+      openNativeEditor();
+      cy.icon("snippet").click();
+
+      // Edit snippet folder
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Snippet Folder")
+          .next()
+          .find(".Icon-ellipsis")
+          .click({ force: true });
+      });
+
+      popover().findByText("Edit folder details").click();
+      modal().findByTestId("collection-picker-button").click();
+
+      entityPickerModal()
+        .findByRole("button", { name: /Snippet Folder/ })
+        .should("be.disabled");
     });
 
     it("should not display snippet folder as part of collections (metabase#14907)", () => {
@@ -356,12 +408,12 @@ describeEE("scenarios > question > snippets (EE)", () => {
       });
 
       // API check
-      cy.get("@updatePermissions").then(intercept => {
-        const { groups } = intercept.response.body;
-        const allUsers = groups[ALL_USERS_GROUP];
-
-        expect(allUsers.root).to.equal("write");
-      });
+      cy.request("GET", "/api/collection/graph?namespace=snippets").then(
+        ({ body }) => {
+          const allUsers = body.groups[ALL_USERS_GROUP];
+          expect(allUsers.root).to.equal("write");
+        },
+      );
     });
   });
 });

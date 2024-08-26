@@ -9,12 +9,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import { getOriginalCard, getQuestion } from "../selectors";
 
-import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
+import { API_UPDATE_QUESTION, apiUpdateQuestion, updateQuestion } from "./core";
 import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
-  dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+  dispatch(
+    setQueryBuilderMode("dataset", { datasetEditorTab, replaceState: false }),
+  );
   dispatch(runDirtyQuestionQuery());
 };
 

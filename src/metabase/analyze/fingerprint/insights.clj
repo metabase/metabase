@@ -14,7 +14,10 @@
    [metabase.util.date-2 :as u.date]
    [redux.core :as redux])
   (:import
-   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.util Random)))
+
+(set! *warn-on-reflection* true)
 
 (defn- last-n
   [n]
@@ -40,19 +43,21 @@
         :else                     (/ (- x2 x1) x1)))))
 
 (defn reservoir-sample
-  "Transducer that samples a fixed number `n` of samples.
-   https://en.wikipedia.org/wiki/Reservoir_sampling"
+  "Transducer that samples a fixed number `n` of samples consistently.
+   https://en.wikipedia.org/wiki/Reservoir_sampling. Uses java.util.Random
+  with a seed of `n` to ensure a consistent sample if a dataset has not changed."
   [n]
-  (fn
-    ([] [[] 0])
-    ([[reservoir c] x]
-     (let [c   (inc c)
-           idx (rand-int c)]
-       (cond
-         (<= c n)  [(conj reservoir x) c]
-         (< idx n) [(assoc reservoir idx x) c]
-         :else     [reservoir c])))
-    ([[reservoir _]] reservoir)))
+  (let [rng (Random. n)]
+    (fn
+      ([] [[] 0])
+      ([[reservoir c] x]
+       (let [c   (inc c)
+             idx (.nextInt rng c)]
+         (cond
+           (<= c n)  [(conj reservoir x) c]
+           (< idx n) [(assoc reservoir idx x) c]
+           :else     [reservoir c])))
+      ([[reservoir _]] reservoir))))
 
 (defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
@@ -135,10 +140,9 @@
               :formula))))
 
 (defn- timeseries?
-  [{:keys [numbers datetimes others]}]
+  [{:keys [numbers datetimes]}]
   (and (pos? (count numbers))
-       (= (count datetimes) 1)
-       (empty? others)))
+       (= (count datetimes) 1)))
 
 ;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
 (def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
@@ -174,9 +178,9 @@
 (defn- ->millis-from-epoch [t]
   (when t
     (condp instance? t
-      Instant        (t/to-millis-from-epoch t)
-      OffsetDateTime (t/to-millis-from-epoch t)
-      ZonedDateTime  (t/to-millis-from-epoch t)
+      Instant        (.toEpochMilli ^Instant t)
+      OffsetDateTime (.toEpochMilli (.toInstant ^OffsetDateTime t))
+      ZonedDateTime  (.toEpochMilli (.toInstant ^ZonedDateTime t))
       LocalDate      (->millis-from-epoch (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
       LocalDateTime  (->millis-from-epoch (t/offset-date-time t (t/zone-offset 0)))
       LocalTime      (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
@@ -188,7 +192,7 @@
         x-position (:position datetime)
         xfn        #(some-> %
                             (nth x-position)
-                            ;; at this point in the pipeline, dates are still stings
+                            ;; at this point in the pipeline, dates are still strings
                             fingerprinters/->temporal
                             ->millis-from-epoch
                             ms->day)]

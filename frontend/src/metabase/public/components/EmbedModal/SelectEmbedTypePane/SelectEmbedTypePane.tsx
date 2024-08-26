@@ -3,9 +3,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import Link from "metabase/core/components/Link";
-import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { useSelector } from "metabase/lib/redux";
 import {
   trackPublicEmbedCodeCopied,
@@ -17,7 +14,9 @@ import type {
   EmbedResourceType,
 } from "metabase/public/lib/types";
 import { getSetting } from "metabase/selectors/settings";
-import { Group, Text, Anchor, Stack } from "metabase/ui";
+import { PublicLinkCopyPanel } from "metabase/sharing/components/PublicLinkPopover/PublicLinkCopyPanel";
+import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
+import { Anchor, Group, Stack, Text } from "metabase/ui";
 
 import { InteractiveEmbeddingCTA } from "./InteractiveEmbeddingCTA";
 import { SharingPaneButton } from "./SharingPaneButton/SharingPaneButton";
@@ -53,11 +52,6 @@ export function SelectEmbedTypePane({
     e.stopPropagation();
     if (!isLoadingLink && !hasPublicLink) {
       setIsLoadingLink(true);
-      MetabaseAnalytics.trackStructEvent(
-        "Sharing Modal",
-        "Public Link Enabled",
-        resourceType,
-      );
       await onCreatePublicLink();
       setIsLoadingLink(false);
     }
@@ -67,11 +61,6 @@ export function SelectEmbedTypePane({
     e.stopPropagation();
     if (!isLoadingLink && hasPublicLink) {
       setIsLoadingLink(true);
-      MetabaseAnalytics.trackStructEvent(
-        "Sharing Modal",
-        "Public Link Disabled",
-        resourceType,
-      );
 
       trackPublicLinkRemoved({
         artifact: resourceType,

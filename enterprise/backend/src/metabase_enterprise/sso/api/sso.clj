@@ -37,7 +37,7 @@
       (log/error #_e "Error returning SSO entry point")
       (throw e))))
 
-(mu/defn ^:private sso-error-page
+(mu/defn- sso-error-page
   [^Throwable e log-direction :- [:enum :in :out]]
   {:status  (get (ex-data e) :status-code 500)
    :headers {"Content-Type" "text/html"}
@@ -58,7 +58,6 @@
     (catch Throwable e
       (log/error e "Error logging in")
       (sso-error-page e :in))))
-
 
 ;; ------------------------------ Single Logout aka SLO ------------------------------
 

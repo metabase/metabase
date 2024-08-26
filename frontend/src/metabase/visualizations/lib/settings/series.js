@@ -1,19 +1,18 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
-import _ from "underscore";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import {
   SERIES_COLORS_SETTING_KEY,
-  getSeriesDefaultLinearInterpolate,
-  getSeriesDefaultLineMarker,
-  getSeriesDefaultLineMissing,
+  SERIES_SETTING_KEY,
   getSeriesColors,
   getSeriesDefaultDisplay,
-  SERIES_SETTING_KEY,
-  getSeriesDefaultShowSeriesValues,
-  getSeriesDefaultLineStyle,
+  getSeriesDefaultLineMarker,
+  getSeriesDefaultLineMissing,
   getSeriesDefaultLineSize,
+  getSeriesDefaultLineStyle,
+  getSeriesDefaultLinearInterpolate,
+  getSeriesDefaultShowSeriesValues,
 } from "metabase/visualizations/shared/settings/series";
 
 import { getNameForCard } from "../series";
@@ -205,6 +204,8 @@ export function seriesSetting({
       objectName: "series",
       getObjects: (series, settings) => series,
       getObjectKey: keyForSingleSeries,
+      getObjectSettings: (settings, object) =>
+        settings[keyForSingleSeries(object)],
       getSettingDefinitionsForObject: getSettingDefinitionsForSingleSeries,
       component: ChartNestedSettingSeries,
       readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],

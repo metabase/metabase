@@ -1,54 +1,57 @@
 import { assoc } from "icepick";
 import _ from "underscore";
 
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
+  ORDERS_COUNT_QUESTION_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
-  ORDERS_COUNT_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addTextBox,
-  editDashboard,
-  getDashboardCard,
-  openQuestionsSidebar,
-  popover,
-  removeDashboardCard,
-  restore,
-  saveDashboard,
-  setFilter,
-  showDashboardCardActions,
-  sidebar,
-  undo,
-  visitDashboard,
-  getDashboardCards,
-  updateDashboardCards,
-  rightSidebar,
-  dashboardHeader,
-  entityPickerModal,
-  toggleDashboardInfoSidebar,
   cartesianChartCircle,
-  undoToast,
-  setTokenFeatures,
-  describeEE,
-  visitQuestion,
-  getTextCardDetails,
-  modal,
-  queryBuilderHeader,
-  filterWidget,
-  dashboardParametersContainer,
-  goToTab,
   createDashboardWithTabs,
   dashboardGrid,
+  dashboardHeader,
+  dashboardParametersContainer,
+  describeEE,
+  editDashboard,
+  entityPickerModal,
+  filterWidget,
+  getDashboardCard,
+  getDashboardCards,
+  getTextCardDetails,
+  goToTab,
+  modal,
+  openQuestionsSidebar,
+  popover,
+  queryBuilderHeader,
+  removeDashboardCard,
+  restore,
+  rightSidebar,
+  saveDashboard,
+  setFilter,
+  setTokenFeatures,
+  showDashboardCardActions,
+  sidebar,
+  toggleDashboardInfoSidebar,
+  undo,
+  undoToast,
+  updateDashboardCards,
+  visitDashboard,
+  visitQuestion,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
-import { createMockDashboardCard } from "metabase-types/api/mocks";
+import {
+  createMockDashboardCard,
+  createMockParameter,
+} from "metabase-types/api/mocks";
 
 const { SAMPLE_DATABASE } = require("e2e/support/cypress_sample_database");
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
-const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, PEOPLE } = SAMPLE_DATABASE;
 
 describe("issue 12578", () => {
   const ORDERS_QUESTION = {
@@ -1409,6 +1412,91 @@ describe("issue 40695", () => {
       cy.findByText("Orders").should("exist");
       cy.findByText("Orders, Count").should("not.exist");
       getDashboardCards().should("have.length", 1);
+    });
+  });
+});
+
+describe("issue 42165", () => {
+  const peopleSourceFieldRef = [
+    "field",
+    PEOPLE.SOURCE,
+    { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+  ];
+  const ordersCreatedAtFieldRef = [
+    "field",
+    ORDERS.CREATED_AT,
+    { "base-type": "type/DateTime", "temporal-unit": "month" },
+  ];
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
+    cy.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [
+          createMockParameter({
+            id: "param-1",
+            name: "Date",
+            slug: "date",
+            type: "date/all-options",
+          }),
+        ],
+      },
+      questions: [
+        {
+          name: "fooBarQuestion",
+          display: "bar",
+          query: {
+            aggregation: [["count"]],
+            breakout: [peopleSourceFieldRef, ordersCreatedAtFieldRef],
+            "source-table": ORDERS_ID,
+          },
+        },
+      ],
+    }).then(({ dashboard: _dashboard }) => {
+      cy.request("GET", `/api/dashboard/${_dashboard.id}`).then(
+        ({ body: dashboard }) => {
+          const [dashcard] = dashboard.dashcards;
+          const [parameter] = dashboard.parameters;
+          cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
+            dashcards: [
+              {
+                ...dashcard,
+                parameter_mappings: [
+                  {
+                    card_id: dashcard.card_id,
+                    parameter_id: parameter.id,
+                    target: ["dimension", ordersCreatedAtFieldRef],
+                  },
+                ],
+              },
+            ],
+          }).then(() => {
+            cy.wrap(_dashboard.id).as("dashboardId");
+          });
+        },
+      );
+    });
+  });
+
+  it("should use card name instead of series names when navigating to QB from dashcard title", () => {
+    cy.get("@dashboardId").then(dashboardId => {
+      visitDashboard(dashboardId);
+
+      filterWidget().click();
+      popover().findByText("Last 30 Days").click();
+      cy.wait("@dashcardQuery");
+
+      getDashboardCard(0).findByText("fooBarQuestion").click();
+
+      cy.wait("@dataset");
+      cy.title().should("eq", "fooBarQuestion · Metabase");
     });
   });
 });

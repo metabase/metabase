@@ -30,7 +30,6 @@
    [toucan2.realize :as t2.realize]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (def Database
@@ -109,8 +108,8 @@
     ;; -> sync both steps, schedule should be provided
     [true true false]
     (do
-     (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
-     database)
+      (assert (every? some? [cache_field_values_schedule metadata_sync_schedule]))
+      database)
 
     ;; "Only when adding a new filter" or "Never, I'll do it myself"
     ;; -> Sync metadata only
@@ -173,14 +172,16 @@
   [{driver :engine, :as database}]
   (letfn [(normalize-details [db]
             (binding [*normalizing-details* true]
-              (driver/normalize-db-details driver db)))]
+              (driver/normalize-db-details
+               driver
+               (m/update-existing-in db [:details :auth-provider] keyword))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (driver.impl/registered? driver)
       (assoc :features (driver.u/features driver (t2.realize/realize database)))
 
       (and (driver.impl/registered? driver)
-           (:details database)
+           (map? (:details database))
            (not *normalizing-details*))
       normalize-details)))
 
@@ -237,11 +238,11 @@
     (if (nil? value) ;; secret value for this conn prop was not changed
       details
       (let [{:keys [id] :as secret*} (secret/upsert-secret-value!
-                                       (id-kw details)
-                                       new-name
-                                       kind
-                                       src
-                                       value)]
+                                      (id-kw details)
+                                      new-name
+                                      kind
+                                      src
+                                      value)]
         (-> details
             ;; remove the -value keyword (since in the persisted details blob, we only ever want to store the -id),
             ;; but the value may be re-added by expand-inferred-secret-values below (if appropriate)
@@ -318,8 +319,8 @@
               :is_on_demand false}
              database)
       (cond->
-        (not details)             (assoc :details {})
-        (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+       (not details)             (assoc :details {})
+       (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
       handle-secrets-changes
       handle-uploads-enabled!
       infer-db-schedules))
@@ -370,7 +371,6 @@
     (when (seq table-ids)
       (t2/select 'Field, :table_id [:in table-ids], :semantic_type (mdb.query/isa :type/PK)))))
 
-
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 
 (def ^:const protected-password
@@ -383,11 +383,11 @@
   driver can't be clearly determined, this simply returns the default set (driver.u/default-sensitive-fields)."
   [database]
   (if (and (some? database) (not-empty database))
-      (let [driver (driver.u/database->driver database)]
-        (if (some? driver)
-            (driver.u/sensitive-fields (driver.u/database->driver database))
-            driver.u/default-sensitive-fields))
-      driver.u/default-sensitive-fields))
+    (let [driver (driver.u/database->driver database)]
+      (if (some? driver)
+        (driver.u/sensitive-fields (driver.u/database->driver database))
+        driver.u/default-sensitive-fields))
+    driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
   "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
@@ -410,33 +410,40 @@
              (fn [settings]
                (when (map? settings)
                  (u/prog1
-                  (m/filter-keys
-                   (fn [setting-name]
-                     (try
-                       (setting/can-read-setting? setting-name
-                                                  (setting/current-user-readable-visibilities))
-                       (catch Throwable e
+                   (m/filter-keys
+                    (fn [setting-name]
+                      (try
+                        (setting/can-read-setting? setting-name
+                                                   (setting/current-user-readable-visibilities))
+                        (catch Throwable e
                          ;; there is an known issue with exception is ignored when render API response (#32822)
                          ;; If you see this error, you probably need to define a setting for `setting-name`.
                          ;; But ideally, we should resovle the above issue, and remove this try/catch
-                         (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
-                                     setting-name)
+                          (log/errorf e "Error checking the readability of %s setting. The setting will be hidden in API response."
+                                      setting-name)
                          ;; let's be conservative and hide it by defaults, if you want to see it,
                          ;; you need to define it :)
-                         false)))
-                   settings)
-                  (when (not= <> settings)
-                    (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
+                          false)))
+                    settings)
+                   (when (not= <> settings)
+                     (log/debug "Redacting non-user-readable database settings during json encoding.")))))))
    json-generator))
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
-(defmethod serdes/extract-one "Database"
-  [_model-name {:keys [include-database-secrets]} entity]
-  (-> (serdes/extract-one-basics "Database" entity)
-      (update :creator_id serdes/*export-user*)
-      (dissoc :features) ; This is a synthetic column that isn't in the real schema.
-      (cond-> (not include-database-secrets) (dissoc :details))))
+(defmethod serdes/make-spec "Database"
+  [_model-name {:keys [include-database-secrets]}]
+  {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
+               :description :engine :is_audit :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
+               :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
+               :uploads_table_prefix]
+   :skip      [;; deprecated field
+               :cache_ttl]
+   :transform {:created_at          (serdes/date)
+               ;; details should be imported if available regardless of options
+               :details             {:export #(if include-database-secrets % ::serdes/skip) :import identity}
+               :creator_id          (serdes/fk :model/User)
+               :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -449,26 +456,6 @@
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
   (t2/select-one Database :name id))
-
-(defmethod serdes/load-xform "Database"
-  [database]
-  (-> database
-      serdes/load-xform-basics
-      (update :creator_id serdes/*import-user*)
-      (assoc :initial_sync_status "complete")))
-
-(defmethod serdes/load-insert! "Database" [_ ingested]
-  (let [m (get-method serdes/load-insert! :default)]
-    (m "Database"
-       (if (:details ingested)
-         ingested
-         (assoc ingested :details {})))))
-
-(defmethod serdes/load-update! "Database" [_ ingested local]
-  (let [m (get-method serdes/load-update! :default)]
-    (m "Database"
-       (update ingested :details #(or % (:details local) {}))
-       local)))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.

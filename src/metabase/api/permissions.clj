@@ -1,6 +1,7 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
   (:require
+   [clojure.data :as data]
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
@@ -19,6 +20,7 @@
     :refer [PermissionsGroup]]
    [metabase.models.permissions-revision :as perms-revision]
    [metabase.models.setting :as setting :refer [defsetting]]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features
     :as premium-features
     :refer [defenterprise]]
@@ -46,7 +48,7 @@
 
 (defsetting show-updated-permission-modal
   (deferred-tru
-    "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
+   "Whether an introductory modal should be shown for admins when they first upgrade to the new data-permissions format.")
   :visibility :admin
   :export?    false
   :default    true
@@ -59,7 +61,7 @@
 
 (defsetting show-updated-permission-banner
   (deferred-tru
-    "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
+   "Whether an informational header should be displayed in the permissions editor about the new data-permissions format.")
   :visibility :admin
   :export?    false
   :default    true
@@ -100,7 +102,7 @@
   "OSS implementation of `upsert-sandboxes!`. Errors since this is an enterprise feature."
   metabase-enterprise.sandbox.models.group-table-access-policy
   [_sandboxes]
- (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
+  (throw (premium-features/ee-feature-error (tru "Sandboxes"))))
 
 (defenterprise insert-impersonations!
   "OSS implementation of `insert-impersonations!`. Errors since this is an enterprise feature."
@@ -129,28 +131,37 @@
   {body :map
    skip-graph [:maybe :boolean]}
   (api/check-superuser)
-  (let [graph (mc/decode api.permission-graph/DataPermissionsGraph
-                         body
-                         (mtx/transformer
-                          mtx/string-transformer
-                          (mtx/transformer {:name :perm-graph})))]
-    (when-not (mc/validate api.permission-graph/DataPermissionsGraph graph)
-      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph graph)]
+  (let [new-graph (mc/decode api.permission-graph/StrictApiPermissionsGraph
+                             body
+                             (mtx/transformer
+                              mtx/string-transformer
+                              (mtx/transformer {:name :perm-graph})))]
+    (when-not (mc/validate api.permission-graph/DataPermissionsGraph new-graph)
+      (let [explained (mu/explain api.permission-graph/DataPermissionsGraph new-graph)]
         (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}" (pr-str explained))
                         {:status-code 400}))))
     (t2/with-transaction [_conn]
-      (data-perms.graph/update-data-perms-graph! (dissoc graph :sandboxes :impersonations))
-      (let [sandbox-updates        (:sandboxes graph)
-            sandboxes              (when sandbox-updates
-                                     (upsert-sandboxes! sandbox-updates))
-            impersonation-updates  (:impersonations graph)
-            impersonations         (when impersonation-updates
-                                     (insert-impersonations! impersonation-updates))
-            group-ids (-> graph :groups keys)]
-        (merge {:revision (perms-revision/latest-id)}
-               (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
-               (when sandboxes {:sandboxes sandboxes})
-               (when impersonations {:impersonations impersonations}))))))
+      (let [group-ids (-> new-graph :groups keys)
+            old-graph (data-perms.graph/api-graph {:group-ids group-ids})
+            [old new] (data/diff (:groups old-graph)
+                                 (:groups new-graph))
+            old       (or old {})
+            new       (or new {})]
+        (perms.u/log-permissions-changes old new)
+        (perms.u/check-revision-numbers old-graph new-graph)
+        (data-perms.graph/update-data-perms-graph! {:groups new})
+        (perms.u/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
+        (let [sandbox-updates        (:sandboxes new-graph)
+              sandboxes              (when sandbox-updates
+                                       (upsert-sandboxes! sandbox-updates))
+              impersonation-updates  (:impersonations new-graph)
+              impersonations         (when impersonation-updates
+                                       (insert-impersonations! impersonation-updates))
+              group-ids (-> new-graph :groups keys)]
+          (merge {:revision (perms-revision/latest-id)}
+                 (when-not skip-graph {:groups (:groups (data-perms.graph/api-graph {:group-ids group-ids}))})
+                 (when sandboxes {:sandboxes sandboxes})
+                 (when impersonations {:impersonations impersonations})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PERMISSIONS GROUP ENDPOINTS                                           |
@@ -244,7 +255,6 @@
   (validation/check-manager-of-group group-id)
   (t2/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
-
 
 ;;; ------------------------------------------- Group Membership Endpoints -------------------------------------------
 

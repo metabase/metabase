@@ -18,41 +18,127 @@ title: Driver interface changelog
   Honey SQL 2's `:inline` option, eliminating the need to parse and replace `?` placeholders. As such, the
   `metabase.driver.sql.util.unprepare` namespace has been deprecated; you should remove all usages of it in your driver.
 
-  - The `metabase.driver.sql.util.unprepare/unprepare-value` method has been replaced by the new method
-    `metabase.driver.sql.query-processor/inline-value`. The signatures of these two functions are the same, and you
-    should be able to simply change the all of your `unprepare-value` implementations to `inline-value` instead. See
-    [PR #45008](https://github.com/metabase/metabase/pull/45008) for examples of this change.
+- The `metabase.driver.sql.util.unprepare/unprepare-value` method has been replaced by the new method
+  `metabase.driver.sql.query-processor/inline-value`. The signatures of these two functions are the same, and you
+  should be able to simply change the all of your `unprepare-value` implementations to `inline-value` instead. See
+  [PR #45008](https://github.com/metabase/metabase/pull/45008) for examples of this change.
 
-    For the time being, implementations of `unprepare-value` are used as implementations of `inline-value`
-    automatically, but `unprepare-value` is slated for removal in 0.54.0.
+  For the time being, implementations of `unprepare-value` are used as implementations of `inline-value`
+  automatically, but `unprepare-value` is slated for removal in 0.54.0.
 
-  - `metabase.driver.sql.query-processor/format-honeysql` is now a multimethod, mainly so you can bind
-    `*compile-with-inline-parameters*` if you need to always compile without parameterization.
+- `metabase.driver.sql.query-processor/format-honeysql` is now a multimethod, mainly so you can bind
+  `*compile-with-inline-parameters*` if you need to always compile without parameterization.
 
-  - The dynamic variable `metabase.driver/*compile-with-inline-parameters*` (default `false`) has been added; drivers
-    that can generate parameterized queries should look at its value in their implementation of
-    `metabase.driver/mbql->native` and adjust their output accordingly. For `:sql-jdbc`-based drivers that support
-    parameterization, this is handled in the shared `metabase.driver.sql.query-processor` code, so you shouldn't need
-    to adjust anything here. For `:sql` drivers that do not support JDBC-style parameterized queries you can implement
-    `format-honeysql` and bind `*compile-with-inline-parameters*` as discussed above. See the `:athena` driver for an
-    example of how to do this.
+- The dynamic variable `metabase.driver/*compile-with-inline-parameters*` (default `false`) has been added; drivers
+  that can generate parameterized queries should look at its value in their implementation of
+  `metabase.driver/mbql->native` and adjust their output accordingly. For `:sql-jdbc`-based drivers that support
+  parameterization, this is handled in the shared `metabase.driver.sql.query-processor` code, so you shouldn't need
+  to adjust anything here. For `:sql` drivers that do not support JDBC-style parameterized queries you can implement
+  `format-honeysql` and bind `*compile-with-inline-parameters*` as discussed above. See the `:athena` driver for an
+  example of how to do this.
 
-  - `metabase.driver.sql.util.unprepare/unprepare`, which took a parameterized SQL string and de-parameterized or
-    "unprepared" it, has been removed. Instead, if you need a query with parameters spliced directly into the SQL,
-    bind `metabase.driver/*compile-with-inline-parameters*` as discussed above.
+- `metabase.driver.sql.util.unprepare/unprepare`, which took a parameterized SQL string and de-parameterized or
+  "unprepared" it, has been removed. Instead, if you need a query with parameters spliced directly into the SQL,
+  bind `metabase.driver/*compile-with-inline-parameters*` as discussed above.
 
-  - Similarly, the driver method `metabase.driver/splice-parameters-into-native-query` has been marked deprecated, and
-    the default implementation will throw an Exception if called. Rework code that generates parameterized queries and
-    then calls `unprepare` or `splice-parameters-into-native-query` with code that generates queries with inlined
-    parameters in the first place as discussed above. Tests can use
-    `metabase.query-processor.compile/compile-with-inline-parameters` if needed.
+- Similarly, the driver method `metabase.driver/splice-parameters-into-native-query` has been marked deprecated, and
+  the default implementation will throw an Exception if called. Rework code that generates parameterized queries and
+  then calls `unprepare` or `splice-parameters-into-native-query` with code that generates queries with inlined
+  parameters in the first place as discussed above. Tests can use
+  `metabase.query-processor.compile/compile-with-inline-parameters` if needed.
 
-   - `metabase.query-processor.compile/compile-and-splice-parameters` has been removed; replace usages with
-     `metabase.query-processor.compile/compile-with-inline-parameters`.
+- `metabase.query-processor.compile/compile-and-splice-parameters` has been removed; replace usages with
+  `metabase.query-processor.compile/compile-with-inline-parameters`.
 
 - The three-arity of `metabase.driver.sql.query-processor/format-honeysql` (which had an additional parameter for
   Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
   supported version since Metabase 0.49.0.
+
+- The `:skip-drop-db?` option sometimes passed to methods for loading and destroying test data is no longer passed,
+  you can remove code that checks for it. Test data code is now better about avoiding unneeded/redundant calls to
+  `metabase.test.data.interface/create-db!`, so test data loading code should not need to call `DROP DATABASE IF
+  EXISTS` before loading test data.
+
+- Test data loading for JDBC-based databases has been overhauled somewhat. The multimethod
+  `metabase.test.data.sql-jdbc.load-data/load-data!` and helper functions for it have been removed in favor of several
+  new simpler to compose and understand multimethods.
+
+- `metabase.test.data.sql-jdbc.load-data/row-xform` is a transducer applied to each row when loading test data. The
+  default implementation is `identity`, but you can use `metabase.test.data.sql-jdbc.load-data/add-ids-xform` to add
+  IDs to each row (this replaces the removed `metabase.test.data.sql-jdbc.load-data/load-data-add-ids` function) and
+  `metabase.test.data.sql-jdbc.load-data/maybe-add-ids-xform` (which replaces
+  `metabase.test.data.sql-jdbc.load-data/load-data-maybe-add-ids!` and
+  `metabase.test.data.sql-jdbc.load-data/load-data-maybe-add-ids-chunked!`).
+
+- `metabase.test.data.sql-jdbc.load-data/chunk-size` is used to control the number of rows that should be loaded in
+  each batch. The default is `200`, but you can implement this method and return `nil` to load data all at once
+  regardless of the number of rows. `metabase.test.data.sql-jdbc.load-data/*chunk-size*`,
+  `metabase.test.data.sql-jdbc.load-data/load-data-chunked`,
+  `metabase.test.data.sql-jdbc.load-data/load-data-all-at-once!`,
+  `metabase.test.data.sql-jdbc.load-data/load-data-chunked!`, and other similar functions are no longer needed and
+  have been removed.
+
+- `metabase.test.data.sql-jdbc.load-data/chunk-xform` is a transducer applied to each chunk of rows (dependent on
+  `chunk-size`) or the entire group of rows if `chunk-size` is `nil`. The default is `identity`. It can be used to
+  implement special behavior for each chunk, for example writing the chunk to a CSV file to load separately in the
+  `metabase.test.data.sql-jdbc.load-data/do-insert!` method. See the `metabase.test.data.vertica` for an example of
+  this.
+
+- Connections are now created once and reused for much of test data loading. The second argument to
+  `metabase.test.data.sql-jdbc.load-data/do-insert!` is now a `java.sql.Connection` instead of a `clojure.java.jdbc`
+  spec.
+
+- Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` and helper functions like
+  `metabase.test.data.sql-jdbc.execute/sequentially-execute-sql!` are now called with a `java.sql.Connection`
+  instead of both a `DatabaseDefinition` and either `:server` or `:db` *context*; the appropriate connection type is
+  created automatically and passed in in the calling code. Update your method implementations and usages
+  accordingly.
+
+- Added method `metabase.test.data.interface/dataset-already-loaded?` to check if a test dataset has already been
+  loaded. JDBC-based drivers have a default implementation that checks whether we can connect to the database; you
+  may need to override this for drivers that don't actually physically create new databases in tests. You can check
+  whether your JDBC-based driver works correctly using the default implementation by running the test
+  `metabase.test.data.sql-jdbc-test/dataset-already-loaded?-test`.
+
+- `metabase.test.data.sql.ddl/insert-rows-ddl-statements` has been renamed to
+  `metabase.test.data.sql.ddl/insert-rows-dml-statements`, since `INSERT` is DML, not DDL. Please update your method
+  implementations accordingly.
+
+- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that
+  support foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature
+  instead. The default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based
+  drivers by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`,
+  the test for remapping and implicit joins will be now executed.
+
+-  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in
+   tests. Currently, this is disabled only for `:sparksql`.
+
+- The test methods `metabase.test.data.interface/supports-time-type?` and
+  `metabase.test.data.interface/supports-timestamptz-type?` have been removed and replaced by the features
+  `:test/time-type` and `:test/timestamptz-type` respectively. If you implemented these methods, replace
+  implementations with implementations of `metabase.driver/database-supports?` for your driver and the equivalent
+  feature keyword instead.
+
+- Drivers that use `metabase.driver.sql.query-processor/->honeysql` can implement
+  `:metabase.driver.sql.query-processor/nfc-path` to include the nfc-path in the field identifier. So that record-like
+  fields can be referenced with `<table>.<record>.<record-field>`. See `bigquery-cloud-sdk` for an example. Defaults to  `nil` to indicate that the path should not be part of the identifier.
+
+## Metabase 0.50.17
+
+- Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to
+  incorporate response of an auth-provider into the DB details.  In most cases this means setting the :password
+  and/or :username based on the auth-provider and its response.
+
+## Metabase 0.50.16
+
+- `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
+  `:type/field-values-unsupported` for field values scanning, it is used to determine whether a specific field
+  should have its fingerprint computed or not. At the time of writing that logic is performed in
+  `metabase.sync.analyze.fingerprint/fields-to-fingerprint-base-clause`.
+
+- `:type/Large` has been also been added in the `metabase.types` namespace. It can be used by driver authors to
+  signal that a specific field contains large enough values to skip fingerprinting or field values scanning. It
+  can be used for other purposes as well in the future. Examples include Oracle CLOB or Postgres JSON columns.
 
 ## Metabase 0.50.0
 
@@ -126,6 +212,19 @@ title: Driver interface changelog
   corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
   This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
   Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
+- New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
+  column names that contains a space character. Defaults to `false`.
+
+- New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
+  Only a few database support native UUID types. The default is `false`.
+
+## Metabase 0.49.22
+
+- A new optional method `metabase.driver.sql/json-field-length` has been added. It should be implemented for all
+  drivers that derive from `:sql` and support the `:nested-field-columns` feature. If implemented, Metabase will skip
+  querying large JSON values during the "sync-fields" step that could otherwise slow down the inference of nested
+  field columns and cause Metabase to run out of heap space.
 
 ## Metabase 0.49.9
 

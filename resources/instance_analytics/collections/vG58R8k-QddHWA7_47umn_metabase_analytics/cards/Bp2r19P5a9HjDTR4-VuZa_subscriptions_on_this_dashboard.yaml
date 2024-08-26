@@ -117,10 +117,10 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
-    : column_title: User
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - Creator"}]]'
-    : column_title: User ID
+    '["name","full_name"]':
+      column_title: User
+    '["name","user_id"]':
+      column_title: User ID
   table.cell_column: recipient_external
   table.columns:
   - enabled: true

@@ -4,8 +4,8 @@ import type {
   Store,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { TypedUseSelectorHook } from "react-redux";
-import { useSelector, useDispatch } from "react-redux";
+import { useContext } from "react";
+import { ReactReduxContext, useDispatch, useStore } from "react-redux";
 
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { mainReducers } from "metabase/reducers-main";
@@ -27,9 +27,31 @@ export const store = getStore(sdkReducers, null, {
   },
 }) as unknown as Store<SdkStoreState, AnyAction>;
 
-export const useSdkSelector: TypedUseSelectorHook<SdkStoreState> = useSelector;
 export const useSdkDispatch: () => ThunkDispatch<
   SdkStoreState,
   void,
   AnyAction
-> = useDispatch;
+> = () => {
+  useCheckSdkReduxContext();
+
+  return useDispatch();
+};
+
+export const useSdkStore = () => {
+  useCheckSdkReduxContext();
+
+  return useStore();
+};
+
+const useCheckSdkReduxContext = () => {
+  const context = useContext(ReactReduxContext);
+
+  if (!context) {
+    console.warn(
+      // eslint-disable-next-line no-literal-metabase-strings -- not UI string
+      "Cannot find react-redux context. Make sure component or hook is wrapped into MetabaseProvider",
+    );
+  }
+};
+
+export { useSdkSelector } from "./use-sdk-selector";

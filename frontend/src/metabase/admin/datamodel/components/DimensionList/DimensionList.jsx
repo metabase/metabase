@@ -7,7 +7,7 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import AccordionList from "metabase/core/components/AccordionList";
 import ListS from "metabase/css/components/list.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon, Box } from "metabase/ui";
+import { Box, Icon } from "metabase/ui";
 import { FieldDimension } from "metabase-lib/v1/Dimension";
 
 import { DimensionPicker } from "../DimensionPicker";

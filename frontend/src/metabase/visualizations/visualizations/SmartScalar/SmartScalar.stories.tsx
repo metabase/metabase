@@ -43,7 +43,7 @@ export const EmbeddingTheme: Story = () => {
       negative: "#e84118",
     },
     components: {
-      scalar: {
+      number: {
         value: { fontSize: "24px", lineHeight: "20px" },
       },
     },

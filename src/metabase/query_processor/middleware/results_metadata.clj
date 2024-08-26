@@ -12,7 +12,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -64,7 +64,7 @@
    final-col-metadata
    insights-col-metadata))
 
-(mu/defn ^:private insights-xform :- fn?
+(mu/defn- insights-xform :- fn?
   [orig-metadata :- [:maybe :map]
    record!       :- ifn?
    rf            :- ifn?]

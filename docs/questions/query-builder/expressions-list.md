@@ -163,7 +163,7 @@ Syntax: `Median(column)`.
 
 Example: `Median([Age])` would find the midpoint age where half of the ages are older, and half of the ages are younger.
 
-Databases that don't support `median`: SQLite, Vertica, SQL server, MySQL. Presto only provides approximate results.
+Databases that don't support `median`: MariaDB, MySQL, SQLite, Vertica, and SQL Server. Presto only provides approximate results.
 
 Related: [Min](#min), [Max](#max), [Average](#average).
 
@@ -185,7 +185,7 @@ Syntax: `Percentile(column, percentile-value)`
 
 Example: `Percentile([Score], 0.9)` would return the value at the 90th percentile for all values in that column.
 
-Databases that don't support `percentile`: H2, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
+Databases that don't support `percentile`: H2, MariaDB, MySQL, SQL Server, SQLite, Vertica. Presto only provides approximate results.
 
 ### Share
 
@@ -476,6 +476,8 @@ Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
 ### [regexextract](./expressions/regexextract.md)
 
+> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
+
 Extracts matching substrings according to a regular expression.
 
 Syntax: `regexextract(text, regular_expression)`.
@@ -759,21 +761,27 @@ See [Offset](./expressions/offset.md).
   case(contains([Title], 'Wallet'), true, false)
   ```
 
-### Database limitations
+## Database limitations
 
 Limitations are noted for each aggregation and function above, and here there are in summary:
 
 **H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
 
-**MySQL/MariaDB**: `Median`, `Percentile`.
+**Druid**: `regexextract` is only available for the Druid-JDBC driver.
+
+**MongoDB**: `regexextract`
+
+**MariaDB**: `Median`, `Percentile`.
+
+**MySQL**: `Median`, `Percentile`.
+
+**Presto**: Only provides _approximate_ results for `Median` and `Percentile`.
 
 **SQL Server**: `Median`, `Percentile` and `regexextract`
 
 **SQLite**: `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`
 
 **Vertica**: `Median` and `Percentile`
-
-Additionally, **Presto** only provides _approximate_ results for `Median` and `Percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 

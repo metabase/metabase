@@ -2,7 +2,7 @@ import * as ML from "cljs/metabase.lib.js";
 import type { TemporalUnit } from "metabase-types/api";
 
 import { displayInfo } from "./metadata";
-import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
+import type { Bucket, Clause, ColumnMetadata, Query } from "./types";
 
 export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.temporal_bucket(clause);
@@ -36,11 +36,21 @@ export function withDefaultTemporalBucket(
   stageIndex: number,
   column: ColumnMetadata,
 ): ColumnMetadata {
+  const defaultBucket = defaultTemporalBucket(query, stageIndex, column);
+  return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
+}
+
+export function defaultTemporalBucket(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): Bucket | null {
   const buckets = availableTemporalBuckets(query, stageIndex, column);
   const defaultBucket = buckets.find(
     bucket => displayInfo(query, stageIndex, bucket).default,
   );
-  return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
+
+  return defaultBucket ?? null;
 }
 
 type IntervalAmount = number | "current" | "next" | "last";

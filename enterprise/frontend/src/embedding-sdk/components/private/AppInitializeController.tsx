@@ -12,15 +12,15 @@ import { SdkGlobalStylesWrapper } from "./SdkGlobalStylesWrapper";
 interface AppInitializeControllerProps {
   children: ReactNode;
   config: SDKConfig;
+  className?: string;
 }
 
 export const AppInitializeController = ({
   config,
   children,
+  className,
 }: AppInitializeControllerProps) => {
-  useInitData({
-    config,
-  });
+  useInitData({ config });
 
   const isInitialized = useSdkSelector(getIsInitialized);
 
@@ -28,6 +28,7 @@ export const AppInitializeController = ({
     <SdkGlobalStylesWrapper
       baseUrl={config.metabaseInstanceUrl}
       id={EMBEDDING_SDK_ROOT_ELEMENT_ID}
+      className={className}
     >
       {!isInitialized ? <div>{t`Loading…`}</div> : children}
     </SdkGlobalStylesWrapper>

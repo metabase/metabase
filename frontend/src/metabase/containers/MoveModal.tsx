@@ -1,13 +1,20 @@
+import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import type { OnMoveWithOneItem } from "metabase/collections/types";
 import { isItemCollection } from "metabase/collections/utils";
 import {
-  CollectionPickerModal,
   type CollectionPickerItem,
+  CollectionPickerModal,
+  type CollectionPickerValueItem,
 } from "metabase/common/components/CollectionPicker";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionItem,
+  RecentItem,
+  SearchResult,
+} from "metabase-types/api";
 
 interface MoveModalProps {
   title: string;
@@ -16,6 +23,24 @@ interface MoveModalProps {
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
 }
+
+const makeRecentFilter = (
+  disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
+) => {
+  return (recentItems: RecentItem[]) =>
+    recentItems.filter(
+      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+    );
+};
+
+const makeSearchResultFilter = (
+  disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
+) => {
+  return (searchResults: SearchResult[]) =>
+    searchResults.filter(
+      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+    );
+};
 
 export const MoveModal = ({
   title,
@@ -29,9 +54,20 @@ export const MoveModal = ({
     ? (item: CollectionPickerItem) =>
         Boolean(
           item.id === movingCollectionId ||
-            item?.location?.split("/").includes(String(movingCollectionId)),
+            (item.effective_location ?? item?.location)
+              ?.split("/")
+              .includes(String(movingCollectionId)),
         )
     : undefined;
+
+  const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
+  const recentFilter = makeRecentFilter(shouldDisableItem);
+
+  const handleMove = useCallback(
+    async (newCollection: CollectionPickerValueItem) =>
+      await onMove({ id: newCollection.id }),
+    [onMove],
+  );
 
   return (
     <CollectionPickerModal
@@ -40,7 +76,7 @@ export const MoveModal = ({
         id: initialCollectionId,
         model: "collection",
       }}
-      onChange={async newCollection => await onMove({ id: newCollection.id })}
+      onChange={handleMove}
       options={{
         showSearch: true,
         allowCreateNew: true,
@@ -50,6 +86,8 @@ export const MoveModal = ({
         confirmButtonText: t`Move`,
       }}
       shouldDisableItem={shouldDisableItem}
+      searchResultFilter={searchResultFilter}
+      recentFilter={recentFilter}
       onClose={onClose}
     />
   );
@@ -76,12 +114,18 @@ export const BulkMoveModal = ({
   const shouldDisableItem = movingCollectionIds.length
     ? (item: CollectionPickerItem) => {
         const collectionItemFullPath =
-          item?.location?.split("/").map(String).concat(String(item.id)) ?? [];
+          (item?.effective_location ?? item?.location)
+            ?.split("/")
+            .map(String)
+            .concat(String(item.id)) ?? [];
         return (
           _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
         );
       }
     : undefined;
+
+  const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
+  const recentFilter = makeRecentFilter(shouldDisableItem);
 
   const title =
     selectedItems.length > 1
@@ -105,6 +149,8 @@ export const BulkMoveModal = ({
         confirmButtonText: t`Move`,
       }}
       shouldDisableItem={shouldDisableItem}
+      searchResultFilter={searchResultFilter}
+      recentFilter={recentFilter}
       onClose={onClose}
     />
   );

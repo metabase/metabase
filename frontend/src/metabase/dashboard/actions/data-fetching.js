@@ -7,11 +7,11 @@ import { createAction, createThunkAction } from "metabase/lib/redux";
 import { equals } from "metabase/lib/utils";
 import { uuid } from "metabase/lib/uuid";
 import {
-  DashboardApi,
   CardApi,
-  PublicApi,
+  DashboardApi,
   EmbedApi,
   MetabaseApi,
+  PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -19,20 +19,27 @@ import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 
 import { DASHBOARD_SLOW_TIMEOUT } from "../constants";
 import {
-  getDashboardComplete,
-  getDashCardBeforeEditing,
-  getLoadingDashCards,
   getCanShowAutoApplyFiltersToast,
+  getDashCardBeforeEditing,
   getDashCardById,
+  getDashboardComplete,
+  getLoadingDashCards,
   getSelectedTabId,
 } from "../selectors";
 import {
-  isVirtualDashCard,
-  getAllDashboardCards,
-  getDashboardType,
   fetchDataOrError,
+  getAllDashboardCards,
   getCurrentTabDashboardCards,
+  getDashboardType,
+  isVirtualDashCard,
 } from "../utils";
+
+import {
+  SET_DOCUMENT_TITLE,
+  markCardAsSlow,
+  setDocumentTitle,
+  setShowLoadingCompleteFavicon,
+} from "./data-fetching-typed";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -46,21 +53,10 @@ export const FETCH_CARD_DATA_PENDING =
 export const CANCEL_FETCH_CARD_DATA =
   "metabase/dashboard/CANCEL_FETCH_CARD_DATA";
 
-export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
-
-export const SET_SHOW_LOADING_COMPLETE_FAVICON =
-  "metabase/dashboard/SET_SHOW_LOADING_COMPLETE_FAVICON";
 
 export const SET_LOADING_DASHCARDS_COMPLETE =
   "metabase/dashboard/SET_LOADING_DASHCARDS_COMPLETE";
-
-export const SET_DOCUMENT_TITLE = "metabase/dashboard/SET_DOCUMENT_TITLE";
-const setDocumentTitle = createAction(SET_DOCUMENT_TITLE);
-
-export const setShowLoadingCompleteFavicon = createAction(
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
-);
 
 // real dashcard ids are integers >= 1
 function isNewDashcard(dashcard) {
@@ -240,9 +236,8 @@ export const fetchCardData = createThunkAction(
               token: dashcard.dashboard_id,
               dashcardId: dashcard.id,
               cardId: card.id,
-              ...getParameterValuesBySlug(
-                dashboard.parameters,
-                parameterValues,
+              parameters: JSON.stringify(
+                getParameterValuesBySlug(dashboard.parameters, parameterValues),
               ),
               ignore_cache: ignoreCache,
             },
@@ -425,11 +420,6 @@ export const clearCardData = createAction(
   CLEAR_CARD_DATA,
   (cardId, dashcardId) => ({ cardId, dashcardId }),
 );
-
-export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
-  id: card.id,
-  result: true,
-}));
 
 function getDatasetQueryParams(datasetQuery = {}) {
   const { type, query, native, parameters = [] } = datasetQuery;

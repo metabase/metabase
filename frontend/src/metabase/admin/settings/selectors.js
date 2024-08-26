@@ -7,6 +7,7 @@ import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import {
+  PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_EMBEDDING,
   PLUGIN_LLM_AUTODESCRIPTION,
@@ -251,7 +252,12 @@ export const ADMIN_SETTINGS_SECTIONS = {
         display_name: t`SMTP Security`,
         description: null,
         type: "radio",
-        options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
+        options: [
+          { value: "none", name: "None" },
+          { value: "ssl", name: "SSL" },
+          { value: "tls", name: "TLS" },
+          { value: "starttls", name: "STARTTLS" },
+        ],
         defaultValue: "none",
       },
       {
@@ -280,6 +286,14 @@ export const ADMIN_SETTINGS_SECTIONS = {
   authentication: {
     name: t`Authentication`,
     order: 60,
+    key: "authentication",
+    tabs:
+      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
+        ? undefined
+        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
+            ...tab,
+            isActive: tab.key === "authentication",
+          })),
     settings: [], // added by plugins
     adminOnly: true,
   },
@@ -367,6 +381,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
         key: "uploads-settings",
       },
     ],
+    getHidden: settings => settings["token-features"]?.attached_dwh === true,
   },
 
   "public-sharing": {

@@ -1,21 +1,21 @@
 import fetchMock from "fetch-mock";
 import { useKBar } from "kbar";
 import { useEffect } from "react";
-import { Route, withRouter, type WithRouterProps } from "react-router";
+import { Route, type WithRouterProps, withRouter } from "react-router";
 import _ from "underscore";
 
 import {
   setupDatabasesEndpoints,
-  setupSearchEndpoints,
   setupRecentViewsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
+  mockScrollIntoView,
+  mockScrollTo,
   renderWithProviders,
   screen,
-  within,
   waitFor,
-  mockScrollTo,
-  mockScrollIntoView,
+  within,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
 import type { RecentItem, Settings } from "metabase-types/api";
@@ -270,5 +270,16 @@ describe("PaletteResults", () => {
 
     // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
     expect(fetchMock.calls("path:/api/search").length).toBe(2);
+  });
+
+  it("should not allow you to select or click disabled items", async () => {
+    setup({ query: "modelsssss" });
+    expect(await screen.findByLabelText(/No results/)).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(
+      await screen.findByLabelText(/Search documentation/),
+    ).toHaveAttribute("aria-disabled", "false");
   });
 });

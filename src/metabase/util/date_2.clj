@@ -36,7 +36,7 @@
     ;; not using it to make ranges in MBQL filter clauses anyway
     ;;
     ;; TIMEZONE FIXME - not sure we even want to be adding zone-id info for the timestamps above either
-    #_LocalTime   #_ (t/offset-time t (t/zone-id timezone-id))
+    #_LocalTime   #_(t/offset-time t (t/zone-id timezone-id))
     t))
 
 (defn parse
@@ -509,7 +509,7 @@
 
 (p.types/defprotocol+ WithTimeZoneSameInstant
   "Protocol for converting a temporal value to an equivalent one in a given timezone."
-  (^{:style/indent 0} with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
+  (^{:style/indent [:form]} with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
     "Convert a temporal value to an equivalent one in a given timezone. For local temporal values, this simply
     converts it to the corresponding offset/zoned type; for offset/zoned types, this applies an appropriate timezone
     shift."))
@@ -556,7 +556,6 @@
   (with-time-zone-same-instant [t zone-id]
     (t/with-zone-same-instant t zone-id)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Etc                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -592,3 +591,24 @@
 (defmethod print-method Duration
   [d writer]
   (print-method (list 't/duration (str d)) writer))
+
+(defn temporal-str->iso8601-str
+  "Convert temporal string to iso8601 datetime without millis.
+
+  We store datetime values without millis in sqlite. That's not the case for other dbs. Also, some columns are stored
+  as date in sqlite, while other dbs use datetime types. This function makes it easy to share expected results between
+  sqlite and other dbs.
+
+  Use of this function for anything else is highly discouraged."
+  [tstr]
+  (when tstr
+    (let [t (parse tstr)
+          inst (cond (instance? LocalDate t)
+                     (.toInstant ^LocalDateTime (.atStartOfDay ^LocalDate t) java.time.ZoneOffset/UTC)
+
+                     (instance? LocalDateTime t)
+                     (.toInstant ^LocalDateTime t java.time.ZoneOffset/UTC)
+
+                     :else
+                     t)]
+      (format "yyyy-MM-dd'T'HH:mm:ss'Z'" inst))))

@@ -2,14 +2,14 @@ import { useRef } from "react";
 import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
+import { Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
 import {
-  Root,
   PercentageLabel,
+  Root,
   TooltipContent,
   TooltipParagraph,
 } from "./DatasetMetadataStrengthIndicator.styled";
@@ -52,7 +52,7 @@ type Props = {
   dataset: Question;
 };
 
-const TOOLTIP_DELAY: [number, null] = [700, null];
+const TOOLTIP_DELAY = 700;
 
 function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -69,9 +69,9 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   return (
     <Root {...props} ref={rootRef}>
       <Tooltip
-        tooltip={getTooltipMessage(percentage)}
-        delay={TOOLTIP_DELAY}
-        placement="bottom"
+        label={getTooltipMessage(percentage)}
+        openDelay={TOOLTIP_DELAY}
+        position="bottom"
       >
         <PercentageLabel
           color={indicationColor}

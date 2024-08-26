@@ -112,12 +112,11 @@
              :max-value   max-value
              :new-binning (update binning :bin-width #(double (/ % 10.0)))}))))))
 
-
 ;;;
 ;;; application
 ;;;
 
-(mu/defn ^:private update-breakout :- ::lib.schema/query
+(mu/defn- update-breakout :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column

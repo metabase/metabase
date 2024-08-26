@@ -1,29 +1,30 @@
 import { USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
-  ORDERS_DASHBOARD_ID,
   ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  describeEE,
-  popover,
-  restore,
-  visitDashboard,
-  modal,
+  createDashboard,
+  dashboardGrid,
   dashboardHeader,
-  navigationSidebar,
-  openNavigationSidebar,
+  describeEE,
   describeWithSnowplow,
+  enableTracking,
+  entityPickerModal,
+  entityPickerModalTab,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
   main,
-  undoToast,
+  modal,
+  navigationSidebar,
+  openNavigationSidebar,
+  popover,
+  resetSnowplow,
+  restore,
   setTokenFeatures,
-  entityPickerModal,
-  dashboardGrid,
-  entityPickerModalTab,
+  undoToast,
+  visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -201,6 +202,40 @@ describe("scenarios > home > homepage", () => {
       cy.findByText("Orders in a dashboard").should("be.visible");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").should("not.exist");
+    });
+
+    it("should show an alert if applications assets are not served", () => {
+      // intercepting and modifying index.html to cause a network error. originally
+      // attempted to intercept the request for the JS file, but the browser
+      // generally loaded it from a cache, making it difficult to force an error.
+      cy.intercept(
+        {
+          url: "/",
+        },
+        req => {
+          req.continue(res => {
+            res.body = res.body.replace(
+              'src="app/dist/app-main',
+              'src="bad-link.js',
+            );
+            return res;
+          });
+        },
+      );
+
+      cy.on("window:before:load", win => {
+        cy.spy(win.console, "error").as("errorConsole");
+      });
+
+      cy.visit("/");
+      cy.get("@errorConsole").should(
+        "have.been.calledWithMatch",
+        /Could not download asset/,
+      );
+      cy.get("@errorConsole").should(
+        "have.been.calledWithMatch",
+        /bad-link\.js/,
+      );
     });
   });
 });
@@ -440,9 +475,7 @@ describe("scenarios > home > custom homepage", () => {
           );
           // Archive dashboard
           visitDashboard(ORDERS_DASHBOARD_ID);
-          dashboardHeader().within(() => {
-            cy.findByLabelText("dashboard-menu-button").click();
-          });
+          dashboardHeader().findByLabelText("Move, trash, and more…").click();
           popover().within(() => {
             cy.findByText("Move to trash").click();
           });
@@ -492,6 +525,22 @@ describe("scenarios > home > custom homepage", () => {
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
+    });
+
+    it("should not load the homepage dashboard when visiting another dashboard directly (metabase#43800)", () => {
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+      cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
+        "getDashboardMetadata",
+      );
+
+      const dashboardName = "Test Dashboard";
+      createDashboard({ name: dashboardName }).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+
+      dashboardHeader().findByText(dashboardName).should("be.visible");
+      cy.get("@getDashboard.all").should("have.length", 1);
+      cy.get("@getDashboardMetadata.all").should("have.length", 1);
     });
   });
 });

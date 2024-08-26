@@ -17,7 +17,7 @@ import type {
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId, CardDisplayType } from "./card";
+import type { Card, CardDisplayType, CardId } from "./card";
 import type { Dataset } from "./dataset";
 import type { SearchModel } from "./search";
 
@@ -252,6 +252,7 @@ export type CreateDashboardRequest = {
   cache_ttl?: number;
   collection_id?: CollectionId | null;
   collection_position?: number | null;
+  tabs?: Pick<DashboardTab, "id" | "name" | "position">[];
 };
 
 export type UpdateDashboardRequest = {

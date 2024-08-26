@@ -48,7 +48,10 @@
         (is (nil? (perms group-id)))))))
 
 (defn- grant-block-perms! [group-id]
-  (data-perms.graph/update-data-perms-graph! [group-id (mt/id) :view-data] :blocked))
+  (data-perms.graph/update-data-perms-graph!
+   (-> (data-perms.graph/api-graph)
+       (assoc-in [:groups group-id (mt/id) :view-data] :blocked)
+       (assoc-in [:groups group-id (mt/id) :create-queries] :no))))
 
 (defn- api-grant-block-perms! [group-id]
   (let [current-graph (data-perms.graph/api-graph)
@@ -84,13 +87,13 @@
         (t2.with-temp/with-temp [PermissionsGroup {group-id :id}]
           (testing "Group should have unrestricted view-data perms upon creation"
             (is (= :unrestricted
-                   (test-db-perms group-id))))
-          ;; Revoke native perms so that we can set block perms
-          (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
-          (testing "group has no existing permissions"
-            (mt/with-restored-data-perms-for-group! group-id
-              (grant! group-id)
-              (is (nil? (test-db-perms group-id)))))
+                   (test-db-perms group-id)))
+            ; Revoke native perms so that we can set block perms
+            (data-perms/set-database-permission! group-id (mt/id) :perms/create-queries :query-builder)
+            (testing "group has no existing permissions"
+              (mt/with-restored-data-perms-for-group! group-id
+                (grant! group-id)
+                (is (nil? (test-db-perms group-id))))))
           (testing "group has existing data permissions... :block should remove them"
             (mt/with-restored-data-perms-for-group! group-id
               (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)
@@ -116,13 +119,13 @@
           (is (not (t2/exists? GroupTableAccessPolicy :group_id group-id))))))))
 
 (deftest update-graph-data-perms-should-delete-block-perms-test
- (testing "granting data permissions for a table should delete existing block permissions"
-   (mt/with-temp [PermissionsGroup {group-id :id} {}]
-     (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
-     (is (nil? (test-db-perms group-id)))
-     (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
-     (is (= {"PUBLIC" :unrestricted}
-            (test-db-perms group-id))))))
+  (testing "granting data permissions for a table should not delete existing block permissions"
+    (mt/with-temp [PermissionsGroup {group-id :id} {}]
+      (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :blocked)
+      (is (nil? (test-db-perms group-id)))
+      (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+      (is (= {"PUBLIC" {(mt/id :venues) :unrestricted}}
+             (test-db-perms group-id))))))
 
 (deftest update-graph-disallow-native-query-perms-test
   (testing "Disallow block permissions + native query permissions"
@@ -138,9 +141,9 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id)]
                                       {:view-data :blocked :create-queries :query-builder-and-native})]
-          (is (=? {:message #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
+          (is (=? #"Cannot parse permissions graph because it is invalid.*"
                   (mt/with-premium-features #{:advanced-permissions}
-                    (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
+                    (mt/user-http-request :crowberto :put 400 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
@@ -213,7 +216,7 @@
                        (check-block-perms)))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       #"You do not have permissions to run this query"
                        (run-saved-question))))))))))))
 
 (deftest legacy-no-self-service-test

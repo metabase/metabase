@@ -7,14 +7,18 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.temporal-bucket :as qp.u.temporal-bucket]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private to-numeric :- number?
+(mu/defn- to-numeric :- number?
   "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
   or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more
   sensical number format exception."
@@ -37,7 +41,7 @@
     (lib/type-of (lib/query (qp.store/metadata-provider) (lib.convert/->pMBQL query))
                  (lib.convert/->pMBQL &match))))
 
-(mu/defn ^:private parse-param-value-for-type
+(mu/defn- parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
@@ -59,7 +63,7 @@
     :else
     (to-numeric param-value)))
 
-(mu/defn ^:private build-filter-clause :- [:maybe mbql.s/Filter]
+(mu/defn- build-filter-clause :- [:maybe mbql.s/Filter]
   [query {param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (params.ops/operator? param-type)
@@ -90,9 +94,19 @@
 
 (defn- update-breakout-unit
   [query
-   {[_dimension [_field target-field-id {:keys [temporal-unit]}]] :target
+   {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}]] :target
     :keys [value] :as _param}]
-  (let [new-unit (keyword value)]
+  (let [new-unit (keyword value)
+        base-type (or base-type
+                      (when (integer? target-field-id)
+                        (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))]
+    (assert (some? base-type) "`base-type` is not set.")
+    (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
+      (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
+                      {:type       qp.error-type/invalid-query
+                       :is-curated true
+                       :base-type  base-type
+                       :unit       new-unit})))
     (lib.util.match/replace-in
       query [:query :breakout]
       [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
@@ -117,5 +131,6 @@
 
       :else
       (let [filter-clause (build-filter-clause query (assoc param :value param-value))
-            query         (mbql.u/add-filter-clause query filter-clause)]
+            [_ _ opts]    target
+            query         (mbql.u/add-filter-clause query (:stage-number opts) filter-clause)]
         (recur query rest)))))

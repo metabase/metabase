@@ -66,7 +66,7 @@
       (qp.timezone/system-timezone-id)
       "UTC"))
 
-(mu/defn ^:private send-pulse-trigger
+(mu/defn- send-pulse-trigger
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
   ^CronTrigger
   ([pulse-id     :- pos-int?
@@ -74,17 +74,17 @@
     pc-ids       :- [:set pos-int?]
     timezone     :- :string]
    (send-pulse-trigger pulse-id schedule-map pc-ids timezone 6))
- ([pulse-id     :- pos-int?
-   schedule-map :- u.cron/ScheduleMap
-   pc-ids       :- [:set pos-int?]
-   timezone     :- :string
-   priority     :- pos-int?]
-  (triggers/build
-   (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
-   (triggers/for-job send-pulse-job-key)
-   (triggers/using-job-data {"pulse-id"    pulse-id
-                             "channel-ids" pc-ids})
-   (triggers/with-schedule
+  ([pulse-id     :- pos-int?
+    schedule-map :- u.cron/ScheduleMap
+    pc-ids       :- [:set pos-int?]
+    timezone     :- :string
+    priority     :- pos-int?]
+   (triggers/build
+    (triggers/with-identity (send-pulse-trigger-key pulse-id schedule-map))
+    (triggers/for-job send-pulse-job-key)
+    (triggers/using-job-data {"pulse-id"    pulse-id
+                              "channel-ids" pc-ids})
+    (triggers/with-schedule
      (cron/schedule
       (cron/cron-schedule (u.cron/schedule-map->cron-string schedule-map))
       (cron/in-time-zone (TimeZone/getTimeZone ^String timezone))
@@ -93,7 +93,7 @@
       ;;
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-fire-and-proceed)))
-   (triggers/with-priority priority))))
+    (triggers/with-priority priority))))
 
 ; Clearing pulse channels is not done synchronously in order to support undoing feature.
 (defn- clear-pulse-channels-no-recipients!
@@ -113,36 +113,16 @@
     (t2/delete! :model/PulseChannel :id [:in ids-to-delete])
     (set ids-to-delete)))
 
-(defn- ms-duration->priority
-  "Converts a duration in milliseconds to a priority value for a trigger.
-
-  Pulses are time sensitive, so we need it to have higher priority than other tasks, in which has a default priority of 5."
-  [ms-duration]
-  (-> ms-duration
-      (/ 1000)
-      ;; assuming 1 hour is the max duration a pulse can take
-      (#(- (* 60 60) %))
-      ;; make sure it's higher than 5 (the default priority)
-      (max 6)
-      int))
-
 (defn- send-pulse!*
   "Do several things:
   - Clear PulseChannels that have no recipients and no channel set for a pulse
-  - Send a pulse to a list of channels
-  - Update the priority of the trigger if the pulse is sent successfully"
-  [schedule-map pulse-id channel-ids]
+  - Send a pulse to a list of channels"
+  [pulse-id channel-ids]
   (let [cleared-channel-ids         (clear-pulse-channels-no-recipients! pulse-id)
         to-send-channel-ids         (set/difference channel-ids cleared-channel-ids)
         to-send-enabled-channel-ids (t2/select-pks-set :model/PulseChannel :id [:in to-send-channel-ids] :enabled true)]
     (if (seq to-send-enabled-channel-ids)
-      (let [start    (System/currentTimeMillis)
-            result   (send-pulse! pulse-id to-send-enabled-channel-ids)
-            end      (System/currentTimeMillis)
-            priority (ms-duration->priority (- end start))]
-        (when (= :done result)
-          (log/infof "Updating priority of trigger %s to %d" (.getName ^TriggerKey (send-pulse-trigger-key pulse-id schedule-map)) priority)
-          (task/reschedule-trigger! (send-pulse-trigger pulse-id schedule-map channel-ids (send-trigger-timezone) priority))))
+      (send-pulse! pulse-id to-send-enabled-channel-ids)
       (log/infof "Skip sending pulse %d because all channels have no recipients" pulse-id))))
 
 ;; called in [driver/report-timezone] setter
@@ -163,9 +143,8 @@
 (jobs/defjob ^{:doc "Triggers that send a pulse to a list of channels at a specific time"}
   SendPulse
   [context]
-  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)
-        trigger-key                    (.. context getTrigger getKey getName)]
-    (send-pulse!* (:schedule-map (send-pulse-trigger-key->info trigger-key)) pulse-id channel-ids)))
+  (let [{:strs [pulse-id channel-ids]} (qc/from-job-data context)]
+    (send-pulse!* pulse-id channel-ids)))
 
 ;;; ------------------------------------------------ Job: InitSendPulseTriggers ----------------------------------------------------
 
@@ -243,22 +222,22 @@
                           (set add-pc-ids))]
     (cond
      ;; no op when new-pc-ids doesnt't change
-     (= new-pc-ids existing-pc-ids) nil
+      (= new-pc-ids existing-pc-ids) nil
 
      ;; delete if no new pc-ids and there is an existing trigger
-     (and (empty? new-pc-ids)
-          (some? existing-pc-ids))
-     (do
-      (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
-      (task/delete-trigger! trigger-key))
+      (and (empty? new-pc-ids)
+           (some? existing-pc-ids))
+      (do
+        (log/infof "Deleting trigger %s for pulse %d" trigger-key pulse-id)
+        (task/delete-trigger! trigger-key))
 
      ;; delete then create if pc ids changes
-     (and (seq new-pc-ids)
-          (not= new-pc-ids existing-pc-ids))
-     (do
-      (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
-      (task/delete-trigger! trigger-key)
-      (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
+      (and (seq new-pc-ids)
+           (not= new-pc-ids existing-pc-ids))
+      (do
+        (log/infof "Updating Send Pulse trigger %s for pulse %d with new pc-ids: %s, was: %s " trigger-key pulse-id new-pc-ids existing-pc-ids)
+        (task/delete-trigger! trigger-key)
+        (task/add-trigger! (send-pulse-trigger pulse-id schedule-map new-pc-ids (send-trigger-timezone)))))))
 
 ;;; -------------------------------------------------- Task init ------------------------------------------------
 

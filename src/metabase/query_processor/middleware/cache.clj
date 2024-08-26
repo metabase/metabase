@@ -38,7 +38,6 @@
   "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
 
-
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
 (defn- purge! [backend]
@@ -119,7 +118,6 @@
        (vreset! has-rows? true)
        (rf acc row)))))
 
-
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
 (defn- cached-results-rff
@@ -149,11 +147,11 @@
            (vreset! final-metadata row)
            (rf acc row)))))))
 
-(mu/defn ^:private maybe-reduce-cached-results :- [:tuple
-                                                   #_status
-                                                   [:enum ::ok ::miss ::canceled]
-                                                   #_result
-                                                   :any]
+(mu/defn- maybe-reduce-cached-results :- [:tuple
+                                          #_status
+                                          [:enum ::ok ::miss ::canceled]
+                                          #_result
+                                          :any]
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
   [ignore-cache? query-hash strategy rff]
   (try
@@ -182,10 +180,9 @@
                   (ex-message e))
       [::miss nil])))
 
-
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(mu/defn ^:private run-query-with-cache :- :some
+(mu/defn- run-query-with-cache :- :some
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated

@@ -1,21 +1,19 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
+import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { Flex, Popover, Tooltip } from "metabase/ui";
+import { Flex, Popover } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
-  DashboardId,
   DashCardId,
+  DashboardId,
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
 
 import { QueryDownloadPopover } from "../QueryDownloadPopover";
 import { useDownloadData } from "../QueryDownloadPopover/use-download-data";
-
-import { DownloadIcon } from "./QueryDownloadWidget.styled";
 
 interface QueryDownloadWidgetProps {
   className?: string;
@@ -40,7 +38,7 @@ const QueryDownloadWidget = ({
 }: QueryDownloadWidgetProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const [{ loading }, handleDownload] = useDownloadData({
+  const [, handleDownload] = useDownloadData({
     question,
     result,
     dashboardId,
@@ -54,23 +52,15 @@ const QueryDownloadWidget = ({
     <Popover opened={isPopoverOpen} onClose={() => setIsPopoverOpen(false)}>
       <Popover.Target>
         <Flex className={className}>
-          {loading ? (
-            <Tooltip label={t`Downloading…`}>
-              <LoadingSpinner size={18} />
-            </Tooltip>
-          ) : (
-            <Tooltip label={t`Download full results`}>
-              <DownloadIcon
-                onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-                name="download"
-                size={20}
-                data-testid="download-button"
-              />
-            </Tooltip>
-          )}
+          <ViewFooterButton
+            icon="download"
+            data-testid="download-button"
+            tooltipLabel={t`Download full results`}
+            onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+          />
         </Flex>
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown p="0.75rem">
         <QueryDownloadPopover
           question={question}
           result={result}

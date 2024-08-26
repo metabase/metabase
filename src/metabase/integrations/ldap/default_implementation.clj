@@ -69,7 +69,7 @@
       (log/debugf "LDAP search results: %s" (u/pprint-to-str search-result))
       (some-> (first search-result) u/lower-case-map-keys))))
 
-(mu/defn ^:private process-group-membership-filter :- ms/NonBlankString
+(mu/defn- process-group-membership-filter :- ms/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."
   [group-membership-filter :- ms/NonBlankString
    dn                      :- ms/NonBlankString
@@ -79,7 +79,7 @@
         (str/replace "{dn}" (Filter/encodeValue ^String dn))
         (str/replace "{uid}" (Filter/encodeValue ^String uid-string)))))
 
-(mu/defn ^:private user-groups :- [:maybe [:sequential ms/NonBlankString]]
+(mu/defn- user-groups :- [:maybe [:sequential ms/NonBlankString]]
   "Retrieve groups for a supplied DN."
   [ldap-connection         :- (ms/InstanceOfClass LDAPConnectionPool)
    dn                      :- ms/NonBlankString
@@ -153,13 +153,13 @@
   [{:keys [first-name last-name email groups]} :- UserInfo
    {:keys [sync-groups?], :as settings}        :- LDAPSettings]
   (let [user     (t2/select-one [User :id :last_login :first_name :last_name :is_active]
-                   :%lower.email (u/lower-case-en email))
+                                :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
                          old-last-name  (:last_name user)
                          user-changes   (merge
-                                          (when (not= first-name old-first-name) {:first_name first-name})
-                                          (when (not= last-name old-last-name) {:last_name last-name}))]
+                                         (when (not= first-name old-first-name) {:first_name first-name})
+                                         (when (not= last-name old-last-name) {:last_name last-name}))]
                      (if (seq user-changes)
                        (do
                          (t2/update! User (:id user) user-changes)

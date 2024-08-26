@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru.zoom-in-timeseries-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
@@ -7,22 +8,21 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.drill-thru.zoom-in-timeseries :as lib.drill-thru.zoom-in-timeseries]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
-   [metabase.lib.test-metadata :as meta]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel zoom-in-timeseries-available-test
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"
     (canned/canned-test
-      :drill-thru/zoom-in.timeseries
-      (fn [test-case context {:keys [click]}]
-        (and (#{:cell :pivot :legend} click)
-             (not (:native? test-case))
-             (seq (for [dim (:dimensions context)
-                        :when (and (isa? (:effective-type (:column dim)) :type/DateTime)
-                                   (lib/temporal-bucket (:column dim)))]
-                    dim)))))))
+     :drill-thru/zoom-in.timeseries
+     (fn [test-case context {:keys [click]}]
+       (and (#{:cell :pivot :legend} click)
+            (not (:native? test-case))
+            (seq (for [dim (:dimensions context)
+                       :when (and (isa? (:effective-type (:column dim)) :type/DateTime)
+                                  (lib/temporal-bucket (:column dim)))]
+                   dim)))))))
 
 (deftest ^:parallel zoom-in-timeseries-e2e-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
@@ -41,13 +41,13 @@
           count-col  (m/find-first #(= (:name %) "count") columns)
           _          (assert count-col)
           drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill
-                       query -1
-                       {:column     count-col
-                        :column-ref (lib/ref count-col)
-                        :value 200
-                        :dimensions [{:column     created-at
-                                      :column-ref (lib/ref created-at)
-                                      :value      2022}]})]
+                      query -1
+                      {:column     count-col
+                       :column-ref (lib/ref count-col)
+                       :value 200
+                       :dimensions [{:column     created-at
+                                     :column-ref (lib/ref created-at)
+                                     :value      2022}]})]
       (is (=? {:type         :drill-thru/zoom-in.timeseries
                :dimension    {:column     {:id                               (meta/id :orders :created-at)
                                            :metabase.lib.field/temporal-unit :year}
@@ -73,13 +73,13 @@
                                        columns)
               _          (assert created-at)
               drill      (lib.drill-thru.zoom-in-timeseries/zoom-in-timeseries-drill
-                           query' -1
-                           {:column     count-col
-                            :column-ref (lib/ref count-col)
-                            :value      19
-                            :dimensions [{:column     created-at
-                                          :column-ref (lib/ref created-at)
-                                          :value      "2022-04-01T00:00:00"}]})]
+                          query' -1
+                          {:column     count-col
+                           :column-ref (lib/ref count-col)
+                           :value      19
+                           :dimensions [{:column     created-at
+                                         :column-ref (lib/ref created-at)
+                                         :value      "2022-04-01T00:00:00"}]})]
           (is (=? {:type         :drill-thru/zoom-in.timeseries
                    :dimension    {:column     {:id                               (meta/id :orders :created-at)
                                                :metabase.lib.field/temporal-unit :quarter}
@@ -189,24 +189,24 @@
                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
                                         (lib/with-temporal-bucket unit1))))]
         (lib.drill-thru.tu/test-drill-application
-          {:click-type     :cell
-           :query-type     :aggregated
-           :custom-query   query
-           :custom-row     {"count"      100
-                            "CREATED_AT" "2022-12-09T11:22:33+02:00"}
-           :column-name    "count"
-           :drill-type     :drill-thru/zoom-in.timeseries
-           :expected       {:type         :drill-thru/zoom-in.timeseries
-                            :display-name (str "See this " (name unit1) " by " (name unit2))
-                            :dimension    {:column     {:name "CREATED_AT"}
-                                           :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
-                                           :value      "2022-12-09T11:22:33+02:00"}
-                            :next-unit    unit2}
-           :expected-query {:stages [{:source-table (meta/id :orders)
-                                      :aggregation  [[:count {}]]
-                                      :breakout     [[:field
-                                                      {:temporal-unit unit2}
-                                                      (meta/id :orders :created-at)]]
-                                      :filters      [[:= {}
-                                                      [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
-                                                      "2022-12-09T11:22:33+02:00"]]}]}})))))
+         {:click-type     :cell
+          :query-type     :aggregated
+          :custom-query   query
+          :custom-row     {"count"      100
+                           "CREATED_AT" "2022-12-09T11:22:33+02:00"}
+          :column-name    "count"
+          :drill-type     :drill-thru/zoom-in.timeseries
+          :expected       {:type         :drill-thru/zoom-in.timeseries
+                           :display-name (str "See this " (name unit1) " by " (name unit2))
+                           :dimension    {:column     {:name "CREATED_AT"}
+                                          :column-ref [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                          :value      "2022-12-09T11:22:33+02:00"}
+                           :next-unit    unit2}
+          :expected-query {:stages [{:source-table (meta/id :orders)
+                                     :aggregation  [[:count {}]]
+                                     :breakout     [[:field
+                                                     {:temporal-unit unit2}
+                                                     (meta/id :orders :created-at)]]
+                                     :filters      [[:= {}
+                                                     [:field {:temporal-unit unit1} (meta/id :orders :created-at)]
+                                                     "2022-12-09T11:22:33+02:00"]]}]}})))))

@@ -99,19 +99,19 @@
     [:lat-value  [:maybe number?]]
     [:lon-value  [:maybe number?]]]])
 
-(mu/defn ^:private context-with-lat-lon :- [:maybe ContextWithLatLon]
+(mu/defn- context-with-lat-lon :- [:maybe ContextWithLatLon]
   [query                      :- ::lib.schema/query
    stage-number               :- :int
    {:keys [row], :as context} :- ::lib.schema.drill-thru/context]
   (let [stage (lib.util/query-stage query stage-number)
         ;; First check returned columns in case we breakout by lat/lon so we maintain the binning, othwerwise check visible.
         [lat-column lon-column] (some
-                                  (fn [columns]
-                                    (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
-                                      (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
-                                        [lat-column lon-column])))
-                                  [(lib.metadata.calculation/returned-columns query stage-number stage)
-                                   (lib.metadata.calculation/visible-columns query stage-number stage)])]
+                                 (fn [columns]
+                                   (when-let [lat-column (m/find-first lib.types.isa/latitude? columns)]
+                                     (when-let [lon-column (m/find-first lib.types.isa/longitude? columns)]
+                                       [lat-column lon-column])))
+                                 [(lib.metadata.calculation/returned-columns query stage-number stage)
+                                  (lib.metadata.calculation/visible-columns query stage-number stage)])]
     (when (and lat-column lon-column)
       (letfn [(same-column? [col-x col-y]
                 (if (:id col-x)
@@ -119,10 +119,10 @@
                   (= (:lib/desired-column-alias col-x) (:lib/desired-column-alias col-y))))
               (column-value [column]
                 (some
-                  (fn [row-value]
-                    (when (same-column? column (:column row-value))
-                      (:value row-value)))
-                  row))]
+                 (fn [row-value]
+                   (when (same-column? column (:column row-value))
+                     (:value row-value)))
+                 row))]
         (assoc context
                :lat-column lat-column
                :lon-column lon-column
@@ -133,7 +133,7 @@
 ;;; available-drill-thrus
 ;;;
 
-(mu/defn ^:private country-state-city->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
+(mu/defn- country-state-city->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
   [{:keys [column value lat-column lon-column], :as _context} :- ContextWithLatLon
    lat-lon-bin-width                                          :- ::lib.schema.binning/bin-width]
   (when value
@@ -147,22 +147,22 @@
      :longitude {:column    lon-column
                  :bin-width lat-lon-bin-width}}))
 
-(mu/defn ^:private country->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
+(mu/defn- country->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
   [{:keys [column], :as context} :- ContextWithLatLon]
   (when (some-> column lib.types.isa/country?)
     (country-state-city->binned-lat-lon-drill context 10)))
 
-(mu/defn ^:private state->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
+(mu/defn- state->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
   [{:keys [column], :as context} :- ContextWithLatLon]
   (when (some-> column lib.types.isa/state?)
     (country-state-city->binned-lat-lon-drill context 1)))
 
-(mu/defn ^:private city->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
+(mu/defn- city->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
   [{:keys [column], :as context} :- ContextWithLatLon]
   (when (some-> column lib.types.isa/city?)
     (country-state-city->binned-lat-lon-drill context 0.1)))
 
-(mu/defn ^:private binned-lat-lon->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon]
+(mu/defn- binned-lat-lon->binned-lat-lon-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.binned-lat-lon->binned-lat-lon]
   [metadata-providerable                                             :- ::lib.schema.metadata/metadata-providerable
    {:keys [lat-column lon-column lat-value lon-value], :as _context} :- ContextWithLatLon]
   (when (and lat-value
@@ -206,7 +206,7 @@
 ;;; Application
 ;;;
 
-(mu/defn ^:private add-or-update-binning :- ::lib.schema/query
+(mu/defn- add-or-update-binning :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
@@ -218,7 +218,7 @@
         (lib.remove-replace/replace-clause query stage-number existing-breakout new-breakout))
       (lib.breakout/breakout query stage-number (lib.binning/with-binning column binning)))))
 
-(mu/defn ^:private add-or-update-lat-lon-binning :- ::lib.schema/query
+(mu/defn- add-or-update-lat-lon-binning :- ::lib.schema/query
   [query                                                :- ::lib.schema/query
    stage-number                                         :- :int
    {{lat :column, lat-bin-width :bin-width} :latitude
@@ -227,7 +227,7 @@
       (add-or-update-binning stage-number lat lat-bin-width)
       (add-or-update-binning stage-number lon lon-bin-width)))
 
-(mu/defn ^:private apply-country-state-city->binned-lat-lon-drill :- ::lib.schema/query
+(mu/defn- apply-country-state-city->binned-lat-lon-drill :- ::lib.schema/query
   [query                             :- ::lib.schema/query
    stage-number                      :- :int
    {:keys [column value], :as drill} :- ::lib.schema.drill-thru/drill-thru.zoom-in.geographic.country-state-city->binned-lat-lon]
@@ -237,7 +237,7 @@
       (lib.filter/filter stage-number (lib.filter/= column value))
       (add-or-update-lat-lon-binning stage-number drill)))
 
-(mu/defn ^:private apply-binned-lat-lon->binned-lat-lon-drill :- ::lib.schema/query
+(mu/defn- apply-binned-lat-lon->binned-lat-lon-drill :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
    {{lat :column, lat-min :min, lat-max :max} :latitude

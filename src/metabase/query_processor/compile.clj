@@ -2,10 +2,12 @@
   (:refer-clojure :exclude [compile])
   (:require
    [metabase.driver :as driver]
+   [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
+   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -16,7 +18,7 @@
    [:params {:optional true} [:maybe [:sequential :any]]]])
 
 (defn- compile* [{query-type :type, :as query}]
-    (assert (not (:qp/compiled query)) "This query has already been compiled!")
+  (assert (not (:qp/compiled query)) "This query has already been compiled!")
   (if (= query-type :native)
     (:native query)
     (driver/mbql->native driver/*driver* query)))
@@ -27,7 +29,8 @@
   [preprocessed-query :- ::qp.schema/query]
   (qp.setup/with-qp-setup [preprocessed-query preprocessed-query]
     (try
-      (compile* preprocessed-query)
+      (u/prog1 (compile* preprocessed-query)
+        (qp.debug/debug> (list `compile-preprocessed <>)))
       (catch Throwable e
         (throw (ex-info (i18n/tru "Error compiling query: {0}" (ex-message e))
                         {:query preprocessed-query, :type qp.error-type/driver}

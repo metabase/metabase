@@ -305,12 +305,12 @@
     (with-search-items-in-root-collection "test"
       ;; sometimes there is a "table" in these responses. might be do to garbage in CI
       (is (set/subset? #{"dashboard" "dataset" "segment" "collection" "database" "metric" "card"}
-                       (-> (mt/user-http-request :crowberto :get 200 "search?q=test")
+                       (-> (mt/user-http-request :crowberto :get 200 "search" :q "test")
                            :available_models
                            set)))))
   (testing "It returns nothing if there are no results"
     (with-search-items-in-root-collection "test"
-      (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search?q=noresults")))))))
+      (is (= [] (:available_models (mt/user-http-request :crowberto :get 200 "search" :q "noresults")))))))
 
 (deftest query-model-set-test
   (let [search-term "query-model-set"]
@@ -794,7 +794,7 @@
                      Card        _ (archived {:name "metric test metric" :type :metric})
                      Segment     _ (archived {:name "segment test segment"})]
         (is (mt/ordered-subset? (default-archived-results)
-                             (search-request-data :crowberto :archived "true")))))))
+                                (search-request-data :crowberto :archived "true")))))))
 
 (deftest alerts-test
   (testing "Search should not return alerts"
@@ -818,7 +818,7 @@
     :archived            nil
     :model               "table"
     :database_id         true
-    :database_name       "test-data"
+    :database_name       "test-data (h2)"
     :pk_ref              nil
     :initial_sync_status "complete"}))
 
@@ -832,48 +832,48 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-                     (is (= [(default-table-search-row "RoundTable")]
-                            (search-request-data user :q "RoundTable")))))))
+        (is (= [(default-table-search-row "RoundTable")]
+               (search-request-data user :q "RoundTable")))))))
 
 (deftest table-test-2
   (testing "You should not see hidden tables"
     (mt/with-temp [Table _normal {:name "Foo Visible"}
                    Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-                     (is (= [(default-table-search-row "Foo Visible")]
-                            (search-request-data user :q "Foo")))))))
+        (is (= [(default-table-search-row "Foo Visible")]
+               (search-request-data user :q "Foo")))))))
 
 (deftest table-test-3
   (testing "You should be able to search by their display name"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
-                              (search-request-data user :q "Lancelot"))))))))
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+                 (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-4
   (testing "You should be able to search by their description"
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
-                              (search-request-data user :q "Lancelot"))))))))
+          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+                 (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-5
   (testing "When searching with ?archived=true, normal Tables should not show up in the results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= []
-                              (search-request-data user :q table-name :archived true))))))))
+          (is (= []
+                 (search-request-data user :q table-name :archived true))))))))
 
 (deftest table-test-6
   (testing "*archived* tables should not appear in search results"
     (let [table-name (mt/random-name)]
       (mt/with-temp [Table _ {:name table-name, :active false}]
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= []
-                              (search-request-data user :q table-name))))))))
+          (is (= []
+                 (search-request-data user :q table-name))))))))
 
 (deftest table-test-7
   (testing "you should not be able to see a Table if the current user doesn't have permissions for that Table"
@@ -887,7 +887,7 @@
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
-    (mt/with-temp [Database                   {db-id :id} {:name "test-data"}
+    (mt/with-temp [Database                   {db-id :id} {:name "test-data (h2)"}
                    Table                      table {:name "RoundTable" :db_id db-id}
                    PermissionsGroup           {group-id :id} {}
                    PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
@@ -895,9 +895,9 @@
         (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
         (data-perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-                       (is (= [(default-table-search-row "RoundTable")]
-                              (binding [*search-request-results-database-id* db-id]
-                                (search-request-data user :q "RoundTable")))))))))
+          (is (= [(default-table-search-row "RoundTable")]
+                 (binding [*search-request-results-database-id* db-id]
+                   (search-request-data user :q "RoundTable")))))))))
 
 (deftest all-users-no-data-perms-table-test
   (testing "If the All Users group doesn't have perms to view a Table they sholdn't see it (#16855)"
@@ -1227,6 +1227,21 @@
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :last_edited_at "today~" :creator_id (mt/user->id :rasta))))))))
 
+(deftest filter-by-ids-test
+  (let [ids #(->> % :data (map :id) set)]
+    (mt/with-temp [:model/Card {c1 :id} {:name "a"}
+                   :model/Card {c2 :id} {:name "b"}]
+      (testing "returns exactly the instances we need"
+        (is (= #{c1}
+               (ids (mt/user-http-request :crowberto :get 200 "search" :models "card" :ids c1))))
+        (is (= #{c1 c2}
+               (ids (mt/user-http-request :crowberto :get 200 "search" :models "card" :ids c1 :ids c2)))))
+      (testing "requires single model type to be supplied"
+        (is (= "Filtering by ids work only when you ask for a single model"
+               (mt/user-http-request :crowberto :get 400 "search" :models "card" :models "dashboard" :ids c1)))
+        (is (= "Filtering by ids work only when you ask for a single model"
+               (mt/user-http-request :crowberto :get 400 "search" :ids c1)))))))
+
 (deftest available-models-should-be-independent-of-models-param-test
   (testing "if a search request includes `models` params, the `available_models` from the response should not be restricted by it"
     (let [search-term "Available models"]
@@ -1259,9 +1274,9 @@
        :model/Card {native-model-in-name :id}  {:name search-term :type :model}
        :model/Card {native-model-in-query :id} {:dataset_query (mt/native-query {:query (format "select %s" search-term)}) :type :model}]
       (mt/with-actions
-        [_                         {:type :model :dataset_query (mt/mbql-query venues)}
-         {http-action :action-id}  {:type :http :name search-term}
-         {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
+       [_                         {:type :model :dataset_query (mt/mbql-query venues)}
+        {http-action :action-id}  {:type :http :name search-term}
+        {query-action :action-id} {:type :query :dataset_query (mt/native-query {:query (format "delete from %s" search-term)})}]
         (testing "by default do not search for native content"
           (is (= #{["card" mbql-card]
                    ["card" native-card-in-name]
@@ -1508,8 +1523,8 @@
           named       #(str search-name "-" %)]
       (mt/with-temp [:model/Collection {parent-id :id :as parent} {}
                      :model/Collection _ {:location (collection/children-location parent)
-                                                   :name (named "collection")
-                                                   :type "meow mix"}
+                                          :name (named "collection")
+                                          :type "meow mix"}
                      :model/Dashboard _ {:collection_id parent-id :name (named "dashboard")}
                      :model/Card _ {:collection_id parent-id :name (named "card")}
                      :model/Card _ {:collection_id parent-id :type :model :name (named "model")}]
@@ -1524,22 +1539,22 @@
                              (remove #(= (:model %) "collection"))))))
         (testing "`item.type` is correct for collections"
           (is (= #{"meow mix"} (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
-                                 :data
-                                 (keep :type)
-                                 set)))))
+                                    :data
+                                    (keep :type)
+                                    set)))))
       (testing "Type is on both `item.collection.type` and `item.collection.effective_ancestors`"
-          (mt/with-temp [Collection {top-col-id :id} {:name "top level col" :location "/" :type "foo"}
-                         Collection {mid-col-id :id} {:name "middle level col" :type "bar" :location (str "/" top-col-id "/")}
-                         Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}]
-            (let [leaf-card-response (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
-                                          :data
-                                          (filter #(= (:id %) leaf-card-id))
-                                          first)]
-              (is (= {:id mid-col-id
-                      :name "middle level col"
-                      :type "bar"
-                      :authority_level nil
-                      :effective_ancestors [{:id top-col-id
-                                             :name "top level col"
-                                             :type "foo"}]}
-                     (:collection leaf-card-response)))))))))
+        (mt/with-temp [Collection {top-col-id :id} {:name "top level col" :location "/" :type "foo"}
+                       Collection {mid-col-id :id} {:name "middle level col" :type "bar" :location (str "/" top-col-id "/")}
+                       Card {leaf-card-id :id} {:type :model :collection_id mid-col-id :name "leaf model"}]
+          (let [leaf-card-response (->> (mt/user-http-request :rasta :get 200 "search" :model_ancestors true :q "model" :models ["dataset"])
+                                        :data
+                                        (filter #(= (:id %) leaf-card-id))
+                                        first)]
+            (is (= {:id mid-col-id
+                    :name "middle level col"
+                    :type "bar"
+                    :authority_level nil
+                    :effective_ancestors [{:id top-col-id
+                                           :name "top level col"
+                                           :type "foo"}]}
+                   (:collection leaf-card-response)))))))))

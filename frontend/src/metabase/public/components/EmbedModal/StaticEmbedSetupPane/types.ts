@@ -6,4 +6,4 @@ export type EmbedResourceParameterWithValue = EmbedResourceParameter & {
   value: string;
 };
 
-export type EmbedCodePaneVariant = "overview" | "parameters" | "appearance";
+export type EmbedCodePaneVariant = "overview" | "parameters" | "lookAndFeel";

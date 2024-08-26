@@ -22,6 +22,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -37,15 +38,15 @@
   "Columns of Field or Table that classifiers are allowed to be set."
   [model]
   (case model
-   :model/Field #{:semantic_type :preview_display :has_field_values}
-   :model/Table #{:entity_type}))
+    :model/Field #{:semantic_type :preview_display :has_field_values}
+    :model/Table #{:entity_type}))
 
 (def ^:private FieldOrTableInstance
   [:or
    i/FieldInstance
    i/TableInstance])
 
-(mu/defn ^:private save-model-updates!
+(mu/defn- save-model-updates!
   "Save the updates in `updated-model` (can be either a `Field` or `Table`)."
   [original-model :- FieldOrTableInstance
    updated-model  :- FieldOrTableInstance]
@@ -65,7 +66,7 @@
                   values-to-set)
       true)))
 
-(mu/defn ^:private classify!
+(mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
    (classify! field (or (:fingerprint field)
@@ -80,19 +81,17 @@
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))))))
 
-
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn- fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (t2/select :model/Field
-         :table_id            (u/the-id table)
-         :fingerprint_version i/*latest-fingerprint-version*
-         :last_analyzed       nil)))
+  (seq (apply t2/select :model/Field
+              :table_id (u/the-id table)
+              (reduce concat [] (sync.fingerprint/incomplete-analysis-kvs)))))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
@@ -117,27 +116,29 @@
 
 (mu/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]
+  [database :- i/DatabaseInstance
    log-progress-fn]
-  {:total-tables      (count tables)
-   :tables-classified (sync-util/sum-numbers (fn [table]
-                                               (let [result (classify-table! table)]
-                                                 (log-progress-fn "classify-tables" table)
-                                                 (if result
-                                                   1
-                                                   0)))
-                                             tables)})
+  (let [tables (sync-util/reducible-sync-tables database)]
+    (transduce (map (fn [table]
+                      (let [result (classify-table! table)]
+                        (log-progress-fn "classify-tables" table)
+                        {:tables-classified (if result
+                                              1
+                                              0)
+                         :total-tables      1})))
+               (partial merge-with +)
+               {:tables-classified 0, :total-tables 0}
+               tables)))
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]
+  [database :- i/DatabaseInstance
    log-progress-fn]
-  (apply merge-with +
-         {:fields-classified 0, :fields-failed 0}
-         (map (fn [table]
-                (let [result (classify-fields! table)]
-                  (log-progress-fn "classify-fields" table)
-                  result))
-              tables)))
+  (let [tables (sync-util/reducible-sync-tables database)]
+    (transduce (map (fn [table]
+                      (let [result (classify-fields! table)]
+                        (log-progress-fn "classify-fields" table)
+                        result)))
+               (partial merge-with +)
+               {:fields-classified 0, :fields-failed 0}
+               tables)))

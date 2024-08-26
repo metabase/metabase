@@ -257,7 +257,6 @@
       "view_count": 0,
       "collection_position": null,
       "table_id": 5,
-      "can_run_adhoc_query": true,
       "result_metadata": [
         {
           "description": "The date and time an order was submitted.",
@@ -645,7 +644,6 @@
     "running_time": 52,
     "card": {
       "description": null,
-      "can_run_adhoc_query": true,
       "can_write": true,
       "database_id": 1,
       "collection_id": null,
@@ -932,7 +930,6 @@
     "running_time": 47,
     "card": {
       "description": null,
-      "can_run_adhoc_query": true,
       "can_write": true,
       "database_id": 1,
       "collection_id": null,

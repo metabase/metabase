@@ -1,5 +1,5 @@
 import type { ChangeEvent, MouseEvent } from "react";
-import { memo, useCallback, useMemo, useState, useEffect } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -10,11 +10,11 @@ import type { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
 
 import {
-  CardHeader,
-  CardContent,
-  CardLabel,
   CardCheckbox,
+  CardContent,
+  CardHeader,
   CardIcon,
+  CardLabel,
   CardRoot,
 } from "./TimelineCard.styled";
 

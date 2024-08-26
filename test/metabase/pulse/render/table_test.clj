@@ -82,16 +82,17 @@
             "1.001,5" "rgba(0, 0, 255, 0.75)"
             "1,001.5" "rgba(0, 0, 255, 0.75)"}
            (-> (color/make-color-selector query-results (:visualization_settings render.tu/test-card))
-               (#'table/render-table 0 ["a" "b" "c"] (query-results->header+rows query-results))
+               (#'table/render-table 0 {:col-names             ["a" "b" "c"]
+                                        :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results))
                find-table-body
                cell-value->background-color)))))
 
 (deftest header-truncation-test []
   (let [[normal-heading long-heading :as row] ["Count" (apply str (repeat 120 "A"))]
         [normal-rendered long-rendered]       (->> (#'table/render-table-head row {:row row})
-                                               (tree-seq vector? rest)
-                                               (filter #(= :th (first %)))
-                                               (map last))]
+                                                   (tree-seq vector? rest)
+                                                   (filter #(= :th (first %)))
+                                                   (map last))]
     (testing "Table Headers are truncated if they are really long."
       (is (= normal-heading normal-rendered))
       (is (= "A..." (subs long-rendered (- (count long-rendered) 4) (count long-rendered))))
@@ -128,7 +129,7 @@
                                                                                   :native   {:query q}}
                                                          :visualization_settings formatting-viz}]
         (testing "Custom column titles and column format settings are respected in render."
-          (let [doc     (render.tu/render-card-as-hickory card-id)
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
                 row-els (hik.s/select (hik.s/tag :tr) doc)]
             (is (= [["Eh" "Bee" "Sea" "D" "E"]
                     ["10%" "9E3" "12/10/2022" "---0.12___" "0.667"]]
@@ -138,7 +139,7 @@
                                                                                 :date_separator  "-"
                                                                                 :date_abbreviate false}
                                                                 :type/Number   {:number_separators ",."}}]
-            (let [doc     (render.tu/render-card-as-hickory card-id)
+            (let [doc     (render.tu/render-card-as-hickory! card-id)
                   row-els (hik.s/select (hik.s/tag :tr) doc)]
               (is (= [["Eh" "Bee" "Sea" "D" "E"]
                       ["10%" "9E3" "12-10-2022" "---0,12___" "0,667"]]
@@ -164,7 +165,7 @@
                                                                            :type     :native
                                                                            :native   {:query q}}
                                                   :visualization_settings disabled-cols-viz}]
-          (let [doc     (render.tu/render-card-as-hickory card-id)
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
                 row-els (hik.s/select (hik.s/tag :tr) doc)]
             (is (= [["B" "A"]
                     ["9,000" "0.1"]]

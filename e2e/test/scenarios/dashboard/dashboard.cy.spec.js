@@ -9,54 +9,61 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  popover,
-  restore,
-  selectDashboardFilter,
-  editDashboard,
-  showDashboardCardActions,
-  filterWidget,
-  sidebar,
-  modal,
-  visitDashboard,
-  appBar,
-  rightSidebar,
-  getDashboardCardMenu,
   addOrUpdateDashboardCard,
-  openQuestionsSidebar,
-  describeWithSnowplow,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
-  expectGoodSnowplowEvent,
-  closeNavigationSidebar,
-  saveDashboard,
-  queryBuilderHeader,
-  removeDashboardCard,
-  getDashboardCards,
-  getDashboardCard,
-  toggleDashboardInfoSidebar,
-  dashboardHeader,
-  openProductsTable,
-  updateDashboardCards,
-  getTextCardDetails,
-  openDashboardMenu,
-  openEmbedModalFromMenu,
+  appBar,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
-  createDashboardWithTabs,
-  entityPickerModal,
+  closeNavigationSidebar,
   collectionOnTheGoModal,
-  setFilter,
-  commandPaletteButton,
   commandPalette,
+  commandPaletteButton,
+  createDashboardWithTabs,
+  dashboardHeader,
   describeEE,
+  describeWithSnowplow,
+  editDashboard,
+  enableTracking,
+  entityPickerModal,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
+  getDashboardCard,
+  getDashboardCardMenu,
+  getDashboardCards,
+  getTextCardDetails,
+  modal,
+  openDashboardMenu,
+  openProductsTable,
+  openQuestionsSidebar,
+  openSharingMenu,
+  popover,
+  queryBuilderHeader,
+  removeDashboardCard,
+  resetSnowplow,
+  restore,
+  rightSidebar,
+  saveDashboard,
+  selectDashboardFilter,
+  setFilter,
   setTokenFeatures,
+  showDashboardCardActions,
+  sidebar,
+  toggleDashboardInfoSidebar,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 import {
   createMockVirtualCard,
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
+
+import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
+import {
+  adaptiveRadioButton,
+  durationRadioButton,
+  openSidebarCacheStrategyForm,
+} from "../admin/performance/helpers/e2e-strategy-form-helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -207,7 +214,7 @@ describe("scenarios > dashboard", () => {
           cy.button("Create").click();
         });
 
-        saveDashboard();
+        saveDashboard({ awaitRequest: false });
         cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
       },
     );
@@ -644,7 +651,7 @@ describe("scenarios > dashboard", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("11007").click();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // and connect it to the card
     selectDashboardFilter(cy.findByTestId("dashcard-container"), "Created At");
@@ -922,7 +929,7 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
 
     modal().within(() => {
       cy.icon("close").click();
@@ -1254,40 +1261,29 @@ describeEE("scenarios > dashboard > caching", () => {
    * It's in the Cypress describe block labeled "scenarios > question > caching"
    */
   it("can configure cache for a dashboard, on an enterprise instance", () => {
-    cy.intercept("PUT", "/api/cache").as("putCacheConfig");
+    interceptPerformanceRoutes();
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    toggleDashboardInfoSidebar();
+    openSidebarCacheStrategyForm();
 
     rightSidebar().within(() => {
-      cy.findByText(/Caching policy/).within(() => {
-        cy.findByText(/Use default/).click();
-      });
-      cy.findByRole("heading", { name: /Caching settings/ }).click();
-      cy.findByRole("radio", { name: /Duration/ }).click();
+      cy.findByRole("heading", { name: /Caching settings/ }).should(
+        "be.visible",
+      );
+      durationRadioButton().click();
       cy.findByLabelText("Cache results for this many hours").type("48");
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
-      cy.findByText(/Caching policy/).within(() => {
-        cy.log(
-          "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
-        );
-        const durationButton = cy.findByRole("button", { name: /Duration/ });
-        durationButton.should("be.visible");
-        cy.log("Open the cache invalidation policy configuration form again");
-        durationButton.click();
-      });
-      cy.findByRole("radio", { name: /Adaptive/ }).click();
+      cy.log(
+        "Check that the newly chosen cache invalidation policy - Duration - is now visible in the sidebar",
+      );
+      cy.findByLabelText(/Caching policy/).should("contain", "Duration");
+      cy.findByLabelText(/Caching policy/).click();
+      adaptiveRadioButton().click();
       cy.findByLabelText(/Minimum query duration/).type("999");
       cy.findByRole("button", { name: /Save/ }).click();
       cy.wait("@putCacheConfig");
-      cy.findByText(/Caching policy/).within(() => {
-        cy.log(
-          "Check that the newly chosen cache invalidation policy - Adaptive - is now visible in the sidebar",
-        );
-        const policyToken = cy.findByRole("button", { name: /Adaptive/ });
-        policyToken.should("be.visible");
-      });
+      cy.findByLabelText(/Caching policy/).should("contain", "Adaptive");
     });
   });
 });

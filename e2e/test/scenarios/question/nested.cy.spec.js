@@ -1,21 +1,23 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
+  assertQueryBuilderRowCount,
+  chartPathWithFillColor,
+  createNativeQuestion,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
+  filterField,
+  getDimensionByName,
+  openNotebook,
   popover,
   remapDisplayValueToFK,
+  restore,
+  summarize,
+  tableHeaderClick,
   visitQuestion,
   visitQuestionAdhoc,
   visualize,
-  getDimensionByName,
-  summarize,
-  filter,
-  filterField,
-  chartPathWithFillColor,
-  assertQueryBuilderRowCount,
-  entityPickerModal,
-  entityPickerModalTab,
-  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE } = SAMPLE_DATABASE;
@@ -278,7 +280,7 @@ describe("scenarios > question > nested", () => {
 
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
-    cy.icon("notebook").click();
+    openNotebook();
     cy.findAllByTestId("notebook-cell-item")
       .contains(/^Products → Category$/) /* [1] */
       .click();
@@ -458,39 +460,42 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it("should properly work with native questions (metabsae#15808, metabase#16938, metabase#18364)", () => {
+  it("should properly work with native questions (metabase#15808, metabase#16938, metabase#18364)", () => {
     const questionDetails = {
       name: "15808",
-      native: { query: "select * from products limit 5" },
+      native: { query: "select * from products limit 3" },
     };
 
+    createNativeQuestion(questionDetails, { visitQuestion: true });
+    cy.findAllByTestId("cell-data").should(
+      "contain",
+      "Swaniawski, Casper and Hilll",
+    );
+
     cy.intercept("POST", "/api/dataset").as("dataset");
-
-    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
-
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Explore results").click();
+    cy.findByTestId("qb-header-action-panel")
+      .findByText("Explore results")
+      .click();
     cy.wait("@dataset");
 
-    // should allow to browse object details when exploring native query results (metabase#16938)
-    cy.get(".test-Table-ID")
-      .as("primaryKeys")
-      .should("have.length", 5)
-      .first()
-      .click();
+    cy.log(
+      "Should allow to browse object details when exploring native query results (metabase#16938)",
+    );
+    cy.get(".test-Table-ID").as("primaryKeys").should("have.length", 3);
+    cy.get("@primaryKeys").first().click();
 
-    cy.findByTestId("object-detail").within(() => {
-      cy.findByText("Swaniawski, Casper and Hilll");
-    });
+    cy.findByTestId("object-detail").should(
+      "contain",
+      "Swaniawski, Casper and Hilll",
+    );
+    cy.findByTestId("object-detail-close-button").click();
 
-    // Close the modal (until we implement the "X" button in the modal itself)
-    cy.get("body").click("bottomRight");
-    cy.findByTestId("save-question-modal").should("not.exist");
-
-    // should be able to save a nested question (metabase#18364)
+    cy.log("Should be able to save a nested question (metabase#18364)");
     saveQuestion();
 
-    // should be able to use integer filter on a nested query based on a saved native question (metabase#15808)
+    cy.log(
+      "Should be able to use integer filter on a nested query based on a saved native question (metabase#15808)",
+    );
     filter();
     filterField("RATING", {
       operator: "Equal to",
@@ -498,10 +503,9 @@ describe("scenarios > question > nested", () => {
     });
     cy.findByTestId("apply-filters").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Synergistic Granite Chair");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Rustic Paper Wallet").should("not.exist");
+    cy.findAllByTestId("cell-data")
+      .should("contain", "Murray, Watsica and Wunsch")
+      .and("not.contain", "Swaniawski, Casper and Hilll");
 
     function saveQuestion() {
       cy.intercept("POST", "/api/card").as("cardCreated");
@@ -555,7 +559,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
-    cy.icon("notebook").click();
+    openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
 
     function saveQuestion() {

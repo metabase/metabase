@@ -19,17 +19,16 @@
 
 (driver/register! ::test-driver, :abstract? true)
 
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature _db] true)
-(defmethod driver/database-supports? [::test-driver :foreign-keys] [_driver _feature db] (= db "dummy"))
+(defmethod driver/database-supports? [::test-driver :metadata/key-constraints] [_driver _feature db] (= db "dummy"))
 
 (deftest ^:parallel database-supports?-test
-  (is (driver/database-supports? ::test-driver :foreign-keys "dummy"))
-  (is (not (driver/database-supports? ::test-driver :foreign-keys "not-dummy")))
+  (is (driver/database-supports? ::test-driver :metadata/key-constraints "dummy"))
+  (is (not (driver/database-supports? ::test-driver :metadata/key-constraints "not-dummy")))
   (is (not (driver/database-supports? ::test-driver :expressions "dummy")))
   (is (thrown-with-msg?
-        java.lang.Exception
-        #"Invalid driver feature: .*"
-        (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
+       java.lang.Exception
+       #"Invalid driver feature: .*"
+       (driver/database-supports? ::test-driver :some-made-up-thing "dummy"))))
 
 (deftest the-driver-test
   (testing (str "calling `the-driver` should set the context classloader, important because driver plugin code exists "
@@ -122,14 +121,15 @@
         (mt/dataset dbdef
           (let [db (mt/db)
                 cant-sync-logged? (fn []
-                                    (some?
-                                     (some
-                                      (fn [[log-level throwable message]]
-                                        (and (= log-level :warn)
-                                             (instance? clojure.lang.ExceptionInfo throwable)
-                                             (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
-                                      (mt/with-log-messages-for-level :warn
-                                        (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))))))]
+                                    (mt/with-log-messages-for-level [messages :warn]
+                                      (#'task.sync-databases/sync-and-analyze-database*! (u/the-id db))
+                                      (some?
+                                       (some
+                                        (fn [{:keys [level e message]}]
+                                          (and (= level :warn)
+                                               (instance? clojure.lang.ExceptionInfo e)
+                                               (re-matches #"^Cannot sync Database ([\s\S]+): ([\s\S]+)" message)))
+                                        (messages)))))]
             (testing "sense checks before deleting the database"
               (testing "sense check 1: sync-and-analyze-database! should not log a warning"
                 (is (false? (cant-sync-logged?))))
@@ -227,7 +227,7 @@
 
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
-    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :foreign-keys)
+    (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :metadata/key-constraints)
                                      (mt/normal-drivers-with-feature :describe-fks))
       (let [orders   (t2/select-one :model/Table (mt/id :orders))
             products (t2/select-one :model/Table (mt/id :products))
@@ -244,7 +244,7 @@
 
 (deftest ^:parallel describe-fks-test
   (testing "`describe-fks` works for drivers that support `describe-fks`"
-    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :describe-fks)
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints :describe-fks)
       (let [fmt           (partial ddl.i/format-name driver/*driver*)
             orders        (t2/select-one :model/Table (mt/id :orders))
             products      (t2/select-one :model/Table (mt/id :products))

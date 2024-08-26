@@ -8,12 +8,16 @@
    [toucan2.core :as t2])
   (:import
    (liquibase Contexts Liquibase RuntimeEnvironment)
-   (liquibase.changelog ChangeLogIterator)
+   (liquibase.change Change)
+   (liquibase.changelog ChangeLogIterator ChangeSet DatabaseChangeLog)
    (liquibase.changelog.filter ChangeSetFilter)
    (liquibase.changelog.visitor ListVisitor)
+   (liquibase.database Database)
    (liquibase.database.core H2Database MySQLDatabase PostgresDatabase MariaDBDatabase)
    (liquibase.exception RollbackImpossibleException)
-   (liquibase.sqlgenerator SqlGeneratorFactory)))
+   (liquibase.sql Sql)
+   (liquibase.sqlgenerator SqlGeneratorFactory)
+   (liquibase.statement SqlStatement)))
 
 (set! *warn-on-reflection* true)
 
@@ -112,11 +116,11 @@
 (defn- stmts-to-sql
   [stmts sql-generator-factory database]
   (str/join "\n" (for [stmt stmts
-                       sql (.generateSql ^SqlGeneratorFactory sql-generator-factory stmt database)]
-                   (.toString sql))))
+                       sql (.generateSql ^SqlGeneratorFactory sql-generator-factory ^SqlStatement stmt ^Database database)]
+                   (.toString ^Sql sql))))
 
 (defn- change->sql
-  [change sql-generator-factory database]
+  [^Change change sql-generator-factory database]
   {:forward  (stmts-to-sql (.generateStatements change database) sql-generator-factory database)
    :rollback (try (stmts-to-sql (.generateRollbackStatements change database) sql-generator-factory database)
                   (catch RollbackImpossibleException e
@@ -141,12 +145,13 @@
   ([id db-type :- [:enum :postgres :mysql :mariadb :h2]]
    (t2/with-connection [conn]
      (liquibase/with-liquibase [^Liquibase liquibase conn]
-       (let [database            (liquibase-database db-type)
-             change-log-iterator (ChangeLogIterator. (.getDatabaseChangeLog liquibase) (into-array ChangeSetFilter []))
-             list-visistor       (ListVisitor.)
-             runtime-env         (RuntimeEnvironment. database (Contexts.) nil)
-             _                   (.run change-log-iterator list-visistor runtime-env)
-             change-set          (first (filter #(= id (.getId %)) (.getSeenChangeSets list-visistor)))
+       (let [database              (liquibase-database db-type)
+             change-log-iterator   (ChangeLogIterator. ^DatabaseChangeLog (.getDatabaseChangeLog liquibase)
+                                                       ^"[Lliquibase.changelog.filter.ChangeSetFilter;" (into-array ChangeSetFilter []))
+             list-visistor         (ListVisitor.)
+             runtime-env           (RuntimeEnvironment. database (Contexts.) nil)
+             _                     (.run change-log-iterator list-visistor runtime-env)
+             ^ChangeSet change-set (first (filter #(= id (.getId ^ChangeSet %)) (.getSeenChangeSets list-visistor)))
              sql-generator-factory (SqlGeneratorFactory/getInstance)]
          (reduce (fn [acc data]
                   ;; merge all changes in one change set into one single :forward and :rollback

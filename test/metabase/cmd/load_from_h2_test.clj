@@ -1,4 +1,4 @@
-(ns metabase.cmd.load-from-h2-test
+(ns ^:mb/once metabase.cmd.load-from-h2-test
   (:require
    [clojure.test :refer :all]
    [metabase.cmd.copy :as copy]
@@ -22,7 +22,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- load-from-h2-test* [db-name thunk]
+(defn- do-load-from-h2-test! [db-name thunk]
   ;; enable this test in the REPL with something like (mt/set-test-drivers! #{:postgres})
   (mt/test-drivers #{:postgres :mysql}
     ;; create a Postgres/MySQL database named `dump-test` (destroying it if it already exists first) and then copy
@@ -34,6 +34,7 @@
                               (sql-jdbc.conn/connection-details->spec
                                target-db-type
                                (tx/dbdef->connection-details target-db-type :db db-def)))]
+      (tx/destroy-db! target-db-type db-def)
       (tx/create-db! target-db-type db-def)
       (binding [mdb.connection/*application-db* (mdb.connection/application-db target-db-type target-data-source)]
         (load-from-h2/load-from-h2! h2-filename)
@@ -41,30 +42,31 @@
                (t2/count Table)))
         (thunk)))))
 
-(deftest ^:parallel load-from-h2-test
-  (load-from-h2-test*
+(deftest load-from-h2-test
+  (do-load-from-h2-test!
    "dump-test"
    (fn []
      (testing "H2 connection details should not have been copied"
        (is (= {}
               (t2/select-one-fn :details :model/Database :engine :h2)))))))
 
-(deftest ^:parallel load-from-h2-copy-details-enabled-test
+(deftest load-from-h2-copy-details-enabled-test
   (binding [copy/*copy-h2-database-details* true]
-    (load-from-h2-test*
+    (do-load-from-h2-test!
      "dump-test-2"
      (fn []
        (testing "H2 connection details SHOULD have been copied"
          (is (=? {:db string?}
-                (t2/select-one-fn :details :model/Database :engine :h2))))))))
+                 (t2/select-one-fn :details :model/Database :engine :h2))))))))
 
 (defn get-data-source [db-type db-def]
   (let [connection-details (tx/dbdef->connection-details db-type :db db-def)
         db-spec (sql-jdbc.conn/connection-details->spec db-type connection-details)]
     (mdb.test-util/->ClojureJDBCSpecDataSource db-spec)))
 
-(defn create-current-database
+(defn create-current-database!
   [db-type db-def data-source]
+  (tx/destroy-db! db-type db-def)
   (tx/create-db! db-type db-def)
   (mdb.setup/setup-db! db-type data-source true false))
 
@@ -95,20 +97,22 @@
   ;; interesting.)
   (delay (liquibase-latest-major-version)))
 
-(defn- migrate-down-then-up-and-create-dump
+(defn- migrate-down-then-up-and-create-dump!
   [db-name h2-filename version]
   (let [db-type driver/*driver*
         db-def {:database-name db-name}
         current-version @current-major-version
         data-source (get-data-source db-type db-def)]
     (log/info "creating database")
-    (create-current-database db-type db-def data-source)
+    (create-current-database! db-type db-def data-source)
     (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
       (mt/dataset bird-flocks
         ;; make sure the data is there
-        (is (= 18 (ffirst (mt/formatted-rows [int]
-                                             (mt/run-mbql-query bird
-                                               {:aggregation [[:count]]})))))
+        (is (= 18
+               (ffirst (mt/formatted-rows
+                        [int]
+                        (mt/run-mbql-query bird
+                          {:aggregation [[:count]]})))))
         (let [filename (dump-filename h2-filename version)]
           (when (< version current-version)
             (log/info "rolling back to version" version)
@@ -119,27 +123,32 @@
           ;; this migrates the DB back to the newest and creates a dump
           (dump-to-h2/dump-to-h2! filename)
           ;; check if after a down and up migration we can still run a query
-          (is (= 18 (ffirst (mt/formatted-rows [int]
-                                               (mt/run-mbql-query bird
-                                                 {:aggregation [[:count]]}))))))))))
+          (is (= 18 (ffirst (mt/formatted-rows
+                             [int]
+                             (mt/run-mbql-query bird
+                               {:aggregation [[:count]]}))))))))))
 
-(defn- load-dump
+(defn- load-dump!
   [db-name h2-filename version]
   (let [db-type driver/*driver*
         db-def {:database-name db-name}
         data-source (get-data-source db-type db-def)]
-    (create-current-database db-type db-def data-source)
+    (create-current-database! db-type db-def data-source)
     (binding [mdb.connection/*application-db* (mdb.connection/application-db db-type data-source)]
       (mt/dataset sad-toucan-incidents
-        (is (= 200 (ffirst (mt/formatted-rows [int]
-                             (mt/run-mbql-query incidents
-                               {:aggregation [[:count]]})))))
+        (is (= 200
+               (ffirst (mt/formatted-rows
+                        [int]
+                        (mt/run-mbql-query incidents
+                          {:aggregation [[:count]]})))))
         (log/info "loading dump" h2-filename "version" version)
         (load-from-h2/load-from-h2! (dump-filename h2-filename version))
         ;; check that we can run the query using data from the dump
-        (is (= 18 (ffirst (mt/formatted-rows [int]
-                            (mt/run-mbql-query bird
-                              {:aggregation [[:count]]})))))))))
+        (is (= 18
+               (ffirst (mt/formatted-rows
+                        [int]
+                        (mt/run-mbql-query bird
+                          {:aggregation [[:count]]})))))))))
 
 (deftest down-migrate-and-load-dump-test
   (mt/test-drivers #{:mysql :postgres}
@@ -150,5 +159,5 @@
             supported-downgrades 4
             versions (range current-version (- current-version supported-downgrades) -1)]
         (doseq [version versions]
-          (migrate-down-then-up-and-create-dump "load-test-source" h2-filename version)
-          (load-dump "load-test-target" h2-filename version))))))
+          (migrate-down-then-up-and-create-dump! "load-test-source" h2-filename version)
+          (load-dump! "load-test-target" h2-filename version))))))

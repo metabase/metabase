@@ -336,16 +336,16 @@
      ;; TODO: Caching by stage here is probably unnecessary - it's already a mistake to have an `x` from a different
      ;; stage than `stage-number`. But it also doesn't hurt much, since a given `x` will only ever have `display-info`
      ;; called with one `stage-number` anyway.
-     (keyword "display-info" (str "stage-" stage-number)) x
-     (fn [x]
-       (try
-         (display-info-method query stage-number x)
-         (catch #?(:clj Throwable :cljs js/Error) e
-           (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
-                                     (lib.dispatch/dispatch-value x)
-                                     (ex-message e))
-                           {:query query, :stage-number stage-number, :x x}
-                           e))))))))
+    (keyword "display-info" (str "stage-" stage-number)) x
+    (fn [x]
+      (try
+        (display-info-method query stage-number x)
+        (catch #?(:clj Throwable :cljs js/Error) e
+          (throw (ex-info (i18n/tru "Error calculating display info for {0}: {1}"
+                                    (lib.dispatch/dispatch-value x)
+                                    (ex-message e))
+                          {:query query, :stage-number stage-number, :x x}
+                          e))))))))
 
 (defn default-display-info
   "Default implementation of [[display-info-method]], available in case you want to use this in a different
@@ -387,7 +387,7 @@
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
-     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
+     (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
@@ -443,7 +443,7 @@
    ;; has the signature (f str) => str
    [:unique-name-fn {:optional true} ::unique-name-fn]])
 
-(mu/defn ^:private default-returned-columns-options :- ReturnedColumnsOptions
+(mu/defn- default-returned-columns-options :- ReturnedColumnsOptions
   [metadata-providerable]
   {:unique-name-fn (lib.util/unique-name-generator (lib.metadata/->metadata-provider metadata-providerable))})
 
@@ -496,7 +496,7 @@
     [:include-implicitly-joinable?                 {:optional true} :boolean]
     [:include-implicitly-joinable-for-source-card? {:optional true} :boolean]]])
 
-(mu/defn ^:private default-visible-columns-options :- VisibleColumnsOptions
+(mu/defn- default-visible-columns-options :- VisibleColumnsOptions
   [metadata-providerable]
   (merge
    (default-returned-columns-options metadata-providerable)
@@ -558,8 +558,8 @@
    (if (and (map? x)
             (#{:mbql.stage/mbql :mbql.stage/native} (:lib/type x)))
      (lib.cache/side-channel-cache
-       (keyword (str stage-number "__visible-columns-no-opts")) query
-       (fn [_] (visible-columns query stage-number x nil)))
+      (keyword (str stage-number "__visible-columns-no-opts")) query
+      (fn [_] (visible-columns query stage-number x nil)))
      (visible-columns query stage-number x nil)))
 
   ([query          :- ::lib.schema/query

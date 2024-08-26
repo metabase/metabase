@@ -7,8 +7,8 @@ import CS from "metabase/css/core/index.css";
 import { getPulseParameters } from "metabase/lib/pulse";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import {
-  getDefaultValuePopulatedParameters,
   PULSE_PARAM_USE_DEFAULT,
+  getDefaultValuePopulatedParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Dashboard,
@@ -65,6 +65,7 @@ export const MutableParametersSection = ({
       className={cx(className)}
       initialState="expanded"
       bodyClass={CS.mt2}
+      data-testid="subscription-parameters-section"
     >
       <ParametersList
         className={cx(CS.alignStretch, CS.rowGap1)}

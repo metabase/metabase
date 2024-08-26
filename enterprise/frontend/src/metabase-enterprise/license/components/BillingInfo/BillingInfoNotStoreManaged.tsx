@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { SectionHeader } from "metabase/admin/settings/components/SettingsLicense";
-import { Text, Anchor } from "metabase/ui";
+import { Anchor, Text } from "metabase/ui";
 
 export const BillingInfoNotStoreManaged = () => {
   return (

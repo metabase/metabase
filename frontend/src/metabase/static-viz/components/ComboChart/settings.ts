@@ -1,4 +1,7 @@
-import { getCommonStaticVizSettings } from "metabase/static-viz/lib/settings";
+import {
+  fillWithDefaultValue,
+  getCommonStaticVizSettings,
+} from "metabase/static-viz/lib/settings";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import {
   getCardsSeriesModels,
@@ -8,6 +11,7 @@ import type { LegacySeriesSettingsObjectKey } from "metabase/visualizations/echa
 import {
   getAreDimensionsAndMetricsValid,
   getDefaultBubbleSizeCol,
+  getDefaultDataLabelsFormatting,
   getDefaultDataLabelsFrequency,
   getDefaultDimensions,
   getDefaultGoalLabel,
@@ -25,43 +29,32 @@ import {
   getDefaultYAxisTitle,
   getIsXAxisLabelEnabledDefault,
   getIsYAxisLabelEnabledDefault,
+  getSeriesOrderDimensionSetting,
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   getYAxisUnpinFromZeroDefault,
+  isShowStackValuesValid,
   isStackingValueValid,
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
-  isShowStackValuesValid,
-  getDefaultDataLabelsFormatting,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import {
   SERIES_COLORS_SETTING_KEY,
+  SERIES_SETTING_KEY,
   getSeriesColors,
   getSeriesDefaultDisplay,
-  getSeriesDefaultLinearInterpolate,
   getSeriesDefaultLineMarker,
   getSeriesDefaultLineMissing,
   getSeriesDefaultLineSize,
   getSeriesDefaultLineStyle,
+  getSeriesDefaultLinearInterpolate,
   getSeriesDefaultShowSeriesValues,
-  SERIES_SETTING_KEY,
 } from "metabase/visualizations/shared/settings/series";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
 import type { RawSeries, VisualizationSettings } from "metabase-types/api";
-
-export const fillWithDefaultValue = (
-  settings: Record<string, unknown>,
-  key: string,
-  defaultValue: unknown,
-  isValid = true,
-) => {
-  if (typeof settings[key] === "undefined" || !isValid) {
-    settings[key] = defaultValue;
-  }
-};
 
 const getSeriesFunction = (
   rawSeries: RawSeries,
@@ -141,7 +134,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "graph.metrics",
-    getDefaultMetrics(rawSeries),
+    getDefaultMetrics(rawSeries, settings),
     areDimensionsAndMetricsValid,
   );
 
@@ -193,11 +186,13 @@ export const computeStaticComboChartSettings = (
     getDefaultDataLabelsFormatting(),
   );
 
-  fillWithDefaultValue(
+  settings["graph.series_order"] = getSeriesOrderVisibilitySettings(
     settings,
-    "graph.series_order",
-    getSeriesOrderVisibilitySettings(settings, seriesVizSettingsKeys),
+    seriesVizSettingsKeys,
   );
+
+  settings["graph.series_order_dimension"] =
+    getSeriesOrderDimensionSetting(settings);
 
   fillWithDefaultValue(
     settings,
@@ -298,7 +293,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "legend.is_reversed",
-    getDefaultLegendIsReversed(mainDataset),
+    getDefaultLegendIsReversed(settings),
   );
 
   // For scatter plot

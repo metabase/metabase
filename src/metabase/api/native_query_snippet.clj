@@ -16,7 +16,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private hydrated-native-query-snippet :- [:maybe (ms/InstanceOf NativeQuerySnippet)]
+(mu/defn- hydrated-native-query-snippet :- [:maybe (ms/InstanceOf NativeQuerySnippet)]
   [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one NativeQuerySnippet :id id))
       (t2/hydrate :creator)))
@@ -63,8 +63,8 @@
   [id body]
   (let [snippet     (t2/select-one NativeQuerySnippet :id id)
         body-fields (u/select-keys-when body
-                      :present #{:description :collection_id}
-                      :non-nil #{:archived :content :name})
+                                        :present #{:description :collection_id}
+                                        :non-nil #{:archived :content :name})
         [changes]   (data/diff body-fields snippet)]
     (when (seq changes)
       (api/update-check snippet changes)

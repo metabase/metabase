@@ -1,12 +1,15 @@
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createNativeQuestion,
+  createQuestion,
+  entityPickerModal,
+  focusNativeEditor,
   openNativeEditor,
   openQuestionActions,
   restore,
-  visitQuestion,
-  startNewNativeQuestion,
   runNativeQuery,
-  entityPickerModal,
+  startNewNativeQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > native subquery", () => {
@@ -286,12 +289,13 @@ describe("scenarios > question > native subquery", () => {
       },
     };
 
-    cy.createQuestion(questionDetails).then(
+    createQuestion(questionDetails).then(
       ({ body: { id: nestedQuestionId } }) => {
         const tagID = `#${nestedQuestionId}`;
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
-        startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
+        startNewNativeQuestion();
+        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
@@ -299,8 +303,7 @@ describe("scenarios > question > native subquery", () => {
         );
 
         runNativeQuery();
-
-        cy.get("[data-testid=cell-data]").should("contain", "37.65");
+        cy.findAllByTestId("cell-data").should("contain", "37.65");
       },
     );
   });
@@ -311,15 +314,15 @@ describe("scenarios > question > native subquery", () => {
       native: { query: "select 1;" }, // semicolon is important here
     };
 
-    cy.createNativeQuestion(questionDetails).then(
+    createNativeQuestion(questionDetails).then(
       ({ body: { id: baseQuestionId } }) => {
         const tagID = `#${baseQuestionId}`;
 
-        startNewNativeQuestion().type(`SELECT * FROM {{${tagID}`);
+        startNewNativeQuestion();
+        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
 
         runNativeQuery();
-
-        cy.get("[data-testid=cell-data]").should("contain", "1");
+        cy.findAllByTestId("cell-data").should("contain", "1");
       },
     );
   });

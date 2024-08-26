@@ -169,7 +169,7 @@
   concat
   substring
   replace
-  regexextract
+  regex-match-first
   length
   trim
   ltrim
@@ -216,6 +216,7 @@
   is-empty not-empty
   starts-with ends-with
   contains does-not-contain
+  relative-time-interval
   time-interval
   segment]
  [lib.filter.update
@@ -243,8 +244,7 @@
   with-join-strategy
   with-join-conditions]
  [lib.metric
-  available-metrics
-  metric-based?]
+  available-metrics]
  [lib.limit
   current-limit
   limit]
@@ -308,6 +308,7 @@
   append-stage
   drop-stage
   drop-empty-stages
+  ensure-filter-stage
   has-clauses?]
  [lib.swap
   swap-clauses]

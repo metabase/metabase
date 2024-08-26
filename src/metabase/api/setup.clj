@@ -167,7 +167,7 @@
              [:collection :boolean]
              [:embedded-resource :boolean]]]])
 
-(mu/defn ^:private state-for-checklist :- ChecklistState
+(mu/defn- state-for-checklist :- ChecklistState
   []
   {:db-type    (mdb/db-type)
    :hosted?    (premium-features/is-hosted?)
@@ -263,7 +263,7 @@
     :completed   (exists :model)
     :triggered   (not (exists :model))}])
 
-(mu/defn ^:private checklist-items
+(mu/defn- checklist-items
   [info :- ChecklistState]
   (remove nil?
           [{:name  (tru "Get connected")

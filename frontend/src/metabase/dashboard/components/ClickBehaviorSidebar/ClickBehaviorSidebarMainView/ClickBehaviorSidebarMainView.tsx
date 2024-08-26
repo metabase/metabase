@@ -1,13 +1,13 @@
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  Dashboard,
-  QuestionDashboardCard,
   ClickBehavior,
+  Dashboard,
+  DashboardCard,
 } from "metabase-types/api";
 
 import {
-  SidebarContentBordered,
   SelectedClickBehaviorItemIcon,
+  SidebarContentBordered,
 } from "../ClickBehaviorSidebar.styled";
 import { CrossfilterOptions } from "../CrossfilterOptions";
 import { LinkOptions } from "../LinkOptions/LinkOptions";
@@ -18,7 +18,7 @@ import { clickBehaviorOptions } from "../utils";
 interface ClickBehaviorOptionsProps {
   clickBehavior: ClickBehavior;
   dashboard: Dashboard;
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   updateSettings: (settings: Partial<ClickBehavior>) => void;
 }
@@ -56,7 +56,7 @@ function ClickBehaviorOptions({
 interface ClickBehaviorSidebarMainViewProps {
   clickBehavior: ClickBehavior;
   dashboard: Dashboard;
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   handleShowTypeSelector: () => void;
   updateSettings: (settings: Partial<ClickBehavior>) => void;

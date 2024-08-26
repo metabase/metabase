@@ -10,5 +10,5 @@ export const defaultGetRefreshTokenFn: FetchRequestTokenFn = async url => {
     credentials: "include",
   });
 
-  return await response.json();
+  return response.json();
 };

@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
-import { getEventHandlers } from "embedding-sdk/store/selectors";
 import {
   cancelFetchDashboardCardData,
   fetchDashboard,
@@ -18,11 +17,9 @@ import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/comp
 import {
   getDashboardComplete,
   getDraftParameterValues,
-  getIsLoading,
-  getIsLoadingWithoutCards,
   getIsNavigatingBackToDashboard,
-  getParameters,
   getParameterValues,
+  getParameters,
   getSelectedTabId,
   getSlowCards,
 } from "metabase/dashboard/selectors";
@@ -32,10 +29,10 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
-import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
+import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
+import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { setErrorPage } from "metabase/redux/app";
-import { getErrorPage } from "metabase/selectors/app";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -50,9 +47,6 @@ const mapStateToProps = (state: State) => {
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-    isErrorPage: getErrorPage(state),
-    isLoading: getIsLoading(state),
-    isLoadingWithoutCards: getIsLoadingWithoutCards(state),
   };
 };
 
@@ -70,27 +64,14 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
-
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
 } & PublicOrEmbeddedDashboardEventHandlersProps;
 
-type DisplayProps = Pick<
-  DashboardDisplayOptionControls,
-  | "isFullscreen"
-  | "isNightMode"
-  | "onFullscreenChange"
-  | "onNightModeChange"
-  | "onRefreshPeriodChange"
-  | "refreshPeriod"
-  | "setRefreshElapsedHook"
-  | "hasNightModeToggle"
->;
-
 type PublicOrEmbeddedDashboardProps = OwnProps &
   ReduxProps &
-  DisplayProps &
+  DashboardDisplayOptionControls &
   EmbedDisplayParams;
 
 const initializeData = async ({
@@ -146,10 +127,11 @@ const PublicOrEmbeddedDashboardInner = ({
   refreshPeriod,
   setRefreshElapsedHook,
   hasNightModeToggle,
+  background,
   bordered,
   titled,
   theme,
-  hideDownloadButton,
+  downloadsEnabled = true,
   hideParameters,
   navigateToNewCardFromDashboard,
   selectedTabId,
@@ -158,11 +140,8 @@ const PublicOrEmbeddedDashboardInner = ({
   cardTitled,
   isNavigatingBackToDashboard,
   parameterQueryParams,
-  isErrorPage,
   onLoad,
   onLoadWithoutCards,
-  isLoading,
-  isLoadingWithoutCards,
   cancelFetchDashboardCardData,
   setParameterValueToDefault,
   setParameterValue,
@@ -175,16 +154,9 @@ const PublicOrEmbeddedDashboardInner = ({
   const previousSelectedTabId = usePrevious(selectedTabId);
   const previousParameterValues = usePrevious(parameterValues);
 
-  const previousIsLoading = usePrevious(isLoading);
-  const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
-
-  const sdkEventHandlers = useSelector(getEventHandlers);
-
   const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
-  useUnmount(() => {
-    cancelFetchDashboardCardData();
-  });
+  useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
 
   useEffect(() => {
     if (!didMountRef.current) {
@@ -231,37 +203,9 @@ const PublicOrEmbeddedDashboardInner = ({
     shouldFetchCardData,
   ]);
 
-  useEffect(() => {
-    if (
-      !isLoadingWithoutCards &&
-      previousIsLoadingWithoutCards &&
-      !isErrorPage
-    ) {
-      sdkEventHandlers?.onDashboardLoadWithoutCards?.(dashboard);
-      onLoadWithoutCards?.(dashboard);
-    }
-  }, [
-    isLoadingWithoutCards,
-    isErrorPage,
-    previousIsLoadingWithoutCards,
-    dashboard,
-    sdkEventHandlers,
-    onLoadWithoutCards,
-  ]);
-
-  useEffect(() => {
-    if (!isLoading && previousIsLoading && !isErrorPage) {
-      sdkEventHandlers?.onDashboardLoad?.(dashboard);
-      onLoad?.(dashboard);
-    }
-  }, [
-    isLoading,
-    isErrorPage,
-    previousIsLoading,
-    sdkEventHandlers,
-    dashboard,
-    onLoad,
-  ]);
+  useUnmount(() => {
+    cancelFetchDashboardCardData();
+  });
 
   return (
     <PublicOrEmbeddedDashboardView
@@ -281,14 +225,15 @@ const PublicOrEmbeddedDashboardInner = ({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       dashboardId={dashboardId}
+      background={background}
       bordered={bordered}
       titled={titled}
       theme={theme}
       hideParameters={hideParameters}
-      hideDownloadButton={hideDownloadButton}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
       slowCards={slowCards}
       cardTitled={cardTitled}
+      downloadsEnabled={downloadsEnabled}
     />
   );
 };
@@ -300,7 +245,6 @@ function isSuccessfulFetchDashboardResult(
   return !hasError;
 }
 
-// Raw PublicOrEmbeddedDashboard used for SDK embedding
 export const PublicOrEmbeddedDashboard = connector(
   PublicOrEmbeddedDashboardInner,
 );

@@ -1,7 +1,7 @@
 /* eslint-disable jest/expect-expect */
 /* eslint-disable react/prop-types */
 
-import { act, render, screen, fireEvent, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Component } from "react";
 

@@ -81,7 +81,10 @@ export const UPDATE_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/UPDATE_DASHCARD_VISUALIZATION_SETTINGS";
 export const onUpdateDashCardVisualizationSettings = createAction(
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
-  (id: DashCardId, settings: DashCardVisualizationSettings) => ({
+  (
+    id: DashCardId,
+    settings: DashCardVisualizationSettings | null | undefined,
+  ) => ({
     id,
     settings,
   }),
@@ -102,7 +105,10 @@ export const REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS =
   "metabase/dashboard/REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS";
 export const onReplaceAllDashCardVisualizationSettings = createAction(
   REPLACE_ALL_DASHCARD_VISUALIZATION_SETTINGS,
-  (id: DashCardId, settings: DashCardVisualizationSettings) => ({
+  (
+    id: DashCardId,
+    settings: DashCardVisualizationSettings | null | undefined,
+  ) => ({
     id,
     settings,
   }),

@@ -47,7 +47,7 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
+(mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
@@ -92,7 +92,6 @@
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)))
 
-
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
 (def export-formats
@@ -123,10 +122,10 @@
 (defn- viz-setting-key-fn
   "Key function for parsing JSON visualization settings into the DB form. Converts most keys to
   keywords, but leaves column references as strings."
-   [json-key]
-   (if (re-matches column-ref-regex json-key)
-     json-key
-     (keyword json-key)))
+  [json-key]
+  (if (re-matches column-ref-regex json-key)
+    json-key
+    (keyword json-key)))
 
 (api/defendpoint POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
@@ -161,7 +160,7 @@
   "Get all of the required query metadata for an ad-hoc query."
   [:as {{:keys [database] :as query} :body}]
   {database ms/PositiveInt}
-  (api.query-metadata/adhoc-query-metadata query))
+  (api.query-metadata/batch-fetch-query-metadata [query]))
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
@@ -213,8 +212,8 @@
   consulted if `:values_source_type` is nil. Query is an optional string return matching field values not all."
   [parameter field-ids query]
   (custom-values/parameter->values
-    parameter query
-    (fn [] (parameter-field-values field-ids query))))
+   parameter query
+   (fn [] (parameter-field-values field-ids query))))
 
 (api/defendpoint POST "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."

@@ -1,19 +1,19 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
+import { FixedWidthContainer } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import {
-  breakpointMinSmall,
-  breakpointMinLarge,
-  breakpointMinMedium,
-  space,
   breakpointMaxSmall,
+  breakpointMinLarge,
+  breakpointMinSmall,
+  space,
 } from "metabase/styled-components/theme";
 
 export const Root = styled.div<{
   hasScroll: boolean;
+  hasVisibleOverflowWhenPriting?: boolean;
   isBordered?: boolean;
 }>`
   display: flex;
@@ -36,6 +36,16 @@ export const Root = styled.div<{
       border: 1px solid var(--mb-color-border);
       border-radius: 8px;
       box-shadow: 0 2px 2px var(--mb-color-shadow);
+    `}
+
+  ${props =>
+    // Prevents https://github.com/metabase/metabase/issues/40660
+    // when printing an embedded dashboard
+    props.hasVisibleOverflowWhenPriting &&
+    css`
+      @media print {
+        overflow: visible;
+      }
     `}
 `;
 
@@ -104,49 +114,58 @@ const footerVariantStyles = {
   `,
 };
 
-function getParameterPanelBackgroundColor(theme?: DisplayTheme) {
+function getParameterPanelBackgroundColor(
+  theme: DisplayTheme | undefined,
+  isSticky: boolean,
+) {
   if (theme === "night") {
-    return color("bg-black");
+    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-bg-dashboard)  ${
+      isSticky ? 15 : 100
+    }%)`;
   }
-  return color("bg-white");
+
+  if (theme === "transparent") {
+    return `color-mix(in srgb, var(--mb-color-bg-white), transparent  ${
+      isSticky ? 15 : 100
+    }%)`;
+  }
+
+  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-bg-dashboard)  ${
+    isSticky ? 15 : 100
+  }%)`;
 }
 
 function getParameterPanelBorderColor(theme?: DisplayTheme) {
-  if (theme === "night") {
-    return color("bg-dark");
-  }
   if (theme === "transparent") {
     return "transparent";
   }
-  return color("border");
+  return "var(--mb-color-border)";
 }
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{
   embedFrameTheme?: DisplayTheme;
-  hasScroll: boolean;
+  canSticky: boolean;
   isSticky: boolean;
 }>`
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 
   ${props =>
-    props.hasScroll &&
-    css`
-      border-bottom: 1px solid
-        ${getParameterPanelBorderColor(props.embedFrameTheme)};
-    `}
-
-  ${props =>
-    props.isSticky &&
+    props.canSticky &&
     css`
       position: sticky;
       top: 0;
       left: 0;
       width: 100%;
       z-index: 3;
+      transition: background-color 0.4s;
       background-color: ${getParameterPanelBackgroundColor(
         props.embedFrameTheme,
+        props.isSticky,
       )};
+      border-bottom: ${props.isSticky &&
+      `1px solid
+        ${getParameterPanelBorderColor(props.embedFrameTheme)}`};
     `}
 `;
 
@@ -155,13 +174,23 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   flex-shrink: 0;
   align-items: center;
   ${props => footerVariantStyles[props.variant]}
-  padding: 0.5rem;
+  height: calc(50 / 16 * 1rem);
+  padding: 0 1em;
 
-  ${breakpointMinMedium} {
-    padding: 1rem;
+  ${breakpointMinSmall} {
+    height: calc(65 / 16 * 1rem);
+    padding: 0 1.5rem;
   }
 
   ${breakpointMinLarge} {
-    padding: 1.5rem;
+    height: calc(80 / 16 * 1rem);
+    padding: 0 2rem;
   }
+`;
+
+export const TitleAndButtonsContainer = styled(FixedWidthContainer)`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
 `;

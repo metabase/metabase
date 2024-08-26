@@ -10,15 +10,15 @@ import { getUserIsAdmin } from "metabase/selectors/user";
 
 import DatabaseList from "../components/DatabaseList";
 import {
-  deleteDatabase,
   addSampleDatabase,
   closeSyncingModal,
+  deleteDatabase,
 } from "../database";
 import {
+  getAddSampleDatabaseError,
   getDeletes,
   getDeletionError,
   getIsAddingSampleDatabase,
-  getAddSampleDatabaseError,
 } from "../selectors";
 
 const RELOAD_INTERVAL = 2000;
