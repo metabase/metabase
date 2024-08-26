@@ -50,7 +50,7 @@ function setup({
 }
 
 describe("Notebook", () => {
-  it("should use 'Formula' title for the summarize step for metrics", () => {
+  it("should have metric-specific copy for the summarize step", () => {
     const query = createQueryWithClauses({
       aggregations: [{ operatorName: "count" }],
     });
@@ -60,11 +60,33 @@ describe("Notebook", () => {
         SAMPLE_METADATA,
       ).setQuery(query),
     });
+
     const step = screen.getByTestId("step-summarize-0-0");
     expect(within(step).getByText("Formula")).toBeInTheDocument();
     expect(
-      within(step).getByText("Primary time dimension"),
-    ).toBeInTheDocument();
+      within(step).getAllByText("Default time dimension").length,
+    ).toBeGreaterThanOrEqual(1);
     expect(within(step).queryByText("Summarize")).not.toBeInTheDocument();
+    expect(within(step).queryByText("by")).not.toBeInTheDocument();
+    expect(
+      within(step).queryByLabelText("Remove step"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should not be able to remove the summarize step for metrics", () => {
+    const query = createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+    });
+    setup({
+      question: new Question(
+        createMockCard({ type: "metric" }),
+        SAMPLE_METADATA,
+      ).setQuery(query),
+    });
+
+    const step = screen.getByTestId("step-summarize-0-0");
+    expect(
+      within(step).queryByLabelText("Remove step"),
+    ).not.toBeInTheDocument();
   });
 });
