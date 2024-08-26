@@ -4,6 +4,7 @@ import {
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { CardType } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { Notebook } from "./Notebook";
@@ -49,16 +50,37 @@ function setup({
   return { updateQuestion, runQuestionQuery, setQueryBuilderMode };
 }
 
+function createSummarizedQuestion(type: CardType) {
+  const query = createQueryWithClauses({
+    aggregations: [{ operatorName: "count" }],
+  });
+  return new Question(createMockCard({ type }), SAMPLE_METADATA).setQuery(
+    query,
+  );
+}
+
 describe("Notebook", () => {
+  it.each<CardType>(["question", "model"])(
+    "should have regular copy for the summarize step for %s queries",
+    type => {
+      setup({
+        question: createSummarizedQuestion(type),
+      });
+
+      const step = screen.getByTestId("step-summarize-0-0");
+      expect(within(step).getByText("Summarize")).toBeInTheDocument();
+      expect(within(step).getByText("by")).toBeInTheDocument();
+      expect(within(step).getByLabelText("Remove step")).toBeInTheDocument();
+      expect(within(step).queryByText("Formula")).not.toBeInTheDocument();
+      expect(
+        within(step).queryByText("Default time dimension"),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   it("should have metric-specific copy for the summarize step", () => {
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
-    });
     setup({
-      question: new Question(
-        createMockCard({ type: "metric" }),
-        SAMPLE_METADATA,
-      ).setQuery(query),
+      question: createSummarizedQuestion("metric"),
     });
 
     const step = screen.getByTestId("step-summarize-0-0");
@@ -73,15 +95,21 @@ describe("Notebook", () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each<CardType>(["question", "model"])(
+    "should be able to remove the summarize step for %s queries",
+    type => {
+      setup({
+        question: createSummarizedQuestion(type),
+      });
+
+      const step = screen.getByTestId("step-summarize-0-0");
+      expect(within(step).getByLabelText("Remove step")).toBeInTheDocument();
+    },
+  );
+
   it("should not be able to remove the summarize step for metrics", () => {
-    const query = createQueryWithClauses({
-      aggregations: [{ operatorName: "count" }],
-    });
     setup({
-      question: new Question(
-        createMockCard({ type: "metric" }),
-        SAMPLE_METADATA,
-      ).setQuery(query),
+      question: createSummarizedQuestion("metric"),
     });
 
     const step = screen.getByTestId("step-summarize-0-0");
