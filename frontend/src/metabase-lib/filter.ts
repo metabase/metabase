@@ -6,9 +6,9 @@ import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 import {
   isBoolean,
   isCoordinate,
+  isDate,
   isNumeric,
   isStringOrStringLike,
-  isTemporal,
   isTime,
 } from "./column_types";
 import {
@@ -300,7 +300,7 @@ export function specificDateFilterParts(
   const [column, ...serializedValues] = args;
   if (
     !isColumnMetadata(column) ||
-    !isTemporal(column) ||
+    !isDate(column) ||
     !isStringLiteralArray(serializedValues)
   ) {
     return null;
@@ -399,13 +399,13 @@ export function excludeDateFilterParts(
   }
 
   const [column, ...serializedValues] = args;
-  if (!isColumnMetadata(column) || !isTemporal(column)) {
+  if (!isColumnMetadata(column)) {
     return null;
   }
 
   const bucket = temporalBucket(column);
   if (!bucket) {
-    return serializedValues.length === 0
+    return serializedValues.length === 0 && isDate(column)
       ? { column, operator, bucket, values: [] }
       : null;
   }
@@ -494,7 +494,8 @@ export function defaultFilterParts(
     isStringOrStringLike(column) ||
     isNumeric(column) ||
     isBoolean(column) ||
-    isTemporal(column)
+    isDate(column) ||
+    isTime(column)
   ) {
     return null;
   }
@@ -728,7 +729,7 @@ function relativeDateFilterPartsWithoutOffset({
   const [column, value, bucket] = args;
   if (
     !isColumnMetadata(column) ||
-    !isTemporal(column) ||
+    !isDate(column) ||
     !isNumberOrCurrentLiteral(value) ||
     !isStringLiteral(bucket) ||
     !isRelativeDateBucket(bucket)
@@ -773,7 +774,7 @@ function relativeDateFilterPartsWithOffset({
   const [column, intervalParts] = offsetParts.args;
   if (
     !isColumnMetadata(column) ||
-    !isTemporal(column) ||
+    !isDate(column) ||
     !isExpression(intervalParts) ||
     intervalParts.operator !== "interval"
   ) {
@@ -825,7 +826,7 @@ function relativeDateFilterPartsRelativeTimeInterval({
 
   const [column, value, bucket, offsetValue, offsetBucket] = args;
 
-  if (!isColumnMetadata(column) || !isTemporal(column)) {
+  if (!isColumnMetadata(column) || !isDate(column)) {
     return null;
   }
 
