@@ -318,7 +318,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         createAndVisitDashboardWithQueryMatrix(createQ2Query);
       });
 
-      it("allows to map to all relevant columns", () => {
+      it("allows to map to all relevant columns (metabase#47184)", () => {
         editDashboard();
 
         cy.log("## date columns");
@@ -471,7 +471,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
       }
     });
 
-    describe("Q4 - join, custom column, 2 aggregations, 2 breakouts", () => {
+    describe("Q4 - join, custom column, 2 aggregations, 2 breakouts (metabase#47184)", () => {
       beforeEach(() => {
         createAndVisitDashboardWithQueryMatrix(createQ4Query);
       });
