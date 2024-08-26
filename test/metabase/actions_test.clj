@@ -107,7 +107,7 @@
                                  [:created-row [:map {:closed true}
                                                 [(format-field-name :id)   ms/PositiveInt]
                                                 [(format-field-name :name) ms/NonBlankString]]]]
-                         result)))}
+                                result)))}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {(format-field-name :name) "updated_row"})
@@ -528,11 +528,11 @@
                           "None of the errors are from ssh")))))
               (testing "Can perform custom actions on ssh-enabled database"
                 (let [query (update (mt/native-query
-                                     {:query "update categories set name = 'foo' where id = {{id}}"
-                                      :template-tags {:id {:id "id"
-                                                           :name "id"
-                                                           :type "number"
-                                                           :display-name "Id"}}})
+                                      {:query "update categories set name = 'foo' where id = {{id}}"
+                                       :template-tags {:id {:id "id"
+                                                            :name "id"
+                                                            :type "number"
+                                                            :display-name "Id"}}})
                                     :type name)]
                   (mt/with-actions [{card-id :id} {:type :model
                                                    :dataset_query (mt/mbql-query categories)}

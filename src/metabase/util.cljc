@@ -147,15 +147,16 @@
 
 (defn add-period
   "Fixes strings that don't terminate in a period; also accounts for strings
-  that end in `:`. Used for formatting docs."
+  that end in `:` and triple backticks (e.g., if a string ends in codeblock).
+   Used for formatting docs."
   [s]
   (let [text (str s)]
-    (if (or (str/blank? text)
-            (#{\. \? \!} (last text)))
-      text
-      (if (str/ends-with? text ":")
-        (str (subs text 0 (- (count text) 1)) ".")
-        (str text ".")))))
+    (cond
+      (str/blank? text) text
+      (#{\. \? \!} (last text)) text
+      (str/ends-with? text "```") text
+      (str/ends-with? text ":") (str (subs text 0 (- (count text) 1)) ".")
+      :else (str text "."))))
 
 (defn lower-case-en
   "Locale-agnostic version of [[clojure.string/lower-case]]. [[clojure.string/lower-case]] uses the default locale in
