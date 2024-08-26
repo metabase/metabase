@@ -3,14 +3,15 @@ import { t } from "ttag";
 
 import { useTestAlertMutation } from "metabase/api";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
 import { createChannel } from "metabase/lib/pulse";
-import { Button, Icon, Switch, Flex, Text, Box } from "metabase/ui";
+import { Box, Button, Flex, Icon, Switch, Text } from "metabase/ui";
 import type {
-  NotificationChannel,
   Alert,
   ChannelSpec,
+  NotificationChannel,
   User,
 } from "metabase-types/api";
 
@@ -34,7 +35,7 @@ export const WebhookChannelEdit = ({
 }) => {
   const [testAlert, testAlertRequest] = useTestAlertMutation();
   const { label, setLabel } = useActionButtonLabel({
-    defaultLabel: t`Sent a test`,
+    defaultLabel: t`Send a test`,
   });
 
   const channelIndex = alert.channels.findIndex(
@@ -65,7 +66,7 @@ export const WebhookChannelEdit = ({
   };
 
   return (
-    <li className={CS.borderRowDivider}>
+    <li className={CS.borderRowDivider} aria-label={notification.name}>
       <div className={cx(CS.flex, CS.alignCenter, CS.p3, CS.borderRowDivider)}>
         <Icon className={cx(CS.mr1, CS.textLight)} name="webhook" size={28} />
 
@@ -86,9 +87,11 @@ export const WebhookChannelEdit = ({
       {channel?.enabled && channelSpec.configured ? (
         <ul className={cx(CS.bgLight, CS.px3)}>
           <li className={CS.py3}>
-            <Flex justify="space-between" gap="5rem">
+            <Flex justify="space-between" gap="5rem" align="center">
               <Text style={{ flexBasis: 0, flexGrow: 1 }}>
-                {notification.description}
+                <Ellipsified lines={2} multiline tooltipMaxWidth={350}>
+                  {notification.description}
+                </Ellipsified>
               </Text>
               <Box>
                 <Button
