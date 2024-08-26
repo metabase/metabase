@@ -1403,7 +1403,8 @@
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id
     "/"
-    (let [{:keys [id location]} (serdes/lookup-by-id Collection parent-id)]
+    ;; It would be great to use a cache rather than a database call to fetch the parent.
+    (let [{:keys [id location]} (t2/select-one Collection parent-id)]
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
