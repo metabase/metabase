@@ -44,7 +44,6 @@
       ;; And attempt to analyze an invalid query
       (query-analysis/analyze-card! invalid)
 
-
       (mt/call-with-map-params f [c1 c2 c3 c4 archived invalid]))))
 
 (defmacro with-test-setup!
