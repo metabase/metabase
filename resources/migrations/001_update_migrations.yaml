@@ -9115,8 +9115,7 @@ databaseChangeLog:
                   name: perm_value
             indexName: idx_permissions_perm_value
 
-
-- changeSet:
+  - changeSet:
       id: v51.2024-08-26T08:53:46
       author: crisptrutski
       comment: Add a status column to track the progress and outcome of query analysis
