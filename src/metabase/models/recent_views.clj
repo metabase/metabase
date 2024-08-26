@@ -193,6 +193,7 @@
      [:dashboard [:map [:parent_collection ::pc]]]
      [:table [:map
               [:display_name :string]
+              [:table_schema :string]
               [:database [:map
                           [:id [:int {:min 1}]]
                           [:name :string]]]]]
@@ -395,7 +396,7 @@
   [table-ids]
   (t2/select :model/Table
              {:select [:t.id :t.name :t.description
-                       :t.display_name :t.active :t.visibility_type
+                       :t.display_name :t.active :t.visibility_type :t.schema
                        [:db.name :database-name]
                        [:db.id :database-id]
                        [:db.initial_sync_status :initial-sync-status]]
@@ -422,6 +423,7 @@
        :display_name (:display_name table)
        :can_write (mi/can-write? table)
        :timestamp (str timestamp)
+       :table_schema (:schema table)
        :database {:id (:database-id table)
                   :name (:database-name table)
                   :initial_sync_status (:initial-sync-status table)}})))

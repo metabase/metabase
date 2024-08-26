@@ -26,7 +26,7 @@ import {
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, type IconName } from "metabase/ui";
-import type { RecentItem } from "metabase-types/api";
+import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -318,14 +318,14 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
   } else {
     return (
       wrappedSearchResult.getCollection().name ||
-      wrappedSearchResult.database_name
+      `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
     );
   }
 };
 
 export const getRecentItemSubtext = (item: RecentItem) => {
-  if (item.model === "table") {
-    return item.database.name;
+  if (isRecentTableItem(item)) {
+    return `${item.database.name} (${item.table_schema})`;
   } else if (item.parent_collection.id === null) {
     return ROOT_COLLECTION.name;
   } else {
