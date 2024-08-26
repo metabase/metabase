@@ -1417,7 +1417,8 @@
           :is_sample
           :name
           :namespace
-          :slug]
+          :slug
+          :type]
    :skip []
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
@@ -1426,8 +1427,7 @@
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)
-               :type              (serdes/maybe (serdes/kw))}})
+               :personal_owner_id (serdes/fk :model/User)}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
