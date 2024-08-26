@@ -201,7 +201,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
   describe("1-stage queries", () => {
     describe("Q1 - join, custom column, no aggregations, no breakouts", () => {
       beforeEach(() => {
-        createAndVisitDashboardWithQueryMatrix(createQ1Query);
+        createAndVisitDashboardWithCardMatrix(createQ1Query);
       });
 
       it("allows to map to all relevant columns", () => {
@@ -326,7 +326,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     describe("Q2 - join, custom column, 2 aggregations, no breakouts", () => {
       beforeEach(() => {
-        createAndVisitDashboardWithQueryMatrix(createQ2Query);
+        createAndVisitDashboardWithCardMatrix(createQ2Query);
       });
 
       it("allows to map to all relevant columns (metabase#47184)", () => {
@@ -405,7 +405,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     describe("Q3 - join, custom column, no aggregations, 2 breakouts", () => {
       beforeEach(() => {
-        createAndVisitDashboardWithQueryMatrix(createQ3Query);
+        createAndVisitDashboardWithCardMatrix(createQ3Query);
       });
 
       it("allows to map to all relevant columns", () => {
@@ -484,7 +484,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
 
     describe("Q4 - join, custom column, 2 aggregations, 2 breakouts (metabase#47184)", () => {
       beforeEach(() => {
-        createAndVisitDashboardWithQueryMatrix(createQ4Query);
+        createAndVisitDashboardWithCardMatrix(createQ4Query);
       });
 
       it("allows to map to all relevant columns", () => {
@@ -801,7 +801,7 @@ function createQ8Query(source: Card): StructuredQuery {
 
 type CreateQuery = (source: Card) => StructuredQuery;
 
-function createAndVisitDashboardWithQueryMatrix(createQuery: CreateQuery) {
+function createAndVisitDashboardWithCardMatrix(createQuery: CreateQuery) {
   cy.then(function () {
     createQuestion({
       type: "question",
