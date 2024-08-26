@@ -1,12 +1,12 @@
-import {
-  createTimeline,
-  createTimelineEvent,
-  cypressWaitAll,
-} from "e2e/support/helpers";
 import type {
   CreateTimelineEventRequest,
   CreateTimelineRequest,
 } from "metabase-types/api";
+
+import { cypressWaitAll } from "../e2e-misc-helpers";
+
+import { createTimeline } from "./createTimeline";
+import { createTimelineEvent } from "./createTimelineEvent";
 
 export const createTimelineWithEvents = ({
   timeline,
