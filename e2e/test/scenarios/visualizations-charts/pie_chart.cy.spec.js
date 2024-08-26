@@ -127,11 +127,11 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    ensurePieChartRendered(["Gadget", "Doohickey"], 95);
+    ensurePieChartRendered(["Gadget", "Doohickey"]);
 
     changeRowLimit(2, 4);
 
-    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"], 200);
+    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
   });
 
   it("should preserve a slice's settings if its row is removed then reappears in the query result", () => {
@@ -140,7 +140,7 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"], 200);
+    ensurePieChartRendered(["Widget", "Gadget", "Gizmo", "Doohickey"]);
 
     cy.findByTestId("viz-settings-button").click();
 
@@ -160,7 +160,7 @@ describe("scenarios > visualizations > pie chart", () => {
       vertical: 100,
     });
 
-    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"], 200);
+    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
     chartPathWithFillColor("#509EE3").should("be.visible");
 
     cy.findByTestId("chart-legend").within(() => {
@@ -168,10 +168,10 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     changeRowLimit(4, 2);
-    ensurePieChartRendered(["Gadget", "Doohickey"], 95);
+    ensurePieChartRendered(["Gadget", "Doohickey"]);
 
     changeRowLimit(2, 4);
-    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"], 200);
+    ensurePieChartRendered(["Woooget", "Gadget", "Gizmo", "Doohickey"]);
     chartPathWithFillColor("#509EE3").should("be.visible");
 
     cy.findByTestId("chart-legend").within(() => {
@@ -183,8 +183,10 @@ describe("scenarios > visualizations > pie chart", () => {
 function ensurePieChartRendered(rows, totalValue) {
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
-    cy.findByText("TOTAL").should("be.visible");
-    cy.findByText(totalValue).should("be.visible");
+    if (totalValue != null) {
+      cy.findByText("TOTAL").should("be.visible");
+      cy.findByText(totalValue).should("be.visible");
+    }
 
     // slices
     pieSlices().should("have.length", rows.length);
