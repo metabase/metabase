@@ -1400,7 +1400,7 @@
   (let [parental (get collections (:entity_id coll))]
     (concat ["collections"] parental [(last parental)])))
 
-(defn- parent-id->location [parent-id]
+(defn- parent-id->location-path [parent-id]
   (if-not parent-id
     "/"
     (let [{:keys [id location]} (serdes/lookup-by-id Collection parent-id)]
@@ -1424,7 +1424,7 @@
                                              (serdes/compose
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
-                                               :import parent-id->location}))
+                                               :import parent-id->location-path}))
                :personal_owner_id (serdes/fk :model/User)
                :type              (serdes/maybe (serdes/kw))}})
 
