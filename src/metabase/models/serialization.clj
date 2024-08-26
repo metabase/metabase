@@ -331,7 +331,7 @@
             ;; won't assoc if `generate-path` returned `nil`
             (m/assoc-some :serdes/meta (generate-path model-name instance))
             (into (for [[k transform] (:transform spec)
-                        :let  [export-k (or (:as transform) k)
+                        :let  [export-k (:as transform k)
                                res ((:export transform) (get instance k))]
                         :when (not= res ::skip)]
                     (do
@@ -745,7 +745,7 @@
         (-> (select-keys ingested (:copy spec))
             (into (for [[k transform] (:transform spec)
                         :when         (not (::nested transform))
-                        :let          [import-k (or (:as transform) k)
+                        :let          [import-k (:as transform k)
                                        res ((:import transform) (get ingested import-k))]
                         :when         (and (not= res ::skip)
                                            (or (some? res)
