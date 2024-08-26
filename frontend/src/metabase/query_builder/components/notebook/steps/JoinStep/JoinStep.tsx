@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import * as Lib from "metabase-lib";
 
@@ -10,7 +10,7 @@ import { JoinDraft } from "./JoinDraft";
 export function JoinStep({
   query,
   stageIndex,
-  step: { itemIndex },
+  step,
   color,
   readOnly: isReadOnly = false,
   updateQuery,
@@ -19,8 +19,8 @@ export function JoinStep({
     () => Lib.joins(query, stageIndex),
     [query, stageIndex],
   );
-
-  const join = itemIndex != null ? joins[itemIndex] : undefined;
+  const [isCube, setIsCube] = useState<boolean>(false);
+  const join = step.itemIndex != null ? joins[step.itemIndex] : undefined;
 
   const handleAddJoin = (newJoin: Lib.Join) => {
     const newQuery = Lib.join(query, stageIndex, newJoin);
@@ -34,12 +34,24 @@ export function JoinStep({
     }
   };
 
-  return join != null && itemIndex != null ? (
+  useEffect(() => {
+    const card = step.question.card();
+    const metadata = step.question.metadata();
+    if (card.dataset_query.database !== undefined && metadata.databases !== undefined) {
+      const dbId = card.dataset_query.database;
+      const isCubeValue = metadata.databases[dbId!.toString()].is_cube;
+      setIsCube(isCubeValue);
+    }
+  }, [step]);
+
+
+  return join != null && step.itemIndex != null ? (
     <Join
       query={query}
       stageIndex={stageIndex}
+      isCube={isCube}
       join={join}
-      joinPosition={itemIndex}
+      joinPosition={step.itemIndex}
       color={color}
       isReadOnly={isReadOnly}
       onJoinChange={handleUpdateJoin}
@@ -48,6 +60,7 @@ export function JoinStep({
   ) : (
     <JoinDraft
       query={query}
+      isCube={isCube}
       stageIndex={stageIndex}
       color={color}
       isReadOnly={isReadOnly}
