@@ -1,9 +1,3 @@
-import chalk from "chalk";
-
-import {
-  PREMIUM_TOKEN_REQUIRED_MESSAGE,
-  getMetabaseInstanceSetupCompleteMessage,
-} from "./constants/messages";
 import {
   addDatabaseConnectionStep,
   askForTenancyColumns,
@@ -22,10 +16,10 @@ import {
   setupMetabaseInstance,
   setupPermissions,
   showMetabaseCliTitle,
+  showPostSetupSteps,
   startLocalMetabaseContainer,
 } from "./steps";
 import type { CliState } from "./types/cli";
-import { printEmptyLines, printInfo } from "./utils/print";
 
 export const CLI_STEPS = [
   { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
@@ -57,6 +51,10 @@ export const CLI_STEPS = [
     id: "generateExpressServerFile",
     executeStep: generateExpressServerFile,
   },
+  {
+    id: "showPostSetupSteps",
+    executeStep: showPostSetupSteps,
+  },
 ] as const;
 
 export async function runCli() {
@@ -77,13 +75,4 @@ export async function runCli() {
 
     state = nextState;
   }
-
-  console.log(getMetabaseInstanceSetupCompleteMessage(state.instanceUrl ?? ""));
-
-  if (!state.token) {
-    console.log(chalk.bold(PREMIUM_TOKEN_REQUIRED_MESSAGE));
-  }
-
-  printEmptyLines(1);
-  printInfo("All done! 🚀 You can now embed Metabase into your React app.");
 }

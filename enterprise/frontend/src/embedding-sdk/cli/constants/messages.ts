@@ -36,7 +36,6 @@ export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
 
 export const getGeneratedComponentFilesMessage = (path: string) => `
   Generated example React components files in "${path}".
-  You can import the <AnalyticsPage /> component in your React app.
 `;
 
 export const getEmbeddingFailedMessage = (reason: string) => `
@@ -49,9 +48,7 @@ export const getEmbeddingFailedMessage = (reason: string) => `
 export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
-  Metabase instance is ready for embedding.
-  Go to ${chalk.blue(instanceUrl)} to start using Metabase.
-
+  Metabase is running at ${chalk.blue(instanceUrl)}
   You can find your login credentials at METABASE_LOGIN.json
   Don't forget to put this file in your .gitignore.
 
@@ -65,18 +62,9 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;
 
-export const getExpressServerGeneratedMessage = (filePath: string) => {
-  const NPM_INSTALL_DEPS_COMMAND = chalk.blue(
-    "npm install express express-session jsonwebtoken cors node-fetch@2",
-  );
-
-  return `
+export const getExpressServerGeneratedMessage = (filePath: string) => `
   Generated an example Express.js server in "${filePath}".
-  Add the dependencies with "${NPM_INSTALL_DEPS_COMMAND}"
-
-  Start the server with "node ${filePath}".
 `;
-};
 
 export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
   At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
