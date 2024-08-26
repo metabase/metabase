@@ -53,7 +53,7 @@ const HomeInitialOptionsView = ({
     <div
       style={{ display: "flex", gap: "16px", width: "100%", marginTop: "3rem" }}
     >
-      {candidate?.tables.slice(0, 3).map((table, index) => (
+      {candidate?.tables.slice(0, 4).map((table, index) => (
         <HomeXrayCard
           key={table.url}
           title={table.title}
