@@ -9,7 +9,7 @@ interface LegendItemDotProps {
 }
 
 export function LegendItemDot({
-  isVisible,
+  isVisible = true,
   color,
   onClick,
 }: LegendItemDotProps) {
