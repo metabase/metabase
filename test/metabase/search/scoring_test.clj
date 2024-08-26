@@ -164,27 +164,27 @@
             (match "toucan")
             (no-match "things")]
            (context
-            ["rasta" "toucan"]
-            ["this" "is" "rasta" "toucan's" "collection" "of" "toucan" "things"]))))
+             ["rasta" "toucan"]
+             ["this" "is" "rasta" "toucan's" "collection" "of" "toucan" "things"]))))
     (testing "it handles no matches"
       (is (= [(no-match "aviary stats")]
              (context
-              ["rasta" "toucan"]
-              ["aviary" "stats"]))))
+               ["rasta" "toucan"]
+               ["aviary" "stats"]))))
     (testing "it abbreviates when necessary"
       (is (= [(no-match "one two…eleven twelve")
               (match "rasta toucan")
               (no-match "alpha beta…the end")]
              (context
-              (tokens '(rasta toucan))
-              (tokens '(one
-                        two
-                        this should not be included
-                        eleven twelve
-                        rasta toucan
-                        alpha beta
-                        some other noise
-                        the end))))))))
+               (tokens '(rasta toucan))
+               (tokens '(one
+                         two
+                         this should not be included
+                         eleven twelve
+                         rasta toucan
+                         alpha beta
+                         some other noise
+                         the end))))))))
 
 (deftest ^:parallel pinned-score-test
   (let [score #'scoring/pinned-score
@@ -299,7 +299,6 @@
                      {:weight 100 :score 0 :name "Some other score type"}])]
       (is (= 0 (:score (scoring/score-and-result {:name "racing yo" :model "card"}
                                                  {:search-string "" :search-native-query nil})))))))
-
 
 (deftest ^:parallel force-weight-test
   (is (= [{:weight 10}]

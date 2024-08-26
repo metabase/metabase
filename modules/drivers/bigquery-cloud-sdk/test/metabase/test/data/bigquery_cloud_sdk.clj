@@ -1,7 +1,6 @@
 (ns metabase.test.data.bigquery-cloud-sdk
   (:require
    [clojure.string :as str]
-   [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -18,7 +17,7 @@
    [metabase.util.malli.registry :as mr])
   (:import
    (com.google.cloud.bigquery BigQuery BigQuery$DatasetDeleteOption BigQuery$DatasetListOption BigQuery$DatasetOption
-                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field
+                              BigQuery$TableListOption BigQuery$TableOption Dataset DatasetId DatasetInfo Field Field$Mode
                               InsertAllRequest InsertAllRequest$RowToInsert InsertAllResponse LegacySQLTypeName Schema
                               StandardTableDefinition TableId TableInfo TableResult)))
 
@@ -114,32 +113,64 @@
       (flush)
       (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil))))
 
-(def ^:private valid-field-types
-  #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
-
-;; Fields must contain only letters, numbers, spaces, and underscores, start with a letter or underscore, and be at most 128
-;; characters long.
-(def ^:private ValidFieldName
-  [:re #"^[A-Za-z_](\w| ){0,127}$"])
-
 (mu/defn- delete-table!
   [dataset-id :- ::lib.schema.common/non-blank-string
    table-id   :- ::lib.schema.common/non-blank-string]
   (.delete (bigquery) (TableId/of dataset-id table-id))
   (log/error (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
+(defn base-type->bigquery-type [base-type]
+  (let [types {:type/BigInteger     :INTEGER
+               :type/Boolean        :BOOLEAN
+               :type/Date           :DATE
+               :type/DateTime       :DATETIME
+               :type/DateTimeWithTZ :TIMESTAMP
+               :type/Decimal        :NUMERIC
+               :type/Dictionary     :RECORD
+               :type/Float          :FLOAT
+               :type/Integer        :INTEGER
+               :type/Text           :STRING
+               :type/Time           :TIME}]
+    (or (get types base-type)
+        (some base-type->bigquery-type (parents base-type)))))
+
+;; Fields must contain only letters, numbers, spaces, and underscores, start with a letter or underscore, and be at most 128
+;; characters long.
+(def ^:private ValidFieldName
+  [:re #"^[A-Za-z_](\w| ){0,127}$"])
+
+(mu/defn- valid-field-name :- ValidFieldName
+  ^String [field-name]
+  field-name)
+
+(defn- field-definitions->Fields [field-definitions]
+  (into
+   []
+   (map (fn [{:keys [field-name base-type nested-fields collection-type]}]
+          (let [field-type (or (some-> collection-type base-type->bigquery-type)
+                               (base-type->bigquery-type base-type)
+                               (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
+                                 (log/error (u/format-color 'red message))
+                                 (throw (ex-info message {:metabase.util/no-auto-retry? true}))))
+                builder (Field/newBuilder
+                         (valid-field-name field-name)
+                         (LegacySQLTypeName/valueOf (name field-type))
+                         ^"[Lcom.google.cloud.bigquery.Field;" (into-array Field (field-definitions->Fields nested-fields)))]
+            (cond-> builder
+              (isa? :type/Collection base-type) (.setMode Field$Mode/REPEATED)
+              :always (.build)))))
+   field-definitions))
+
 (mu/defn- create-table!
   [^String dataset-id :- ::lib.schema.common/non-blank-string
-   ^String table-id   :- ::lib.schema.common/non-blank-string
-   field-name->type   :- [:map-of ValidFieldName (into [:enum] valid-field-types)]]
+   ^String table-id :- ::lib.schema.common/non-blank-string
+   field-definitions]
   (u/ignore-exceptions
     (delete-table! dataset-id table-id))
   (let [tbl-id (TableId/of dataset-id table-id)
-        schema (Schema/of (u/varargs Field (for [[^String field-name field-type] field-name->type]
-                                             (Field/of
-                                              field-name
-                                              (LegacySQLTypeName/valueOf (name field-type))
-                                              (u/varargs Field [])))))
+        schema (Schema/of (u/varargs Field (field-definitions->Fields (cons {:field-name "id"
+                                                                             :base-type :type/Integer}
+                                                                            field-definitions))))
         tbl    (TableInfo/of tbl-id (StandardTableDefinition/of schema))]
     (.create (bigquery) tbl (u/varargs BigQuery$TableOption)))
   ;; now verify that the Table was created
@@ -247,34 +278,6 @@
             (log/error (u/format-color 'red error-message))
             (throw (ex-info error-message {:metabase.util/no-auto-retry? true}))))))))
 
-(defn base-type->bigquery-type [base-type]
-  (let [types {:type/BigInteger     :INTEGER
-               :type/Boolean        :BOOLEAN
-               :type/Date           :DATE
-               :type/DateTime       :DATETIME
-               :type/DateTimeWithTZ :TIMESTAMP
-               :type/Decimal        :NUMERIC
-               :type/Dictionary     :RECORD
-               :type/Float          :FLOAT
-               :type/Integer        :INTEGER
-               :type/Text           :STRING
-               :type/Time           :TIME}]
-    (or (get types base-type)
-        (some base-type->bigquery-type (parents base-type)))))
-
-(defn- fielddefs->field-name->base-type
-  "Convert `field-definitions` to a format appropriate for passing to `create-table!`."
-  [field-definitions]
-  (into
-   (ordered-map/ordered-map)
-   (cons
-    ["id" :INTEGER]
-    (for [{:keys [field-name base-type]} field-definitions]
-      [field-name (or (base-type->bigquery-type base-type)
-                      (let [message (format "Don't know what BigQuery type to use for base type: %s" base-type)]
-                        (log/error (u/format-color 'red message))
-                        (throw (ex-info message {:metabase.util/no-auto-retry? true}))))]))))
-
 (defn- tabledef->prepared-rows
   "Convert `table-definition` to a format approprate for passing to `insert-data!`."
   [{:keys [field-definitions rows]}]
@@ -286,7 +289,7 @@
 
 (defn- load-tabledef! [dataset-id {:keys [table-name field-definitions], :as tabledef}]
   (let [table-name (normalize-name table-name)]
-    (create-table! dataset-id table-name (fielddefs->field-name->base-type field-definitions))
+    (create-table! dataset-id table-name field-definitions)
     ;; retry the `insert-data!` step up to 5 times because it seens to fail silently a lot. Since each row is given a
     ;; unique key it shouldn't result in duplicates.
     (loop [num-retries 5]

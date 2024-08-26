@@ -229,7 +229,7 @@
       (testing "When we have multiple FieldValues rows in the database, we always return the most recently updated row"
         (is (=? {field-id-1 {:values ["c" "d"]}
                  field-id-2 {:values ["e" "f"]}}
-               (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
+                (field-values/batched-get-latest-full-field-values [field-id-1 field-id-2 field-id-3])))
         (testing "and older values are implicitly deleted"
           (is (= 1 (count (t2/select FieldValues :field_id field-id-1 :type :full)))))))))
 
@@ -383,10 +383,10 @@
 
 (deftest update-field-values-hook-test
   (t2.with-temp/with-temp [FieldValues {full-id :id}    {:field_id (mt/id :venues :id)
-                                                             :type     :full}
+                                                         :type     :full}
                            FieldValues {sandbox-id :id} {:field_id (mt/id :venues :id)
-                                                             :type     :sandbox
-                                                             :hash_key "random-hash"}]
+                                                         :type     :sandbox
+                                                         :hash_key "random-hash"}]
     (testing "The model hooks prevent us changing the intrinsic identity of a field values"
       (doseq [[id update-map] [[sandbox-id {:field_id 1}]
                                [sandbox-id {:type :full}]

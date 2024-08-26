@@ -69,7 +69,6 @@
   (is (= false
          (valid-period? #t "2015-01" #t "2015-02" nil))))
 
-
 ;; Make sure we don't return nosense results like infinitiy coeficients
 ;; Fixes https://github.com/metabase/metabase/issues/9070
 
@@ -114,12 +113,12 @@
 (deftest ^:parallel round-to-precision-test
   (are [exp figs n] (= exp
                        (round-to-precision figs n))
-       1.0     1 1.234
-       1.2     2 1.234
-       1.3     2 1.278
-       1.3     2 1.251
-       12300.0 3 12345.67
-       0.00321 3 0.003209817))
+    1.0     1 1.234
+    1.2     2 1.234
+    1.3     2 1.278
+    1.3     2 1.251
+    12300.0 3 12345.67
+    0.00321 3 0.003209817))
 
 (deftest timeseries-insight-test
   (is (= [{:last-value     144,

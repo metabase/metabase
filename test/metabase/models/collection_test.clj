@@ -139,7 +139,6 @@
            (t2/update! Collection (u/the-id collection)
                        {:name ""}))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections Helper Fns & Macros                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -199,7 +198,6 @@
           (recur
            (str/replace path (re-pattern (str "/" id "/")) (str "/" (id->name id) "/"))
            more))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Nested Collections: Location Paths                                       |
@@ -514,7 +512,6 @@
       (is (= 2
              (t2/count Collection :id [:in (map u/the-id [a b c d e f g])]))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Ancestors & Effective Ancestors                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -551,7 +548,6 @@
   (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
     (is (= [[] []]
            (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Descendants & Effective Children                              |
@@ -649,8 +645,6 @@
                                       :location    "/A/"
                                       :children    #{}}}})))))
 
-
-
 (deftest descendant-ids-test
   (testing "double-check that descendant-ids is working right too"
     (t2.with-temp/with-temp [Collection a {}
@@ -658,7 +652,6 @@
                              Collection c {:location (collection/children-location b)}]
       (is (= #{(u/the-id b) (u/the-id c)}
              (#'collection/descendant-ids a))))))
-
 
 ;;; ----------------------------------------------- Effective Children -----------------------------------------------
 
@@ -841,7 +834,6 @@
              Exception
              (collection/perms-for-archiving input)))))))
 
-
 ;;; ------------------------------------------------ Perms for Moving ------------------------------------------------
 
 ;; `*` marks the things that require permissions in charts below!
@@ -946,7 +938,6 @@
              Exception
              (collection/perms-for-moving collection new-parent)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     Nested Collections: Moving Collections                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1042,7 +1033,6 @@
                    "G" {}}}
              (collection-locations (vals collections)))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Nested Collections: Archiving/Unarchiving                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1113,7 +1103,7 @@
     (testing (format "Test that archiving applies to %ss" (name model))
       ;; object is in E; archiving E should cause object to be archived
       (with-collection-hierarchy! [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                  {:namespace "snippets"})]
+                                                                   {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! e)
           (is (= true
@@ -1122,7 +1112,7 @@
     (testing (format "Test that archiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; archiving C should cause object to be archived
       (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                    {:namespace "snippets"})]
+                                                                     {:namespace "snippets"})]
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e)}]
           (archive-collection! c)
           (is (= true
@@ -1133,7 +1123,7 @@
     (testing (format "Test that unarchiving applies to %ss" (name model))
       ;; object is in E; unarchiving E should cause object to be unarchived
       (with-collection-hierarchy! [{:keys [e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                  {:namespace "snippets"})]
+                                                                   {:namespace "snippets"})]
         (archive-collection! e)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
           (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id e)))
@@ -1143,7 +1133,7 @@
     (testing (format "Test that unarchiving applies to %ss belonging to descendant Collections" (name model))
       ;; object is in E, a descendant of C; unarchiving C should cause object to be unarchived
       (with-collection-hierarchy! [{:keys [c e], :as _collections} (when (= model NativeQuerySnippet)
-                                                                    {:namespace "snippets"})]
+                                                                     {:namespace "snippets"})]
         (archive-collection! c)
         (t2.with-temp/with-temp [model object {:collection_id (u/the-id e), :archived true}]
           (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id c)))
@@ -1160,12 +1150,12 @@
   ;; we can reuse the `perms-path-ids->names` helper function from above, just need to stick `collection` in a map
   ;; to simulate the output of the `with-collection-hierarchy` macro
   (perms-path-ids->names
-    (zipmap (map :name collections)
-            collections)
-    (t2/select-fn-set :object Permissions
-                      {:where [:and
-                               [:like :object "/collection/%"]
-                               [:= :group_id (u/the-id perms-group)]]})))
+   (zipmap (map :name collections)
+           collections)
+   (t2/select-fn-set :object Permissions
+                     {:where [:and
+                              [:like :object "/collection/%"]
+                              [:= :group_id (u/the-id perms-group)]]})))
 
 (deftest copy-root-collection-perms-test
   (testing (str "Make sure that when creating a new Collection at the Root Level, we copy the group permissions for "
@@ -1259,7 +1249,6 @@
                                Collection grandchild {:location (collection/children-location child)}]
         (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id child))])))
         (is (not (t2/exists? Permissions :object [:like (format "/collection/%d/%%" (u/the-id grandchild))])))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Personal Collections                                              |
@@ -1416,7 +1405,6 @@
                "/collection/B/"
                "/collection/C/"}
              (group->perms [a b c] group))))))
-
 
 ;;; --------------------------------------------- Impersonal -> Personal ---------------------------------------------
 

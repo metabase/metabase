@@ -43,7 +43,6 @@
         (is (= 1
                (t2/update! LegacyMetric id {:creator_id (mt/user->id :rasta)})))))))
 
-
 ;; ## Metric Revisions
 
 (deftest serialize-metric-test
@@ -80,9 +79,9 @@
               :name        {:before "Toucans in the rainforest"
                             :after  "Something else"}}
              (revision/diff-map LegacyMetric metric (assoc metric
-                                                     :name        "Something else"
-                                                     :description "BBB"
-                                                     :definition  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]})))))
+                                                           :name        "Something else"
+                                                           :description "BBB"
+                                                           :definition  {:filter [:between [:field 4 nil] "2014-07-01" "2014-10-19"]})))))
 
     (testing "test case where definition doesn't change"
       (is (= {:name {:before "A"
