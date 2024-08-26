@@ -43,9 +43,11 @@
 
      {:resource {:question <card-id>}}"
   [token]
-  (let [unsigned (embed/unsign token)]
-    (api.embed.common/check-embedding-enabled-for-card (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
-    (u/prog1 (api.embed.common/card-for-unsigned-token unsigned, :constraints [:enable_embedding true])
+  (let [unsigned (embed/unsign token)
+        pre-card-id (u/the-id (embed/get-in-unsigned-token-or-throw unsigned [:resource :question]))
+        card-id (api.embed.common/->id :model/Card pre-card-id)]
+    (api.embed.common/check-embedding-enabled-for-card card-id)
+    (u/prog1 (api.embed.common/card-for-unsigned-token unsigned :constraints [:enable_embedding true])
       (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question}))))
 
 (defn ^:private run-query-for-unsigned-token-async
@@ -55,7 +57,8 @@
                                                 :or   {constraints (qp.constraints/default-query-constraints)
                                                        qp          qp.card/process-query-for-card-default-qp}
                                                 :as   options}]
-  (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+  (let [pre-card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card-id     (api.embed.common/->id :model/Card pre-card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/process-query-for-card-with-params
      :export-format     export-format
@@ -121,14 +124,15 @@
    & {:keys [constraints qp middleware]
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
-  (let [unsigned-token (embed/unsign token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+  (let [unsigned-token   (embed/unsign token)
+        pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id     (api.embed.common/->id :model/Dashboard pre-dashboard-id)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.embed.common/process-query-for-dashcard
      :export-format    export-format
      :dashboard-id     dashboard-id
-     :dashcard-id      dashcard-id
-     :card-id          card-id
+     :dashcard-id      (api.embed.common/->id :model/Dashcard dashcard-id)
+     :card-id          (api.embed.common/->id :model/Card card-id)
      :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
      :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
      :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows))
@@ -142,9 +146,11 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
-                                                         (api.embed.common/parse-query-params query-params))
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (let [dashcard-id (api.embed.common/->id :model/Dashcard dashcard-id)
+        card-id (api.embed.common/->id :model/Card card-id)]
+    (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
+                                                           (api.embed.common/parse-query-params query-params))
+      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -157,7 +163,8 @@
   [token field-id]
   {field-id ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        pre-card-id    (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card-id        (api.embed.common/->id :model/Card pre-card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-and-field-id->values card-id field-id)))
 
@@ -166,8 +173,9 @@
   [token field-id]
   {field-id ms/PositiveInt}
   (let [unsigned-token (embed/unsign token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
-    (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
+        pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id (api.embed.common/->id :model/Dashboard pre-dashboard-id)]
+    (api.embed.common/check-embedding-enabled-for-dashboard #p dashboard-id)
     (api.public/dashboard-and-field-id->values dashboard-id field-id)))
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
@@ -180,7 +188,8 @@
    value           ms/NonBlankString
    limit           [:maybe ms/PositiveInt]}
   (let [unsigned-token (embed/unsign token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        pre-card-id    (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card-id        (api.embed.common/->id :model/Card pre-card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/search-card-fields card-id field-id search-field-id value (when limit (Integer/parseInt limit)))))
 
@@ -191,8 +200,9 @@
    search-field-id ms/PositiveInt
    value           ms/NonBlankString
    limit           [:maybe ms/PositiveInt]}
-  (let [unsigned-token (embed/unsign token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+  (let [unsigned-token   (embed/unsign token)
+        pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id     (api.embed.common/->id :model/Dashboard pre-dashboard-id)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/search-dashboard-fields dashboard-id field-id search-field-id value (when limit
                                                                                       (Integer/parseInt limit)))))
@@ -207,7 +217,8 @@
    remapped-id ms/PositiveInt
    value       ms/NonBlankString}
   (let [unsigned-token (embed/unsign token)
-        card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
+        pre-card-id    (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
+        card-id        (api.embed.common/->id :model/Card pre-card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.public/card-field-remapped-values card-id field-id remapped-id value)))
 
@@ -218,8 +229,9 @@
   {field-id    ms/PositiveInt
    remapped-id ms/PositiveInt
    value       ms/NonBlankString}
-  (let [unsigned-token (embed/unsign token)
-        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
+  (let [unsigned-token   (embed/unsign token)
+        pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id     (api.embed.common/->id :model/Dashboard pre-dashboard-id)]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard-id)
     (api.public/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
@@ -232,15 +244,17 @@
    card-id       ms/PositiveInt
    format_rows   [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
-  (process-query-for-dashcard-with-signed-token token
-                                                dashcard-id
-                                                card-id
-                                                export-format
-                                                (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
-                                                :constraints nil
-                                                :middleware {:process-viz-settings? true
-                                                             :js-int-to-string?     false
-                                                             :format-rows?          format_rows}))
+  (let [dashcard-id (api.embed.common/->id :model/Dashcard dashcard-id)
+        card-id (api.embed.common/->id :model/Card card-id)]
+    (process-query-for-dashcard-with-signed-token token
+                                                  dashcard-id
+                                                  card-id
+                                                  export-format
+                                                  (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
+                                                  :constraints nil
+                                                  :middleware {:process-viz-settings? true
+                                                               :js-int-to-string?     false
+                                                               :format-rows?          format_rows})))
 
 ;;; ----------------------------------------------- Param values -------------------------------------------------
 
@@ -265,9 +279,10 @@
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
   [token param-key]
-  (let [unsigned (embed/unsign token)
-        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        card     (t2/select-one Card :id card-id)]
+  (let [unsigned    (embed/unsign token)
+        pre-card-id (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card-id     (api.embed.common/->id :model/Card pre-card-id)
+        card        (t2/select-one Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card           card
@@ -276,9 +291,10 @@
 (api/defendpoint GET "/card/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix]
-  (let [unsigned (embed/unsign token)
-        card-id  (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
-        card     (t2/select-one Card :id card-id)]
+  (let [unsigned    (embed/unsign token)
+        pre-card-id (embed/get-in-unsigned-token-or-throw unsigned [:resource :question])
+        card-id     (api.embed.common/->id :model/Card pre-card-id)
+        card        (t2/select-one Card :id card-id)]
     (api.embed.common/check-embedding-enabled-for-card card-id)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card           card
@@ -303,9 +319,10 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id
-                                                         :api (api.embed.common/parse-query-params query-params)
-                                                         :qp qp.pivot/run-pivot-query)
-    (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
+  (let [card-id (api.embed.common/->id :model/Card card-id)]
+    (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id
+                                                           :api (api.embed.common/parse-query-params query-params)
+                                                           :qp qp.pivot/run-pivot-query)
+      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
 (api/define-routes)

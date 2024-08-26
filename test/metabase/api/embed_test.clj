@@ -969,8 +969,8 @@
 
 (defn- do-with-embedding-enabled-and-temp-card-referencing! [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
-    (t2.with-temp/with-temp [Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
-                                              :enable_embedding true)]
+    (t2.with-temp/with-temp [:model/Card card (assoc (public-test/mbql-card-referencing table-kw field-kw)
+                                                     :enable_embedding true)]
       (f card))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-card-referencing!
@@ -1065,14 +1065,14 @@
 
 (defn- do-with-embedding-enabled-and-temp-dashcard-referencing! [table-kw field-kw f]
   (with-embedding-enabled-and-new-secret-key!
-    (mt/with-temp [Dashboard     dashboard {:enable_embedding true}
-                   Card          card      (public-test/mbql-card-referencing table-kw field-kw)
-                   DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
-                                            :card_id            (u/the-id card)
-                                            :parameter_mappings [{:card_id (u/the-id card)
-                                                                  :target  [:dimension
-                                                                            [:field
-                                                                             (mt/id table-kw field-kw) nil]]}]}]
+    (mt/with-temp [:model/Dashboard     dashboard {:enable_embedding true}
+                   :model/Card          card      (public-test/mbql-card-referencing table-kw field-kw)
+                   :model/DashboardCard dashcard  {:dashboard_id       (u/the-id dashboard)
+                                                   :card_id            (u/the-id card)
+                                                   :parameter_mappings [{:card_id (u/the-id card)
+                                                                         :target  [:dimension
+                                                                                   [:field
+                                                                                    (mt/id table-kw field-kw) nil]]}]}]
       (f dashboard card dashcard))))
 
 (defmacro ^:private with-embedding-enabled-and-temp-dashcard-referencing!
@@ -1160,57 +1160,97 @@
 
 ;;; ----------------------- GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil ------------------------
 
-(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id]
+(defn- field-remapping-url [card-or-dashboard field-or-id remapped-field-or-id & [use-entity-ids?]]
   (str "embed/"
        (condp mi/instance-of? card-or-dashboard
-         Card      (str "card/"      (card-token card-or-dashboard))
-         Dashboard (str "dashboard/" (dash-token card-or-dashboard)))
+         Card      (str "card/"      (card-token card-or-dashboard
+                                                 (when use-entity-ids? {:resource {:question (:entity_id card-or-dashboard)}})))
+         Dashboard (str "dashboard/" (dash-token card-or-dashboard
+                                                 (when use-entity-ids? {:resource {:dashboard (:entity_id card-or-dashboard)}}))))
        "/field/" (u/the-id field-or-id)
        "/remapping/" (u/the-id remapped-field-or-id)))
 
 (deftest field-remapping-test
-  (letfn [(tests [model object]
+  (letfn [(tests [model object & [use-entity-ids?]]
             (testing (str "we should be able to use the API endpoint and get the same results we get by calling the "
                           "function above directly")
               (is (= [10 "Fred 62"]
-                     (client/client :get 200 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
+                     (client/client :get 200 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :name) use-entity-ids?)
                                     :value "10"))))
             (testing " ...or if the remapping Field isn't allowed to be used with the other Field"
               (is (= "Invalid Request."
-                     (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :price))
+                     (client/client :get 400 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :price) use-entity-ids?)
                                     :value "10"))))
 
             (testing " ...or if embedding is disabled"
               (mt/with-temporary-setting-values [enable-embedding false]
                 (is (= "Embedding is not enabled."
-                       (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
+                       (client/client :get 400 (field-remapping-url
+                                                object (mt/id :venues :id) (mt/id :venues :name) use-entity-ids?)
                                       :value "10")))))
 
             (testing " ...or if embedding is disabled for the Card/Dashboard"
               (t2/update! model (u/the-id object) {:enable_embedding false})
               (is (= "Embedding is not enabled for this object."
-                     (client/client :get 400 (field-remapping-url object (mt/id :venues :id) (mt/id :venues :name))
+                     (client/client :get 400 (field-remapping-url
+                                              object (mt/id :venues :id) (mt/id :venues :name) use-entity-ids?)
                                     :value "10")))))]
 
-    (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
-      (testing "Get remapped Field values for a Card"
-        (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
-          (tests Card card)))
-      (testing "Shouldn't work if Card doesn't reference the Field in question"
-        (with-embedding-enabled-and-temp-card-referencing! :venues :price [card]
-          (is (= "Not found."
-                 (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
-                                :value "10"))))))
+    (testing "with sequential ids"
+      (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Card"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+            (tests :model/Card card)))
+        (testing "Get remapped Field values for a Card with entity-ids"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+            (tests :model/Card card :use-entity-ids)))
+        (testing "Shouldn't work if Card doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :price [card]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name))
+                                  :value "10"))))))
 
-    (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
-      (testing "Get remapped Field values for a Dashboard"
-        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
-          (tests Dashboard dashboard)))
-      (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
-        (with-embedding-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
-          (is (= "Not found."
-                 (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
-                                :value "10"))))))))
+      (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Dashboard"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+            (tests :model/Dashboard dashboard)))
+        (testing "Get remapped Field values for a Dashboard with entity-ids"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+            (tests :model/Dashboard dashboard :use-entity-ids)))
+        (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name))
+                                  :value "10")))))))
+
+    (testing "with entity ids"
+      (testing "GET /api/embed/card/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Card"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+            (tests :model/Card card)))
+        (testing "Get remapped Field values for a Card with entity-ids"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :id [card]
+            (tests :model/Card card :use-entity-ids)))
+        (testing "Shouldn't work if Card doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-card-referencing! :venues :price [card]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url card (mt/id :venues :id) (mt/id :venues :name) :use-entity-ids)
+                                  :value "10"))))))
+
+      (testing "GET /api/embed/dashboard/:token/field/:field/remapping/:remapped-id nil"
+        (testing "Get remapped Field values for a Dashboard"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+            (tests :model/Dashboard dashboard)))
+        (testing "Get remapped Field values for a Dashboard with entity-ids"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :id [dashboard]
+            (tests :model/Dashboard dashboard :use-entity-ids)))
+        (testing "Shouldn't work if Dashboard doesn't reference the Field in question"
+          (with-embedding-enabled-and-temp-dashcard-referencing! :venues :price [dashboard]
+            (is (= "Not found."
+                   (client/client :get 400 (field-remapping-url dashboard (mt/id :venues :id) (mt/id :venues :name) :use-entity-ids)
+                                  :value "10")))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
@@ -1745,8 +1785,8 @@
 
 (deftest entity-id-single-card-translations-test
   (mt/with-temp
-    [:model/Card {id   :id eid   :entity_id} {}]
-    (is (= {eid   {:id id   :type :card}}
+    [:model/Card {id :id eid :entity_id} {}]
+    (is (= {eid   {:id id :type :card :status "ok"}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
 (deftest entity-id-card-translations-test
@@ -1758,13 +1798,13 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid   {:id id   :type :card}
-            eid-0 {:id id-0 :type :card}
-            eid-1 {:id id-1 :type :card}
-            eid-2 {:id id-2 :type :card}
-            eid-3 {:id id-3 :type :card}
-            eid-4 {:id id-4 :type :card}
-            eid-5 {:id id-5 :type :card}}
+    (is (= {eid   {:id id   :type :card :status "ok"}
+            eid-0 {:id id-0 :type :card :status "ok"}
+            eid-1 {:id id-1 :type :card :status "ok"}
+            eid-2 {:id id-2 :type :card :status "ok"}
+            eid-3 {:id id-3 :type :card :status "ok"}
+            eid-4 {:id id-4 :type :card :status "ok"}
+            eid-5 {:id id-5 :type :card :status "ok"}}
            (api.embed.common/model->entity-ids->ids {:card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
 (deftest entity-id-mixed-translations-test
@@ -1785,35 +1825,35 @@
      :model/Pulse              {pulse_id                :id pulse_eid                :entity_id} {}
      :model/PulseCard          {pulse_card_id           :id pulse_card_eid           :entity_id} {:pulse_id pulse_id :card_id card-id}
      :model/PulseChannel       {pulse_channel_id        :id pulse_channel_eid        :entity_id} {:pulse_id pulse_id}
-     :model/Card               {report_card_id          :id report_card_eid          :entity_id} {}
-     :model/Dashboard          {report_dashboard_id     :id report_dashboard_eid     :entity_id} {}
-     :model/DashboardTab       {dashboard_tab_id        :id dashboard_tab_eid        :entity_id} {:dashboard_id report_dashboard_id}
-     :model/DashboardCard      {report_dashboardcard_id :id report_dashboardcard_eid :entity_id} {:dashboard_id report_dashboard_id}
+     :model/Card               {card_id                 :id card_eid                 :entity_id} {}
+     :model/Dashboard          {dashboard_id            :id dashboard_eid            :entity_id} {}
+     :model/DashboardTab       {dashboard_tab_id        :id dashboard_tab_eid        :entity_id} {:dashboard_id dashboard_id}
+     :model/DashboardCard      {dashboardcard_id        :id dashboardcard_eid        :entity_id} {:dashboard_id dashboard_id}
      :model/Segment            {segment_id              :id segment_eid              :entity_id} {}
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
-      (is (= {action_eid               {:id action_id :type :action}
-              collection_eid           {:id collection_id :type :collection}
-              core_user_eid            {:id core_user_id :type :user}
-              dashboard_tab_eid        {:id dashboard_tab_id :type :dashboard-tab}
-              dimension_eid            {:id dimension_id :type :dimension}
-              native_query_snippet_eid {:id native_query_snippet_id :type :snippet}
-              permissions_group_eid    {:id permissions_group_id :type :permissions-group}
-              pulse_eid                {:id pulse_id :type :pulse}
-              pulse_card_eid           {:id pulse_card_id :type :pulse-card}
-              pulse_channel_eid        {:id pulse_channel_id :type :pulse-channel}
-              report_card_eid          {:id report_card_id :type :card}
-              report_dashboard_eid     {:id report_dashboard_id :type :dashboard}
-              report_dashboardcard_eid {:id report_dashboardcard_id :type :dashboard-card}
-              segment_eid              {:id segment_id :type :segment}
-              timeline_eid             {:id timeline_id :type :timeline}}
+      (is (= {action_eid               {:id action_id               :type :action            :status "ok"}
+              collection_eid           {:id collection_id           :type :collection        :status "ok"}
+              core_user_eid            {:id core_user_id            :type :user              :status "ok"}
+              dashboard_tab_eid        {:id dashboard_tab_id        :type :dashboard-tab     :status "ok"}
+              dimension_eid            {:id dimension_id            :type :dimension         :status "ok"}
+              native_query_snippet_eid {:id native_query_snippet_id :type :snippet           :status "ok"}
+              permissions_group_eid    {:id permissions_group_id    :type :permissions-group :status "ok"}
+              pulse_eid                {:id pulse_id                :type :pulse             :status "ok"}
+              pulse_card_eid           {:id pulse_card_id           :type :pulse-card        :status "ok"}
+              pulse_channel_eid        {:id pulse_channel_id        :type :pulse-channel     :status "ok"}
+              card_eid                 {:id card_id                 :type :card              :status "ok"}
+              dashboard_eid            {:id dashboard_id            :type :dashboard         :status "ok"}
+              dashboardcard_eid        {:id dashboardcard_id        :type :dashboard-card    :status "ok"}
+              segment_eid              {:id segment_id              :type :segment           :status "ok"}
+              timeline_eid             {:id timeline_id             :type :timeline          :status "ok"}}
              (api.embed.common/model->entity-ids->ids
               {:action            [action_eid]
-               :card              [report_card_eid]
+               :card              [card_eid]
                :collection        [collection_eid]
-               :dashboard         [report_dashboard_eid]
-               :dashboard-card    [report_dashboardcard_eid]
+               :dashboard         [dashboard_eid]
+               :dashboard-card    [dashboardcard_eid]
                :dashboard-tab     [dashboard_tab_eid]
                :dimension         [dimension_eid]
                :permissions-group [permissions_group_eid]
@@ -1828,3 +1868,10 @@
 (deftest missing-entity-translations-test
   (is (= {"abcdefghijklmnopqrstu" {:type :card, :status "not-found"}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))
+
+(deftest wrong-format-entity-translations-test
+  (is (= {"abcdefghijklmnopqrst"
+          {:type :card,
+           :status "invalid-format",
+           :reason ["\"abcdefghijklmnopqrst\" should be 21 characters long, but it is 20"]}}
+         (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrst"]}))))
