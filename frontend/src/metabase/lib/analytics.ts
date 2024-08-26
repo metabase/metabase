@@ -21,7 +21,7 @@ export const trackSchemaEvent = <TData extends object>(
   /**  The data associated with the event. */
   data: { event: string } & TData,
   /** The context entities associated with the event. */
-  contextEntities?: object[],
+  contextEntities?: Snowplow.SelfDescribingJson<Record<string, unknown>>[],
 ): void => {
   if (shouldLogAnalytics) {
     const { event, ...other } = data;
@@ -65,7 +65,7 @@ export const trackActionEvent = (
     /** Can be used for additional details that describe the event, e.g. the type of question that was created in a question_created event. */
     eventDetail?: string;
     /** (Optional) Additional context entities (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/). We send the Metabase Instance context by default with each event. */
-    contextEntities?: object[];
+    contextEntities?: Snowplow.SelfDescribingJson<Record<string, unknown>>[];
   },
 ) => {
   const data = {
@@ -83,7 +83,7 @@ const trackSnowplowSchemaEvent = (
   schema: string,
   version: string,
   data: any,
-  contextEntities: object[] = [],
+  contextEntities: Snowplow.SelfDescribingJson<Record<string, unknown>>[] = [],
 ) => {
   Snowplow.trackSelfDescribingEvent({
     event: {
