@@ -94,6 +94,12 @@
                 {:status 200
                  :body   "Hello, world!"})))
 
+(def post-200
+  (make-route :post "/test_http_channel_200"
+              (fn [_]
+                {:status 200
+                 :body   "Hello, world!"})))
+
 (def get-302-redirect-200
   (make-route :get "/test_http_channel_302_redirect_200"
               (fn [_]
@@ -102,6 +108,12 @@
 
 (def get-400
   (make-route :get "/test_http_channel_400"
+              (fn [_]
+                {:status 400
+                 :body   "Bad request"})))
+
+(def post-400
+  (make-route :post "/test_http_channel_400"
               (fn [_]
                 {:status 400
                  :body   "Bad request"})))

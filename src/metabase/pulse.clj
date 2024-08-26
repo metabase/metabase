@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
+   [metabase.models.task-history :as task-history]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.util :as pu]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -265,24 +266,47 @@
          :email (:email recipient)}
         {:kind :user
          :user recipient}))
+    :http
+    []
     (do
      (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
      [])))
 
-(defn- channel-send!
-  [& args]
-  (try
-    (apply channel/send! args)
-    (catch Exception e
-      ;; Token errors have already been logged and we should not retry.
-      (when-not (and (= :channel/slack (:type (first args)))
-                     (contains? (:errors (ex-data e)) :slack-token))
-        (throw e)))))
+(defn- should-retry-sending?
+  [exception channel-type]
+  (and (= :channel/slack channel-type)
+       (contains? (:errors (ex-data exception)) :slack-token)))
 
 (defn- send-retrying!
-  [& args]
+  [pulse-id channel message]
   (try
-    (apply (retry/decorate channel-send!) args)
+    (let [;; once we upgraded to retry 2.x, we can use (.. retry getMetrics getNumberOfTotalCalls) instead of tracking
+          ;; this manually
+          retry-config (retry/retry-configuration)
+          retry-errors (volatile! [])
+          retry-report (fn []
+                         {:attempted-retries (count @retry-errors)
+                          :retry-errors       @retry-errors})
+          send!        (fn []
+                         (try
+                           (channel/send! channel message)
+                           (catch Exception e
+                             (vswap! retry-errors conj e)
+                             ;; Token errors have already been logged and we should not retry.
+                             (when-not (should-retry-sending? e (:type channel))
+                               (throw e)))))]
+      (task-history/with-task-history {:task            "channel-send"
+                                       :on-success-info (fn [update-map _result]
+                                                          (cond-> update-map
+                                                            (seq @retry-errors)
+                                                            (update :task_details merge (retry-report))))
+                                       :on-fail-info    (fn [update-map _result]
+                                                          (update update-map :task_details #(merge % (retry-report))))
+                                       :task_details    {:retry-config retry-config
+                                                         :channel-type (:type channel)
+                                                         :channel-id   (:id channel)
+                                                         :pulse-id     pulse-id}}
+        ((retry/decorate send! (retry/random-exponential-backoff-retry (str (random-uuid)) retry-config)))))
     (catch Throwable e
       (log/error e "Error sending notification!"))))
 
@@ -339,7 +363,7 @@
                                      (alert-or-pulse pulse)
                                      (:id pulse)
                                      (:channel_type pulse-channel))
-                         (send-retrying! channel message)))
+                         (send-retrying! pulse-id channel message)))
                      (catch Exception e
                        (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type pulse-channel)))))
           (when (:alert_first_only pulse)
