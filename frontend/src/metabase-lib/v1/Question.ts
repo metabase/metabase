@@ -4,7 +4,6 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-// NOTE: the order of these matters due to circular dependency issues
 import { utf8_to_b64url } from "metabase/lib/encoding";
 import * as Lib from "metabase-lib";
 import {
