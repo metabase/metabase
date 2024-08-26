@@ -63,7 +63,7 @@
             (nil? remaining) (recur nil)
             (> remaining 1)  (recur (dec remaining))))))
     (catch Exception e
-      (log/error e "Error attempting to analyse the next card in the queue"))))
+      (log/error e "Unhandled error when attempting to analyse the next card in the queue"))))
 
 (defn- analyzer-loop!
   ([]
