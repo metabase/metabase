@@ -71,6 +71,16 @@ export function getPieChartModel(
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
+  const rowIndiciesByKey = new Map<string | number, number>();
+  dataRows.forEach((row, index) => {
+    const key = getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]);
+
+    if (rowIndiciesByKey.has(key)) {
+      return;
+    }
+    rowIndiciesByKey.set(key, index);
+  });
+
   const aggregatedRows = getAggregatedRows(
     dataRows,
     colDescs.dimensionDesc.index,
@@ -121,14 +131,14 @@ export function getPieChartModel(
   }, 0);
 
   const [slices, others] = _.chain(pieRowsWithValues)
-    .map(({ value, color, key, name }, index): PieSliceData => {
+    .map(({ value, color, key, name }): PieSliceData => {
       return {
         key,
         name,
         value: isNonPositive ? -1 * value : value,
         displayValue: value,
         normalizedPercentage: value / total, // slice percentage values are normalized to 0-1 scale
-        rowIndex: index,
+        rowIndex: rowIndiciesByKey.get(key),
         color,
         isOther: false,
         noHover: false,
