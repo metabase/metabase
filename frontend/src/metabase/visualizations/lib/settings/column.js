@@ -1,28 +1,25 @@
-/* eslint-disable import/order */
-import { t } from "ttag";
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t } from "ttag";
 import _ from "underscore";
 
-import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
-import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
+import { currency } from "cljs/metabase.shared.util.currency";
 import {
   formatColumn,
   getCurrencySymbol,
   getDateFormatFromStyle,
   numberFormatterForOptions,
 } from "metabase/lib/formatting";
-
 import { hasHour } from "metabase/lib/formatting/datetime-utils";
-
-import { currency } from "cljs/metabase.shared.util.currency";
 import MetabaseSettings from "metabase/lib/settings";
+import ChartNestedSettingColumns from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
+import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
 import {
-  isCoordinate,
-  isCurrency,
-  isDate,
-  isDateWithoutTime,
-  isNumber,
-} from "metabase-lib/v1/types/utils/isa";
+  getDefaultCurrency,
+  getDefaultCurrencyInHeader,
+  getDefaultCurrencyStyle,
+  getDefaultNumberSeparators,
+  getDefaultNumberStyle,
+} from "metabase/visualizations/shared/settings/column";
 import {
   getColumnKey,
   getObjectColumnSettings,
@@ -31,14 +28,15 @@ import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
-import { nestedSettings } from "./nested";
 import {
-  getDefaultCurrency,
-  getDefaultCurrencyInHeader,
-  getDefaultCurrencyStyle,
-  getDefaultNumberSeparators,
-  getDefaultNumberStyle,
-} from "metabase/visualizations/shared/settings/column";
+  isCoordinate,
+  isCurrency,
+  isDate,
+  isDateWithoutTime,
+  isNumber,
+} from "metabase-lib/v1/types/utils/isa";
+
+import { nestedSettings } from "./nested";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
