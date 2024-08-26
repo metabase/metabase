@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { SimpleDateFilterPicker } from "../../FilterPicker";
+import { SimpleDateFilterPicker } from "../../FilterPicker/DateFilterPicker/SimpleDateFilterPicker";
 
 export interface TimeseriesFilterPickerProps {
   query: Lib.Query;
