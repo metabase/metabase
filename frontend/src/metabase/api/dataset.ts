@@ -2,6 +2,7 @@ import type {
   NativeQueryForm,
   DatasetQuery,
   CardQueryMetadata,
+  StructuredDatasetQuery,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -25,8 +26,17 @@ export const datasetApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getDataset: builder.query<any, StructuredDatasetQuery>({
+      query: body => ({
+        method: "POST",
+        url: "/api/dataset",
+        body,
+      }),
+      transformResponse: (response) => response,
+      providesTags: () => [{ type: 'card' as const, id: 'LIST' }],
+    }),
   }),
 });
 
-export const { useGetAdhocQueryMetadataQuery, useGetNativeDatasetQuery } =
+export const { useGetAdhocQueryMetadataQuery, useGetNativeDatasetQuery, useGetDatasetQuery } =
   datasetApi;

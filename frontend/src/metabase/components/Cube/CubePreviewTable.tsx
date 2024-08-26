@@ -3,21 +3,23 @@ import {
   useState,
 } from "react";
 import { useDispatch } from "metabase/lib/redux";
-import { CubeDataItem } from "metabase-types/api";
+import { CubeDataItem, DatasetQuery, StructuredDatasetQuery } from "metabase-types/api";
 import { extractCubeName } from "./utils";
-import { CardApi } from "metabase/services";
-import { loadMetadataForCard } from "metabase/questions/actions";
 import Question from "metabase-lib/v1/Question";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
 import CS from "metabase/css/core/index.css";
 import cx from "classnames";
 import LoadingSpinner from "../LoadingSpinner";
-import { useListDatabasesWithTablesQuery } from "metabase/api";
+import { useGetDatasetQuery, useListDatabasesWithTablesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
+import { skipToken } from '@reduxjs/toolkit/query';
+
+
 
 export interface CubeTableProps {
   cubeData: CubeDataItem;
   skeleton?: boolean;
+  dbId:number
 }
 
 export interface CubeResult {
@@ -30,14 +32,17 @@ export interface CubeResult {
   description:string;
 }
 
+
 export const itemsTableContainerName = "ItemsTableContainer";
 
 export const CubePreviewTable = ({
   cubeData,
   skeleton = false,
+  dbId
 }: CubeTableProps) => {
-  const [dbId, setDbId] = useState<number | null>(null)
+  // const [dbId, setDbId] = useState<number | null>(null)
   const [card, setCard] = useState<any>(null);
+  const [newQuery, setNewQuery] = useState<any>(null);
   const [result, setResult] = useState<any>(null);
   const [defaultQuestion, setDefaultQuestion] = useState<any>(null);
   const [codeQuery, setCodeQuery] = useState<any>(null);
@@ -46,11 +51,33 @@ export const CubePreviewTable = ({
   const databases = data?.data;
   const dispatch = useDispatch();
 
-  const cubeTable = extractCubeName(cubeData.content)
+const cubeTable = extractCubeName(cubeData.content)
 
-  if (error) {
-    return <LoadingAndErrorWrapper error />;
+const [question, setQuestion] = useState<StructuredDatasetQuery | typeof skipToken>(skipToken);
+
+useEffect(() => {
+  if (databases) {
+    const filteredDatabase = databases.find(db => db.id === dbId);
+    if (filteredDatabase && filteredDatabase.tables) {
+      const filteredTable = filteredDatabase.tables.find(table => table.name === cubeTable);
+      if (filteredTable) {
+        const questionData: StructuredDatasetQuery = {
+          database: filteredDatabase.id,
+            type: "query",                                  
+            query: {
+              "source-table": filteredTable.id,
+              limit: 50
+            },
+        };
+        setQuestion(questionData);
+        createCard(filteredDatabase.id, filteredTable.id as number)
+      }
+    }
   }
+}, [databases]);
+
+const { data: queryData, error: queryError, isLoading } = useGetDatasetQuery(question);
+
 
   async function createCard(db:number,table:number) {
     try {
@@ -67,89 +94,40 @@ export const CubePreviewTable = ({
         type: "question",
         name: `${db}-test`
       };
-      const card = await CardApi.create(cardData);
-      const queryCard = await CardApi.query({ cardId: card.id });
-
-      const cardMetadata:any = await dispatch(loadMetadataForCard(card));
-      const getDatasetQuery = card?.dataset_query;
 
       // Filtering and updating fields
-      const filteredQuery = queryCard.data.cols.filter(async (item: any) => {
-      const shouldFilter = !Object.values(item).some(value => 
-        typeof value === 'string' && (value.includes("__cubeJoinField") || value.includes("__user"))
-      );
-
-      if (!shouldFilter) {
-        const id = item.id; // Replace with how you get the ID from the item
-        const newVisibilityType: 'sensitive' = 'sensitive'; // Set visibility to sensitive
-
-        await updateFieldVisibility(id, newVisibilityType);
+      if(queryData && queryData.data) {
+        const filteredQuery = queryData.data.cols.filter(async (item: any) => {
+        const shouldFilter = !Object.values(item).some(value => 
+          typeof value === 'string' && (value.includes("__cubeJoinField") || value.includes("__user"))
+        );
+  
+        if (!shouldFilter) {
+          const id = item.id; // Replace with how you get the ID from the item
+          const newVisibilityType: 'sensitive' = 'sensitive'; // Set visibility to sensitive
+  
+          await updateFieldVisibility(id, newVisibilityType);
+        }
+  
+        return shouldFilter;
+      })
       }
-
-      return shouldFilter;
-    })
 
       const defaultQuestionTest = Question.create({
         databaseId: db,
-        name: card.name,
+        name: `${db}-test`,
         type: "query",
-        display: card.display,
-        visualization_settings: {},
-        dataset_query: getDatasetQuery,
-        metadata: cardMetadata.payload.entities
+        display: "table",
+        visualization_settings: {}
     });
       setLoading(false)
-      const newQuestion = defaultQuestionTest.setCard(card);
-      setResult(queryCard)
-      setCodeQuery(queryCard.data.native_form.query);
-      setDefaultQuestion(newQuestion);
-      setCard(card);
+      setDefaultQuestion(defaultQuestionTest);
+      setCard(cardData);
     } catch (error) {
       console.error("Error creating card:", error);
       throw error;
     }
   }
-
-  const tableFinder = (db:any) => {
-    const table = db[0].tables.filter((item:any) => item.name === cubeTable)
-    createCard(db[0].id, table[0].id)
-  }
-  
-  
-  const dbFinder = (databases:any) => {
-    if(databases) {
-      const filteredDb = databases.filter((db:any) => db.id === dbId);
-      if (filteredDb.length > 0) {
-        tableFinder(filteredDb)
-      }
-    }
-  };
-  
-  useEffect(() => {
-    let dbId = setCubeFromUrl()
-    if(dbId !== undefined) {
-      setDbId(dbId)
-    }
-  },[])
-
-  useEffect(() => {
-    dbFinder(databases)
-  },[databases])
-
-  const setCubeFromUrl = () => {
-    const pathSegments = window.location.pathname.split('/');
-    const cubesIndex = pathSegments.indexOf('cubes');
-    if (cubesIndex === -1 || cubesIndex === 0) return;
-    
-    const slug = pathSegments[cubesIndex - 1];
-  
-    if (!slug) return;
-      const indexOfDash = slug.indexOf('-');
-      if (indexOfDash === -1) {
-          return 0; 
-      }
-    return Number(slug.substring(0, indexOfDash))
-  };
 
   // Function to update the visibility type of a field using fetch
 async function updateFieldVisibility(id: string, visibilityType: 'retired' | 'sensitive' | 'normal' | 'hidden' | 'details-only') {
@@ -173,25 +151,8 @@ async function updateFieldVisibility(id: string, visibilityType: 'retired' | 'se
 }
 
   return (
-    <>
-    { loading ? (
-      <div
-      style={{
-          padding: "16px",
-          overflow: "hidden",
-          height: "600px",
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-      }}
-  >
-      <LoadingSpinner />
-      </div>
-    ):(
-
       <>
-    {card && defaultQuestion && result && (
+    {card && defaultQuestion && queryData ? (
      <div
      style={{
          padding: "16px",
@@ -207,9 +168,9 @@ async function updateFieldVisibility(id: string, visibilityType: 'retired' | 'se
          question={defaultQuestion}
          isDirty={false}
          queryBuilderMode={"view"}
-         result={result}
+         result={queryData}
          className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-         rawSeries={[{ card, data: result && result.data }]}
+         rawSeries={[{ card, data: queryData && queryData.data }]}
          isRunning={false}
          navigateToNewCardInsideQB={null}
          onNavigateBack={() => console.log('back')}
@@ -218,9 +179,21 @@ async function updateFieldVisibility(id: string, visibilityType: 'retired' | 'se
      />
 </div>
 
+    ) : (
+      <div
+      style={{
+          padding: "16px",
+          overflow: "hidden",
+          height: "600px",
+          width: "100%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+      }}
+  >
+      <LoadingSpinner />
+      </div>
     )}
-    </>
-  )}
     </>
   );
 };
