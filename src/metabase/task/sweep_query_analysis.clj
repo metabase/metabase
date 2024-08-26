@@ -24,7 +24,7 @@
 
 (defn- analyze-cards-without-complete-analysis!
   ([]
-   (analyze-cards-without-complete-analysis! query-analysis/analyze-sync!))
+   (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
    (let [cards (t2/reducible-select [:model/Card :id]
                                     {:left-join [[:query_analysis :qa]
@@ -38,7 +38,7 @@
 
 (defn- analyze-stale-cards!
   ([]
-   (analyze-cards-without-complete-analysis! query-analysis/analyze-sync!))
+   (analyze-cards-without-complete-analysis! query-analysis/queue-analysis!))
   ([analyze-fn]
    ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
    (let [cards (t2/reducible-select [:model/Card :id])]
@@ -66,7 +66,7 @@
    (sweep-query-analysis-loop! first-time?
                                (fn [card-or-id]
                                  (log/debugf "Queueing card %s for query analysis" (u/the-id card-or-id))
-                                 (query-analysis/analyze-sync! card-or-id))))
+                                 (query-analysis/queue-analysis! card-or-id))))
   ([first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
    (log/info "Calculating analysis for cards without any")
