@@ -184,7 +184,7 @@
                                                       :name      "very_interesting_field"
                                                       :base_type :type/Integer}
                          :model/Card card            {:dataset_query (mt/mbql-query products
-                                                                                    {:filter [:> [:field field-id nil] 1]})}]
+                                                                       {:filter [:> [:field field-id nil] 1]})}]
             (binding [qp.util/*execute-async?* false
                       qp.pipeline/*execute*    (fn [_driver _query respond]
                                                  (respond {} []))]
