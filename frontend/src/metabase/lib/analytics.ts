@@ -83,7 +83,7 @@ const trackSnowplowSchemaEvent = (
   schema: string,
   version: string,
   data: any,
-  contextEntities: any[] = [],
+  contextEntities: object[] = [],
 ) => {
   Snowplow.trackSelfDescribingEvent({
     event: {
