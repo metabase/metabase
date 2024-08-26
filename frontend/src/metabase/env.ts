@@ -1,4 +1,4 @@
-// @ts-expect-error widow.Cypress is not typed
+// @ts-expect-error window.Cypress is not typed
 export const isCypressActive = !!window.Cypress;
 
 export const isStorybookActive = !!process.env.STORYBOOK;
