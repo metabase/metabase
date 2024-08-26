@@ -1633,9 +1633,9 @@
 
 (defn maybe
   "Transform a value only if it is present"
-  [{:keys [export import]}]
-  {:export #(when (some? %) (export %))
-   :import #(when (some? %) (import %))})
+  [{export-fn :export import-fn :import}]
+  {:export #(when (some? %) (export-fn %))
+   :import #(when (some? %) (import-fn %))})
 
 (def kw "Transformer for keywordized values.
 
