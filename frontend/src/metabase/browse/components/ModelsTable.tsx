@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
-import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath";
+import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
@@ -43,11 +43,7 @@ import {
   ModelNameColumn,
   ModelTableRow,
 } from "./ModelsTable.styled";
-import {
-  getCollectionPathString,
-  getModelDescription,
-  sortModels,
-} from "./utils";
+import { getModelDescription, sortModels } from "./utils";
 
 export interface ModelsTableProps {
   models?: ModelResult[];
@@ -220,13 +216,7 @@ const TBodyRow = ({
           <Flex gap="sm">
             <FixedSizeIcon name="folder" />
             <Box w="calc(100% - 1.5rem)">
-              <EllipsifiedPath
-                tooltip={getCollectionPathString(model.collection)}
-                items={[
-                  ...(model.collection?.effective_ancestors || []),
-                  model.collection,
-                ].map(c => getCollectionName(c))}
-              />
+              <EllipsifiedCollectionPath collection={model.collection} />
             </Box>
           </Flex>
         </Link>
