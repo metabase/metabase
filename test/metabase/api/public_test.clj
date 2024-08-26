@@ -21,6 +21,7 @@
    [metabase.models.params.chain-filter-test :as chain-filter-test]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.test :as mt]
    [metabase.util :as u]
    [throttle.core :as throttle]
@@ -506,6 +507,35 @@
                  :data
                  keys
                  set))))))
+
+(deftest query-execution-context test
+  (testing "Make sure we record the correct context for each export format (#45147)"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (let [query (merge (mt/mbql-query venues)
+                         ;; Add these constraints for the API query so that the query hash matches in `with-query-execution!`
+                         {:constraints {:max-results 10000, :max-results-bare-rows 2000}})]
+        (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
+          (testing "Default :api response format"
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 202 (str "public/card/" uuid "/query"))
+              (is (= :public-question (:context (qe))))))))
+
+      (let [query (merge (mt/mbql-query venues))]
+        (with-temp-public-card [{uuid :public_uuid} {:dataset_query query}]
+          (testing ":json download response format"
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str "public/card/" uuid "/query/json"))
+              (is (= :public-json-download (:context (qe))))))
+
+          (testing ":xlsx download response format"
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str "public/card/" uuid "/query/xlsx"))
+              (is (= :public-xlsx-download (:context (qe))))))
+
+          (testing ":csv download response format"
+            (process-userland-query-test/with-query-execution [qe query]
+              (client/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv)
+              (is (= :public-csv-download (:context (qe)))))))))))
 
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
 
