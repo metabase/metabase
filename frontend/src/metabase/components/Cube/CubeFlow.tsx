@@ -13,7 +13,7 @@ import "reactflow/dist/style.css";
 import { Flex, Group, Title } from "metabase/ui";
 import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
-import { createGraphData, CubeData, CubeFlowProps, extractCubeName, extractSQLInfo, extractTableName, FieldData, newExtractAllJoins } from "./utils";
+import { createGraphData, createNewGraphData, CubeData, CubeFlowProps, extractCubeName, extractSQLInfo, extractTableName, FieldData, MapData, newExtractAllJoins } from "./utils";
 import CustomNode from "./CubeNode";
 import { getLayoutedElements } from "./LayoutedElements";
 import { useGetCubeDataQuery } from "metabase/api";
@@ -93,10 +93,10 @@ const CubeFlow = () => {
   const extractingField = (arr: any[]): FieldData[] => {
     const resultMap: { [key: string]: FieldData } = {};
 
-    const addField = (table: string, field: string) => {
+    const addField = (table: string, field: string, type?:string) => {
       const id = `${table}-${field}`;
       if (!resultMap[id]) {
-        resultMap[id] = { id, table, field };
+        resultMap[id] = { id, table, field, type };
       }
     };
 
@@ -109,13 +109,13 @@ const CubeFlow = () => {
 
         if (sourceMatch) {
           const [, sourceCube, sourceField] = sourceMatch;
-          addField(sourceCube, sourceField);
+          addField(sourceCube, sourceField, "source");
         }
 
         if (targetMatch) {
           const [, targetCube, targetField] = targetMatch;
           const targetTableName = getTableName(targetCube);
-          addField(targetTableName, targetField);
+          addField(targetTableName, targetField, "target");
         }
       });
     });
@@ -130,6 +130,38 @@ const CubeFlow = () => {
   };
 
   const extractField = extractingField(modifiedValues);
+
+  const createData = (arr: any[]): MapData[] => {
+    const resultMap: { [key: string]: MapData } = {};
+
+    const addField = (sourceCube:string, sourceField:string, targetTable:string, targetField:string) => {
+      const id = `${sourceCube}-${targetTable}`;
+      if (!resultMap[id]) {
+        resultMap[id] = { id, sourceCube, sourceField, targetTable, targetField };
+      }
+    };
+    arr.forEach((items: string[], index: number) => {
+      const cubeName = extractedKeys[index];
+
+      items.forEach((item: string) => {
+        const sourceMatch = item.match(/\${(\w+)}\.(\w+)/);
+        const targetMatch = item.match(/=\s*\${(\w+)}\.(\w+)/);
+
+        if (sourceMatch && targetMatch) {
+          const [, sourceCube, sourceField] = sourceMatch;
+          const [, targetCube, targetField] = targetMatch;
+          const targetTableName = getTableName(targetCube);
+         
+          
+          addField(sourceCube, sourceField, targetTableName, targetField);
+         }
+      });
+    });
+
+    return Object.values(resultMap);
+  };
+
+  const newField = createData(modifiedValues)
 
     extractField.forEach((field) => {
       if (!tableGroups[field.table]) {
@@ -150,7 +182,8 @@ cubes.forEach((cube) => {
 });
 
 
-  const graphData = createGraphData(tableGroups, cubeData, tableNameArr, cubeNameArr)
+  const oldGraphData = createGraphData(tableGroups, cubeData, tableNameArr, cubeNameArr)
+  const graphData = createNewGraphData(tableGroups, cubeData, tableNameArr, cubeNameArr, newField)
   const [hoveredNode, setHoveredNode] = useState(null);
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     const nodes = graphData.nodes.map((node:any) => ({
@@ -169,8 +202,8 @@ cubes.forEach((cube) => {
     }));
     const edges = graphData.edges.map((edge:any, index:any) => ({
       id: `e${index}`,
-      source: edge.target,
-      target: edge.source,
+      source: edge.source,
+      target: edge.target,
       sourceHandle: edge.sourceHandle,
       targetHandle: edge.targetHandle,
       type: "default",

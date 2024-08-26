@@ -248,8 +248,8 @@ export const BrowseCubes = () => {
             )}
           </div>
         </BrowseSection>
-        {cubeData && selectedCube && activeTab === "Preview" && (
-        <CubePreviewTable cubeData={selectedCube}/> 
+        {cubeData && selectedCube && activeTab === "Preview" && dbId && (
+        <CubePreviewTable dbId={dbId} cubeData={selectedCube}/> 
   )}
       </BrowseMain>
     </BrowseContainer>
