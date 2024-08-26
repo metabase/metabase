@@ -332,7 +332,7 @@ describe("issue 12720, issue 47172", () => {
     clickThrough("Orders");
   });
 
-  it("should apply yhe specific (before|after) filter on a native question with field filter (metabase#47172)", () => {
+  it("should apply the specific (before|after) filter on a native question with field filter (metabase#47172)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     getDashboardCard(1).within(() => {
@@ -347,13 +347,15 @@ describe("issue 12720, issue 47172", () => {
     });
 
     cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
-    cy.wait("@cardQuery").then(({ response }) => {
-      expect(response.body.status).to.eq("completed");
-    });
-    tableInteractive().should("be.visible").and("not.be.empty");
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible").and("contain", "97.44");
     cy.findByTestId("question-row-count").should(
       "not.have.text",
       "Showing 0 rows",
+    );
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 1980 rows",
     );
   });
 });
