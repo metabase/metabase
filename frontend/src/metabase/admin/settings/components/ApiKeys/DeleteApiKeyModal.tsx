@@ -26,13 +26,7 @@ export const DeleteApiKeyModal = ({
   }, [onClose, apiKey.id, deleteApiKey]);
 
   return (
-    <Modal
-      size="30rem"
-      padding="xl"
-      opened
-      onClose={onClose}
-      title={t`Delete API Key`}
-    >
+    <Modal size="30rem" opened onClose={onClose} title={t`Delete API Key`}>
       <FormProvider initialValues={{}} onSubmit={handleDelete}>
         <Form>
           <Stack spacing="lg">
