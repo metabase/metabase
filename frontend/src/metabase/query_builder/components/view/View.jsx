@@ -18,7 +18,7 @@ import {
   setArchivedQuestion,
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
-import { TimeseriesChrome } from "metabase/querying";
+import { TimeseriesChrome } from "metabase/querying/filters";
 import { Transition } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
