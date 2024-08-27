@@ -132,11 +132,11 @@
 (defmethod lib.metadata.calculation/metadata-method :metric
   [query stage-number [_ _opts metric-id]]
   (let [metric-meta (lib.metadata/metric query metric-id)
-        metric-aggregation (-> metric-meta
-                               :dataset-query
-                               lib.convert/->pMBQL
-                               lib.aggregation/aggregations
-                               first)
+        metric-aggregation (some-> metric-meta
+                                   :dataset-query
+                                   lib.convert/->pMBQL
+                                   lib.aggregation/aggregations
+                                   first)
         metric-name (:name metric-meta)]
     (assoc (lib.metadata.calculation/metadata query stage-number metric-aggregation)
            :name metric-name
