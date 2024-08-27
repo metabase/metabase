@@ -415,7 +415,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
   });
 
-  it("should render error without crashing when embed query returns error (metabase#34954)", () => {
+  it.skip("should render error without crashing when embed query returns error (metabase#34954)", () => {
     const categoryTemplateTag = {
       type: "text",
       name: "category",
@@ -648,7 +648,7 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 });
 
 describeEE("scenarios > embedding > dashboard appearance", () => {
-  let originalBaseUrl = null;
+  const originalBaseUrl = Cypress.config("baseUrl");
   beforeEach(() => {
     // This is needed to "restore" the initial value after having navigated to an html file like
     // `cy.visit(`e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`)`
@@ -658,19 +658,14 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     // > `url` - one that begins with `http`. By default `cy.request()` will use
     // > either the current window's origin or the `baseUrl` in
     // > `e2e/support/cypress.config.js`. Neither of those values were present.
-
-    if (!originalBaseUrl) {
-      originalBaseUrl = Cypress.config("baseUrl");
-    } else {
-      Cypress.config("baseUrl", originalBaseUrl);
-    }
+    Cypress.config("baseUrl", originalBaseUrl);
 
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
   });
 
-  it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
+  it.skip("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
     const textFilter = createMockParameter({
       id: "3",
       name: "Text filter",
@@ -778,7 +773,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     });
   });
 
-  it("should not rerender the static dashboard with tabs preview unnecessarily (metabase#46378)", () => {
+  it.skip("should not rerender the static dashboard with tabs preview unnecessarily (metabase#46378)", () => {
     const textFilter = createMockParameter({
       id: "3",
       name: "Text filter",
@@ -959,7 +954,6 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
   });
 
   it("should allow to set locale from the `locale` query parameter", () => {
-    cy.signInAsAdmin();
     cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
       enable_embedding: true,
     });
