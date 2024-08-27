@@ -275,6 +275,99 @@
       (assoc (select-keys param [:type :target :slug])
              :value value))))
 
+;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
+
+(def ^:private api-models
+  "The models that we will service for entity-id transformations."
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))
+       (filter (fn has-entity-id?
+                 [model] (or ;; toucan1 models
+                          (isa? model :metabase.models.interface/entity-id)
+                          ;; toucan2 models
+                          (isa? model :hook/entity-id))))
+       (map keyword)
+       set))
+
+(def ^:private api-name->model
+  "Map of model names used on the API to their corresponding model."
+  (->> api/model->db-model
+       (map (fn [[k v]] [(keyword k) (:db-model v)]))
+       (filter (fn [[_ v]] (contains? api-models v)))
+       (into {})))
+
+(defn- ->model
+  "Takes a model keyword or an api-name and returns the corresponding model keyword."
+  [model-or-api-name]
+  (if (contains? api-models model-or-api-name)
+    model-or-api-name
+    (api-name->model model-or-api-name)))
+
+(def ^:private eid-api-models
+  "Sorted vec of api models that have an entity_id column"
+  (vec (sort (keys api-name->model))))
+
+(def ^:private ApiModel (into [:enum] eid-api-models))
+
+(def ^:private EntityId
+  "A Malli schema for an entity id, this is a little looser because it needs to be fast."
+  [:and {:description "entity_id"}
+   :string
+   [:fn {:error/fn (fn [{:keys [value]} _]
+                     (str "\"" value "\" should be 21 characters long, but it is " (count value)))}
+    (fn eid-length-good? [eid] (= 21 (count eid)))]])
+
+(def ^:private ModelToEntityIds
+  "A Malli schema for a map of model names to a sequence of entity ids."
+  (mc/schema [:map-of ApiModel [:sequential :string]]))
+
+(mu/defn- entity-ids->id-for-model
+  "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
+  [api-name eids]
+  (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
+        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+    (mapv (fn entity-id-info [entity-id]
+            [entity-id (if-let [id (get eid->id entity-id)]
+                         {:id id :type api-name :status "ok"}
+                         ;; handle errors
+                         (if (mc/validate EntityId entity-id)
+                           {:type api-name
+                            :status "not-found"}
+                           {:type api-name
+                            :status "invalid-format"
+                            :reason (me/humanize (mc/explain EntityId entity-id))}))])
+          eids)))
+
+(defn model->entity-ids->ids
+  "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
+  [model-key->entity-ids]
+  (when-not (mc/validate ModelToEntityIds model-key->entity-ids)
+    (throw (ex-info "Invalid format." {:explanation (me/humanize
+                                                     (me/with-spell-checking
+                                                       (mc/explain ModelToEntityIds model-key->entity-ids)))
+                                       :allowed-models (sort (keys api-name->model))
+                                       :status-code 400})))
+  (into {}
+        (mapcat
+         (fn [[model eids]] (entity-ids->id-for-model model eids))
+         model-key->entity-ids)))
+
+(mu/defn ->id :- :int
+  "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
+   Please use that if you have to do man lookups at once."
+  [pre-model id :- [:or :int :string]]
+  (if (string? id)
+    (let [model (->model pre-model)
+          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model model [id])]
+      (if-not (= "ok" status)
+        (throw (ex-info "problem looking up id from entity_id"
+                        {:pre-model pre-model
+                         :model model
+                         :id id
+                         :status status}))
+        (:id info)))
+    id))
+
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
@@ -283,7 +376,7 @@
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
   (let [pre-card-id  (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card-id      (api.embed.common/->id :model/Card pre-card-id)
+        card-id      (->id :model/Card pre-card-id)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (apply api.public/public-card :id card-id, constraints)
         api.public/combine-parameters-and-template-tags
@@ -492,96 +585,3 @@
                          e)]
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
-
-;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
-
-(def ^:private api-models
-  "The models that we will service for entity-id transformations."
-  (->> (descendants :metabase/model)
-       (filter #(= (namespace %) "model"))
-       (filter (fn has-entity-id?
-                 [model] (or ;; toucan1 models
-                          (isa? model :metabase.models.interface/entity-id)
-                          ;; toucan2 models
-                          (isa? model :hook/entity-id))))
-       (map keyword)
-       set))
-
-(def ^:private api-name->model
-  "Map of model names used on the API to their corresponding model."
-  (->> api/model->db-model
-       (map (fn [[k v]] [(keyword k) (:db-model v)]))
-       (filter (fn [[_ v]] (contains? api-models v)))
-       (into {})))
-
-(defn- ->model
-  "Takes a model keyword or an api-name and returns the corresponding model keyword."
-  [model-or-api-name]
-  (if (contains? api-models model-or-api-name)
-    model-or-api-name
-    (api-name->model model-or-api-name)))
-
-(def ^:private eid-api-models
-  "Sorted vec of api models that have an entity_id column"
-  (vec (sort (keys api-name->model))))
-
-(def ^:private ApiModel (into [:enum] eid-api-models))
-
-(def ^:private EntityId
-  "A Malli schema for an entity id, this is a little looser because it needs to be fast."
-  [:and {:description "entity_id"}
-   :string
-   [:fn {:error/fn (fn [{:keys [value]} _]
-                     (str "\"" value "\" should be 21 characters long, but it is " (count value)))}
-    (fn eid-length-good? [eid] (= 21 (count eid)))]])
-
-(def ^:private ModelToEntityIds
-  "A Malli schema for a map of model names to a sequence of entity ids."
-  (mc/schema [:map-of ApiModel [:sequential :string]]))
-
-(mu/defn- entity-ids->id-for-model
-  "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
-  [api-name eids]
-  (let [model (->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
-    (mapv (fn entity-id-info [entity-id]
-            [entity-id (if-let [id (get eid->id entity-id)]
-                         {:id id :type api-name :status "ok"}
-                         ;; handle errors
-                         (if (mc/validate EntityId entity-id)
-                           {:type api-name
-                            :status "not-found"}
-                           {:type api-name
-                            :status "invalid-format"
-                            :reason (me/humanize (mc/explain EntityId entity-id))}))])
-          eids)))
-
-(defn model->entity-ids->ids
-  "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
-  [model-key->entity-ids]
-  (when-not (mc/validate ModelToEntityIds model-key->entity-ids)
-    (throw (ex-info "Invalid format." {:explanation (me/humanize
-                                                     (me/with-spell-checking
-                                                       (mc/explain ModelToEntityIds model-key->entity-ids)))
-                                       :allowed-models (sort (keys api-name->model))
-                                       :status-code 400})))
-  (into {}
-        (mapcat
-         (fn [[model eids]] (entity-ids->id-for-model model eids))
-         model-key->entity-ids)))
-
-(mu/defn ->id :- :int
-  "Translates a single entity_id -> id. This reuses the batched version: [[model->entity-ids->ids]].
-   Please use that if you have to do man lookups at once."
-  [pre-model id :- [:or :int :string]]
-  (if (string? id)
-    (let [model (->model pre-model)
-          [[_ {:keys [status] :as info}]] (entity-ids->id-for-model model [id])]
-      (if-not (= "ok" status)
-        (throw (ex-info "problem looking up id from entity_id"
-                        {:pre-model pre-model
-                         :model model
-                         :id id
-                         :status status}))
-        (:id info)))
-    id))
