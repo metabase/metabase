@@ -397,7 +397,7 @@
     metabase.api.dataset                                          api.dataset
     metabase.api.email                                            api.email
     metabase.api.embed                                            api.embed
-    metabase.api.feedback                                      api.feedback
+    metabase.api.feedback                                         api.feedback
     metabase.api.field                                            api.field
     metabase.api.geojson                                          api.geojson
     metabase.api.ldap                                             api.ldap

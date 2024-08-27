@@ -312,19 +312,19 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
             ]);
             ws.send(
                 JSON.stringify({
-                  type: "toolResponse",
-                  response: {
-                    function_name: toolWaitingResponse,
-                    response: JSON.stringify(inputValue),
-                  },
+                    type: "toolResponse",
+                    response: {
+                        function_name: toolWaitingResponse,
+                        response: JSON.stringify(inputValue),
+                    },
                 })
-              );
+            );
             setToolWaitingResponse(null);
             setInputValue("");
             return;
         }
-        
-        
+
+
         setIsLoading(true);
         if (isConnected) {
             ws.send(
@@ -388,11 +388,11 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                 type: "toolResponse",
                 response: {
                     function_name: toolWaitingResponse,
-                    response: "true", 
+                    response: "true",
                 },
             })
         );
-        setApprovalChangeButtons(false); 
+        setApprovalChangeButtons(false);
     };
 
     const handleDeny = () => {
@@ -405,7 +405,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                 },
             })
         );
-        setApprovalChangeButtons(false); 
+        setApprovalChangeButtons(false);
     };
 
     return (
@@ -442,8 +442,8 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                     }}
                 >
 
-                    <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} 
-                        approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny} 
+                    <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
+                        approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                     />
 
                     {card && defaultQuestion && result && (
@@ -802,6 +802,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
             <FeedbackDialog
                 isOpen={isFeedbackDialogOpen}
                 onClose={handleFeedbackDialogOpen}
+                messages={messages}
 
             />
         </>

@@ -1,29 +1,20 @@
-import { CheckpointsApi } from "./checkpointsApi";
-import { invalidateTags, listTag, provideFeedbackListTags } from "./tags";
-
-// Define a new API configuration for feedback
-export const feedbackApi = CheckpointsApi.injectEndpoints({
+import { FeedbackApi } from "./feedbackApi";
+import { invalidateTags, listTag } from "./tags";
+import type { Feedback } from "metabase-types/api";
+// Update the API configuration for feedback
+export const feedbackApi = FeedbackApi.injectEndpoints({
   endpoints: builder => ({
-    submitFeedback: builder.mutation<
-      any,
-      {
-        submitted_by: string | null;
-        task: string | null;
-        chat_history: string | null;
-        description: string | null;
-        subject: string | null;
-      }
-    >({
-      query: feedback => ({
+    submitFeedback: builder.mutation<void, Feedback>({
+      query: body => ({
         method: "POST",
-        url: `/api/feedback`,
-        body: feedback, // Sending the feedback data in the body of the request
+        url: "/api/feedback",
+        body, // Explicitly stringify the body
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("feedback")]), // Properly invalidate feedback tags
+        invalidateTags(error, [listTag("feedback")]),
     }),
   }),
 });
 
-// Export the auto-generated hook for submitting feedback
+// Export the auto-generated hooks for the endpoints
 export const { useSubmitFeedbackMutation } = feedbackApi;

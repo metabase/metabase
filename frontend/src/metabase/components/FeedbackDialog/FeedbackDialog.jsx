@@ -4,11 +4,11 @@ import Input from "metabase/core/components/Input";
 import TextArea from "metabase/core/components/TextArea";
 import { useSubmitFeedbackMutation } from "metabase/api/feedback";
 
-const FeedbackDialog = ({ isOpen, onClose }) => {
+const FeedbackDialog = ({ isOpen, onClose, messages }) => {
     const [subject, setSubject] = useState("");
     const [description, setDescription] = useState("");
     const [files, setFiles] = useState([]);
-    const [submitFeedback, { isLoading, isSuccess, isError }] = useSubmitFeedbackMutation();
+    const [submitFeedback] = useSubmitFeedbackMutation();
 
 
     const handleFileUpload = (e) => {
@@ -24,12 +24,12 @@ const FeedbackDialog = ({ isOpen, onClose }) => {
         try {
             // Execute the feedback mutation
             await submitFeedback({
-                submitted_by: "anonymous", // Adjust as needed (e.g., get the user's name or ID if available)
-                task: "General Feedback", // Adjust based on your use case
-                chat_history: null, // You can adjust if chat history is part of the feedback
                 description: description,
+                task: "General Feedback",
+                submitted_by: "John Doe",
+                chat_history: JSON.stringify(messages),
                 subject: subject,
-            }).unwrap(); // Unwraps the result to handle any errors thrown by RTK Query
+            }).unwrap();
 
             // Handle success state
             console.log("Feedback submitted successfully!");
@@ -72,7 +72,7 @@ const FeedbackDialog = ({ isOpen, onClose }) => {
                 <Box as="h2" mb={3} style={{ color: "#5D6064", fontSize: "12px", fontWeight: "400", marginBottom: "2rem" }}>
                     Whether you are new or need extra support, our team is ready to assist you. We want to make sure you have a great experience.
                 </Box>
-                <Box mb={2} style={{ width: "100%" }}>
+                <Box mb={2}>
                     <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#76797D" }}>
                         Subject *
                     </label>
