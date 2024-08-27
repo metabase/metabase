@@ -238,7 +238,10 @@
 (deftest sql-time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   ;; Oracle doesn't have a time type
-  (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (set-timezone-drivers))
+  (mt/test-drivers (into #{}
+                         (comp (filter #(isa? driver/hierarchy % :sql))
+                               (filter #(driver/database-supports? % :test/time-type nil)))
+                         (set-timezone-drivers))
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]
