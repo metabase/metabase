@@ -38,10 +38,10 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
 }: InteractiveDashboardProps) => {
-  const { id: dashboardId } = useValidIdForEntity({
-    type: "Dashboard",
+  const dashboardId = useValidIdForEntity({
+    type: "dashboard",
     id: initId,
-  });
+  }) ?? null;
 
   const {
     displayOptions,

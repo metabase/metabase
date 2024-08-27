@@ -539,7 +539,7 @@
                             (t2/select [model :id :entity_id] :entity_id [:in eids])))]
     (mapv (fn [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
-                         {:id id :type api-name}
+                         {:id id :type api-name, :status "success"}
                          {:type api-name :status "not-found"})])
           eids)))
 
