@@ -910,7 +910,8 @@
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
           [sql & _]    (sql/format {::copy       (keyword table-name)
-                                    :columns     (map keyword column-names)
+                                    ;; We need to namespace the keyword in case the column name starts with a %
+                                    :columns     (map (comp #(keyword table-name %) name) column-names)
                                     ::from-stdin "''"}
                                    :quoted true
                                    :dialect (sql.qp/quote-style driver))

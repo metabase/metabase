@@ -744,6 +744,24 @@
                          [Long/MAX_VALUE true]])
                        (rows-for-table table)))))))))))
 
+(deftest create-from-csv-non-ascii-test
+  (testing "Upload a CSV file with a datetime column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (with-upload-table!
+         [table (create-from-csv-and-sync-with-defaults!
+                 :file (csv-file-with ["ID,名前,年齢,職業,都市"
+                                       "1,佐藤太郎,25,エンジニア,東京"
+                                       "2,鈴木花子,30,デザイナー,大阪"
+                                       "3,田中一郎,28,マーケター,名古屋"
+                                       "4,山田次郎,35,プロジェクトマネージャー,福岡"
+                                       "5,中村美咲,32,データサイエンティスト,札幌"]))]
+         (testing "Check the data was uploaded into the table correctly"
+           (is (= (header-with-auto-pk ["unnamed_column" "ship_name" "unnamed_column_2"])
+                  #p (column-names-for-table table)))
+           (is (= nil
+                  #p (rows-for-table table)))))))))
+
 (deftest create-from-csv-empty-header-test
   (testing "Upload a CSV file with a blank column name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
