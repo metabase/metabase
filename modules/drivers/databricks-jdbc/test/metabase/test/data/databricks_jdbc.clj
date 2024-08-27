@@ -124,8 +124,8 @@
                           e)))))))
 
 (defmethod load-data/row-xform :databricks-jdbc
-  [_driver _dbdef _tabledef]
-  (load-data/add-ids-xform))
+  [_driver _dbdef tabledef]
+  (load-data/maybe-add-ids-xform tabledef))
 
 (defmethod execute/execute-sql! :databricks-jdbc [& args]
   (apply execute/sequentially-execute-sql! args))
