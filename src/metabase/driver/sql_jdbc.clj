@@ -170,7 +170,7 @@
         chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
         sqls       (map #(sql/format {:insert-into (keyword table-name)
                                       ;; We need to namespace the keyword in case the column name starts with a %
-                                      :columns     (map (partial keyword table-name) column-names)
+                                      :columns     (map (comp (partial keyword table-name) name) column-names)
                                       :values      %}
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
