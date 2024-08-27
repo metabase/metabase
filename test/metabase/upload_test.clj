@@ -753,24 +753,24 @@
   (testing "Upload a CSV file with a datetime column"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
-       (with-upload-table!
-         [table (create-from-csv-and-sync-with-defaults!
-                 :file (csv-file-with ["ID,名前,年齢,職業,都市"
-                                       "1,佐藤太郎,25,エンジニア,東京"
-                                       "2,鈴木花子,30,デザイナー,大阪"
-                                       "3,田中一郎,28,マーケター,名古屋"
-                                       "4,山田次郎,35,プロジェクトマネージャー,福岡"
-                                       "5,中村美咲,32,データサイエンティスト,札幌"]))]
-         (testing "Check the data was uploaded into the table correctly"
-           (is (= (header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
-                  (column-display-names-for-table table)))
-           (is (= (rows-with-auto-pk
-                   [[1 "佐藤太郎" 25 "エンジニア" "東京"]
-                    [2 "鈴木花子" 30 "デザイナー" "大阪"]
-                    [3 "田中一郎" 28 "マーケター" "名古屋"]
-                    [4 "山田次郎" 35 "プロジェクトマネージャー" "福岡"]
-                    [5 "中村美咲" 32 "データサイエンティスト" "札幌"]])
-                  (rows-for-table table)))))))))
+        (with-upload-table!
+          [table (create-from-csv-and-sync-with-defaults!
+                  :file (csv-file-with ["ID,名前,年齢,職業,都市"
+                                        "1,佐藤太郎,25,エンジニア,東京"
+                                        "2,鈴木花子,30,デザイナー,大阪"
+                                        "3,田中一郎,28,マーケター,名古屋"
+                                        "4,山田次郎,35,プロジェクトマネージャー,福岡"
+                                        "5,中村美咲,32,データサイエンティスト,札幌"]))]
+          (testing "Check the data was uploaded into the table correctly"
+            (is (= (header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
+                   (column-display-names-for-table table)))
+            (is (= (rows-with-auto-pk
+                    [[1 "佐藤太郎" 25 "エンジニア" "東京"]
+                     [2 "鈴木花子" 30 "デザイナー" "大阪"]
+                     [3 "田中一郎" 28 "マーケター" "名古屋"]
+                     [4 "山田次郎" 35 "プロジェクトマネージャー" "福岡"]
+                     [5 "中村美咲" 32 "データサイエンティスト" "札幌"]])
+                   (rows-for-table table)))))))))
 
 (deftest create-from-csv-empty-header-test
   (testing "Upload a CSV file with a blank column name"
@@ -813,7 +813,7 @@
               (is (= #_[@#'upload/auto-pk-column-name "Cost $" "Cost %" "Cost #"]
                    ;; Blame it on humanization/name->human-readable-name
                    (header-with-auto-pk ["Cost" "Cost 2" "Cost 3"])
-                   (column-display-names-for-table table)))
+                     (column-display-names-for-table table)))
               (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
                      (column-names-for-table table))))))))))
 
@@ -1937,22 +1937,22 @@
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
         (with-uploads-enabled!
-         (testing "Append should handle new non-ascii columns being added in the latest CSV"
-           (with-upload-table! [table (create-upload-table!)]
-             (column-display-names-for-table table)
+          (testing "Append should handle new non-ascii columns being added in the latest CSV"
+            (with-upload-table! [table (create-upload-table!)]
+              (column-display-names-for-table table)
              ;; Reorder as well for good measure
-             (let [csv-rows ["α,name"
-                             "omega,Everything"]
-                   file     (csv-file-with csv-rows)]
-               (testing "The new row is inserted with the values correctly reordered"
-                 (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
-                 (is (= ["name" "α"]
-                        (rest (column-display-names-for-table table))))
-                 (is (= (set (updated-contents action
-                                               [["Obi-Wan Kenobi" nil]]
-                                               [["Everything" "omega"]]))
-                        (set (rows-for-table table)))))
-               (io/delete-file file)))))))))
+              (let [csv-rows ["α,name"
+                              "omega,Everything"]
+                    file     (csv-file-with csv-rows)]
+                (testing "The new row is inserted with the values correctly reordered"
+                  (is (= {:row-count 1} (update-csv! action {:file file, :table-id (:id table)})))
+                  (is (= ["name" "α"]
+                         (rest (column-display-names-for-table table))))
+                  (is (= (set (updated-contents action
+                                                [["Obi-Wan Kenobi" nil]]
+                                                [["Everything" "omega"]]))
+                         (set (rows-for-table table)))))
+                (io/delete-file file)))))))))
 
 (deftest update-type-mismatch-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
