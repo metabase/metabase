@@ -1279,7 +1279,7 @@
                    ;; this is flaking and I suspect it's because the triggers is created async in
                    ;; post-insert hook of Database
                    (u/poll {:thunk     #(task.sync-databases-test/query-all-db-sync-triggers-name db)
-                            :done       not-empty
+                            :done?      not-empty
                             :timeout-ms 300}))))
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
