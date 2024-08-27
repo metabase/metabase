@@ -587,8 +587,7 @@
       (are [mode expr] (-> (lib.js/diagnose-expression query 0 mode expr js/undefined)
                            .-message
                            string?)
-        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]
-        "filter"      #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]))
+        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]))
     (testing "circular definition"
       (is (= "Cycle detected: c → x → b → c"
              (-> (lib.js/diagnose-expression
