@@ -5,6 +5,7 @@
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
@@ -16,7 +17,7 @@
    [ring.util.codec :as codec])
   (:import
    [java.sql Connection ResultSet Statement]
-   [java.time LocalDate]))
+   [java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime]))
 
 (set! *warn-on-reflection* true)
 
@@ -164,3 +165,30 @@
   (fn []
     (when-let [t (.getTimestamp rs i)]
       (t/zoned-date-time (t/local-date-time t) (t/zone-id (qp.timezone/results-timezone-id))))))
+
+(defn- valid-zone-id-str? [zone-id-str]
+  (contains? (java.time.ZoneId/getAvailableZoneIds) zone-id-str))
+
+;; TODO: Probably I can avoid offset vs zoned completely.
+(defn- date-time->results-local-date-time
+  [dt]
+  (if (instance? LocalDateTime dt)
+    dt
+    (let [tz-str      (qp.timezone/results-timezone-id)
+          adjusted-dt (if (valid-zone-id-str? tz-str)
+                        (t/with-zone-same-instant (t/zoned-date-time dt) (t/zone-id tz-str))
+                        (t/with-offset-same-instant (t/offset-date-time dt) (t/zone-offset tz-str)))]
+      (t/local-date-time adjusted-dt))))
+
+(defn- set-parameter-to-local-date-time
+  [driver prepared-statement index object]
+  ((get-method sql-jdbc.execute/set-parameter [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set LocalDateTime])
+   driver prepared-statement index (date-time->results-local-date-time object)))
+
+(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc OffsetDateTime]
+  [driver prepared-statement index object]
+  (set-parameter-to-local-date-time driver prepared-statement index object))
+
+(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc ZonedDateTime]
+  [driver prepared-statement index object]
+  (set-parameter-to-local-date-time driver prepared-statement index object))
