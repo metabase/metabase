@@ -35,11 +35,11 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private ResourceId [:or ms/PositiveInt [ms/NanoIdString {:description "entity-id"}]])
+(def ^:private ResourceId [:or ms/PositiveInt ms/NanoIdString])
 (def ^:private Token [:map
                       [:resource [:map
-                                  [:question ResourceId]
-                                  [:dashboard ResourceId]]]
+                                  [:question  {:optional true} ResourceId]
+                                  [:dashboard {:optional true} ResourceId]]]
                       [:params :any]])
 
 (defn- conditional-update-in
