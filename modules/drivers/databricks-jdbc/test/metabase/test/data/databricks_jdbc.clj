@@ -89,7 +89,7 @@
 
 ;; Differences to the :sql-jdbc/test-extensions original: false transactions, not using `jdbc/execute!` for
 ;; timezone setting, not overriding database timezone. Fails as expects ResultSet. That's not the case on Databricks.
-(mu/defmethod load-data/do-insert! :sql-jdbc/test-extensions
+(mu/defmethod load-data/do-insert! :databricks-jdbc
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
