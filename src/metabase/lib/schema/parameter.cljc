@@ -192,11 +192,16 @@
    [:expression   [:ref ::legacy-expression-ref]]
    [:template-tag [:ref ::template-tag]]])
 
-(mr/def ::dimension
-  [:tuple
-   #_tag    [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]
-   #_target [:ref ::dimension.target]])
+(mr/def ::DimensionOptions
+  [:map
+   {:error/message "dimension options"}
+   [:stage-number {:optional true} :int]])
 
+(mr/def ::dimension
+  [:catn
+   [:tag     [:= {:decode/normalize lib.schema.common/normalize-keyword} :dimension]]
+   [:target  ::dimension.target]
+   [:options [:? [:maybe ::DimensionOptions]]]])
 ;;; this is the reference like [:template-tag <whatever>], not the schema for native query template tags -- that lives
 ;;; in [[metabase.lib.schema.template-tag]]
 (mr/def ::template-tag
