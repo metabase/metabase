@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
+import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
 import type { QueryParams } from "metabase/query_builder/actions";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
@@ -23,7 +24,7 @@ export const InteractiveQuestionContext = createContext<
 
 const DEFAULT_OPTIONS = {};
 
-export const InteractiveQuestionProvider = ({
+export const InteractiveQuestionProviderInner = ({
   cardId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
@@ -87,6 +88,20 @@ export const InteractiveQuestionProvider = ({
       {children}
     </InteractiveQuestionContext.Provider>
   );
+};
+
+export const InteractiveQuestionProvider = ({
+  cardId,
+  ...rest
+}: Omit<InteractiveQuestionProviderProps, "options"> & {
+  options?: QueryParams;
+}) => {
+  const id = useValidIdForEntity({
+    type: "dashboard",
+    id: cardId,
+  });
+
+  return <InteractiveQuestionProviderInner cardId={id} {...rest} />;
 };
 
 export const useInteractiveQuestionContext = () => {

@@ -22,7 +22,6 @@ import {
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
 import type { Card } from "metabase-types/api";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
@@ -40,17 +39,12 @@ export const _InteractiveQuestion = ({
   children = null,
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps): JSX.Element | null => {
-  const id = useValidIdForEntity({
-    type: "card",
-    id: questionId,
-  });
-
-  if (!id) {
+  if (!questionId) {
     return <div>Loading...</div>;
   }
 
   return (
-    <InteractiveQuestionProvider cardId={id} componentPlugins={plugins}>
+    <InteractiveQuestionProvider cardId={questionId} componentPlugins={plugins}>
       {children ?? (
         <InteractiveQuestionResult
           height={height}

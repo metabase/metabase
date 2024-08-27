@@ -20,11 +20,11 @@ const validEntityTypes = [
   "snippet",
   "timeline",
   "user",
-];
+] as const;
 
 export type EntityType = typeof validEntityTypes[number];
 
-type TranslateEntityIdRequest = Record<EntityType, string[]>;
+type TranslateEntityIdRequest = Partial<Record<EntityType, string[]>>;
 
 export type TranslateEntityIdResponseSuccess = {
   status: "success";
@@ -45,7 +45,7 @@ export type TranslateEntityIdResponse = Record<
 
 type TranslateEntityIdError = {
   message: string;
-  explanation: Record<keyof typeof validEntityTypes, [[string]]>;
+  explanation: Record<EntityType, [[string]]>;
 };
 
 export const entityIdApi = Api.injectEndpoints({

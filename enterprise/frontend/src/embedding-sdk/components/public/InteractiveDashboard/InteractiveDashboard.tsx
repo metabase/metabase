@@ -26,7 +26,7 @@ export type InteractiveDashboardProps = {
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const InteractiveDashboardInner = ({
-  dashboardId: initId,
+  dashboardId,
   initialParameterValues = {},
   withTitle = true,
   withCardTitle = true,
@@ -38,12 +38,6 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
 }: InteractiveDashboardProps) => {
-  const dashboardId =
-    useValidIdForEntity({
-      type: "dashboard",
-      id: initId,
-    }) ?? null;
-
   const {
     displayOptions,
     ref,
@@ -117,6 +111,16 @@ const InteractiveDashboardInner = ({
   );
 };
 
-export const InteractiveDashboard = withPublicComponentWrapper(
-  InteractiveDashboardInner,
-);
+export const InteractiveDashboard =
+  withPublicComponentWrapper<InteractiveDashboardProps>(
+    ({ dashboardId, ...rest }) => {
+      const id = useValidIdForEntity({
+        type: "dashboard",
+        id: dashboardId,
+      });
+
+      return id ? (
+        <InteractiveDashboardInner dashboardId={id} {...rest} />
+      ) : null;
+    },
+  );
