@@ -73,9 +73,6 @@ export function MetricsTable({
             sortingOptions={sortingOptions}
             onSortingOptionsChange={handleSortingOptionsChange}
             style={{ paddingInlineStart: ".625rem" }}
-            columnHeaderProps={{
-              style: { paddingInlineEnd: ".5rem" },
-            }}
           >
             {t`Name`}
           </SortableColumnHeader>
@@ -83,10 +80,6 @@ export function MetricsTable({
             name="collection"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={handleSortingOptionsChange}
-            style={{ paddingInlineStart: ".625rem" }}
-            columnHeaderProps={{
-              style: { paddingInlineEnd: ".5rem" },
-            }}
           >
             {t`Collection`}
           </SortableColumnHeader>
@@ -94,10 +87,6 @@ export function MetricsTable({
             name="description"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={handleSortingOptionsChange}
-            style={{ paddingInlineStart: ".625rem" }}
-            columnHeaderProps={{
-              style: { paddingInlineEnd: ".5rem" },
-            }}
           >
             {t`Description`}
           </SortableColumnHeader>
