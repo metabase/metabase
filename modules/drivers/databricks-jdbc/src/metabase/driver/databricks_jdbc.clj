@@ -5,10 +5,12 @@
    [metabase.driver.hive-like :as driver.hive-like]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
@@ -30,6 +32,12 @@
                               :standard-deviation-aggregations true
                               :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:databricks-jdbc feature] [_driver _feature _db] supported?))
+
+(defmethod sql-jdbc.sync/database-type->base-type :databricks-jdbc
+  [_ database-type]
+  (condp re-matches (u/lower-case-en (name database-type))
+    #"timestamp" :type/DateTimeWithLocalTZ
+    (sql-jdbc.sync/database-type->base-type :hive-like database-type)))
 
 ;; See the https://docs.databricks.com/en/sql/language-manual/sql-ref-syntax-aux-conf-mgmt-set-timezone.html
 ;; for timzone formatting
