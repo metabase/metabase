@@ -42,12 +42,12 @@ We've written up some guides for the most common providers:
 If you don't see your IdP listed here:
 
 - Refer to your IdP's reference docs on configuring SAML. You'll be looking for something like this [OneLogin SAML guide](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970).
-- Using the information found on the [Metabase SAML form](#turning-on-saml-based-sso), fill out your IdP's SAML form.
+- Using the information found on the Metabase SAML form, fill out your IdP's SAML form.
 - For more information, see the next section on [Generic SAML configuration](#generic-saml-configuration).
 
 ## Generic SAML configuration
 
-The top portion of the [SAML form in Metabase](#turning-on-saml-based-sso) has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
+The top portion of the [SAML form in Metabase](#setting-up-saml-with-your-idp) has the information you'll need to fill out your IdP's SAML form, with buttons to make copying the information easy.
 
 The names of the fields in the Metabase SAML form won't always match the names used by your IdP. We've provided a description of each field below to help you map information from one place to another.
 
