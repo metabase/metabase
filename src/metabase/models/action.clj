@@ -386,11 +386,12 @@
    (concat
     ;; other stuff is implicitly referenced through a Card
     [[{:model "Card" :id (:model_id action)}]]
-    ;; this method is called on ingested data before transformation and so here it always will be a string
+    ;; this method is called on ingested data before transformation, and so here it always will be a string
     (when (= (:type action) "query")
-      (concat
-       [[{:model "Database" :id (-> action :query first :database_id)}]]
-       (serdes/mbql-deps (:dataset_query action)))))))
+      (let [{:keys [database_id dataset_query]} (first (:query action))]
+        (concat
+         [[{:model "Database" :id database_id}]]
+         (serdes/mbql-deps dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]
