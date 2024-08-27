@@ -7,11 +7,15 @@ import ora from "ora";
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
 import { SETUP_PRO_LICENSE_MESSAGE } from "../constants/messages";
-import { printEmptyLines, printInfo, printWithPadding } from "../utils/print";
+import { printEmptyLines, printWithPadding } from "../utils/print";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
 const trialUrl = `https://store.metabase.com/checkout?plan=pro&deployment=self-hosted`;
 const trialUrlWithUtm = `${trialUrl}&utm_source=product&utm_medium=checkout&utm_campaign=embedding-sdk&utm_content=embedding-sdk-cli`;
+
+const VISIT_STORE_MESSAGE = `Please visit ${chalk.blue(
+  trialUrl,
+)} to get a license key.`;
 
 export const setupLicense: CliStepMethod = async state => {
   printWithPadding(SETUP_PRO_LICENSE_MESSAGE);
@@ -46,8 +50,10 @@ export const setupLicense: CliStepMethod = async state => {
         await open(trialUrlWithUtm);
         printWithPadding(`Opened ${chalk.blue(trialUrl)} in your browser.`);
       } catch (error) {
-        printInfo(`Please visit ${chalk.blue(trialUrl)} to get a license key.`);
+        printWithPadding(VISIT_STORE_MESSAGE);
       }
+    } else {
+      printWithPadding(VISIT_STORE_MESSAGE);
     }
   }
 

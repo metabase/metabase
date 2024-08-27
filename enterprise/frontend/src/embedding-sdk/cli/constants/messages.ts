@@ -1,8 +1,12 @@
-import chalk from "chalk";
+import chalk, { green } from "chalk";
 
 import { HARDCODED_USERS } from "../constants/hardcoded-users";
 
-import { CONTAINER_NAME, USER_ATTRIBUTE_CUSTOMER_ID } from "./config";
+import {
+  CONTAINER_NAME,
+  SDK_NPM_LINK,
+  USER_ATTRIBUTE_CUSTOMER_ID,
+} from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -25,9 +29,6 @@ export const INSTANCE_CONFIGURED_MESSAGE = `
   The instance has already been configured.
   ${DELETE_CONTAINER_MESSAGE}
 `;
-
-export const PREMIUM_TOKEN_REQUIRED_MESSAGE =
-  "  Don't forget to add your premium token to your Metabase instance in the admin settings! The embedding demo will not work without a license.";
 
 export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
   Your have not selected any tables with a multi-tenancy column.
@@ -78,3 +79,7 @@ export const SETUP_PRO_LICENSE_MESSAGE = `
   To proceed, you will need a Pro license.
   If you skip, we will proceed without multi-tenancy or SSO.
 `;
+
+export const SDK_LEARN_MORE_MESSAGE = `All done! 🚀 Learn more about the SDK here: ${green(
+  SDK_NPM_LINK,
+)}`;

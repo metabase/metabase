@@ -2,6 +2,7 @@ export const IMAGE_NAME = "metabase/metabase-enterprise:latest";
 export const CONTAINER_NAME = "metabase-enterprise-embedding";
 export const SITE_NAME = "Metabase Embedding SDK Demo";
 export const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
+export const SDK_NPM_LINK = `https://www.npmjs.com/package/${SDK_PACKAGE_NAME}`;
 
 /**
  * Default port for the local Metabase instance.

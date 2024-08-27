@@ -1,7 +1,10 @@
 import { select } from "@inquirer/prompts";
 import { green } from "chalk";
 
-import { getMetabaseInstanceSetupCompleteMessage } from "../constants/messages";
+import {
+  SDK_LEARN_MORE_MESSAGE,
+  getMetabaseInstanceSetupCompleteMessage,
+} from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { printEmptyLines, printInfo, printWithPadding } from "../utils/print";
 
@@ -14,11 +17,11 @@ const STEP_2 = `
 `;
 
 export const showPostSetupSteps: CliStepMethod = async state => {
-  const POST_SETUP_STEPS = [
-    STEP_1,
-    STEP_2,
-    getMetabaseInstanceSetupCompleteMessage(state.instanceUrl ?? ""),
-  ];
+  const STEP_3 = getMetabaseInstanceSetupCompleteMessage(
+    state.instanceUrl ?? "",
+  );
+
+  const POST_SETUP_STEPS = [STEP_1, STEP_2, STEP_3];
 
   for (const message of POST_SETUP_STEPS) {
     printWithPadding(message);
@@ -30,7 +33,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   }
 
   printEmptyLines(1);
-  printInfo("All done! 🚀 You can now embed Metabase into your React app.");
+  printInfo(SDK_LEARN_MORE_MESSAGE);
 
   return [{ type: "success" }, state];
 };
