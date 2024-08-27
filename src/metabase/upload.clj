@@ -57,7 +57,8 @@
 
 (defmethod max-bytes :model/Field [_ column]
   (case column
-    :name 254))
+    :name 254
+    :display_name 254))
 
 (defmethod max-bytes :model/Card  [_ column]
   (case column
@@ -87,10 +88,10 @@
               (subs s 0 char-index))))))))
 
 (defn- normalize-display-name
-  [driver raw-name]
+  [raw-name]
   (if (str/blank? raw-name)
     "unnamed column"
-    (truncate-utf8-bytes (str/trim raw-name) (max-column-bytes driver))))
+    (truncate-utf8-bytes (str/trim raw-name) (max-bytes :model/Field :display_name))))
 
 (defn- normalize-column-name
   [driver raw-name]
@@ -328,7 +329,9 @@
 (defn- derive-display-names [driver header]
   (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver " "))]
     (mapv generator-fn
-          (for [h header] (normalize-display-name driver h)))))
+          (for [h header]
+            (humanization/name->human-readable-name
+             (normalize-display-name h))))))
 
 (defn- derive-column-names [driver header]
   (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver "_"))]
@@ -399,7 +402,9 @@
     (t2/update! :model/Field
                 [:and
                  [:= :table_id table-id]
-                 [:in :name field-names]]
+                 [:in :name field-names]
+                 ;; We don't want to replace display names that have been set manually.
+                 [:= [:lower :name] [:lower :display_name]]]
                 {:display_name case-statement})))
 
 (defn- uploads-enabled? []
@@ -718,15 +723,16 @@
                                    without-auto-pk-columns)
               normed-name->field (m/index-by #(normalize-column-name driver (:name %))
                                              (t2/select :model/Field :table_id (:id table) :active true))
-              normalized-header  (for [h header] (normalize-column-name driver h))
+              column-names       (for [h header] (normalize-column-name driver h))
+              display-names      (for [h header] (normalize-display-name h))
               create-auto-pk?    (and
                                   auto-pk?
                                   (driver/create-auto-pk-with-append-csv? driver)
                                   (not (contains? normed-name->field auto-pk-column-name)))
               normed-name->field (cond-> normed-name->field auto-pk? (dissoc auto-pk-column-name))
-              _                  (check-schema normed-name->field normalized-header)
+              _                  (check-schema normed-name->field column-names)
               settings           (upload-parsing/get-settings)
-              old-types          (map (comp upload-types/base-type->upload-type :base_type normed-name->field) normalized-header)
+              old-types          (map (comp upload-types/base-type->upload-type :base_type normed-name->field) column-names)
               ;; in the happy, and most common, case all the values will match the existing types
               ;; for now we just plan for the worst and perform a fairly expensive operation to detect any type changes
               ;; we can come back and optimize this to an optimistic-with-fallback approach later.
@@ -737,7 +743,7 @@
               ;; be parsed as its existing type - there is scope to improve these error messages in the future.
               modify-schema?     (and (not= old-types new-types) (= detected-types new-types))
               _                  (when modify-schema?
-                                   (let [changes (field-changes normalized-header old-types new-types)]
+                                   (let [changes (field-changes column-names old-types new-types)]
                                      (add-columns! driver database table (:added changes))
                                      (alter-columns! driver database table (:updated changes))))
               ;; this will fail if any of our required relaxations were rejected.
@@ -751,7 +757,7 @@
           (try
             (when replace-rows?
               (driver/truncate! driver (:id database) (table-identifier table)))
-            (driver/insert-into! driver (:id database) (table-identifier table) normalized-header parsed-rows)
+            (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
             (catch Throwable e
               (throw (ex-info (ex-message e) {:status-code 422}))))
 
@@ -761,6 +767,7 @@
                           :primary-key [auto-pk-column-keyword]))
 
           (scan-and-sync-table! database table)
+          (set-display-names! (:id table) (zipmap column-names display-names))
 
           (when create-auto-pk?
             (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]
