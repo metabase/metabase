@@ -3,7 +3,6 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { EntityIdPopover } from "metabase/components/EntityIdPopover";
 import CS from "metabase/css/core/index.css";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -214,7 +213,6 @@ export function ViewTitleHeaderRightSide({
         </ViewHeaderIconButtonContainer>
       )}
       {!isShowingNotebook && <QuestionSharingMenu question={question} />}
-      <EntityIdPopover resource={question.card()} />
       {isSaved && (
         <QuestionActions
           question={question}

@@ -35,6 +35,7 @@ export type TranslateEntityIdResponseSuccess = {
 export type TranslateEntityIdResponseNotFound = {
   status: "not-found";
   type: string;
+  id: null;
 };
 
 export type TranslateEntityIdResponse = Record<

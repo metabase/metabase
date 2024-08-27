@@ -1,6 +1,9 @@
 import { P, match } from "ts-pattern";
 
-import { type EntityType, useTranslateEntityIdQuery } from "metabase/api";
+import {
+  type EntityType,
+  useTranslateEntityIdQuery,
+} from "metabase/api/entity-id";
 import type { CardEntityId, CardId } from "metabase-types/api";
 
 export const useValidIdForEntity = ({

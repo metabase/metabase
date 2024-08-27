@@ -1,5 +1,6 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
 import type {
+  BaseEntityId,
   ClickBehavior,
   Collection,
   CollectionAuthorityLevel,
@@ -33,6 +34,7 @@ export type DashboardWidth = "full" | "fixed";
 
 export interface Dashboard {
   id: DashboardId;
+  entity_id: BaseEntityId;
   created_at: string;
   updated_at: string;
   collection?: Collection | null;

@@ -1,4 +1,3 @@
-import { EntityIdPopover } from "metabase/components/EntityIdPopover";
 import { dashboardActionButtons } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/action-buttons";
 import type {
   DashboardActionKey,
@@ -50,7 +49,6 @@ export const DashboardHeaderButtonRow = ({
 
   return (
     <>
-      {dashboard && <EntityIdPopover resource={dashboard} />}
       {visibleDashboardActionKeys.map(dashboardActionKey => {
         const config = dashboardActionButtons[dashboardActionKey];
         if (dashboard) {
