@@ -94,12 +94,15 @@
 
 (defn- update-breakout-unit
   [query
-   {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}]] :target
+   {[_dimension [_field target-field-id {:keys [base-type temporal-unit]}] dim-opts] :target
     :keys [value] :as _param}]
   (let [new-unit (keyword value)
         base-type (or base-type
                       (when (integer? target-field-id)
-                        (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))]
+                        (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))
+        stage-path (if-let [stage-number (:stage-number dim-opts)]
+                     (mbql.u/stage-path (:query query) stage-number)
+                     [])]
     (assert (some? base-type) "`base-type` is not set.")
     (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
@@ -108,7 +111,7 @@
                        :base-type  base-type
                        :unit       new-unit})))
     (lib.util.match/replace-in
-      query [:query :breakout]
+      query (cons :query (conj stage-path :breakout))
       [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
       [:field target-field-id (assoc opts :temporal-unit new-unit)])))
 

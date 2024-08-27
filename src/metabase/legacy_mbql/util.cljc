@@ -134,7 +134,7 @@
       n
       (recur source-query (inc n)))))
 
-(defn- stage-path
+(defn stage-path
   "Returns a vector consisting of :source-query elements that address the stage of `inner-query`
   specified by `stage-number`.
 
