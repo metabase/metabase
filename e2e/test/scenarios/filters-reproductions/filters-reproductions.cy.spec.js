@@ -816,7 +816,8 @@ describe("issue 27123", () => {
   });
 });
 
-describe("issue 29094", () => {
+// TODO: Unskip this test when we bring back expression type checking. See #31877.
+describe.skip("issue 29094", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();

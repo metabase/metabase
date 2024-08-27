@@ -8,7 +8,16 @@ export function expressionEditorWidget() {
  * @param {string=} option.name
  * @param {boolean} option.blur true by default. However, if you need to examine the popover in the test, it should be set to false so the popover is not dismissed
  */
-export function enterCustomColumnDetails({ formula, name, blur = true }) {
+
+export function enterCustomColumnDetails({
+  formula,
+  name,
+  blur = true,
+}: {
+  formula: string;
+  name?: string;
+  blur?: boolean;
+}) {
   cy.get(".ace_text-input")
     .first()
     .as("formula")
@@ -32,13 +41,13 @@ export function checkExpressionEditorHelperPopoverPosition() {
   cy.findByTestId("expression-editor-textfield").then($target => {
     const textfieldPosition = $target[0].getBoundingClientRect();
 
-    cy.findByTestId("expression-helper-popover", $target => {
+    cy.findByTestId("expression-helper-popover").then($target => {
       const popoverPosition = $target[0].getBoundingClientRect();
 
-      expect(textfieldPosition.top - popoverPosition.top).toBeLessThan(
+      expect(textfieldPosition.top - popoverPosition.top).to.be.lessThan(
         textfieldPosition.height * 2,
       );
-      expect(textfieldPosition.left - popoverPosition.left).toBeLessThan(10);
+      expect(textfieldPosition.left - popoverPosition.left).to.be.lessThan(10);
     });
   });
 }

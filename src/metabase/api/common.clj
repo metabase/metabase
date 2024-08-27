@@ -730,3 +730,27 @@
                    (map #(assoc % ::model model) (f model items))))
          (sort-by (comp id+model->order (juxt :id ::model)))
          (map #(dissoc % ::model)))))
+
+(def model->db-model
+  "A mapping from the name of a model used in the API to information about it. This is reused in search, and entity_id
+  translation."
+  {"action"            {:db-model :model/Action             :alias :action}
+   "card"              {:db-model :model/Card               :alias :card}
+   "collection"        {:db-model :model/Collection         :alias :collection}
+   "dashboard"         {:db-model :model/Dashboard          :alias :dashboard}
+   "database"          {:db-model :model/Database           :alias :database}
+   "dataset"           {:db-model :model/Card               :alias :card}
+   "indexed-entity"    {:db-model :model/ModelIndexValue    :alias :model-index-value}
+   "metric"            {:db-model :model/Card               :alias :card}
+   "segment"           {:db-model :model/Segment            :alias :segment}
+   "snippet"           {:db-model :model/NativeQuerySnippet :alias :snippet}
+   "table"             {:db-model :model/Table              :alias :table}
+   "dashboard-card"    {:db-model :model/DashboardCard      :alias :dashboard-card}
+   "dashboard-tab"     {:db-model :model/DashboardTab       :alias :dashboard-tab}
+   "dimension"         {:db-model :model/Dimension          :alias :dimension}
+   "permissions-group" {:db-model :model/PermissionsGroup   :alias :permissions-group}
+   "pulse"             {:db-model :model/Pulse              :alias :pulse}
+   "pulse-card"        {:db-model :model/PulseCard          :alias :pulse-card}
+   "pulse-channel"     {:db-model :model/PulseChannel       :alias :pulse-channel}
+   "timeline"          {:db-model :model/Timeline           :alias :timeline}
+   "user"              {:db-model :model/User               :alias :user}})
