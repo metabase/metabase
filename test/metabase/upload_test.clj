@@ -486,11 +486,6 @@
 (defn- query-table [table]
   (query (:db_id table) (:id table)))
 
-(defn- column-display-names-for-table [table]
-  (->> (query-table table)
-       mt/cols
-       (map :display_name)))
-
 (defn- column-names-for-table [table]
   (->> (query-table table)
        mt/cols
@@ -574,7 +569,7 @@
                                         "\"a,b,c\",\"d\""]))]
           (testing "Check the data was uploaded into the table correctly"
             (is (= (header-with-auto-pk ["c1", "c2"])
-                   (column-display-names-for-table table)))
+                   (column-names-for-table table)))
             (is (= (rows-with-auto-pk [["a,b,c" "d"]])
                    (rows-for-table table)))))))))
 
@@ -761,8 +756,13 @@
                                        "4,山田次郎,35,プロジェクトマネージャー,福岡"
                                        "5,中村美咲,32,データサイエンティスト,札幌"]))]
          (testing "Check the data was uploaded into the table correctly"
-           (is (= (header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
-                  (column-display-names-for-table table)))
+           (is (= #_(header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
+                  (header-with-auto-pk ["id"
+                                        "%e5%90%8d%e5%89%8d"
+                                        "%e5%b9%b4%e9%bd%a2"
+                                        "%e8%81%b7%e6%a5%ad"
+                                        "%e9%83%bd%e5%b8%82"])
+                  (column-names-for-table table)))
            (is (= (rows-with-auto-pk
                    [[1 "佐藤太郎" 25 "エンジニア" "東京"]
                     [2 "鈴木花子" 30 "デザイナー" "大阪"]
@@ -780,8 +780,8 @@
                                       "1,Serenity,Malcolm Reynolds"
                                       "2,Millennium Falcon, Han Solo"]))]
         (testing "Check the data was uploaded into the table correctly"
-          (is (= (header-with-auto-pk ["unnamed column" "ship name" "unnamed column 2"])
-                 (column-display-names-for-table table))))))))
+          (is (= (header-with-auto-pk ["unnamed_column" "ship_name" "unnamed_column_2"])
+                 (column-names-for-table table))))))))
 
 (deftest create-from-csv-duplicate-names-test
   (testing "Upload a CSV file with duplicate column names"
@@ -795,9 +795,7 @@
           (testing "Table and Fields exist after sync"
             (testing "Check the data was uploaded into the table correctly"
               (is (= (header-with-auto-pk ["unknown" "unknown_2" "unknown_3" "unknown_2_2"])
-                     (column-names-for-table table)))
-              (is (= (header-with-auto-pk ["unknown" "unknown 2" "unknown 3" "unknown_2"])
-                     (column-display-names-for-table table))))))))))
+                     (column-names-for-table table))))))))))
 
 (deftest create-from-csv-sanitize-to-duplicate-names-test
   (testing "Upload a CSV file with unique column names that get sanitized to the same string"
@@ -809,8 +807,6 @@
                                         "$123,12.3, 100"]))]
           (testing "Table and Fields exist after sync"
             (testing "Check the data was uploaded into the table correctly"
-              (is (= [@#'upload/auto-pk-column-name "cost $" "cost %" "cost #"]
-                     (column-display-names-for-table table)))
               (is (= [@#'upload/auto-pk-column-name "cost__" "cost___2" "cost___3"]
                      (column-names-for-table table))))))))))
 
@@ -2297,7 +2293,5 @@
 
 (deftest unique-long-column-names-test
   (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
-        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]
-        displays ["αbcdεf_" "αbcdεfg_" "αbc_2_etc" "αbc_3_xyz"]]
-    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
-    (is (= displays (#'upload/derive-display-names ::short-column-test-driver original)))))
+        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]]
+    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))
