@@ -25,7 +25,7 @@ import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { Card } from "metabase-types/api";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: Card["id"] | Card["entity_id"];
+  questionId?: Card["id"];
   plugins?: SdkPluginsConfig;
 }>;
 
