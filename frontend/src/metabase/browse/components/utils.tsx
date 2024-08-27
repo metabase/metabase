@@ -27,7 +27,7 @@ export const getMetricDescription = (item: SearchResult) => {
 };
 
 const getValueForSorting = (
-  model: ModelResult,
+  model: ModelResult | MetricResult,
   sort_column: keyof ModelResult,
 ): string => {
   if (sort_column === "collection") {
@@ -40,7 +40,7 @@ const getValueForSorting = (
 export const isValidSortColumn = (
   sort_column: string,
 ): sort_column is keyof ModelResult => {
-  return ["name", "collection"].includes(sort_column);
+  return ["name", "collection", "description"].includes(sort_column);
 };
 
 export const getSecondarySortColumn = (
@@ -96,14 +96,14 @@ export const sortMetrics = (
     a.localeCompare(b, localeCode, { sensitivity: "base" });
 
   return [...metrics].sort((metricA, metricB) => {
-    const a = getValueForSorting(metricA, sort_column);
-    const b = getValueForSorting(metricB, sort_column);
+    const a = getValueForSorting(metricA, sort_column) ?? "";
+    const b = getValueForSorting(metricB, sort_column) ?? "";
 
     let result = compare(a, b);
     if (result === 0) {
       const sort_column2 = getSecondarySortColumn(sort_column);
-      const a2 = getValueForSorting(metricA, sort_column2);
-      const b2 = getValueForSorting(metricB, sort_column2);
+      const a2 = getValueForSorting(metricA, sort_column2) ?? "";
+      const b2 = getValueForSorting(metricB, sort_column2) ?? "";
       result = compare(a2, b2);
     }
 
