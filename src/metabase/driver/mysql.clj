@@ -790,13 +790,14 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (let [temp-file (File/createTempFile table-name ".tsv")
+    (let [temp-file (File/createTempFile table-name ".tjsv")
           file-path (.getAbsolutePath temp-file)]
       (try
         (let [tsvs (map (partial row->tsv driver (count column-names)) values)
               sql  (sql/format {::load   [file-path (keyword table-name)]
-                                :columns (map keyword column-names)}
-                               :quoted  true
+                                ;; We need to namespace the keyword in case the column name starts with a %
+                                :columns (map #(keyword table-name %) column-names)}
+                               :quoted true
                                :dialect (sql.qp/quote-style driver))]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]

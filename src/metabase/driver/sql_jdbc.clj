@@ -171,7 +171,8 @@
         ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
         chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
         sqls       (map #(sql/format {:insert-into table-name
-                                      :columns     columns
+                                      ;; We need to namespace the keyword in case the column name starts with a %
+                                      :columns     (map (partial keyword table-name) columns)
                                       :values      %}
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
