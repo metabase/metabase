@@ -3,7 +3,6 @@
   It is passed in as an `:aggregation` clause but is replaced by the `expand-macros` middleware with the appropriate
   clauses."
   (:require
-   [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.models.audit-log :as audit-log]
@@ -11,7 +10,6 @@
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
    [metabase.models.revision :as revision]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
@@ -85,38 +83,6 @@
         (or (get-in base-diff [:after :definition])
             (get-in base-diff [:before :definition])) (assoc :definition {:before (get metric1 :definition)
                                                                           :after  (get metric2 :definition)})))))
-
-;;; ------------------------------------------------- SERIALIZATION --------------------------------------------------
-
-(defmethod serdes/hash-fields LegacyMetric
-  [_metric]
-  [:name (serdes/hydrated-hash :table) :created_at])
-
-(defmethod serdes/extract-one "LegacyMetric"
-  [_model-name _opts metric]
-  (-> (serdes/extract-one-basics "LegacyMetric" metric)
-      (update :table_id   serdes/*export-table-fk*)
-      (update :creator_id serdes/*export-user*)
-      (update :definition serdes/export-mbql)))
-
-(defmethod serdes/load-xform "LegacyMetric" [metric]
-  (-> metric
-      serdes/load-xform-basics
-      (update :table_id   serdes/*import-table-fk*)
-      (update :creator_id serdes/*import-user*)
-      (update :definition serdes/import-mbql)))
-
-(defmethod serdes/dependencies "LegacyMetric" [{:keys [definition table_id]}]
-  (into [] (set/union #{(serdes/table->path table_id)}
-                      (serdes/mbql-deps definition))))
-
-(defmethod serdes/storage-path "LegacyMetric" [metric _ctx]
-  (let [{:keys [id label]} (-> metric serdes/path last)]
-    (-> metric
-        :table_id
-        serdes/table->path
-        serdes/storage-table-path-prefix
-        (concat ["metrics" (serdes/storage-leaf-file-name id label)]))))
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------
 
