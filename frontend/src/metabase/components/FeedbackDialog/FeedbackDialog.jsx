@@ -2,11 +2,14 @@ import React, { useState } from "react";
 import { Box, Button, Icon, Textarea } from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import TextArea from "metabase/core/components/TextArea";
+import { useSubmitFeedbackMutation } from "metabase/api/feedback";
 
 const FeedbackDialog = ({ isOpen, onClose }) => {
     const [subject, setSubject] = useState("");
     const [description, setDescription] = useState("");
     const [files, setFiles] = useState([]);
+    const [submitFeedback, { isLoading, isSuccess, isError }] = useSubmitFeedbackMutation();
+
 
     const handleFileUpload = (e) => {
         const uploadedFiles = Array.from(e.target.files);
@@ -17,11 +20,24 @@ const FeedbackDialog = ({ isOpen, onClose }) => {
         setFiles(files.filter(file => file !== fileToRemove));
     };
 
-    const handleSubmit = () => {
-        console.log("Subject:", subject);
-        console.log("Description:", description);
-        console.log("Uploaded Files:", files);
-        onClose();
+    const handleSubmit = async () => {
+        try {
+            // Execute the feedback mutation
+            await submitFeedback({
+                submitted_by: "anonymous", // Adjust as needed (e.g., get the user's name or ID if available)
+                task: "General Feedback", // Adjust based on your use case
+                chat_history: null, // You can adjust if chat history is part of the feedback
+                description: description,
+                subject: subject,
+            }).unwrap(); // Unwraps the result to handle any errors thrown by RTK Query
+
+            // Handle success state
+            console.log("Feedback submitted successfully!");
+            onClose();
+        } catch (error) {
+            console.error("Failed to submit feedback:", error);
+            // Handle error state
+        }
     };
 
     if (!isOpen) return null;

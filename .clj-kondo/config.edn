@@ -397,6 +397,7 @@
     metabase.api.dataset                                          api.dataset
     metabase.api.email                                            api.email
     metabase.api.embed                                            api.embed
+    metabase.api.feedback                                      api.feedback
     metabase.api.field                                            api.field
     metabase.api.geojson                                          api.geojson
     metabase.api.ldap                                             api.ldap
@@ -486,6 +487,7 @@
     metabase.models.dashboard-card                                dashboard-card
     metabase.models.database                                      database
     metabase.models.dependency                                    dependency
+    metabase.models.feedback                                      feedback
     metabase.models.field-values                                  field-values
     metabase.models.interface                                     mi
     metabase.models.moderation-review                             moderation-review
