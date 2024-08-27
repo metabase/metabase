@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -17,7 +16,6 @@ table_id:
 - v_query_log
 enable_embedding: false
 embedding_params: null
-made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -42,7 +40,6 @@ dataset_query:
         temporal-unit: week
     source-table: QOtZaiTLf2FDD4AT6Oinb
   type: query
-result_metadata: null
 visualization_settings:
   column_settings: null
   graph.dimensions:
@@ -55,6 +52,7 @@ serdes/meta:
 - id: 4DlO-I7ry2OaVQy7-RGPU
   label: median_load_time_in_seconds_for_questions_in_this_dashboard
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (13e6090)
+source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

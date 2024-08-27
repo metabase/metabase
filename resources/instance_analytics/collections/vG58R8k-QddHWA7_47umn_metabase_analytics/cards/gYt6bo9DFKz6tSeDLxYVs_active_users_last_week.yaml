@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -17,7 +16,6 @@ table_id:
 - v_view_log
 enable_embedding: false
 embedding_params: null
-made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -72,7 +70,6 @@ dataset_query:
       strategy: left-join
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
-result_metadata: null
 visualization_settings:
   column_settings: null
   graph.dimensions:
@@ -85,6 +82,7 @@ serdes/meta:
 - id: gYt6bo9DFKz6tSeDLxYVs
   label: active_users_last_week
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: null
+source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

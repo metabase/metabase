@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: 10
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -17,7 +16,6 @@ table_id:
 - v_audit_log
 enable_embedding: false
 embedding_params: null
-made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -301,6 +299,6 @@ serdes/meta:
 - id: -lNDM3tJmuL5ltGbX0oyT
   label: activity_log
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: null
 type: model

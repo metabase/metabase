@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -17,7 +16,6 @@ table_id:
 - v_content
 enable_embedding: false
 embedding_params: null
-made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -128,6 +126,7 @@ serdes/meta:
 - id: DnNyT6EtIn-Zx8bHRFHbV
   label: questions_created_last_week
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: null
+source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

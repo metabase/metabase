@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -17,7 +16,6 @@ table_id:
 - v_alerts
 enable_embedding: false
 embedding_params: null
-made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -129,7 +127,6 @@ dataset_query:
       strategy: left-join
     source-table: skoPT2xiuEcUV8vFkHE6S
   type: query
-result_metadata: null
 visualization_settings:
   column_settings: null
   table.cell_column: card_id
@@ -138,6 +135,7 @@ serdes/meta:
 - id: YiHMsA2dv3iQob11DLTIz
   label: alerts_on_this_question
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (13e6090)
+source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

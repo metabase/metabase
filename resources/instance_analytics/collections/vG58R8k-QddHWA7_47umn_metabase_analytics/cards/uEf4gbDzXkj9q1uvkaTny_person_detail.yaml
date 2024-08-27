@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -17,7 +16,6 @@ table_id:
 - v_users
 enable_embedding: false
 embedding_params: null
-made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -81,13 +79,13 @@ dataset_query:
       - base-type: type/Text
     source-table: 0wVIfjBJWclD0lKeABYYl
   type: query
-result_metadata: null
 visualization_settings:
   column_settings: null
 serdes/meta:
 - id: uEf4gbDzXkj9q1uvkaTny
   label: person_detail
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (ad99d37)
+source_card_id: 0wVIfjBJWclD0lKeABYYl
 type: question

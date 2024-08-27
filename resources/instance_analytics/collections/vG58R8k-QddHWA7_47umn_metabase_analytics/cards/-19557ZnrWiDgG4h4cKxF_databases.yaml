@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: 17
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -17,7 +16,6 @@ table_id:
 - v_databases
 enable_embedding: false
 embedding_params: null
-made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -506,7 +504,6 @@ serdes/meta:
 - id: -19557ZnrWiDgG4h4cKxF
   label: databases
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-15T20:34:49.850139Z'
+archived_directly: false
 metabase_version: vUNKNOWN (0e09ac7)
 type: model
