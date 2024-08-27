@@ -39,6 +39,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io File)
+   (java.nio.charset StandardCharsets)
    (org.apache.tika Tika)))
 
 (set! *warn-on-reflection* true)
@@ -67,6 +68,29 @@
 (defn- max-column-bytes [driver]
   (let [column-limit (some-> driver driver/column-name-length-limit)]
     (min-safe column-limit (max-bytes :model/Field :name))))
+
+(defn truncate-utf8-bytes
+  "Truncates a string to at most n bytes in UTF-8 encoding, removing whole characters."
+  [^String s ^long n]
+  (let [bytes (.getBytes s StandardCharsets/UTF_8)]
+    (if (<= (alength bytes) n)
+      s
+      (loop [byte-index 0
+             char-index 0]
+        (if (>= byte-index n)
+          (subs s 0 char-index)
+          (let [char-size  (Character/charCount (.codePointAt s char-index))
+                byte-count (count (.getBytes (subs s char-index (+ char-index char-size)) StandardCharsets/UTF_8))]
+            (if (<= (+ byte-index byte-count) n)
+              (recur (+ byte-index byte-count)
+                     (+ char-index char-size))
+              (subs s 0 char-index))))))))
+
+(defn- normalize-display-name
+  [driver raw-name]
+  (if (str/blank? raw-name)
+    "unnamed column"
+    (truncate-utf8-bytes (str/trim raw-name) (max-column-bytes driver))))
 
 (defn- normalize-column-name
   [driver raw-name]
@@ -294,15 +318,20 @@
   [driver db]
   (driver.u/supports? driver :upload-with-auto-pk db))
 
-(defn- unique-alias-fn [driver]
+(defn- unique-alias-fn [driver separator]
   (let [max-length (max-column-bytes driver)]
     (fn [base suffix]
-      (as-> (str base "_" suffix) %
+      (as-> (str base separator suffix) %
         (driver/escape-alias driver %)
         (lib.util/truncate-alias % max-length)))))
 
+(defn- derive-display-names [driver header]
+  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver " "))]
+    (mapv generator-fn
+          (for [h header] (normalize-display-name driver h)))))
+
 (defn- derive-column-names [driver header]
-  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver))]
+  (let [generator-fn (mbql.u/unique-name-generator :unique-alias-fn (unique-alias-fn driver "_"))]
     (mapv (comp keyword generator-fn)
           (for [h header] (normalize-column-name driver h)))))
 
@@ -317,6 +346,7 @@
                                 auto-pk?
                                 without-auto-pk-columns)
             settings          (upload-parsing/get-settings)
+            display-names     (derive-display-names driver header)
             column-names      (derive-column-names driver header)
             cols->upload-type (detect-schema settings column-names rows)
             col-definitions   (column-definitions driver (cond-> cols->upload-type
@@ -333,10 +363,11 @@
                                 {:primary-key [auto-pk-column-keyword]}))
         (try
           (driver/insert-into! driver (:id db) table-name csv-col-names parsed-rows)
-          {:num-rows          (count rows)
-           :num-columns       (count cols->upload-type)
-           :generated-columns (if auto-pk? 1 0)
-           :size-mb           (file-size-mb csv-file)}
+          {:columns (zipmap column-names display-names)
+           :stats   {:num-rows          (count rows)
+                     :num-columns       (count cols->upload-type)
+                     :generated-columns (if auto-pk? 1 0)
+                     :size-mb           (file-size-mb csv-file)}}
           (catch Throwable e
             (driver/drop-table! driver (:id db) table-name)
             (throw (ex-info (ex-message e) {:status-code 400} e))))))))
@@ -357,6 +388,19 @@
     :asynchronous (future (sync/sync-table! table))
     :synchronous (sync/sync-table! table)
     :never nil))
+
+(defn- set-display-names!
+  [table-id field->display-name]
+  (let [field-names    (map (comp name key) field->display-name)
+        case-statement (into [:case]
+                             (mapcat identity)
+                             (for [[n display-name] field->display-name]
+                               [[:= :name (name n)] display-name]))]
+    (t2/update! :model/Field
+                [:and
+                 [:= :table_id table-id]
+                 [:in :name field-names]]
+                {:display_name case-statement})))
 
 (defn- uploads-enabled? []
   (some? (:db_id (public-settings/uploads-settings))))
@@ -444,13 +488,14 @@
         schema            (some->> schema (ddl.i/format-name driver))
         table-name        (some->> table-name (ddl.i/format-name driver))
         schema+table-name (table-identifier {:schema schema :name table-name})
-        stats             (create-from-csv! driver db schema+table-name filename file)
+        {:keys [columns stats]} (create-from-csv! driver db schema+table-name filename file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
         table             (sync-tables/create-table! db {:name         table-name
                                                          :schema       (not-empty schema)
                                                          :display_name display-name})
         _set_is_upload    (t2/update! :model/Table (:id table) {:is_upload true})
         _sync             (scan-and-sync-table! db table)
+        _set_names        (set-display-names! (:id table) columns)
         ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
         ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
         _ (when (auto-pk-column? driver db)
