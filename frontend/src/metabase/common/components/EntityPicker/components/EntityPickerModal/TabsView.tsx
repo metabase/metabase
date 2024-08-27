@@ -100,6 +100,7 @@ export const TabsView = <
 
   return (
     <Tabs
+      keepMounted
       value={selectedTab}
       style={{
         flexGrow: 1,
