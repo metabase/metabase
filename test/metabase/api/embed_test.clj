@@ -1826,5 +1826,5 @@
                :user              [core_user_eid]}))))))
 
 (deftest missing-entity-translations-test
-  (is (= {"abcdefghijklmnopqrstu" {:type :card, :status "not-found"}}
+  (is (= {"abcdefghijklmnopqrstu" {:type :card, :id nil, :status "not-found"}}
          (api.embed.common/model->entity-ids->ids {:card ["abcdefghijklmnopqrstu"]}))))

@@ -538,7 +538,7 @@
     (mapv (fn [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name, :status "success"}
-                         {:type api-name :status "not-found"})])
+                         {:id nil :type api-name :status "not-found"})])
           eids)))
 
 (defn model->entity-ids->ids
