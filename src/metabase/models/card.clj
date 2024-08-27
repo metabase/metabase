@@ -528,7 +528,7 @@
       ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
       ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
       (when (contains? changes :dataset_query)
-        (query-analysis/analyze-async! changes))
+        (query-analysis/analyze! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
@@ -558,7 +558,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-analysis/analyze-async! card)))
+    (query-analysis/analyze! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -829,15 +829,22 @@
           (m/update-existing :table_id  serdes/*import-table-fk*)
           (m/update-existing :id        serdes/*import-field-fk*)
           (m/update-existing :field_ref serdes/import-mbql)
-          ;; NOTE: temporary until `instance_analytics` is updated
+          ;; FIXME: remove that `if` after v52
           (m/update-existing :fk_target_field_id #(if (number? %) % (serdes/*import-field-fk* %)))))))
 
 (defn- result-metadata-deps [metadata]
   (when (seq metadata)
-    (reduce set/union #{} (for [m (seq metadata)]
-                            (reduce set/union (serdes/mbql-deps (:field_ref m))
-                                    [(when (:table_id m) #{(serdes/table->path (:table_id m))})
-                                     (when (:id m)       #{(serdes/field->path (:id m))})])))))
+    (-> (reduce into #{} (for [m metadata]
+                           (conj (serdes/mbql-deps (:field_ref m))
+                                 (when (:table_id m)
+                                   (serdes/table->path (:table_id m)))
+                                 (when (:id m)
+                                   (serdes/field->path (:id m)))
+                                 (when (and (:fk_target_field_id m)
+                                            ;; FIXME: remove that check after v52
+                                            (not (number? (:fk_target_field_id m))))
+                                   (serdes/field->path (:fk_target_field_id m))))))
+        (disj nil))))
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]

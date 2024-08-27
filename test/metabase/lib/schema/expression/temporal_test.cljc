@@ -41,16 +41,17 @@
       :current                 :default)))
 
 (deftest ^:parallel invalid-absolute-datetime-test
-  (are [expr] (me/humanize (mc/explain ::expression/date expr))
-    ;; wrong literal string
-    [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-03-08T19:55:01" :day]
-    ;; wrong unit
-    [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-03-08" :hour]
-    ;; base-type specified, but it's non-temporal
-    [:absolute-datetime
-     {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer}
-     "2023-03-08T19:55:01"
-     :day]))
+  (binding [expression/*suppress-expression-type-check?* false]
+    (are [expr] (me/humanize (mc/explain ::expression/date expr))
+      ;; wrong literal string
+      [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-03-08T19:55:01" :day]
+      ;; wrong unit
+      [:absolute-datetime {:lib/uuid "00000000-0000-0000-0000-000000000000"} "2023-03-08" :hour]
+      ;; base-type specified, but it's non-temporal
+      [:absolute-datetime
+       {:lib/uuid "00000000-0000-0000-0000-000000000000", :base-type :type/Integer}
+       "2023-03-08T19:55:01"
+       :day])))
 
 (deftest ^:parallel temporal-extract-test
   (is (not (me/humanize
