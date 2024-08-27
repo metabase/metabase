@@ -1,9 +1,11 @@
 import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
-import { dirname } from "path";
+
+import { installMockServerDeps } from "embedding-sdk/cli/utils/install-mock-server-deps";
 
 import { getExpressServerGeneratedMessage } from "../constants/messages";
+import { MOCK_SERVER_PACKAGE_JSON } from "../constants/mock-server-package-json";
 import { getExpressServerSnippet } from "../snippets";
 import type { CliStepMethod } from "../types/cli";
 import { printError } from "../utils/print";
@@ -23,13 +25,13 @@ export const generateExpressServerFile: CliStepMethod = async state => {
     return [{ type: "error", message }, state];
   }
 
-  let filePath: string;
+  let mockServerDir: string;
 
   // eslint-disable-next-line no-constant-condition -- ask until user provides a valid path
   while (true) {
-    filePath = await input({
-      message: "Where should we save the example Express 'server.js' file?",
-      default: ".",
+    mockServerDir = await input({
+      message: "Where should we save the example Express mock server folder?",
+      default: "mock-server",
       validate: value => {
         if (!value) {
           return "The path cannot be empty.";
@@ -39,11 +41,9 @@ export const generateExpressServerFile: CliStepMethod = async state => {
       },
     });
 
-    filePath += "/server.js";
-
     // Create the parent directories if it doesn't already exist.
     try {
-      await fs.mkdir(dirname(filePath), { recursive: true });
+      await fs.mkdir(mockServerDir, { recursive: true });
 
       break;
     } catch (error) {
@@ -58,9 +58,14 @@ export const generateExpressServerFile: CliStepMethod = async state => {
     tenantIds: state.tenantIds ?? [],
   });
 
-  await fs.writeFile(filePath, snippet.trim());
+  await fs.writeFile(`${mockServerDir}/server.js`, snippet.trim());
 
-  console.log(getExpressServerGeneratedMessage(filePath));
+  const packageJson = JSON.stringify(MOCK_SERVER_PACKAGE_JSON, null, 2);
+  await fs.writeFile(`${mockServerDir}/package.json`, packageJson);
+
+  await installMockServerDeps(mockServerDir);
+
+  console.log(getExpressServerGeneratedMessage(mockServerDir));
 
   return [{ type: "done" }, state];
 };

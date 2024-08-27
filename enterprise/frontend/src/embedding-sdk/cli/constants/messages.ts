@@ -64,7 +64,7 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
 `;
 
 export const getExpressServerGeneratedMessage = (filePath: string) => `
-  Generated an example Express.js server in "${filePath}".
+  Generated an example Express.js server directory in "${filePath}".
 `;
 
 export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
