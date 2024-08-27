@@ -27,6 +27,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
+    const company_name = process.env.COMPANY_NAME;
     const [inputValue, setInputValue] = useState("");
     const [messages, setMessages] = useState([]);
     const [card, setCard] = useState(null);
@@ -47,6 +48,8 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
     const [id, setId] = useState(0);
     const [useTextArea, setUseTextArea] = useState(false);
     const [error, setError] = useState(null);
+    const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
+    const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
 
     useEffect(() => {
         if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
@@ -118,6 +121,15 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                     break;
                 case "getInsights":
                     await handleGetInsights(func);
+                    break;
+                case "calculationOptions":
+                    await handleGetCalulationOptions(func);
+                    break;
+                case "approveSemantycLayerChanges":
+                    await handleApproveSLChanges(func);
+                    break;
+                case "processInfo":
+                    await handleProcessInfo(func);
                     break;
                 default:
                     console.log(func);
@@ -211,6 +223,40 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
         }
     };
 
+
+    const handleGetCalulationOptions = async func => {
+        const { calculationOptions } = func.arguments;
+        console.log(calculationOptions)
+        //Show calculationOptions and send a response from the user
+        addServerMessage(
+            calculationOptions || "Received a message from the server.",
+            "text",
+        );
+        setToolWaitingResponse("calculationOptions");
+    };
+
+    const handleApproveSLChanges = async func => {
+        const { newFields } = func.arguments;
+        //Show newFields and send a response with 'true' or 'false' as string
+        addServerMessage(
+            newFields || "Received a message from the server.",
+            "text",
+        );
+        setToolWaitingResponse("approveSemantycLayerChanges");
+        setApprovalChangeButtons(true);
+    };
+
+    const handleProcessInfo = async func => {
+        const { infoMessage } = func.arguments;
+        //Only print infoMessage
+        addServerMessage(
+            infoMessage || "Received a message from the server.",
+            "text",
+        );
+        setIsLoading(false);
+        removeLoadingMessage();
+    };
+
     const handleDefaultMessage = data => {
         addServerMessage(
             data.message || "Received a message from the server.",
@@ -252,12 +298,39 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
 
     const sendMessage = () => {
         if (!inputValue.trim()) return;
+
+        if (toolWaitingResponse) {
+            setMessages(prevMessages => [
+                ...prevMessages,
+                {
+                    id: Date.now() + Math.random(),
+                    text: inputValue,
+                    sender: "user",
+                    type: "text",
+                    thread_id: threadId,
+                }
+            ]);
+            ws.send(
+                JSON.stringify({
+                  type: "toolResponse",
+                  response: {
+                    function_name: toolWaitingResponse,
+                    response: JSON.stringify(inputValue),
+                  },
+                })
+              );
+            setToolWaitingResponse(null);
+            setInputValue("");
+            return;
+        }
+        
+        
         setIsLoading(true);
         if (isConnected) {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 2],
+                    configData: [dbInputValue || 2, company_name],
                 }),
             );
         }
@@ -309,6 +382,32 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
         setIsFeedbackDialogOpen(!isFeedbackDialogOpen);
     };
 
+    const handleAccept = () => {
+        ws.send(
+            JSON.stringify({
+                type: "toolResponse",
+                response: {
+                    function_name: toolWaitingResponse,
+                    response: "true", 
+                },
+            })
+        );
+        setApprovalChangeButtons(false); 
+    };
+
+    const handleDeny = () => {
+        ws.send(
+            JSON.stringify({
+                type: "toolResponse",
+                response: {
+                    function_name: toolWaitingResponse,
+                    response: "false",
+                },
+            })
+        );
+        setApprovalChangeButtons(false); 
+    };
+
     return (
         <>
             <Box
@@ -343,7 +442,9 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                     }}
                 >
 
-                    <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} />
+                    <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen} 
+                        approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny} 
+                    />
 
                     {card && defaultQuestion && result && (
                         <>
