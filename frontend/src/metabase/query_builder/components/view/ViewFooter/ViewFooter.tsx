@@ -38,6 +38,11 @@ export const ViewFooter = ({
   onCloseChartSettings,
   setUIControls,
   isObjectDetail,
+  isTimeseries,
+  visualizationSettings,
+  isShowingTimelineSidebar,
+  onOpenTimelines,
+  onCloseTimelines,
 }: ViewFooterProps) => {
   const isVisualized = useSelector(getIsVisualized);
 
@@ -81,6 +86,11 @@ export const ViewFooter = ({
             question={question}
             result={result}
             isObjectDetail={isObjectDetail}
+            isTimeseries={isTimeseries}
+            visualizationSettings={visualizationSettings}
+            isShowingTimelineSidebar={isShowingTimelineSidebar}
+            onOpenTimelines={onOpenTimelines}
+            onCloseTimelines={onCloseTimelines}
           />
         </Group>
       </Group>
