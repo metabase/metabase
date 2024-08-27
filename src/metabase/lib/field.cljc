@@ -93,8 +93,6 @@
                     {:base-type base-type})
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
-                  (when-let [original-effective-type (::original-effective-type opts)]
-                    {::original-effective-type original-effective-type})
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -347,16 +345,11 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
-        original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
-    (if unit
-      (assoc metadata
-             :effective-type (if extraction-unit? :type/Integer original-effective-type)
-             ::original-effective-type original-effective-type
-             ::temporal-unit unit)
-      (-> metadata
-          (assoc :effective-type original-effective-type)
-          (dissoc ::original-effective-type ::temporal-unit)))))
+  (if unit
+    (assoc metadata
+           ::temporal-unit unit
+           ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
+    (dissoc metadata ::temporal-unit ::original-effective-type)))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -385,7 +378,7 @@
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
   (if (not= (:lib/source field-metadata) :source/expressions)
-    (let [effective-type ((some-fn ::original-effective-type :effective-type :base-type) field-metadata)
+    (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
           fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
       (cond-> (cond
                 (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
