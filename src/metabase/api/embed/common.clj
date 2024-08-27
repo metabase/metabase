@@ -445,7 +445,8 @@
   the `public-dashboard` function that fetches the Dashboard."
   [unsigned-token & {:keys [embedding-params constraints]}]
   {:pre [((some-fn empty? sequential?) constraints) (even? (count constraints))]}
-  (let [dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+  (let [pre-dashboard-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id (->id :model/Dashboard pre-dashboard-id)
         embedding-params (or embedding-params
                              (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
@@ -538,7 +539,8 @@
   [token searched-param-id prefix id-query-params
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
-        dashboard-id                                   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        pre-dashboard-id                               (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        dashboard-id                                   (->id :model/Dashboard pre-dashboard-id)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
