@@ -64,9 +64,7 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info field-usages]
-  (let [execution-info' (sdk/include-analytics execution-info)
-        ;; `sdk/assoc-analytics` reads values from dynamic vars, so we need to set them here, on the same thread:
-        ]
+  (let [execution-info' (sdk/include-analytics execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
       ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
