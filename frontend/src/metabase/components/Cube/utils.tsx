@@ -76,40 +76,64 @@ export interface CubeData {
 }
 
 export const formatAndCleanCubeContent = (content: string) => {
-    const removeCubeWrapper = (str: string) => {
-      let result = str.replace(/^cube\(`[^`]+`,/, '').replace(/\);$/, '');
-      return result.trim();
-    };
-  
-    const formatContent = (str: string) => {
-      let indentLevel = 0;
-      const indent = '  '; 
-  
-      if (str === undefined) {
-        return '';
-      }
-  
-      return str.replace(/[{},]/g, (match: string) => {
-        if (match === '{') {
-          indentLevel++;
-          return `{\n${indent.repeat(indentLevel)}`;
-        }
-        if (match === '}') {
-          indentLevel--;
-          return `\n${indent.repeat(indentLevel)}}`;
-        }
-        if (match === ',') {
-          return `,\n${indent.repeat(indentLevel)}`;
-        }
-        return match; 
-      });
-    };
-  
-    const cleanedContent = removeCubeWrapper(content);
-    const formattedContent = formatContent(cleanedContent);
-  
-    return formattedContent;
+  const removeCubeWrapper = (str: string) => {
+    let result = str.replace(/^cube\(`[^`]+`,/, '').replace(/\);$/, '');
+    return result.trim();
   };
+
+  const formatContent = (str: string) => {
+    let indentLevel = 0;
+    const indent = '  ';
+    let inSqlBlock = false;
+
+    if (str === undefined) {
+      return '';
+    }
+
+    let lines = str.split('\n');
+    let formattedLines = lines.map((line, index) => {
+      let trimmedLine = line.trim();
+
+      // Check if we're entering or exiting an SQL block
+      if (trimmedLine.startsWith('sql: `')) {
+        inSqlBlock = true;
+      } else if (inSqlBlock && trimmedLine.endsWith('`,')) {
+        inSqlBlock = false;
+      }
+
+      // If we're in an SQL block, don't process the line further
+      if (inSqlBlock) {
+        return indent.repeat(indentLevel) + line.trim();
+      }
+
+      let colonIndex = trimmedLine.indexOf(':');
+      let keyPart = colonIndex !== -1 ? trimmedLine.slice(0, colonIndex + 1) : trimmedLine;
+      let valuePart = colonIndex !== -1 ? trimmedLine.slice(colonIndex + 1).trim() : '';
+
+      // Check if the line starts a new object
+      if (valuePart.startsWith('{')) {
+        indentLevel++;
+      }
+
+      // Format the line
+      let formattedLine = keyPart + (valuePart ? ' ' + valuePart : '');
+
+      // Check if the line ends an object
+      if (trimmedLine.endsWith('},') || trimmedLine === '}') {
+        indentLevel = Math.max(0, indentLevel - 1);
+      }
+
+      return indent.repeat(indentLevel) + formattedLine;
+    });
+
+    return formattedLines.join('\n');
+  };
+
+  const cleanedContent = removeCubeWrapper(content);
+  const formattedContent = formatContent(cleanedContent);
+
+  return formattedContent;
+};
   
 export function extractCubeName(cubeString: string): string {
     const cubeRegex = /cube\(`([^`]+)`/;
@@ -378,8 +402,6 @@ export function createNewGraphData(extractedData: ExtractedData, cubeData: CubeD
     };
     nodes.push(node);
   }
-
-  console.log("edgeData",edgeData)
 
   edgeData.forEach(field => {
         const edge: Edge = {

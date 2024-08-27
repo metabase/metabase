@@ -126,8 +126,9 @@ export const BrowseCubes = () => {
       const newCubeData = removeLineBreaks(updatedCube)
       const cubeName = extractCubeName(originalCube)
       const wrapperData = addCubeWrapper(newCubeData, cubeName)
-      updateCube(wrapperData)
-      let modifiedCube = {fileName:selectedCube.fileName, content:wrapperData}
+      const wrapperDataWoLineBreak = addCubeWrapper(updatedCube, cubeName)
+      updateCube(wrapperDataWoLineBreak)
+      let modifiedCube = {fileName:selectedCube.fileName, content:wrapperDataWoLineBreak}
       setSelectedCube(modifiedCube)
     }
   };
