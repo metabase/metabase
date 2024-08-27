@@ -45,17 +45,12 @@ export function getTenancyIsolationSandboxes(options: Options): Sandbox[] {
       }
 
       // Create a field reference for sandboxing.
-      // example: ["field", 243, { "base-type": "type/Integer", "source-field": 263 }]
+      // example: ["field", 243, { "base-type": "type/Integer" }]
       const tenancyFieldRef: FieldReference = [
         "field",
         Number(tenancyField.id),
         {
           "base-type": tenancyField.base_type,
-
-          // If the tenancy field is a foreign key, we need to reference the source field.
-          ...(tenancyField.target?.id && {
-            "source-field": tenancyField.target.id,
-          }),
         },
       ];
 
