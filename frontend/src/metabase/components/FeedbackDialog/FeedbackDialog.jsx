@@ -1,21 +1,33 @@
-const FeedbackDialog = ({ isOpen, onClose, emailBody = "" }) => {
-    const handleSendEmail = () => {
-        const email = "mar.pujadas@omniloy.com";
-        const subject = "Feedback for Your Application";
-        const body = encodeURIComponent(
-            `Here is a transcript of your conversation with the assistant:\n\n${emailBody || "Please provide more details here..."}`
-        );
+import React, { useState } from "react";
+import { Box, Button, Icon, Textarea } from "metabase/ui";
+import Input from "metabase/core/components/Input";
+import TextArea from "metabase/core/components/TextArea";
 
-        window.open(`mailto:${email}?subject=${encodeURIComponent(subject)}&body=${body}`, "_blank");
+const FeedbackDialog = ({ isOpen, onClose }) => {
+    const [subject, setSubject] = useState("");
+    const [description, setDescription] = useState("");
+    const [files, setFiles] = useState([]);
 
-        // Close the modal
+    const handleFileUpload = (e) => {
+        const uploadedFiles = Array.from(e.target.files);
+        setFiles((prevFiles) => [...prevFiles, ...uploadedFiles]);
+    };
+
+    const handleFileRemove = (fileToRemove) => {
+        setFiles(files.filter(file => file !== fileToRemove));
+    };
+
+    const handleSubmit = () => {
+        console.log("Subject:", subject);
+        console.log("Description:", description);
+        console.log("Uploaded Files:", files);
         onClose();
     };
 
     if (!isOpen) return null;
 
     return (
-        <div
+        <Box
             style={{
                 position: "fixed",
                 top: "0",
@@ -29,79 +41,83 @@ const FeedbackDialog = ({ isOpen, onClose, emailBody = "" }) => {
                 zIndex: 9999,
             }}
         >
-            <div
+            <Box
                 style={{
                     backgroundColor: "#fff",
                     borderRadius: "8px",
-                    width: "70%",
-                    overflowY: "auto",
-                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+                    width: "400px",
                     padding: "24px",
-                    display: "flex",
-                    flexDirection: "column",
-                    color: "#46474C",
+                    boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
                 }}
             >
-                <div
-                    style={{
-                        padding: "16px 24px",
-                        fontSize: "1.25rem",
-                        fontWeight: "bold",
-                        borderBottom: "1px solid #e0e0e0",
-                    }}
-                >
+                <Box as="h2" mb={3}>
                     Provide Feedback
-                </div>
-                <div
-                    style={{
-                        padding: "16px 24px",
-                        flex: "1",
-                        fontSize: "1rem",
-                        lineHeight: "1.5",
-                        marginBottom: "16px",
-                    }}
-                >
-                    Please provide screenshots of the problem encountered or any other
-                    issues or detail the problem.
-                </div>
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        padding: "16px 24px",
-                        borderTop: "1px solid #e0e0e0",
-                    }}
-                >
-                    <button
-                        onClick={onClose}
+                </Box>
+                <Box mb={2}>
+                    <label style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
+                        Subject *
+                    </label>
+                    <Input
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        placeholder="What is the issue about?"
+                    />
+                </Box>
+                <Box mb={2}>
+                    <label style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
+                        Description *
+                    </label>
+                    <TextArea
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Add a description about the issue"
+                        rows="4"
                         style={{
-                            marginRight: "8px",
-                            padding: "8px 16px",
-                            border: "1px solid #76787D",
-                            borderRadius: "999px",
-                            backgroundColor: "transparent",
-                            color: "#76787D",
-                            cursor: "pointer",
+                            resize: "none",
+                            overflowY: "auto",
+                            maxHeight: "150px",
                         }}
+                    />
+                </Box>
+                <Box mb={3}>
+                    <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                        Attach files
+                    </label>
+                    <input
+                        type="file"
+                        multiple
+                        onChange={handleFileUpload}
+                        style={{ display: "block", marginBottom: "8px" }}
+                    />
+                    <Box>
+                        {files.map((file, index) => (
+                            <Box key={index} style={{ display: "flex", alignItems: "center", marginBottom: "4px" }}>
+                                <span style={{ marginRight: "8px" }}>{file.name}</span>
+                                <Button
+                                    variant="link"
+                                    onClick={() => handleFileRemove(file)}
+                                    style={{ color: "#FF6B6B", padding: "0", cursor: "pointer" }}
+                                >
+                                    ✕
+                                </Button>
+                            </Box>
+                        ))}
+                    </Box>
+                </Box>
+                <Box display="flex" justifyContent="flex-end">
+                    <Button
+                        variant="outlined"
+                        onClick={onClose}
+                        style={{ marginRight: "8px" }}
                     >
                         Cancel
-                    </button>
-                    <button
-                        onClick={handleSendEmail}
-                        style={{
-                            padding: "8px 32px",
-                            borderRadius: "999px",
-                            backgroundColor: "#0458DD",
-                            color: "#fff",
-                            border: "none",
-                            cursor: "pointer",
-                        }}
-                    >
-                        Send Email
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </Button>
+                    <Button variant="filled" onClick={handleSubmit}>
+                        Send Feedback
+                    </Button>
+                </Box>
+            </Box>
+        </Box>
     );
 };
 

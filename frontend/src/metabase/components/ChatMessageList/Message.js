@@ -62,10 +62,10 @@ const Message = ({ message, isLoading, onFeedbackClick, approvalChangeButtons, o
             variant="outlined"
             style={{
               cursor: "pointer",
-              border: "1px solid #E0E0E0",
+              border: "1px solid #223800",
               borderRadius: "8px",
-              color: "#F04848",
-              backgroundColor: "#F6D2D2",
+              color: "#223800",
+              backgroundColor: "#FFF",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

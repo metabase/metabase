@@ -15,8 +15,7 @@ export const AppContentContainer = styled.div<{
   flex-direction: ${props => (props.isAdminApp ? "column" : "row")};
   position: relative;
   overflow: hidden;
-  background-color: ${props =>
-    props.isAdminApp ? "var(--mb-color-bg-white)" : color("content")};
+  background-color: white;
 
   @media print {
     height: 100%;
