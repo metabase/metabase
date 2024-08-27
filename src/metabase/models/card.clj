@@ -528,7 +528,7 @@
       ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
       ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
       (when (contains? changes :dataset_query)
-        (query-analysis/analyze-async! changes))
+        (query-analysis/analyze! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
@@ -558,7 +558,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-analysis/analyze-async! card)))
+    (query-analysis/analyze! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
