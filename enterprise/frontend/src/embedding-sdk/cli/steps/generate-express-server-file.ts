@@ -4,7 +4,6 @@ import { input } from "@inquirer/prompts";
 
 import { installMockServerDeps } from "embedding-sdk/cli/utils/install-mock-server-deps";
 
-import { getExpressServerGeneratedMessage } from "../constants/messages";
 import { MOCK_SERVER_PACKAGE_JSON } from "../constants/mock-server-package-json";
 import { getExpressServerSnippet } from "../snippets";
 import type { CliStepMethod } from "../types/cli";
@@ -65,7 +64,5 @@ export const generateExpressServerFile: CliStepMethod = async state => {
 
   await installMockServerDeps(mockServerDir);
 
-  console.log(getExpressServerGeneratedMessage(mockServerDir));
-
-  return [{ type: "done" }, state];
+  return [{ type: "done" }, { ...state, mockServerDir }];
 };

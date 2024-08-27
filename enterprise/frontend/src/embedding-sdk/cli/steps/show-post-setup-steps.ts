@@ -8,15 +8,16 @@ import {
 import type { CliStepMethod } from "../types/cli";
 import { printEmptyLines, printInfo, printWithPadding } from "../utils/print";
 
-const STEP_1 = `
-  Start the sample server with ${green("node server.js")}.
+export const showPostSetupSteps: CliStepMethod = async state => {
+  const STEP_1 = `
+  Generated an example Express.js server directory in "${state.mockServerDir}".
+  Start the sample server with ${green(`node server.js`)}.
 `;
 
-const STEP_2 = `
+  const STEP_2 = `
   Import the ${green("<AnalyticsPage />")} component in your React frontend.
 `;
 
-export const showPostSetupSteps: CliStepMethod = async state => {
   const STEP_3 = getMetabaseInstanceSetupCompleteMessage(
     state.instanceUrl ?? "",
   );

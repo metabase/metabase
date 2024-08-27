@@ -30,6 +30,9 @@ export type CliState = Partial<{
 
   /** Sample values of the tenancy column (e.g. customer_id) from the selected tables */
   tenantIds: (string | number)[];
+
+  /** Directory where the Express.js mock server is saved to */
+  mockServerDir: string;
 }>;
 
 export type CliError = {

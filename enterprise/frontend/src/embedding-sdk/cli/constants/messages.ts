@@ -63,10 +63,6 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;
 
-export const getExpressServerGeneratedMessage = (filePath: string) => `
-  Generated an example Express.js server directory in "${filePath}".
-`;
-
 export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
   At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
   You can add your tenant's IDs to the "${USER_ATTRIBUTE_CUSTOMER_ID}" user attribute in settings.
