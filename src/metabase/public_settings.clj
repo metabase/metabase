@@ -826,54 +826,6 @@ See [fonts](../configuring-metabase/fonts.md).")
   []
   (nil? @api/*current-user*))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Deprecated uploads settings begin
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
-;; to migrate to the new way to set uploads settings.
-
-(defsetting uploads-enabled
-  (deferred-tru "Whether or not uploads are enabled")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :boolean
-  :default    false
-  :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
-
-(defsetting uploads-database-id
-  (deferred-tru "Database ID for uploads")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :integer
-  :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
-
-(defsetting uploads-schema-name
-  (deferred-tru "Schema name for uploads")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :string
-  :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
-
-(defsetting uploads-table-prefix
-  (deferred-tru "Prefix for upload table names")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :string
-  :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Deprecated uploads settings end
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 (defsetting uploads-settings
   (deferred-tru "Upload settings")
   :visibility :authenticated
@@ -947,3 +899,51 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    true
   :type       :integer)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings begin
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
+;; to migrate to the new way to set uploads settings.
+
+(defsetting uploads-enabled
+  (deferred-tru "Whether or not uploads are enabled")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :boolean
+  :default    false
+  :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
+
+(defsetting uploads-database-id
+  (deferred-tru "Database ID for uploads")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
+
+(defsetting uploads-schema-name
+  (deferred-tru "Schema name for uploads")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :string
+  :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
+
+(defsetting uploads-table-prefix
+  (deferred-tru "Prefix for upload table names")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :string
+  :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
