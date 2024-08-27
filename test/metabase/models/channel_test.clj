@@ -8,8 +8,8 @@
    [toucan2.core :as t2]))
 
 (comment
- ;; to register the :metabase-test channel implementation
- api.channel-test/keepme)
+  ;; to register the :metabase-test channel implementation
+  api.channel-test/keepme)
 
 (deftest channel-details-is-encrypted
   (encryption-test/with-secret-key "secret"

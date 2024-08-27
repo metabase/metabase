@@ -48,8 +48,8 @@
                (= "request-body" auth-method) (update :body merge auth-info)
                (= "header" auth-method)       (update :headers merge auth-info)
                (= "query-param" auth-method)  (update :query-params merge auth-info)))]
-   (http/request (cond-> req
-                   (map? (:body req)) (update :body json/generate-string)))))
+    (http/request (cond-> req
+                    (map? (:body req)) (update :body json/generate-string)))))
 
 (defmethod channel/can-connect? :channel/http
   [_channel-type details]

@@ -288,15 +288,15 @@
                          :schedule_type :daily
                          :schedule_hour 12
                          :schedule_day  nil})
-               (update-channel-then-select!
-                {:id            channel-id
-                 :enabled       true
-                 :channel_type  :email
-                 :schedule_type :daily
-                 :schedule_hour 12
-                 :schedule_day  "tue"
-                 :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
-                 :details       {:channel "#metabaserocks"}}))))))))
+                 (update-channel-then-select!
+                  {:id            channel-id
+                   :enabled       true
+                   :channel_type  :email
+                   :schedule_type :daily
+                   :schedule_hour 12
+                   :schedule_day  "tue"
+                   :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
+                   :details       {:channel "#metabaserocks"}}))))))))
 
 (deftest update-recipients!-test
   (mt/with-temp [Pulse        {pulse-id :id} {}

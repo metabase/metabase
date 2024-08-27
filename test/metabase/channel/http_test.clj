@@ -75,10 +75,11 @@
   "Create a temporary server given a list of routes and handlers, and execute the body
   with the server URL binding.
 
-    (with-server [url [(make-route :get (identity {:status 200}))] & handlers]
-      (http/get (str url \"/test_http_channel_200\"))"
+  (with-server [url [(make-route :get (identity {:status 200}))] & handlers]
+  (http/get (str url \"/test_http_channel_200\"))"
   [[url-binding handlers] & body]
-  `(do-with-server ~handlers
+  `(do-with-server
+    ~handlers
     (fn [~url-binding]
       ~@body)))
 
@@ -164,7 +165,7 @@
                ;; not sure why it's returns a response map is nil body
                ;; looks like a jetty bug: https://stackoverflow.com/q/46299061
                #_:request-body   #_"Internal server error"}
-             (exception-data (can-connect?* get-500)))))))
+              (exception-data (can-connect?* get-500)))))))
 
 (deftest ^:parallel can-connect-header-auth-test
   (with-server [url [(make-route :get "/user"
@@ -212,7 +213,6 @@
                                             :auth-info   {:username "qnkhuat"
                                                           :password "wrongpassword"}})))))))
 
-
 (deftest ^:parallel can-connect-request-body-auth-test
   (with-server [url [(make-route :post "/user"
                                  (fn [x]
@@ -237,9 +237,9 @@
 (deftest ^:parallel can-connect?-errors-test
   (testing "throws an appriopriate errors if details are invalid"
     (testing "invalid url"
-     (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
-            (exception-data (can-connect? {:url         "not-an-url"
-                                           :auth-method "none"})))))
+      (is (= {:errors {:url [(deferred-tru "value must be a valid URL.")]}}
+             (exception-data (can-connect? {:url         "not-an-url"
+                                            :auth-method "none"})))))
 
     (testing "testing missing auth-method"
       (is (= {:errors {:auth-method ["missing required key"]}}
@@ -247,7 +247,7 @@
 
     (testing "include undefined key"
       (is (=? {:errors {:xyz ["disallowed key"]}}
-             (exception-data (can-connect? {:xyz "hello world"})))))
+              (exception-data (can-connect? {:xyz "hello world"})))))
 
     (with-server [url [get-400]]
       (is (= {:request-body   "Bad request"
@@ -280,42 +280,42 @@
                      :url          "https://www.secret_service.xyz"})
              (first @requests)))))
 
- (testing "preserves req headers when use auth-method=:header"
-   (with-captured-http-requests [requests]
-     (channel/send! {:type    :channel/http
-                     :details {:url         "https://www.secret_service.xyz"
-                               :auth-method "header"
-                               :auth-info   {:Authorization "Bearer 123"}
-                               :method      "get"}}
-                    {:headers     {:X-Request-Id "123"}})
-     (is (= (merge default-request
-                   {:method  :get
-                    :url          "https://www.secret_service.xyz"
-                    :headers      {:Authorization "Bearer 123"
-                                   :X-Request-Id "123"}})
-            (first @requests)))))
+  (testing "preserves req headers when use auth-method=:header"
+    (with-captured-http-requests [requests]
+      (channel/send! {:type    :channel/http
+                      :details {:url         "https://www.secret_service.xyz"
+                                :auth-method "header"
+                                :auth-info   {:Authorization "Bearer 123"}
+                                :method      "get"}}
+                     {:headers     {:X-Request-Id "123"}})
+      (is (= (merge default-request
+                    {:method  :get
+                     :url          "https://www.secret_service.xyz"
+                     :headers      {:Authorization "Bearer 123"
+                                    :X-Request-Id "123"}})
+             (first @requests)))))
 
- (testing "preserves req query-params when use auth-method=:query-param"
-   (with-captured-http-requests [requests]
-     (channel/send! {:type    :channel/http
-                     :details {:url         "https://www.secret_service.xyz"
-                               :auth-method "query-param"
-                               :auth-info   {:token "123"}
-                               :method      "get"}}
-                    {:query-params {:page 1}})
-     (is (= (merge default-request
-                   {:method       :get
-                    :url          "https://www.secret_service.xyz"
-                    :query-params {:token "123"
-                                   :page 1}})
-            (first @requests))))))
+  (testing "preserves req query-params when use auth-method=:query-param"
+    (with-captured-http-requests [requests]
+      (channel/send! {:type    :channel/http
+                      :details {:url         "https://www.secret_service.xyz"
+                                :auth-method "query-param"
+                                :auth-info   {:token "123"}
+                                :method      "get"}}
+                     {:query-params {:page 1}})
+      (is (= (merge default-request
+                    {:method       :get
+                     :url          "https://www.secret_service.xyz"
+                     :query-params {:token "123"
+                                    :page 1}})
+             (first @requests))))))
 
 (deftest ^:parallel alert-http-channel-e2e-test
   (let [received-message (atom nil)
         receive-route    (make-route :post "/test_http_channel"
-                          (fn [res]
-                            (reset! received-message res)
-                            {:status 200}))]
+                                     (fn [res]
+                                       (reset! received-message res)
+                                       {:status 200}))]
     (with-server [url [receive-route]]
       (mt/with-temp
         [:model/Card         {card-id :id

@@ -269,8 +269,8 @@
     :http
     []
     (do
-     (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
-     [])))
+      (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
+      [])))
 
 (defn- should-retry-sending?
   [exception channel-type]

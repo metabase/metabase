@@ -123,19 +123,19 @@
     (testing "on-fail-info"
       (let [task-name (mt/random-name)]
         (u/ignore-exceptions
-         (task-history/with-task-history {:task         task-name
-                                          :task_details {:id 1}
-                                          :on-fail-info (fn [info e]
-                                                          (testing "info should have task_details and updated status"
-                                                            (is (=? {:status       :failed
-                                                                     :task_details {:status        :failed
-                                                                                    :message       "test"
-                                                                                    :stacktrace    (mt/malli=? :any)
-                                                                                    :ex-data       {:reason :test}
-                                                                                    :original-info {:id 1}}}
-                                                                    info)))
-                                                          (update info :task_details assoc :reason (ex-message e)))}
-           (throw (ex-info "test" {:reason :test}))))
+          (task-history/with-task-history {:task         task-name
+                                           :task_details {:id 1}
+                                           :on-fail-info (fn [info e]
+                                                           (testing "info should have task_details and updated status"
+                                                             (is (=? {:status       :failed
+                                                                      :task_details {:status        :failed
+                                                                                     :message       "test"
+                                                                                     :stacktrace    (mt/malli=? :any)
+                                                                                     :ex-data       {:reason :test}
+                                                                                     :original-info {:id 1}}}
+                                                                     info)))
+                                                           (update info :task_details assoc :reason (ex-message e)))}
+            (throw (ex-info "test" {:reason :test}))))
         (is (=? {:status       :failed
                  :task_details {:status        "failed"
                                 :exception     "class clojure.lang.ExceptionInfo"

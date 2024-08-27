@@ -42,9 +42,9 @@
 
 (def ^:private ChannelType
   (mu/with-api-error-message
-    [:fn {:decode/string keyword}
-     #(= "channel" (namespace (keyword %)))]
-    (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
+   [:fn {:decode/string keyword}
+    #(= "channel" (namespace (keyword %)))]
+   (deferred-tru "Must be a namespaced channel. E.g: channel/http")))
 
 (api/defendpoint POST "/"
   "Create a channel"
