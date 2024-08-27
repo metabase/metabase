@@ -78,6 +78,7 @@ export function getPermissionsForGroups(options: Options): GroupsPermissions {
     groups[groupId][CONNECTED_DB_ID] = {
       [DataPermission.CREATE_QUERIES]: getDatabasePermission(
         DataPermissionValue.QUERY_BUILDER,
+        DataPermissionValue.NO,
       ),
 
       [DataPermission.DOWNLOAD]: {
@@ -89,7 +90,7 @@ export function getPermissionsForGroups(options: Options): GroupsPermissions {
 
       [DataPermission.VIEW_DATA]: getDatabasePermission(
         DataPermissionValue.SANDBOXED,
-        DataPermissionValue.UNRESTRICTED,
+        DataPermissionValue.BLOCKED,
       ),
     };
   }
