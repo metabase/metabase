@@ -14,7 +14,7 @@ export const SidebarIcon = styled(Icon)<{
   ${props =>
     !props.color &&
     css`
-      color: var(--mb-color-brand);
+      color: #223800;
     `}
 `;
 
