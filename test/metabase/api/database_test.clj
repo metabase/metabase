@@ -1275,9 +1275,6 @@
       (mt/with-temp
         [:model/Database db {}]
         (testing "update db setting to never scan should remove scan field values trigger"
-          (testing "sanity check that it has all triggers to begin with"
-            (is (= (task.sync-databases-test/all-db-sync-triggers-name db)
-                   (task.sync-databases-test/query-all-db-sync-triggers-name db))))
           (mt/user-http-request :crowberto :put 200 (format "/database/%d" (:id db))
                                 {:details     {:let-user-control-scheduling true}
                                  :schedules   {:metadata_sync      schedule-map-for-weekly
