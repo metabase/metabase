@@ -1,16 +1,13 @@
-/* eslint-disable import/order */
-import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
-import { ORDERS } from "metabase-types/api/mocks/presets";
-
 // NOTE: need to load visualizations first for getSettings to work
-import "metabase/visualizations/index";
-
+import "metabase/visualizations";
 import {
   getClickBehaviorSettings,
   getComputedSettings,
   getSettingsWidgets,
   mergeSettings,
 } from "metabase/visualizations/lib/settings";
+import { createMockTableColumnOrderSetting } from "metabase-types/api/mocks";
+import { ORDERS } from "metabase-types/api/mocks/presets";
 
 describe("settings framework", () => {
   const mockObject = "[mockObject]";

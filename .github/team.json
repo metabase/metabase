@@ -12,7 +12,8 @@
         "bshepherdson",
         "metamben",
         "lbrdnk",
-        "appleby"
+        "appleby",
+        "uladzimirdev"
       ]
     },
     {
@@ -64,8 +65,7 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul",
-        "uladzimirdev"
+        "camsaul"
       ]
     }
   ]
