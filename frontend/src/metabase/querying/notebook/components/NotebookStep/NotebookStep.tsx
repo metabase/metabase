@@ -3,11 +3,9 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import ExpandingContent from "metabase/components/ExpandingContent";
-import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import CS from "metabase/css/core/index.css";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { color as c } from "metabase/lib/colors";
-import { Icon } from "metabase/ui";
 import type { Query } from "metabase-lib";
 
 import type {
@@ -22,14 +20,13 @@ import {
   StepBody,
   StepButtonContainer,
   StepContent,
-  StepHeader,
   StepRoot,
 } from "./NotebookStep.styled";
 import { NotebookStepPreview } from "./NotebookStepPreview";
-import { getStepUIConfig } from "./utils";
+import { getStepConfig } from "./utils";
 
 function hasLargeButton(action: NotebookStepAction) {
-  return !getStepUIConfig(action.type)?.compact;
+  return !getStepConfig(action.type).compact;
 }
 
 interface NotebookStepProps {
@@ -42,7 +39,7 @@ interface NotebookStepProps {
   updateQuery: (query: Query) => Promise<void>;
 }
 
-function NotebookStep({
+export function NotebookStep({
   step,
   isLastStep,
   isLastOpened,
@@ -61,7 +58,7 @@ function NotebookStep({
 
     actions.push(
       ...step.actions.map(action => {
-        const stepUi = getStepUIConfig(action.type);
+        const stepUi = getStepConfig(action.type);
         const title = stepUi.title;
         return {
           priority: stepUi.priority,
@@ -99,11 +96,7 @@ function NotebookStep({
     }
   }, [step, updateQuery]);
 
-  const {
-    title,
-    color,
-    component: NotebookStepComponent,
-  } = getStepUIConfig(step.type) || {};
+  const { title, color, Step, StepHeader } = getStepConfig(step.type);
 
   const canPreview = step.previewQuery != null;
   const hasPreviewButton = !isPreviewOpen && canPreview;
@@ -115,57 +108,44 @@ function NotebookStep({
         className={cx(CS.hoverParent, CS.hoverVisibility)}
         data-testid={step.testID}
       >
-        <StepHeader color={color}>
-          {title}
-          {canRevert && (
-            <IconButtonWrapper
-              className={cx(
-                CS.mlAuto,
-                CS.textLight,
-                CS.textMediumHover,
-                CS.hoverChild,
-              )}
-              onClick={handleClickRevert}
-            >
-              <Icon
-                name="close"
-                tooltip={t`Remove`}
-                aria-label={t`Remove step`}
-              />
-            </IconButtonWrapper>
-          )}
-        </StepHeader>
+        <StepContent>
+          <StepHeader
+            step={step}
+            title={title}
+            color={color}
+            canRevert={canRevert}
+            onRevert={handleClickRevert}
+          />
+        </StepContent>
 
-        {NotebookStepComponent && (
-          <StepBody>
-            <StepContent>
-              <NotebookStepComponent
-                color={color}
-                step={step}
-                query={step.query}
-                stageIndex={step.stageIndex}
-                updateQuery={updateQuery}
-                isLastOpened={isLastOpened}
-                reportTimezone={reportTimezone}
-                readOnly={readOnly}
+        <StepBody>
+          <StepContent>
+            <Step
+              step={step}
+              query={step.query}
+              stageIndex={step.stageIndex}
+              color={color}
+              updateQuery={updateQuery}
+              isLastOpened={isLastOpened}
+              reportTimezone={reportTimezone}
+              readOnly={readOnly}
+            />
+          </StepContent>
+          {!readOnly && (
+            <StepButtonContainer>
+              <PreviewButton
+                as={NotebookActionButton}
+                icon="play"
+                title={t`Preview`}
+                color={c("text-light")}
+                transparent
+                hasPreviewButton={hasPreviewButton}
+                onClick={openPreview}
+                data-testid="step-preview-button"
               />
-            </StepContent>
-            {!readOnly && (
-              <StepButtonContainer>
-                <PreviewButton
-                  as={NotebookActionButton}
-                  icon="play"
-                  title={t`Preview`}
-                  color={c("text-light")}
-                  transparent
-                  hasPreviewButton={hasPreviewButton}
-                  onClick={openPreview}
-                  data-testid="step-preview-button"
-                />
-              </StepButtonContainer>
-            )}
-          </StepBody>
-        )}
+            </StepButtonContainer>
+          )}
+        </StepBody>
 
         {canPreview && isPreviewOpen && (
           <NotebookStepPreview step={step} onClose={closePreview} />
@@ -180,6 +160,3 @@ function NotebookStep({
     </ExpandingContent>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NotebookStep;

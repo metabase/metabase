@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { AggregationPicker } from "metabase/common/components/AggregationPicker";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
 export function AggregateStep({
@@ -14,7 +14,7 @@ export function AggregateStep({
   isLastOpened,
   readOnly,
   updateQuery,
-}: NotebookStepUiComponentProps) {
+}: NotebookStepProps) {
   const { stageIndex } = step;
 
   const clauses = useMemo(() => {
