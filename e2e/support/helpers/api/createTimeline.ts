@@ -1,4 +1,4 @@
-import type { CreateTimelineRequest } from "metabase-types/api";
+import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
 export const createTimeline = ({
   name = "Timeline",
@@ -6,7 +6,7 @@ export const createTimeline = ({
   default: isDefault = false,
   archived = false,
   ...params
-}: CreateTimelineRequest) => {
+}: CreateTimelineRequest): Cypress.Chainable<Cypress.Response<Timeline>> => {
   return cy.request("POST", "/api/timeline", {
     ...params,
     name,

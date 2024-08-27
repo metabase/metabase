@@ -1,4 +1,7 @@
-import type { CreateTimelineEventRequest } from "metabase-types/api";
+import type {
+  CreateTimelineEventRequest,
+  TimelineEvent,
+} from "metabase-types/api";
 
 export const createTimelineEvent = ({
   name = "Event",
@@ -8,7 +11,9 @@ export const createTimelineEvent = ({
   timezone = "UTC",
   archived = false,
   ...params
-}: CreateTimelineEventRequest) => {
+}: CreateTimelineEventRequest): Cypress.Chainable<
+  Cypress.Response<TimelineEvent>
+> => {
   return cy.request("POST", "/api/timeline-event", {
     ...params,
     name,

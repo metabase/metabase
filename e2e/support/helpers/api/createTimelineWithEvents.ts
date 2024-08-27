@@ -1,6 +1,8 @@
 import type {
   CreateTimelineEventRequest,
   CreateTimelineRequest,
+  Timeline,
+  TimelineEvent,
 } from "metabase-types/api";
 
 import { cypressWaitAll } from "../e2e-misc-helpers";
@@ -14,7 +16,11 @@ export const createTimelineWithEvents = ({
 }: {
   timeline: CreateTimelineRequest;
   events: CreateTimelineEventRequest[];
-}) => {
+}): {
+  timeline: Timeline;
+  events: TimelineEvent[];
+} => {
+  // @ts-expect-error - Cypress typings don't account for what happens in then() here
   return createTimeline(timeline).then(({ body: timeline }) => {
     return cypressWaitAll(
       events.map(query =>
