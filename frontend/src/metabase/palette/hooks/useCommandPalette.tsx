@@ -316,16 +316,21 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
       />
     )} ${wrappedSearchResult.model_name}`;
   } else {
-    return (
-      wrappedSearchResult.getCollection().name ||
-      `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
-    );
+    if (wrappedSearchResult.model === "table") {
+      return wrappedSearchResult.table_schema
+        ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
+        : wrappedSearchResult.database_name;
+    } else {
+      return wrappedSearchResult.getCollection().name;
+    }
   }
 };
 
 export const getRecentItemSubtext = (item: RecentItem) => {
   if (isRecentTableItem(item)) {
-    return `${item.database.name} (${item.table_schema})`;
+    return item.table_schema
+      ? `${item.database.name} (${item.table_schema})`
+      : item.database.name;
   } else if (item.parent_collection.id === null) {
     return ROOT_COLLECTION.name;
   } else {
