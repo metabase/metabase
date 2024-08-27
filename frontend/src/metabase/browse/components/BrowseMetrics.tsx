@@ -6,6 +6,8 @@ import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Box, Flex, Group, Icon, Stack, Text, Title } from "metabase/ui";
 
+import type { MetricResult } from "../types";
+
 import {
   BrowseContainer,
   BrowseHeader,
@@ -16,7 +18,7 @@ import { MetricsTable } from "./MetricsTable";
 
 export function BrowseMetrics() {
   const metricsResult = useFetchMetrics();
-  const metrics = metricsResult.data?.data;
+  const metrics = metricsResult.data?.data as MetricResult[] | undefined;
 
   const isEmpty = !metricsResult.isLoading && !metrics?.length;
 
