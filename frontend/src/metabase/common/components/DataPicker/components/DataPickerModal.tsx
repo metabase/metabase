@@ -1,37 +1,25 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-
-import { useSetting } from "metabase/common/hooks";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
-  CollectionItemModel,
   DatabaseId,
   RecentItem,
   TableId,
 } from "metabase-types/api";
-
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type { QuestionPickerItem } from "../../QuestionPicker";
-import { QuestionPicker } from "../../QuestionPicker";
-import { useAvailableData } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
   NotebookDataPickerValueItem,
-  TablePickerValue,
 } from "../types";
 import {
-  createShouldShowItem,
-  isMetricItem,
-  isModelItem,
-  isQuestionItem,
-  isTableItem,
   isValidValueItem,
 } from "../utils";
-
 import { TablePicker } from "./TablePicker";
+import { useListDatabasesQuery } from "metabase/api";
 
 interface Props {
   /**
@@ -44,12 +32,6 @@ interface Props {
   onChange: (value: TableId) => void;
   onClose: () => void;
 }
-
-const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
-
-const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
-
-const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
 const options: DataPickerModalOptions = {
   ...defaultOptions,
@@ -67,24 +49,9 @@ export const DataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
-  const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
-  const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
-    databaseId,
-  });
-
   const { tryLogRecentItem } = useLogRecentItem();
 
-  const modelsShouldShowItem = useMemo(() => {
-    return createShouldShowItem(["dataset"], databaseId);
-  }, [databaseId]);
-
-  const metricsShouldShowItem = useMemo(() => {
-    return createShouldShowItem(["metric"], databaseId);
-  }, [databaseId]);
-
-  const questionsShouldShowItem = useMemo(() => {
-    return createShouldShowItem(["card"], databaseId);
-  }, [databaseId]);
+  const { data: databases } = useListDatabasesQuery({ saved: false });
 
   const recentFilter = useCallback(
     (recentItems: RecentItem[]) => {
@@ -93,7 +60,6 @@ export const DataPickerModal = ({
           item => "database_id" in item && item.database_id === databaseId,
         );
       }
-
       return recentItems;
     },
     [databaseId],
@@ -130,69 +96,54 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
+  const singleDatabase = useMemo(() => {
+    if (databases?.data?.length === 1) {
+      return databases.data[0];
+    }
+    if (databaseId) {
+      return databases?.data?.find(db => db.id === databaseId) || null;
+    }
+    return null;
+  }, [databases, databaseId]);
+
+  console.log("singleDatabase: ", singleDatabase);
+
+  const showRawDataTab = singleDatabase
+    ? !singleDatabase.is_cube
+    : true;
+
+  const showSemanticLayerTab = singleDatabase
+    ? singleDatabase.is_cube
+    : true;
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
-    /*hasModels && hasNestedQueriesEnabled
-      ? {
-          displayName: t`Models`,
-          model: "dataset" as const,
-          icon: "model",
-          element: (
-            <QuestionPicker
-              initialValue={isModelItem(value) ? value : undefined}
-              models={MODEL_PICKER_MODELS}
-              options={options}
-              shouldShowItem={modelsShouldShowItem}
-              onItemSelect={handleCardChange}
-            />
-          ),
-        }
-      : undefined,*/
-    {
+    showRawDataTab && {
       displayName: t`Raw Data`,
       model: "table" as const,
       icon: "table",
       element: (
         <TablePicker
-          databaseId={databaseId}
+          databaseId={singleDatabase?.id}
           value={value}
           onChange={handleChange}
-          shouldShowDatabase={database => database.is_cube === false}// Filtra las bases de datos donde is_cube es true
+          shouldShowDatabase={database => database.is_cube === false}
         />
-
       ),
     },
-    {
+    showSemanticLayerTab && {
       displayName: t`Semantic Layer`,
       model: "semantic" as const,
       icon: "table",
       element: (
         <TablePicker
-          databaseId={databaseId}
+          databaseId={singleDatabase?.id}
           value={value}
           onChange={handleChange}
-          shouldShowDatabase={database => database.is_cube === true}// Filtra las bases de datos donde is_cube es true
+          shouldShowDatabase={database => database.is_cube === true}
         />
-
       ),
     },
-    /*hasQuestions && hasNestedQueriesEnabled
-      ? {
-        displayName: t`Saved questions`,
-        model: "card" as const,
-        icon: "folder",
-        element: (
-          <QuestionPicker
-            initialValue={isQuestionItem(value) ? value : undefined}
-            models={QUESTION_PICKER_MODELS}
-            options={options}
-            shouldShowItem={questionsShouldShowItem}
-            onItemSelect={handleCardChange}
-          />
-        ),
-      }
-      : undefined*/ 
-  ];
+  ].filter(Boolean);
 
   return (
     <EntityPickerModal
