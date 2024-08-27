@@ -2,7 +2,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [java-time.api :as t]
+   #_[java-time.api :as t]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -15,10 +15,10 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   [metabase.util :as u]
+   #_[metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
-  (:import (java.time Instant LocalDate LocalDateTime OffsetDateTime ZonedDateTime)))
+  #_(:import (java.time Instant LocalDate LocalDateTime OffsetDateTime ZonedDateTime)))
 
 (set! *warn-on-reflection* true)
 
@@ -146,7 +146,10 @@
 ;; Alternatively, `->honeysql` could be implemented for values of classes in question. I'm not sure if that wouldn't
 ;; somehow break something else -- having java.sql* class values in compiled honeysql. As this problem surfaced only
 ;; during test dataset creation, I'm leaving solution solely test extensions based.
-(defmethod ddl/insert-rows-honeysql-form :databricks-jdbc
+;;
+;;
+;; Merging in the latest developments in data loading, following is removed in favor of `set-parameter`
+#_(defmethod ddl/insert-rows-honeysql-form :databricks-jdbc
   [driver table-identifier row-or-rows]
   (let [rows (u/one-or-many row-or-rows)
         rows (for [row rows]

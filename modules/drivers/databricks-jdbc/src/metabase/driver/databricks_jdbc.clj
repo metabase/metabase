@@ -17,7 +17,7 @@
    [ring.util.codec :as codec])
   (:import
    [java.sql Connection ResultSet Statement]
-   [java.time LocalDate LocalDateTime OffsetDateTime ZonedDateTime]))
+   [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime OffsetTime]))
 
 (set! *warn-on-reflection* true)
 
@@ -176,7 +176,12 @@
   [dt]
   (if (instance? LocalDateTime dt)
     dt
-    (let [tz-str      (qp.timezone/results-timezone-id)
+    (let [;; Use jvm timezone outside of query processor. Useful in test data loading.
+          ;; Is the value cached? Should be? This is called for every temporal dbricks param.
+          tz-str      (try (qp.timezone/results-timezone-id)
+                           (catch Throwable _
+                             (log/trace "Failed to get `results-timezone-id`. Using system timezone.")
+                             (qp.timezone/system-timezone-id)))
           adjusted-dt (if (valid-zone-id-str? tz-str)
                         (t/with-zone-same-instant (t/zoned-date-time dt) (t/zone-id tz-str))
                         (t/with-offset-same-instant (t/offset-date-time dt) (t/zone-offset tz-str)))]
@@ -194,3 +199,17 @@
 (defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc ZonedDateTime]
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index object))
+
+;;;
+;; Time parameters setting is implemented to enable loading of the `attempted-murders` test dataset.
+;;
+
+(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc LocalTime]
+  [driver prepared-statement index object]
+  (set-parameter-to-local-date-time driver prepared-statement index
+                                    (t/local-date-time (t/local-date 1970 1 1) object)))
+
+(defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc OffsetTime]
+  [driver prepared-statement index object]
+  (set-parameter-to-local-date-time driver prepared-statement index
+                                    (t/local-date-time (t/local-date 1970 1 1) object)))
