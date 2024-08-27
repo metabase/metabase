@@ -7,7 +7,7 @@ import { ORDERS_PRODUCTS_ACCESS } from "./test_roles";
  * For that reason, we have some sanity checks in the `default.cy.snap.js` spec.
  *
  * SAMPLE_DB_TABLES contains only the references to the four main tables ids in sample database.
- * We need these references to avoid circular dependecy issue in custom commands and e2e helpers.
+ * We need these references to avoid circular dependency issue in custom commands and e2e helpers.
  * That is the only place they should be used. NEVER use them in tests!
  *
  * USER_GROUPS

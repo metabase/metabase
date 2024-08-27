@@ -1,25 +1,34 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
-import _ from "underscore";
-/* eslint-disable import/order */
-// NOTE: the order of these matters due to circular dependency issues
 import slugg from "slugg";
+import _ from "underscore";
+
+import { utf8_to_b64url } from "metabase/lib/encoding";
 import * as Lib from "metabase-lib";
-import StructuredQuery, {
-  STRUCTURED_QUERY_TEMPLATE,
-} from "metabase-lib/v1/queries/StructuredQuery";
+import {
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+} from "metabase-lib/v1/Alert";
+import type Database from "metabase-lib/v1/metadata/Database";
+import Metadata from "metabase-lib/v1/metadata/Metadata";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { fieldFilterParameterToFilter } from "metabase-lib/v1/parameters/utils/mbql";
+import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
+import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
+import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
-import type AtomicQuery from "metabase-lib/v1/queries/AtomicQuery";
-import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type BaseQuery from "metabase-lib/v1/queries/Query";
-import Metadata from "metabase-lib/v1/metadata/Metadata";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type Table from "metabase-lib/v1/metadata/Table";
+import StructuredQuery, {
+  STRUCTURED_QUERY_TEMPLATE,
+} from "metabase-lib/v1/queries/StructuredQuery";
+import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import { sortObject } from "metabase-lib/v1/utils";
-
 import type {
   CardDisplayType,
   Card as CardObject,
@@ -35,20 +44,6 @@ import type {
   TableId,
   VisualizationSettings,
 } from "metabase-types/api";
-
-// TODO: remove these dependencies
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
-import { utf8_to_b64url } from "metabase/lib/encoding";
-
-import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import { fieldFilterParameterToFilter } from "metabase-lib/v1/parameters/utils/mbql";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_ROWS,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
 
 import type { Query } from "../types";
 
