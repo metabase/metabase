@@ -23,3 +23,12 @@ export enum PerformanceTabId {
   Models = "models",
   DashboardsAndQuestions = "dashboards-and-questions",
 }
+
+export type ModelWithClearableCache = Exclude<CacheableModel, "root">;
+
+/** The default policy's cache cannot be cleared. But objects of other kinds,
+ * such as dashboards, databases, and questions, can have their cache cleared
+ * (if they have a cache) */
+export const isModelWithClearableCache = (
+  model: CacheableModel,
+): model is ModelWithClearableCache => model !== "root";

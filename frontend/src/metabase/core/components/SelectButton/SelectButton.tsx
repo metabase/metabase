@@ -82,6 +82,7 @@ const SelectButton = forwardRef(function SelectButton(
         hasValue={hasValue}
         highlighted={highlighted}
         onClick={rightIcon === "close" ? handleClear : undefined}
+        style={{ flexShrink: 0 }}
       />
     </SelectButtonRoot>
   );

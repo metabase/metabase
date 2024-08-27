@@ -6,9 +6,9 @@ import { Button, Stack } from "metabase/ui";
 
 import { DateOperatorPicker } from "../DateOperatorPicker";
 import { CurrentDatePicker } from "../RelativeDatePicker/CurrentDatePicker";
-import { SimpleDateIntervalPicker } from "../RelativeDatePicker/DateIntervalPicker";
+import { SimpleDateIntervalPicker } from "../RelativeDatePicker/DateIntervalPicker/SimpleDateIntervalPicker";
 import { isIntervalValue, isRelativeValue } from "../RelativeDatePicker/utils";
-import { SimpleSpecificDatePicker } from "../SpecificDatePicker";
+import { SimpleSpecificDatePicker } from "../SpecificDatePicker/SimpleSpecificDatePicker";
 import { isSpecificValue } from "../SpecificDatePicker/utils";
 import { DATE_PICKER_OPERATORS } from "../constants";
 import type { DatePickerOperator, DatePickerValue } from "../types";
