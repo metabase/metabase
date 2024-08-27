@@ -193,7 +193,7 @@
      [:dashboard [:map [:parent_collection ::pc]]]
      [:table [:map
               [:display_name :string]
-              [:table_schema :string]
+              [:table_schema [:maybe :string]]
               [:database [:map
                           [:id [:int {:min 1}]]
                           [:name :string]]]]]
