@@ -1,12 +1,8 @@
 import type { SpecificDatePickerValue } from "../../types";
-import {
-  type DateRangePickerValue,
-  SimpleDateRangePicker,
-} from "../DateRangePicker";
-import {
-  SimpleSingleDatePicker,
-  type SingleDatePickerValue,
-} from "../SingleDatePicker";
+import type { DateRangePickerValue } from "../DateRangePicker";
+import { SimpleDateRangePicker } from "../DateRangePicker/SimpleDateRangePicker";
+import type { SingleDatePickerValue } from "../SingleDatePicker";
+import { SimpleSingleDatePicker } from "../SingleDatePicker/SimpleSingleDatePicker";
 import { getDate, isDateRange, setDateTime, setDateTimeRange } from "../utils";
 
 interface SimpleSpecificDatePickerProps {

@@ -505,7 +505,7 @@
        (map keyword)
        set))
 
-(def ^{:private true} api-name->model
+(def ^:private api-name->model
   "Map of model names used on the API to their corresponding model."
   (->> api/model->db-model
        (map (fn [[k v]] [(keyword k) (:db-model v)]))
@@ -534,9 +534,7 @@
   "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
   [api-name eids]
   (let [model (api-name->model api-name) ;; This lookup is safe because we've already validated the api-names
-        eid->id (into {}
-                      (mapv (juxt :entity_id :id)
-                            (t2/select [model :id :entity_id] :entity_id [:in eids])))]
+        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
     (mapv (fn [entity-id]
             [entity-id (if-let [id (get eid->id entity-id)]
                          {:id id :type api-name, :status "success"}

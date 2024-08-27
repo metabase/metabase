@@ -1473,8 +1473,18 @@
             [:map
              [:id ::lib.schema.common/non-blank-string]]])
 
-(defclause dimension
-  target [:or Field template-tag])
+(mr/def ::dimension
+  [:and
+   {:doc/title [:span [:code ":dimension"] " clause"]}
+   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:catn
+    [:tag [:= :dimension]]
+    [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
+    [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
+
+(def ^{:clause-name :dimension} dimension
+  "Schema for a valid dimension clause."
+  [:ref ::dimension])
 
 (defclause variable
   target template-tag)
