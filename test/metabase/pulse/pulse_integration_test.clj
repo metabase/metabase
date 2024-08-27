@@ -11,6 +11,7 @@
    [hickory.select :as hik.s]
    [metabase.email :as email]
    [metabase.models :refer [Card Collection Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient]]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse]
    [metabase.test :as mt]
    [metabase.util :as u]))
@@ -913,3 +914,30 @@
             (mt/with-test-user nil
               (metabase.pulse/send-pulse! pulse)))
           (is (string? (get-in @mt/inbox ["rasta@metabase.com" 0 :body 0 :content]))))))))
+
+(deftest download-row-limit-test
+  (testing "The Download Row Limit works properly on attachments (#47263)"
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 5000]
+      (is (= 5000 (public-settings/download-row-limit)))
+      (mt/dataset test-data
+        (mt/with-temp [Card {base-card-id :id} {:name          "question"
+                                                :dataset_query {:database (mt/id)
+                                                                :type     :query
+                                                                :query    {:source-table (mt/id :orders)}}}
+                       Dashboard {dash-id :id} {:name "just dash"}
+                       DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id
+                                                              :card_id      base-card-id}
+                       Pulse {pulse-id :id
+                              :as      pulse} {:name         "Test Pulse"
+                                               :dashboard_id dash-id}
+                       PulseCard _ {:pulse_id          pulse-id
+                                    :card_id           base-card-id
+                                    :dashboard_card_id base-dash-card-id
+                                    :include_csv       true}
+                       PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                            :pulse_id     pulse-id
+                                                            :enabled      true}
+                       PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                :user_id          (mt/user->id :rasta)}]
+          (let [parsed-data (run-pulse-and-return-attached-csv-data pulse)]
+            (is (= 5000 (count (get-in parsed-data ["question.csv" "ID"]))))))))))
