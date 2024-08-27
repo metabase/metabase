@@ -360,7 +360,7 @@
   (try
     (binding [*current* instance]
       (let [spec (make-spec model-name opts)]
-        (assert spec (str"No serialization spec defined for model " model-name))
+        (assert spec (str "No serialization spec defined for model " model-name))
         (-> (select-keys instance (:copy spec))
             ;; won't assoc if `generate-path` returned `nil`
             (m/assoc-some :serdes/meta (generate-path model-name instance))
@@ -643,17 +643,17 @@
 
 (defn- xform-by-spec [model-name ingested]
   (let [spec (make-spec model-name nil)]
-    (assert spec (str"No serialization spec defined for model " model-name))
+    (assert spec (str "No serialization spec defined for model " model-name))
     (binding [*current* ingested]
-        (-> (select-keys ingested (:copy spec))
-            (into (for [[k transform] (:transform spec)
-                        :when         (not (::nested transform))
-                        :let          [import-k (:as transform k)
-                                       res ((:import transform) (get ingested import-k))]
-                        :when         (and (not= res ::skip)
-                                           (or (some? res)
-                                               (contains? ingested import-k)))]
-                    [k res]))))))
+      (-> (select-keys ingested (:copy spec))
+          (into (for [[k transform] (:transform spec)
+                      :when         (not (::nested transform))
+                      :let          [import-k (:as transform k)
+                                     res ((:import transform) (get ingested import-k))]
+                      :when         (and (not= res ::skip)
+                                         (or (some? res)
+                                             (contains? ingested import-k)))]
+                  [k res]))))))
 
 (defn- spec-nested! [model-name ingested instance]
   (binding [*current* instance]
