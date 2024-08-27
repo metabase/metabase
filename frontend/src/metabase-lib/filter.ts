@@ -408,8 +408,13 @@ export function excludeDateFilterParts(
   }
 
   const bucket = temporalBucket(column);
+  const columnWithoutBucket = withTemporalBucket(column, null);
+  if (!isDateOrDateTime(columnWithoutBucket)) {
+    return null;
+  }
+
   if (!bucket) {
-    return serializedValues.length === 0 && isDateOrDateTime(column)
+    return serializedValues.length === 0
       ? { column, operator, bucket, values: [] }
       : null;
   }
@@ -427,7 +432,7 @@ export function excludeDateFilterParts(
   }
 
   return {
-    column,
+    column: columnWithoutBucket,
     operator,
     bucket: bucketInfo.shortName,
     values,

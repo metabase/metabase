@@ -93,9 +93,9 @@
                     {:base-type base-type})
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
-                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
-                  ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
-                  ;; We should probably be taking that into consideration?
+                  (when-let [original-effective-type (::original-effective-type opts)]
+                    {::original-effective-type original-effective-type})
+                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well.
                   (when-let [binning (:binning opts)]
                     {::binning binning})
                   (when-let [unit (:temporal-unit opts)]
@@ -172,7 +172,6 @@
       source-field   (assoc :fk-field-id source-field)
       join-alias     (lib.join/with-join-alias join-alias))))
 
-;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
   [query stage-number field-ref]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
@@ -349,7 +348,9 @@
     (assoc metadata
            ::temporal-unit unit
            ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
-    (dissoc metadata ::temporal-unit ::original-effective-type)))
+    (let [original-effective-type (::original-effective-type metadata)]
+      (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
+        original-effective-type (assoc :effective-type original-effective-type)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
