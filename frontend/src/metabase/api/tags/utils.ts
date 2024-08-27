@@ -527,3 +527,14 @@ export function provideCheckpointsTags(checkpoints: any) {
     ),
   ];
 }
+
+export function provideFeedbackTags(feedback: any) {
+  return [idTag("feedback", feedback.id)];
+}
+
+export function provideFeedbackListTags(feedbackItems: any[]) {
+  return [
+    listTag("feedback"),
+    ...feedbackItems.map((feedback: any) => idTag("feedback", feedback.id)),
+  ];
+}

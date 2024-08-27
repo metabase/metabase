@@ -24,6 +24,7 @@
    [metabase.models.database
     :as database
     :refer [Database protected-password]]
+   [metabase.models.feedback :as feedback]
    [metabase.models.field :refer [Field readable-fields-only]]
    [metabase.models.interface :as mi]
    [metabase.models.persisted-info :as persisted-info]

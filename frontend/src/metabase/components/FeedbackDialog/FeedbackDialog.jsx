@@ -2,11 +2,14 @@ import React, { useState } from "react";
 import { Box, Button, Icon, Textarea } from "metabase/ui";
 import Input from "metabase/core/components/Input";
 import TextArea from "metabase/core/components/TextArea";
+import { useSubmitFeedbackMutation } from "metabase/api/feedback";
 
-const FeedbackDialog = ({ isOpen, onClose }) => {
+const FeedbackDialog = ({ isOpen, onClose, messages }) => {
     const [subject, setSubject] = useState("");
     const [description, setDescription] = useState("");
     const [files, setFiles] = useState([]);
+    const [submitFeedback] = useSubmitFeedbackMutation();
+
 
     const handleFileUpload = (e) => {
         const uploadedFiles = Array.from(e.target.files);
@@ -17,11 +20,24 @@ const FeedbackDialog = ({ isOpen, onClose }) => {
         setFiles(files.filter(file => file !== fileToRemove));
     };
 
-    const handleSubmit = () => {
-        console.log("Subject:", subject);
-        console.log("Description:", description);
-        console.log("Uploaded Files:", files);
-        onClose();
+    const handleSubmit = async () => {
+        try {
+            // Execute the feedback mutation
+            await submitFeedback({
+                description: description,
+                task: "General Feedback",
+                submitted_by: "John Doe",
+                chat_history: JSON.stringify(messages),
+                subject: subject,
+            }).unwrap();
+
+            // Handle success state
+            console.log("Feedback submitted successfully!");
+            onClose();
+        } catch (error) {
+            console.error("Failed to submit feedback:", error);
+            // Handle error state
+        }
     };
 
     if (!isOpen) return null;
@@ -56,7 +72,7 @@ const FeedbackDialog = ({ isOpen, onClose }) => {
                 <Box as="h2" mb={3} style={{ color: "#5D6064", fontSize: "12px", fontWeight: "400", marginBottom: "2rem" }}>
                     Whether you are new or need extra support, our team is ready to assist you. We want to make sure you have a great experience.
                 </Box>
-                <Box mb={2} style={{ width: "100%" }}>
+                <Box mb={2}>
                     <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#76797D" }}>
                         Subject *
                     </label>

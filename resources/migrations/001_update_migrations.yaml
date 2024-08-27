@@ -8946,7 +8946,6 @@ databaseChangeLog:
                     type: text
                     constraints:
                       nullable: false
-                      primaryKey: true
                 - column:
                     name: checkpoint_id
                     type: text
@@ -8969,21 +8968,10 @@ databaseChangeLog:
                     constraints:
                       nullable: true
                 - column:
-                    name: created_at
-                    type: timestamp with time zone
-                    defaultValueComputed: "now() at time zone 'utc'::text"
-                    constraints:
-                      nullable: true
-                - column:
                     name: step
                     type: bigint
                     constraints:
                       nullable: false
-          - addPrimaryKey:
-              tableName: postcheckpoints
-              columnNames: thread_id, checkpoint_id
-              constraintName: postcheckpoints_pkey
-
 
   - changeSet:
         id: v51.2024-08-26T14:35:00-1
@@ -9035,6 +9023,60 @@ databaseChangeLog:
                   limit match_count;
                 end;
                 $$;
+
+  - changeSet:
+        id: v51.2024-08-23T16:00:00
+        author: flavius
+        comment: Create table feedback
+        preConditions:
+          - onFail: MARK_RAN
+          - not:
+              - tableExists:
+                  tableName: feedback
+        changes:
+          - createTable:
+              tableName: feedback
+              remarks: Table to store feedback submitted by users
+              columns:
+                - column:
+                    name: id
+                    type: bigint
+                    autoIncrement: true
+                    constraints:
+                      nullable: false
+                      primaryKey: true
+                - column:
+                    name: created_at
+                    type: timestamp with time zone
+                    defaultValueComputed: "now()"
+                    constraints:
+                      nullable: false
+                - column:
+                    name: submitted_by
+                    type: text
+                    constraints:
+                      nullable: true
+                - column:
+                    name: task
+                    type: text
+                    constraints:
+                      nullable: true
+                - column:
+                    name: chat_history
+                    type: character varying
+                    constraints:
+                      nullable: true
+                - column:
+                    name: description
+                    type: text
+                    constraints:
+                      nullable: true
+                - column:
+                    name: subject
+                    type: text
+                    constraints:
+                      nullable: true
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
