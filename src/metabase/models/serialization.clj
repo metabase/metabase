@@ -315,7 +315,7 @@
   j
   serialize/deserialize data.
 
-  For behavior, see `extract-one` and `xform-by-spec`."
+  For behavior, see `extract-one` and `xform-one`."
   (fn [model-name _opts] model-name))
 
 (defmethod make-spec :default [_ _] nil)
@@ -519,7 +519,7 @@
 ;;;
 ;;; `load-one!` has a default implementation that works for most models:
 ;;;
-;;; - Call `(xform-by-spec ingested)` to transform the ingested map as needed.
+;;; - Call `(xform-one ingested)` to transform the ingested map as needed.
 ;;; - Then call either:
 ;;;     - `(load-update! ingested local-entity)` if the local entity exists, or
 ;;;     - `(load-insert! ingested)` if it's new.
@@ -630,7 +630,7 @@
   `ingested` is the vanilla map from ingestion, with the `:serdes/meta` key on it.
   `maybe-local` is either `nil`, or the corresponding Toucan entity from the appdb.
 
-  Defaults to calling [[xform-by-spec]] to massage the incoming map, then either [[load-update!]] if `maybe-local`
+  Defaults to calling [[xform-one]] to massage the incoming map, then either [[load-update!]] if `maybe-local`
   exists, or [[load-insert!]] if it's `nil`.
 
   Prefer overriding [[load-update!]] and [[load-insert!]] if necessary, rather than this.
@@ -641,7 +641,7 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defn- xform-by-spec [model-name ingested]
+(defn- xform-one [model-name ingested]
   (let [spec (make-spec model-name nil)]
     (assert spec (str "No serialization spec defined for model " model-name))
     (binding [*current* ingested]
@@ -666,7 +666,7 @@
   "Default implementation of `load-one!`"
   [ingested maybe-local]
   (let [model-name (ingested-model ingested)
-        adjusted   (xform-by-spec model-name ingested)
+        adjusted   (xform-one model-name ingested)
         instance (binding [mi/*deserializing?* true]
                    (if (nil? maybe-local)
                      (load-insert! model-name adjusted)
@@ -700,7 +700,7 @@
 
 (defn lookup-by-id
   "Given an ID string, this endeavours to find the matching entity, whether it's an entity ID or identity hash.
-  This is useful when writing [[xform-by-spec]] to turn a foreign key from a portable form to an appdb ID.
+  This is useful when writing [[xform-one]] to turn a foreign key from a portable form to an appdb ID.
   Returns a Toucan entity or nil."
   [model id-str]
   (if (entity-id? id-str)
