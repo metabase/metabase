@@ -106,7 +106,7 @@
      :native     (try
                    (nqa/references-for-native query)
                    (catch Exception e
-                     (log/error e "Error parsing SQL" query)))
+                     (log/debug e "Failed to analyze native query" query)))
      ;; For now, all model references are resolved transitively to the ultimate field ids.
      ;; We may want to change to record model references directly rather than resolving them.
      ;; This would remove the need to invalidate consuming cards when a given model changes.
@@ -122,7 +122,7 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
       (t2/with-transaction [_conn]
-        (let [analysis-id      (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id})
+        (let [analysis-id      (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id :status "running"})
               references       (query-references query query-type)
               table->row       (fn [{:keys [schema table table-id]}]
                                  {:card_id     card-id
@@ -139,10 +139,17 @@
                                   :table_id           table-id
                                   :field_id           field-id
                                   :explicit_reference explicit-reference})
-              query-field-rows (map field->row (:fields references))
-              query-table-rows (map table->row (:tables references))]
-          (t2/insert! :model/QueryField query-field-rows)
-          (t2/insert! :model/QueryTable query-table-rows)
+              success?         (some? references)]
+
+          (if-not success?
+            (do
+              (log/errorf "Failed to analyze query for card %s" card-id)
+              (t2/update! :model/QueryAnalysis analysis-id {:status "failed"}))
+            (do
+              (t2/insert! :model/QueryField (map field->row (:fields references)))
+              (t2/insert! :model/QueryTable (map table->row (:tables references)))
+              (t2/update! :model/QueryAnalysis analysis-id {:status "complete"})))
+
           (t2/delete! :model/QueryAnalysis
                       {:where [:and
                                [:= :card_id card-id]
