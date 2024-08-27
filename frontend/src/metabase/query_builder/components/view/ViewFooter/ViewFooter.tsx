@@ -2,36 +2,28 @@ import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getIsVisualized } from "metabase/query_builder/selectors";
+import {
+  getFirstQueryResult,
+  getIsVisualized,
+  getQuestion,
+} from "metabase/query_builder/selectors";
 import { Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ViewFooterRoot } from "../ViewFooter.styled";
 
-import {
-  CenterViewFooterButtonGroup,
-  type CenterViewFooterButtonGroupProps,
-} from "./CenterViewFooterButtonGroup";
+import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";
 import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";
-import {
-  RightViewFooterButtonGroup,
-  type RightViewFooterButtonGroupProps,
-} from "./RightViewFooterButtonGroup";
+import { RightViewFooterButtonGroup } from "./RightViewFooterButtonGroup";
 
-type ViewFooterProps = CenterViewFooterButtonGroupProps &
-  RightViewFooterButtonGroupProps;
+type ViewFooterProps = { className?: string };
 
-export const ViewFooter = ({
-  question,
-  result,
-  className,
-  isShowingRawTable,
-  setUIControls,
-  isObjectDetail,
-}: ViewFooterProps) => {
+export const ViewFooter = ({ className }: ViewFooterProps) => {
   const isVisualized = useSelector(getIsVisualized);
+  const question = useSelector(getQuestion);
+  const result = useSelector(getFirstQueryResult);
 
-  if (!result) {
+  if (!question || !result) {
     return null;
   }
 
@@ -48,21 +40,9 @@ export const ViewFooter = ({
         <Group className={CS.flex1}>
           {!hideChartSettings && <LeftViewFooterButtonGroup />}
         </Group>
-        {isVisualized && (
-          <Group>
-            <CenterViewFooterButtonGroup
-              setUIControls={setUIControls}
-              question={question}
-              isShowingRawTable={isShowingRawTable}
-            />
-          </Group>
-        )}
+        {isVisualized && <CenterViewFooterButtonGroup />}
         <Group noWrap>
-          <RightViewFooterButtonGroup
-            question={question}
-            result={result}
-            isObjectDetail={isObjectDetail}
-          />
+          <RightViewFooterButtonGroup />
         </Group>
       </Group>
     </ViewFooterRoot>
