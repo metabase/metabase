@@ -50,7 +50,6 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-top: ${space(1)};
   height: 100%;
   background-color: transparent;
   overflow-x: hidden;
@@ -76,6 +75,7 @@ export const SidebarContentRoot = styled.div`
   flex: 1;
   flex-direction: column;
   justify-content: space-between;
+  background-color: #f7f8f6;
 `;
 
 export const SidebarSection = styled(Box)<BoxProps>`
@@ -147,10 +147,7 @@ export const PaddedSidebarLink = styled(SidebarLink)`
     props.url?.startsWith("/browse/chat") ? "#5B26D3" : "#4F525C"};
 
   &:hover {
-    background: ${props =>
-      props.url?.startsWith("/browse/chat")
-        ? "rgba(91, 38, 211, 0.42)"
-        : lighten("brand", 0.12)};
+    background: #6a7161;
     color: var(--mb-color-text-white);
 
     svg {
