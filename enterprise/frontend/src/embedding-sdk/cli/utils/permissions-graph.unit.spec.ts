@@ -56,6 +56,8 @@ const EXPECTED_PERMISSION_GROUP = {
   "2": {
     "create-queries": {
       public: {
+        "1": "no",
+        "2": "no",
         "3": "query-builder",
         "4": "query-builder",
       },
@@ -72,8 +74,8 @@ const EXPECTED_PERMISSION_GROUP = {
     },
     "view-data": {
       public: {
-        "1": "unrestricted",
-        "2": "unrestricted",
+        "1": "blocked",
+        "2": "blocked",
         "3": "sandboxed",
         "4": "sandboxed",
       },
