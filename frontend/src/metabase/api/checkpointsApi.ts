@@ -7,7 +7,7 @@ export { skipToken };
 
 import { TAG_TYPES } from "./tags";
 
-export const server = "http://localhost:3000";
+export const server = process.env.REACT_APP_SERVER;
 
 export const CheckpointsApi = createApi({
   reducerPath: "checkpoints-api",

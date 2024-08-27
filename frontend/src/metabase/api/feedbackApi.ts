@@ -7,13 +7,13 @@ export { skipToken };
 
 import { TAG_TYPES } from "./tags";
 
-export const semantic = "http://localhost:3000";
+export const server = process.env.REACT_APP_SERVER;
 
 export const FeedbackApi = createApi({
   reducerPath: "feedback-api",
   tagTypes: TAG_TYPES,
   baseQuery: fetchBaseQuery({
-    baseUrl: semantic,
+    baseUrl: server,
     prepareHeaders: headers => {
       headers.set("Content-Type", "application/json");
       return headers;
