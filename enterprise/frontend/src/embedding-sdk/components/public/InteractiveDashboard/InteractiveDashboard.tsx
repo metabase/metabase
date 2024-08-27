@@ -4,7 +4,6 @@ import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
-import { useValidIdForEntity } from "embedding-sdk/components/public/InteractiveQuestion/InteractiveQuestion";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -12,6 +11,7 @@ import {
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
+import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
@@ -38,10 +38,11 @@ const InteractiveDashboardInner = ({
   onLoadWithoutCards,
   className,
 }: InteractiveDashboardProps) => {
-  const dashboardId = useValidIdForEntity({
-    type: "dashboard",
-    id: initId,
-  }) ?? null;
+  const dashboardId =
+    useValidIdForEntity({
+      type: "dashboard",
+      id: initId,
+    }) ?? null;
 
   const {
     displayOptions,

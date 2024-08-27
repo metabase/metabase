@@ -22,50 +22,13 @@ import {
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import { EntityTypes, useTranslateEntityIdQuery } from "metabase/api";
-import type { Card, CardEntityId, CardId } from "metabase-types/api";
-import { match, P } from "ts-pattern";
+import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
+import type { Card } from "metabase-types/api";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: Card["id"] | Card["entity_id"];
   plugins?: SdkPluginsConfig;
 }>;
-
-export const useValidIdForEntity = ({
-  type,
-  id,
-}: {
-  type: EntityTypes;
-  id: CardId | CardEntityId | null | undefined;
-}) => {
-  const {
-    data: entity_ids,
-    isError,
-    isLoading,
-  } = useTranslateEntityIdQuery({
-    [type]: typeof id === "string" ? [id] : [],
-  });
-
-  console.log({
-    entity_ids,
-    isError,
-    isLoading,
-  });
-
-  return match({ id, entity_ids, isError, isLoading })
-    .with({ isLoading: true }, () => null)
-    .with(
-      {
-        id: P.string,
-        entity_ids: P.not(P.nullish),
-        isError: false,
-        isLoading: false,
-      },
-      ({ id, entity_ids }) =>
-        entity_ids[id]?.status === "success" ? entity_ids[id].id : null,
-    )
-    .otherwise(() => id);
-};
 
 export const _InteractiveQuestion = ({
   questionId,
@@ -81,8 +44,6 @@ export const _InteractiveQuestion = ({
     type: "card",
     id: questionId,
   });
-
-  console.log(id);
 
   if (!id) {
     return <div>Loading...</div>;

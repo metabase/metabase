@@ -1,7 +1,8 @@
-import { BaseEntityId } from "metabase-types/api";
+import type { BaseEntityId } from "metabase-types/api";
+
 import { Api } from "./api";
 
-const entitytypes = [
+const validEntityTypes = [
   "action",
   "card",
   "collection",
@@ -21,11 +22,9 @@ const entitytypes = [
   "user",
 ];
 
-export type EntityTypes = typeof entitytypes[number];
+export type EntityType = typeof validEntityTypes[number];
 
-type TranslateEntityIdRequest = {
-  [K in typeof entitytypes[number]]?: string[];
-};
+type TranslateEntityIdRequest = Record<EntityType, string[]>;
 
 export type TranslateEntityIdResponseSuccess = {
   status: "success";
@@ -45,7 +44,7 @@ export type TranslateEntityIdResponse = Record<
 
 type TranslateEntityIdError = {
   message: string;
-  explanation: Record<keyof typeof entitytypes, [[string]]>;
+  explanation: Record<keyof typeof validEntityTypes, [[string]]>;
 };
 
 export const entityIdApi = Api.injectEndpoints({
