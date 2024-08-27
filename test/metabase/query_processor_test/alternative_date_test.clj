@@ -240,6 +240,12 @@
       (assoc (mt/mbql-query just-dates {:order-by [[:asc $id]]})
              :middleware {:format-rows? false}))))
 
+(defmethod iso-8601-text-fields-query :databricks-jdbc
+  [_driver]
+  (mt/dataset just-dates
+              (assoc (mt/mbql-query just_dates {:order-by [[:asc $id]]})
+                     :middleware {:format-rows? false})))
+
 (defmulti iso-8601-text-fields-expected-rows
   "Expected rows for the [[iso-8601-text-fields]] test below."
   {:arglists '([driver])}
@@ -255,6 +261,12 @@
 ;;; SparkSQL returns ZonedDateTime (which isn't really correct if we asked for :type/DateTime) and doesn't have a TIME
 ;;; type
 (defmethod iso-8601-text-fields-expected-rows :sparksql
+  [_driver]
+  [[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19"]
+   [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19"]
+   [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19"]])
+
+(defmethod iso-8601-text-fields-expected-rows :databricks-jdbc
   [_driver]
   [[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19"]
    [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19"]
@@ -321,6 +333,13 @@
   (mt/mbql-query times
     {:filter [:= !day.ts "2008-10-19"]
      :fields [$ts]}))
+
+(defmethod iso-8601-text-fields-should-be-queryable-datetime-test-query :databricks-jdbc
+  [_driver]
+  (mt/mbql-query
+   times
+   {:filter [:= !day.ts "2008-10-19"]
+    :fields [$d $ts]}))
 
 (deftest ^:parallel iso-8601-text-fields-should-be-queryable-datetime-test
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
