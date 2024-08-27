@@ -95,7 +95,9 @@
                     {:effective-type effective-type})
                   (when-let [original-effective-type (::original-effective-type opts)]
                     {::original-effective-type original-effective-type})
-                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well.
+                  ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
+                  ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
+                  ;; We should probably be taking that into consideration?
                   (when-let [binning (:binning opts)]
                     {::binning binning})
                   (when-let [unit (:temporal-unit opts)]
@@ -127,23 +129,15 @@
         (update :display-name (fn [display-name]
                                 (str parent-display-name ": " display-name))))))
 
-(defn- effective-type-with-temporal-unit
-  "Effective type when taking the `temporal-unit` into account. If we have a temporal extraction like
-  `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
-  whatever."
-  [effective-type temporal-unit]
-  (if (and temporal-unit
-           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
-    :type/Integer
-    effective-type))
-
 (defn- column-metadata-effective-type
   "Effective type of a column when taking the `::temporal-unit` into account. If we have a temporal extraction like
   `:month-of-year`, then this actually returns an integer rather than the 'original` effective type of `:type/Date` or
   whatever."
   [{::keys [temporal-unit], :as column-metadata}]
-  (-> ((some-fn :effective-type :base-type) column-metadata)
-      (effective-type-with-temporal-unit temporal-unit)))
+  (if (and temporal-unit
+           (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit))
+    :type/Integer
+    ((some-fn :effective-type :base-type) column-metadata)))
 
 (defmethod lib.metadata.calculation/type-of-method :metadata/column
   [_query _stage-number column-metadata]
@@ -180,6 +174,7 @@
       source-field   (assoc :fk-field-id source-field)
       join-alias     (lib.join/with-join-alias join-alias))))
 
+;;; TODO -- effective type should be affected by `temporal-unit`, right?
 (defmethod lib.metadata.calculation/metadata-method :field
   [query stage-number field-ref]
   (let [field-metadata (resolve-field-metadata query stage-number field-ref)
@@ -331,8 +326,11 @@
   ;; we want to remove it later. We will record this with the key `::original-effective-type`. Note that changing the
   ;; unit multiple times should keep the original first value of `::original-effective-type`.
   (if unit
-    (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) options)
-          new-effective-type      (effective-type-with-temporal-unit original-effective-type unit)
+    (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+          original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) options)
+          new-effective-type      (if extraction-unit?
+                                    :type/Integer
+                                    original-effective-type)
           options                 (assoc options
                                          :temporal-unit unit
                                          :effective-type new-effective-type
@@ -349,16 +347,16 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (if unit
-    (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)
-          new-effective-type      (effective-type-with-temporal-unit original-effective-type unit)]
+  (let [extraction-unit?        (contains? lib.schema.temporal-bucketing/datetime-extraction-units unit)
+        original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
+    (if unit
       (assoc metadata
-             ::temporal-unit unit
-             :effective-type new-effective-type
-             ::original-effective-type original-effective-type))
-    (let [original-effective-type (::original-effective-type metadata)]
-      (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
-        original-effective-type (assoc :effective-type original-effective-type)))))
+             :effective-type (if extraction-unit? :type/Integer original-effective-type)
+             ::original-effective-type original-effective-type
+             ::temporal-unit unit)
+      (-> metadata
+          (assoc :effective-type original-effective-type)
+          (dissoc ::original-effective-type ::temporal-unit)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -387,7 +385,7 @@
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :metadata/column
   [_query _stage-number field-metadata]
   (if (not= (:lib/source field-metadata) :source/expressions)
-    (let [effective-type ((some-fn :effective-type :base-type) field-metadata)
+    (let [effective-type ((some-fn ::original-effective-type :effective-type :base-type) field-metadata)
           fingerprint-default (some-> field-metadata :fingerprint fingerprint-based-default-unit)]
       (cond-> (cond
                 (isa? effective-type :type/DateTime) lib.temporal-bucket/datetime-bucket-options
