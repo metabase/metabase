@@ -19,7 +19,7 @@ Admins can find the **Sharing** icon at the bottom right corner of a question. Y
 
 ## Create a public link for a dashboard
 
-To share a dashboard via a public link, Admins can click on the **Sharing** button in the top right menu.
+To share a dashboard via a public link, admins can click on the **Sharing** button in the top right menu.
 
 ![Sharing a dashboard](../images/dashboard-sharing.png)
 
