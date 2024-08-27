@@ -437,8 +437,8 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                         flex: "1 1 auto",
                         overflowY: "auto",
                         padding: "16px",
-                        backgroundColor: "#FFF",
                         borderRadius: "12px",
+                        marginBottom: "150px", // Adjust this value based on the input area height
                     }}
                 >
 
@@ -540,71 +540,81 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                             </div>
                         </div>
                     ))}
-
                     <div
                         style={{
                             display: "flex",
-                            width: "calc(100% - 580px)",
-                            alignItems: "center",
-                            padding: "8px",
-                            border: "1px solid #E0E0E0",
-                            borderRadius: "8px",
-                            backgroundColor: "#F8FAFD",
-                            position: "absolute",
-                            marginBottom: "1rem",
-                            marginLeft: "5rem",
-                            marginRight: "5rem",
+                            justifyContent: "center", // Center horizontally
+                            width: "calc(100% - 600px)",
+                            backgroundColor: "#FFF",
+                            position: "fixed",
                             bottom: "5rem",
+                            left: "150px",
+                            zIndex: 10,
                         }}
                     >
-                        <TextArea
-                            ref={inputRef}
-                            value={inputValue}
-                            onChange={handleInputChange}
-                            onKeyPress={handleKeyPress}
-                            placeholder="Enter a prompt here..."
+                        <div
                             style={{
-                                width: "100%",
-                                resize: "none",
-                                overflowY: "auto",
-                                height: "100px",
-                                minHeight: "100px",
-                                maxHeight: "220px",
-                                padding: "12px",
-                                paddingRight: "50px", // Space for the send button
-                                lineHeight: "24px",
-                                border: "none",
-                                outline: "none",
-                                boxSizing: "border-box",
-                                borderRadius: "8px",
-                                backgroundColor: "transparent",
-                            }}
-                        />
-                        <Button
-                            variant="filled"
-                            disabled={!isConnected}
-                            onClick={sendMessage}
-                            style={{
-                                position: "absolute",
-                                right: "10px",
-                                bottom: "10px",
-                                borderRadius: "8px",
-                                width: "40px",
-                                height: "40px",
-                                padding: "0",
-                                minWidth: "0",
-                                backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
-                                color: "#FFF",
-                                border: "none",
-                                cursor: isConnected ? "pointer" : "not-allowed",
                                 display: "flex",
-                                justifyContent: "center",
                                 alignItems: "center",
+                                width: "100%",
+                                padding: "8px",
+                                border: "1px solid #E0E0E0",
+                                borderRadius: "8px",
+                                backgroundColor: "#F8FAFD",
+                                position: "relative", // Important for absolute positioning inside this div
                             }}
                         >
-                            <Icon size={26} name="sendChat" />
-                        </Button>
+                            <TextArea
+                                ref={inputRef}
+                                value={inputValue}
+                                onChange={handleInputChange}
+                                onKeyPress={handleKeyPress}
+                                placeholder="Enter a prompt here..."
+                                style={{
+                                    width: "100%",
+                                    resize: "none",
+                                    overflowY: "auto",
+                                    height: "100px",
+                                    minHeight: "100px",
+                                    maxHeight: "220px",
+                                    padding: "12px",
+                                    paddingRight: "50px", // Space for the send button
+                                    lineHeight: "24px",
+                                    border: "none",
+                                    outline: "none",
+                                    boxSizing: "border-box",
+                                    borderRadius: "8px",
+                                    backgroundColor: "transparent",
+                                }}
+                            />
+                            <Button
+                                variant="filled"
+                                disabled={!isConnected}
+                                onClick={sendMessage}
+                                style={{
+                                    position: "absolute",
+                                    right: "10px",
+                                    bottom: "10px",
+                                    borderRadius: "8px",
+                                    width: "40px",
+                                    height: "40px",
+                                    padding: "0",
+                                    minWidth: "0",
+                                    backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
+                                    color: "#FFF",
+                                    border: "none",
+                                    cursor: isConnected ? "pointer" : "not-allowed",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <Icon size={26} name="sendChat" />
+                            </Button>
+                        </div>
                     </div>
+
+
                 </div>
 
 
@@ -792,11 +802,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
             <FeedbackDialog
                 isOpen={isFeedbackDialogOpen}
                 onClose={handleFeedbackDialogOpen}
-                emailBody={
-                    error
-                        ? `Error: ${error}\n\n` + messages.map(message => message.text).join("\n")
-                        : messages.map(message => message.text).join("\n")
-                }
+
             />
         </>
     );

@@ -65,7 +65,6 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId }: any) => {
   return (
     <Box
       style={{
-        backgroundColor: "#FFF",
         borderRadius: "8px",
         padding: "16px",
         height: "85vh",

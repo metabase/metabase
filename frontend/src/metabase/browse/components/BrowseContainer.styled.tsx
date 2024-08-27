@@ -14,6 +14,7 @@ export const BrowseContainer = styled.div`
   margin-top: 1rem;
   container-name: ItemsTableContainer;
   container-type: inline-size;
+  background-color: white;
 `;
 
 export const BrowseSection = styled(Flex)`
