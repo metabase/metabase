@@ -1,6 +1,8 @@
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Markdown from "metabase/core/components/Markdown";
 
+import C from "./EllipsifiedWithMarkdownTooltip.module.css";
+
 export const EllipsifiedWithMarkdownTooltip = ({
   children,
 }: {
@@ -14,7 +16,12 @@ export const EllipsifiedWithMarkdownTooltip = ({
         </Markdown>
       }
     >
-      <Markdown disallowHeading unstyleLinks lineClamp={1}>
+      <Markdown
+        disallowHeading
+        unstyleLinks
+        lineClamp={1}
+        className={C.inlineMarkdown}
+      >
         {children}
       </Markdown>
     </Ellipsified>
