@@ -35,9 +35,11 @@
 (defn- by-model [model-name extraction]
   (->> extraction
        (into [])
-       (map (comp last :serdes/meta))
-       (filter #(= model-name (:model %)))
-       (map :id)
+       (filter #(= model-name ((comp :model last :serdes/meta) %)))))
+
+(defn- ids-by-model [model-name extraction]
+  (->> (by-model model-name extraction)
+       (map (comp :id last :serdes/meta))
        set))
 
 (deftest fundamentals-test
@@ -98,15 +100,15 @@
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
           (is (= #{coll-eid child-eid}
-                 (by-model "Collection" (extract/extract nil)))))
+                 (ids-by-model "Collection" (extract/extract nil)))))
 
         (testing "valid user specified"
           (is (= #{coll-eid child-eid pc-eid}
-                 (by-model "Collection" (extract/extract {:user-id mark-id})))))
+                 (ids-by-model "Collection" (extract/extract {:user-id mark-id})))))
 
         (testing "invalid user specified"
           (is (= #{coll-eid child-eid}
-                 (by-model "Collection" (extract/extract {:user-id 218921})))))))))
+                 (ids-by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
@@ -539,27 +541,27 @@
           (is (= #{coll-eid mark-coll-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
-                      (by-model "Collection"))))
+                      (ids-by-model "Collection"))))
           (is (= #{coll-eid dave-coll-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
-                      (by-model "Collection"))))))
+                      (ids-by-model "Collection"))))))
 
       (testing "dashboards are filtered based on :user"
         (testing "dashboards in unowned collections are always returned"
           (is (= #{dash-eid}
                  (->> {:collection-set #{coll-id}}
                       (serdes/extract-all "Dashboard")
-                      (by-model "Dashboard"))))
+                      (ids-by-model "Dashboard"))))
           (is (= #{dash-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Dashboard")
-                      (by-model "Dashboard")))))
+                      (ids-by-model "Dashboard")))))
         (testing "dashboards in personal collections are returned for the :user"
           (is (= #{dash-eid other-dash param-dash}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Dashboard")
-                      (by-model "Dashboard")))))))))
+                      (ids-by-model "Dashboard")))))))))
 
 (deftest dashboard-card-series-test
   (mt/with-empty-h2-app-db
@@ -869,7 +871,7 @@
               (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        :implicit
+                         :type        "implicit"
                          :created_at  string?
                          :model_id    card-eid-1
                          :implicit    [{:kind "row/update"}]}
@@ -907,7 +909,7 @@
               (let [ser (ts/extract-one "Action" action-id)]
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
-                         :type        :http
+                         :type        "http"
                          :created_at  string?
                          :model_id    card-eid-1
                          :http        [{:template {}}]}
@@ -947,7 +949,7 @@
                 (is (=? {:serdes/meta [{:model "Action"
                                         :id    (:entity_id action)
                                         :label "my_action"}]
-                         :type        :query
+                         :type        "query"
                          :creator_id  "ann@heart.band"
                          :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
@@ -1007,7 +1009,7 @@
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
           (is (= #{}
-                 (by-model "FieldValues" (extract/extract {})))))
+                 (ids-by-model "FieldValues" (extract/extract {})))))
         (testing "with :include-field-values true"
           (let [models (->> {:include-field-values true} extract/extract (map (comp :model last :serdes/meta)))]
             ;; why 14?
@@ -1398,15 +1400,11 @@
 
       (testing "fields that reference foreign keys are properly exported as Field references"
         (is (= ["My Database" nil "Schemaless Table" "Some Field"]
-               (->> (t2/select-one Field :id fk-id)
-                    (serdes/extract-one "Field" {})
-                    :fk_target_field_id))))
+               (:fk_target_field_id (ts/extract-one "Field" fk-id)))))
 
       (testing "Fields that reference parents are properly exported as Field references"
         (is (= ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]
-               (->> (t2/select-one Field :id nested-id)
-                    (serdes/extract-one "Field" {})
-                    :parent_id)))))))
+               (:parent_id (ts/extract-one "Field" nested-id))))))))
 
 (deftest escape-report-test
   (mt/with-empty-h2-app-db
@@ -1456,9 +1454,9 @@
                                   :no-settings   true
                                   :no-data-model true})]
         (is (= #{parent-eid middle-eid nested-eid}
-               (by-model "Collection" ser)))
+               (ids-by-model "Collection" ser)))
         (is (= #{ncard-eid}
-               (by-model "Card" ser)))))))
+               (ids-by-model "Card" ser)))))))
 
 (deftest skip-analytics-collections-test
   (testing "Collections in 'analytics' namespace should not be extracted, see #37453"
@@ -1469,7 +1467,7 @@
         (is (some? (audit/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
-        (is (= #{} (by-model "Collection" ser)))))))
+        (is (= #{} (ids-by-model "Collection" ser)))))))
 
 (deftest entity-id-in-targets-test
   (mt/with-temp [Collection c {:name "Top-Level Collection"}]
@@ -1481,7 +1479,7 @@
                                   :no-settings   true
                                   :no-data-model true})]
         (is (= #{(:entity_id c)}
-               (by-model "Collection" ser)))))))
+               (ids-by-model "Collection" ser)))))))
 
 (deftest extract-nested-test
   (testing "extract-nested working"
@@ -1560,3 +1558,38 @@
                  :field_ref          [:field [string? "PUBLIC" "VENUES" "CATEGORY_ID"] nil]}
                 (->> (:result_metadata ser)
                      (u/seek #(= (:display_name %) "Category ID")))))))))
+
+(deftest extract-single-collection-test
+  (mt/with-empty-h2-app-db
+    (ts/with-temp-dpc
+      [:model/Collection    {coll-id :id}            {:name "Top-Level Collection"}
+       :model/Dashboard     {dash-id :id
+                             dash-eid :entity_id}    {:name "Top Dash"
+                                                      :collection_id coll-id}
+       :model/Card          {card-id-1 :id
+                             card-eid-1 :entity_id} {:name "Some Card"
+                                                     :collection_id coll-id}
+       :model/Card          {card-id-2 :id
+                             card-eid-2 :entity_id} {:name "Some Inner Card"
+                                                     :collection_id coll-id}
+       :model/DashboardTab  {tab-id-1 :id
+                             tab-eid-1 :entity_id}  {:dashboard_id dash-id
+                                                     :name "Tab 1"}
+       :model/DashboardCard  _                      {:dashboard_id dash-id
+                                                     :dashboard_tab_id tab-id-1
+                                                     :card_id card-id-1}
+       :model/DashboardTab  {tab-id-2 :id
+                             tab-eid-2 :entity_id}  {:dashboard_id dash-id
+                                                     :name "Tab 2"}
+       :model/DashboardCard _                       {:dashboard_id dash-id
+                                                     :dashboard_tab_id tab-id-2
+                                                     :card_id card-id-2}]
+      (let [extraction (extract/extract {:targets [["Collection" coll-id]] :no-settings true :no-data-model true})]
+        (is (=? [{:name "Top Dash"
+                  :dashcards [{:dashboard_tab_id [dash-eid tab-eid-1]
+                               :card_id          card-eid-1}
+                              {:dashboard_tab_id [dash-eid tab-eid-2]
+                               :card_id          card-eid-2}]
+                  :tabs [{:name "Tab 1"}
+                         {:name "Tab 2"}]}]
+                (by-model "Dashboard" extraction)))))))

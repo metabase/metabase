@@ -254,15 +254,30 @@
       "BIGNUMERIC" :type/Decimal
       :type/*)))
 
-(mu/defn- table-schema->metabase-field-info
-  [^Schema schema :- (lib.schema.common/instance-of-class Schema)]
-  (for [[idx ^Field field] (m/indexed (.getFields schema))]
-    (let [type-name (.. field getType name)
-          f-mode    (.getMode field)]
-      {:name              (.getName field)
-       :database-type     type-name
-       :base-type         (bigquery-type->base-type f-mode type-name)
-       :database-position idx})))
+(mu/defn- fields->metabase-field-info
+  ([fields]
+   (fields->metabase-field-info nil nil fields))
+  ([database-position nfc-path fields]
+   (into
+    []
+    (map
+     (fn [[idx ^Field field]]
+       (let [type-name (.. field getType name)
+             f-mode    (.getMode field)
+             database-position (or database-position idx)
+             field-name (.getName field)
+             base-type (bigquery-type->base-type f-mode type-name)]
+         (into
+          (cond-> {:name              field-name
+                   :database-type     type-name
+                   :base-type         base-type
+                   :database-position database-position}
+            nfc-path (assoc :nfc-path nfc-path)
+            (= :type/Dictionary base-type) (assoc :nested-fields (set (fields->metabase-field-info
+                                                                       database-position
+                                                                       (conj (vec nfc-path) field-name)
+                                                                       (.getSubFields field)))))))))
+    (m/indexed fields))))
 
 (def ^:private partitioned-time-field-name
   "The name of pseudo-column for tables that are partitioned by ingestion time.
@@ -287,7 +302,7 @@
         fields                    (set
                                    (map
                                     #(assoc % :database-partitioned (= (:name %) partitioned-field-name))
-                                    (table-schema->metabase-field-info (. tabledef getSchema))))]
+                                    (fields->metabase-field-info (.. tabledef getSchema getFields))))]
     {:schema dataset-id
      :name   table-name
      :fields (cond-> fields
@@ -320,7 +335,7 @@
                      (let [column-name (.getName field)]
                        (log/warnf "Warning: missing type mapping for parsing BigQuery results column %s of type %s."
                                   column-name column-type)))
-                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id*))))
+                   (partial method column-type column-mode bigquery.common/*bigquery-timezone-id* field))))
           (.getFields schema))))
 
 (defn- parse-field-value [^FieldValue cell parser]
@@ -493,7 +508,7 @@
         (get-field-parsers schema)
 
         columns
-        (for [column (table-schema->metabase-field-info schema)]
+        (for [column (fields->metabase-field-info (.. resp getSchema getFields))]
           (-> column
               (set/rename-keys {:base-type :base_type})
               (dissoc :database-type :database-position)))]
@@ -549,6 +564,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:convert-timezone         true
+                              :nested-fields            true
                               :datetime-diff            true
                               :expressions              true
                               :now                      true

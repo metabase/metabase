@@ -578,11 +578,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
-  {:copy      [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_position
+  {:copy      [:archived :archived_directly :auto_apply_filters :caveats :collection_position
                :description :embedding_params :enable_embedding :entity_id :name
                :points_of_interest :position :public_uuid :show_in_getting_started :width]
    :skip      [;; those stats are inherently local state
-               :view_count :last_viewed_at]
+               :view_count :last_viewed_at
+               ;; this is deprecated
+               :cache_ttl]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)

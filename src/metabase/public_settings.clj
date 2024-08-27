@@ -212,7 +212,6 @@
                 (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :encryption :never
   :visibility :public
   :audit      :getter)
 
@@ -947,5 +946,4 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
   :visibility :internal
   :export?    true
-  :type       :integer
-  :doc false)
+  :type       :integer)

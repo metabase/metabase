@@ -169,4 +169,12 @@ docker run
 --rm metabase/metabase "migrate down"
 ```
 
+If you're running Docker Compose with the right environments variables, the command would be:
+
+```
+docker compose run metabase "migrate down"
+```
+
+Note the quotes around `"migrate down"` for the Docker and Docker compose command.
+
 Once the migration process completes, start up Metabase using the JAR or Docker image for the version you want to run.
