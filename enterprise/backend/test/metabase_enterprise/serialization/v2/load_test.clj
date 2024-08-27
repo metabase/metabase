@@ -973,7 +973,7 @@
                                                    @serialized))]
               (is (some? action-serialized))
               (testing ":type should be a string"
-                (is (keyword? (:type action-serialized))))))))
+                (is (string? (:type action-serialized))))))))
       (testing "loading succeeds"
         (ts/with-db dest-db
           (serdes.load/load-metabase! (ingestion-in-memory @serialized))

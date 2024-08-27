@@ -2,6 +2,8 @@ import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  createTimeline,
+  createTimelineWithEvents,
   echartsIcon,
   popover,
   restore,
@@ -47,7 +49,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should create an event within the default timeline", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
@@ -75,7 +77,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should display all events in data view", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
           { name: "v1", timestamp: "2027-01-01T00:00:00Z" },
@@ -107,7 +109,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should edit an event", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
@@ -136,10 +138,8 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should move an event", () => {
-      cy.createTimeline({
-        name: "Releases",
-      });
-      cy.createTimelineWithEvents({
+      createTimeline({ name: "Releases" });
+      createTimelineWithEvents({
         timeline: { name: "Builds" },
         events: [{ name: "RC2", timestamp: "2024-10-20T00:00:00Z" }],
       });
@@ -167,7 +167,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should archive and unarchive an event", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
@@ -195,7 +195,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should support markdown in event description", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: {
           name: "Releases",
         },
@@ -218,7 +218,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should show events for ad-hoc questions", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
@@ -246,7 +246,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should not show events for non-timeseries questions", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
@@ -276,7 +276,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should show events for native queries", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });
@@ -306,14 +306,14 @@ describe("scenarios > organization > timelines > question", () => {
         name: "Parent",
         parent_id: null,
       }).then(({ body: { id: PARENT_COLLECTION_ID } }) => {
-        cy.createTimelineWithEvents({
+        createTimelineWithEvents({
           timeline: { name: "Releases" },
           events: [
             { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "cloud" },
           ],
         });
 
-        cy.createTimelineWithEvents({
+        createTimelineWithEvents({
           timeline: {
             name: "Timeline for collection",
             collection_id: PARENT_COLLECTION_ID,
@@ -404,7 +404,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should color the event icon when hovering", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
           { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
@@ -419,7 +419,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should open the sidebar when clicking an event icon", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [
           { name: "RC1", timestamp: "2024-10-20T00:00:00Z", icon: "star" },
@@ -450,7 +450,7 @@ describe("scenarios > organization > timelines > question", () => {
     });
 
     it("should not filter out events in last period (metabase#23336)", () => {
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         events: [
           { name: "Last week", timestamp: "2026-04-21T12:00:00Z" },
           { name: "Last month", timestamp: "2026-04-27T12:00:00Z" },
@@ -534,7 +534,7 @@ describe("scenarios > organization > timelines > question", () => {
 
     it("should not allow creating or editing events", () => {
       cy.signInAsAdmin();
-      cy.createTimelineWithEvents({
+      createTimelineWithEvents({
         timeline: { name: "Releases" },
         events: [{ name: "RC1", timestamp: "2024-10-20T00:00:00Z" }],
       });

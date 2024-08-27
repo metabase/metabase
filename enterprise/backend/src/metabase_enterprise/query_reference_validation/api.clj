@@ -24,7 +24,8 @@
 (defn- present [card]
   (-> card
       (select-keys [:id :description :collection_id :name :entity_id :archived :collection_position
-                    :display :collection_preview :dataset_query :last_used_at :errors :collection])
+                    :display :collection_preview :dataset_query :last_used_at :errors :collection
+                    :creator])
       (update :collection (fn present-collection [collection]
                             {:id (:id collection)
                              :name (:name collection)
