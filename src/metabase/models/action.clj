@@ -365,9 +365,10 @@
    :transform {:action_id (serdes/parent-ref)}})
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
-  {:copy      [:archived :description :entity_id :name :public_uuid :type]
+  {:copy      [:archived :description :entity_id :name :public_uuid]
    :skip      []
    :transform {:created_at             (serdes/date)
+               :type                   (serdes/kw)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :model_id               (serdes/fk :model/Card)
@@ -385,10 +386,12 @@
    (concat
     ;; other stuff is implicitly referenced through a Card
     [[{:model "Card" :id (:model_id action)}]]
-    (when (= (:type action) :query)
-      (concat
-       [[{:model "Database" :id (-> action :query first :database_id)}]]
-       (serdes/mbql-deps (:dataset_query action)))))))
+    ;; this method is called on ingested data before transformation, and so here it always will be a string
+    (when (= (:type action) "query")
+      (let [{:keys [database_id dataset_query]} (first (:query action))]
+        (concat
+         [[{:model "Database" :id database_id}]]
+         (serdes/mbql-deps dataset_query)))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]

@@ -272,7 +272,7 @@
    [:visibility Visibility]
 
    ;; should this setting be encrypted `:never` or `:maybe` (when `MB_ENCRYPTION_SECRET_KEY` is set).
-   ;; Defaults to `:maybe`
+   ;; Defaults to `:maybe` (except for `:boolean` typed settings, where it defaults to `:never`)
    [:encryption [:enum :never :maybe]]
 
    ;; should this setting be serialized?
@@ -387,8 +387,8 @@
     (when (allows-database-local-values? setting)
       (core/get *database-local-values* setting-name))))
 
-(defn- prohibits-encryption? [setting]
-  (#{:never} (:encryption (resolve-setting setting))))
+(defn- prohibits-encryption? [setting-or-name]
+  (= :never (:encryption (resolve-setting setting-or-name))))
 
 (defn- allows-user-local-values? [setting]
   (#{:only :allowed} (:user-local (resolve-setting setting))))
@@ -977,7 +977,7 @@
                  :init           nil
                  :tag            (default-tag-for-type setting-type)
                  :visibility     :admin
-                 :encryption     :maybe
+                 :encryption     (if (= setting-type :boolean) :never :maybe)
                  :export?        false
                  :sensitive?     false
                  :cache?         true
@@ -1533,14 +1533,20 @@
   - we're only doing anything when a value exists in the database, and
   - we're setting the value to the exact same value that already exists - just a decrypted version."
   []
-  (doseq [setting (filter prohibits-encryption? (vals @registered-settings))]
-    ;; use a raw query to use `:for :update`
-    (t2/with-transaction [_conn]
-      (when-let [v (t2/select-one-fn :value :setting :key (setting-name setting) {:for :update})]
-        (when (not= (encryption/maybe-decrypt v) v)
-          ;; similarly, use `:setting` vs `:model/Setting` here to ensure the update is actually run even though Toucan
-          ;; thinks nothing has changed
-          (t2/update! :setting :key (setting-name setting) {:value (encryption/maybe-decrypt v)}))))))
+  ;; If we don't have an encryption key set, don't bother trying to decrypt anything. If stuff is encrypted in the DB,
+  ;; we can't do anything about it (since we can't decrypt it). If stuff isn't decrypted in the DB, we have nothing to
+  ;; do.
+  (when (encryption/default-encryption-enabled?)
+    (let [settings (filter prohibits-encryption? (vals @registered-settings))]
+      (t2/with-transaction [_conn]
+        (doseq [{v :value k :key}
+                (t2/select :setting {:for :update :where [:and
+                                                          [:in :key (map setting-name settings)]
+                                                          ;; these are *definitely* decrypted already, let's not bother looking
+                                                          [:not [:in :value ["true" "false"]]]]})
+                :let [decrypted-v (encryption/maybe-decrypt v)]
+                :when (not= decrypted-v v)]
+          (t2/update! :setting :key k {:value decrypted-v}))))))
 
 (defn- maybe-encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't

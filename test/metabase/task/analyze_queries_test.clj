@@ -10,8 +10,8 @@
 ;; This cannot be run in parallel due to its use of the global queue.
 ;; Perhaps we should fix that...
 (deftest ^:synchronized analyzer-loop-test
-  (setup/with-test-setup! [c1 c2 c3 c4 arch]
-    (let [card-ids (map :id [c1 c2 c3 c4 arch])
+  (setup/with-test-setup! [c1 c2 c3 c4 archived invalid]
+    (let [card-ids (map :id [c1 c2 c3 c4 archived invalid])
           queue    (queue/bounded-transfer-queue 100)]
 
       ;; Make sure there is *no* pre-existing analysis.
@@ -39,4 +39,6 @@
           (testing "for an MLv2"
             (is (pos? (get-count (:id c4)))))
           (testing "but not for an archived card"
-            (is (zero? (get-count (:id arch))))))))))
+            (is (zero? (get-count (:id archived)))))
+          (testing "or the invalid card"
+            (is (zero? (get-count (:d invalid))))))))))

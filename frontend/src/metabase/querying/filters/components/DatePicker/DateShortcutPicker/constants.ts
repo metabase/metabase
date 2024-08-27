@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
-import type { ShortcutOption, TypeOption } from "./types";
+import type { ShortcutOption } from "../types";
+
+import type { TypeOption } from "./types";
 
 const DAY_WEEK_SHORTCUT_OPTIONS: ShortcutOption[] = [
   {
