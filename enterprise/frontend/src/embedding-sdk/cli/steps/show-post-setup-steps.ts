@@ -6,7 +6,7 @@ import {
   getMetabaseInstanceSetupCompleteMessage,
 } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
-import { printEmptyLines, printInfo, printWithPadding } from "../utils/print";
+import { printEmptyLines, printWithPadding } from "../utils/print";
 
 export const showPostSetupSteps: CliStepMethod = async state => {
   const STEP_1 = `
@@ -34,7 +34,7 @@ export const showPostSetupSteps: CliStepMethod = async state => {
   }
 
   printEmptyLines(1);
-  printInfo(SDK_LEARN_MORE_MESSAGE);
+  console.log(green(SDK_LEARN_MORE_MESSAGE));
 
   return [{ type: "success" }, state];
 };
