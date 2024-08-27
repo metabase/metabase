@@ -25,7 +25,12 @@ import {
   type PickerState,
 } from "../../EntityPicker";
 import type { DashboardPickerItem, DashboardPickerOptions } from "../types";
-import { getCollectionIdPath, getStateFromIdPath, isFolder } from "../utils";
+import {
+  getCollectionId,
+  getCollectionIdPath,
+  getStateFromIdPath,
+  isFolder,
+} from "../utils";
 
 export const defaultOptions: DashboardPickerOptions = {
   showPersonalCollections: true,
@@ -148,12 +153,34 @@ const DashboardPickerInner = (
         model: "dashboard",
       };
 
+      // Needed to satisfy type between DashboardPickerItem and the query below.
+      const parentCollectionId = getCollectionId(newCollectionItem);
+
+      //Is the parent collection already in the path?
+      const isParentCollectionInPath =
+        getPathLevelForItem(newCollectionItem, path, userPersonalCollectionId) >
+        0;
+
+      if (!isParentCollectionInPath) {
+        setPath(oldPath => [
+          ...oldPath,
+          {
+            query: {
+              id: parentCollectionId,
+              models: ["collection", "dashboard"],
+            },
+            selectedItem: newCollectionItem,
+          },
+        ]);
+        onItemSelect(newCollectionItem);
+        return;
+      }
       handleItemSelect(newCollectionItem);
     },
-    [handleItemSelect],
+    [path, onItemSelect, userPersonalCollectionId, handleItemSelect],
   );
 
-  // Exposing onNewCollection so that parent can select newly created
+  // Exposing onNewDashboard so that parent can select newly created
   // folder
   useImperativeHandle(
     ref,
