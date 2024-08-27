@@ -35,9 +35,7 @@ export function findBreakoutClause(
   const breakouts = Lib.breakouts(query, stageIndex);
   return breakouts.find(breakout => {
     const column = Lib.breakoutColumn(query, stageIndex, breakout);
-    return (
-      Lib.isTemporal(column) ||
-      Lib.isTemporalBucketable(query, stageIndex, column)
-    );
+    const columnWithoutBucket = Lib.withTemporalBucket(column, null);
+    return Lib.isDateOrDateTime(columnWithoutBucket);
   });
 }

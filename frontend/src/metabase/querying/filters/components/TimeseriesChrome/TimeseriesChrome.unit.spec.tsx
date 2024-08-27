@@ -4,6 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_METADATA,
+  columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
@@ -39,17 +40,37 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
 }
 
 describe("TimeseriesChrome", () => {
-  it("should render nothing if there are no breakouts", () => {
+  it("should render the chrome if there are no breakouts", () => {
     setup();
     expect(screen.queryByText("View")).not.toBeInTheDocument();
   });
 
-  it("should render nothing if there are no breakouts on a temporal column", () => {
+  it("should not render the chrome if there are no breakouts on a temporal column", () => {
     const query = createQueryWithClauses({
       breakouts: [{ tableName: "PRODUCTS", columnName: "CATEGORY" }],
     });
     setup({ query });
     expect(screen.queryByText("View")).not.toBeInTheDocument();
+  });
+
+  it("should render the chrome for date expressions", () => {
+    const initialQuery = createQuery();
+    const findColumn = columnFinder(
+      initialQuery,
+      Lib.expressionableColumns(initialQuery, -1),
+    );
+    const query = createQueryWithClauses({
+      expressions: [
+        {
+          name: "Date",
+          operator: "datetime-add",
+          args: [findColumn("ORDERS", "CREATED_AT"), 1, "day"],
+        },
+      ],
+      breakouts: [{ tableName: "", columnName: "Date" }],
+    });
+    setup({ query });
+    expect(screen.getByText("View")).toBeInTheDocument();
   });
 
   it("should allow to change the temporal unit for a breakout", async () => {
