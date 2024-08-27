@@ -45,26 +45,34 @@ const FeedbackDialog = ({ isOpen, onClose }) => {
                 style={{
                     backgroundColor: "#fff",
                     borderRadius: "8px",
-                    width: "400px",
+                    width: "560px",
                     padding: "24px",
                     boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
                 }}
             >
-                <Box as="h2" mb={3}>
+                <Box as="h2" mb={3} style={{ color: "#5D6064", fontSize: "18px", fontWeight: "600" }}>
                     Provide Feedback
                 </Box>
-                <Box mb={2}>
-                    <label style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
+                <Box as="h2" mb={3} style={{ color: "#5D6064", fontSize: "12px", fontWeight: "400", marginBottom: "2rem" }}>
+                    Whether you are new or need extra support, our team is ready to assist you. We want to make sure you have a great experience.
+                </Box>
+                <Box mb={2} style={{ width: "100%" }}>
+                    <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#76797D" }}>
                         Subject *
                     </label>
                     <Input
                         value={subject}
                         onChange={(e) => setSubject(e.target.value)}
                         placeholder="What is the issue about?"
+                        style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            marginBottom: "2rem",
+                        }}
                     />
                 </Box>
                 <Box mb={2}>
-                    <label style={{ fontWeight: "bold", display: "block", marginBottom: "4px" }}>
+                    <label style={{ display: "block", marginBottom: "4px", fontSize: "12px", color: "#76797D" }}>
                         Description *
                     </label>
                     <TextArea
@@ -73,47 +81,60 @@ const FeedbackDialog = ({ isOpen, onClose }) => {
                         placeholder="Add a description about the issue"
                         rows="4"
                         style={{
+                            width: "100%",
                             resize: "none",
                             overflowY: "auto",
                             maxHeight: "150px",
+                            boxSizing: "border-box",
+                            marginBottom: "2rem",
                         }}
                     />
                 </Box>
                 <Box mb={3}>
-                    <label style={{ fontWeight: "bold", display: "block", marginBottom: "8px" }}>
+                    <label style={{ fontWeight: "600", display: "block", marginBottom: "8px", fontSize: "14px", color: "#76797D" }}>
                         Attach files
                     </label>
                     <input
                         type="file"
                         multiple
                         onChange={handleFileUpload}
-                        style={{ display: "block", marginBottom: "8px" }}
+                        style={{ display: "block", marginBottom: "8px", width: "100%" }}
                     />
                     <Box>
                         {files.map((file, index) => (
                             <Box key={index} style={{ display: "flex", alignItems: "center", marginBottom: "4px" }}>
-                                <span style={{ marginRight: "8px" }}>{file.name}</span>
-                                <Button
-                                    variant="link"
+                                <span style={{ marginRight: "8px", flexGrow: 1 }}>{file.name}</span>
+                                <Icon
+                                    size={18}
+                                    style={{
+                                        color: "#29920E",
+                                        marginRight: "8px",
+                                    }}
+                                    name={"check"}
+                                />
+                                <Icon
                                     onClick={() => handleFileRemove(file)}
-                                    style={{ color: "#FF6B6B", padding: "0", cursor: "pointer" }}
-                                >
-                                    ✕
-                                </Button>
+                                    size={18}
+                                    style={{
+                                        cursor: "pointer",
+                                        color: "#76797D"
+                                    }}
+                                    name={"trash"}
+                                />
                             </Box>
                         ))}
                     </Box>
                 </Box>
-                <Box display="flex" justifyContent="flex-end">
+                <Box display="flex" flexDirection="column" justifyContent="space-between" style={{ width: "100%", gap: "1rem", marginTop: "1rem" }}>
                     <Button
                         variant="outlined"
                         onClick={onClose}
-                        style={{ marginRight: "8px" }}
+                        style={{ fontWeight: "400", border: "1px solid #223800", color: "#223800", backgroundColor: "#FFF", borderRadius: "8px", width: "100%" }}
                     >
                         Cancel
                     </Button>
-                    <Button variant="filled" onClick={handleSubmit}>
-                        Send Feedback
+                    <Button variant="filled" onClick={handleSubmit} style={{ fontWeight: "400", border: "1px solid #223800", color: "#FFF", backgroundColor: "#223800", borderRadius: "8px", width: "100%" }}>
+                        Send feedback
                     </Button>
                 </Box>
             </Box>

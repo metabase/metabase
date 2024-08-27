@@ -2,7 +2,14 @@ import React from "react";
 import { Icon, Button } from "metabase/ui";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-const Message = ({ message, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick }) => {
+const Message = ({
+  message,
+  isLoading,
+  onFeedbackClick,
+  approvalChangeButtons,
+  onApproveClick,
+  onDenyClick,
+}) => {
   const isUser = message.sender === "user";
   const hasError =
     message.text.toLowerCase().includes("error") ||
@@ -44,7 +51,9 @@ const Message = ({ message, isLoading, onFeedbackClick, approvalChangeButtons, o
           alignItems: "center",
         }}
       >
-        <span style={{ fontSize: "16px", whiteSpace: "pre-wrap" }}>{message.text}</span>
+        <span style={{ fontSize: "16px", whiteSpace: "pre-wrap" }}>
+          {message.text}
+        </span>
         {isLoading && (
           <div
             style={{
@@ -101,10 +110,10 @@ const Message = ({ message, isLoading, onFeedbackClick, approvalChangeButtons, o
               variant="outlined"
               style={{
                 cursor: "pointer",
-                border: "1px solid #E0E0E0",
+                border: "1px solid #223800",
                 borderRadius: "8px",
                 color: "#FFF",
-                backgroundColor: "#4CAF50",
+                backgroundColor: "#223800",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -130,10 +139,10 @@ const Message = ({ message, isLoading, onFeedbackClick, approvalChangeButtons, o
               variant="outlined"
               style={{
                 cursor: "pointer",
-                border: "1px solid #E0E0E0",
+                border: "1px solid #223800",
                 borderRadius: "8px",
-                color: "#FFF",
-                backgroundColor: "#F04848",
+                color: "#223800",
+                backgroundColor: "#FFF",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
