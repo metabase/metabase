@@ -648,7 +648,23 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
 });
 
 describeEE("scenarios > embedding > dashboard appearance", () => {
+  let originalBaseUrl = null;
   beforeEach(() => {
+    // This is needed to "restore" the initial value after having navigated to an html file like
+    // `cy.visit(`e2e/test/scenarios/embedding/embedding-dashboard.html?iframeUrl=${iframeUrl}`)`
+    // Doing that apparently sets the baseUrl to null and cypress will fail the next cy.request() call
+    // with the following error:
+    // > CypressError: `cy.request()` must be provided a fully qualified
+    // > `url` - one that begins with `http`. By default `cy.request()` will use
+    // > either the current window's origin or the `baseUrl` in
+    // > `e2e/support/cypress.config.js`. Neither of those values were present.
+
+    if (!originalBaseUrl) {
+      originalBaseUrl = Cypress.config("baseUrl");
+    } else {
+      Cypress.config("baseUrl", originalBaseUrl);
+    }
+
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
