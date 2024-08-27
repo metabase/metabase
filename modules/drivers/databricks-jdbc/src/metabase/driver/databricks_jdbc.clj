@@ -35,10 +35,12 @@
   (defmethod driver/database-supports? [:databricks-jdbc feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks-jdbc
-  [_ database-type]
+  [driver database-type]
   (condp re-matches (u/lower-case-en (name database-type))
     #"timestamp" :type/DateTimeWithLocalTZ
-    (sql-jdbc.sync/database-type->base-type :hive-like database-type)))
+    #"timestamp_ntz" :type/DateTime
+    ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
+     driver database-type)))
 
 ;; See the https://docs.databricks.com/en/sql/language-manual/sql-ref-syntax-aux-conf-mgmt-set-timezone.html
 ;; for timzone formatting
