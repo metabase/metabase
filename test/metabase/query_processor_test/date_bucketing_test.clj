@@ -1276,6 +1276,10 @@
   [_driver _feature _database]
   false)
 
+(defmethod driver/database-supports? [:databricks-jdbc ::dynamic-dataset-loading]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel count-of-grouping-test
   (mt/test-drivers (mt/normal-drivers-with-feature ::dynamic-dataset-loading)
     (testing "4 checkins per minute dataset"
