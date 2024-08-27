@@ -790,7 +790,7 @@
   (if (not= (get-global-variable db-id "local_infile") "ON")
     ;; If it isn't turned on, fall back to the generic "INSERT INTO ..." way
     ((get-method driver/insert-into! :sql-jdbc) driver db-id table-name column-names values)
-    (let [temp-file (File/createTempFile table-name ".tjsv")
+    (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
         (let [tsvs (map (partial row->tsv driver (count column-names)) values)
