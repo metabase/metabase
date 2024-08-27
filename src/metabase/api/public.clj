@@ -15,6 +15,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.action :as action]
    [metabase.models.card :as card :refer [Card]]
@@ -138,6 +139,14 @@
         (mw.session/as-admin
           (qp (update query :info merge info) rff))))))
 
+(mu/defn ^:private export-format->context :- ::lib.schema.info/context
+  [export-format]
+  (case export-format
+    "csv"  :public-csv-download
+    "xlsx" :public-xlsx-download
+    "json" :public-json-download
+    :public-question))
+
 (mu/defn process-query-for-card-with-id
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
@@ -155,7 +164,7 @@
   (mw.session/as-admin
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
-              :context    :public-question
+              :context    (export-format->context export-format)
               :qp         qp
               :make-run   process-query-for-card-with-id-run-fn
               options)))
