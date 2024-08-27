@@ -390,7 +390,7 @@
     (when (= (:type action) "query")
       (concat
        [[{:model "Database" :id (-> action :query first :database_id)}]]
-       (serdes/mbql-deps (:dataset_query (:query action))))))))
+       (serdes/mbql-deps (:dataset_query (first (:query action)))))))))
 
 (defmethod serdes/storage-path "Action" [action _ctx]
   (let [{:keys [id label]} (-> action serdes/path last)]
