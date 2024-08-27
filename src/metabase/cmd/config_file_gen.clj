@@ -47,7 +47,7 @@
 (defn- add-settings
   "Adds settings to the configuration template."
   [config]
-    (assoc-in config [:config :settings] (config-settings)))
+  (assoc-in config [:config :settings] (config-settings)))
 
 ;;;; Build Markdown file
 

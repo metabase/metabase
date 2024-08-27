@@ -180,10 +180,10 @@
        (filter setter?)
        (filter active?)))
 
- (defn format-env-var-docs
+(defn format-env-var-docs
   "Preps relevant environment variable docs as a Markdown string."
   [settings]
-   (map format-env-var-entry (filter-env-vars settings)))
+  (map format-env-var-entry (filter-env-vars settings)))
 
 (defn- format-intro
   "Exists just so we can write the intro in Markdown."
