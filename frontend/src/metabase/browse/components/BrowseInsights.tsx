@@ -34,6 +34,7 @@ export const BrowseInsights = () => {
             <ChatHistory
               setSelectedChatHistory={setSelectedChatHistory}
               setThreadId={setSelectedThreadId}
+              type="getInsights"
             />
           </Stack>
         </Flex>

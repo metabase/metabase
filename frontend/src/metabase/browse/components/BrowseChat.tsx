@@ -34,6 +34,7 @@ export const BrowseChat = () => {
             <ChatHistory
               setSelectedChatHistory={setSelectedChatHistory}
               setThreadId={setSelectedThreadId}
+              type="dataAgent"
             />
           </Stack>
         </Flex>

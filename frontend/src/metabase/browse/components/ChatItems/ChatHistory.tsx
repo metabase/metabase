@@ -3,7 +3,7 @@ import { Box, Text, ScrollArea, Title, Divider } from "metabase/ui";
 import { useListCheckpointsQuery } from "metabase/api/checkpoints";
 import dayjs from "dayjs";
 
-const ChatHistory = ({ setSelectedChatHistory, setThreadId }: any) => {
+const ChatHistory = ({ setSelectedChatHistory, setThreadId, type }: any) => {
   const [chatHistory, setChatHistory] = useState({
     today: [],
     last7Days: [],
@@ -19,14 +19,40 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId }: any) => {
   useEffect(() => {
     if (checkpoints && checkpoints.length > 0) {
       const groupedHistory = checkpoints.reduce((acc: any, checkpoint: any) => {
-        const { thread_id, step } = checkpoint;
-        if (!acc[thread_id] || acc[thread_id].step < step) {
-          acc[thread_id] = checkpoint;
+        const { thread_id, step, agent_name, agent_description } = checkpoint;
+        if (!acc[thread_id]) {
+          acc[thread_id] = { ...checkpoint };
+        } else {
+          if (acc[thread_id].step < step) {
+            // Keep the existing agent_name and agent_description if they're set
+            const existingAgentName = acc[thread_id].agent_name;
+            const existingAgentDescription = acc[thread_id].agent_description;
+            acc[thread_id] = { ...checkpoint };
+      
+            if (existingAgentName && existingAgentName !== "") {
+              acc[thread_id].agent_name = existingAgentName;
+            }
+      
+            if (existingAgentDescription && existingAgentDescription !== "") {
+              acc[thread_id].agent_description = existingAgentDescription;
+            }
+          }
+        }
+      
+        // Always update agent_name if it's provided and non-empty
+        if (agent_name && agent_name !== "") {
+          acc[thread_id].agent_name = agent_name;
+        }
+      
+        // Always update agent_description if it's provided and non-empty
+        if (agent_description && agent_description !== "") {
+          acc[thread_id].agent_description = agent_description;
         }
         return acc;
       }, {});
 
-      const chatGroups: any = Object.values(groupedHistory);
+      const rawChatGroups: any = Object.values(groupedHistory);
+      const chatGroups = rawChatGroups.filter((group:any) => group.agent_name === type);
 
       const today = dayjs().startOf("day");
       const last7Days = dayjs().subtract(7, "day").startOf("day");
@@ -65,6 +91,7 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId }: any) => {
   return (
     <Box
       style={{
+        backgroundColor: "#FFF",
         borderRadius: "8px",
         padding: "16px",
         height: "85vh",
@@ -105,8 +132,7 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId }: any) => {
                 onClick={() => handleHistoryItemClick(chat)}
               >
                 <Text style={{ color: "#76797d" }}>
-                  {JSON.parse(chat.checkpoint)?.channel_values?.["__start__"]
-                    ?.task || chat.thread_id}
+                  {chat.agent_description || chat.thread_id}
                 </Text>
                 <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
               </Box>
@@ -139,8 +165,7 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId }: any) => {
                 onClick={() => handleHistoryItemClick(chat)}
               >
                 <Text style={{ color: "#76797d" }}>
-                  {JSON.parse(chat.checkpoint)?.channel_values?.["__start__"]
-                    ?.task || chat.thread_id}
+                {chat.agent_description || chat.thread_id}
                 </Text>
                 <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
               </Box>
@@ -173,8 +198,7 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId }: any) => {
                 onClick={() => handleHistoryItemClick(chat)}
               >
                 <Text style={{ color: "#76797d" }}>
-                  {JSON.parse(chat.checkpoint)?.channel_values?.["__start__"]
-                    ?.task || chat.thread_id}
+                {chat.agent_description || chat.thread_id}
                 </Text>
                 <Text style={{ color: "#76797d", cursor: "pointer" }}>⋮</Text>
               </Box>
