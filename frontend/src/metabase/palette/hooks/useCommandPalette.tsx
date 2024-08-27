@@ -194,7 +194,6 @@ export const useCommandPalette = ({
               priority: Priority.NORMAL,
               perform: () => {
                 trackSearchClick("item", index, "command-palette");
-                dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
                 isVerified: result.moderated_status === "verified",
@@ -240,13 +239,7 @@ export const useCommandPalette = ({
           name: getName(item),
           icon: icon.name,
           section: "recent",
-          perform: () => {
-            // Need to keep this logic here for when user selects via keyboard
-            const href = Urls.modelToUrl(item);
-            if (href) {
-              dispatch(push(href));
-            }
-          },
+          perform: () => {},
           extra: {
             isVerified:
               item.model !== "table" && item.moderated_status === "verified",
@@ -257,7 +250,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [dispatch, recentItems]);
+  }, [recentItems]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,
