@@ -5,7 +5,7 @@ on:
     branches:
       - 'master'
       - 'release-**'
-      - 'databricks-hive-like'
+      - 'databricks-jdbc'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
