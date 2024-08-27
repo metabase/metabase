@@ -67,7 +67,7 @@ function _CartesianChart(props: VisualizationProps) {
       ...props,
       width: chartSize.width,
       height: chartSize.height,
-      hiddenSeries: Array.from(hiddenSeries),
+      hiddenSeries,
       settings,
     },
     containerRef,

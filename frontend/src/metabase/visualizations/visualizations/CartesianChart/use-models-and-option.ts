@@ -29,7 +29,7 @@ export function useModelsAndOption(
     fontFamily,
     width,
     height,
-    hiddenSeries = [],
+    hiddenSeries = new Set(),
     timelineEvents,
     selectedTimelineEventIds,
     onRender,
@@ -71,7 +71,7 @@ export function useModelsAndOption(
     return getModel(
       seriesToRender,
       settings,
-      hiddenSeries,
+      Array.from(hiddenSeries),
       renderingContext,
       showWarning,
     );
