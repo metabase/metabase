@@ -27,6 +27,8 @@
 (doseq [[base-type database-type] {:type/BigInteger             "BIGINT"
                                    :type/Boolean                "BOOLEAN"
                                    :type/Date                   "DATE"
+                                   ;; TODO: Following is temporary, to enable creattion of attempts dataset.
+                                   :type/Time                   "TIMESTAMP_NTZ"
                                    :type/DateTime               "TIMESTAMP"
                                    :type/DateTimeWithTZ         "TIMESTAMP"
                                    :type/Decimal                "DECIMAL"
@@ -161,6 +163,12 @@
 
                                 (instance? LocalDate val)
                                 (t/sql-date val)
+
+                                (instance? java.time.LocalTime val)
+                                (t/local-date-time (t/local-date 1970 1 1) val)
+
+                                (instance? java.time.OffsetTime val)
+                                (t/local-date-time (t/local-date 1970 1 1) val)
 
                                 :else
                                 val))))]
