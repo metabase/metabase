@@ -24,6 +24,7 @@ export const TEST_DASHBOARD_STATE: DashboardState = {
   dashboards: {
     1: {
       id: 1,
+      entity_id: "METABASEmetabaseMETAB",
       created_at: "2024-01-01T00:00:00Z",
       updated_at: "2024-01-01T00:00:00Z",
       collection_id: 1,

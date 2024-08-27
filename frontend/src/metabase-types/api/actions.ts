@@ -27,6 +27,7 @@ export interface WritebackActionBase {
   public_uuid: string | null;
   database_id?: DatabaseId;
   database_enabled_actions?: boolean;
+  entity_id: string;
 }
 
 export type PublicWritebackAction = Pick<

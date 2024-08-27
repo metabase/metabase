@@ -34,6 +34,7 @@ export const createMockQueryAction = ({
 }: Partial<WritebackQueryAction> = {}): WritebackQueryAction => {
   return {
     id: 1,
+    entity_id: "ACTIONmetabaseACTIONs",
     dataset_query,
     name: "Query Action Mock",
     description: null,
@@ -58,6 +59,7 @@ export const createMockImplicitQueryAction = ({
   ...opts
 }: Partial<WritebackImplicitQueryAction> = {}): WritebackImplicitQueryAction => ({
   id: 1,
+  entity_id: "ACTIONmetabaseACTIONs",
   kind: "row/create",
   name: "Create",
   description: "",
