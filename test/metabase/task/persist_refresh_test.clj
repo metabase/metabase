@@ -115,17 +115,16 @@
                (job-info db-1 db-2)))))))
 
 (deftest fault-tolerance-test
-  (mt/with-model-cleanup [TaskHistory]
-    (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
-                   Card model {:type :model :database_id (u/the-id db)}
-                   PersistedInfo persisted-info {:card_id (u/the-id model) :database_id (u/the-id db)}]
-      (let [test-refresher (reify task.persist-refresh/Refresher
-                             (refresh! [_ _database _definition _card]
-                               {:state :success})
-                             (unpersist! [_ _database _persisted-info]))
-            original-update! t2/update!]
-        ;; ensure no EE features
-        (mt/with-premium-features #{}
+  (mt/with-premium-features #{:cache-granular-controls}
+    (mt/with-model-cleanup [TaskHistory]
+      (mt/with-temp [Database db {:settings {:persist-models-enabled true}}
+                     Card model {:type :model :database_id (u/the-id db)}
+                     PersistedInfo persisted-info {:card_id (u/the-id model) :database_id (u/the-id db)}]
+        (let [test-refresher (reify task.persist-refresh/Refresher
+                               (refresh! [_ _database _definition _card]
+                                 {:state :success})
+                               (unpersist! [_ _database _persisted-info]))
+              original-update! t2/update!]
           (testing "If saving the `persisted` (or `error`) state fails..."
             (with-redefs [t2/update! (fn [model id update]
                                        (when (= "persisted" (:state update))
