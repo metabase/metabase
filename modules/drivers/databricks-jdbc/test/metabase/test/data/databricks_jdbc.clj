@@ -28,6 +28,7 @@
                                    :type/Boolean                "BOOLEAN"
                                    :type/Date                   "DATE"
                                    :type/DateTime               "TIMESTAMP"
+                                   :type/DateTimeWithTZ         "TIMESTAMP"
                                    :type/Decimal                "DECIMAL"
                                    :type/Float                  "DOUBLE"
                                    :type/Integer                "INTEGER"
