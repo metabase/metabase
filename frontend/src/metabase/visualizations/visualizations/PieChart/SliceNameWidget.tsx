@@ -24,7 +24,7 @@ export function SliceNameWidget({
   return (
     // Bottom padding is needed since the popover has 1.5rem top padding, but
     // only 1rem bottom padding
-    <Box w="100%" px="2rem" pb="0.5rem">
+    <Box w="100%" pb="0.5rem">
       <SliceNameInput
         value={row.name}
         subtitle={row.name !== row.originalName ? row.originalName : undefined}

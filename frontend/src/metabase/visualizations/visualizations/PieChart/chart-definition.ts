@@ -9,7 +9,7 @@ import {
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
-import { seriesSetting } from "metabase/visualizations/lib/settings/series";
+import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 import {
   dimensionSetting,
   metricSetting,
@@ -21,6 +21,7 @@ import {
   getDefaultSortRows,
   getPieRows,
 } from "metabase/visualizations/shared/settings/pie";
+import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
 import {
   getDefaultSize,
@@ -139,41 +140,37 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       hidden: true,
       getDefault: getDefaultSortRows,
     },
-    ...seriesSetting({
-      def: {
-        widget: SliceNameWidget,
-        marginBottom: "0",
-        getProps: (
-          _series: any,
-          vizSettings: ComputedVisualizationSettings,
-          _onChange: any,
-          _extra: any,
-          onChangeSettings: (
-            newSettings: ComputedVisualizationSettings,
-          ) => void,
-        ) => {
-          const pieRows = vizSettings["pie.rows"];
-          if (pieRows == null) {
-            return { pieRows: [], updateRowName: () => null };
-          }
+    ...nestedSettings(SERIES_SETTING_KEY, {
+      widget: SliceNameWidget,
+      marginBottom: "0",
+      getProps: (
+        _series: any,
+        vizSettings: ComputedVisualizationSettings,
+        _onChange: any,
+        _extra: any,
+        onChangeSettings: (newSettings: ComputedVisualizationSettings) => void,
+      ) => {
+        const pieRows = vizSettings["pie.rows"];
+        if (pieRows == null) {
+          return { pieRows: [], updateRowName: () => null };
+        }
 
-          return {
-            pieRows,
-            updateRowName: (newName: string, key: string | number) => {
-              onChangeSettings({
-                "pie.rows": pieRows.map(row => {
-                  if (row.key !== key) {
-                    return row;
-                  }
-                  return { ...row, name: newName };
-                }),
-              });
-            },
-          };
-        },
+        return {
+          pieRows,
+          updateRowName: (newName: string, key: string | number) => {
+            onChangeSettings({
+              "pie.rows": pieRows.map(row => {
+                if (row.key !== key) {
+                  return row;
+                }
+                return { ...row, name: newName };
+              }),
+            });
+          },
+        };
       },
       readDependencies: ["pie.rows"],
-    }),
+    } as any), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
     ...metricSetting("pie.metric", {
       section: t`Data`,
       title: t`Measure`,
