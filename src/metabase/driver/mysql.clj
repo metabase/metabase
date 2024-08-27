@@ -796,7 +796,7 @@
         (let [tsvs (map (partial row->tsv driver (count column-names)) values)
               sql  (sql/format {::load   [file-path (keyword table-name)]
                                 ;; We need to namespace the keyword in case the column name starts with a %
-                                :columns (map #(keyword table-name (name %)) column-names)}
+                                :columns (sql-jdbc.common/qualify-columns table-name column-names)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver))]
           (with-open [^java.io.Writer writer (jio/writer file-path)]

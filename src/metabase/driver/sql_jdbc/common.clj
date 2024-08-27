@@ -85,3 +85,10 @@
                         [(k-fn k) v]))
           kvs       (map kv-fn pairs)]
       (into {} kvs))))
+
+(defn qualify-columns
+  "Used to qualify column names when building HoneySQL queries"
+  [table-name column-names]
+  (let [qualifier (name table-name)]
+    (for [c (column-names)]
+      (keyword qualifier (name c)))))

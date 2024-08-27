@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
@@ -170,7 +171,7 @@
         chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
         sqls       (map #(sql/format {:insert-into (keyword table-name)
                                       ;; We need to namespace the keyword in case the column name starts with a %
-                                      :columns     (map (comp (partial keyword table-name) name) column-names)
+                                      :columns     (sql-jdbc.common/qualify-columns table-name column-names)
                                       :values      %}
                                      :quoted true
                                      :dialect (sql.qp/quote-style driver))
