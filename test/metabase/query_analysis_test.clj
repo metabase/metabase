@@ -35,7 +35,7 @@
       (update-vals
        (fn [refs]
          (->> refs
-               ;; lowercase names to avoid tests being driver-dependent
+              ;; lowercase names to avoid tests being driver-dependent
               (map #(-> %
                         (u/update-if-exists :schema u/lower-case-en)
                         (update :table u/lower-case-en)

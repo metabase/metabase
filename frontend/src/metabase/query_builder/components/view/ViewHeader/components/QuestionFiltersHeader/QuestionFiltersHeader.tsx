@@ -1,4 +1,5 @@
-import { FilterPanel, FilterPanelButton } from "metabase/querying/filters";
+import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
+import { FilterPanelButton } from "metabase/querying/filters/components/FilterPanel/FilterPanelButton";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";

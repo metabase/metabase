@@ -110,22 +110,18 @@
   so we can return its `:name`."
   [honeysql-query                                :- ms/Map
    model                                         :- :string
-   {:keys [current-user-perms
-           filter-items-in-personal-collection
+   {:keys [filter-items-in-personal-collection
            archived]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids
-                                  current-user-perms
+  (let [collection-id-col        (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-filter-clause (collection/visible-collection-filter-clause
+                                  collection-id-col
                                   {:include-archived-items :all
                                    :include-trash-collection? true
                                    :permission-level (if archived
                                                        :write
-                                                       :read)})
-        collection-id-col        (if (= model "collection")
-                                   :collection.id
-                                   :collection_id)
-        collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-col
-                                  visible-collections)]
+                                                       :read)})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
@@ -285,28 +281,10 @@
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
-  [query current-user-perms]
-  (let [build-path (fn [x y z] (h2x/concat (h2x/literal x) y (h2x/literal z)))
-        has-perm-clause (fn [x y z] [:in (build-path x y z) current-user-perms])]
-    (if (contains? current-user-perms "/")
-      query
-      ;; User has /collection/:id/ or /collection/:id/read/ for the collection the model is in. We will check
-      ;; permissions on the database after the query is complete, in `check-permissions-for-model`
-      (let [has-root-access?
-            (or (contains? current-user-perms "/collection/root/")
-                (contains? current-user-perms "/collection/root/read/"))
-
-            collection-perm-clause
-            [:or
-             (when has-root-access? [:= :collection_id nil])
-             [:and
-              [:not= :collection_id nil]
-              [:or
-               (has-perm-clause "/collection/" :collection_id "/")
-               (has-perm-clause "/collection/" :collection_id "/read/")]]]]
-        (sql.helpers/where
-         query
-         collection-perm-clause)))))
+  [query _current-user-perms]
+  (sql.helpers/where
+   query
+   (collection/visible-collection-filter-clause)))
 
 (defmethod search-query-for-model "indexed-entity"
   [model {:keys [current-user-perms] :as search-ctx}]

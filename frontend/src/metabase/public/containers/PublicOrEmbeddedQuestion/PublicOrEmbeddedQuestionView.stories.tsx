@@ -136,6 +136,16 @@ LightThemeDefaultNoResults.args = {
   result: createMockDataset(),
 };
 
+export const LightThemeDownload = Template.bind({});
+LightThemeDownload.args = {
+  ...LightThemeDefault.args,
+  downloadsEnabled: true,
+};
+LightThemeDownload.play = async ({ canvasElement }) => {
+  const asyncCallback = createAsyncCallback();
+  await downloadQuestionAsPng(canvasElement, asyncCallback);
+};
+
 // Dark theme
 export const DarkThemeDefault = Template.bind({});
 DarkThemeDefault.args = {
@@ -149,6 +159,13 @@ DarkThemeDefaultNoResults.args = {
   theme: "night",
   result: createMockDataset(),
 };
+
+export const DarkThemeDownload = Template.bind({});
+DarkThemeDownload.args = {
+  ...DarkThemeDefault.args,
+  downloadsEnabled: true,
+};
+DarkThemeDownload.play = LightThemeDownload.play;
 
 // Transparent theme
 export const TransparentThemeDefault = Template.bind({});
@@ -308,3 +325,19 @@ function NarrowContainer(Story: Story) {
     </Box>
   );
 }
+
+const downloadQuestionAsPng = async (
+  canvasElement: HTMLElement,
+  asyncCallback: () => void,
+) => {
+  const canvas = within(canvasElement);
+
+  const downloadButton = await canvas.findByTestId("download-button");
+  await userEvent.click(downloadButton!);
+
+  const documentElement = within(document.documentElement);
+  const pngButton = await documentElement.findByText(".png");
+  await userEvent.click(pngButton);
+  await canvas.findByTestId("image-downloaded");
+  asyncCallback();
+};
