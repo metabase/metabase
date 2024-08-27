@@ -90,5 +90,5 @@
   "Used to qualify column names when building HoneySQL queries"
   [table-name column-names]
   (let [qualifier (name table-name)]
-    (for [c (column-names)]
+    (for [c column-names]
       (keyword qualifier (name c)))))
