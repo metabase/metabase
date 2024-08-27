@@ -12,30 +12,34 @@ import { getIsPaidPlan, getUpgradeUrl } from "./settings";
 describe("getUpgradeUrl", () => {
   it.each([
     {
-      media: "license",
+      content: "license",
       users: 1,
       features: { hosting: false, sso_jwt: false },
-      params: "?utm_media=license&utm_source=oss&utm_users=1",
+      params:
+        "?utm_source=product&utm_medium=upsell&utm_content=license&source_plan=oss&utm_users=1",
     },
     {
-      media: "permissions_top",
+      content: "permissions_top",
       users: 2,
       features: { hosting: true, sso_jwt: false },
-      params: "?utm_media=permissions_top&utm_source=starter&utm_users=2",
+      params:
+        "?utm_source=product&utm_medium=upsell&utm_content=permissions_top&source_plan=starter&utm_users=2",
     },
     {
-      media: "license",
+      content: "license",
       users: 3,
       features: { hosting: false, sso_jwt: true },
-      params: "?utm_media=license&utm_source=pro-self-hosted&utm_users=3",
+      params:
+        "?utm_source=product&utm_medium=upsell&utm_content=license&source_plan=pro-self-hosted&utm_users=3",
     },
     {
-      media: "license",
+      content: "license",
       users: undefined,
       features: { hosting: true, sso_jwt: true },
-      params: "?utm_media=license&utm_source=pro-cloud",
+      params:
+        "?utm_source=product&utm_medium=upsell&utm_content=license&source_plan=pro-cloud",
     },
-  ])("should set utm_source", ({ media, features, users, params }) => {
+  ])("should set utm_source", ({ content, features, users, params }) => {
     const state = createMockState({
       settings: createMockSettingsState({
         "token-features": createMockTokenFeatures(features),
@@ -43,7 +47,7 @@ describe("getUpgradeUrl", () => {
       }),
     });
 
-    const url = new URL(getUpgradeUrl(state, { utm_media: media }));
+    const url = new URL(getUpgradeUrl(state, { utm_content: content }));
     expect(url.search).toEqual(params);
   });
 });

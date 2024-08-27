@@ -85,7 +85,7 @@
 
   To select only personal collections, pass in `personal-only` as `true`.
   This will select only collections where `personal_owner_id` is not `nil`."
-  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only permissions-set]}]
+  [{:keys [archived exclude-other-user-collections namespace shallow collection-id personal-only]}]
   (cond->>
    (t2/select :model/Collection
               {:where [:and
@@ -104,16 +104,14 @@
                        (when exclude-other-user-collections
                          [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
                        (perms/audit-namespace-clause :namespace namespace)
-                       (collection/visible-collection-ids->honeysql-filter-clause
+                       (collection/visible-collection-filter-clause
                         :id
-                        (collection/permissions-set->visible-collection-ids
-                         permissions-set
-                         {:include-archived-items (if archived
-                                                    :only
-                                                    :exclude)
-                          :include-trash-collection? true
-                          :permission-level :read
-                          :archive-operation-id nil}))]
+                        {:include-archived-items (if archived
+                                                   :only
+                                                   :exclude)
+                         :include-trash-collection? true
+                         :permission-level :read
+                         :archive-operation-id nil})]
                ;; Order NULL collection types first so that audit collections are last
                :order-by [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
                           [[[:case
@@ -144,8 +142,7 @@
                         :exclude-other-user-collections exclude-other-user-collections
                         :namespace                      namespace
                         :shallow                        false
-                        :personal-only                  personal-only
-                        :permissions-set                @api/*current-user-permissions-set*}) collections
+                        :personal-only                  personal-only}) collections
     ;; include Root Collection at beginning or results if archived or personal-only isn't `true`
     (if (or archived personal-only)
       collections
@@ -216,8 +213,7 @@
                                          :exclude-other-user-collections exclude-other-user-collections
                                          :namespace                      namespace
                                          :shallow                        shallow
-                                         :collection-id                  collection-id
-                                         :permissions-set                @api/*current-user-permissions-set*})]
+                                         :collection-id                  collection-id})]
     (if shallow
       (shallow-tree-from-collection-id collections)
       (let [collection-type-ids (reduce (fn [acc {collection-id :collection_id, card-type :type, :as _card}]
@@ -436,14 +432,12 @@
                                    [:= :r.model (h2x/literal "Card")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived-items :all
-                                                                         :permission-level (if archived?
-                                                                                             :write
-                                                                                             :read)
-                                                                         :archive-operation-id nil}))
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)
+                                                                 :archive-operation-id nil})
                    (if (collection/is-trash? collection)
                      [:= :c.archived_directly true]
                      [:and
@@ -565,14 +559,12 @@
                                    [:= :r.model (h2x/literal "Dashboard")]]
                    [:core_user :u] [:= :u.id :r.user_id]]
        :where     [:and
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    :collection_id
-                    (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                        {:include-archived-items :all
-                                                                         :archive-operation-id nil
-                                                                         :permission-level (if archived?
-                                                                                             :write
-                                                                                             :read)}))
+                   (collection/visible-collection-filter-clause :collection_id
+                                                                {:include-archived-items :all
+                                                                 :archive-operation-id nil
+                                                                 :permission-level (if archived?
+                                                                                     :write
+                                                                                     :read)})
                    (if (collection/is-trash? collection)
                      [:= :d.archived_directly true]
                      [:and
@@ -641,14 +633,10 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*
-                                                                                   {:include-archived-items :all
-                                                                                    :archive-operation-id nil
-                                                                                    :permission-level :read})
-
-        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-ids->honeysql-filter-clause
+  (let [visible-collection-ids (collection/visible-collection-ids {:include-archived-items :all})
+        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
                                                                          :id
-                                                                         visible-collection-ids))
+                                                                         {:include-archived-items :all}))
 
         descendant-collection-ids (map u/the-id descendant-collections)
 
@@ -959,10 +947,8 @@
 
 (defn- effective-children-ids
   "Returns effective children ids for collection."
-  [collection permissions-set]
-  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids
-                                     permissions-set
-                                     {:permission-level :write}))
+  [collection _permissions-set]
+  (let [visible-collection-ids (set (collection/visible-collection-ids {:permission-level :write}))
         all-descendants (map :id (collection/descendants-flat collection))]
     (filterv visible-collection-ids all-descendants)))
 
@@ -1115,6 +1101,7 @@
   [include archived]
   {include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check collection/root-collection)
   (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
                                           :timeline/archived? archived}))
 
@@ -1124,6 +1111,7 @@
   {id       ms/PositiveInt
    include  [:maybe [:= "events"]]
    archived [:maybe :boolean]}
+  (api/read-check (t2/select-one :model/Collection :id id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
 

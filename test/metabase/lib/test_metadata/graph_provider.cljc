@@ -1,11 +1,11 @@
 (ns metabase.lib.test-metadata.graph-provider
   (:require
+   #?@(:clj
+       ([pretty.core :as pretty]))
    [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   #?@(:clj
-       ([pretty.core :as pretty]))))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
 
 (defn- graph-database [metadata-graph]
   (dissoc metadata-graph :tables))

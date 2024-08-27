@@ -19,23 +19,23 @@
 
 (deftest bind-client-test
   (are [client]
-      (let [request (mock-request {:client client})
-            handler (sdk/bind-embedding-mw
-                     (fn [_request respond _raise] (respond client)))]
-        (handler request
-                 (fn [response] (= sdk/*client* response))
-                 (fn [e] (throw e))))
+       (let [request (mock-request {:client client})
+             handler (sdk/bind-embedding-mw
+                      (fn [_request respond _raise] (respond client)))]
+         (handler request
+                  (fn [response] (= sdk/*client* response))
+                  (fn [e] (throw e))))
     nil
     "embedding-iframe"))
 
 (deftest bind-client-version-test
   (are [version]
-      (let [request (mock-request {:version version})
-            handler (sdk/bind-embedding-mw
-                     (fn [_request respond _raise] (respond version)))]
-        (handler request
-                 (fn [response] (=  sdk/*version* response))
-                 (fn [e] (throw e))))
+       (let [request (mock-request {:version version})
+             handler (sdk/bind-embedding-mw
+                      (fn [_request respond _raise] (respond version)))]
+         (handler request
+                  (fn [response] (=  sdk/*version* response))
+                  (fn [e] (throw e))))
     nil
     "1.1.1"))
 

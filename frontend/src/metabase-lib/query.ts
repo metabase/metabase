@@ -70,6 +70,10 @@ export function dropEmptyStages(query: Query): Query {
   return ML.drop_empty_stages(query);
 }
 
+export function ensureFilterStage(query: Query): Query {
+  return ML.ensure_filter_stage(query);
+}
+
 export function removeClause(
   query: Query,
   stageIndex: number,

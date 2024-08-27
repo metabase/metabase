@@ -21,13 +21,13 @@
                            :model/PulseCard _     {:pulse_id (:id pulse), :card_id (u/the-id card)}]
     (let [pulse-result       (atom nil)
           orig-execute-pulse @#'pulse/execute-pulse]
-     (with-redefs [channel/send!               (fn [& _args]
-                                                 :noop)
-                   pulse/execute-pulse          (fn [& args]
-                                                  (u/prog1 (apply orig-execute-pulse args)
-                                                    (reset! pulse-result <>)))]
-      (pulse/send-pulse! pulse)
-      (qp.test-util/rows (:result (first @pulse-result)))))))
+      (with-redefs [channel/send!               (fn [& _args]
+                                                  :noop)
+                    pulse/execute-pulse          (fn [& args]
+                                                   (u/prog1 (apply orig-execute-pulse args)
+                                                     (reset! pulse-result <>)))]
+        (pulse/send-pulse! pulse)
+        (qp.test-util/rows (:result (first @pulse-result)))))))
 
 (def card-name "Test card")
 
@@ -92,8 +92,8 @@
   Returns a map of channel-type -> messages sent to that channel."
   [& body]
   `(do-with-captured-channel-send-messages!
-      (fn []
-        ~@body)))
+    (fn []
+      ~@body)))
 
 (def png-attachment
   {:type         :inline

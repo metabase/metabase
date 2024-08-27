@@ -74,8 +74,8 @@
            [:relative-time-interval field 10 :day 10 :day]
            [:segment 1]]]
       (doseq [op (filter-ops filter-expr)]
-          (is (not (identical? (get-method expression/type-of-method op)
-        (testing (str op " is a registered MBQL clause (a type-of-method method is registered for it)")
+        (is (not (identical? (get-method expression/type-of-method op)
+                             (testing (str op " is a registered MBQL clause (a type-of-method method is registered for it)")
                                (get-method expression/type-of-method :default))))))
       ;; test all the subclauses of `filter-expr` above individually. If something gets broken this is easier to debug
       (doseq [filter-clause (rest filter-expr)
@@ -87,14 +87,15 @@
       (is (mc/validate ::expression/boolean (ensure-uuids filter-expr))))))
 
 (deftest ^:parallel invalid-filter-test
-  (testing "invalid filters"
-    (are [clause] (mc/explain
-                   ::expression/boolean
-                   (ensure-uuids clause))
-      ;; xor doesn't exist
-      [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
-      ;; 1 is not a valid <string> arg
-      [:contains "abc" 1])))
+  (binding [expression/*suppress-expression-type-check?* false]
+    (testing "invalid filters"
+      (are [clause] (mc/explain
+                     ::expression/boolean
+                     (ensure-uuids clause))
+        ;; xor doesn't exist
+        [:xor 13 [:field 1 {:lib/uuid (str (random-uuid))}]]
+        ;; 1 is not a valid <string> arg
+        [:contains "abc" 1]))))
 
 (deftest ^:parallel mongo-types-test
   (testing ":type/MongoBSONID"

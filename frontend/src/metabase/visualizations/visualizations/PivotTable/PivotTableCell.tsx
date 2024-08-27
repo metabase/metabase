@@ -24,7 +24,7 @@ interface CellProps {
   isBorderedHeader?: boolean;
   isTransparent?: boolean;
   hasTopBorder?: boolean;
-  onClick?: ((e: React.SyntheticEvent) => void) | undefined;
+  onClick?: ((e: React.MouseEvent) => void) | undefined;
   onResize?: (newWidth: number) => void;
 }
 
@@ -40,7 +40,7 @@ interface CellProps {
   isBorderedHeader?: boolean;
   isTransparent?: boolean;
   hasTopBorder?: boolean;
-  onClick?: ((e: React.SyntheticEvent) => void) | undefined;
+  onClick?: ((e: React.MouseEvent) => void) | undefined;
   onResize?: (newWidth: number) => void;
   showTooltip?: boolean;
 }
@@ -114,7 +114,7 @@ export function Cell({
 
 type CellClickHandler = (
   clicked: PivotTableClicked,
-) => ((e: React.SyntheticEvent) => void) | undefined;
+) => ((e: React.MouseEvent) => void) | undefined;
 
 interface TopHeaderCellProps {
   item: HeaderItem;

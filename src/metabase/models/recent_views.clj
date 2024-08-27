@@ -80,8 +80,9 @@
 
 (def rv-models
   "These are models for which we will retrieve recency."
-  [:card :dataset ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
-                  ;; needed to distinguish between them.
+  [:card :dataset :metric
+   ;; n.b.: `:card`, `metric` and `:model` are stored in recent_views as "card", and a join with report_card is
+   ;; needed to distinguish between them.
    :dashboard :table :collection])
 
 (mu/defn rv-model->model
@@ -318,11 +319,7 @@
      :can_write (mi/can-write? metric)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status metric)
-     :parent_collection (if (:collection-id metric)
-                          {:id (:collection-id metric)
-                           :name (:collection-name metric)
-                           :authority_level (:collection-authority-level metric)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll metric)}))
 
 ;; ================== Recent Dashboards ==================
 

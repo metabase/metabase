@@ -940,7 +940,7 @@
      (to-array (lib.core/filterable-columns a-query stage-number)))))
 
 (defn ^:export filterable-column-operators
-  "Returns the filteroperators which can be used in a filter for `filterable-column`.
+  "Returns the filter operators which can be used in a filter for `filterable-column`.
 
   `filterable-column` must be column coming from [[filterable-columns]]; this won't work with columns from other sources
   like [[visible-columns]].
@@ -1240,6 +1240,7 @@
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
+      (->> (mbql.normalize/normalize-fragment nil))
       lib.convert/->pMBQL))
 
 (defn- ->column-or-ref [column]
@@ -2317,3 +2318,14 @@
     (keyword "can-save" card-type) a-query
     (fn [_]
       (lib.core/can-save a-query (keyword card-type))))))
+
+(defn ^:export ensure-filter-stage
+  "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.
+
+  This is so that parameters can address both the stage before and after the aggregation.
+  Adding filters to the result at stage -1 will filter after the summary, filters added at
+  stage -2 filter before the summary.
+
+  > **Code health:** Healthy"
+  [a-query]
+  (lib.core/ensure-filter-stage a-query))

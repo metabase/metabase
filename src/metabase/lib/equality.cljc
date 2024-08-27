@@ -4,6 +4,7 @@
   (:require
    #?@(:clj ([metabase.util.log :as log]))
    [medley.core :as m]
+   [metabase.lib.binning :as lib.binning]
    [metabase.lib.card :as lib.card]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -188,6 +189,18 @@
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
+(mu/defn- disambiguate-matches-find-match-with-same-binning :- [:maybe ::lib.schema.metadata/column]
+  "If there are multiple matching columns and `a-ref` has a binning value, check if only one column has that same
+  binning."
+  [a-ref   :- ::lib.schema.ref/ref
+   columns :- [:sequential {:min 2} ::lib.schema.metadata/column]]
+  (or (when-let [binning (lib.binning/binning a-ref)]
+        (let [matching-columns (filter #(-> % lib.binning/binning (lib.binning/binning= binning))
+                                       columns)]
+          (when (= (count matching-columns) 1)
+            (first matching-columns))))
+      (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
+
 (mu/defn- disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
   "If there are multiple matching columns and `a-ref` has a temporal bucket, check if only one column has that same
   unit."
@@ -199,7 +212,7 @@
                                        columns)]
           (when (= (count matching-columns) 1)
             (first matching-columns))))
-      (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
+      (disambiguate-matches-find-match-with-same-binning a-ref columns)))
 
 (mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
   "Prefers table-default or explicitly joined columns over implicitly joinable ones."

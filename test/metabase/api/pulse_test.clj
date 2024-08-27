@@ -94,7 +94,6 @@
 (defmacro ^:private with-pulses-in-writeable-collection! [pulses-or-ids & body]
   `(do-with-pulses-in-a-collection! perms/grant-collection-readwrite-permissions! ~pulses-or-ids (fn [] ~@body)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       /api/pulse/* AUTHENTICATION Tests                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -105,7 +104,6 @@
 (deftest authentication-test
   (is (= (:body req.util/response-unauthentic) (client/client :get 401 "pulse")))
   (is (= (:body req.util/response-unauthentic) (client/client :put 401 "pulse/13"))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                POST /api/pulse                                                 |
@@ -379,7 +377,6 @@
                   (create-pulse! 403 pulse-name card collection)
                   (is (= nil
                          (t2/select-one [Pulse :collection_id :collection_position] :name pulse-name))))))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               PUT /api/pulse/:id                                               |
@@ -820,7 +817,6 @@
                     (is (= (second expected)
                            (api.card-test/get-name->collection-position :rasta (u/the-id collection-2))))))))))))))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 GET /api/pulse                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -977,27 +973,27 @@
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (api.card-test/with-cards-in-readable-collection! [card]
               (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
-                                      (is (= {:ok true}
-                                             (mt/user-http-request :rasta :post 200 "pulse/test"
-                                                                   {:name          (mt/random-name)
-                                                                    :dashboard_id  dashboard-id
-                                                                    :cards         [{:id                (:id card)
-                                                                                     :include_csv       false
-                                                                                     :include_xls       false
-                                                                                     :dashboard_card_id nil}]
-                                                                    :channels      [{:enabled       true
-                                                                                     :channel_type  "email"
-                                                                                     :schedule_type "daily"
-                                                                                     :schedule_hour 12
-                                                                                     :schedule_day  nil
-                                                                                     :recipients    [(mt/fetch-user :rasta)]}]
-                                                                    :skip_if_empty false}))))]
-               (is (= {:message [{"Daily Sad Toucans" true}
-                                 pulse.test-util/png-attachment]
-                       :message-type :attachments,
-                       :recipients #{"rasta@metabase.com"}
-                       :subject "Daily Sad Toucans"}
-                      (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
+                                       (is (= {:ok true}
+                                              (mt/user-http-request :rasta :post 200 "pulse/test"
+                                                                    {:name          (mt/random-name)
+                                                                     :dashboard_id  dashboard-id
+                                                                     :cards         [{:id                (:id card)
+                                                                                      :include_csv       false
+                                                                                      :include_xls       false
+                                                                                      :dashboard_card_id nil}]
+                                                                     :channels      [{:enabled       true
+                                                                                      :channel_type  "email"
+                                                                                      :schedule_type "daily"
+                                                                                      :schedule_hour 12
+                                                                                      :schedule_day  nil
+                                                                                      :recipients    [(mt/fetch-user :rasta)]}]
+                                                                     :skip_if_empty false}))))]
+                (is (= {:message [{"Daily Sad Toucans" true}
+                                  pulse.test-util/png-attachment]
+                        :message-type :attachments,
+                        :recipients #{"rasta@metabase.com"}
+                        :subject "Daily Sad Toucans"}
+                       (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
 (deftest send-test-alert-with-http-channel-test
   ;; see [[metabase-enterprise.advanced-config.api.pulse-test/test-pulse-endpoint-should-respect-email-domain-allow-list-test]]
@@ -1183,10 +1179,10 @@
       (mt/with-temporary-setting-values [slack-token nil
                                          slack-app-token nil]
         (is (empty?
-               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
-                   (get-in [:channels :slack :fields])
-                   (first)
-                   (:options))))))))
+             (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                 (get-in [:channels :slack :fields])
+                 (first)
+                 (:options))))))))
 
 (deftest preview-pulse-test
   (testing "GET /api/pulse/preview_card/:id"
