@@ -6,6 +6,7 @@ import { getPlugins } from "embedding-sdk/store/selectors";
 import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
 import type { QueryParams } from "metabase/query_builder/actions";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import type { CardId } from "metabase-types/api";
 
 import type {
   InteractiveQuestionContextType,
@@ -97,9 +98,9 @@ export const InteractiveQuestionProvider = ({
   options?: QueryParams;
 }) => {
   const id = useValidIdForEntity({
-    type: "dashboard",
+    type: "card",
     id: cardId,
-  });
+  }) as CardId;
 
   return <InteractiveQuestionProviderInner cardId={id} {...rest} />;
 };

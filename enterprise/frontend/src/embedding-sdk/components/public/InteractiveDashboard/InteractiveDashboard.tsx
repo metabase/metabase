@@ -15,6 +15,7 @@ import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
+import type { DashboardId } from "metabase-types/api";
 
 import { InteractiveDashboardProvider } from "./context";
 
@@ -117,7 +118,7 @@ export const InteractiveDashboard =
       const id = useValidIdForEntity({
         type: "dashboard",
         id: dashboardId,
-      });
+      }) as DashboardId;
 
       return id ? (
         <InteractiveDashboardInner dashboardId={id} {...rest} />

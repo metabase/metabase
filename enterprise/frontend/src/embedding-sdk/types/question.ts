@@ -12,7 +12,7 @@ export interface SdkQuestionState {
 export interface LoadSdkQuestionParams {
   options?: QueryParams;
   deserializedCard?: Card;
-  cardId?: Card["id"] | Card["entity_id"] | null;
+  cardId?: Card["id"] | null;
   cancelDeferred?: Deferred;
 }
 

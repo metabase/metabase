@@ -1,4 +1,4 @@
-import type { BaseEntityId } from "metabase-types/api";
+import type { BaseEntityId } from "metabase-types/api/util";
 
 import { Api } from "./api";
 
@@ -28,13 +28,13 @@ type TranslateEntityIdRequest = Partial<Record<EntityType, string[]>>;
 
 export type TranslateEntityIdResponseSuccess = {
   status: "success";
-  id: string;
-  type: string;
+  id: unknown;
+  type: EntityType;
 };
 
 export type TranslateEntityIdResponseNotFound = {
   status: "not-found";
-  type: string;
+  type: EntityType;
   id: null;
 };
 

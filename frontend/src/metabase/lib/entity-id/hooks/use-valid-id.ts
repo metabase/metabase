@@ -4,21 +4,19 @@ import {
   type EntityType,
   useTranslateEntityIdQuery,
 } from "metabase/api/entity-id";
-import type { CardEntityId, CardId } from "metabase-types/api";
 
-export const useValidIdForEntity = ({
-  type,
-  id,
-}: {
+type ValidIdForEntityProps = {
   type: EntityType;
-  id: CardId | CardEntityId | null | undefined;
-}) => {
+  id: unknown;
+};
+
+export const useValidIdForEntity = ({ type, id }: ValidIdForEntityProps) => {
   const {
     data: entity_ids,
     isError,
     isLoading,
   } = useTranslateEntityIdQuery({
-    [type]: typeof id === "string" ? [id] : [],
+    [type]: [id],
   });
 
   return match({ id, entity_ids, isError, isLoading })
