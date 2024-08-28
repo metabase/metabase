@@ -24,6 +24,7 @@ export const BrowseInsights = () => {
             <WebSocketHandler
               selectedMessages={selectedChatHistory}
               selectedThreadId={selectedThreadId}
+              appType={"insights"}
             />
           </Stack>
           <Stack

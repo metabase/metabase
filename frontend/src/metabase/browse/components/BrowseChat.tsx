@@ -24,6 +24,7 @@ export const BrowseChat = () => {
             <WebSocketHandler
               selectedMessages={selectedChatHistory}
               selectedThreadId={selectedThreadId}
+              appType={"default"}
             />
           </Stack>
           <Stack
