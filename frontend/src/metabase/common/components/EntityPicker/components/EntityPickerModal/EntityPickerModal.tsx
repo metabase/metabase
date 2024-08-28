@@ -132,35 +132,39 @@ export function EntityPickerModal<
       : relevantModelRecents;
   }, [recentItems, tabModels, recentFilter]);
 
-  const tabs: EntityTab<Model | "recents">[] = useMemo(
-    () =>
-      hydratedOptions.hasRecents && filteredRecents.length > 0
-        ? [
-            {
-              model: "recents",
-              displayName: t`Recents`,
-              icon: "clock",
-              element: (
-                <RecentsTab
-                  isLoading={isLoadingRecentItems}
-                  recentItems={filteredRecents}
-                  onItemSelect={onItemSelect}
-                  selectedItem={selectedItem}
-                />
-              ),
-            },
-            ...passedTabs,
-          ]
-        : passedTabs,
-    [
-      selectedItem,
-      onItemSelect,
-      passedTabs,
-      isLoadingRecentItems,
-      hydratedOptions.hasRecents,
-      filteredRecents,
-    ],
-  );
+  const tabs: EntityTab<Model | "recents">[] = useMemo(() => {
+    const computedTabs: EntityTab<Model | "recents">[] = [];
+
+    const showRecents =
+      hydratedOptions.hasRecents && filteredRecents.length > 0;
+
+    if (showRecents) {
+      computedTabs.push({
+        model: "recents",
+        displayName: t`Recents`,
+        icon: "clock",
+        element: (
+          <RecentsTab
+            isLoading={isLoadingRecentItems}
+            recentItems={filteredRecents}
+            onItemSelect={onItemSelect}
+            selectedItem={selectedItem}
+          />
+        ),
+      });
+    }
+
+    computedTabs.push(...passedTabs);
+
+    return computedTabs;
+  }, [
+    selectedItem,
+    onItemSelect,
+    passedTabs,
+    isLoadingRecentItems,
+    hydratedOptions.hasRecents,
+    filteredRecents,
+  ]);
 
   const hasTabs = tabs.length > 1 || searchQuery;
   const hasRecentsTab = tabs.some(tab => tab.model === "recents");
