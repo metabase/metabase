@@ -169,12 +169,12 @@
         ;; across all drivers. With that in mind, 100 seems like a safe compromise.
         ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
         chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
+        dialect    (sql.qp/quote-style driver)
         sqls       (map #(sql/format {:insert-into (keyword table-name)
-                                      ;; We need to namespace the keyword in case the column name starts with a %
-                                      :columns     (sql-jdbc.common/qualify-columns table-name column-names)
+                                      :columns     (sql-jdbc.common/quote-columns dialect column-names)
                                       :values      %}
                                      :quoted true
-                                     :dialect (sql.qp/quote-style driver))
+                                     :dialect dialect)
                         chunks)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (doseq [sql sqls]
