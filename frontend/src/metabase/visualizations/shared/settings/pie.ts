@@ -32,10 +32,7 @@ export function getKeyFromDimensionValue(dimensionValue: RowValue) {
   if (dimensionValue == null) {
     return NULL_DISPLAY_VALUE;
   }
-  if (typeof dimensionValue === "boolean") {
-    return String(dimensionValue);
-  }
-  return dimensionValue;
+  return String(dimensionValue);
 }
 
 export function getAggregatedRows(
