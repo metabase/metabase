@@ -37,7 +37,7 @@
             "null"
         ],
         "minimum": 0,
-        "maximum": 1800000
+        "maximum": 2147483647
       },
       "result": {
         "description": "(Optional) The outcome of the action (e.g. success, failure, …)",

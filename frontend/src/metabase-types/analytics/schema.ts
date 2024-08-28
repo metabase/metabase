@@ -3,6 +3,7 @@ import type { ActionEvent } from "./action";
 import type { BrowseDataEvent } from "./browse_data";
 import type { CleanupEvent } from "./cleanup";
 import type { SimpleEvent } from "./event";
+import type { SearchEvent } from "./search";
 import type { SerializationEvent } from "./serialization";
 import type { SettingsEvent } from "./settings";
 import type { SetupEvent } from "./setup";
@@ -15,6 +16,7 @@ export type SchemaEventMap = {
   browse_data: BrowseDataEvent;
   cleanup: CleanupEvent;
   event: SimpleEvent;
+  search: SearchEvent;
   serialization: SerializationEvent;
   settings: SettingsEvent;
   setup: SetupEvent;

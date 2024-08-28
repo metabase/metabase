@@ -5,6 +5,7 @@ export * from "./cleanup";
 export * from "./event";
 export * from "./serialization";
 export * from "./schema";
+export * from "./search";
 export * from "./settings";
 export * from "./setup";
 export * from "./timeline";
