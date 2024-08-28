@@ -2,7 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   #_[java-time.api :as t]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -15,10 +14,8 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql.ddl :as ddl]
-   #_[metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
-  #_(:import (java.time Instant LocalDate LocalDateTime OffsetDateTime ZonedDateTime)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -145,44 +142,3 @@
 (defmethod sql.tx/drop-db-if-exists-sql :databricks-jdbc
   [driver {:keys [database-name]}]
   (format "DROP DATABASE IF EXISTS %s CASCADE" (sql.tx/qualify-and-quote driver database-name)))
-
-;; Databrickks supports only java.sql.Timestamp and Date as prepared statement parameters. java.time.* types values
-;; used to fill the test databases are updated according to that in the following method implementation.
-;;
-;; At the time of writing, `jdbc/execute` is used for insert statments execution. We define handling for java.time.*
-;; classes by `jdbc/execute` in [[metabase.db.jdbc-protocols]] by extension of `clojure.java.jdbc/ISQLParameter`. That
-;; is not compatible with Databricks.
-;;
-;; Alternatively, `->honeysql` could be implemented for values of classes in question. I'm not sure if that wouldn't
-;; somehow break something else -- having java.sql* class values in compiled honeysql. As this problem surfaced only
-;; during test dataset creation, I'm leaving solution solely test extensions based.
-;;
-;;
-;; Merging in the latest developments in data loading, following is removed in favor of `set-parameter`
-#_(defmethod ddl/insert-rows-honeysql-form :databricks-jdbc
-  [driver table-identifier row-or-rows]
-  (let [rows (u/one-or-many row-or-rows)
-        rows (for [row rows]
-               (update-vals row
-                            (fn [val]
-                              (cond
-                                (or (instance? OffsetDateTime val)
-                                    (instance? ZonedDateTime val)
-                                    (instance? LocalDateTime val))
-                                (t/sql-timestamp val)
-
-                                (instance? Instant val)
-                                (t/instant->sql-timestamp val)
-
-                                (instance? LocalDate val)
-                                (t/sql-date val)
-
-                                (instance? java.time.LocalTime val)
-                                (t/local-date-time (t/local-date 1970 1 1) val)
-
-                                (instance? java.time.OffsetTime val)
-                                (t/local-date-time (t/local-date 1970 1 1) val)
-
-                                :else
-                                val))))]
-    ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier rows)))
