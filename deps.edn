@@ -412,7 +412,7 @@
   ;;
   ;; Use this to only run Kondo against specific files.
   :kondo
-  {:deps
+  {:replace-deps
    {clj-kondo/clj-kondo {:mvn/version "2024.08.01"}}
 
    :main-opts
