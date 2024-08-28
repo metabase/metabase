@@ -282,8 +282,7 @@ export type ExpressionOperatorName =
   | "relative-datetime"
   | "inside"
   | "segment"
-  | "offset"
-  | "datetime-add";
+  | "offset";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
