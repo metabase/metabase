@@ -16,7 +16,7 @@
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
   (:import
-   [java.sql Connection ResultSet Statement]
+   [java.sql Connection ResultSet ResultSetMetaData Statement]
    [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime OffsetTime]))
 
 (set! *warn-on-reflection* true)
@@ -148,12 +148,22 @@
                         (h2x/literal "yyyy-MM-dd HH:mm:ss"))]
     [:- [:unix_timestamp y format-string] [:unix_timestamp x format-string]]))
 
-;; TODO: Which type, zone to use if any.
+(def ^:private timestamp-database-type-names #{"TIMESTAMP" "TIMESTAMP_NTZ"})
+
+;; Both timestamp types, TIMESTAMP and TIMESTAMP_NTZ, are returned in `Types/TIMESTAMP` sql type. TIMESTAMP is wall
+;; clock with date in session timezone. Hence the following implementation adds the results timezone in LocalDateTime
+;; gathered from JDBC driver.
 (defmethod sql-jdbc.execute/read-column-thunk [:databricks-jdbc java.sql.Types/TIMESTAMP]
-  [_driver ^ResultSet rs _rsmeta ^Integer i]
-  (fn []
-    (when-let [t (.getTimestamp rs i)]
-      (t/zoned-date-time (t/local-date-time t) (t/zone-id (qp.timezone/results-timezone-id))))))
+  [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [database-type-name (.getColumnTypeName rsmeta i)]
+    (assert (timestamp-database-type-names database-type-name))
+    (if (= "TIMESTAMP" database-type-name)
+      (fn []
+        (when-let [t (.getTimestamp rs i)]
+          (t/zoned-date-time (t/local-date-time t) (t/zone-id (qp.timezone/results-timezone-id)))))
+      (fn []
+        (when-let [t (.getTimestamp rs i)]
+          (t/local-date-time t))))))
 
 (defn- valid-zone-id-str? [zone-id-str]
   (contains? (java.time.ZoneId/getAvailableZoneIds) zone-id-str))
