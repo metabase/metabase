@@ -15,7 +15,7 @@ import type {
   NotebookStepType,
 } from "../../types";
 
-import NotebookStep from "./NotebookStep";
+import { NotebookStep } from "./NotebookStep";
 
 type SetupOpts = {
   step?: INotebookStep;

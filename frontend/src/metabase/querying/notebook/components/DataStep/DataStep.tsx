@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type { NotebookStepProps } from "../../types";
 import { FieldPicker, type FieldPickerItem } from "../FieldPicker";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { NotebookDataPicker } from "../NotebookDataPicker";
@@ -17,7 +17,7 @@ export const DataStep = ({
   readOnly,
   color,
   updateQuery,
-}: NotebookStepUiComponentProps) => {
+}: NotebookStepProps) => {
   const { stageIndex } = step;
   const tableId = Lib.sourceTableOrCardId(query);
   const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
