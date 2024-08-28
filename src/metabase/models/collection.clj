@@ -630,14 +630,25 @@
                                              (when-not (collection.root/is-root-collection? parent-coll)
                                                [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}]])))
 
-(mu/defn visible-collection-ids :- VisibleCollections
+(def ^{:arglists '([visibility-config])} visible-collection-ids
   "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
   toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
-  probably try to use `visible-collection-filter-clause` instead."
-  [visibility-config]
-  (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
-    (should-display-root-collection? visibility-config)
-    (conj "root")))
+  probably try to use `visible-collection-filter-clause` instead.
+
+  Cached for the lifetime of the request, maximum 10 seconds."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[visibility-config]]
+                         (if-let [req-id *request-id*]
+                           [req-id api/*current-user-id* visibility-config]
+                           [(random-uuid) api/*current-user-id* visibility-config]))}
+   (fn visible-collection-ids*
+     [visibility-config]
+     (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
+       (should-display-root-collection? visibility-config)
+       (conj "root")))
+   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
+   ;; large
+   :ttl/threshold (* 60 60 1000)))
 
 (mu/defn- effective-location-path* :- [:maybe LocationPath]
   ([collection :- CollectionWithLocationOrRoot]
