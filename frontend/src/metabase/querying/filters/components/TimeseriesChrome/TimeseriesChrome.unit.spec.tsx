@@ -39,7 +39,7 @@ function setup({ query = createQuery() }: SetupOpts = {}) {
 }
 
 describe("TimeseriesChrome", () => {
-  it("should render the chrome if there are no breakouts", () => {
+  it("should not render the chrome if there are no breakouts", () => {
     setup();
     expect(screen.queryByText("View")).not.toBeInTheDocument();
   });
