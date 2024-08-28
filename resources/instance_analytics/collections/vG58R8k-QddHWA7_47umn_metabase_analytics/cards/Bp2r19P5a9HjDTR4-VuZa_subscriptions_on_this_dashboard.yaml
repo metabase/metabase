@@ -16,6 +16,7 @@ table_id:
 - v_subscriptions
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -112,6 +113,7 @@ dataset_query:
       strategy: left-join
     source-table: 5ojUtU9iE-DCggHdFPIll
   type: query
+result_metadata: null
 visualization_settings:
   column_settings:
     ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'

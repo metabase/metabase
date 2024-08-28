@@ -19,7 +19,9 @@ fk_target_field_id:
 - public
 - v_content
 - entity_qualified_id
+dimensions: []
 json_unfolding: false
+parent_id: null
 coercion_strategy: null
 preview_display: true
 position: 9

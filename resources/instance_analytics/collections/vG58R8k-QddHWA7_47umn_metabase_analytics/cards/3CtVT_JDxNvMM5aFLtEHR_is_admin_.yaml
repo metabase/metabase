@@ -16,6 +16,7 @@ table_id:
 - v_users
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -24,6 +25,7 @@ dataset_query:
   query:
     source-table: 0wVIfjBJWclD0lKeABYYl
   type: query
+result_metadata: null
 visualization_settings:
   column_settings: null
   scalar.field: is_admin

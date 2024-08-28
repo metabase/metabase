@@ -16,6 +16,7 @@ table_id:
 - v_content
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -94,6 +95,7 @@ dataset_query:
     - question
     source-table: AxSackBiyXVRUzM_TyyQY
   type: query
+result_metadata: null
 visualization_settings:
   column_settings:
     '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':

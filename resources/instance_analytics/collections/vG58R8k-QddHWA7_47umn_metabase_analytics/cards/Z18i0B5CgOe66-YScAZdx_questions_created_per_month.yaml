@@ -16,6 +16,7 @@ table_id:
 - v_audit_log
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -60,6 +61,7 @@ dataset_query:
       source-table: 0wVIfjBJWclD0lKeABYYl
     source-table: -lNDM3tJmuL5ltGbX0oyT
   type: query
+result_metadata: null
 visualization_settings:
   column_settings: null
   graph.dimensions:

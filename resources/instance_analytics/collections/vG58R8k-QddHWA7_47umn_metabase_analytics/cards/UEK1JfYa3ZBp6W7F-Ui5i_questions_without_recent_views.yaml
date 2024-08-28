@@ -16,6 +16,7 @@ table_id:
 - v_content
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -100,6 +101,7 @@ dataset_query:
         - Days since last view
     source-table: AxSackBiyXVRUzM_TyyQY
   type: query
+result_metadata: null
 visualization_settings:
   column_settings:
     '["ref",["expression","Days since last view"]]':

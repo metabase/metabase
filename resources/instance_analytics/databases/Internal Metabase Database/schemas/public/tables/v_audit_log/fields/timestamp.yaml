@@ -14,7 +14,10 @@ effective_type: type/DateTimeWithLocalTZ
 semantic_type: type/CreationTimestamp
 database_is_auto_increment: false
 database_required: false
+fk_target_field_id: null
+dimensions: []
 json_unfolding: false
+parent_id: null
 coercion_strategy: null
 preview_display: true
 position: 2

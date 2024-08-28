@@ -16,6 +16,7 @@ table_id:
 - v_subscriptions
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []

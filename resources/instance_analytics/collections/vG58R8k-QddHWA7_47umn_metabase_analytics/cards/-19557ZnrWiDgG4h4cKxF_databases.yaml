@@ -16,6 +16,7 @@ table_id:
 - v_databases
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -328,7 +329,11 @@ result_metadata:
     - v_databases
     - creator_id
   - null
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_fields
+  - active
   id:
   - Internal Metabase Database
   - public
@@ -506,4 +511,5 @@ serdes/meta:
   model: Card
 archived_directly: false
 metabase_version: vUNKNOWN (0e09ac7)
+source_card_id: null
 type: model

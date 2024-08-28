@@ -16,6 +16,7 @@ table_id:
 - v_query_log
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -116,6 +117,7 @@ dataset_query:
         - 0
     source-table: QOtZaiTLf2FDD4AT6Oinb
   type: query
+result_metadata: null
 visualization_settings:
   column_settings: null
   graph.dimensions:

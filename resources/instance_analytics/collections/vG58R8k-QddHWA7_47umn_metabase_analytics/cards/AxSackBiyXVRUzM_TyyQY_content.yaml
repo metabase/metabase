@@ -16,6 +16,7 @@ table_id:
 - v_content
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -275,7 +276,11 @@ result_metadata:
     - v_content
     - creator_id
   - base-type: type/Integer
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_fields
+  - active
   id:
   - Internal Metabase Database
   - public
@@ -341,7 +346,11 @@ result_metadata:
     - v_content
     - collection_id
   - base-type: type/Integer
-  fk_target_field_id: 919
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - event_timestamp
   id:
   - Internal Metabase Database
   - public
@@ -363,7 +372,11 @@ result_metadata:
     - v_content
     - made_public_by_user
   - base-type: type/Integer
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_fields
+  - active
   id:
   - Internal Metabase Database
   - public
@@ -451,7 +464,11 @@ result_metadata:
     - v_content
     - action_model_id
   - base-type: type/Integer
-  fk_target_field_id: 919
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_content
+  - event_timestamp
   id:
   - Internal Metabase Database
   - public
@@ -605,4 +622,5 @@ serdes/meta:
   model: Card
 archived_directly: false
 metabase_version: null
+source_card_id: null
 type: model

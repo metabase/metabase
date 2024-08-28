@@ -16,6 +16,7 @@ table_id:
 - v_dashboardcard
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -139,7 +140,11 @@ result_metadata:
     - v_dashboardcard
     - dashboard_qualified_id
   - base-type: type/Text
-  fk_target_field_id: 1484
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - dashboard_favorite
+  - id
   id:
   - Internal Metabase Database
   - public
@@ -183,7 +188,11 @@ result_metadata:
     - v_dashboardcard
     - card_qualified_id
   - base-type: type/Text
-  fk_target_field_id: 1484
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - dashboard_favorite
+  - id
   id:
   - Internal Metabase Database
   - public
@@ -295,4 +304,5 @@ serdes/meta:
   model: Card
 archived_directly: false
 metabase_version: null
+source_card_id: null
 type: model

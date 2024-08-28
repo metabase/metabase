@@ -16,6 +16,7 @@ table_id:
 - v_subscriptions
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -398,7 +399,11 @@ result_metadata:
     - v_subscriptions
     - creator_id
   - null
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_fields
+  - active
   id:
   - Internal Metabase Database
   - public

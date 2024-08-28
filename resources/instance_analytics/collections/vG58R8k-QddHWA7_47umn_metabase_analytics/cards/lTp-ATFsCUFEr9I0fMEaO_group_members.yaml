@@ -16,6 +16,7 @@ table_id:
 - v_group_members
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -101,4 +102,5 @@ serdes/meta:
   model: Card
 archived_directly: false
 metabase_version: null
+source_card_id: null
 type: model

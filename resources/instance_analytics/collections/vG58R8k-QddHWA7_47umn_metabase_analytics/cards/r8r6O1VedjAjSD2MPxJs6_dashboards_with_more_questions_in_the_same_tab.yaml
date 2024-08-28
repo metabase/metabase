@@ -16,6 +16,7 @@ table_id:
 - v_dashboardcard
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -80,6 +81,7 @@ dataset_query:
         - 0
     source-table: pKdvc0pwu1zDi8NqnyJkt
   type: query
+result_metadata: null
 visualization_settings:
   column_settings:
     '["name","count"]':

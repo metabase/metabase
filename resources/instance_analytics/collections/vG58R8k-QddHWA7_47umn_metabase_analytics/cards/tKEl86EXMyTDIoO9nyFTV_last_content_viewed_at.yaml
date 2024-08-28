@@ -16,6 +16,7 @@ table_id:
 - v_view_log
 enable_embedding: false
 embedding_params: null
+made_public_by_id: null
 public_uuid: null
 parameters: []
 parameter_mappings: []
@@ -40,6 +41,7 @@ dataset_query:
       - base-type: type/Text
     source-table: P6Ityjj7igswKh4NgZZjz
   type: query
+result_metadata: null
 visualization_settings:
   column_settings: null
   table.cell_column: max
