@@ -95,20 +95,17 @@
 
 ;;; ---------------------------------------- Caching ------------------------------------------------------------------
 
-(defn relevant-permissions-for-user-and-db
+(defn- relevant-permissions-for-user-and-db
   "Returns all relevant rows for permissions for the user"
   [user-id db-id]
-  (->> (t2/select :model/DataPermissions
-                  {:select [:p.* [:pgm.user_id :user_id]]
-                   :from [[:permissions_group_membership :pgm]]
-                   :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
-                          [:data_permissions :p] [:= :p.group_id :pg.id]]
-                   :where [:and
-                           [:= :pgm.user_id user-id]
-                           [:= :p.db_id db-id]]})
-       (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
-                 (update-in m [user_id perm_type db_id] u/conjv row))
-               {})))
+  (t2/select :model/DataPermissions
+             {:select [:p.* [:pgm.user_id :user_id]]
+              :from [[:permissions_group_membership :pgm]]
+              :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
+                     [:data_permissions :p] [:= :p.group_id :pg.id]]
+              :where [:and
+                      [:= :pgm.user_id user-id]
+                      [:= :p.db_id db-id]]}))
 
 (defn- relevant-permissions-for-user-perm-and-db
   "Returns all relevant rows for a given user, permission type, and db_id"
@@ -124,15 +121,14 @@
                       [:= :p.db_id db-id]]}))
 
 (def ^:dynamic *permissions-for-user*
-  "An atom containing a cache of data permissions that have been fetched so far for the current user.
+  "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
    Keys are:
     - :db-ids -> A set of the IDs of databases which have already been fetched.
     - :perms  -> A map of permissions, with the structure `{user-id {perm-type {db-id perms }` so that we NEVER
                  accidentally use the cache of the wrong user, and `perms` are vectors of data_permissions entries.
 
   When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
-  (atom {:db-ids #{}
-         :perms  {}}))
+  nil)
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
@@ -159,11 +155,15 @@
     (let [{:keys [db-ids perms]} @*permissions-for-user*]
       (if (db-ids db-id)
         (get-in perms [user-id perm-type db-id])
-        (let [fetched-perms (relevant-permissions-for-user-and-db user-id db-id)]
+        (let [fetched-perm-rows (relevant-permissions-for-user-and-db user-id db-id)
+              new-cache         (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
+                                          (update-in m [user_id perm_type db_id] u/conjv row))
+                                        perms
+                                        fetched-perm-rows)]
           (reset! *permissions-for-user*
                   {:db-ids (conj db-ids db-id)
-                   :perms  (merge perms fetched-perms)})
-          (get-in fetched-perms [user-id perm-type db-id]))))
+                   :perms  new-cache})
+          (get-in new-cache [user-id perm-type db-id]))))
     ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
     (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
 
