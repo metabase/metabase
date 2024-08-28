@@ -151,7 +151,7 @@
    [:unix_timestamp y (if (instance? LocalDate y)
                         (h2x/literal "yyyy-MM-dd")
                         (h2x/literal "yyyy-MM-dd HH:mm:ss"))]
-   [:unix_timestamp x (if (instance? LocalDate y)
+   [:unix_timestamp x (if (instance? LocalDate x)
                         (h2x/literal "yyyy-MM-dd")
                         (h2x/literal "yyyy-MM-dd HH:mm:ss"))]])
 
@@ -173,8 +173,7 @@
             (t/offset-date-time
              (t/zoned-date-time (t/local-date-time t)
                                 (t/zone-id (qp.timezone/results-timezone-id))))
-            (t/zone-id "Z"))
-          ))
+            (t/zone-id "Z"))))
       (fn []
         (when-let [t (.getTimestamp rs i)]
           (t/local-date-time t))))))
