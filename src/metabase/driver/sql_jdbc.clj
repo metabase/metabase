@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
+   [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.metadata :as sql-jdbc.metadata]
@@ -159,9 +160,7 @@
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
-  (let [table-name (keyword table-name)
-        columns    (map keyword column-names)
-        ;; We need to partition the insert into multiple statements for both performance and correctness.
+  (let [;; We need to partition the insert into multiple statements for both performance and correctness.
         ;;
         ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
         ;; little faster but not by much (3.63m), and 10,000 threw an error:
@@ -170,11 +169,12 @@
         ;; across all drivers. With that in mind, 100 seems like a safe compromise.
         ;; There's nothing magic about 100, but it felt good in testing. There could well be a better number.
         chunks     (partition-all (or driver/*insert-chunk-rows* 100) values)
-        sqls       (map #(sql/format {:insert-into table-name
-                                      :columns     columns
+        dialect    (sql.qp/quote-style driver)
+        sqls       (map #(sql/format {:insert-into (keyword table-name)
+                                      :columns     (sql-jdbc.common/quote-columns dialect column-names)
                                       :values      %}
                                      :quoted true
-                                     :dialect (sql.qp/quote-style driver))
+                                     :dialect dialect)
                         chunks)]
     (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
       (doseq [sql sqls]
