@@ -16,6 +16,7 @@ import { getScaledMinAndMax } from "./axis";
 import {
   getKeyBasedDatasetTransform,
   getNormalizedDatasetTransform,
+  scaleDataset,
   transformDataset,
 } from "./dataset";
 import type {
@@ -59,7 +60,7 @@ const getSeriesModelsWithTrends = (
         return null;
       }
 
-      const trendFunction = getTrendLineFunction(insight);
+      const trendFunction = getTrendLineFunction(insight); // add a multiplier here
 
       const resultTuple: [SeriesModel, TrendFn] = [seriesModel, trendFunction];
       return resultTuple;
@@ -162,11 +163,14 @@ export const getTrendLines = (
       color: Color(renderingContext.getColor(seriesModel.color))
         .lighten(0.25)
         .hex(),
+      column: seriesModel.column,
+      columnIndex: seriesModel.columnIndex,
     }),
   );
   const dataKeys = trendSeriesModels.map(seriesModel => seriesModel.dataKey);
 
-  const transformedDataset = transformDataset(dataset, [
+  const scaledTrendDataset = scaleDataset(dataset, trendSeriesModels, settings);
+  const transformedDataset = transformDataset(scaledTrendDataset, [
     {
       condition: settings["stackable.stack_type"] === "normalized",
       fn: getNormalizedDatasetTransform(
