@@ -1,5 +1,4 @@
-import type React from "react";
-import { useCallback, useState } from "react";
+import { type MouseEvent, useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -150,7 +149,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   const dispatch = useDispatch();
 
   const handleClick = useCallback(
-    (event: React.MouseEvent) => {
+    (event: MouseEvent) => {
       if (!metric) {
         return;
       }
