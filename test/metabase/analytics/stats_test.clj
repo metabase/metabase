@@ -25,7 +25,7 @@
 (deftest merge-count-maps-test
   (testing "Merging maps with various scenarios"
     (are [expected input-maps _description]
-        (= expected (#'stats/merge-count-maps input-maps))
+         (= expected (#'stats/merge-count-maps input-maps))
 
       {:a 1, :b 2}
       [{:a 1} {:b 2}]
@@ -140,7 +140,6 @@
           (is (malli= [:map-of :string ms/IntGreaterThanOrEqualToZero]
                       (-> stats :stats :database :dbms_versions))))))))
 
-
 (deftest anonymous-usage-stats-test-ee-with-values-changed
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
@@ -228,7 +227,6 @@
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
         "the new lazy-seq version of the executions metrics works the same way the old one did")))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Pulses & Alerts                                                 |

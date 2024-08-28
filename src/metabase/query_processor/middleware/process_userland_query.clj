@@ -15,7 +15,7 @@
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -64,9 +64,7 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info field-usages]
-  (let [execution-info' (sdk/include-analytics execution-info)
-        ;; `sdk/assoc-analytics` reads values from dynamic vars, so we need to set them here, on the same thread:
-        ]
+  (let [execution-info' (sdk/include-analytics execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
       ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
@@ -95,7 +93,6 @@
     (save-execution-metadata! (assoc query-execution :error (str message)) nil)
     (catch Throwable e
       (log/errorf e "Unexpected error saving failed query execution: %s" (ex-message e)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
@@ -189,8 +186,8 @@
                         ;; skip internal queries as it use honeysql, not mbql
                         ;; temporarily disabled because it impacts query performance
                         #_field-usages       #_(when-not (qp.util/internal-query? query)
-                                                (field-usage/pmbql->field-usages
-                                                 (lib/query (qp.store/metadata-provider) preprocessed-query)))]
+                                                 (field-usage/pmbql->field-usages
+                                                  (lib/query (qp.store/metadata-provider) preprocessed-query)))]
                     (add-and-save-execution-metadata-xform! execution-info #_field-usages nil result)))]
           (try
             (qp query rff*)

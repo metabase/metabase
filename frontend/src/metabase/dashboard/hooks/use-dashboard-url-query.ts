@@ -14,9 +14,9 @@ import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/param
 import { selectTab } from "../actions";
 import {
   getDashboard,
-  getValuePopulatedParameters,
   getSelectedTab,
   getTabs,
+  getValuePopulatedParameters,
 } from "../selectors";
 import { createTabSlug } from "../utils";
 

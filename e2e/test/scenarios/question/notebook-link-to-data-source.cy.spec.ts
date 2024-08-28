@@ -7,10 +7,15 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type NativeQuestionDetails,
   createNativeQuestion,
   createQuestion,
+  describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
   getNotebookStep,
   openNotebook,
+  openProductsTable,
   openReviewsTable,
   popover,
   restore,
@@ -20,11 +25,6 @@ import {
   visitQuestion,
   visitQuestionAdhoc,
   visualize,
-  describeEE,
-  type NativeQuestionDetails,
-  openProductsTable,
-  entityPickerModal,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/lib/browser";

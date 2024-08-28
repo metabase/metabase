@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { t } from "ttag";
 
-import { Button, Flex, Icon, rem, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Tooltip, rem } from "metabase/ui";
 
 import type { Status } from "./types";
 

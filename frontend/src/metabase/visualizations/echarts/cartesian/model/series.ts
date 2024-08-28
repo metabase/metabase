@@ -4,8 +4,8 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import type { OptionsType } from "metabase/lib/formatting/types";
 import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
 import type {
-  ComboChartDataDensity,
   ChartDataset,
+  ComboChartDataDensity,
   DataKey,
   Datum,
   DimensionModel,
@@ -32,13 +32,13 @@ import type {
   RenderingContext,
 } from "metabase/visualizations/types";
 import type {
-  SingleSeries,
-  DatasetData,
-  RowValue,
-  DatasetColumn,
-  RawSeries,
   CardId,
+  DatasetColumn,
+  DatasetData,
+  RawSeries,
+  RowValue,
   SeriesSettings,
+  SingleSeries,
 } from "metabase-types/api";
 
 import {

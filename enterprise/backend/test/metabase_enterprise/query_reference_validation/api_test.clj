@@ -198,9 +198,9 @@
                {:id     card-5
                 :name   "E"
                 :errors [{:type "unknown-table", :table "T5"}]}]}
-               (-> (get!)
-                   (select-keys [:data :total])
-                   (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
+             (-> (get!)
+                 (select-keys [:data :total])
+                 (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
 
 (deftest pagination-test
   (testing "Lets you page results"
@@ -216,9 +216,9 @@
                {:id     card-2
                 :name   "B"
                 :errors [{:type "inactive-table", :table "T2"}]}]}
-               (-> (get! {:limit 2})
-                   (select-keys [:total :limit :offset :data])
-                   (with-data-keys [:id :name :errors]))))
+             (-> (get! {:limit 2})
+                 (select-keys [:total :limit :offset :data])
+                 (with-data-keys [:id :name :errors]))))
       (is (= {:total  4
               :limit  3
               :offset 2
@@ -304,3 +304,25 @@
   (mt/with-premium-features #{:query-reference-validation}
     (testing "The endpoint is unavailable for normal users"
       (is (mt/user-http-request :rasta :get 403 url)))))
+
+(deftest all-expected-keys-are-present
+  (testing "All the expected keys are present"
+    (with-test-setup!
+      (is (= (repeat 4 #{:archived
+                         :collection
+                         :collection_id
+                         :collection_position
+                         :collection_preview
+                         :creator
+                         :dataset_query
+                         :description
+                         :display
+                         :entity_id
+                         :errors
+                         :id
+                         :last_used_at
+                         :name})
+             (->> (get! {})
+                  :data
+                  (map keys)
+                  (map set)))))))

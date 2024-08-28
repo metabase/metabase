@@ -30,22 +30,22 @@ Also known as signed embedding, [static embedding](./static-embedding.md) is a s
 
 ## Public links and embeds
 
-If you'd like to share your data with the good people of the internet, you can create a [public link](../questions/sharing/public-links.md) or embed a question or dashboard directly in your website.
+If you'd like to share your data with the good people of the internet, admins can create a [public link](../questions/sharing/public-links.md) or embed a question or dashboard directly in your website.
 
-**When to use public links and embeds**: public links and embeds are good for one-off charts and dashboards. Use them when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make those stats available to everyone.
+**When to use public links and embeds**: public links and embeds are good for one-off charts and dashboards. Admins can use them when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make those stats available to everyone.
 
 ## Comparison of embedding types
 
-| Action                                                                                                   | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------- | ---------------------------------------------- |
-| Display charts and dashboards                                                                            | ✅                                         | ✅                               | ✅                                              |
-| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                         | ✅                               | ✅                                              |
-| Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed) | ❌                                         | ✅                               | ❌                                              |
-| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ✅                                         | ❌                               | ❌                                              |
-| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)                     | ✅                                         | ❌                               | ❌                                              |
-| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                         | ❌                               | ❌                                              |
-| View usage of embeds with [usage analytics](../usage-and-performance-tools/usage-analytics.md)           | ✅                                         | ❌                               | ❌                                              |
-| [Actions on dashboards](../dashboards/actions.md)                                                        | ✅                                         | ❌                               | ❌                                              |
+| Action                                                                                                                          | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
+| ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------- | ---------------------------------------------- |
+| Display charts and dashboards                                                                                                   | ✅                                        | ✅                              | ✅                                             |
+| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                                           | ✅                                        | ✅                              | ✅                                             |
+| Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed-with-locked-parameters) | ❌                                        | ✅                              | ❌                                             |
+| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                                                | ✅                                        | ❌                              | ❌                                             |
+| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)                                            | ✅                                        | ❌                              | ❌                                             |
+| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                                                 | ✅                                        | ❌                              | ❌                                             |
+| View usage of embeds with [usage analytics](../usage-and-performance-tools/usage-analytics.md)                                  | ✅                                        | ❌                              | ❌                                             |
+| [Actions on dashboards](../dashboards/actions.md)                                                                               | ✅                                        | ❌                              | ❌                                             |
 
 ## Switching from static to interactive embedding
 

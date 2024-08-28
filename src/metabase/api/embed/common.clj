@@ -3,6 +3,8 @@
    [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
+   [malli.core :as mc]
+   [malli.error :as me]
    [medley.core :as m]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -180,9 +182,7 @@
         merged-slug->value (validate-and-merge-params embedding-params token-params slug-query-params)]
     (into {} (for [[slug value] merged-slug->value
                    :when        value]
-                [(get slug->id (name slug)) value]))))
-
-
+               [(get slug->id (name slug)) value]))))
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
@@ -237,7 +237,7 @@
         dashcards      (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
-                             (if-let [value (get token-params (keyword (:slug param)))]
+                              (if-let [value (get token-params (keyword (:slug param)))]
                                 (conj acc (assoc param :value value))
                                 acc))
                             []
@@ -252,11 +252,11 @@
             dashcards))))
 
 (mu/defn- apply-slug->value :- [:maybe [:sequential
-                                                 [:map
-                                                  [:slug ms/NonBlankString]
-                                                  [:type :keyword]
-                                                  [:target :any]
-                                                  [:value :any]]]]
+                                        [:map
+                                         [:slug ms/NonBlankString]
+                                         [:type :keyword]
+                                         [:target :any]
+                                         [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
   [parameters slug->value]
@@ -490,3 +490,67 @@
                          e)]
           (log/errorf e "Chain filter error\n%s" (u/pprint-to-str (u/all-ex-data e)))
           (throw e))))))
+
+;;; -------------------------------------- Entity ID transformation functions ------------------------------------------
+
+(def ^:private api-models
+  "The models that we will service for entity-id transformations."
+  (->> (descendants :metabase/model)
+       (filter #(= (namespace %) "model"))
+       (filter (fn has-entity-id?
+                 [model] (or ;; toucan1 models
+                          (isa? model :metabase.models.interface/entity-id)
+                          ;; toucan2 models
+                          (isa? model :hook/entity-id))))
+       (map keyword)
+       set))
+
+(def ^:private api-name->model
+  "Map of model names used on the API to their corresponding model."
+  (->> api/model->db-model
+       (map (fn [[k v]] [(keyword k) (:db-model v)]))
+       (filter (fn [[_ v]] (contains? api-models v)))
+       (into {})))
+
+(def ^:private eid-api-models
+  "Sorted vec of api models that have an entity_id column"
+  (vec (sort (keys api-name->model))))
+
+(def ^:private ApiModel (into [:enum] eid-api-models))
+
+(def ^:private EntityId
+  "A Malli schema for an entity id, this is a little looser because it needs to be fast."
+  [:and {:description "entity_id"}
+   :string
+   [:fn {:error/fn (fn [{:keys [value]} _]
+                     (str "\"" value "\" should be 21 characters long, but it is " (count value)))}
+    (fn eid-length-good? [eid] (= 21 (count eid)))]])
+
+(def ^:private ModelToEntityIds
+  "A Malli schema for a map of model names to a sequence of entity ids."
+  (mc/schema [:map-of ApiModel [:sequential EntityId]]))
+
+(mu/defn- entity-ids->id-for-model
+  "Given a model and a sequence of entity ids on that model, return a pairs of entity-id, id."
+  [api-name eids]
+  (let [model (api-name->model api-name) ;; This lookup is safe because we've already validated the api-names
+        eid->id (into {} (t2/select-fn->fn :entity_id :id [model :id :entity_id] :entity_id [:in eids]))]
+    (mapv (fn [entity-id]
+            [entity-id (if-let [id (get eid->id entity-id)]
+                         {:id id :type api-name}
+                         {:type api-name :status "not-found"})])
+          eids)))
+
+(defn model->entity-ids->ids
+  "Given a map of model names to a sequence of entity-ids for each, return a map from entity-id -> id."
+  [model-key->entity-ids]
+  (when-not (mc/validate ModelToEntityIds model-key->entity-ids)
+    (throw (ex-info "Invalid format." {:explanation (me/humanize
+                                                     (me/with-spell-checking
+                                                       (mc/explain ModelToEntityIds model-key->entity-ids)))
+                                       :allowed-models (sort (keys api-name->model))
+                                       :status-code 400})))
+  (into {}
+        (mapcat
+         (fn [[model eids]] (entity-ids->id-for-model model eids))
+         model-key->entity-ids)))

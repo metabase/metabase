@@ -66,19 +66,19 @@
 
 (deftest ^:synchronized auth-dbms-version-test
   (mt/test-driver
-   :druid
-   (testing "`dbms-version` uses auth parameters (#41579)"
-     (tqpt/with-flattened-dbdef
-       (let [get-args (volatile! nil)
-             db-with-auth-details (update (mt/db) :details assoc
-                                          :auth-enabled     true
-                                          :auth-username    "admin"
-                                          :auth-token-value "password1")]
+    :druid
+    (testing "`dbms-version` uses auth parameters (#41579)"
+      (tqpt/with-flattened-dbdef
+        (let [get-args (volatile! nil)
+              db-with-auth-details (update (mt/db) :details assoc
+                                           :auth-enabled     true
+                                           :auth-username    "admin"
+                                           :auth-token-value "password1")]
          ;; Following ensures that auth parameters are passed to GET during version sync if present.
-         (with-redefs [secret/value->string (constantly "password1")
-                       druid.client/GET (fn [_url & params] (vreset! get-args (apply hash-map params)) nil)]
+          (with-redefs [secret/value->string (constantly "password1")
+                        druid.client/GET (fn [_url & params] (vreset! get-args (apply hash-map params)) nil)]
            ;; Just fill in the params with internally modified `dbms-version`.
-           (druid.sync/dbms-version db-with-auth-details)
-           (is (= true        (:auth-enabled     @get-args)))
-           (is (= "admin"     (:auth-username    @get-args)))
-           (is (= "password1" (:auth-token-value @get-args)))))))))
+            (druid.sync/dbms-version db-with-auth-details)
+            (is (= true        (:auth-enabled     @get-args)))
+            (is (= "admin"     (:auth-username    @get-args)))
+            (is (= "password1" (:auth-token-value @get-args)))))))))

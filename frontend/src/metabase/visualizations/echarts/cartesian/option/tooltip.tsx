@@ -5,7 +5,7 @@ import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { getTooltipModel } from "metabase/visualizations/visualizations/CartesianChart/events";
 
-import { TOOLTIP_BASE_OPTION } from "../../tooltip";
+import { getTooltipBaseOption } from "../../tooltip";
 import {
   GOAL_LINE_SERIES_ID,
   TIMELINE_EVENT_SERIES_ID,
@@ -46,10 +46,11 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
+  containerRef: React.RefObject<HTMLDivElement>,
 ): TooltipOption => {
   return {
+    ...getTooltipBaseOption(containerRef),
     trigger: "item",
-    ...TOOLTIP_BASE_OPTION,
     formatter: params => {
       if (Array.isArray(params)) {
         return "";

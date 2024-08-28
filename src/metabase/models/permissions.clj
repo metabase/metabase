@@ -201,7 +201,6 @@
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
   false)
 
-
 ;;; --------------------------------------------------- Assertions ---------------------------------------------------
 
 (defn- assert-not-admin-group
@@ -210,7 +209,7 @@
   (when (and (= group_id (:id (perms-group/admin)))
              (not *allow-admin-permissions-changes*))
     (throw (ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
-             {:status-code 400}))))
+                    {:status-code 400}))))
 
 (defn- assert-valid-object
   "Check to make sure the value of `:object` for `permissions` entry is valid."
@@ -220,7 +219,7 @@
              (or (not= object "/")
                  (not *allow-root-entries*)))
     (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
-             {:status-code 400, :path object}))))
+                    {:status-code 400, :path object}))))
 
 (defn- assert-valid
   "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
@@ -229,7 +228,6 @@
   (doseq [f [assert-not-admin-group
              assert-valid-object]]
     (f permissions)))
-
 
 ;;; ------------------------------------------------- Path Util Fns --------------------------------------------------
 
@@ -249,7 +247,6 @@
   "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
-
 
 (mu/defn application-perms-path :- perms.u/PathSchema
   "Returns the permissions path for *full* access a application permission."
@@ -335,7 +332,6 @@
   [instance read-or-write]
   (perms-objects-set-for-parent-collection instance read-or-write))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               ENTITY + LIFECYCLE                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -349,11 +345,26 @@
 
 (derive :model/Permissions :metabase/model)
 
+(defn- maybe-break-out-permission-data
+  "Given a `Permissions` model, add `:collection_id`, `:perm_type`, and `:perm_value` iff we know how to break that out."
+  [permissions]
+  (let [[match? coll-id-str read?] (re-matches #"^/collection/(\d+)/(read/)?" (:object permissions))]
+    (cond-> permissions
+      match? (assoc :collection_id (parse-long coll-id-str)
+                    :perm_type :perms/collection-access
+                    :perm_value (if read?
+                                  :read
+                                  :read-and-write)))))
+
 (t2/define-before-insert :model/Permissions
   [permissions]
-  (u/prog1 permissions
+  (u/prog1 (maybe-break-out-permission-data permissions)
     (assert-valid permissions)
     (log/debug (u/format-color :green "Granting permissions for group %s: %s" (:group_id permissions) (:object permissions)))))
+
+(t2/deftransforms :model/Permissions
+  {:perm_type mi/transform-keyword
+   :perm_value mi/transform-keyword})
 
 (t2/define-before-update :model/Permissions
   [_]
@@ -363,7 +374,6 @@
   [permissions]
   (log/debug (u/format-color :red "Revoking permissions for group %s: %s" (:group_id permissions) (:object permissions)))
   (assert-not-admin-group permissions))
-
 
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
@@ -393,7 +403,6 @@
 
   NOTE: This function is meant for internal usage in this namespace only; use one of the other functions like
   `revoke-data-perms!` elsewhere instead of calling this directly."
-  {:style/indent 2}
   [group-or-id :- [:or :map ms/PositiveInt] path :- perms.u/PathSchema & other-conditions]
   (let [paths (conj (perms.u/->v2-path path) path)
         where {:where (apply list

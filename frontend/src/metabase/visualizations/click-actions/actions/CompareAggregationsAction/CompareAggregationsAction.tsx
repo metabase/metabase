@@ -4,8 +4,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
-  canAddTemporalCompareAggregation,
   CompareAggregations,
+  canAddTemporalCompareAggregation,
 } from "metabase/query_builder/components/CompareAggregations";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";

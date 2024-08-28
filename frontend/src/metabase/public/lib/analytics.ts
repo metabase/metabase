@@ -1,11 +1,11 @@
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { trackSchemaEvent } from "metabase/lib/analytics";
+import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 
 import type {
-  EmbeddingDisplayOptions,
   DisplayTheme,
   EmbedResource,
   EmbedResourceType,
+  EmbeddingDisplayOptions,
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";

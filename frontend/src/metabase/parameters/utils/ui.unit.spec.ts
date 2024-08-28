@@ -1,10 +1,10 @@
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 
 import {
-  getParameterIconName,
   buildHiddenParametersSlugSet,
-  getVisibleParameters,
+  getParameterIconName,
   getParameterWidgetTitle,
+  getVisibleParameters,
 } from "./ui";
 
 describe("parameters/utils/ui", () => {

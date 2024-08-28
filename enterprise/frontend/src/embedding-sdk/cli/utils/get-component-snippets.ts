@@ -1,8 +1,8 @@
 import {
+  ANALYTICS_PAGE_SNIPPET,
+  THEME_SWITCHER_SNIPPET,
   getAnalyticsDashboardSnippet,
   getMetabaseProviderSnippet,
-  THEME_SWITCHER_SNIPPET,
-  ANALYTICS_PAGE_SNIPPET,
 } from "../snippets";
 import type { DashboardInfo } from "../types/dashboard";
 

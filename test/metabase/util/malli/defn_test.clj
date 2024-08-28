@@ -29,7 +29,6 @@
     (str "Inputs: [x :- [:map [:x int?] [:y int?]]]\n"
          "  Return: :any")
 
-
     '(bar
       :- :int
       ([x :- :int]
@@ -61,7 +60,6 @@
     (is (= "Inputs: []\n  Return: [:map [:x int?] [:y int?]]"
            (:doc (meta #'baz))))))
 
-
 (mu/defn- boo :- :int "something very important to remember goes here" [_x])
 
 (mu/defn qux-1 [])
@@ -72,12 +70,12 @@
 (mu/defn qux-6 :- :int "Original docstring." [x :- :int] x)
 
 (mu/defn- foo :- [:multi {:dispatch :type}
-                           [:sized [:map [:type [:= :sized]]
-                                    [:size int?]]]
-                           [:human [:map
-                                    [:type [:= :human]]
-                                    [:name string?]
-                                    [:address [:map [:street string?]]]]]]
+                  [:sized [:map [:type [:= :sized]]
+                           [:size int?]]]
+                  [:human [:map
+                           [:type [:= :human]]
+                           [:name string?]
+                           [:address [:map [:street string?]]]]]]
   ([] {:type :sized :size 3})
   ([a :- :int] {:type :sized :size a})
   ([a :- :int b :- :int] {:type :sized :size (+ a b)})
@@ -93,7 +91,7 @@
     (is (= "Inputs: []\n  Return: :any"
            (:doc (meta #'qux-1))))
     (is (= (str/join "\n"
-                     [  "Inputs: []"
+                     ["Inputs: []"
                       "  Return: :any"
                       "          "
                       ""
@@ -104,7 +102,7 @@
     (is (= "Inputs: [x :- :int]\n  Return: :any"
            (:doc (meta #'qux-3))))
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     ["Inputs: [x :- :int]"
                       "  Return: :any"
                       "          "
                       ""
@@ -115,7 +113,7 @@
     (is (= "Inputs: []\n  Return: :int"
            (:doc (meta #'qux-5))))
     (is (= (str/join "\n"
-                     [  "Inputs: [x :- :int]"
+                     ["Inputs: [x :- :int]"
                       "  Return: :int"
                       "          "
                       ""
@@ -125,7 +123,7 @@
   (testing "multi-arity, and varargs doc strings should work"
     (is (= (str/join "\n"
                      ;;v---doc inserts 2 spaces here, it's not misaligned!
-                     [  "Inputs: ([]"
+                     ["Inputs: ([]"
                       "           [a :- :int]"
                       "           [a :- :int b :- :int]"
                       "           [a b & c :- [:* :int]])"
@@ -187,14 +185,13 @@
           (is (= '(def f
                     "Inputs: []\n  Return: :int"
                     (clojure.core/let
-                        [&f (clojure.core/fn f [] "foo")]
+                     [&f (clojure.core/fn f [] "foo")]
                       (clojure.core/fn
                         ([]
                          (try
                            (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
                            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
                  (deanon-fn-names expansion))))))))
-
 
 (mu/defn- ^:extra-metadata private-foo :- :int
   [x :- :int]

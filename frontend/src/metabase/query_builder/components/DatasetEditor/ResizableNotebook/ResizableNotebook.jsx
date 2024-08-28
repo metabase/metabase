@@ -5,8 +5,8 @@ import { ResizableBox } from "react-resizable";
 
 import CS from "metabase/css/core/index.css";
 import { darken } from "metabase/lib/colors";
-import Notebook from "metabase/query_builder/components/notebook/Notebook";
-import { rem, Flex, Box } from "metabase/ui";
+import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { Box, Flex, rem } from "metabase/ui";
 
 const propTypes = {
   isResizing: PropTypes.bool.isRequired,

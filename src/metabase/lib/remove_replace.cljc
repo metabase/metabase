@@ -58,23 +58,72 @@
   [query stage-number target-clause new-options]
   (if-let [order-by-idx (find-matching-order-by-index query stage-number target-clause)]
     (lib.util/update-query-stage
-      query stage-number
-      update-in [:order-by order-by-idx 2 1]
-      (comp #(m/remove-vals nil? %) merge)
-      new-options)
+     query stage-number
+     update-in [:order-by order-by-idx 2 1]
+     (comp #(m/remove-vals nil? %) merge)
+     new-options)
     query))
 
 (defn- remove-breakout-order-by
   [query stage-number target-clause]
   (if-let [order-by-idx (find-matching-order-by-index query stage-number target-clause)]
     (lib.util/update-query-stage
-      query
-      stage-number
-      lib.util/remove-clause
-      [:order-by]
-      (get-in (lib.util/query-stage query stage-number) [:order-by order-by-idx])
-      stage-number)
+     query
+     stage-number
+     lib.util/remove-clause
+     [:order-by]
+     (get-in (lib.util/query-stage query stage-number) [:order-by order-by-idx])
+     stage-number)
     query))
+
+(defn- update-stale-references-in-stage
+  "Fix stale references in `stage-number` stage of `query-modfied`. `stage-number` should not be 0."
+  [query-modified stage-number query-original]
+  (let [old-previous-stage-columns (lib.metadata.calculation/returned-columns query-original (dec stage-number))
+        new-previous-stage-columns (lib.metadata.calculation/returned-columns query-modified (dec stage-number))
+        source-uuid->new-column (m/index-by :lib/source-uuid new-previous-stage-columns)]
+    (lib.util/update-query-stage
+     query-modified stage-number
+     #(lib.util.match/replace
+        %
+        #{:field}
+        (let [old-matching-column (lib.equality/find-matching-column &match old-previous-stage-columns)
+              source-uuid (:lib/source-uuid old-matching-column)
+              new-column  (source-uuid->new-column source-uuid)
+              new-name    ((some-fn :lib/desired-column-alias :name) new-column)]
+          (assoc &match 2 new-name))))))
+
+(defn- update-stale-references
+  "Update stale refs in query after clause removal.
+
+  ## Gist
+  For stages that follow `previous-stage-number` match existing on-stage refs to new visible columns, generated for
+  the modified query. Swap these refs with fresh refs created using new visible columns, but use the original column
+  options.
+
+  ## Problem
+
+  Let's have a query with 2 `:sum` aggregations in stage 0, and custom expressions based on these aggregations
+  in stage 1.
+
+  These aggregation columns have same `:name`. Field refs, intended for use in stage 1, generated out of those
+  columns, are then identified by `:lib/desired-column-alias`. Stage 1 will be using ref
+  `[:field <opts> \"sum_2\"]` for the second aggregation.
+
+  Removing the first from the stage 0, will remove clauses refeencing it in further stages. So far so good.
+
+  But removal only is not sufficient -- _with the first aggregation `[:field <opts> \"sum\"]` removed
+  the `[:field <opts> \"sum_2\"]` reference became stale_, because stage 0 has now no _returned column_ with
+  desired alias \"sum_2\"."
+  [query-with-modified-refs previous-stage-number unmodified-query-for-stage]
+  (if-let [this-stage-number (lib.util/next-stage-number query-with-modified-refs
+                                                         previous-stage-number)]
+    (recur (update-stale-references-in-stage query-with-modified-refs
+                                             this-stage-number
+                                             unmodified-query-for-stage)
+           this-stage-number
+           unmodified-query-for-stage)
+    query-with-modified-refs))
 
 (defn- remove-replace-location
   [query stage-number unmodified-query-for-stage location target-clause remove-replace-fn]
@@ -86,29 +135,32 @@
         [:expressions]
         (-> result
             (remove-local-references
-              stage-number
-              unmodified-query-for-stage
-              :expression
-              {}
-              (lib.util/expression-name target-clause))
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
+             stage-number
+             unmodified-query-for-stage
+             :expression
+             {}
+             (lib.util/expression-name target-clause))
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
         [:aggregation]
         (-> result
             (remove-local-references
-              stage-number
-              unmodified-query-for-stage
-              :aggregation
-              {}
-              target-uuid)
-            (remove-stage-references stage-number unmodified-query-for-stage target-uuid))
+             stage-number
+             unmodified-query-for-stage
+             :aggregation
+             {}
+             target-uuid)
+            (remove-stage-references stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
         #_{:clj-kondo/ignore [:invalid-arity]}
         (:or
-          [:breakout]
-          [:fields]
-          [:joins _ :fields])
-        (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+         [:breakout]
+         [:fields]
+         [:joins _ :fields])
+        (-> (remove-stage-references result stage-number unmodified-query-for-stage target-uuid)
+            (update-stale-references stage-number unmodified-query-for-stage))
 
         _
         result)
@@ -130,19 +182,19 @@
         dead-joins (volatile! (transient []))]
     (as-> query q
       (reduce
-        (fn [query [location target-clause]]
-          (remove-replace-location
-            query stage-number unmodified-query-for-stage location target-clause
-            #(try (lib.util/remove-clause %1 %2 %3 stage-number)
-                  (catch #?(:clj Exception :cljs js/Error) e
-                    (let [{:keys [error join]} (ex-data e)]
-                      (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
+       (fn [query [location target-clause]]
+         (remove-replace-location
+          query stage-number unmodified-query-for-stage location target-clause
+          #(try (lib.util/remove-clause %1 %2 %3 stage-number)
+                (catch #?(:clj Exception :cljs js/Error) e
+                  (let [{:keys [error join]} (ex-data e)]
+                    (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
                         ;; Return the stage unchanged, but keep track of the dead joins.
-                        (do (vswap! dead-joins conj! join)
-                            %1)
-                        (throw e)))))))
-        q
-        to-remove)
+                      (do (vswap! dead-joins conj! join)
+                          %1)
+                      (throw e)))))))
+       q
+       to-remove)
       (reduce #(remove-join %1 stage-number %2) q (persistent! @dead-joins)))))
 
 (defn- remove-stage-references
@@ -163,12 +215,12 @@
   [query stage-number target-clause]
   (let [stage (lib.util/query-stage query stage-number)]
     (m/find-first
-      (fn [possible-location]
-        (when-let [clauses (get-in stage possible-location)]
-          (let [target-uuid (lib.options/uuid target-clause)]
-            (when (some (comp #{target-uuid} :lib/uuid second) clauses)
-              possible-location))))
-      (stage-paths query stage-number))))
+     (fn [possible-location]
+       (when-let [clauses (get-in stage possible-location)]
+         (let [target-uuid (lib.options/uuid target-clause)]
+           (when (some (comp #{target-uuid} :lib/uuid second) clauses)
+             possible-location))))
+     (stage-paths query stage-number))))
 
 (defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
   (mu/disable-enforcement
@@ -350,13 +402,13 @@
    and we ignore effective-type since `tweak-expression` above may have already added it, and in this case it will be irrelevant."
   [new-join-alias new-join-conditions join-alias-b join-conditions-b]
   (let [a-conds (lib.util.match/replace
-                 new-join-conditions
+                  new-join-conditions
                   (_ :guard (every-pred map? (comp #{new-join-alias} :join-alias)))
                   (dissoc &match :join-alias :effective-type)
                   (_ :guard (every-pred map? :effective-type))
                   (dissoc &match :effective-type))
         b-conds (lib.util.match/replace
-                 join-conditions-b
+                  join-conditions-b
                   (_ :guard (every-pred map? (comp #{join-alias-b} :join-alias)))
                   (dissoc &match :join-alias :effective-type)
                   (_ :guard (every-pred map? :effective-type))
@@ -487,27 +539,27 @@
 (defn- remove-matching-missing-columns
   [query-after query-before stage-number match-spec]
   (let [removed-cols (set/difference
-                       (set (lib.metadata.calculation/visible-columns query-before stage-number (lib.util/query-stage query-before stage-number)))
-                       (set (lib.metadata.calculation/visible-columns query-after stage-number (lib.util/query-stage query-after stage-number))))]
+                      (set (lib.metadata.calculation/visible-columns query-before stage-number (lib.util/query-stage query-before stage-number)))
+                      (set (lib.metadata.calculation/visible-columns query-after stage-number (lib.util/query-stage query-after stage-number))))]
     (reduce
-      #(apply remove-local-references %1 stage-number query-after (match-spec %2))
-      query-after
-      removed-cols)))
+     #(apply remove-local-references %1 stage-number query-after (match-spec %2))
+     query-after
+     removed-cols)))
 
 (defn- remove-invalidated-refs
   [query-after query-before stage-number]
   (let [query-without-local-refs (remove-matching-missing-columns
-                                   query-after
-                                   query-before
-                                   stage-number
-                                   (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
+                                  query-after
+                                  query-before
+                                  stage-number
+                                  (fn [column] [:field {:join-alias (::lib.join/join-alias column)} (:id column)]))]
     ;; Because joins can use :all or :none, we cannot just use `remove-local-references` we have to manually look at the next stage as well
     (if-let [stage-number (lib.util/next-stage-number query-without-local-refs stage-number)]
       (remove-matching-missing-columns
-        query-without-local-refs
-        query-before
-        stage-number
-        (fn [column] [:field {} (:lib/desired-column-alias column)]))
+       query-without-local-refs
+       query-before
+       stage-number
+       (fn [column] [:field {} (:lib/desired-column-alias column)]))
       query-without-local-refs)))
 
 (defn- join-spec->alias
@@ -594,14 +646,14 @@
      (update-joins query stage-number join-spec (fn [joins join-alias]
                                                   (mapv #(if (= (:alias %) join-alias)
                                                            (let [should-rename? (or (conditions-changed-for-aliases?
-                                                                                      (:alias new-join)
-                                                                                      (:conditions new-join)
-                                                                                      (:alias %)
-                                                                                      (:conditions %))
-                                                                                  (not= (:source-table new-join)
-                                                                                        (:source-table %))
-                                                                                  (not= (:source-card new-join)
-                                                                                        (:source-card %)))]
+                                                                                     (:alias new-join)
+                                                                                     (:conditions new-join)
+                                                                                     (:alias %)
+                                                                                     (:conditions %))
+                                                                                    (not= (:source-table new-join)
+                                                                                          (:source-table %))
+                                                                                    (not= (:source-card new-join)
+                                                                                          (:source-card %)))]
                                                              (cond-> new-join
                                                                should-rename?
                                                                ;; We need to remove so the default alias is used
@@ -631,8 +683,8 @@
     (assoc join :fields :all)
 
     (lib.equality/matching-column-sets?
-      query stage-number (:fields join)
-      (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
+     query stage-number (:fields join)
+     (lib.metadata.calculation/returned-columns query stage-number (assoc join :fields :all)))
     (assoc join :fields :all)
 
     :else join))

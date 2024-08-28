@@ -6,8 +6,8 @@ import {
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import {
-  isTableEntityId,
   isSchemaEntityId,
+  isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getEntityPermission,

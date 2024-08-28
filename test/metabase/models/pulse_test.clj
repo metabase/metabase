@@ -10,14 +10,11 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
-   [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.test.mock.util :refer [pulse-channel-defaults]]
    [metabase.util :as u]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,10 +38,10 @@
 (defn- create-pulse-then-select!
   [pulse-name creator cards channels skip-if-empty? & [dashboard-id]]
   (-> (pulse/create-pulse! cards channels
-        {:name          pulse-name
-         :creator_id    (u/the-id creator)
-         :skip_if_empty skip-if-empty?
-         :dashboard_id dashboard-id})
+                           {:name          pulse-name
+                            :creator_id    (u/the-id creator)
+                            :skip_if_empty skip-if-empty?
+                            :dashboard_id dashboard-id})
       remove-uneeded-pulse-keys))
 
 (defn- update-pulse-then-select!
@@ -310,13 +307,13 @@
 
 (deftest dashboard-subscription-update-test
   (testing "collection_id and dashboard_id of a dashboard subscription cannot be directly modified"
-      (mt/with-temp [Collection {collection-id :id} {}
-                     Dashboard  {dashboard-id :id} {}
-                     Pulse      {pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]
-        (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
-              (t2/update! Pulse pulse-id {:collection_id (inc collection-id)})))
-        (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
-              (t2/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
+    (mt/with-temp [Collection {collection-id :id} {}
+                   Dashboard  {dashboard-id :id} {}
+                   Pulse      {pulse-id :id} {:dashboard_id dashboard-id :collection_id collection-id}]
+      (is (thrown-with-msg? Exception #"collection ID of a dashboard subscription cannot be directly modified"
+                            (t2/update! Pulse pulse-id {:collection_id (inc collection-id)})))
+      (is (thrown-with-msg? Exception #"dashboard ID of a dashboard subscription cannot be modified"
+                            (t2/update! Pulse pulse-id {:dashboard_id (inc dashboard-id)}))))))
 
 (deftest no-archived-cards-test
   (testing "make sure fetching a Pulse doesn't return any archived cards"
@@ -505,8 +502,8 @@
     (mt/with-current-user (mt/user->id :rasta)
       (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
         (testing "A non-admin has read and write access to a subscription they created"
-            (is (mi/can-read? subscription))
-            (is (mi/can-write? subscription)))
+          (is (mi/can-read? subscription))
+          (is (mi/can-write? subscription)))
 
         (testing "A non-admin has read-only access to a subscription they are a recipient of"
           ;; Create a new Dashboard Subscription with an admin creator but non-admin recipient
@@ -519,18 +516,9 @@
             (is (mi/can-read? subscription))
             (is (not (mi/can-write? subscription)))))
 
-       (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
-         (mt/with-temp [Pulse subscription {:collection_id (u/the-id collection)
-                                            :dashboard_id  (u/the-id dashboard)
-                                            :creator_id    (mt/user->id :crowberto)}]
+        (testing "A non-admin doesn't have read or write access to a subscription they aren't a creator or recipient of"
+          (mt/with-temp [Pulse subscription {:collection_id (u/the-id collection)
+                                             :dashboard_id  (u/the-id dashboard)
+                                             :creator_id    (mt/user->id :crowberto)}]
             (is (not (mi/can-read? subscription)))
             (is (not (mi/can-write? subscription)))))))))
-
-(deftest identity-hash-test
-  (testing "Pulse hashes are composed of the name and the collection hash"
-    (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-      (mt/with-temp [Collection  coll  {:name "field-db" :location "/" :created_at now}
-                     Pulse       pulse {:name "my pulse" :collection_id (:id coll) :created_at now}]
-        (is (= "82553101"
-               (serdes/raw-hash ["my pulse" (serdes/identity-hash coll) now])
-               (serdes/identity-hash pulse)))))))

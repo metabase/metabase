@@ -15,12 +15,12 @@ import * as metadataActions from "metabase/redux/metadata";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
-  getSegmentRevisions,
+  getError,
+  getLoading,
   getSegment,
+  getSegmentRevisions,
   getTables,
   getUser,
-  getLoading,
-  getError,
 } from "../selectors";
 
 const emptyStateData = {

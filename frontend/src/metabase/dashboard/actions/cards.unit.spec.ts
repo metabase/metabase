@@ -3,10 +3,10 @@ import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
 import {
-  setupCardsEndpoints,
   setupCardQueryEndpoints,
-  setupDatabasesEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCardsEndpoints,
+  setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { Api } from "metabase/api";
 import { mainReducers } from "metabase/reducers-main";
@@ -18,23 +18,23 @@ import type {
   DashboardTabId,
 } from "metabase-types/api";
 import {
+  createMockCard,
+  createMockCardQueryMetadata,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardTab,
   createMockDataset,
-  createMockCard,
   createMockHeadingDashboardCard,
   createMockLinkDashboardCard,
-  createMockTextDashboardCard,
   createMockParameter,
-  createMockStructuredDatasetQuery,
   createMockPlaceholderDashboardCard,
-  createMockCardQueryMetadata,
+  createMockStructuredDatasetQuery,
+  createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
 import {
-  createSampleDatabase,
   ORDERS,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 import type { State, StoreDashcard } from "metabase-types/store";
 import {
@@ -44,7 +44,7 @@ import {
 
 import type { SectionLayout } from "../sections";
 import { layoutOptions } from "../sections";
-import { getDashboardById, getDashCardById, getDashcards } from "../selectors";
+import { getDashCardById, getDashboardById, getDashcards } from "../selectors";
 
 import type { AddCardToDashboardOpts } from "./cards-typed";
 import {

@@ -1,8 +1,8 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story, StoryContext } from "@storybook/react";
-import { within, userEvent } from "@storybook/testing-library";
-import { useEffect, type ComponentProps } from "react";
+import { userEvent, within } from "@storybook/testing-library";
+import { type ComponentProps, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
@@ -372,7 +372,7 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       [
         createMockParameter({
           id: UNIT_OF_TIME_FILTER_ID,
-          name: "Unit of Time",
+          name: "Time grouping",
           sectionId: "temporal-unit",
           slug: "unit_of_time",
           type: "temporal-unit",
@@ -828,7 +828,7 @@ LightThemeUnitOfTime.args = createDefaultArgs({
 LightThemeUnitOfTime.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", {
-    name: "Unit of Time",
+    name: "Time grouping",
   });
   await userEvent.click(filter);
 

@@ -15,8 +15,8 @@ import {
 import {
   ExploreResultsLink,
   FilterHeaderButton,
-  QuestionFiltersHeaderToggle,
   QuestionActions,
+  QuestionFiltersHeaderToggle,
   QuestionNotebookButton,
   QuestionSummarizeWidget,
   ToggleNativeQueryPreview,
@@ -24,6 +24,7 @@ import {
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -131,10 +132,16 @@ export function ViewTitleHeaderRightSide({
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
-  const getRunButtonLabel = useCallback(
-    () => (isRunning ? t`Cancel` : t`Refresh`),
-    [isRunning],
-  );
+  const cacheStrategyType = result?.json_query?.["cache-strategy"]?.type;
+  const getRunButtonLabel = useCallback(() => {
+    if (isRunning) {
+      return t`Cancel`;
+    }
+    if ([undefined, "nocache"].includes(cacheStrategyType)) {
+      return `Refresh`;
+    }
+    return t`Clear cache and refresh`;
+  }, [isRunning, cacheStrategyType]);
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
@@ -211,6 +218,7 @@ export function ViewTitleHeaderRightSide({
           />
         </ViewHeaderIconButtonContainer>
       )}
+      {!isShowingNotebook && <QuestionSharingMenu question={question} />}
       {isSaved && (
         <QuestionActions
           question={question}

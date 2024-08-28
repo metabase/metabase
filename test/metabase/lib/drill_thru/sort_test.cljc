@@ -1,5 +1,6 @@
 (ns metabase.lib.drill-thru.sort-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.convert :as lib.convert]
@@ -9,19 +10,18 @@
    [metabase.lib.drill-thru.test-util.canned :as canned]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.util.malli :as mu]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util.malli :as mu]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel sort-drill-availability-test
   (testing "sort is available on column headers only"
     (canned/canned-test
-      :drill-thru/sort
-      (fn [test-case context {:keys [click]}]
-        (and (= click :header)
-             (not (:native? test-case))
-             (not (lib.types.isa/structured? (:column context))))))))
+     :drill-thru/sort
+     (fn [test-case context {:keys [click]}]
+       (and (= click :header)
+            (not (:native? test-case))
+            (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel sort-e2e-test
   (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))

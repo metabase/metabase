@@ -30,9 +30,9 @@ import {
   Tooltip,
 } from "metabase/ui";
 import type {
-  CacheableModel,
   CacheStrategy,
   CacheStrategyType,
+  CacheableModel,
   ScheduleSettings,
   ScheduleStrategy,
 } from "metabase-types/api";
@@ -41,11 +41,12 @@ import { CacheDurationUnit } from "metabase-types/api";
 import { strategyValidationSchema } from "../constants/complex";
 import { rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
+import { isModelWithClearableCache } from "../types";
 import {
-  getLabelString,
   cronToScheduleSettings,
-  scheduleSettingsToCron,
+  getLabelString,
   getStrategyValidationSchema,
+  scheduleSettingsToCron,
 } from "../utils";
 
 import {
@@ -276,10 +277,6 @@ const FormButtons = ({
 }: FormButtonsProps) => {
   const { dirty } = useFormikContext<CacheStrategy>();
 
-  if (targetId === rootId) {
-    shouldAllowInvalidation = false;
-  }
-
   const { isFormPending, wasFormRecentlyPending } = useIsFormPending();
 
   const isSavingPossible = dirty || isFormPending || wasFormRecentlyPending;
@@ -297,7 +294,12 @@ const FormButtons = ({
     );
   }
 
-  if (shouldAllowInvalidation && targetId && targetName) {
+  if (
+    shouldAllowInvalidation &&
+    isModelWithClearableCache(targetModel) &&
+    targetId &&
+    targetName
+  ) {
     return (
       <FormButtonsGroup isInSidebar={isInSidebar}>
         <PLUGIN_CACHING.InvalidateNowButton

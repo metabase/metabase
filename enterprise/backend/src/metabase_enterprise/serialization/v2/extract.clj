@@ -49,10 +49,10 @@
   Does not export ee-only analytics collections."
   [user-id]
   (let [roots (t2/select Collection {:where [:and [:= :location "/"]
-                                                  [:or [:= :personal_owner_id nil]
-                                                       [:= :personal_owner_id user-id]]
-                                                  [:or [:= :namespace nil]
-                                                       [:!= :namespace "analytics"]]]})]
+                                             [:or [:= :personal_owner_id nil]
+                                              [:= :personal_owner_id user-id]]
+                                             [:or [:= :namespace nil]
+                                              [:!= :namespace "analytics"]]]})]
     ;; start with the special "nil" root collection ID
     (-> #{nil}
         (into (map :id) roots)
@@ -179,8 +179,7 @@ Eg. if Dashboard B includes a Card A that is derived from a
                             (select-keys models)
                             (update-vals #(set (map second %))))
             extract-ids (fn [[model ids]]
-                          (eduction (map #(serdes/log-and-extract-one model opts %))
-                                    (t2/reducible-select (symbol model) :id [:in ids])))]
+                          (serdes/extract-all model (merge opts {:where [:in :id ids]})))]
         (eduction cat
                   [(eduction (map extract-ids) cat by-model)
                    ;; extract all non-content entities like data model and settings if necessary

@@ -53,7 +53,6 @@
     (is (= "ne" (test-string-extract [:substring [:field (data/id :venues :name) nil]
                                       [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
 
-
 (deftest ^:parallel test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
@@ -96,23 +95,23 @@
 
 (deftest ^:parallel regex-match-first-escaping-test
   (mt/test-drivers
-      (mt/normal-drivers-with-feature :expressions :regex)
-      (is (= "Taylor's" (test-string-extract
-                         [:regex-match-first [:field (data/id :venues :name) nil] "^Taylor's"]
-                         [:= [:field (data/id :venues :name) nil] "Taylor's Prime Steak House"])))))
+    (mt/normal-drivers-with-feature :expressions :regex)
+    (is (= "Taylor's" (test-string-extract
+                       [:regex-match-first [:field (data/id :venues :name) nil] "^Taylor's"]
+                       [:= [:field (data/id :venues :name) nil] "Taylor's Prime Steak House"])))))
 
 (deftest ^:parallel regex-extract-in-explict-join-test
   (testing "Should be able to use regex extra in an explict join (#17790)"
     (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex :left-join)
       (mt/dataset test-data
         (let [query (mt/mbql-query orders
-                                   {:joins       [{:source-table $$products
-                                                   :alias        "Products"
-                                                   :condition    [:= $product_id &Products.products.id]
-                                                   :fields       :all}]
-                                    :expressions {:regex [:regex-match-first &Products.products.category ".*"]}
-                                    :order-by    [[:asc $id]]
-                                    :limit       2})]
+                      {:joins       [{:source-table $$products
+                                      :alias        "Products"
+                                      :condition    [:= $product_id &Products.products.id]
+                                      :fields       :all}]
+                       :expressions {:regex [:regex-match-first &Products.products.category ".*"]}
+                       :order-by    [[:asc $id]]
+                       :limit       2})]
           (mt/with-native-query-testing-context query
             (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                      "Widget"
@@ -120,7 +119,8 @@
                     [2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3
                      "Gizmo"
                      123 "3621077291879" "Mediocre Wooden Bench" "Gizmo" "Flatley-Kunde" 73.95 2.0 "2017-11-16T13:53:14.232Z"]]
-                   (mt/formatted-rows [int int int 2.0 2.0 2.0 int str int
-                                       str
-                                       int str str str str 2.0 2.0 str]
-                                      (qp/process-query query))))))))))
+                   (mt/formatted-rows
+                    [int int int 2.0 2.0 2.0 int str int
+                     str
+                     int str str str str 2.0 2.0 str]
+                    (qp/process-query query))))))))))
