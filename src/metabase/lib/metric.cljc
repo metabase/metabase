@@ -129,12 +129,18 @@
                       (map maybe-add-aggregation-pos))
                 (sort-by (some-fn :display-name :name) metrics))))))))
 
+(defn- normalize-legacy-query
+  [query]
+  (cond-> query
+    (#{:query :native} (lib.util/normalized-query-type query))
+    mbql.normalize/normalize))
+
 (defmethod lib.metadata.calculation/metadata-method :metric
   [query stage-number [_ _ metric-id]]
   (let [metric-meta (lib.metadata/metric query metric-id)
         metric-aggregation (some-> metric-meta
                                    :dataset-query
-                                   mbql.normalize/normalize
+                                   normalize-legacy-query
                                    lib.convert/->pMBQL
                                    lib.aggregation/aggregations
                                    first)
