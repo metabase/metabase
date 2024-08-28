@@ -2,6 +2,7 @@ import type { AccountEvent } from "./account";
 import type { ActionEvent } from "./action";
 import type { BrowseDataEvent } from "./browse_data";
 import type { CleanupEvent } from "./cleanup";
+import type { CsvUploadEvent } from "./csv-upload";
 import type { DashboardEvent } from "./dashboard";
 import type { DatabaseEvent } from "./database";
 import type { DownloadsEvent } from "./downloads";
@@ -26,6 +27,7 @@ export type SchemaEventMap = {
   action: ActionEvent;
   browse_data: BrowseDataEvent;
   cleanup: CleanupEvent;
+  csvupload: CsvUploadEvent;
   dashboard: DashboardEvent;
   database: DatabaseEvent;
   downloads: DownloadsEvent;
