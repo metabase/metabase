@@ -1,3 +1,17 @@
 div.inlineMarkdown > p {
   line-height: 1.2;
 }
+
+div.inlineMarkdown {
+  blockquote,
+  dd,
+  div,
+  dl,
+  hr,
+  li,
+  ol,
+  p,
+  ul {
+    display: inline;
+  }
+}

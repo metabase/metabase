@@ -164,6 +164,7 @@ describe("scenarios > browse > metrics", () => {
 
       metricsTable()
         .findByText(/This is a/)
+        .parent()
         .should("be.visible")
         .then(el => assertIsEllipsified(el[0]));
 
