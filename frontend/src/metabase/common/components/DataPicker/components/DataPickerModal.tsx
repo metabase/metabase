@@ -105,29 +105,25 @@ export const DataPickerModal = ({
 
   const handleTableChange = useCallback(
     (item: NotebookDataPickerItem) => {
-      if (isValueItem(item)) {
-        const id =
-          item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
-        onChange(id);
-        tryLogRecentItem(item);
-        onClose();
+      if (!isValueItem(item)) {
+        return;
       }
+
+      const id =
+        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
+      onChange(id);
+      tryLogRecentItem(item);
+      onClose();
     },
     [onChange, onClose, tryLogRecentItem],
   );
 
   const handleCardChange = useCallback(
-    (questionPickerItem: QuestionPickerItem) => {
-      // see comment for QuestionPickerItem type definition to see why we need this hack
-      const item = questionPickerItem as NotebookDataPickerItem;
-
-      if (isValueItem(item)) {
-        onChange(getQuestionVirtualTableId(item.id));
-        tryLogRecentItem(item);
-        onClose();
-      }
+    (item: QuestionPickerItem) => {
+      // see comment for QuestionPickerItem type definition to see why we need this cast
+      handleTableChange(item as NotebookDataPickerItem);
     },
-    [onChange, onClose, tryLogRecentItem],
+    [handleTableChange],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
