@@ -100,9 +100,7 @@
         base-type (or base-type
                       (when (integer? target-field-id)
                         (:base-type (lib.metadata/field (qp.store/metadata-provider) target-field-id))))
-        stage-path (if-let [stage-number (:stage-number dim-opts)]
-                     (mbql.u/stage-path (:query query) stage-number)
-                     [])]
+        stage-path (mbql.u/stage-path (:query query) (:stage-number dim-opts))]
     (assert (some? base-type) "`base-type` is not set.")
     (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
       (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
