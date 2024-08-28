@@ -1,20 +1,22 @@
-/**
- *
- * Example of how to define events:
- *
- * export type TurnIntoModelClickedEvent = {
- *   event: "turn_into_model_clicked";
- *   target_id: CardId | null;
- * };
- *
- * export type NotebookNativePreviewShownEvent = {
- *   event: "notebook_native_preview_shown";
- *   target_id: CardId | null;
- * };
- *
- * export type SimpleEvent =
- *   | TurnIntoModelClickedEvent
- *   | NotebookNativePreviewShownEvent;
- */
+type EventSchema = {
+  event: string;
+  target_id?: number | null;
+  triggered_from?: string | null;
+  duration_ms?: number | null;
+  result?: string | null;
+  event_detail?: string | null;
+};
 
-export type SimpleEvent = never;
+type DoNotUseEvent1 = {
+  event: "do_not_use_1";
+  target_id: number | null;
+};
+
+type DoNotUseEvent2 = {
+  event: "do_not_use_2";
+  triggered_from: "location-1" | "location-2";
+};
+
+type ValidateEvent<T extends EventSchema> = T;
+
+export type Event = ValidateEvent<DoNotUseEvent1 | DoNotUseEvent2>;
