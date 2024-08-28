@@ -80,7 +80,7 @@ const AppBarLarge = ({
             <QuestionLineage />
           ) : isCollectionPathVisible ? (
             <CollectionBreadcrumbs />
-          ) : isSemanticLayerVisible ? (
+          ) : isSemanticLayerVisible && !isDataMapVisible ? (
             <SemanticCrumbs 
                   crumbs={[
                     { title: t`Semantic Layer`, to: "/browse/semantic-layer" },
