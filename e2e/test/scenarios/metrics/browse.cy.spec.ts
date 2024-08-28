@@ -12,7 +12,11 @@ import {
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
+type StructuredQuestionDetailsWithName = StructuredQuestionDetails & {
+  name: string;
+};
+
+const ORDERS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of orders",
   type: "metric",
   description: "A metric",
@@ -23,7 +27,7 @@ const ORDERS_SCALAR_METRIC: StructuredQuestionDetails = {
   display: "scalar",
 };
 
-const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetails = {
+const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
   name: "Orders model metric",
   type: "metric",
   description: "A metric",
@@ -34,7 +38,7 @@ const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetails = {
   display: "scalar",
 };
 
-const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetails = {
+const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of orders over time",
   type: "metric",
   description: "A metric",
@@ -52,7 +56,7 @@ const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetails = {
   display: "line",
 };
 
-const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetails = {
+const PRODUCTS_SCALAR_METRIC: StructuredQuestionDetailsWithName = {
   name: "Count of products",
   type: "metric",
   description: "A metric",
@@ -70,7 +74,9 @@ const ALL_METRICS = [
   PRODUCTS_SCALAR_METRIC,
 ];
 
-function createMetrics(metrics: StructuredQuestionDetails[] = ALL_METRICS) {
+function createMetrics(
+  metrics: StructuredQuestionDetailsWithName[] = ALL_METRICS,
+) {
   metrics.forEach(metric => createQuestion(metric));
 }
 
@@ -78,11 +84,7 @@ function metricsTable() {
   return cy.findByLabelText("Table of metrics").should("be.visible");
 }
 
-function findMetric(name?: string) {
-  if (!name) {
-    throw new Error("no metric name given");
-  }
-
+function findMetric(name: string) {
   return metricsTable().findByText(name).should("be.visible");
 }
 
