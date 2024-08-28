@@ -415,7 +415,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
     });
   });
 
-  it.skip("should render error without crashing when embed query returns error (metabase#34954)", () => {
+  it("should render error without crashing when embed query returns error (metabase#34954)", () => {
     const categoryTemplateTag = {
       type: "text",
       name: "category",
@@ -665,7 +665,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     setTokenFeatures("all");
   });
 
-  it.skip("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
+  it("should not rerender the static embed preview unnecessarily (metabase#38271)", () => {
     const textFilter = createMockParameter({
       id: "3",
       name: "Text filter",
@@ -773,7 +773,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     });
   });
 
-  it.skip("should not rerender the static dashboard with tabs preview unnecessarily (metabase#46378)", () => {
+  it("should not rerender the static dashboard with tabs preview unnecessarily (metabase#46378)", () => {
     const textFilter = createMockParameter({
       id: "3",
       name: "Text filter",
