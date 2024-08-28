@@ -3,7 +3,6 @@ import type {
   Collection,
   DatabaseId,
   SchemaName,
-  SearchModel,
   TableId,
 } from "metabase-types/api";
 
@@ -80,8 +79,6 @@ export type NotebookDataPickerValueItem =
 export type NotebookDataPickerItem =
   | NotebookDataPickerFolderItem
   | NotebookDataPickerValueItem;
-
-export type DataPickerModel = NotebookDataPickerItem["model"] | SearchModel;
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
   QuestionPickerOptions;
