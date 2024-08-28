@@ -23,7 +23,8 @@
 (sql-jdbc.tx/add-test-extensions! :athena)
 
 (doseq [feature [:test/time-type
-                 :test/timestamptz-type]]
+                 :test/timestamptz-type
+                 :test/dynamic-dataset-loading]]
   (defmethod driver/database-supports? [:athena feature]
     [_driver _feature _database]
     false))

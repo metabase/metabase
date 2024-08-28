@@ -36,13 +36,12 @@
                                    :type/Text                   "STRING"}]
   (defmethod sql.tx/field-base-type->sql-type [:databricks-jdbc base-type] [_driver _base-type] database-type))
 
-(defmethod driver/database-supports? [:databricks-jdbc :test/time-type]
-  [_driver _feature _database]
-  false)
-
-(defmethod driver/database-supports? [:databricks-jdbc :test/timestamptz-type]
-  [_driver _feature _database]
-  false)
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type
+                 :test/dynamic-dataset-loading]]
+  (defmethod driver/database-supports? [:databricks-jdbc feature]
+    [_driver _feature _database]
+    false))
 
 (defmethod tx/dbdef->connection-details :databricks-jdbc
   [_driver _connection-type {:keys [database-name] :as _dbdef}]

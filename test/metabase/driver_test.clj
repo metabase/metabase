@@ -83,8 +83,7 @@
 
 (deftest can-connect-with-destroy-db-test
   (testing "driver/can-connect? should fail or throw after destroying a database"
-    ;; dbricks TODO:
-    (mt/test-drivers (disj (mt/normal-drivers-without-feature :connection/multiple-databases) :databricks-jdbc)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
@@ -116,8 +115,7 @@
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
-    ;; dbricks TODO:
-    (mt/test-drivers (disj (mt/normal-drivers-without-feature :connection/multiple-databases) :databricks-jdbc)
+    (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading)
       (let [database-name (mt/random-name)
             dbdef         (basic-db-definition database-name)]
         (mt/dataset dbdef
