@@ -22,7 +22,13 @@ export const showPostSetupSteps: CliStepMethod = async state => {
     state.instanceUrl ?? "",
   );
 
-  const POST_SETUP_STEPS = [STEP_1, STEP_2, STEP_3];
+  const POST_SETUP_STEPS = [];
+
+  if (state.token) {
+    POST_SETUP_STEPS.push(STEP_1);
+  }
+
+  POST_SETUP_STEPS.push(STEP_2, STEP_3);
 
   for (const message of POST_SETUP_STEPS) {
     printWithPadding(message);
