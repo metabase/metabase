@@ -225,6 +225,13 @@
                                 :user-id api/*current-user-id*
                                 :context (or context :question)})))))
 
+(api/defendpoint GET "/:id/dashboards"
+  "Get a list of `{:name ... :id ...}` pairs for all the dashboards this card appears in."
+  [id]
+  {id ms/PositiveInt}
+  (let [card (get-card id)]
+    (:in_dashboards (t2/hydrate card :in_dashboards))))
+
 (defn- dataset-query->query
   "Convert the `dataset_query` column of a Card to a MLv2 pMBQL query."
   [metadata-provider dataset-query]
@@ -467,7 +474,7 @@
 
 (api/defendpoint POST "/"
   "Create a new `Card`. Card `type` can be `question`, `metric`, or `model`."
-  [:as {{:keys [collection_id collection_position dataset_query description display name
+  [:as {{:keys [collection_id collection_position dataset_query description display name dashboard_id
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
    type                   [:maybe ::card-type]
@@ -480,7 +487,8 @@
    collection_id          [:maybe ms/PositiveInt]
    collection_position    [:maybe ms/PositiveInt]
    result_metadata        [:maybe analyze/ResultsMetadata]
-   cache_ttl              [:maybe ms/PositiveInt]}
+   cache_ttl              [:maybe ms/PositiveInt]
+   dashboard_id           [:maybe ms/PositiveInt]}
   (check-if-card-can-be-saved dataset_query type)
   ;; check that we have permissions to run the query that we're trying to save
   (check-permissions-for-query dataset_query)
@@ -523,10 +531,11 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Card`."
-  [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl collection_preview type]
-            :as   card-updates} :body}]
+  [id delete_old_dashcards
+   :as {{:keys [dataset_query description display name visualization_settings archived collection_id
+                collection_position enable_embedding embedding_params result_metadata parameters
+                cache_ttl collection_preview type dashboard_id]
+         :as   card-updates} :body}]
   {id                     ms/PositiveInt
    name                   [:maybe ms/NonBlankString]
    parameters             [:maybe [:sequential ms/Parameter]]
@@ -542,11 +551,14 @@
    collection_position    [:maybe ms/PositiveInt]
    result_metadata        [:maybe analyze/ResultsMetadata]
    cache_ttl              [:maybe ms/PositiveInt]
-   collection_preview     [:maybe :boolean]}
+   collection_preview     [:maybe :boolean]
+   dashboard_id           [:maybe ms/PositiveInt]
+   delete_old_dashcards   [:maybe :boolean]}
   (check-if-card-can-be-saved dataset_query type)
   (let [card-before-update     (t2/hydrate (api/write-check Card id)
                                            [:moderation_reviews :moderator_details])
-        card-updates           (api/updates-with-archived-directly card-before-update card-updates)
+        card-updates           (dissoc (api/updates-with-archived-directly card-before-update card-updates)
+                                       :delete_old_dashcards)
         is-model-after-update? (if (nil? type)
                                  (card/model? card-before-update)
                                  (card/model? card-updates))]
@@ -569,9 +581,10 @@
                                                metadata
                                                (assoc :result_metadata           metadata
                                                       :verified-result-metadata? true))
-          card                               (-> (card/update-card! {:card-before-update card-before-update
-                                                                     :card-updates       card-updates
-                                                                     :actor              @api/*current-user*})
+          card                               (-> (card/update-card! {:card-before-update    card-before-update
+                                                                     :card-updates          card-updates
+                                                                     :actor                 @api/*current-user*
+                                                                     :delete-old-dashcards? delete_old_dashcards})
                                                  hydrate-card-details
                                                  (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))]
       (when metadata-future

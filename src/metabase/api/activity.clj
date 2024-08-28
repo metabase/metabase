@@ -23,7 +23,8 @@
      "card"      [Card
                   :id :name :collection_id :description :display
                   :dataset_query :type :archived
-                  :collection.authority_level [:collection.name :collection_name]]
+                  :collection.authority_level [:collection.name :collection_name]
+                  [:dashboard.name :dashboard_name] :dashboard_id]
      "dashboard" [Dashboard
                   :id :name :collection_id :description
                   :archived
@@ -36,8 +37,10 @@
    (let [model-symb (symbol (str/capitalize model))
          self-qualify #(mdb.query/qualify model-symb %)]
      {:where [:in (self-qualify :id) ids]
-      :left-join (if (= model "table")
-                   [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
+      :left-join (case model
+                   "table" [:metabase_database [:= :metabase_database.id (self-qualify :db_id)]]
+                   "card" [:collection [:= :collection.id (self-qualify :collection_id)]
+                           [:report_dashboard :dashboard] [:= :dashboard.id (self-qualify :dashboard_id)]]
                    [:collection [:= :collection.id (self-qualify :collection_id)]])})))
 
 (defn- models-for-views

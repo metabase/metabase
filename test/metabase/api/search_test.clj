@@ -42,6 +42,7 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :dashboard_id               false
    :effective_location         nil
    :location                   nil
    :bookmark                   nil
@@ -1688,3 +1689,42 @@
 
       (finally
         (public-settings/experimental-search-weight-overrides! original-overrides)))))
+        
+(deftest dashboard-questions
+  (testing "Dashboard questions get a dashboard_id when searched"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
+                     :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
+                     :model/Card {reg-card-id :id} {:name (named "regular card")}
+                     ;; DQs aren't searchable without a DashboardCard (see later test)
+                     :model/DashboardCard _ {:dashboard_id dash-id :card_id card-id}]
+        (testing "The card data includes the `dashboard_id`"
+          (is (= dash-id
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard_id))))
+        (testing "Regular cards don't have it"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard_id))))
+        (testing "Dashboard questions are only returned if you pass `include_dashboard_questions=true`"
+          (is (= []
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "false")
+                      :data
+                      (filter #(= card-id (:id %))))))))))
+  (testing "Dashboard questions aren't searchable without a DashboardCard"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Dashboard"}
+                     :model/Card _ {:dashboard_id dash-id :name (named "dashboard card")}]
+        (is (= {:total 0
+                :data []}
+               (select-keys
+                (mt/user-http-request :crowberto :get 200 "/search" :q search-name :include_dashboard_questions "true")
+                [:total :data])))))))
