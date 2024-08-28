@@ -217,10 +217,46 @@ export const apiCreateQuestion = question => {
       createdQuestion,
       isBasedOnExistingQuestion(getState()),
     );
-
-    // Saving a card, locks in the current display as though it had been
+        // Saving a card, locks in the current display as though it had been
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
+    const cardId = card.id
+    const name = card.name
+    const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
+    const ws = new WebSocket(assistant_url);
+
+    ws.onopen = () => {
+      console.log("WebSocket connection opened.");
+      ws.send(
+        JSON.stringify({
+          type: "addDocuments",
+          data: {
+            pageContents: [name],
+            metadata: [{
+              databaseID: 1,
+              id: cardId,
+              type: "card" 
+            }],
+            docId: [cardId],
+          },
+        })
+      );
+      ws.close();
+    };
+
+    ws.onmessage = (e) => {
+      console.log("WebSocket Message:", e.data);
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket Error: ", error);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed.");
+    };
+
+   //ws.close();
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
     await dispatch(loadMetadataForCard(card));

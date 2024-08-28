@@ -106,8 +106,6 @@ export const DataPickerModal = ({
     return null;
   }, [databases, databaseId]);
 
-  console.log("singleDatabase: ", singleDatabase);
-
   const showRawDataTab = singleDatabase
     ? !singleDatabase.is_cube
     : true;
