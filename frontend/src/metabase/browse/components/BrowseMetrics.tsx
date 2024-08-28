@@ -17,7 +17,10 @@ import {
 import { MetricsTable } from "./MetricsTable";
 
 export function BrowseMetrics() {
-  const metricsResult = useFetchMetrics();
+  const metricsResult = useFetchMetrics({
+    filter_items_in_personal_collection: "exclude",
+    model_ancestors: false,
+  });
   const metrics = metricsResult.data?.data as MetricResult[] | undefined;
 
   const isEmpty = !metricsResult.isLoading && !metrics?.length;
