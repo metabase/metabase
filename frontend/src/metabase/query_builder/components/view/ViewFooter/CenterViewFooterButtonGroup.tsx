@@ -14,7 +14,6 @@ export const CenterViewFooterButtonGroup = ({
   setUIControls,
 }: CenterViewFooterButtonGroupProps) => (
   <QuestionDisplayToggle
-    key="viz-table-toggle"
     className={CS.mx1}
     question={question}
     isShowingRawTable={isShowingRawTable}
