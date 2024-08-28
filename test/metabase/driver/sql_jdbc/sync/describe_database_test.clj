@@ -204,7 +204,6 @@
              (testing (format "schema name = %s" (pr-str schema-name))
                (is (not= \v (first schema-name)))))))))))
 
-;; dbricks TODO: Databricks does not support `.setAutoCommit`! Find proper solution.
 (deftest have-select-privilege?-test
   (testing "cheking select privilege works with and without auto commit (#36040)"
     (let [default-have-slect-privilege?
