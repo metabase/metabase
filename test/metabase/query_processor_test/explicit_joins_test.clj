@@ -582,7 +582,6 @@
                    :order-by [[:asc $id]]
                    :limit    2}))))))))
 
-;; TODO: !!!!!!!!!!!!
 (deftest ^:parallel joined-date-filter-test
   ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
   ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still load
