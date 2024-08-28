@@ -73,12 +73,12 @@
   [_ ^OutputStream os]
   (let [writer             (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         ordered-formatters (volatile! nil)
-        pivot-data         (atom nil)
-        pivot-grouping     (atom nil)]
+        pivot-data         (atom nil)]
     (reify qp.si/StreamingResultsWriter
-      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options]
-                   :or   {format-rows? true}} :data} viz-settings]
-        (let [opts               (when (and *pivot-export-post-processing-enabled* pivot-export-options)
+      (begin! [_ {{:keys [ordered-cols results_timezone format-rows? pivot-export-options pivot?]
+                   :or   {format-rows? true
+                          pivot?       false}} :data} viz-settings]
+        (let [opts               (when (and pivot? pivot-export-options)
                                    (-> (merge {:pivot-rows []
                                                :pivot-cols []}
                                               pivot-export-options)
@@ -87,19 +87,24 @@
               ;; col-names are created later when exporting a pivot table, so only create them if there are no pivot options
               col-names          (when-not opts (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?))
               pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key col-names)]
-          (when opts
+
+          ;; initialize the pivot-data
+          ;; If exporting pivoted, init the pivot data structure
+          ;; Otherwise, just store the pivot-grouping key index
+          (when (and pivot? pivot-export-options)
             (reset! pivot-data (qp.pivot.postprocess/init-pivot opts)))
-          ;; when we have a pivot-grouping, but no opts, we still want to use that to 'clean up' the raw pivot rows
-          (when-not opts
-            (reset! pivot-grouping pivot-grouping-key))
+          (when pivot-grouping-key
+            (swap! pivot-data assoc :pivot-grouping pivot-grouping-key))
+
           (vreset! ordered-formatters
                    (if format-rows?
                      (mapv #(formatter/create-formatter results_timezone % viz-settings) ordered-cols)
                      (vec (repeat (count ordered-cols) identity))))
+
           ;; write the column names for non-pivot tables
           (when col-names
-            (let [row (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
-              (write-csv writer [row])
+            (let [header (m/remove-nth (or pivot-grouping-key (inc (count col-names))) col-names)]
+              (write-csv writer [header])
               (.flush writer)))))
 
       (write-row! [_ row _row-num _ {:keys [output-order]}]
@@ -107,29 +112,30 @@
                             (let [row-v (into [] row)]
                               (into [] (for [i output-order] (row-v i))))
                             row)]
-          (if @pivot-data
+          (if (contains? @pivot-data :config)
             ;; if we're processing a pivot result, we don't write it out yet, just aggregate it
             ;; so that we can post process the data in finish!
             (when (= 0 (nth ordered-row (get-in @pivot-data [:config :pivot-grouping])))
               (swap! pivot-data (fn [a] (qp.pivot.postprocess/add-row a ordered-row))))
-            (if-let [pivot-grouping-key @pivot-grouping]
-              (let [group (get ordered-row pivot-grouping-key)]
+
+            (if-let [{:keys [pivot-grouping]} @pivot-data]
+              (let [group (get ordered-row pivot-grouping)]
                 (when (= 0 group)
-                  (let [formatted-row (cond->> (perf/mapv (fn [formatter r]
-                                                            (formatter (common/format-value r)))
-                                                          @ordered-formatters ordered-row)
-                                        pivot-grouping-key (m/remove-nth pivot-grouping-key))]
+                  (let [formatted-row (->> (perf/mapv (fn [formatter r]
+                                                        (formatter (common/format-value r)))
+                                                      @ordered-formatters ordered-row)
+                                           (m/remove-nth pivot-grouping))]
                     (write-csv writer [formatted-row])
                     (.flush writer))))
-              (let [formatted-row (cond->> (perf/mapv (fn [formatter r]
-                                                        (formatter (common/format-value r)))
-                                                      @ordered-formatters ordered-row))]
+              (let [formatted-row (perf/mapv (fn [formatter r]
+                                               (formatter (common/format-value r)))
+                                             @ordered-formatters ordered-row)]
                 (write-csv writer [formatted-row])
                 (.flush writer))))))
 
       (finish! [_ _]
         ;; TODO -- not sure we need to flush both
-        (when @pivot-data
+        (when (contains? @pivot-data :config)
           (doseq [xf-row (qp.pivot.postprocess/build-pivot-output @pivot-data @ordered-formatters)]
             (write-csv writer [xf-row])))
         (.flush writer)

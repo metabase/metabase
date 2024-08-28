@@ -423,6 +423,7 @@
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
    :format_rows       (get card :format_rows true)
+   :pivot_results     (get card :pivot_results false)
    :dashboard_card_id (get card :dashboard_card_id nil)})
 
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
@@ -439,13 +440,14 @@
   (t2/delete! PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
-    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows dashboard_card_id]}]
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows pivot_results dashboard_card_id]}]
                                {:pulse_id          (u/the-id notification-or-id)
                                 :card_id           card-id
                                 :position          i
                                 :include_csv       include_csv
                                 :include_xls       include_xls
                                 :format_rows       format_rows
+                                :pivot_results     pivot_results
                                 :dashboard_card_id dashboard_card_id})
                              card-refs)]
       (t2/insert! PulseCard cards))))
