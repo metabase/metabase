@@ -295,7 +295,7 @@
 (deftest test-ssh-tunnel-connection
   ;; TODO: Formerly this test ran against "all JDBC drivers except this big list":
   ;; (apply disj (sql-jdbc.tu/sql-jdbc-drivers)
-  ;;        :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena :databricks-jdbc
+  ;;        :sqlite :h2 :oracle :vertica :presto-jdbc :bigquery-cloud-sdk :redshift :athena
   ;;        (tqpt/timeseries-drivers))
   ;; which does not leave very many drivers!
   ;; That form is not extensible by 3P driver authors who need to exclude their driver as well. Since some drivers

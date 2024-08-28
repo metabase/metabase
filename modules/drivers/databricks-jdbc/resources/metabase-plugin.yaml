@@ -23,7 +23,6 @@ driver:
         display-name: Schema
         default: default
         required: true
-      - ssh-tunnel
 init:
   - step: load-namespace
     namespace: metabase.driver.hive-like
