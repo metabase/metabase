@@ -19,18 +19,17 @@ export const trackSchemaEvent = <TData extends object>(
   /** The version of the event. */
   version: string,
   /**  The data associated with the event. */
-  data: { event: string } & TData,
+  data: TData,
   /** The context entities associated with the event. */
   contextEntities?: Snowplow.SelfDescribingJson<Record<string, unknown>>[],
 ): void => {
   if (shouldLogAnalytics) {
-    const { event, ...other } = data;
     // eslint-disable-next-line no-console
     console.log(
-      `%c[SNOWPLOW EVENT]%c, ${event}`,
+      `%c[SNOWPLOW EVENT]%c, ${schema}`,
       "background: #222; color: #bada55",
       "color: ",
-      other,
+      data,
     );
   }
 
@@ -55,7 +54,7 @@ export const trackActionEvent = (
     contextEntities,
   }: {
     /**From where the action was taken. This can be generic like 'dashboard' or also more specific like 'dashboard_top_nav'.*/
-    triggeredFrom: string;
+    triggeredFrom?: string;
     /** ID of the entity that the action was performed on. E.g. the ID of the question that was created in a question_created event. */
     targetId?: string;
     /** Duration in milliseconds */
@@ -69,7 +68,7 @@ export const trackActionEvent = (
   },
 ) => {
   const data = {
-    event: name,
+    name: name,
     triggered_from: triggeredFrom,
     target_id: targetId,
     duration_ms: durationMs,
