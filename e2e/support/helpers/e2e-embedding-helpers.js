@@ -29,7 +29,11 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {{[setFilters]: object, pageStyle: PageStyle, [hideFilters]: string[], [qs]:object}} options
+ * @param {*} options
+ * @param {object} [options.setFilters]
+ * @param {PageStyle} options.pageStyle
+ * @param {string[]} [options.hideFilters]
+ * @param {object} [options.qs]
  *
  * @example
  * visitEmbeddedPage(payload, {
