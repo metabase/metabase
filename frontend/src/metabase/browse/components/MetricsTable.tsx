@@ -13,6 +13,7 @@ import {
   MaybeItemLink,
   TBody,
   Table,
+  TableColumn,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
@@ -27,6 +28,7 @@ import type { MetricResult } from "../types";
 import { getIcon } from "../utils";
 
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
+import { ModelCell, ModelNameColumn } from "./ModelsTable.styled";
 import { getMetricDescription, sortMetrics } from "./utils";
 
 type MetricsTableProps = {
@@ -40,6 +42,10 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
 };
 
 export const itemsTableContainerName = "ItemsTableContainer";
+
+const nameProps = {
+  containerName: itemsTableContainerName,
+};
 
 const descriptionProps: ResponsiveProps = {
   hideAtContainerBreakpoint: "sm",
@@ -64,15 +70,35 @@ export function MetricsTable({
 
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 
+  /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
+  const collectionWidth = 38.5;
+  const descriptionWidth = 100 - collectionWidth;
+
   return (
     <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
+      <colgroup>
+        {/* <col> for Name column */}
+        <ModelNameColumn {...nameProps} />
+
+        {/* <col> for Collection column */}
+        <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
+
+        {/* <col> for Description column */}
+        <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
+
+        <Columns.RightEdge.Col />
+      </colgroup>
       <thead>
         <tr>
           <SortableColumnHeader
             name="name"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={handleSortingOptionsChange}
+            {...nameProps}
             style={{ paddingInlineStart: ".625rem" }}
+            columnHeaderProps={{
+              style: { paddingInlineEnd: ".5rem" },
+            }}
           >
             {t`Name`}
           </SortableColumnHeader>
@@ -80,6 +106,12 @@ export function MetricsTable({
             name="collection"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={handleSortingOptionsChange}
+            {...collectionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
           >
             {t`Collection`}
           </SortableColumnHeader>
@@ -87,9 +119,16 @@ export function MetricsTable({
             name="description"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={handleSortingOptionsChange}
+            {...descriptionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
           >
             {t`Description`}
           </SortableColumnHeader>
+          <Columns.RightEdge.Header />
         </tr>
       </thead>
       <TBody>
@@ -162,7 +201,11 @@ function NameCell({ metric }: { metric?: MetricResult }) {
   const icon = getIcon(metric);
 
   return (
-    <ItemNameCell data-testid="table-name" aria-labelledby={headingId}>
+    <ItemNameCell
+      data-testid="table-name"
+      aria-labelledby={headingId}
+      {...nameProps}
+    >
       <MaybeItemLink
         to={
           metric ? Urls.metric({ id: metric.id, name: metric.name }) : undefined
@@ -213,7 +256,7 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
   );
 
   return (
-    <td
+    <ModelCell
       data-testid={`path-for-collection: ${collectionName}`}
       {...collectionProps}
     >
@@ -224,13 +267,13 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         content
       )}
-    </td>
+    </ModelCell>
   );
 }
 
 function DescriptionCell({ metric }: { metric?: MetricResult }) {
   return (
-    <td {...descriptionProps}>
+    <ModelCell {...descriptionProps}>
       {metric ? (
         <EllipsifiedWithMarkdownTooltip>
           {getMetricDescription(metric) || ""}
@@ -238,6 +281,6 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         <SkeletonText />
       )}
-    </td>
+    </ModelCell>
   );
 }
