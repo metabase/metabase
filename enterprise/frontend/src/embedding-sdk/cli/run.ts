@@ -6,6 +6,7 @@ import {
 } from "./constants/messages";
 import {
   addDatabaseConnectionStep,
+  askForTenancyColumns,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
@@ -15,8 +16,10 @@ import {
   generateReactComponentFiles,
   pickDatabaseTables,
   pollMetabaseInstance,
+  setupEmbeddingSettings,
   setupLicense,
   setupMetabaseInstance,
+  setupPermissions,
   showMetabaseCliTitle,
   startLocalMetabaseContainer,
 } from "./steps";
@@ -44,6 +47,9 @@ export const CLI_STEPS = [
     executeStep: generateReactComponentFiles,
   },
   { id: "setupLicense", executeStep: setupLicense },
+  { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
+  { id: "askForTenancyColumns", executeStep: askForTenancyColumns },
+  { id: "setupPermissions", executeStep: setupPermissions },
 ] as const;
 
 export async function runCli() {
