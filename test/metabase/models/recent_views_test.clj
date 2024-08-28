@@ -482,8 +482,6 @@
 
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (def t (t2/select :model/RecentViews))
-        (def rv0 (recent-views (mt/user->id :rasta)))
         (with-redefs [mi/can-read? (constantly true)
                       data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
