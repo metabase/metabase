@@ -11,7 +11,6 @@ import type { EmbedShareEvent } from "./embed-share";
 import type { EmbeddingHomepageEvent } from "./embedding-homepage";
 import type { SimpleEvent } from "./event";
 import type { InviteEvent } from "./invite";
-import type { LlmUsageEvent } from "./llm-usage";
 import type { MetabotEvent } from "./metabot";
 import type { ModelEvent } from "./model";
 import type { QuestionEvent } from "./question";
@@ -36,7 +35,6 @@ export type SchemaEventMap = {
   embedding_homepage: EmbeddingHomepageEvent;
   event: SimpleEvent;
   invite: InviteEvent;
-  llm_usage: LlmUsageEvent;
   metabot: MetabotEvent;
   model: ModelEvent;
   question: QuestionEvent;

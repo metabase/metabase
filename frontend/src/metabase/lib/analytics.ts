@@ -1,5 +1,6 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
+import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
 import type {
   SchemaEvent,
@@ -23,7 +24,6 @@ const VERSIONS: Record<SchemaType, string> = {
   embedding_homepage: "1-0-0",
   event: "1-0-0",
   invite: "1-0-1",
-  llm_usage: "1-0-0",
   metabot: "1-0-1",
   model: "1-0-0",
   question: "1-0-6",
@@ -41,6 +41,17 @@ export function trackEvent(event: SimpleEvent) {
 
 export function trackSchemaEvent(schema: SchemaType, event: SchemaEvent): void {
   if (Settings.trackingEnabled() && Settings.snowplowEnabled()) {
+    if (shouldLogAnalytics) {
+      const { event: type, ...other } = event;
+      // eslint-disable-next-line no-console
+      console.log(
+        `%c[SNOWPLOW EVENT]%c, ${type}`,
+        "background: #222; color: #bada55",
+        "color: ",
+        other,
+      );
+    }
+
     Snowplow.trackSelfDescribingEvent({
       event: {
         schema: `iglu:com.metabase/${schema}/jsonschema/${VERSIONS[schema]}`,
