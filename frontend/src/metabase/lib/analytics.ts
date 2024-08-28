@@ -81,8 +81,6 @@ export const trackActionEvent = (
   trackSchemaEvent("structured_action", "1-0-0", data, contextEntities);
 };
 
-window.trackActionEvent = trackActionEvent;
-
 const trackSnowplowSchemaEvent = (
   schema: string,
   version: string,
