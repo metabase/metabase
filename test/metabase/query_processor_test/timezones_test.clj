@@ -220,12 +220,24 @@
 (defn- supports-datetime-with-offset?  [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneOffset :type/DateTimeWithTZ))
 (defn- supports-datetime-with-zone-id? [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneID :type/DateTimeWithTZ))
 
+;; Following signals whether driver maps some database type to `:type/DateTime` (and not its descendants).
+(defmethod driver/database-supports? [::driver/driver :test/date-time-type]
+  [_driver _feature _database]
+  true)
+
+;; TODO: Remove this when https://github.com/metabase/metabase/issues/47359 is addressed.
+(defmethod driver/database-supports? [:databricks-jdbc :test/date-time-type]
+  [_driver _feature _database]
+  false)
+
 (defn- expected-attempts []
   (merge
    {:date         (t/local-date "2019-11-01")
-    :time         (t/local-time "00:23:18.331")
-    :datetime     (t/local-date-time "2019-11-01T00:23:18.331")
     :datetime_ltz (t/offset-date-time "2019-11-01T07:23:18.331Z")}
+   (when (driver/database-supports? driver/*driver* :test/date-time-type nil)
+     {:datetime (t/local-date-time "2019-11-01T00:23:18.331")})
+   (when (driver/database-supports? driver/*driver* :test/time-type nil)
+     {:time         (t/local-time "00:23:18.331")})
    (when (supports-time-with-time-zone?)
      {:time_ltz (t/offset-time "07:23:18.331Z")})
    (when (supports-time-with-offset?)
@@ -239,9 +251,8 @@
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
   ;; Oracle doesn't have a time type
   (mt/test-drivers (into #{}
-                         (comp (filter #(isa? driver/hierarchy % :sql))
-                               (filter #(driver/database-supports? % :test/time-type nil)))
-                         (set-timezone-drivers))
+                         (filter #(isa? driver/hierarchy % :sql)
+                         (set-timezone-drivers)))
     (mt/dataset attempted-murders
       (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
         (mt/with-temporary-setting-values [report-timezone timezone]

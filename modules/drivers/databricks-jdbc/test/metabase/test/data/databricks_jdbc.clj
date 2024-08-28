@@ -24,11 +24,16 @@
 (doseq [[base-type database-type] {:type/BigInteger             "BIGINT"
                                    :type/Boolean                "BOOLEAN"
                                    :type/Date                   "DATE"
-                                   ;; Even thought Databricks does not support time types, mapping for `:type/Time`
+                                   ;; TODO: `:type/DateTime` and `:type/Time` should be mapped to TIMESTAMP_NTZ.
+                                   ;;       There is a bug related to syncing columns of that database type tracked
+                                   ;;       in https://github.com/metabase/metabase/issues/47359. When that is
+                                   ;;       resolved types should be changed here and Databricks removed from
+                                   ;;       broken drivers!
+                                   ;; Even though Databricks does not support time types, mapping for `:type/Time`
                                    ;; is defined. It makes tests that use dataset with time columns usable with
                                    ;; the driver, assuming those columns are not used. (Eg. `attempted-murders`.)
-                                   :type/Time                   "TIMESTAMP_NTZ"
-                                   :type/DateTime               "TIMESTAMP_NTZ"
+                                   :type/Time                   "TIMESTAMP" #_"TIMESTAMP_NTZ"
+                                   :type/DateTime               "TIMESTAMP"  #_"TIMESTAMP_NTZ"
                                    :type/DateTimeWithLocalTZ    "TIMESTAMP"
                                    :type/Decimal                "DECIMAL"
                                    :type/Float                  "DOUBLE"
