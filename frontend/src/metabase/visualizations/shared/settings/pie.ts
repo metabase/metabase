@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { isNumber } from "metabase/lib/types";
+import { checkNotNull, checkNumber, isNumber } from "metabase/lib/types";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
@@ -250,6 +250,7 @@ export function getPieRows(
         defaultColor: true,
         enabled: true,
         hidden: false,
+        isOther: false,
       };
     });
     // Case 2: Preserve manual sort for existing rows, sort `added` rows
@@ -295,6 +296,7 @@ export function getPieRows(
           defaultColor: true,
           enabled: true,
           hidden: false,
+          isOther: false,
         };
       }),
     );
@@ -312,6 +314,29 @@ export function getPieRows(
     };
   });
   newPieRows.push(...removedPieRows);
+
+  // Make any slices below mimium slice percentage hidden
+  const total = newPieRows.reduce((currTotal, pieRow) => {
+    if (pieRow.hidden || !pieRow.enabled) {
+      return currTotal;
+    }
+    return (
+      currTotal +
+      checkNumber(
+        checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricIndex],
+      )
+    );
+  }, 0);
+
+  newPieRows.forEach(pieRow => {
+    const metricValue = checkNumber(
+      checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricIndex],
+    );
+    const normalizedPercentage = metricValue / total;
+
+    pieRow.isOther =
+      normalizedPercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
+  });
 
   return newPieRows;
 }

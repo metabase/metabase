@@ -23,6 +23,7 @@ interface SortableItem {
   // the end of the list to ensure non-hidden items are ordered correctly when
   // moving them.
   hidden?: boolean;
+  isOther?: boolean;
 }
 
 interface ChartSettingOrderedSimpleProps {

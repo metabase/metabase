@@ -131,7 +131,7 @@ export function getPieChartModel(
   }, 0);
 
   const [slices, others] = _.chain(pieRowsWithValues)
-    .map(({ value, color, key, name }): PieSliceData => {
+    .map(({ value, color, key, name, isOther }): PieSliceData => {
       return {
         key,
         name,
@@ -140,18 +140,13 @@ export function getPieChartModel(
         normalizedPercentage: value / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: rowIndiciesByKey.get(key),
         color,
-        isOther: false,
+        isOther,
         noHover: false,
         includeInLegend: true,
       };
     })
     .filter(slice => isNonPositive || slice.value >= 0)
-    .partition(
-      slice =>
-        slice != null &&
-        slice.normalizedPercentage >=
-          (settings["pie.slice_threshold"] ?? 0) / 100, // stored setting for "pie.slice_threshold" is on 0-100 scale to match user input
-    )
+    .partition(slice => !slice.isOther)
     .value();
 
   // We don't show the grey other slice if there isn't more than one slice to

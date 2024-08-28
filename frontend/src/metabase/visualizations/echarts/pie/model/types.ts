@@ -10,6 +10,7 @@ export interface PieRow {
   defaultColor: boolean;
   enabled: boolean;
   hidden: boolean;
+  isOther: boolean;
 }
 
 export interface PieColumnDescriptors {

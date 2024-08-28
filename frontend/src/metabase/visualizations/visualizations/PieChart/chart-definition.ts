@@ -134,6 +134,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         "pie.metric",
         "pie.colors",
         "pie.sort_rows",
+        "pie.slice_threshold",
       ],
     },
     "pie.sort_rows": {

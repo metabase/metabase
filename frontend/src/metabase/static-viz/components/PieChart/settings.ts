@@ -46,6 +46,12 @@ export function computeStaticPieChartSettings(
 
   fillWithDefaultValue(settings, "pie.sort_rows", getDefaultSortRows);
 
+  fillWithDefaultValue(
+    settings,
+    "pie.slice_threshold",
+    getDefaultSliceThreshold(),
+  );
+
   settings["pie.colors"] = getColors(rawSeries, settings);
 
   settings["pie.rows"] = getPieRows(rawSeries, settings, (value, options) =>
@@ -58,11 +64,6 @@ export function computeStaticPieChartSettings(
     settings,
     "pie.percent_visibility",
     getDefaultPercentVisibility(),
-  );
-  fillWithDefaultValue(
-    settings,
-    "pie.slice_threshold",
-    getDefaultSliceThreshold(),
   );
 
   return settings;
