@@ -188,8 +188,9 @@
   [driver prepared-statement index object]
   (set-parameter-to-local-date-time driver prepared-statement index object))
 
-;;;
-;; Time parameters setting is implemented to enable loading of the `attempted-murders` test dataset.
+;;
+;; `set-parameter` is implmented also for LocalTime and OffsetTime, even though Databricks does not support time types.
+;; It enables creation of `attempted-murders` dataset, hence making the driver compatible with more of existing tests.
 ;;
 
 (defmethod sql-jdbc.execute/set-parameter [:databricks-jdbc LocalTime]
