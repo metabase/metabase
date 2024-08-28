@@ -5,7 +5,6 @@ import {
   createQuestion,
   main,
   navigationSidebar,
-  resetSnowplow,
   restore,
   tooltip,
 } from "e2e/support/helpers";
@@ -92,7 +91,6 @@ const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 describe("scenarios > browse > metrics", () => {
   beforeEach(() => {
-    resetSnowplow();
     restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
