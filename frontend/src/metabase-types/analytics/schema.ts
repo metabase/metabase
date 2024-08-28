@@ -2,6 +2,7 @@ import type { AccountEvent } from "./account";
 import type { ActionEvent } from "./action";
 import type { BrowseDataEvent } from "./browse_data";
 import type { CleanupEvent } from "./cleanup";
+import type { DatabaseEvent } from "./database";
 import type { DownloadsEvent } from "./downloads";
 import type { EmbedFlowEvent } from "./embed-flow";
 import type { EmbedShareEvent } from "./embed-share";
@@ -24,6 +25,7 @@ export type SchemaEventMap = {
   action: ActionEvent;
   browse_data: BrowseDataEvent;
   cleanup: CleanupEvent;
+  database: DatabaseEvent;
   downloads: DownloadsEvent;
   embed_flow: EmbedFlowEvent;
   embed_share: EmbedShareEvent;
