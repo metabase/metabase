@@ -8928,7 +8928,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-        id: v51.2024-08-23T15:00:00
+        id: v51.2024-08-28T15:00:00
         author: flavius
         comment: Create table postcheckpoints
         preConditions:
@@ -8974,7 +8974,7 @@ databaseChangeLog:
                       nullable: false
 
   - changeSet:
-        id: v51.2024-08-26T14:35:00-1
+        id: v51.2024-08-28T14:35:00-1
         author: flavius
         comment: Enable pgvector extension and create documents table with match_documents function
         changes:
@@ -9025,7 +9025,7 @@ databaseChangeLog:
                 $$;
 
   - changeSet:
-        id: v51.2024-08-23T16:00:00
+        id: v51.2024-08-28T16:00:00
         author: flavius
         comment: Create table feedback
         preConditions:
