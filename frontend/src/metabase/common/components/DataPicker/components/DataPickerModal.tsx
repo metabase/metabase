@@ -103,7 +103,7 @@ export const DataPickerModal = ({
     return databaseId ? { table_db_id: databaseId } : undefined;
   }, [databaseId]);
 
-  const handleTableChange = useCallback(
+  const handleTableSelect = useCallback(
     (item: NotebookDataPickerItem) => {
       if (!isValueItem(item)) {
         return;
@@ -118,12 +118,12 @@ export const DataPickerModal = ({
     [onChange, onClose, tryLogRecentItem],
   );
 
-  const handleCardChange = useCallback(
+  const handleCardSelect = useCallback(
     (item: QuestionPickerItem) => {
       // see comment for QuestionPickerItem type definition to see why we need this cast
-      handleTableChange(item as NotebookDataPickerItem);
+      handleTableSelect(item as NotebookDataPickerItem);
     },
-    [handleTableChange],
+    [handleTableSelect],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
@@ -138,7 +138,7 @@ export const DataPickerModal = ({
               models={MODEL_PICKER_MODELS}
               options={options}
               shouldShowItem={modelsShouldShowItem}
-              onItemSelect={handleCardChange}
+              onItemSelect={handleCardSelect}
             />
           ),
         }
@@ -154,7 +154,7 @@ export const DataPickerModal = ({
               models={METRIC_PICKER_MODELS}
               options={options}
               shouldShowItem={metricsShouldShowItem}
-              onItemSelect={handleCardChange}
+              onItemSelect={handleCardSelect}
             />
           ),
         }
@@ -167,7 +167,7 @@ export const DataPickerModal = ({
         <TablePicker
           databaseId={databaseId}
           value={isTableItem(value) ? value : undefined}
-          onItemSelect={handleTableChange}
+          onItemSelect={handleTableSelect}
         />
       ),
     },
@@ -182,7 +182,7 @@ export const DataPickerModal = ({
               models={QUESTION_PICKER_MODELS}
               options={options}
               shouldShowItem={questionsShouldShowItem}
-              onItemSelect={handleCardChange}
+              onItemSelect={handleCardSelect}
             />
           ),
         }
@@ -204,7 +204,7 @@ export const DataPickerModal = ({
       tabs={tabs}
       title={title}
       onClose={onClose}
-      onItemSelect={handleTableChange}
+      onItemSelect={handleTableSelect}
       recentsContext={["selections"]}
     />
   );
