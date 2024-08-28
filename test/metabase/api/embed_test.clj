@@ -177,8 +177,8 @@
   (with-embedding-enabled-and-new-secret-key!
     (let [card-url (str "embed/card/" (sign {:resource {:question "8"}
                                              :params   {}}))]
-      (is (= "Card id should be a positive integer."
-             (client/client :get 400 card-url))))))
+      (is #(re-matches #"Invalid input:.+value must be an integer greater than zero.+got.+8"
+                       (client/client :get 400 card-url))))))
 
 (deftest check-that-the-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (mt/with-temporary-setting-values [enable-embedding false]
