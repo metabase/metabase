@@ -156,15 +156,22 @@
 
 ;; Both timestamp types, TIMESTAMP and TIMESTAMP_NTZ, are returned in `Types/TIMESTAMP` sql type. TIMESTAMP is wall
 ;; clock with date in session timezone. Hence the following implementation adds the results timezone in LocalDateTime
-;; gathered from JDBC driver.
+;; gathered from JDBC driver and then adjusts the value to ZULU. Presentation tweaks (ie. changing to report for users'
+;; pleasure) are done in `wrap-value-literals` middleware.
 (defmethod sql-jdbc.execute/read-column-thunk [:databricks-jdbc java.sql.Types/TIMESTAMP]
   [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [database-type-name (.getColumnTypeName rsmeta i)]
     (assert (timestamp-database-type-names database-type-name))
     (if (= "TIMESTAMP" database-type-name)
       (fn []
+        (assert (some? (qp.timezone/results-timezone-id)))
         (when-let [t (.getTimestamp rs i)]
-          (t/zoned-date-time (t/local-date-time t) (t/zone-id (qp.timezone/results-timezone-id)))))
+          (t/with-offset-same-instant
+            (t/offset-date-time
+             (t/zoned-date-time (t/local-date-time t)
+                                (t/zone-id (qp.timezone/results-timezone-id))))
+            (t/zone-id "Z"))
+          ))
       (fn []
         (when-let [t (.getTimestamp rs i)]
           (t/local-date-time t))))))
