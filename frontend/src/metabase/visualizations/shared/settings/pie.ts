@@ -328,15 +328,29 @@ export function getPieRows(
     );
   }, 0);
 
+  let otherCount = 0;
   newPieRows.forEach(pieRow => {
     const metricValue = checkNumber(
       checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricIndex],
     );
     const normalizedPercentage = metricValue / total;
 
-    pieRow.isOther =
+    const belowThreshold =
       normalizedPercentage < (settings["pie.slice_threshold"] ?? 0) / 100;
+
+    pieRow.isOther = belowThreshold;
+
+    if (belowThreshold && !pieRow.hidden && pieRow.enabled) {
+      otherCount += 1;
+    }
   });
+
+  // If there's only one slice below minimum slice percentage, don't hide it
+  if (otherCount <= 1) {
+    newPieRows.forEach(pieRow => {
+      pieRow.isOther = false;
+    });
+  }
 
   return newPieRows;
 }
