@@ -130,10 +130,11 @@
                 (sort-by (some-fn :display-name :name) metrics))))))))
 
 (defmethod lib.metadata.calculation/metadata-method :metric
-  [query stage-number [_ _opts metric-id]]
+  [query stage-number [_ _ metric-id]]
   (let [metric-meta (lib.metadata/metric query metric-id)
         metric-aggregation (some-> metric-meta
                                    :dataset-query
+                                   mbql.normalize/normalize
                                    lib.convert/->pMBQL
                                    lib.aggregation/aggregations
                                    first)
