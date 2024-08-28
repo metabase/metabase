@@ -169,11 +169,11 @@ export type DashboardTabId = number;
 export type DashboardTab = {
   id: DashboardTabId;
   dashboard_id: DashboardId;
-  entity_id: BaseEntityId;
+  entity_id?: BaseEntityId;
   name: string;
   position?: number;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type DashboardParameterMapping = {
