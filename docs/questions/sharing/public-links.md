@@ -7,17 +7,19 @@ redirect_from:
 
 # Public sharing
 
-You can create and share public links (URLs) for questions and dashboards. You can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
+> Only admins can create public links and iframes.
+
+Admins can create and share public links (URLs) for questions and dashboards. People can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
 ## Create a public link for a question
 
 ![Create a public link for a question](../images/create-a-public-link.png)
 
-You can find the **Sharing** icon at the bottom right corner of a question. You can create a link to view the question as is, or to [export the results of a question](#public-link-to-export-question-results-in-csv-xlsx-json).
+Admins can find the **Sharing** icon at the bottom right corner of a question. You can create a link to view the question as is, or to [export the results of a question](#public-link-to-export-question-results-in-csv-xlsx-json).
 
 ## Create a public link for a dashboard
 
-To share a dashboard via a public link, click on the **Sharing** button in the top right menu.
+To share a dashboard via a public link, admins can click on the **Sharing** button in the top right menu.
 
 ![Sharing a dashboard](../images/dashboard-sharing.png)
 
@@ -165,7 +167,21 @@ Note that the name of the filter in the URL should be specified in lower case, a
 /dashboard/42?filter_for_user_zip_code=02116
 ```
 
-## Disable public sharing in Metabase
+## Setting a locale on a public link
+
+To display a publicly linked item in a different language, you can set its locale. See a list of [supported locales](https://github.com/metabase/metabase/tree/master/locales).
+
+To set a locale, add `locale=[LOCALE]` to your URL, e.g., `locale=de-DE`.
+
+Locale must come after the `?` in the URL and before the `#` (if you're including appearance settings). Like so:
+
+```txt
+https://www.example.com/public/dashboard/tk421r2d2-c3P0-4a60-7e5a-30df125122e9?locale=de-DE#theme=night
+```
+
+Locale only affects UI elements; Metabase won't translate the text of your items (e.g., it won't translate the title of a question).
+
+## Disable public sharing
 
 Public sharing is enabled by default.
 
