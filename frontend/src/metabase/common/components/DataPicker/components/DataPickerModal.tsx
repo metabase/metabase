@@ -19,15 +19,17 @@ import { useAvailableData } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
+  NotebookDataPickerItem,
   NotebookDataPickerValueItem,
 } from "../types";
 import {
   createShouldShowItem,
+  isFolderItem,
   isMetricItem,
   isModelItem,
   isQuestionItem,
   isTableItem,
-  isValidValueItem,
+  isValueItem,
 } from "../utils";
 
 import { TablePicker } from "./TablePicker";
@@ -102,30 +104,33 @@ export const DataPickerModal = ({
     return databaseId ? { table_db_id: databaseId } : undefined;
   }, [databaseId]);
 
-  const handleChange = useCallback(
-    (item: NotebookDataPickerValueItem) => {
-      if (!isValidValueItem(item.model)) {
-        return;
+  const handleTableChange = useCallback(
+    (item: NotebookDataPickerItem) => {
+      if (isFolderItem(item)) {
+        // TODO: implement me
+      } else if (isValueItem(item)) {
+        const id =
+          item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
+        onChange(id);
+        tryLogRecentItem(item);
+        onClose();
       }
-
-      const id =
-        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
-      onChange(id);
-      tryLogRecentItem(item);
-      onClose();
     },
     [onChange, onClose, tryLogRecentItem],
   );
 
   const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
-      if (!isValidValueItem(item.model)) {
-        return;
-      }
+      // see comment for QuestionPickerItem definition to see why we need this hack
+      const notebookItem = item as NotebookDataPickerItem;
 
-      onChange(getQuestionVirtualTableId(item.id));
-      tryLogRecentItem(item);
-      onClose();
+      if (isFolderItem(notebookItem)) {
+        // TODO: implement me
+      } else if (isValueItem(notebookItem)) {
+        onChange(getQuestionVirtualTableId(notebookItem.id));
+        tryLogRecentItem(notebookItem);
+        onClose();
+      }
     },
     [onChange, onClose, tryLogRecentItem],
   );
@@ -171,7 +176,7 @@ export const DataPickerModal = ({
         <TablePicker
           databaseId={databaseId}
           value={isTableItem(value) ? value : undefined}
-          onChange={handleChange}
+          onItemSelect={handleTableChange}
         />
       ),
     },
@@ -208,7 +213,7 @@ export const DataPickerModal = ({
       tabs={tabs}
       title={title}
       onClose={onClose}
-      onItemSelect={handleChange}
+      onItemSelect={handleTableChange}
       recentsContext={["selections"]}
     />
   );

@@ -3,6 +3,7 @@ import type {
   Collection,
   DatabaseId,
   SchemaName,
+  SearchModel,
   TableId,
 } from "metabase-types/api";
 
@@ -11,7 +12,7 @@ import type { QuestionPickerOptions } from "../QuestionPicker";
 
 export type CollectionItem = {
   id: Collection["id"];
-  name: Collection["name"];
+  name: string;
   model: "collection";
 };
 
@@ -75,6 +76,12 @@ export type NotebookDataPickerValueItem =
   | QuestionItem
   | ModelItem
   | MetricItem;
+
+export type NotebookDataPickerItem =
+  | NotebookDataPickerFolderItem
+  | NotebookDataPickerValueItem;
+
+export type DataPickerModel = NotebookDataPickerItem["model"] | SearchModel;
 
 export type DataPickerModalOptions = EntityPickerModalOptions &
   QuestionPickerOptions;

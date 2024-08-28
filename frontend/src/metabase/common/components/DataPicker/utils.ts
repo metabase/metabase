@@ -8,7 +8,6 @@ import type {
   Database,
   DatabaseId,
   SchemaName,
-  SearchModel,
   Table,
   TableId,
 } from "metabase-types/api";
@@ -16,9 +15,11 @@ import type {
 import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type {
+  DataPickerModel,
   DataPickerValue,
   ModelItem,
   NotebookDataPickerFolderItem,
+  NotebookDataPickerItem,
   NotebookDataPickerValueItem,
   QuestionItem,
   TablePickerValue,
@@ -137,8 +138,26 @@ export const isTableItem = (
   return value?.model === "table";
 };
 
-export const isValidValueItem = (model: SearchModel): boolean => {
+export const isValueItem = (
+  item: NotebookDataPickerItem,
+): item is NotebookDataPickerValueItem => {
+  return isValidValueItem(item.model);
+};
+
+export const isFolderItem = (
+  item: NotebookDataPickerItem,
+): item is NotebookDataPickerFolderItem => {
+  return isValidFolderItem(item.model);
+};
+
+// TODO add "model" suffix
+export const isValidValueItem = (model: DataPickerModel): boolean => {
   return ["table", "card", "dataset", "metric"].includes(model);
+};
+
+// TODO add "model" suffix
+export const isValidFolderItem = (model: DataPickerModel): boolean => {
+  return ["collection", "database", "schema"].includes(model);
 };
 
 export const createShouldShowItem = (
