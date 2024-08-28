@@ -2,6 +2,7 @@ import type { AccountEvent } from "./account";
 import type { ActionEvent } from "./action";
 import type { BrowseDataEvent } from "./browse_data";
 import type { CleanupEvent } from "./cleanup";
+import type { EmbeddingHomepageEvent } from "./embedding-homepage";
 import type { SimpleEvent } from "./event";
 import type { InviteEvent } from "./invite";
 import type { LlmUsageEvent } from "./llm-usage";
@@ -20,6 +21,7 @@ export type SchemaEventMap = {
   action: ActionEvent;
   browse_data: BrowseDataEvent;
   cleanup: CleanupEvent;
+  embedding_homepage: EmbeddingHomepageEvent;
   event: SimpleEvent;
   invite: InviteEvent;
   llm_usage: LlmUsageEvent;

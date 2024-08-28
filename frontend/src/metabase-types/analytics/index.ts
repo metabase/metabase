@@ -2,6 +2,7 @@ export * from "./account";
 export * from "./action";
 export * from "./browse_data";
 export * from "./cleanup";
+export * from "./embedding-homepage";
 export * from "./event";
 export * from "./invite";
 export * from "./llm-usage";

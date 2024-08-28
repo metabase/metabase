@@ -14,6 +14,7 @@ const VERSIONS: Record<SchemaType, string> = {
   action: "1-0-0",
   browse_data: "1-0-0",
   cleanup: "1-0-0",
+  embedding_homepage: "1-0-0",
   event: "1-0-0",
   invite: "1-0-1",
   llm_usage: "1-0-0",
