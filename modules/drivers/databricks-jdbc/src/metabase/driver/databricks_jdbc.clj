@@ -47,26 +47,21 @@
   "SET TIME ZONE %s;")
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-jdbc
-  [_driver {:keys [catalog host http-path schema token] :as details}]
+  [_driver {:keys [catalog host http-path schema token] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
-  (merge
-   {:classname        "com.databricks.client.jdbc.Driver"
-    :subprotocol      "databricks"
-    :subname          (str "//" host ":443/"
-                           ";ConnCatalog=" (codec/url-encode catalog)
-                           (when (string? (not-empty schema))
-                             (str ";ConnSchema=" (codec/url-encode schema))))
-    :transportMode    "http"
-    :ssl              1
-    :AuthMech         3
-    :HttpPath         http-path
-    :uid              "token"
-    :pwd              token
-    :UseNativeQuery 1}
-   ;; TODO: There's an exception on logging thrown when attempting to create a database for a first time.
-   ;;       Following has no effect.
-   (when-some [log-level (:log-level details)]
-     {:LogLevel log-level})))
+  {:classname        "com.databricks.client.jdbc.Driver"
+   :subprotocol      "databricks"
+   :subname          (str "//" host ":443/"
+                          ";ConnCatalog=" (codec/url-encode catalog)
+                          (when (string? (not-empty schema))
+                            (str ";ConnSchema=" (codec/url-encode schema))))
+   :transportMode    "http"
+   :ssl              1
+   :AuthMech         3
+   :HttpPath         http-path
+   :uid              "token"
+   :pwd              token
+   :UseNativeQuery 1})
 
 (defmethod driver/describe-database :databricks-jdbc
   [driver db-or-id-or-spec]
