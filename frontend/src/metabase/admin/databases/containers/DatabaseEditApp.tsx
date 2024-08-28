@@ -49,7 +49,7 @@ import {
 } from "./DatabaseEditApp.styled";
 
 interface DatabaseEditAppProps {
-  database: Database;
+  database?: Database;
   params: { databaseId: DatabaseId };
   reset: () => void;
   initializeDatabase: (databaseId: DatabaseId) => void;
