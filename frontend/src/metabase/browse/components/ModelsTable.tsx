@@ -36,13 +36,9 @@ import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
 import { getIcon } from "../utils";
 
+import { Cell, NameColumn, TableRow } from "./CardTable.styled";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import S from "./ModelsTable.module.css";
-import {
-  ModelCell,
-  ModelNameColumn,
-  ModelTableRow,
-} from "./ModelsTable.styled";
 import { getModelDescription, sortCards } from "./utils";
 
 export interface ModelsTableProps {
@@ -93,7 +89,7 @@ export const ModelsTable = ({
     <Table aria-label={skeleton ? undefined : t`Table of models`}>
       <colgroup>
         {/* <col> for Name column */}
-        <ModelNameColumn containerName={itemsTableContainerName} />
+        <NameColumn containerName={itemsTableContainerName} />
 
         {/* <col> for Collection column */}
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
@@ -170,7 +166,7 @@ const TBodyRow = ({
   const { id, name } = model;
 
   return (
-    <ModelTableRow
+    <TableRow
       onClick={(e: React.MouseEvent) => {
         if (skeleton) {
           return;
@@ -200,7 +196,7 @@ const TBodyRow = ({
       />
 
       {/* Collection */}
-      <ModelCell
+      <Cell
         data-testid={`path-for-collection: ${
           model.collection
             ? getCollectionName(model.collection)
@@ -220,18 +216,18 @@ const TBodyRow = ({
             </Box>
           </Flex>
         </Link>
-      </ModelCell>
+      </Cell>
 
       {/* Description */}
-      <ModelCell {...descriptionProps}>
+      <Cell {...descriptionProps}>
         <EllipsifiedWithMarkdownTooltip>
           {getModelDescription(model) || ""}
         </EllipsifiedWithMarkdownTooltip>
-      </ModelCell>
+      </Cell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
-    </ModelTableRow>
+    </TableRow>
   );
 };
 
@@ -287,27 +283,27 @@ const CellTextSkeleton = () => {
 const TBodyRowSkeleton = ({ style }: { style?: CSSProperties }) => {
   const icon = { name: "model" as IconName };
   return (
-    <ModelTableRow skeleton style={style}>
+    <TableRow skeleton style={style}>
       {/* Name */}
       <NameCell icon={icon}>
         <CellTextSkeleton />
       </NameCell>
 
       {/* Collection */}
-      <ModelCell {...collectionProps}>
+      <Cell {...collectionProps}>
         <Flex gap=".5rem">
           <FixedSizeIcon name="folder" />
           <CellTextSkeleton />
         </Flex>
-      </ModelCell>
+      </Cell>
 
       {/* Description */}
-      <ModelCell {...descriptionProps}>
+      <Cell {...descriptionProps}>
         <CellTextSkeleton />
-      </ModelCell>
+      </Cell>
 
       {/* Adds a border-radius to the table */}
       <Columns.RightEdge.Cell />
-    </ModelTableRow>
+    </TableRow>
   );
 };

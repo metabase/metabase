@@ -26,12 +26,8 @@ import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 import type { MetricResult } from "../types";
 import { getIcon } from "../utils";
 
+import { Cell, NameColumn, TableRow } from "./CardTable.styled";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
-import {
-  ModelCell,
-  ModelNameColumn,
-  ModelTableRow,
-} from "./ModelsTable.styled";
 import { getMetricDescription, sortCards } from "./utils";
 
 type MetricsTableProps = {
@@ -81,7 +77,7 @@ export function MetricsTable({
     <Table aria-label={skeleton ? undefined : t`Table of metrics`}>
       <colgroup>
         {/* <col> for Name column */}
-        <ModelNameColumn {...nameProps} />
+        <NameColumn {...nameProps} />
 
         {/* <col> for Collection column */}
         <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
@@ -182,12 +178,12 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   );
 
   return (
-    <ModelTableRow onClick={handleClick} tabIndex={0}>
+    <TableRow onClick={handleClick} tabIndex={0}>
       <NameCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
       <Columns.RightEdge.Cell />
-    </ModelTableRow>
+    </TableRow>
   );
 }
 
@@ -259,7 +255,7 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
   );
 
   return (
-    <ModelCell
+    <Cell
       data-testid={`path-for-collection: ${collectionName}`}
       {...collectionProps}
     >
@@ -270,13 +266,13 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         content
       )}
-    </ModelCell>
+    </Cell>
   );
 }
 
 function DescriptionCell({ metric }: { metric?: MetricResult }) {
   return (
-    <ModelCell {...descriptionProps}>
+    <Cell {...descriptionProps}>
       {metric ? (
         <EllipsifiedWithMarkdownTooltip>
           {getMetricDescription(metric) || ""}
@@ -284,6 +280,6 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         <SkeletonText />
       )}
-    </ModelCell>
+    </Cell>
   );
 }
