@@ -3,6 +3,7 @@ import type { ActionEvent } from "./action";
 import type { BrowseDataEvent } from "./browse_data";
 import type { CleanupEvent } from "./cleanup";
 import type { SimpleEvent } from "./event";
+import type { MetabotEvent } from "./metabot";
 import type { ModelEvent } from "./model";
 import type { QuestionEvent } from "./question";
 import type { SearchEvent } from "./search";
@@ -18,6 +19,7 @@ export type SchemaEventMap = {
   browse_data: BrowseDataEvent;
   cleanup: CleanupEvent;
   event: SimpleEvent;
+  metabot: MetabotEvent;
   model: ModelEvent;
   question: QuestionEvent;
   search: SearchEvent;

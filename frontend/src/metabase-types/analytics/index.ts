@@ -3,6 +3,7 @@ export * from "./action";
 export * from "./browse_data";
 export * from "./cleanup";
 export * from "./event";
+export * from "./metabot";
 export * from "./model";
 export * from "./question";
 export * from "./serialization";

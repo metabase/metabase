@@ -5,21 +5,19 @@ import type { MetabotEntityType } from "metabase-types/store";
 export type MetabotQueryRunResult = "success" | "failure" | "bad-sql";
 
 const SCHEMA_NAME = "metabot";
-const TEMPLATE_VERSION = "1-0-1";
 
 export const trackMetabotQueryRun = (
   entity_type: MetabotEntityType | null,
   prompt_template_versions: string[] | null,
-  result: MetabotQueryRunResult,
+  _result: MetabotQueryRunResult,
   visualization_type: string | null,
   is_rerun: boolean,
 ) => {
-  trackSchemaEvent(SCHEMA_NAME, TEMPLATE_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "metabot_query_run",
-    entity_type,
-    prompt_template_versions,
-    result,
-    visualization_type,
+    entity_type: entity_type ?? undefined,
+    prompt_template_versions: prompt_template_versions ?? undefined,
+    visualization_type: visualization_type ?? undefined,
     is_rerun,
   });
 };
@@ -29,10 +27,10 @@ export const trackMetabotFeedbackReceived = (
   prompt_template_versions: string[] | null,
   feedback_type: MetabotFeedbackType | null,
 ) => {
-  trackSchemaEvent(SCHEMA_NAME, TEMPLATE_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "metabot_feedback_received",
-    entity_type,
-    prompt_template_versions,
-    feedback_type,
+    entity_type: entity_type ?? undefined,
+    prompt_template_versions: prompt_template_versions ?? undefined,
+    feedback_type: feedback_type ?? undefined,
   });
 };
