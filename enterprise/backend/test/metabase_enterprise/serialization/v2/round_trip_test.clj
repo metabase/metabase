@@ -1,6 +1,24 @@
-;; This test is like an inside-out e2e test.
+;; This main test here is like an inside-out e2e test.
+;;
 ;; It starts with an export, which it loads and then exports again.
 ;; By comparing the export both before and after, we can find unwanted divergences.
+;; If the tests fail, and the in-memory data diffs are unclear, the relevant YAML files are also written
+;; to dev/serialization_deltas, where you can diff them using the tool of your choice.
+;;
+;; There is also a coverage test, which checks if our fixture is missing any models, or have old cruft.
+;;
+;; If you've been sent here by the coverage test, here are some pointers:
+;;
+;; If there are models missing, go to theirs corresponding tests in [[v2.extract-test]], which you may still
+;; need to create, and add a call to `round-trip-test/add-to-baseline!` immediately inside the database
+;; initialization body; Run each test, then remove the calls again.
+;; This will dump additional files into the baseline fixture folder, which you'll need to commit.
+;; Its important that you first run [[baseline-completeness-test]] though to check that the dump is
+;; consistent with the existing contents.
+;; You may need to do some minor cleanup, things like the database sync status may have changed.
+;; You can do this cleanup by hand, or run `(update-baseline!)` to normalize the discrepancies.
+;;
+;; To remove old cruft simply run `(update-baseline!)` (see Rich comment at the bottom)
 (ns metabase-enterprise.serialization.v2.round-trip-test
   (:require
    [clojure.data :as data]
