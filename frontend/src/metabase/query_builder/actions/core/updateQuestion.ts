@@ -159,10 +159,10 @@ export const updateQuestion = (
 
     const currentDependencies = currentQuestion
       ? Lib.dependentMetadata(
-          currentQuestion.query(),
-          currentQuestion.id(),
-          currentQuestion.type(),
-        )
+        currentQuestion.query(),
+        currentQuestion.id(),
+        currentQuestion.type(),
+      )
       : [];
     const nextDependencies = Lib.dependentMetadata(
       newQuestion.query(),
@@ -199,6 +199,34 @@ export const setArchivedQuestion = createThunkAction(
           run: true,
         }),
       );
+      const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
+      const ws = new WebSocket(assistant_url!);
+
+      ws.onopen = () => {
+        console.log("WebSocket connection opened.");
+        ws.send(
+          JSON.stringify({
+            type: "deleteDocuments",
+            data: {
+              ids: [question.card().id]
+            },
+          })
+        );
+        ws.close();
+      };
+
+      ws.onmessage = (e) => {
+        console.log("WebSocket Message:", e.data);
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket Error: ", error);
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket connection closed.");
+      };
+
 
       if (archived) {
         dispatch(setUIControls({ isNativeEditorOpen: false }));
