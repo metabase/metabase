@@ -3,6 +3,7 @@ import type { ActionEvent } from "./action";
 import type { BrowseDataEvent } from "./browse_data";
 import type { CleanupEvent } from "./cleanup";
 import type { SimpleEvent } from "./event";
+import type { SerializationEvent } from "./serialization";
 import type { SettingsEvent } from "./settings";
 import type { SetupEvent } from "./setup";
 import type { TimelineEvent } from "./timeline";
@@ -14,6 +15,7 @@ export type SchemaEventMap = {
   browse_data: BrowseDataEvent;
   cleanup: CleanupEvent;
   event: SimpleEvent;
+  serialization: SerializationEvent;
   settings: SettingsEvent;
   setup: SetupEvent;
   timeline: TimelineEvent;
