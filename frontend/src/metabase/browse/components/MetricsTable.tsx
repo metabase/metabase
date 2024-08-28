@@ -201,7 +201,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
 
   return (
     <ItemNameCell
-      data-testid="table-name"
+      data-testid="metric-name"
       aria-labelledby={headingId}
       {...nameProps}
     >

@@ -93,7 +93,7 @@ function findMetric(name: string) {
 }
 
 function getMetricsTableItem(index: number) {
-  return metricsTable().findAllByTestId("table-name").eq(index);
+  return metricsTable().findAllByTestId("metric-name").eq(index);
 }
 
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
