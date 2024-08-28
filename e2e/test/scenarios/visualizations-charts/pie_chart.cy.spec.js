@@ -113,11 +113,11 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    chartPathWithFillColor("#F9D45C").as("slice");
+    chartPathWithFillColor("#A989C5").as("slice");
     cy.get("@slice").trigger("mousemove");
 
     cy.findByTestId("query-visualization-root")
-      .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
+      .findByText("WIDGET THE QUICK BROWN FOX JUMP…")
       .should("be.visible");
   });
 
