@@ -160,10 +160,10 @@
       (if (db-ids db-id)
         (get-in perms [user-id perm-type db-id])
         (let [fetched-perms (relevant-permissions-for-user-and-db user-id db-id)]
-         (reset! *permissions-for-user*
-                 {:db-ids (conj db-ids db-id)
-                  :perms  (merge perms fetched-perms)})
-         (get-in fetched-perms [user-id perm-type db-id]))))
+          (reset! *permissions-for-user*
+                  {:db-ids (conj db-ids db-id)
+                   :perms  (merge perms fetched-perms)})
+          (get-in fetched-perms [user-id perm-type db-id]))))
     ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
     (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
 
