@@ -43,5 +43,3 @@ export interface BugReportDetails {
 }
 
 export type LongTaskStatus = "incomplete" | "complete" | "aborted";
-
-export type BaseEntityId = string;

@@ -11,6 +11,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { createMockEntityId } from "./entity-id";
 import {
   createMockNativeDatasetQuery,
   createMockStructuredDatasetQuery,
@@ -18,7 +19,7 @@ import {
 
 export const createMockCard = (opts?: Partial<Card>): Card => ({
   id: 1,
-  entity_id: "METABASEmetabaseMETAB",
+  entity_id: createMockEntityId(),
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   name: "Question",

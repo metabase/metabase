@@ -106,7 +106,7 @@ export type BaseDashboardCard = DashboardCardLayoutAttrs & {
   card_id: CardId | null;
   card: Card | VirtualCard;
   collection_authority_level?: CollectionAuthorityLevel;
-  entity_id: string;
+  entity_id: BaseEntityId;
   visualization_settings?: DashCardVisualizationSettings;
   justAdded?: boolean;
   created_at: string;
@@ -169,7 +169,7 @@ export type DashboardTabId = number;
 export type DashboardTab = {
   id: DashboardTabId;
   dashboard_id: DashboardId;
-  entity_id: string;
+  entity_id: BaseEntityId;
   name: string;
   position?: number;
   created_at: string;

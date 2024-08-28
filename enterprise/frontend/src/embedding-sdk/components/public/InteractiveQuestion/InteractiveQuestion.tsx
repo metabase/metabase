@@ -20,12 +20,15 @@ import {
   InteractiveQuestionResult,
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { Card } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
-  questionId?: Card["id"];
+  questionId?: CardId;
   plugins?: SdkPluginsConfig;
 }>;
 
@@ -40,7 +43,7 @@ export const _InteractiveQuestion = ({
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps): JSX.Element | null => {
   if (!questionId) {
-    return <div>Loading...</div>;
+    return <SdkLoader />;
   }
 
   return (

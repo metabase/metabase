@@ -14,7 +14,7 @@ export const createMockNativeQuerySnippet = ({
   collection_id: null,
   creator,
   creator_id,
-  entity_id: "snippet_entity_id",
+  entity_id: createMockEntityId(),
   archived: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),

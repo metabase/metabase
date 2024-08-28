@@ -9,10 +9,11 @@ import type {
 } from "metabase-types/api";
 
 import { createMockCard } from "./card";
+import { createMockEntityId } from "./entity-id";
 
 export const createMockDashboard = (opts?: Partial<Dashboard>): Dashboard => ({
   id: 1,
-  entity_id: "dashboardMETABASEdash",
+  entity_id: createMockEntityId(),
   created_at: "2024-01-01T00:00:00Z",
   updated_at: "2024-01-01T00:00:00Z",
   collection_id: null,
@@ -47,7 +48,7 @@ export const createMockDashboardTab = (
   id: 1,
   dashboard_id: 1,
   name: "Tab 1",
-  entity_id: "abc_123",
+  entity_id: createMockEntityId(),
   created_at: "2020-01-01T12:30:30.000000",
   updated_at: "2020-01-01T12:30:30.000000",
   ...opts,
@@ -64,7 +65,7 @@ export const createMockDashboardCard = (
   card_id: 1,
   size_x: 1,
   size_y: 1,
-  entity_id: "abc_123",
+  entity_id: createMockEntityId(),
   visualization_settings: {},
   card: createMockCard(),
   created_at: "2020-01-01T12:30:30.000000",
@@ -123,7 +124,7 @@ export const createMockVirtualDashCard = (
     row: 0,
     size_x: 1,
     size_y: 1,
-    entity_id: "abc_123",
+    entity_id: createMockEntityId(),
     created_at: "2020-01-01T12:30:30.000000",
     updated_at: "2020-01-01T12:30:30.000000",
     card_id: null,

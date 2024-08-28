@@ -1,4 +1,4 @@
-import type { BaseEntityId } from "metabase-types/api/util";
+import { type BaseEntityId, isNanoID } from "metabase-types/api/entity-id";
 
 import { Api } from "./api";
 
@@ -24,11 +24,11 @@ const validEntityTypes = [
 
 export type EntityType = typeof validEntityTypes[number];
 
-type TranslateEntityIdRequest = Partial<Record<EntityType, string[]>>;
+type TranslateEntityIdRequest = Partial<Record<EntityType, BaseEntityId[]>>;
 
 export type TranslateEntityIdResponseSuccess = {
   status: "success";
-  id: unknown;
+  id: string | number;
   type: EntityType;
 };
 
@@ -48,19 +48,29 @@ type TranslateEntityIdError = {
   explanation: Record<EntityType, [[string]]>;
 };
 
-export const entityIdApi = Api.injectEndpoints({
+const entityIdApi = Api.injectEndpoints({
   endpoints: builder => ({
     translateEntityId: builder.query<
       TranslateEntityIdResponse,
       TranslateEntityIdRequest
     >({
-      query: (requestEntities: TranslateEntityIdRequest) => ({
-        method: "POST",
-        url: `/api/util/entity_id`,
-        body: {
-          entity_ids: requestEntities,
-        },
-      }),
+      query: (requestEntities: TranslateEntityIdRequest) => {
+        Object.values(requestEntities)
+          .flat()
+          .forEach(entityId => {
+            if (isNanoID(entityId)) {
+              throw new Error(`Entity ID ${entityId} must be a NanoID`);
+            }
+          });
+
+        return {
+          method: "POST",
+          url: `/api/util/entity_id`,
+          body: {
+            entity_ids: requestEntities,
+          },
+        };
+      },
       transformResponse: (response: {
         entity_ids: TranslateEntityIdResponse;
       }) => response.entity_ids,
