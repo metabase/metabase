@@ -13,6 +13,7 @@ const VERSIONS: Record<SchemaType, string> = {
   account: "1-0-2",
   action: "1-0-0",
   browse_data: "1-0-0",
+  cleanup: "1-0-0",
   event: "1-0-0",
 };
 
