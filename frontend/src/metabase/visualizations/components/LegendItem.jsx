@@ -12,6 +12,7 @@ import { Icon } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
 import { IconContainer } from "./LegendItem.styled";
+import { LegendItemDot } from "./legend/LegendItemDot";
 
 const propTypes = {
   icon: PropTypes.object,
@@ -26,6 +27,7 @@ export default class LegendItem extends Component {
   static defaultProps = {
     showDot: true,
     showTitle: true,
+    isVisible: true,
     isMuted: false,
     showTooltip: true,
     showDotTooltip: true,
@@ -38,6 +40,7 @@ export default class LegendItem extends Component {
       icon,
       showDot,
       showTitle,
+      isVisible,
       isMuted,
       showTooltip,
       showDotTooltip,
@@ -47,6 +50,7 @@ export default class LegendItem extends Component {
       description,
       onClick,
       infoClassName,
+      onToggleSeriesVisibility,
     } = this.props;
 
     return (
@@ -82,15 +86,10 @@ export default class LegendItem extends Component {
         )}
         {showDot && (
           <Tooltip tooltip={title} isEnabled={showTooltip && showDotTooltip}>
-            <div
-              className={cx(CS.flexNoShrink, CS.inlineBlock, CS.circular)}
-              style={{
-                width: 13,
-                height: 13,
-                margin: 4,
-                marginRight: 8,
-                backgroundColor: color,
-              }}
+            <LegendItemDot
+              color={color}
+              isVisible={isVisible}
+              onClick={onToggleSeriesVisibility}
             />
           </Tooltip>
         )}

@@ -53,7 +53,15 @@ export default class LegendVertical extends Component {
   }
 
   render() {
-    const { className, titles, colors, hovered, onHoverChange } = this.props;
+    const {
+      className,
+      titles,
+      colors,
+      hovered,
+      hiddenIndices = [],
+      onHoverChange,
+      onToggleSeriesVisibility,
+    } = this.props;
     const { overflowCount } = this.state;
     let items, extraItems, extraColors;
     if (overflowCount > 0) {
@@ -71,12 +79,14 @@ export default class LegendVertical extends Component {
           const isMuted =
             hovered && hovered.index != null && index !== hovered.index;
           const legendItemTitle = Array.isArray(title) ? title[0] : title;
+          const isVisible = !hiddenIndices.includes(index);
           return (
             <li
               key={index}
               ref={"item" + index}
               className={cx(CS.flex, CS.flexNoShrink)}
               onMouseEnter={e =>
+                isVisible &&
                 onHoverChange &&
                 onHoverChange({
                   index,
@@ -85,7 +95,7 @@ export default class LegendVertical extends Component {
                   ),
                 })
               }
-              onMouseLeave={e => onHoverChange && onHoverChange()}
+              onMouseLeave={e => isVisible && onHoverChange && onHoverChange()}
               data-testid={`legend-item-${legendItemTitle}`}
               {...(hovered && { "aria-current": !isMuted })}
             >
@@ -94,7 +104,11 @@ export default class LegendVertical extends Component {
                 title={legendItemTitle}
                 color={colors[index % colors.length]}
                 isMuted={isMuted}
+                isVisible={isVisible}
                 showTooltip={false}
+                onToggleSeriesVisibility={event =>
+                  onToggleSeriesVisibility(event, index)
+                }
               />
               {Array.isArray(title) && (
                 <span

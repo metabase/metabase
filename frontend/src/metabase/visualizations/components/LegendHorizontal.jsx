@@ -9,7 +9,15 @@ import LegendItem from "./LegendItem";
 
 export default class LegendHorizontal extends Component {
   render() {
-    const { className, titles, colors, hovered, onHoverChange } = this.props;
+    const {
+      className,
+      titles,
+      colors,
+      hiddenIndices,
+      hovered,
+      onHoverChange,
+      onToggleSeriesVisibility,
+    } = this.props;
     return (
       <ol className={cx(className, LegendS.Legend, LegendS.horizontal)}>
         {titles.map((title, index) => {
@@ -26,6 +34,7 @@ export default class LegendHorizontal extends Component {
                 title={title}
                 color={colors[index % colors.length]}
                 isMuted={isMuted}
+                isVisible={!hiddenIndices.includes(index)}
                 showTooltip={false}
                 onMouseEnter={() =>
                   onHoverChange &&
@@ -37,6 +46,9 @@ export default class LegendHorizontal extends Component {
                   })
                 }
                 onMouseLeave={() => onHoverChange && onHoverChange(null)}
+                onToggleSeriesVisibility={event =>
+                  onToggleSeriesVisibility(event, index)
+                }
               />
             </li>
           );
