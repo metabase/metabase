@@ -186,17 +186,10 @@ export function EntityPickerModal<
     onItemSelect,
   ]);
 
-  const hasTabs = tabs.length > 1 || searchQuery;
-  const hasRecentsTab = tabs.some(tab => tab.model === "recents");
+  const hasTabs = tabs.length > 1;
   const defaultTab = useMemo(
-    () =>
-      computeInitialTab({
-        initialValue,
-        tabs,
-        hasRecents: hasRecentsTab,
-        defaultToRecentTab,
-      }),
-    [initialValue, tabs, hasRecentsTab, defaultToRecentTab],
+    () => computeInitialTab({ initialValue, tabs, defaultToRecentTab }),
+    [initialValue, tabs, defaultToRecentTab],
   );
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
   // we don't want to show bonus actions on recents or search tabs
