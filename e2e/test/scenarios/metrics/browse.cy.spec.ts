@@ -149,6 +149,18 @@ describe("scenarios > browse > metrics", () => {
       cy.location("pathname").should("eq", "/collection/root");
     });
 
+    it("should open the collections in a new tab when alt-clicking a metric", () => {
+      createMetrics([ORDERS_SCALAR_METRIC]);
+      cy.visit("/browse/metrics");
+
+      findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click({
+        metaKey: true,
+      });
+
+      // the page did not navigate on this page
+      cy.location("pathname").should("eq", "/browse/metrics");
+    });
+
     it("should render truncated markdown in the table", () => {
       const description =
         "This is a _very_ **long description** that should be truncated";
