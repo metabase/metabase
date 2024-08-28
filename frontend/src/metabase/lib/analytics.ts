@@ -24,11 +24,14 @@ export const trackSchemaEvent = <TData extends object>(
   contextEntities?: Snowplow.SelfDescribingJson<Record<string, unknown>>[],
 ): void => {
   if (shouldLogAnalytics) {
+    const nameToLog =
+      schema === "structured_action" ? (data as any).name : (data as any).event;
     // eslint-disable-next-line no-console
     console.log(
-      `%c[SNOWPLOW EVENT]%c, ${schema}`,
+      `%c[SNOWPLOW EVENT] %c${schema} %c${nameToLog}`,
       "background: #222; color: #bada55",
-      "color: ",
+      "color:#a80057",
+      "color:#c6c900",
       data,
     );
   }
@@ -77,6 +80,8 @@ export const trackActionEvent = (
   };
   trackSchemaEvent("structured_action", "1-0-0", data, contextEntities);
 };
+
+window.trackActionEvent = trackActionEvent;
 
 const trackSnowplowSchemaEvent = (
   schema: string,
