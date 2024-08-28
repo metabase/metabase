@@ -11,7 +11,7 @@ import type { QuestionPickerOptions } from "../QuestionPicker";
 
 export type CollectionItem = {
   id: Collection["id"];
-  name: string;
+  name: Collection["name"];
   model: "collection";
 };
 
