@@ -51,7 +51,6 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   `
   Metabase is running at ${chalk.blue(instanceUrl)}
   You can find your login credentials at METABASE_LOGIN.json
-  Don't forget to put this file in your .gitignore.
 
   Metabase will phone home some data collected via Snowplow.
   We don’t collect any usernames, emails, server IPs, database details of any kind, or
