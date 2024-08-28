@@ -7,7 +7,7 @@ import type { Dataset } from "metabase-types/api";
 import { getAbbreviatedRelativeTimeStrings, getTimePassedSince } from "./utils";
 
 export type QuestionLastUpdatedProps = {
-  result: Dataset;
+  result: Pick<Dataset, "cached">;
 } & FlexProps;
 
 export const QuestionLastUpdated = ({
@@ -56,5 +56,5 @@ const QuestionLastUpdatedBody = ({
   );
 };
 
-QuestionLastUpdated.shouldRender = ({ result }: { result: Dataset }) =>
+QuestionLastUpdated.shouldRender = ({ result }: QuestionLastUpdatedProps) =>
   result && result.cached;
