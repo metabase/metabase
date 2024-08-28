@@ -27,7 +27,11 @@ import type { MetricResult } from "../types";
 import { getIcon } from "../utils";
 
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
-import { ModelCell, ModelNameColumn } from "./ModelsTable.styled";
+import {
+  ModelCell,
+  ModelNameColumn,
+  ModelTableRow,
+} from "./ModelsTable.styled";
 import { getMetricDescription, sortCards } from "./utils";
 
 type MetricsTableProps = {
@@ -178,12 +182,12 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   );
 
   return (
-    <tr onClick={handleClick} tabIndex={0}>
+    <ModelTableRow onClick={handleClick} tabIndex={0}>
       <NameCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
       <Columns.RightEdge.Cell />
-    </tr>
+    </ModelTableRow>
   );
 }
 
