@@ -87,14 +87,19 @@
   [_db-id]
   (mi/superuser?))
 
+(defn- can-write?
+  [db-id]
+  (and (not= db-id audit/audit-db-id)
+       (current-user-can-write-db? db-id)))
+
 (defmethod mi/can-write? :model/Database
   ;; Lack of permission to change database details will also exclude the `details` field from the HTTP response,
   ;; cf. the implementation of [[metabase.models.interface/to-json]] for `:model/Database`.
-  ([instance]
-   (mi/can-write? :model/Database (u/the-id instance)))
+  ([{:keys [is_attached_dwh] :as instance}]
+   (and (can-write? (u/the-id instance))
+        (not is_attached_dwh)))
   ([_model pk]
-   (and (not= pk audit/audit-db-id)
-        (current-user-can-write-db? pk)
+   (and (can-write? pk)
         (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
 (defn- infer-db-schedules
