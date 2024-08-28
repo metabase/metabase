@@ -9288,6 +9288,21 @@ databaseChangeLog:
                   name: type
             indexName: idx_collection_type
 
+  - changeSet:
+      id: v51.2024-09-11T09:04:22
+      author: johnswanson
+      comment: Add `report_card.dashboard_id`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that owns the card, if it is a dashboard-internal card.
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
