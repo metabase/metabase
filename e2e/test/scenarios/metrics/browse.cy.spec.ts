@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
+  assertIsEllipsified,
   createQuestion,
   main,
   navigationSidebar,
@@ -159,7 +160,8 @@ describe("scenarios > browse > metrics", () => {
 
       metricsTable()
         .findByText(/This is a/)
-        .should("be.visible");
+        .should("be.visible")
+        .then(el => assertIsEllipsified(el[0]));
 
       metricsTable()
         .findByText(/This is a/)
