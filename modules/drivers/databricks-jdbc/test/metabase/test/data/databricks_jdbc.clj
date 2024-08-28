@@ -95,15 +95,16 @@
         (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)))))
 
 ;; Differences to the :sql-jdbc/test-extensions original: false transactions, not using `jdbc/execute!` for
-;; timezone setting, not overriding database timezone. Fails as expects ResultSet. That's not the case on Databricks.
+;; timezone setting, not overriding database timezone.
+;;
+;; Timezone has to be set using `.execute` because `jdbc/execute` seems to expect returned ResultSet. That's not the
+;; case on Databricks.
 (mu/defmethod load-data/do-insert! :databricks-jdbc
   [driver                    :- :keyword
    ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
    table-identifier
    rows]
   (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
-      ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
-      ;; DB hasn't been synced yet
     (when-let [set-timezone-format-string #_{:clj-kondo/ignore [:deprecated-var]} (sql-jdbc.execute/set-timezone-sql driver)]
       (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
@@ -117,8 +118,6 @@
               (format "Bad sql-args: %s" (pr-str sql-args)))
       (log/tracef "[insert] %s" (pr-str sql-args))
       (try
-            ;; TODO - why don't we use [[execute/execute-sql!]] here like we do below?
-            ;; Tech Debt Issue: #39375
         (jdbc/execute! {:connection conn :transaction? false}
                        sql-args
                        {:set-parameters (fn [stmt params]
