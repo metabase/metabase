@@ -24,7 +24,6 @@ import type {
 } from "../types";
 import {
   createShouldShowItem,
-  isFolderItem,
   isMetricItem,
   isModelItem,
   isQuestionItem,
@@ -106,9 +105,7 @@ export const DataPickerModal = ({
 
   const handleTableChange = useCallback(
     (item: NotebookDataPickerItem) => {
-      if (isFolderItem(item)) {
-        // TODO: implement me
-      } else if (isValueItem(item)) {
+      if (isValueItem(item)) {
         const id =
           item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
         onChange(id);
@@ -121,12 +118,10 @@ export const DataPickerModal = ({
 
   const handleCardChange = useCallback(
     (questionPickerItem: QuestionPickerItem) => {
-      // see comment for QuestionPickerItem definition to see why we need this hack
+      // see comment for QuestionPickerItem type definition to see why we need this hack
       const item = questionPickerItem as NotebookDataPickerItem;
 
-      if (isFolderItem(item)) {
-        // TODO: implement me
-      } else if (isValueItem(item)) {
+      if (isValueItem(item)) {
         onChange(getQuestionVirtualTableId(item.id));
         tryLogRecentItem(item);
         onClose();
