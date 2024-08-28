@@ -14,7 +14,7 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
-import { ORDERS_QUESTION_ID } from "../../../support/cypress_sample_instance_data";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
