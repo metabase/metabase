@@ -1,5 +1,9 @@
 ;; Cljfmt config. See https://github.com/weavejester/cljfmt#formatting-options
-{:sort-ns-references?
+{;; Following option is required for cljfmt to run correctly in vscode/calva.
+ ;; Source: https://calva.io/formatting/#indentation-rules
+ :legacy/merge-indents? true
+ 
+ :sort-ns-references?
  true
 
  :function-arguments-indentation
