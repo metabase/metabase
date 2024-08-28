@@ -407,15 +407,15 @@ export function excludeDateFilterParts(
     return null;
   }
 
-  const bucket = temporalBucket(column);
   const columnWithoutBucket = withTemporalBucket(column, null);
   if (!isDateOrDateTime(columnWithoutBucket)) {
     return null;
   }
 
+  const bucket = temporalBucket(column);
   if (!bucket) {
     return serializedValues.length === 0
-      ? { column, operator, bucket, values: [] }
+      ? { column: columnWithoutBucket, operator, bucket, values: [] }
       : null;
   }
 
