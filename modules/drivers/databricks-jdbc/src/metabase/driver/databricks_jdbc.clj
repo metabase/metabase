@@ -47,21 +47,26 @@
   "SET TIME ZONE %s;")
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-jdbc
-  [_driver {:keys [catalog host http-path schema token] :as _details}]
+  [_driver {:keys [catalog host http-path log-level schema token] :as _details}]
   (assert (string? (not-empty catalog)) "Catalog is mandatory.")
-  {:classname        "com.databricks.client.jdbc.Driver"
-   :subprotocol      "databricks"
-   :subname          (str "//" host ":443/"
-                          ";ConnCatalog=" (codec/url-encode catalog)
-                          (when (string? (not-empty schema))
-                            (str ";ConnSchema=" (codec/url-encode schema))))
-   :transportMode    "http"
-   :ssl              1
-   :AuthMech         3
-   :HttpPath         http-path
-   :uid              "token"
-   :pwd              token
-   :UseNativeQuery 1})
+  (merge
+   {:classname        "com.databricks.client.jdbc.Driver"
+    :subprotocol      "databricks"
+    :subname          (str "//" host ":443/"
+                           ";ConnCatalog=" (codec/url-encode catalog)
+                           (when (string? (not-empty schema))
+                             (str ";ConnSchema=" (codec/url-encode schema))))
+    :transportMode    "http"
+    :ssl              1
+    :AuthMech         3
+    :HttpPath         http-path
+    :uid              "token"
+    :pwd              token
+    :UseNativeQuery 1}
+   ;; Following is used just for tests. See the [[metabase.driver.sql-jdbc.connection-test/perturb-db-details]]
+   ;; and test that is using the function.
+   (when log-level
+     {:LogLevel log-level})))
 
 (defmethod driver/describe-database :databricks-jdbc
   [driver db-or-id-or-spec]
