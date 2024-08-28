@@ -1,5 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -21,6 +21,7 @@ import type {
   EntityTab,
   TypeWithModel,
 } from "../../types";
+import { computeInitialTab } from "../../utils";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
 import { RecentsTab } from "../RecentsTab";
 
@@ -106,10 +107,6 @@ export function EntityPickerModal<
     null,
   );
 
-  const [showActionButtons, setShowActionButtons] = useState<boolean>(
-    !!actionButtons.length,
-  );
-
   const hydratedOptions = useMemo(
     () => ({ ...defaultOptions, ...options }),
     [options],
@@ -166,6 +163,33 @@ export function EntityPickerModal<
   );
 
   const hasTabs = tabs.length > 1 || searchQuery;
+  const hasRecentsTab = tabs.some(tab => tab.model === "recents");
+  const defaultTab = useMemo(
+    () =>
+      computeInitialTab({
+        initialValue,
+        tabs,
+        hasRecents: hasRecentsTab,
+        defaultToRecentTab,
+      }),
+    [initialValue, tabs, hasRecentsTab, defaultToRecentTab],
+  );
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+  // we don't want to show bonus actions on recents or search tabs
+  const showActionButtons = ["search", "recents"].includes(selectedTab);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setSelectedTab(tab);
+  }, []);
+
+  useEffect(() => {
+    // when the searchQuery changes, switch to the search tab
+    if (searchQuery) {
+      setSelectedTab("search");
+    } else {
+      setSelectedTab(defaultTab.model);
+    }
+  }, [searchQuery, defaultTab.model]);
 
   useWindowEvent(
     "keydown",
@@ -223,14 +247,13 @@ export function EntityPickerModal<
           <ErrorBoundary>
             {hasTabs ? (
               <TabsView
-                tabs={tabs}
-                onItemSelect={onItemSelect}
                 searchQuery={searchQuery}
                 searchResults={searchResults}
                 selectedItem={selectedItem}
-                initialValue={initialValue}
-                defaultToRecentTab={defaultToRecentTab}
-                setShowActionButtons={setShowActionButtons}
+                selectedTab={selectedTab}
+                tabs={tabs}
+                onItemSelect={onItemSelect}
+                onTabChange={handleTabChange}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
