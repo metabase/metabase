@@ -28,7 +28,7 @@ import { getIcon } from "../utils";
 
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import { ModelCell, ModelNameColumn } from "./ModelsTable.styled";
-import { getMetricDescription, sortMetrics } from "./utils";
+import { getMetricDescription, sortCards } from "./utils";
 
 type MetricsTableProps = {
   metrics?: MetricResult[];
@@ -65,7 +65,7 @@ export function MetricsTable({
   );
 
   const locale = useLocale();
-  const sortedMetrics = sortMetrics(metrics, sortingOptions, locale);
+  const sortedMetrics = sortCards(metrics, sortingOptions, locale);
 
   const handleSortingOptionsChange = skeleton ? undefined : setSortingOptions;
 

@@ -49,39 +49,8 @@ export const getSecondarySortColumn = (
   return sort_column === "name" ? "collection" : "name";
 };
 
-export const sortModels = (
-  models: ModelResult[],
-  sortingOptions: SortingOptions,
-  localeCode: string = "en",
-) => {
-  const { sort_column, sort_direction } = sortingOptions;
-
-  if (!isValidSortColumn(sort_column)) {
-    console.error("Invalid sort column", sort_column);
-    return models;
-  }
-
-  const compare = (a: string, b: string) =>
-    a.localeCompare(b, localeCode, { sensitivity: "base" });
-
-  return [...models].sort((modelA, modelB) => {
-    const a = getValueForSorting(modelA, sort_column);
-    const b = getValueForSorting(modelB, sort_column);
-
-    let result = compare(a, b);
-    if (result === 0) {
-      const sort_column2 = getSecondarySortColumn(sort_column);
-      const a2 = getValueForSorting(modelA, sort_column2);
-      const b2 = getValueForSorting(modelB, sort_column2);
-      result = compare(a2, b2);
-    }
-
-    return sort_direction === SortDirection.Asc ? result : -result;
-  });
-};
-
-export const sortMetrics = (
-  metrics: MetricResult[],
+export const sortCards = (
+  metrics: (ModelResult | MetricResult)[],
   sortingOptions: SortingOptions,
   localeCode: string = "en",
 ) => {
