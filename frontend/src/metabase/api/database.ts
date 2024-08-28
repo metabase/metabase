@@ -195,7 +195,14 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: response => provideDatabaseListTags(response?.data ?? []),
-    })
+    }),
+    getDatabaseMetadataWithoutParams: builder.query<Database, GetDatabaseMetadataRequest>({
+      query: ({ id }) => ({
+        method: "GET",
+        url: `/api/database/${id}/metadata`
+      }),
+      providesTags: database => (database ? provideDatabaseTags(database) : []),
+    }),
   }),
 });
 
@@ -213,5 +220,6 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
-  useListDatabasesWithTablesQuery
+  useListDatabasesWithTablesQuery,
+  useGetDatabaseMetadataWithoutParamsQuery
 } = databaseApi;
