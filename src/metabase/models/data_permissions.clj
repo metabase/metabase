@@ -95,15 +95,17 @@
 
 ;;; ---------------------------------------- Caching ------------------------------------------------------------------
 
-(defn relevant-permissions-for-user
+(defn relevant-permissions-for-user-and-db
   "Returns all relevant rows for permissions for the user"
-  [user-id]
+  [user-id db-id]
   (->> (t2/select :model/DataPermissions
                   {:select [:p.* [:pgm.user_id :user_id]]
                    :from [[:permissions_group_membership :pgm]]
                    :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                           [:data_permissions :p] [:= :p.group_id :pg.id]]
-                   :where [:= :pgm.user_id user-id]})
+                   :where [:and
+                           [:= :pgm.user_id user-id]
+                           [:= :p.db_id db-id]]})
        (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
                  (update-in m [user_id perm_type db_id] u/conjv row))
                {})))
@@ -122,13 +124,15 @@
                       [:= :p.db_id db-id]]}))
 
 (def ^:dynamic *permissions-for-user*
-  "Filled by `with-relevant-permissions-for-user` with the output of `(relevant-permissions-for-user [user-id])`. A map
-  with keys like `[user_id perm_type db_id]`, the latter two because nearly always we want to get permissions for a
-  particular permission type and database id, `user_id` because we want to be VERY sure that we never accidentally use
-  the cache for the wrong user (e.g. if we were checking whether *another* user could perform some action for some
-  reason). Of course, we also won't use the cache if we're not checking for the current user - but better safe than
-  sorry. The values are collections of rows of DataPermissions."
-  (delay nil))
+  "An atom containing a cache of data permissions that have been fetched so far for the current user.
+   Keys are:
+    - :db-ids -> A set of the IDs of databases which have already been fetched.
+    - :perms  -> A map of permissions, with the structure `{user-id {perm-type {db-id perms }` so that we NEVER
+                 accidentally use the cache of the wrong user, and `perms` are vectors of data_permissions entries.
+
+  When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
+  (atom {:db-ids #{}
+         :perms  {}}))
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
@@ -142,16 +146,25 @@
   (delay nil))
 
 (defmacro with-relevant-permissions-for-user
-  "Populates the `*permissions-for-user*` and `dynamic var for use by the cache-aware functions in this namespace."
+  "Populates the `*permissions-for-user*` and `*sandboxes-for-user*` dynamic vars for use by the cache-aware functions
+  in this namespace."
   [user-id & body]
-  `(binding [*permissions-for-user* (delay (relevant-permissions-for-user ~user-id))
+  `(binding [*permissions-for-user* (atom {:db-ids #{} :perms {}})
              *sandboxes-for-user*   (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 
 (defn- get-permissions [user-id perm-type db-id]
-  (if (and (= user-id api/*current-user-id*)
-           (get @*permissions-for-user* user-id))
-    (get-in @*permissions-for-user* [user-id perm-type db-id])
+  (if (= user-id api/*current-user-id*)
+    ;; Use the cache if we can; if not, add perms to the cache for this DB
+    (let [{:keys [db-ids perms]} @*permissions-for-user*]
+      (if (db-ids db-id)
+        (get-in perms [user-id perm-type db-id])
+        (let [fetched-perms (relevant-permissions-for-user-and-db user-id db-id)]
+         (reset! *permissions-for-user*
+                 {:db-ids (conj db-ids db-id)
+                  :perms  (merge perms fetched-perms)})
+         (get-in fetched-perms [user-id perm-type db-id]))))
+    ;; If we're checking permissions for a *different* user than ourselves, fetch it straight from the DB
     (relevant-permissions-for-user-perm-and-db user-id perm-type db-id)))
 
 ;;; ---------------------------------------- Fetching a user's permissions --------------------------------------------
