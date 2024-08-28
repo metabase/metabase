@@ -6,6 +6,7 @@ import type {
   EmbedResource,
   EmbedResourceType,
   EmbeddingDisplayOptions,
+  EmbeddingParameterVisibility,
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
@@ -39,7 +40,7 @@ export const trackStaticEmbedPublished = ({
 }: {
   artifact: EmbedResourceType;
   resource: EmbedResource;
-  params: Record<string, number>;
+  params: Record<EmbeddingParameterVisibility, number>;
   isExampleDashboard: boolean;
 }): void => {
   const now = Date.now();
@@ -52,7 +53,7 @@ export const trackStaticEmbedPublished = ({
     ),
     time_since_initial_publication: resource.initially_published_at
       ? toSecond(now - new Date(resource.initially_published_at).getTime())
-      : null,
+      : undefined,
     params,
     is_example_dashboard: isExampleDashboard,
   });
@@ -78,7 +79,7 @@ export const trackStaticEmbedUnpublished = ({
     ),
     time_since_initial_publication: resource.initially_published_at
       ? toSecond(now - new Date(resource.initially_published_at).getTime())
-      : null,
+      : undefined,
   });
 };
 
@@ -128,7 +129,7 @@ export const trackPublicLinkCopied = ({
   trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",
     artifact,
-    format,
+    format: (format as any) ?? undefined, // ExportFormatType is untyped
   });
 };
 

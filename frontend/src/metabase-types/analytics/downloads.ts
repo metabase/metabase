@@ -1,5 +1,5 @@
 export type DownloadResultsClickedEvent = {
-  enum: "download_results_clicked";
+  event: "download_results_clicked";
   resource_type: "question" | "dashcard" | "ad-hoc-question";
   accessed_via:
     | "internal"

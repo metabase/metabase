@@ -17,6 +17,6 @@ export const trackDownloadResults = ({
     event: "download_results_clicked",
     resource_type: resourceType,
     accessed_via: accessedVia,
-    export_type: exportType,
+    export_type: exportType as any,
   });
 };
