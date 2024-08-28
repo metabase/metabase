@@ -219,7 +219,7 @@ const mockMetrics: Partial<MetricResult>[] = [
 }));
 
 describe("BrowseMetrics", () => {
-  it("displays an empy message when no metrics are found", async () => {
+  it("displays an empty message when no metrics are found", async () => {
     setup({ metricCount: 0 });
     expect(
       await screen.findByText(
