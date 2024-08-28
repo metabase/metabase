@@ -15,7 +15,6 @@ import type {
 import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type {
-  DataPickerModel,
   DataPickerValue,
   ModelItem,
   NotebookDataPickerFolderItem,
@@ -141,23 +140,13 @@ export const isTableItem = (
 export const isValueItem = (
   item: NotebookDataPickerItem,
 ): item is NotebookDataPickerValueItem => {
-  return isValidValueItem(item.model);
+  return ["table", "card", "dataset", "metric"].includes(item.model);
 };
 
 export const isFolderItem = (
   item: NotebookDataPickerItem,
 ): item is NotebookDataPickerFolderItem => {
-  return isValidFolderItem(item.model);
-};
-
-// TODO add "model" suffix
-export const isValidValueItem = (model: DataPickerModel): boolean => {
-  return ["table", "card", "dataset", "metric"].includes(model);
-};
-
-// TODO add "model" suffix
-export const isValidFolderItem = (model: DataPickerModel): boolean => {
-  return ["collection", "database", "schema"].includes(model);
+  return ["collection", "database", "schema"].includes(item.model);
 };
 
 export const createShouldShowItem = (
