@@ -119,7 +119,9 @@ export function getPieChartModel(
   // We allow negative values if every single metric value is negative or 0
   // (`isNonPositive` = true). If the values are mixed between positives and
   // negatives, we'll simply ignore the negatives in all calculations.
-  const isNonPositive = pieRowsWithValues.every(row => row.value <= 0);
+  const isNonPositive =
+    pieRowsWithValues.every(row => row.value <= 0) &&
+    !pieRowsWithValues.every(row => row.value === 0);
 
   const total = pieRowsWithValues.reduce((currTotal, { value }) => {
     if (!isNonPositive && value < 0) {
@@ -145,8 +147,8 @@ export function getPieChartModel(
         includeInLegend: true,
       };
     })
-    .filter(slice => isNonPositive || slice.value >= 0)
-    .partition(slice => !slice.isOther)
+    .filter(slice => isNonPositive || slice.value > 0)
+    .partition(slice => slice != null && !slice.isOther)
     .value();
 
   // We don't show the grey other slice if there isn't more than one slice to
