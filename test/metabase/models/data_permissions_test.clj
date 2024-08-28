@@ -175,14 +175,19 @@
         (mt/with-restored-data-perms-for-groups! [group-id-1 group-id-2]
           (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :yes)
           (data-perms/with-relevant-permissions-for-user user-id
-            ;; retrieve the cache now so it doesn't get counted in the call-count
-            @data-perms/*permissions-for-user*
+            ;; Fetch the perms once to populate the cache for this DB
+            (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)
             ;; make the cache wrong
             (data-perms/set-database-permission! group-id-1 database-id-1 :perms/manage-database :no)
             ;; the cached value is used
             (t2/with-call-count [call-count]
               (is (= :yes (data-perms/database-permission-for-user user-id :perms/manage-database database-id-1)))
-              (is (zero? (call-count))))))))))
+              (is (zero? (call-count)))))
+
+          ;; Fetching perms for a different DB is a cache miss
+          (t2/with-call-count [call-count]
+            (is (= :no (data-perms/database-permission-for-user user-id :perms/manage-database database-id-2)))
+            (is (= 1 (call-count)))))))))
 
 (deftest table-permission-for-user-test
   (mt/with-temp [:model/PermissionsGroup           {group-id-1 :id}  {}
@@ -218,8 +223,8 @@
               (data-perms/set-table-permission! group-id-2 table-id-1 :perms/create-queries :query-builder)
               (is (= :query-builder (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)))
               (data-perms/with-relevant-permissions-for-user user-id
-                ;; retrieve the cache now so it doesn't get counted in the call count
-                @data-perms/*permissions-for-user*
+                ;; Fetch the perms once to populate the cache
+                (data-perms/table-permission-for-user user-id :perms/create-queries database-id table-id-1)
                 ;; make the cache wrong
                 (data-perms/set-table-permission! group-id-1 table-id-1 :perms/create-queries :no)
                 ;; the cached value is used
