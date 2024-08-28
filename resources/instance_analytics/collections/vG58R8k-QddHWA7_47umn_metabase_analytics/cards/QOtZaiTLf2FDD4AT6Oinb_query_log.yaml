@@ -365,8 +365,8 @@ result_metadata:
   fk_target_field_id:
   - Internal Metabase Database
   - public
-  - persisted_info
-  - state_change_at
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
