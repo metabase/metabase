@@ -7,12 +7,12 @@ type EventSchema = {
   event_detail?: string | null;
 };
 
-type DoNotUseEvent1 = {
+export type DoNotUseEvent1 = {
   event: "do_not_use_1";
   target_id: number | null;
 };
 
-type DoNotUseEvent2 = {
+export type DoNotUseEvent2 = {
   event: "do_not_use_2";
   triggered_from: "location-1" | "location-2";
 };
