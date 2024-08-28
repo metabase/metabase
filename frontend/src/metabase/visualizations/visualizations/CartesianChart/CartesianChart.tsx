@@ -2,6 +2,7 @@ import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
 import {
@@ -11,7 +12,6 @@ import {
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
-  CartesianChartRenderer,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useChartEvents } from "metabase/visualizations/visualizations/CartesianChart/use-chart-events";
@@ -130,7 +130,7 @@ function _CartesianChart(props: VisualizationProps) {
         width={outerWidth}
         height={outerHeight}
       >
-        <CartesianChartRenderer
+        <ResponsiveEChartsRenderer
           ref={containerRef}
           option={option}
           eventHandlers={eventHandlers}
