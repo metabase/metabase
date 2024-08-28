@@ -45,41 +45,82 @@ export const trackSchemaEvent = <TData extends object>(
   }
 };
 
-export const trackActionEvent = (
+export type ActionEvent<TName, TArgs extends ActionEventContext | undefined> = {
+  name: TName;
+  args: TArgs;
+};
+
+export type ActionEventContext = {
+  /**From where the action was taken. This can be generic like 'dashboard' or also more specific like 'dashboard_top_nav'.*/
+  triggeredFrom?: string;
+  /** ID of the entity that the action was performed on. E.g. the ID of the question that was created in a question_created event. */
+  targetId?: string;
+  /** Duration in milliseconds */
+  durationMs?: number;
+  /** The outcome of the action (e.g. success, failure, …) */
+  result?: string;
+  /** Can be used for additional details that describe the event, e.g. the type of question that was created in a question_created event. */
+  eventDetail?: string;
+  /** (Optional) Additional context entities (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/). We send the Metabase Instance context by default with each event. */
+  contextEntities?: Snowplow.SelfDescribingJson<Record<string, unknown>>[];
+};
+
+// type definition examples
+
+//valid event
+type SetupNewsLetterToggleClicked = ActionEvent<
+  "setup-newsletter-toggle-clicked",
+  { eventDetail: "opted-in" | "opted-out" }
+>;
+
+type NoArgsEvent = ActionEvent<"no-args-event", undefined>;
+
+// @ts-expect-error - should fail
+type _SomethingRandom = ActionEvent<"aaa", { something: "else" }>;
+
+type AnyActionEvent = SetupNewsLetterToggleClicked | NoArgsEvent;
+
+export const trackActionEvent = <TEvent extends AnyActionEvent>(
   /** Name of the action. Noun (target) + Verb in the past (action) which define the action taken - e.g. question-created, dashboard-updated, dashboard-auto-apply-filter-enabled */
-  name: string,
-  {
-    triggeredFrom,
-    targetId,
-    durationMs,
-    result,
-    eventDetail,
-    contextEntities,
-  }: {
-    /**From where the action was taken. This can be generic like 'dashboard' or also more specific like 'dashboard_top_nav'.*/
-    triggeredFrom?: string;
-    /** ID of the entity that the action was performed on. E.g. the ID of the question that was created in a question_created event. */
-    targetId?: string;
-    /** Duration in milliseconds */
-    durationMs?: number;
-    /** The outcome of the action (e.g. success, failure, …) */
-    result?: string;
-    /** Can be used for additional details that describe the event, e.g. the type of question that was created in a question_created event. */
-    eventDetail?: string;
-    /** (Optional) Additional context entities (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/). We send the Metabase Instance context by default with each event. */
-    contextEntities?: Snowplow.SelfDescribingJson<Record<string, unknown>>[];
-  },
+  name: TEvent["name"],
+  args: TEvent["args"] = undefined,
 ) => {
+  // needs to cast it to ActionEventContext to be able to access the all possible properties
+  const genericArgs = args as ActionEventContext;
   const data = {
     name: name,
-    triggered_from: triggeredFrom,
-    target_id: targetId,
-    duration_ms: durationMs,
-    result,
-    event_detail: eventDetail,
+    triggered_from: genericArgs.triggeredFrom,
+    target_id: genericArgs.targetId,
+    duration_ms: genericArgs.durationMs,
+    result: genericArgs.result,
+    event_detail: genericArgs.eventDetail,
   };
-  trackSchemaEvent("structured_action", "1-0-0", data, contextEntities);
+  trackSchemaEvent(
+    "structured_action",
+    "1-0-0",
+    data,
+    genericArgs.contextEntities,
+  );
 };
+
+// trackActionEvent usage examples
+
+trackActionEvent("setup-newsletter-toggle-clicked", {
+  eventDetail: "opted-in",
+});
+
+trackActionEvent("setup-newsletter-toggle-clicked", {
+  // @ts-expect-error - should fail
+  eventDetail: "aaas-in",
+});
+
+trackActionEvent("setup-newsletter-toggle-clicked", {
+  eventDetail: "opted-in",
+  // @ts-expect-error - should fail
+  aaa: "fake",
+});
+
+trackActionEvent("no-args-event");
 
 const trackSnowplowSchemaEvent = (
   schema: string,
