@@ -21,7 +21,7 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 
 
-const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
+const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
 
 
     const inputRef = useRef(null);
@@ -331,6 +331,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
                 JSON.stringify({
                     type: "configure",
                     configData: [dbInputValue || 2, company_name],
+                    appType: appType
                 }),
             );
         }
@@ -357,6 +358,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId }) => {
             type: "query",
             task: inputValue,
             thread_id: threadId,
+            appType: appType
         };
         if (isConnected) {
             ws && ws.send(JSON.stringify(response));
