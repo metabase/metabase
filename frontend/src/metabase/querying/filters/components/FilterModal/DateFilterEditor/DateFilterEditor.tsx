@@ -58,7 +58,7 @@ export function DateFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="date-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

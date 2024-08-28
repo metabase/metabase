@@ -5,7 +5,7 @@ import ErrorBoundary from "metabase/ErrorBoundary";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type { NotebookStepProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
 export function FilterStep({
@@ -15,7 +15,7 @@ export function FilterStep({
   isLastOpened,
   readOnly,
   updateQuery,
-}: NotebookStepUiComponentProps) {
+}: NotebookStepProps) {
   const { stageIndex } = step;
 
   const filters = useMemo(
