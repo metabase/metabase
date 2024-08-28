@@ -1,14 +1,12 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
+import CS from "metabase/css/core/index.css";
+import { Icon, Switch } from "metabase/ui";
 import type { Alert, EmailChannelSpec, User } from "metabase-types/api";
 
-import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
-import { Icon, Switch } from "metabase/ui";
-
 import { RecipientPicker } from "./RecipientPicker";
-
-import CS from "metabase/css/core/index.css";
 
 export const EmailChannelEdit = ({
   channelSpec,

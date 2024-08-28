@@ -4,9 +4,9 @@ import { useCreateChannelMutation } from "metabase/api/channel";
 import { Modal } from "metabase/ui";
 
 import {
-  handleFieldError,
   WebhookForm,
   type WebhookFormProps,
+  handleFieldError,
 } from "./WebhookForm";
 import { buildAuthInfo } from "./utils";
 

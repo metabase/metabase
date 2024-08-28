@@ -1,15 +1,11 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import type { Alert, SlackChannelSpec, User } from "metabase-types/api";
-
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
-import { Icon, Switch } from "metabase/ui";
-
-import { RecipientPicker } from "./RecipientPicker";
-
 import CS from "metabase/css/core/index.css";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
+import { Icon, Switch } from "metabase/ui";
+import type { Alert, SlackChannelSpec, User } from "metabase-types/api";
 
 export const SlackChannelEdit = ({
   channelSpec,

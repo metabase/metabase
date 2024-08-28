@@ -64,7 +64,6 @@ class CreateAlertModalContentInner extends Component {
   }
 
   onAlertChange = alert => {
-    console.log({ alert });
     this.setState({ alert });
   };
 

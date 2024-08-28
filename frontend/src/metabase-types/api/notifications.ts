@@ -89,7 +89,7 @@ export type SlackChannelSpec = ChannelSpec & {
   fields: ChannelField[];
 };
 
-type EmailChannelSpec = ChannelSpec & {
+export type EmailChannelSpec = ChannelSpec & {
   recipients: ChannelSpecRecipients;
 };
 export interface ChannelApiResponse {

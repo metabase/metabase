@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { t, c } from "ttag";
+import { c, t } from "ttag";
 
 import { useListChannelsQuery } from "metabase/api/channel";
 import {
