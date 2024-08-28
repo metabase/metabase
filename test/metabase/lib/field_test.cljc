@@ -12,6 +12,7 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -1610,3 +1611,12 @@
                             :base-type :type/Integer})
                 lib/visible-columns
                 last))))))
+
+(deftest ^:parallel with-temporal-bucket-effective-type-test
+  (let [column (meta/field-metadata :orders :created-at)]
+    (testing "should restore the original effective-type when removing a temporal-unit"
+      (doseq [unit lib.schema.temporal-bucketing/datetime-bucketing-units]
+        (is (= (:effective-type column) (-> column
+                                            (lib/with-temporal-bucket unit)
+                                            (lib/with-temporal-bucket nil)
+                                            (:effective-type))))))))

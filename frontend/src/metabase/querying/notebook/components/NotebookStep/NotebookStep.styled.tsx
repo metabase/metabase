@@ -18,20 +18,9 @@ export const StepRoot = styled.div`
   }
 `;
 
-export interface StepHeaderProps {
-  color?: string;
-}
-
 export const StepContent = styled.div`
   width: ${getPercentage(11 / 12)};
   max-width: 75rem;
-`;
-
-export const StepHeader = styled(StepContent)`
-  display: flex;
-  color: ${props => props.color};
-  font-weight: bold;
-  margin-bottom: 0.5rem;
 `;
 
 export const StepBody = styled.div`
