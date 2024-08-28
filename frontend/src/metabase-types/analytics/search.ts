@@ -1,4 +1,4 @@
-export type SearchContentType =
+type SearchContentType =
   | "dashboard"
   | "card"
   | "dataset"
@@ -10,7 +10,7 @@ export type SearchContentType =
   | "action"
   | "indexed-entity";
 
-export type SearchContext =
+type SearchContext =
   | "search-app"
   | "search-bar"
   | "command-palette"
