@@ -21,8 +21,11 @@ import type {
   EntityTab,
   TypeWithModel,
 } from "../../types";
-import { computeInitialTab } from "../../utils";
-import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
+import { computeInitialTab, getSearchTabText } from "../../utils";
+import {
+  EntityPickerSearchInput,
+  EntityPickerSearchResults,
+} from "../EntityPickerSearch";
 import { RecentsTab } from "../RecentsTab";
 
 import { ButtonBar } from "./ButtonBar";
@@ -132,13 +135,13 @@ export function EntityPickerModal<
       : relevantModelRecents;
   }, [recentItems, tabModels, recentFilter]);
 
-  const tabs: EntityTab<Model | "recents">[] = useMemo(() => {
-    const computedTabs: EntityTab<Model | "recents">[] = [];
-
-    const showRecents =
+  const tabs: EntityTab<Model | "recents" | "search">[] = useMemo(() => {
+    const computedTabs: EntityTab<Model | "recents" | "search">[] = [];
+    const hasRecentsTab =
       hydratedOptions.hasRecents && filteredRecents.length > 0;
+    const hasSearchTab = !!searchQuery;
 
-    if (showRecents) {
+    if (hasRecentsTab) {
       computedTabs.push({
         model: "recents",
         displayName: t`Recents`,
@@ -156,14 +159,31 @@ export function EntityPickerModal<
 
     computedTabs.push(...passedTabs);
 
+    if (hasSearchTab) {
+      computedTabs.push({
+        model: "search",
+        displayName: getSearchTabText(searchResults, searchQuery),
+        icon: "search",
+        element: (
+          <EntityPickerSearchResults
+            searchResults={searchResults}
+            onItemSelect={onItemSelect}
+            selectedItem={selectedItem}
+          />
+        ),
+      });
+    }
+
     return computedTabs;
   }, [
+    filteredRecents,
+    hydratedOptions.hasRecents,
+    isLoadingRecentItems,
+    passedTabs,
+    searchQuery,
+    searchResults,
     selectedItem,
     onItemSelect,
-    passedTabs,
-    isLoadingRecentItems,
-    hydratedOptions.hasRecents,
-    filteredRecents,
   ]);
 
   const hasTabs = tabs.length > 1 || searchQuery;
@@ -247,12 +267,8 @@ export function EntityPickerModal<
           <ErrorBoundary>
             {hasTabs ? (
               <TabsView
-                searchQuery={searchQuery}
-                searchResults={searchResults}
-                selectedItem={selectedItem}
                 selectedTab={selectedTab}
                 tabs={tabs}
-                onItemSelect={onItemSelect}
                 onTabChange={setSelectedTab}
               />
             ) : (

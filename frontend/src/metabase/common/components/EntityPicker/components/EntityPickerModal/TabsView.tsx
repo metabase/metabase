@@ -1,35 +1,18 @@
 import { Icon, Tabs } from "metabase/ui";
-import type { SearchResult, SearchResultId } from "metabase-types/api";
 
-import type { EntityTab, TypeWithModel } from "../../types";
-import {
-  EntityPickerSearchResults,
-  EntityPickerSearchTab,
-} from "../EntityPickerSearch";
+import type { EntityTab } from "../../types";
 
-export const TabsView = <
-  Id extends SearchResultId,
-  Model extends string,
-  Item extends TypeWithModel<Id, Model>,
->({
-  searchQuery,
-  searchResults,
-  selectedItem,
-  selectedTab,
-  tabs,
-  onItemSelect,
-  onTabChange,
-}: {
-  searchQuery: string;
-  searchResults: SearchResult[] | null;
-  selectedItem: Item | null;
+interface Props<Model extends string> {
   selectedTab: Model | "recents" | "search";
   tabs: EntityTab<Model | "recents" | "search">[];
-  onItemSelect: (item: Item) => void;
   onTabChange: (model: Model | "recents" | "search") => void;
-}) => {
-  const hasSearchTab = !!searchQuery;
+}
 
+export const TabsView = <Model extends string>({
+  selectedTab,
+  tabs,
+  onTabChange,
+}: Props<Model>) => {
   return (
     <Tabs
       keepMounted
@@ -56,13 +39,6 @@ export const TabsView = <
             </Tabs.Tab>
           );
         })}
-        {hasSearchTab && (
-          <EntityPickerSearchTab
-            onClick={() => onTabChange("search")}
-            searchResults={searchResults}
-            searchQuery={searchQuery}
-          />
-        )}
       </Tabs.List>
 
       {tabs.map(tab => {
@@ -81,22 +57,6 @@ export const TabsView = <
           </Tabs.Panel>
         );
       })}
-      {hasSearchTab && (
-        <Tabs.Panel
-          key="search"
-          value="search"
-          style={{
-            flexGrow: 1,
-            height: 0,
-          }}
-        >
-          <EntityPickerSearchResults
-            searchResults={searchResults}
-            onItemSelect={onItemSelect}
-            selectedItem={selectedItem}
-          />
-        </Tabs.Panel>
-      )}
     </Tabs>
   );
 };
