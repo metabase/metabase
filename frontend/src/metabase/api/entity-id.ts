@@ -57,26 +57,27 @@ const entityIdApi = Api.injectEndpoints({
       TranslateEntityIdResponse,
       TranslateEntityIdRequest
     >({
-      query: (requestEntities: TranslateEntityIdRequest) => {
-        Object.values(requestEntities)
-          .flat()
-          .forEach(entityId => {
-            if (!isBaseEntityID(entityId)) {
-              throw new Error(`Entity ID ${entityId} must be a NanoID`);
-            }
-          });
+      queryFn: async (requestEntities, queryApi, extraOptions, baseQuery) => {
+        for (const entityId of Object.values(requestEntities).flat()) {
+          if (!isBaseEntityID(entityId)) {
+            return {
+              error: {
+                message: "Invalid input",
+                explanation: `${entityId} is not a valid Entity ID`,
+              },
+            };
+          }
+        }
 
-        return {
+        return baseQuery({
           method: "POST",
           url: `/api/util/entity_id`,
           body: {
             entity_ids: requestEntities,
           },
-        };
+        });
       },
-      transformResponse: (response: {
-        entity_ids: TranslateEntityIdResponse;
-      }) => response.entity_ids,
+      // the error object has a bunch of other keys we don't want, so we pick those out
       transformErrorResponse: (response: TranslateEntityIdError) => ({
         message: response.message,
         explanation: response.explanation,
@@ -84,5 +85,4 @@ const entityIdApi = Api.injectEndpoints({
     }),
   }),
 });
-
 export const { useTranslateEntityIdQuery } = entityIdApi;

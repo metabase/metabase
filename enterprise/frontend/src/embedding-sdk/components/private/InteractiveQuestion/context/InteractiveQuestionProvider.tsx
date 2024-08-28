@@ -25,8 +25,8 @@ export const InteractiveQuestionContext = createContext<
 
 const DEFAULT_OPTIONS = {};
 
-export const InteractiveQuestionProviderInner = ({
-  cardId,
+export const InteractiveQuestionProvider = ({
+  cardId: initId,
   options = DEFAULT_OPTIONS,
   deserializedCard,
   componentPlugins,
@@ -35,6 +35,13 @@ export const InteractiveQuestionProviderInner = ({
 }: Omit<InteractiveQuestionProviderProps, "options"> & {
   options?: QueryParams;
 }) => {
+  const { id, isLoading: isLoadingValidatedId } = useValidatedEntityId({
+    type: "card",
+    id: initId,
+  });
+
+  const cardId = id as CardId;
+
   const {
     question,
     originalQuestion,
@@ -65,7 +72,7 @@ export const InteractiveQuestionProviderInner = ({
   }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
-    isQuestionLoading,
+    isQuestionLoading: isQuestionLoading || isLoadingValidatedId,
     isQueryRunning,
     resetQuestion: loadQuestion,
     onReset: loadQuestion,
@@ -89,20 +96,6 @@ export const InteractiveQuestionProviderInner = ({
       {children}
     </InteractiveQuestionContext.Provider>
   );
-};
-
-export const InteractiveQuestionProvider = ({
-  cardId,
-  ...rest
-}: Omit<InteractiveQuestionProviderProps, "options"> & {
-  options?: QueryParams;
-}) => {
-  const id = useValidatedEntityId({
-    type: "card",
-    id: cardId,
-  }) as CardId;
-
-  return <InteractiveQuestionProviderInner cardId={id} {...rest} />;
 };
 
 export const useInteractiveQuestionContext = () => {

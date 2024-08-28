@@ -2,7 +2,10 @@ import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import {
+  SdkLoader,
+  withPublicComponentWrapper,
+} from "embedding-sdk/components/private/PublicComponentWrapper";
 import { useCommonDashboardParams } from "embedding-sdk/components/public/InteractiveDashboard/use-common-dashboard-params";
 import {
   type SdkDashboardDisplayProps,
@@ -115,13 +118,15 @@ const InteractiveDashboardInner = ({
 export const InteractiveDashboard =
   withPublicComponentWrapper<InteractiveDashboardProps>(
     ({ dashboardId, ...rest }) => {
-      const id = useValidatedEntityId({
+      const { id, isLoading } = useValidatedEntityId({
         type: "dashboard",
         id: dashboardId,
-      }) as DashboardId;
+      });
 
-      return id ? (
-        <InteractiveDashboardInner dashboardId={id} {...rest} />
-      ) : null;
+      return isLoading ? (
+        <SdkLoader />
+      ) : (
+        <InteractiveDashboardInner dashboardId={id as DashboardId} {...rest} />
+      );
     },
   );

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { P, match } from "ts-pattern";
 
 import { skipToken } from "metabase/api";
@@ -40,19 +41,29 @@ export const useValidatedEntityId = ({
       : skipToken,
   );
 
-  return match({ id, entity_ids, isError, isLoading })
-    .with({ isLoading: true }, () => null)
-    .with(
-      {
-        id: P.string,
-        entity_ids: P.not(P.nullish),
-        isError: false,
-        isLoading: false,
-      },
-      ({ id, entity_ids }) =>
-        isBaseEntityID(id) && entity_ids[id]?.status === "success"
-          ? entity_ids[id].id
-          : null,
-    )
-    .otherwise(() => id);
+  const validatedId = useMemo(
+    () =>
+      match({ id, entity_ids, isError, isLoading })
+        .with({ isLoading: true }, () => null)
+        .with(
+          {
+            id: P.string,
+            entity_ids: P.not(P.nullish),
+            isError: false,
+            isLoading: false,
+          },
+          ({ id, entity_ids }) =>
+            isBaseEntityID(id) && entity_ids[id]?.status === "success"
+              ? entity_ids[id].id
+              : null,
+        )
+        .otherwise(() => id),
+    [entity_ids, id, isError, isLoading],
+  );
+
+  return {
+    id: validatedId,
+    isLoading,
+    isError,
+  };
 };

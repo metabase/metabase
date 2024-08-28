@@ -20,10 +20,7 @@ import {
   InteractiveQuestionResult,
   type InteractiveQuestionResultProps,
 } from "embedding-sdk/components/private/InteractiveQuestionResult";
-import {
-  SdkLoader,
-  withPublicComponentWrapper,
-} from "embedding-sdk/components/private/PublicComponentWrapper";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import type { CardId } from "metabase-types/api";
 
@@ -41,24 +38,18 @@ export const _InteractiveQuestion = ({
   height,
   children = null,
 }: InteractiveQuestionProps &
-  InteractiveQuestionResultProps): JSX.Element | null => {
-  if (!questionId) {
-    return <SdkLoader />;
-  }
-
-  return (
-    <InteractiveQuestionProvider cardId={questionId} componentPlugins={plugins}>
-      {children ?? (
-        <InteractiveQuestionResult
-          height={height}
-          customTitle={customTitle}
-          withResetButton={withResetButton}
-          withTitle={withTitle}
-        />
-      )}
-    </InteractiveQuestionProvider>
-  );
-};
+  InteractiveQuestionResultProps): JSX.Element | null => (
+  <InteractiveQuestionProvider cardId={questionId} componentPlugins={plugins}>
+    {children ?? (
+      <InteractiveQuestionResult
+        height={height}
+        customTitle={customTitle}
+        withResetButton={withResetButton}
+        withTitle={withTitle}
+      />
+    )}
+  </InteractiveQuestionProvider>
+);
 
 const InteractiveQuestion = withPublicComponentWrapper(
   _InteractiveQuestion,
