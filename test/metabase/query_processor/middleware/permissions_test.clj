@@ -278,7 +278,7 @@
                                      :active false}]
         (is (thrown-with-msg?
              ExceptionInfo
-             #"Table \d+ is inactive."
+             #"Table [\d,]+ is inactive."
              (check-perms-for-rasta
               {:database (u/the-id db)
                :type     :query
