@@ -4,3 +4,4 @@ export * from "./browse_data";
 export * from "./cleanup";
 export * from "./event";
 export * from "./schema";
+export * from "./upsell";

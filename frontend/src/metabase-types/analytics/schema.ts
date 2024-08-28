@@ -3,6 +3,7 @@ import type { ActionEvent } from "./action";
 import type { BrowseDataEvent } from "./browse_data";
 import type { CleanupEvent } from "./cleanup";
 import type { SimpleEvent } from "./event";
+import type { UpsellEvent } from "./upsell";
 
 export type SchemaEventMap = {
   account: AccountEvent;
@@ -10,6 +11,7 @@ export type SchemaEventMap = {
   browse_data: BrowseDataEvent;
   cleanup: CleanupEvent;
   event: SimpleEvent;
+  upsell: UpsellEvent;
 };
 
 export type SchemaType = keyof SchemaEventMap;
