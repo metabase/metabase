@@ -92,7 +92,8 @@
    (mi/can-write? :model/Database (u/the-id instance)))
   ([_model pk]
    (and (not= pk audit/audit-db-id)
-        (current-user-can-write-db? pk))))
+        (current-user-can-write-db? pk)
+        (not (:is_attached_dwh (t2/select-one :model/Database :id pk))))))
 
 (defn- infer-db-schedules
   "Infer database schedule settings based on its options."
@@ -434,14 +435,19 @@
 (defmethod serdes/make-spec "Database"
   [_model-name {:keys [include-database-secrets]}]
   {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
-               :description :engine :is_audit :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
+               :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
                :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
                :uploads_table_prefix]
    :skip      [;; deprecated field
                :cache_ttl]
    :transform {:created_at          (serdes/date)
                ;; details should be imported if available regardless of options
-               :details             {:export #(if include-database-secrets % ::serdes/skip) :import identity}
+               :details             {:export (fn [details]
+                                               (if (and include-database-secrets
+                                                        (not (:is_attached_dwh serdes/*current*)))
+                                                 details
+                                                 ::serdes/skip))
+                                     :import identity}
                :creator_id          (serdes/fk :model/User)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 

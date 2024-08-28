@@ -170,13 +170,17 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
               >
                 <DatabaseEditContent>
                   <DatabaseEditForm>
-                    <DatabaseForm
-                      initialValues={database}
-                      isAdvanced
-                      onSubmit={handleSubmit}
-                      setIsDirty={setIsDirty}
-                      autofocusFieldName={autofocusFieldName}
-                    />
+                    {editingExistingDatabase && database.is_attached_dwh ? (
+                      <div>This database cannot be modified.</div>
+                    ) : (
+                      <DatabaseForm
+                        initialValues={database}
+                        isAdvanced
+                        onSubmit={handleSubmit}
+                        setIsDirty={setIsDirty}
+                        autofocusFieldName={autofocusFieldName}
+                      />
+                    )}
                   </DatabaseEditForm>
                   <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
                 </DatabaseEditContent>
@@ -188,7 +192,7 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
         {editingExistingDatabase && (
           <Sidebar
             database={database}
-            isAdmin={isAdmin}
+            isAdmin={isAdmin && !database.is_attached_dwh}
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
