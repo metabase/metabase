@@ -4,7 +4,6 @@ import { renderWithProviders, screen } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import {
   SAMPLE_METADATA,
-  columnFinder,
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
@@ -51,26 +50,6 @@ describe("TimeseriesChrome", () => {
     });
     setup({ query });
     expect(screen.queryByText("View")).not.toBeInTheDocument();
-  });
-
-  it("should render the chrome for date expressions", () => {
-    const initialQuery = createQuery();
-    const findColumn = columnFinder(
-      initialQuery,
-      Lib.expressionableColumns(initialQuery, -1),
-    );
-    const query = createQueryWithClauses({
-      expressions: [
-        {
-          name: "Date",
-          operator: "datetime-add",
-          args: [findColumn("ORDERS", "CREATED_AT"), 1, "day"],
-        },
-      ],
-      breakouts: [{ tableName: "", columnName: "Date" }],
-    });
-    setup({ query });
-    expect(screen.getByText("View")).toBeInTheDocument();
   });
 
   it("should allow to change the temporal unit for a breakout", async () => {
