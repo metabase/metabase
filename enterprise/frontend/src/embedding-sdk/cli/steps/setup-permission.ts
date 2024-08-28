@@ -15,16 +15,6 @@ import { sampleTenantIdsFromTables } from "../utils/sample-tenancy-column-values
 export const setupPermissions: CliStepMethod = async state => {
   const { cookie = "", instanceUrl = "", tenancyColumnNames = {} } = state;
 
-  if (!state.token) {
-    return [{ type: "success" }, state];
-  }
-
-  // Skip permission setup if the user has not selected any tables with a tenancy column.
-  // We need at least one table with a tenancy column to set up sandboxing.
-  if (Object.keys(tenancyColumnNames).length === 0) {
-    return [{ type: "success" }, state];
-  }
-
   let res;
   const collectionIds: number[] = [];
 

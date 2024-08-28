@@ -19,9 +19,11 @@ import {
   showPostSetupSteps,
   startLocalMetabaseContainer,
 } from "./steps";
-import type { CliState } from "./types/cli";
+import type { CliState, CliStepConfig } from "./types/cli";
 
-export const CLI_STEPS = [
+const hasValidLicense = (state: CliState) => !!state.token;
+
+export const CLI_STEPS: CliStepConfig[] = [
   { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
@@ -41,8 +43,20 @@ export const CLI_STEPS = [
 
   // The following steps require the license to be defined first.
   { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
-  { id: "askForTenancyColumns", executeStep: askForTenancyColumns },
-  { id: "setupPermissions", executeStep: setupPermissions },
+  {
+    id: "askForTenancyColumns",
+    executeStep: askForTenancyColumns,
+    runIf: hasValidLicense,
+  },
+  {
+    id: "setupPermissions",
+    executeStep: setupPermissions,
+
+    // We need at least one table with a tenancy column to set up sandboxing.
+    runIf: state =>
+      hasValidLicense(state) &&
+      Object.keys(state.tenancyColumnNames ?? {}).length === 0,
+  },
   {
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
@@ -50,19 +64,27 @@ export const CLI_STEPS = [
   {
     id: "generateExpressServerFile",
     executeStep: generateExpressServerFile,
+
+    // When JWT is not enabled, they are not able to login with SSO.
+    runIf: hasValidLicense,
   },
   {
     id: "showPostSetupSteps",
     executeStep: showPostSetupSteps,
   },
-] as const;
+];
 
 export async function runCli() {
   let state: CliState = {};
 
   for (let i = 0; i < CLI_STEPS.length; i++) {
-    const { executeStep } = CLI_STEPS[i];
-    const [output, nextState] = await executeStep(state);
+    const step = CLI_STEPS[i];
+
+    if (step.runIf && !step.runIf(state)) {
+      continue;
+    }
+
+    const [output, nextState] = await step.executeStep(state);
 
     if (output.type === "error") {
       console.error(output.message);

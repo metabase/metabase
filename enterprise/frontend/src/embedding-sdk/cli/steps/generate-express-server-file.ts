@@ -10,13 +10,7 @@ import type { CliStepMethod } from "../types/cli";
 import { printError } from "../utils/print";
 
 export const generateExpressServerFile: CliStepMethod = async state => {
-  const { instanceUrl, token } = state;
-
-  // If a valid license token is not present, we don't need to generate the Express.js server.
-  // When JWT is not enabled, they are not able to login with SSO.
-  if (!token) {
-    return [{ type: "success" }, state];
-  }
+  const { instanceUrl } = state;
 
   if (!instanceUrl) {
     const message = "Missing instance URL.";

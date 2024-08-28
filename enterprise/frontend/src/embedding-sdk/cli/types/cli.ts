@@ -49,6 +49,12 @@ export type CliDone = {
   type: "done";
 };
 
+export type CliStepConfig = {
+  id: string;
+  executeStep: CliStepMethod;
+  runIf?: (state: CliState) => boolean;
+};
+
 export type CliStepType = CliError | CliSuccess | CliDone;
 
 export type CliOutput = [CliStepType, CliState];
