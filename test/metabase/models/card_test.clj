@@ -792,6 +792,7 @@
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
     [:model/Database   db   {:name "random db"}
+     :model/Dashboard  dashboard {:name "dashboard"}
      :model/Card       base-card {}
      :model/Card       card {:name                "A Card"
                              :description         "An important card"
@@ -822,6 +823,7 @@
                             (= col :table_id)          (mt/id :venues)
                             (= col :source_card_id)    (:id base-card)
                             (= col :database_id)       (:id db)
+                            (= col :dashboard_id)      (:id dashboard)
                             (= col :query_type)        :native
                             (= col :type)              "model"
                             (= col :dataset_query)     (mt/mbql-query users)
@@ -1037,3 +1039,63 @@
           (mt/with-test-user :crowberto
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
+
+(deftest we-cannot-insert-invalid-dashboard-internal-cards
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+    (mt/with-model-cleanup [:model/Card]
+      (testing "You can't insert a card with a collection_id different than its dashboard's collection_id"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                             :dashboard_id dash-id
+                                                             :collection_id other-coll-id))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                             :dashboard_id dash-id
+                                                             :collection_id nil))))
+        (testing "But you can insert a card with the *same* collection_id"
+          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                         :dashboard_id dash-id
+                                         :collection_id coll-id)))
+        (testing "... or no collection_id"
+          (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                         :dashboard_id dash-id))))
+      (testing "You can't insert a card with a type other than `:question` as a dashboard-internal card"
+        (testing "invalid"
+          (doseq [invalid-type (disj card/card-types :question)]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                                  (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                                 :dashboard_id dash-id
+                                                                 :type invalid-type))))))
+        (testing "these are valid"
+          (doseq [valid-type [:question "question"]]
+            (is (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                               :dashboard_id dash-id
+                                               :type valid-type))))))
+      (testing "You can't insert a dashboard-internal card with a collection_position"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                              (t2/insert! :model/Card (assoc (t2.with-temp/with-temp-defaults :model/Card)
+                                                             :dashboard_id dash-id
+                                                             :collection_position 5))))))))
+
+(deftest no-updating-dashboard-internal-cards-with-invalid-data
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}
+                 :model/Card {card-id :id} {:dashboard_id dash-id}]
+    (testing "Can't update the collection_id"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                            (t2/update! :model/Card card-id {:collection_id other-coll-id}))))
+    (testing "CAN 'update' the collection_id"
+      (is (t2/update! :model/Card card-id {:collection_id coll-id})))
+    (testing "Can't update the collection_position"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                            (t2/update! :model/Card card-id {:collection_position 5}))))
+    (testing "CAN 'update' the collection_position"
+      (is (t2/update! :model/Card card-id {:collection_position nil})))
+    (testing "Can't update the type"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid dashboard-internal card"
+                            (t2/update! :model/Card card-id {:type :model}))))
+    (testing "CAN 'update' the type"
+      (is (t2/update! :model/Card card-id {:type :question})))))
