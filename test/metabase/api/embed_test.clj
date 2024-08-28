@@ -1746,7 +1746,7 @@
 (deftest entity-id-single-card-translations-test
   (mt/with-temp
     [:model/Card {id   :id eid   :entity_id} {}]
-    (is (= {eid   {:id id   :type :card}}
+    (is (= {eid   {:id id :status "success"   :type :card}}
            (api.embed.common/model->entity-ids->ids {:card [eid]})))))
 
 (deftest entity-id-card-translations-test
@@ -1758,13 +1758,13 @@
      :model/Card {id-3 :id eid-3 :entity_id} {}
      :model/Card {id-4 :id eid-4 :entity_id} {}
      :model/Card {id-5 :id eid-5 :entity_id} {}]
-    (is (= {eid   {:id id   :type :card}
-            eid-0 {:id id-0 :type :card}
-            eid-1 {:id id-1 :type :card}
-            eid-2 {:id id-2 :type :card}
-            eid-3 {:id id-3 :type :card}
-            eid-4 {:id id-4 :type :card}
-            eid-5 {:id id-5 :type :card}}
+    (is (= {eid   {:id id   :type :card :status "success"}
+            eid-0 {:id id-0 :type :card :status "success"}
+            eid-1 {:id id-1 :type :card :status "success"}
+            eid-2 {:id id-2 :type :card :status "success"}
+            eid-3 {:id id-3 :type :card :status "success"}
+            eid-4 {:id id-4 :type :card :status "success"}
+            eid-5 {:id id-5 :type :card :status "success"}}
            (api.embed.common/model->entity-ids->ids {:card [eid eid-0 eid-1 eid-2 eid-3 eid-4 eid-5]})))))
 
 (deftest entity-id-mixed-translations-test
@@ -1793,21 +1793,21 @@
      :model/Timeline           {timeline_id             :id timeline_eid             :entity_id} {}]
     (let [core_user_eid (u/generate-nano-id)]
       (t2/update! :model/User core_user_id {:entity_id core_user_eid})
-      (is (= {action_eid               {:id action_id :type :action}
-              collection_eid           {:id collection_id :type :collection}
-              core_user_eid            {:id core_user_id :type :user}
-              dashboard_tab_eid        {:id dashboard_tab_id :type :dashboard-tab}
-              dimension_eid            {:id dimension_id :type :dimension}
-              native_query_snippet_eid {:id native_query_snippet_id :type :snippet}
-              permissions_group_eid    {:id permissions_group_id :type :permissions-group}
-              pulse_eid                {:id pulse_id :type :pulse}
-              pulse_card_eid           {:id pulse_card_id :type :pulse-card}
-              pulse_channel_eid        {:id pulse_channel_id :type :pulse-channel}
-              report_card_eid          {:id report_card_id :type :card}
-              report_dashboard_eid     {:id report_dashboard_id :type :dashboard}
-              report_dashboardcard_eid {:id report_dashboardcard_id :type :dashboard-card}
-              segment_eid              {:id segment_id :type :segment}
-              timeline_eid             {:id timeline_id :type :timeline}}
+      (is (= {action_eid               {:id action_id :type :action :status "success"}
+              collection_eid           {:id collection_id :type :collection :status "success"}
+              core_user_eid            {:id core_user_id :type :user :status "success"}
+              dashboard_tab_eid        {:id dashboard_tab_id :type :dashboard-tab :status "success"}
+              dimension_eid            {:id dimension_id :type :dimension :status "success"}
+              native_query_snippet_eid {:id native_query_snippet_id :type :snippet :status "success"}
+              permissions_group_eid    {:id permissions_group_id :type :permissions-group :status "success"}
+              pulse_eid                {:id pulse_id :type :pulse :status "success"}
+              pulse_card_eid           {:id pulse_card_id :type :pulse-card :status "success"}
+              pulse_channel_eid        {:id pulse_channel_id :type :pulse-channel :status "success"}
+              report_card_eid          {:id report_card_id :type :card :status "success"}
+              report_dashboard_eid     {:id report_dashboard_id :type :dashboard :status "success"}
+              report_dashboardcard_eid {:id report_dashboardcard_id :type :dashboard-card :status "success"}
+              segment_eid              {:id segment_id :type :segment :status "success"}
+              timeline_eid             {:id timeline_id :type :timeline :status "success"}}
              (api.embed.common/model->entity-ids->ids
               {:action            [action_eid]
                :card              [report_card_eid]
