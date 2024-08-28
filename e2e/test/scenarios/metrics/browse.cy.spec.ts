@@ -88,9 +88,7 @@ function findMetric(name: string) {
   return metricsTable().findByText(name).should("be.visible");
 }
 
-function alphabet(number: number) {
-  return String.fromCharCode(65 + number);
-}
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 describe("scenarios > browse > metrics", () => {
   beforeEach(() => {
@@ -172,8 +170,8 @@ describe("scenarios > browse > metrics", () => {
       createMetrics(
         ALL_METRICS.map((metric, index) => ({
           ...metric,
-          name: `Metric ${alphabet(index)}`,
-          description: `Description ${alphabet(25 - index)}`,
+          name: `Metric ${alphabet[index]}`,
+          description: `Description ${alphabet[25 - index]}`,
         })),
       );
 
