@@ -35,6 +35,11 @@ export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
   You can still use the SDK, but you will not be able to sandbox your tables.
 `;
 
+export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
+  Your have not selected any tables with a multi-tenancy column.
+  You can still use the SDK, but you will not be able to sandbox your tables.
+`;
+
 export const getGeneratedComponentFilesMessage = (path: string) => `
   Generated example React components files in "${path}".
 `;
