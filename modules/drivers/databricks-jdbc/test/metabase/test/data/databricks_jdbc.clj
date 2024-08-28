@@ -37,6 +37,14 @@
                                    :type/Text                   "STRING"}]
   (defmethod sql.tx/field-base-type->sql-type [:databricks-jdbc base-type] [_driver _base-type] database-type))
 
+(defmethod driver/database-supports? [:databricks-jdbc :test/time-type]
+  [_driver _feature _database]
+  false)
+
+(defmethod driver/database-supports? [:databricks-jdbc :test/timestamptz-type]
+  [_driver _feature _database]
+  false)
+
 (defmethod tx/dbdef->connection-details :databricks-jdbc
   [_driver _connection-type {:keys [database-name] :as _dbdef}]
   (merge
@@ -176,12 +184,3 @@
                                 :else
                                 val))))]
     ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier rows)))
-
-;; TODO: Move up in the file!
-(defmethod driver/database-supports? [:databricks-jdbc :test/time-type]
-  [_driver _feature _database]
-  false)
-
-(defmethod driver/database-supports? [:databricks-jdbc :test/timestamptz-type]
-  [_driver _feature _database]
-  false)
