@@ -37,7 +37,7 @@ export function DefaultFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="default-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle
