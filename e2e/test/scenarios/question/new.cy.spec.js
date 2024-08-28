@@ -21,7 +21,9 @@ import {
   queryBuilderHeader,
   restore,
   saveQuestion,
+  shouldDisplayTabs,
   startNewQuestion,
+  tabsShouldBe,
   visitCollection,
   visitQuestion,
   visitQuestionAdhoc,
@@ -60,14 +62,8 @@ describe("scenarios > question > new", () => {
       startNewQuestion();
 
       entityPickerModal().within(() => {
-        cy.findAllByRole("tab").should("have.length", 3);
-        entityPickerModalTab("Models").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
-        entityPickerModalTab("Tables").should("exist");
-        entityPickerModalTab("Saved questions").should("exist");
+        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+
         entityPickerModalTab("Search").should("not.exist");
 
         cy.findByPlaceholderText("Search…").type("  ").blur();
@@ -94,11 +90,8 @@ describe("scenarios > question > new", () => {
         // Discarding the search query should take us back to the original tab
         cy.findByPlaceholderText("Search…").clear().blur();
         entityPickerModalTab("Search").should("not.exist");
-        entityPickerModalTab("Models").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+
         entityPickerModalTab("Saved questions").click();
         cy.findByText("Orders, Count").click();
       });
@@ -270,6 +263,20 @@ describe("scenarios > question > new", () => {
       cy.findByText("Orders").click();
     });
 
+    cy.log(
+      "The selected table should be saved and show in recents (metabase#45003)",
+    );
+
+    cy.findByRole("button", { name: /Orders/ }).click();
+    shouldDisplayTabs(["Recents", "Models", "Tables", "Saved questions"]);
+    entityPickerModalTab("Recents").click();
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Orders/ })
+      .should("exist");
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Close/ })
+      .click();
+
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();
     });
@@ -409,6 +416,7 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
+        entityPickerModalTab("Dashboards").click();
         cy.findByText(/bobby tables's personal collection/i).should(
           "be.visible",
         );
@@ -436,6 +444,8 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         cy.findByText("Add this question to a dashboard").should("be.visible");
+
+        cy.findByRole("tab", { name: /Dashboards/ }).click();
         cy.findByText("Bobby Tables's Personal Collection").should(
           "be.visible",
         );
@@ -502,12 +512,30 @@ describe(
         type: "model",
       });
 
-      cy.visit("/question/new");
+      cy.intercept("POST", "/api/activity/recents").as("recents");
+
+      cy.visit("/question/notebook");
 
       entityPickerModal().within(() => {
         entityPickerModalTab("Saved questions").should("be.visible");
         entityPickerModalTab("Models").should("be.visible");
         entityPickerModalTab("Tables").should("be.visible");
+        entityPickerModalItem(1, "Orders Model").click();
+      });
+
+      cy.wait("@recents");
+
+      cy.button(/Orders Model/).click();
+
+      entityPickerModal().within(() => {
+        tabsShouldBe("Models", [
+          "Recents",
+          "Models",
+          "Tables",
+          "Saved questions",
+        ]);
+        entityPickerModalTab("Recents").click();
+        cy.findByTestId("result-item").should("contain.text", "Orders Model");
       });
     });
   },

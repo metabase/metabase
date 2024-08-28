@@ -7,7 +7,7 @@ import {
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupMostRecentlyViewedDashboard,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
@@ -234,7 +234,7 @@ const setup = async ({
 
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupCollectionByIdEndpoint({ collections, error });
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
 

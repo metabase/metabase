@@ -244,7 +244,7 @@ describe("embed modal display", () => {
         cy.findByTestId("interactive-embedding-cta").should(
           "have.attr",
           "href",
-          "https://www.metabase.com/product/embedded-analytics?utm_source=oss&utm_media=static-embed-popover",
+          "https://www.metabase.com/product/embedded-analytics?utm_source=product&utm_medium=upsell&utm_campaign=embedding-interactive&utm_content=static-embed-popover&source_plan=oss",
         );
       });
     });

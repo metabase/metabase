@@ -3,11 +3,12 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useListRecentItemsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
 import type {
+  RecentContexts,
   RecentItem,
   SearchModel,
   SearchRequest,
@@ -65,9 +66,10 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
   /**defaultToRecentTab: If set to true, will initially show the recent tab when the modal appears. If set to false, it will show the tab
-   * with the same model as the initialValue. Defaults to true.
-   */
+   * with the same model as the initialValue. Defaults to true. */
   defaultToRecentTab?: boolean;
+  /**recentsContext: Defaults to returning recents based off both views and selections. Can be overridden by props */
+  recentsContext?: RecentContexts[];
 }
 
 export function EntityPickerModal<
@@ -90,10 +92,16 @@ export function EntityPickerModal<
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
+  recentsContext = ["selections", "views"],
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
-    useListRecentItemsQuery(undefined, { refetchOnMountOrArgChange: true });
+    useListRecentsQuery(
+      { context: recentsContext },
+      {
+        refetchOnMountOrArgChange: true,
+      },
+    );
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );

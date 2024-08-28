@@ -1,32 +1,26 @@
-/* eslint-disable import/order */
 /*eslint no-use-before-define: "error"*/
-
 import { createSelector } from "@reduxjs/toolkit";
 import d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
 
-import * as Lib from "metabase-lib";
-
-// Needed due to wrong dependency resolution order
+import { getAlerts } from "metabase/alert/selectors";
+import { getDashboardById } from "metabase/dashboard/selectors";
+import Databases from "metabase/entities/databases";
+import { ModelIndexes } from "metabase/entities/model-indexes";
+import Timelines from "metabase/entities/timelines";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { parseTimestamp } from "metabase/lib/time";
+import { getSortedTimelines } from "metabase/lib/timelines";
+import { isNotNull } from "metabase/lib/types";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import { MetabaseApi } from "metabase/services";
 import {
   extractRemappings,
   getVisualizationTransformed,
 } from "metabase/visualizations";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
-import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
-import Timelines from "metabase/entities/timelines";
-
-import { getAlerts } from "metabase/alert/selectors";
-import { getDashboardById } from "metabase/dashboard/selectors";
-import { parseTimestamp } from "metabase/lib/time";
-import { getSortedTimelines } from "metabase/lib/timelines";
-import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
-import { getMetadata } from "metabase/selectors/metadata";
-import { getSetting } from "metabase/selectors/settings";
 import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
   computeTimeseriesDataInverval,
@@ -36,17 +30,18 @@ import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameterValue,
   normalizeParameters,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
-import Question from "metabase-lib/v1/Question";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
-import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
-import { isNotNull } from "metabase/lib/types";
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
+
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { getWritableColumnProperties } from "./utils";
 

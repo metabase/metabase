@@ -316,8 +316,10 @@ describe("issue 18747", () => {
 
   function addValueToParameterFilter() {
     filterWidget().click();
-    popover().find("input").type("14");
-    popover().contains("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("textbox").type("14");
+      cy.button("Add filter").click();
+    });
   }
 
   beforeEach(() => {

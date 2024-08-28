@@ -94,7 +94,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=oss&utm_media=static-embed-settings-overview",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-overview&source_plan=oss",
         );
 
         expect(
@@ -399,7 +399,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=oss&utm_media=static-embed-settings-appearance#customizing-the-appearance-of-static-embeds",
+          "https://www.metabase.com/docs/latest/embedding/static-embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding-static&utm_content=static-embed-settings-look-and-feel&source_plan=oss#customizing-the-appearance-of-static-embeds",
         );
       });
 
@@ -484,7 +484,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/upgrade?utm_media=static-embed-settings-appearance&utm_source=oss",
+          "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=embedding-static-font&utm_content=static-embed-settings-look-and-feel&source_plan=oss",
         );
       });
 
@@ -514,7 +514,7 @@ describe("Static Embed Setup phase", () => {
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/upgrade?utm_media=static-embed-settings-appearance&utm_source=oss",
+          "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=remove-mb-branding&utm_content=static-embed-settings-look-and-feel&source_plan=oss",
         );
       });
     });
