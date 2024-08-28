@@ -8928,11 +8928,59 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-        id: v51.2024-08-28T15:00:00
-        author: flavius
+        id: v51.2024-08-29T15:00:00
+        author: jordigiam
         comment: Create table postcheckpoints
         preConditions:
           - onFail: MARK_RAN
+          - dbms: h2
+          - not:
+              - tableExists:
+                  tableName: postcheckpoints
+        changes:
+          - createTable:
+              tableName: postcheckpoints
+              remarks: Table to track checkpoints in threads
+              columns:
+                - column:
+                    name: thread_id
+                    type: text
+                    constraints:
+                      nullable: false
+                - column:
+                    name: checkpoint_id
+                    type: text
+                    constraints:
+                      nullable: false
+                      primaryKey: true
+                - column:
+                    name: parent_id
+                    type: text
+                    constraints:
+                      nullable: true
+                - column:
+                    name: checkpoint
+                    type: clob
+                    constraints:
+                      nullable: true
+                - column:
+                    name: metadata
+                    type: clob
+                    constraints:
+                      nullable: true
+                - column:
+                    name: step
+                    type: bigint
+                    constraints:
+                      nullable: false
+
+  - changeSet:
+        id: v51.2024-08-29T15:10:00
+        author: jordigiam
+        comment: Create table postcheckpoints
+        preConditions:
+          - onFail: MARK_RAN
+          - dbms: postgresql
           - not:
               - tableExists:
                   tableName: postcheckpoints
