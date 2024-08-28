@@ -1,7 +1,6 @@
 import { c, t } from "ttag";
 
 import { useUserSetting } from "metabase/common/hooks";
-import { useHasMetrics } from "metabase/common/hooks/use-has-metrics";
 import { useHasModels } from "metabase/common/hooks/use-has-models";
 import CollapseSection from "metabase/components/CollapseSection";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -10,6 +9,7 @@ import { Flex, Skeleton } from "metabase/ui";
 
 import { PaddedSidebarLink, SidebarHeading } from "../MainNavbar.styled";
 import type { SelectedItem } from "../types";
+import { useHasMetrics } from "../utils";
 
 export const BrowseNavSection = ({
   nonEntityItem,

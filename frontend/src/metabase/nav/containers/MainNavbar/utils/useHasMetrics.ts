@@ -1,6 +1,5 @@
+import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import type { SearchRequest } from "metabase-types/api";
-
-import { useFetchMetrics } from "./use-fetch-metrics";
 
 export const useHasMetrics = (req: Partial<SearchRequest> = {}) => {
   const { data, isLoading, error } = useFetchMetrics({
