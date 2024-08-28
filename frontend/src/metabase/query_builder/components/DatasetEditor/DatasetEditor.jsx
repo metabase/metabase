@@ -456,11 +456,7 @@ function DatasetEditor(props) {
     ) {
       return t`You must run the query before you can save this model`;
     }
-
-    if (isMetric && Lib.aggregations(question.query(), -1).length === 0) {
-      return t`You must define how the measure is calculated to save this metric`;
-    }
-  }, [isNative, isMetric, isDirty, isResultDirty, question]);
+  }, [isNative, isDirty, isResultDirty, question]);
 
   const sidebar = getSidebar(
     { ...props, modelIndexes },

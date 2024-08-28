@@ -15,11 +15,23 @@ export function BreakoutStep({
   readOnly,
   updateQuery,
 }: NotebookStepProps) {
-  const { stageIndex } = step;
+  const { question, stageIndex } = step;
+  const isMetric = question.type() === "metric";
 
-  const breakouts = useMemo(() => {
-    return Lib.breakouts(query, stageIndex);
-  }, [query, stageIndex]);
+  const breakouts = useMemo(
+    () => Lib.breakouts(query, stageIndex),
+    [query, stageIndex],
+  );
+
+  const columns = useMemo(() => {
+    const columns = Lib.breakoutableColumns(query, stageIndex);
+    return isMetric
+      ? columns.filter(column => Lib.isDateOrDateTime(column))
+      : columns;
+  }, [query, stageIndex, isMetric]);
+
+  const hasAddButton = !readOnly && (!isMetric || breakouts.length === 0);
+  const isAddButtonDisabled = isMetric && columns.length === 0;
 
   const renderBreakoutName = (clause: Lib.BreakoutClause) =>
     Lib.displayInfo(query, stageIndex, clause).longDisplayName;
@@ -58,10 +70,16 @@ export function BreakoutStep({
   return (
     <ClauseStep
       items={breakouts}
-      initialAddText={t`Pick a column to group by`}
+      initialAddText={
+        isAddButtonDisabled
+          ? t`No datetime columns available`
+          : t`Pick a column to group by`
+      }
       readOnly={readOnly}
       color={color}
       isLastOpened={isLastOpened}
+      hasAddButton={hasAddButton}
+      isAddButtonDisabled={isAddButtonDisabled}
       renderName={renderBreakoutName}
       renderPopover={({ item: breakout, index, onClose }) => (
         <BreakoutPopover
@@ -69,6 +87,7 @@ export function BreakoutStep({
           stageIndex={stageIndex}
           breakout={breakout}
           breakoutIndex={index}
+          columns={columns}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakoutColumn={handleUpdateBreakoutColumn}
           onClose={onClose}
@@ -86,6 +105,7 @@ interface BreakoutPopoverProps {
   stageIndex: number;
   breakout: Lib.BreakoutClause | undefined;
   breakoutIndex: number | undefined;
+  columns: Lib.ColumnMetadata[];
   onAddBreakout: (column: Lib.ColumnMetadata) => void;
   onUpdateBreakoutColumn: (
     breakout: Lib.BreakoutClause,
@@ -99,12 +119,12 @@ const BreakoutPopover = ({
   stageIndex,
   breakout,
   breakoutIndex,
+  columns,
   onAddBreakout,
   onUpdateBreakoutColumn,
   onClose,
 }: BreakoutPopoverProps) => {
   const columnGroups = useMemo(() => {
-    const columns = Lib.breakoutableColumns(query, stageIndex);
     const filteredColumns = columns.reduce(
       (columns: Lib.ColumnMetadata[], column) => {
         const columnInfo = Lib.displayInfo(query, stageIndex, column);
@@ -119,7 +139,7 @@ const BreakoutPopover = ({
       [],
     );
     return Lib.groupColumns(filteredColumns);
-  }, [query, stageIndex, breakout, breakoutIndex]);
+  }, [query, stageIndex, breakout, breakoutIndex, columns]);
 
   return (
     <QueryColumnPicker
