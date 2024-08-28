@@ -11,7 +11,7 @@ import {
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
-import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
@@ -115,7 +115,7 @@ const InteractiveDashboardInner = ({
 export const InteractiveDashboard =
   withPublicComponentWrapper<InteractiveDashboardProps>(
     ({ dashboardId, ...rest }) => {
-      const id = useValidIdForEntity({
+      const id = useValidatedEntityId({
         type: "dashboard",
         id: dashboardId,
       }) as DashboardId;

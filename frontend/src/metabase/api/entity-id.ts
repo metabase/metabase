@@ -58,7 +58,7 @@ const entityIdApi = Api.injectEndpoints({
         Object.values(requestEntities)
           .flat()
           .forEach(entityId => {
-            if (isNanoID(entityId)) {
+            if (!isNanoID(entityId)) {
               throw new Error(`Entity ID ${entityId} must be a NanoID`);
             }
           });

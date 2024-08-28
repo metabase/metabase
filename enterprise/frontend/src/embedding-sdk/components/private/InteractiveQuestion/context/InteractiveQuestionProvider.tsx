@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useMemo } from "react";
 import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import { useValidIdForEntity } from "metabase/lib/entity-id/hooks/use-valid-id";
+import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
 import type { QueryParams } from "metabase/query_builder/actions";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import type { CardId } from "metabase-types/api";
@@ -97,7 +97,7 @@ export const InteractiveQuestionProvider = ({
 }: Omit<InteractiveQuestionProviderProps, "options"> & {
   options?: QueryParams;
 }) => {
-  const id = useValidIdForEntity({
+  const id = useValidatedEntityId({
     type: "card",
     id: cardId,
   }) as CardId;

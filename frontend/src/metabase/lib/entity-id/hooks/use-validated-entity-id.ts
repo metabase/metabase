@@ -7,12 +7,27 @@ import {
 } from "metabase/api/entity-id";
 import { isNanoID } from "metabase-types/api/entity-id";
 
-type ValidIdForEntityProps = {
+type UseValidatedEntityIdProps = {
   type: EntityType;
   id: string | number | null | undefined;
 };
 
-export const useValidIdForEntity = ({ type, id }: ValidIdForEntityProps) => {
+/**
+ * A hook that validates and potentially translates an entity ID.
+ *
+ * If the hook is loading, then `null` is returned.
+ * If the ID is a valid NanoID and the translation is successful, the translated ID is returned.
+ * Otherwise, the original ID is returned.
+ *
+ * @param {Object} params - The parameters for the hook.
+ * @param {EntityType} params.type - The type of the entity (e.g., 'card', 'dashboard', etc.).
+ * @param {string | number | null | undefined} params.id - The ID to validate and potentially translate.
+ *
+ */
+export const useValidatedEntityId = ({
+  type,
+  id,
+}: UseValidatedEntityIdProps) => {
   const {
     data: entity_ids,
     isError,
@@ -29,7 +44,7 @@ export const useValidIdForEntity = ({ type, id }: ValidIdForEntityProps) => {
     .with({ isLoading: true }, () => null)
     .with(
       {
-        id: P.not(P.nullish),
+        id: P.string,
         entity_ids: P.not(P.nullish),
         isError: false,
         isLoading: false,
