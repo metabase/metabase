@@ -141,16 +141,12 @@
      (sql-jdbc.execute/set-default-connection-options! driver db-or-id-or-spec conn options)
      (f conn))))
 
-;; This makes work the [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-base-test]].
 (defmethod sql.qp/datetime-diff [:databricks-jdbc :second]
   [_driver _unit x y]
-  [:-
-   [:unix_timestamp y (if (instance? LocalDate y)
+  (let [format-string (if (instance? LocalDate y)
                         (h2x/literal "yyyy-MM-dd")
                         (h2x/literal "yyyy-MM-dd HH:mm:ss"))]
-   [:unix_timestamp x (if (instance? LocalDate x)
-                        (h2x/literal "yyyy-MM-dd")
-                        (h2x/literal "yyyy-MM-dd HH:mm:ss"))]])
+    [:- [:unix_timestamp y format-string] [:unix_timestamp x format-string]]))
 
 ;; TODO: Which type, zone to use if any.
 (defmethod sql-jdbc.execute/read-column-thunk [:databricks-jdbc java.sql.Types/TIMESTAMP]
