@@ -317,6 +317,7 @@
           :cards [{:id            metric-id
                    :name          "Sum of Cans"
                    :database-id   (meta/id)
+                   :table-id      (meta/id :venues)
                    :dataset-query metric-definition
                    :description   "Number of toucans plus number of pelicans"
                    :type          :metric}]})
@@ -396,7 +397,7 @@
     (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day"] nil)
 
     [:relative-time-interval {} [:field {} int?] 10 :day 10 :month]
-    (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day" 10 "month"] nil)
+    (lib.js/expression-clause "relative-time-interval" [(meta/field-metadata :products :created-at) 10 "day" 10 "month"] nil)
 
     [:relative-datetime {} :current :day]
     (lib.js/expression-clause "relative-datetime" ["current" "day"] nil)
@@ -592,8 +593,7 @@
       (are [mode expr] (-> (lib.js/diagnose-expression query 0 mode expr js/undefined)
                            .-message
                            string?)
-        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]
-        "filter"      #js ["sum" #js ["field" 1 #js {:base-type "type/Integer"}]]))
+        "expression"  #js ["/"   #js ["field" 1 #js {:base-type "type/Address"}] 100]))
     (testing "circular definition"
       (is (= "Cycle detected: c → x → b → c"
              (-> (lib.js/diagnose-expression
