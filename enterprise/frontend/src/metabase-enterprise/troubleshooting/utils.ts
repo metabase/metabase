@@ -26,14 +26,14 @@ const ERROR_DICTIONARY = {
   },
 };
 
+const errorTypes = Object.keys(
+  ERROR_DICTIONARY,
+) as (keyof typeof ERROR_DICTIONARY)[];
+
 export const formatErrorString = (errors: CardError[]) => {
   const messages: string[] = [];
 
   const errorsByType = _.groupBy(errors, "type");
-
-  const errorTypes = Object.keys(
-    ERROR_DICTIONARY,
-  ) as (keyof typeof ERROR_DICTIONARY)[];
 
   errorTypes.forEach(errorType => {
     if (errorsByType[errorType]) {
@@ -50,6 +50,6 @@ export const formatErrorString = (errors: CardError[]) => {
   if (messages.length > 0) {
     return messages.join(", ");
   } else {
-    return "I don't know what's wrong, but it's broken";
+    return t`Unknown data reference`;
   }
 };

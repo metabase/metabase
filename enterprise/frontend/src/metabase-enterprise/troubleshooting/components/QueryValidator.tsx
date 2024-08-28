@@ -26,6 +26,7 @@ import {
   Flex,
   Icon,
   type IconName,
+  Text,
   Title,
 } from "metabase/ui";
 import { getIconForVisualizationType } from "metabase/visualizations";
@@ -130,7 +131,9 @@ export const QueryValidator = () => {
             styles={{
               inner: {
                 justifyContent: "space-between",
-                color: "var(--mb-color-text-light)",
+                color: isRootCollection
+                  ? "var(--mb-color-text-light)"
+                  : "var(--mb-color-text-medium)",
                 fontWeight: "normal",
               },
               root: { "&:active": { transform: "none" } },
@@ -160,6 +163,7 @@ export const QueryValidator = () => {
             total: invalidCards?.total,
             pageSize: PAGE_SIZE,
           }}
+          emptyBody={<QueryValidatorEmpty />}
         />
       </Box>
       {collectionPickerOpen && (
@@ -178,6 +182,18 @@ export const QueryValidator = () => {
     </>
   );
 };
+
+const QueryValidatorEmpty = () => (
+  <tr>
+    <td colSpan={5}>
+      <Flex justify="center" p="1rem">
+        <Text fz="1rem" color="var(--mb-color-text-light)">
+          {t`No questions, models, or metrics with invalid references`}
+        </Text>
+      </Flex>
+    </td>
+  </tr>
+);
 
 const QueryValidatorRow = ({ row }: { row: TableRow }) => {
   return (

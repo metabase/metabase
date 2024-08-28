@@ -1,10 +1,11 @@
-import { Api } from "metabase/api";
 import type {
   InvalidCardRequest,
   InvalidCardResponse,
 } from "metabase-types/api";
 
-export const queryValidationAPI = Api.injectEndpoints({
+import { EnterpriseApi } from "./api";
+
+export const queryValidationAPI = EnterpriseApi.injectEndpoints({
   endpoints: builder => ({
     getInvalidCards: builder.query<InvalidCardResponse, InvalidCardRequest>({
       query: params => ({
