@@ -10029,6 +10029,21 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v52.2024-10-16T08:57:20
+      author: johnswanson
+      comment: Add `report_card.dashboard_id`
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The dashboard that owns the card, if it is a dashboard-internal card.
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
