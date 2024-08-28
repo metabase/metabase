@@ -19,7 +19,7 @@ export type StaticEmbedPublishedEvent = {
   params: StaticEmbedPublishedParams;
   new_embed: boolean;
   time_since_creation: number;
-  time_since_initial_publication?: number;
+  time_since_initial_publication: number | null;
   is_example_dashboard: boolean;
 };
 
@@ -27,7 +27,7 @@ export type StaticEmbedUnpublishedEvent = {
   event: "static_embed_unpublished";
   artifact: EmbedFlowArtifact;
   time_since_creation: number;
-  time_since_initial_publication?: number;
+  time_since_initial_publication: number | null;
 };
 
 type StaticEmbedCodeCopiedAppearance = {
@@ -51,7 +51,7 @@ export type StaticEmbedCodeCopiedEvent = {
 export type PublicLinkCopiedEvent = {
   event: "public_link_copied";
   artifact: EmbedFlowArtifact;
-  format?: "csv" | "xlsx" | "json" | "html";
+  format: "csv" | "xlsx" | "json" | "html" | null;
 };
 
 export type PublicEmbedCodeCopiedEvent = {

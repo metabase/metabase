@@ -22,7 +22,7 @@ export const trackSearchRequest = (
 ) => {
   trackSchemaEvent("search", {
     event: "search_query",
-    content_type: searchRequest.models,
+    content_type: searchRequest.models ?? null,
     creator: !!searchRequest.created_by,
     creation_date: !!searchRequest.created_at,
     last_edit_date: !!searchRequest.last_edited_at,
@@ -30,10 +30,10 @@ export const trackSearchRequest = (
     verified_items: !!searchRequest.verified,
     search_native_queries: !!searchRequest.search_native_query,
     search_archived: !!searchRequest.archived,
-    context: searchRequest.context,
+    context: searchRequest.context ?? null,
     runtime_milliseconds: duration,
     total_results: searchResponse.total,
-    page_results: searchResponse.limit ?? undefined,
+    page_results: searchResponse.limit,
   });
 };
 
@@ -46,6 +46,6 @@ export const trackSearchClick = (
     event: "search_click",
     position,
     target_type: itemType,
-    context,
+    context: context ?? null,
   });
 };

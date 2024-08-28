@@ -9,15 +9,16 @@ const SCHEMA_NAME = "metabot";
 export const trackMetabotQueryRun = (
   entity_type: MetabotEntityType | null,
   prompt_template_versions: string[] | null,
-  _result: MetabotQueryRunResult,
+  result_type: MetabotQueryRunResult,
   visualization_type: string | null,
   is_rerun: boolean,
 ) => {
   trackSchemaEvent(SCHEMA_NAME, {
     event: "metabot_query_run",
-    entity_type: entity_type ?? undefined,
-    prompt_template_versions: prompt_template_versions ?? undefined,
-    visualization_type: visualization_type ?? undefined,
+    entity_type,
+    prompt_template_versions,
+    result_type,
+    visualization_type,
     is_rerun,
   });
 };
@@ -29,8 +30,8 @@ export const trackMetabotFeedbackReceived = (
 ) => {
   trackSchemaEvent(SCHEMA_NAME, {
     event: "metabot_feedback_received",
-    entity_type: entity_type ?? undefined,
-    prompt_template_versions: prompt_template_versions ?? undefined,
-    feedback_type: feedback_type ?? undefined,
+    entity_type,
+    prompt_template_versions,
+    feedback_type,
   });
 };

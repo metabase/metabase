@@ -53,7 +53,7 @@ export const trackStaticEmbedPublished = ({
     ),
     time_since_initial_publication: resource.initially_published_at
       ? toSecond(now - new Date(resource.initially_published_at).getTime())
-      : undefined,
+      : null,
     params,
     is_example_dashboard: isExampleDashboard,
   });
@@ -79,7 +79,7 @@ export const trackStaticEmbedUnpublished = ({
     ),
     time_since_initial_publication: resource.initially_published_at
       ? toSecond(now - new Date(resource.initially_published_at).getTime())
-      : undefined,
+      : null,
   });
 };
 
@@ -129,7 +129,7 @@ export const trackPublicLinkCopied = ({
   trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",
     artifact,
-    format: (format as any) ?? undefined, // ExportFormatType is untyped
+    format: format as any, // ExportFormatType is untyped
   });
 };
 

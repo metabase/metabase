@@ -305,6 +305,7 @@ describe("#39152 sharing an unsaved question", () => {
             expectGoodSnowplowEvent({
               event: "public_link_copied",
               artifact: "dashboard",
+              format: null,
             });
           }
 
@@ -698,6 +699,7 @@ describe("#39152 sharing an unsaved question", () => {
                 toSecond(Date.now() - this.timeAfterResourceCreation),
                 1,
               ),
+              time_since_initial_publication: null,
               params: {
                 disabled: 3,
                 locked: 0,
