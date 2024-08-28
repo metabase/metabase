@@ -23,8 +23,11 @@
         "maxLength": 1024
       },
       "triggered_from": {
-        "description": "From where the action was taken. This can be generic like 'dashboard' or also more specific like 'dashboard_top_nav'.",
-        "type": "string",
+        "description": "(Optional) From where the action was taken/triggered. This can be generic like 'dashboard' or also more specific like 'dashboard_top_nav'.",
+        "type": [
+            "string",
+            "null"
+        ],
         "maxLength": 1024
       },
       "duration_ms": {
@@ -45,7 +48,7 @@
         "maxLength": 1024
       },
       "event_detail": {
-        "description": "(Optional) Can be used for additional details that describe the event, e.g. the type of question that was created in a question_created event.",
+        "description": "(Optional) String that can be used for additional details that describe the event, e.g. the type of question that was created in a question_created event. We should NOT pass JSON here.",
         "type": [
             "string",
             "null"
@@ -54,7 +57,7 @@
       }
     },
     "required": [
-      "name", "triggered_from"
+      "name"
     ],
     "additionalProperties": false
   }
