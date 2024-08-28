@@ -96,29 +96,36 @@
 ;;; ---------------------------------------- Caching ------------------------------------------------------------------
 
 (defn- relevant-permissions-for-user-and-db
-  "Returns all relevant rows for permissions for the user"
+  "Returns all relevant rows for permissions for the user, excluding permissions for deactivated tables."
   [user-id db-id]
   (t2/select :model/DataPermissions
              {:select [:p.* [:pgm.user_id :user_id]]
               :from [[:permissions_group_membership :pgm]]
               :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                      [:data_permissions :p] [:= :p.group_id :pg.id]]
+              :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
               :where [:and
                       [:= :pgm.user_id user-id]
-                      [:= :p.db_id db-id]]}))
+                      [:= :p.db_id db-id]
+                      [:or [:= :p.table_id nil]
+                           [:= :mt.active true]]]}))
 
 (defn- relevant-permissions-for-user-perm-and-db
-  "Returns all relevant rows for a given user, permission type, and db_id"
+  "Returns all relevant rows for a given user, permission type, and db_id, excluding permissions for deactivated
+  tables."
   [user-id perm-type db-id]
   (t2/select :model/DataPermissions
              {:select [:p.* [:pgm.user_id :user_id]]
               :from [[:permissions_group_membership :pgm]]
               :join [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                      [:data_permissions :p] [:= :p.group_id :pg.id]]
+              :left-join [[:metabase_table :mt] [:= :mt.id :p.table_id]]
               :where [:and
                       [:= :pgm.user_id user-id]
                       [:= :p.perm_type (u/qualified-name perm-type)]
-                      [:= :p.db_id db-id]]}))
+                      [:= :p.db_id db-id]
+                      [:or [:= :p.table_id nil]
+                           [:= :mt.active true]]]}))
 
 (def ^:dynamic *permissions-for-user*
   "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
