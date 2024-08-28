@@ -10,7 +10,6 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.embed.common :as api.embed.common]
    [metabase.api.public :as api.public]
    [metabase.driver.common.parameters.operators :as params.ops]
    [metabase.models.card :as card]
