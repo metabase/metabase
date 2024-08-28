@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -19,11 +19,13 @@ import { useAvailableData } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
+  NotebookDataPickerFolderItem,
   NotebookDataPickerItem,
   NotebookDataPickerValueItem,
 } from "../types";
 import {
   createShouldShowItem,
+  isFolderItem,
   isMetricItem,
   isModelItem,
   isQuestionItem,
@@ -71,6 +73,7 @@ export const DataPickerModal = ({
   const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
     databaseId,
   });
+  const [folderItem, setFolderItem] = useState<NotebookDataPickerFolderItem>();
 
   const { tryLogRecentItem } = useLogRecentItem();
 
@@ -103,17 +106,17 @@ export const DataPickerModal = ({
     return databaseId ? { table_db_id: databaseId } : undefined;
   }, [databaseId]);
 
-  const handleTableSelect = useCallback(
+  const handleItemSelect = useCallback(
     (item: NotebookDataPickerItem) => {
-      if (!isValueItem(item)) {
-        return;
+      if (isFolderItem(item)) {
+        setFolderItem(item);
+      } else if (isValueItem(item)) {
+        const id =
+          item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
+        onChange(id);
+        tryLogRecentItem(item);
+        onClose();
       }
-
-      const id =
-        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
-      onChange(id);
-      tryLogRecentItem(item);
-      onClose();
     },
     [onChange, onClose, tryLogRecentItem],
   );
@@ -121,9 +124,9 @@ export const DataPickerModal = ({
   const handleCardSelect = useCallback(
     (item: QuestionPickerItem) => {
       // see comment for QuestionPickerItem type definition to see why we need this cast
-      handleTableSelect(item as NotebookDataPickerItem);
+      handleItemSelect(item as NotebookDataPickerItem);
     },
-    [handleTableSelect],
+    [handleItemSelect],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
@@ -167,7 +170,7 @@ export const DataPickerModal = ({
         <TablePicker
           databaseId={databaseId}
           value={isTableItem(value) ? value : undefined}
-          onItemSelect={handleTableSelect}
+          onItemSelect={handleItemSelect}
         />
       ),
     },
@@ -204,7 +207,7 @@ export const DataPickerModal = ({
       tabs={tabs}
       title={title}
       onClose={onClose}
-      onItemSelect={handleTableSelect}
+      onItemSelect={handleItemSelect}
       recentsContext={["selections"]}
     />
   );
