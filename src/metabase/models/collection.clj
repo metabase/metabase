@@ -630,14 +630,25 @@
                                              (when-not (collection.root/is-root-collection? parent-coll)
                                                [:not= :c2.id (u/the-id parent-coll)])]}]]]))]}]])))
 
-(mu/defn visible-collection-ids :- VisibleCollections
+(def ^{:arglists '([visibility-config])} visible-collection-ids
   "Returns all collection IDs that are visible given the `visibility-config` passed in. (Config provides knobs for
   toggling permission level, trash/archive visibility, etc). If you're trying to filter based on this, you should
-  probably try to use `visible-collection-filter-clause` instead."
-  [visibility-config]
-  (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
-    (should-display-root-collection? visibility-config)
-    (conj "root")))
+  probably try to use `visible-collection-filter-clause` instead.
+
+  Cached for the lifetime of the request, maximum 10 seconds."
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[visibility-config]]
+                         (if-let [req-id *request-id*]
+                           [req-id api/*current-user-id* visibility-config]
+                           [(random-uuid) api/*current-user-id* visibility-config]))}
+   (fn visible-collection-ids*
+     [visibility-config]
+     (cond-> (t2/select-pks-set :model/Collection {:where (visible-collection-filter-clause :id visibility-config)})
+       (should-display-root-collection? visibility-config)
+       (conj "root")))
+   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
+   ;; large
+   :ttl/threshold (* 60 60 1000)))
 
 (mu/defn- effective-location-path* :- [:maybe LocationPath]
   ([collection :- CollectionWithLocationOrRoot]
@@ -1369,37 +1380,6 @@
                              not-trash-clause
                              (or where true)]}))))
 
-(defmethod serdes/extract-one "Collection"
-  ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
-  ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
-  ;; Use the :slug as the human-readable label.
-  [_model-name _opts coll]
-  (let [fetch-collection    (fn [id]
-                              (t2/select-one Collection :id id))
-        {:keys [parent_id]} (some-> coll :id fetch-collection (t2/hydrate :parent_id))
-        parent              (some-> parent_id fetch-collection)
-        parent-id           (when parent
-                              (or (:entity_id parent) (serdes/identity-hash parent)))
-        owner-email         (when (:personal_owner_id coll)
-                              (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
-    (-> (serdes/extract-one-basics "Collection" coll)
-        (dissoc :location)
-        (assoc :parent_id parent-id
-               :personal_owner_id owner-email)
-        (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
-
-(defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
-  (let [loc (fn [col-id]
-              (if col-id
-                (let [{:keys [id location]} (serdes/lookup-by-id Collection col-id)]
-                  (str location id "/"))
-                "/"))]
-    (-> contents
-        (dissoc :parent_id)
-        (assoc :location (loc parent_id))
-        (update :personal_owner_id serdes/*import-user*)
-        serdes/load-xform-basics)))
-
 (defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
   (when parent_id
@@ -1430,6 +1410,35 @@
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
     (concat ["collections"] parental [(last parental)])))
+
+(defn- parent-id->location-path [parent-id]
+  (if-not parent-id
+    "/"
+    ;; It would be great to use a cache rather than a database call to fetch the parent.
+    (let [{:keys [id location]} (t2/select-one Collection parent-id)]
+      (str location id "/"))))
+
+(defmethod serdes/make-spec "Collection" [_model-name _opts]
+  {:copy [:archive_operation_id
+          :archived
+          :archived_directly
+          :authority_level
+          :description
+          :entity_id
+          :is_sample
+          :name
+          :namespace
+          :slug
+          :type]
+   :skip []
+   :transform {:created_at        (serdes/date)
+               ;; We only dump the parent id, and recalculate the location from that on load.
+               :location          (serdes/as :parent_id
+                                             (serdes/compose
+                                              (serdes/fk :model/Collection)
+                                              {:export location-path->parent-id
+                                               :import parent-id->location-path}))
+               :personal_owner_id (serdes/fk :model/User)}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
