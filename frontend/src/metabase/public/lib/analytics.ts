@@ -9,7 +9,6 @@ import type {
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
-const SCHEMA_VERSION = "1-0-2";
 
 // We changed the UI to `Look and Feel` now
 type Appearance = {
@@ -26,7 +25,7 @@ export const trackStaticEmbedDiscarded = ({
 }: {
   artifact: EmbedResourceType;
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_discarded",
     artifact,
   });
@@ -44,7 +43,7 @@ export const trackStaticEmbedPublished = ({
   isExampleDashboard: boolean;
 }): void => {
   const now = Date.now();
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_published",
     artifact,
     new_embed: !resource.initially_published_at,
@@ -71,7 +70,7 @@ export const trackStaticEmbedUnpublished = ({
   resource: EmbedResource;
 }): void => {
   const now = Date.now();
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_unpublished",
     artifact,
     time_since_creation: toSecond(
@@ -96,7 +95,7 @@ export const trackStaticEmbedCodeCopied = ({
   code: "backend" | "view";
   displayOptions: EmbeddingDisplayOptions;
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "static_embed_code_copied",
     artifact,
     language,
@@ -126,7 +125,7 @@ export const trackPublicLinkCopied = ({
   artifact: EmbedResourceType;
   format?: ExportFormatType | null;
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_copied",
     artifact,
     format,
@@ -140,7 +139,7 @@ export const trackPublicEmbedCodeCopied = ({
   artifact: EmbedResourceType;
   source: "public-embed" | "public-share";
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "public_embed_code_copied",
     artifact,
     source,
@@ -154,7 +153,7 @@ export const trackPublicLinkRemoved = ({
   artifact: EmbedResourceType;
   source: "public-embed" | "public-share";
 }): void => {
-  trackSchemaEvent(SCHEMA_NAME, SCHEMA_VERSION, {
+  trackSchemaEvent(SCHEMA_NAME, {
     event: "public_link_removed",
     artifact,
     source,

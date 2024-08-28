@@ -2,6 +2,7 @@ export * from "./account";
 export * from "./action";
 export * from "./browse_data";
 export * from "./cleanup";
+export * from "./embed-flow";
 export * from "./embed-share";
 export * from "./embedding-homepage";
 export * from "./event";
