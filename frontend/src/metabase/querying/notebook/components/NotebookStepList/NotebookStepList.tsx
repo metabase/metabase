@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import type { NotebookStep as INotebookStep, OpenSteps } from "../../types";
-import NotebookStep from "../NotebookStep";
+import { NotebookStep } from "../NotebookStep";
 
 interface NotebookStepListProps {
   className?: string;

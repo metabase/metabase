@@ -317,6 +317,7 @@
           :cards [{:id            metric-id
                    :name          "Sum of Cans"
                    :database-id   (meta/id)
+                   :table-id      (meta/id :venues)
                    :dataset-query metric-definition
                    :description   "Number of toucans plus number of pelicans"
                    :type          :metric}]})
@@ -396,7 +397,7 @@
     (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day"] nil)
 
     [:relative-time-interval {} [:field {} int?] 10 :day 10 :month]
-    (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day" 10 "month"] nil)
+    (lib.js/expression-clause "relative-time-interval" [(meta/field-metadata :products :created-at) 10 "day" 10 "month"] nil)
 
     [:relative-datetime {} :current :day]
     (lib.js/expression-clause "relative-datetime" ["current" "day"] nil)
