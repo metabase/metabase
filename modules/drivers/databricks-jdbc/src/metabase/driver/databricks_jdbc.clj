@@ -42,8 +42,6 @@
     ((get-method sql-jdbc.sync/database-type->base-type :hive-like)
      driver database-type)))
 
-;; See the https://docs.databricks.com/en/sql/language-manual/sql-ref-syntax-aux-conf-mgmt-set-timezone.html
-;; for timzone formatting
 (defmethod sql-jdbc.execute/set-timezone-sql :databricks-jdbc
   [_driver]
   "SET TIME ZONE %s;")
