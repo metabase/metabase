@@ -17,10 +17,11 @@
       "target_id": {
         "description": "(Optional) ID of the entity that the action was performed on. E.g. the ID of the question that was created in a question_created event.",
         "type": [
-            "string",
+            "integer",
             "null"
         ],
-        "maxLength": 1024
+        "minimum": 0,
+        "maximum": 2147483647
       },
       "triggered_from": {
         "description": "(Optional) From where the action was taken/triggered. This can be generic like 'dashboard' or also more specific like 'dashboard_top_nav'.",
