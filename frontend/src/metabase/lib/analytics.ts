@@ -15,6 +15,8 @@ const VERSIONS: Record<SchemaType, string> = {
   browse_data: "1-0-0",
   cleanup: "1-0-0",
   event: "1-0-0",
+  settings: "1-0-2",
+  setup: "1-0-3",
   timeline: "1-0-0",
   upsell: "1-0-0",
 };
