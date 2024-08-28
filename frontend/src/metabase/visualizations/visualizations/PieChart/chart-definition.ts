@@ -142,6 +142,16 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     },
     ...nestedSettings(SERIES_SETTING_KEY, {
       widget: SliceNameWidget,
+      getHidden: (
+        [{ card }]: RawSeries,
+        _settings: ComputedVisualizationSettings,
+        { isDashboard }: { isDashboard: boolean },
+      ) => !isDashboard || card?.display === "waterfall",
+      getSection: (
+        _series: RawSeries,
+        _settings: ComputedVisualizationSettings,
+        { isDashboard }: { isDashboard: boolean },
+      ) => (isDashboard ? t`Display` : t`Style`),
       marginBottom: "0",
       getProps: (
         _series: any,
