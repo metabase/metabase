@@ -250,3 +250,17 @@ export const many_schemas = async dbClient => {
 
   return schemas;
 };
+
+export const cached_table = async dbClient => {
+  const tableName = "cached_table";
+
+  await dbClient.schema.dropTableIfExists(tableName);
+  await dbClient.schema.createTable(tableName, table => {
+    table.increments("id").primary();
+    table.string("my_text").notNullable();
+  });
+
+  await dbClient(tableName).insert([{ my_text: "Old Value" }]);
+
+  return null;
+};

@@ -1,5 +1,5 @@
-import type { NativeQuestionDetails } from "e2e/support/helpers/e2e-question-helpers";
-
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import type { NativeQuestionDetails } from "e2e/support/helpers";
 import {
   type AdaptiveStrategy,
   CacheDurationUnit,
@@ -9,6 +9,8 @@ import {
 } from "metabase-types/api";
 
 import type { StrategyBearer } from "./types";
+
+export const TEST_TABLE = "cached_table";
 
 export const sampleAdaptiveStrategy: AdaptiveStrategy = {
   type: "ttl",
@@ -34,10 +36,10 @@ export const sampleQuestion: StrategyBearer & {
 } & NativeQuestionDetails = {
   model: "question",
   name: "Slow question",
-  database: 2, // This is the "QA Postgres12" database
+  database: WRITABLE_DB_ID,
   native: {
     // Selecting an MD5 string makes it easy to see whether the result is cached
-    query: `select (MD5(random()::text)), pg_sleep(${questionRuntime / 1000})`,
+    query: `SELECT * FROM ${TEST_TABLE}, pg_sleep(${questionRuntime / 1000})`,
   },
 };
 
@@ -48,7 +50,7 @@ export const sampleDashboard: StrategyBearer & { name: string } = {
 
 export const sampleDatabase: StrategyBearer = {
   model: "database",
-  name: "QA Postgres12",
+  name: "Writable Postgres12",
 };
 
 export const instanceDefault: StrategyBearer = {

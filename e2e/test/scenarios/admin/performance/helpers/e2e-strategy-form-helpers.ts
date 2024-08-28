@@ -11,11 +11,7 @@ import type {
   InheritStrategy,
 } from "metabase-types/api";
 
-import {
-  databaseCachingSettingsPage,
-  log,
-  wrapResult,
-} from "./e2e-performance-helpers";
+import { databaseCachingSettingsPage, log } from "./e2e-performance-helpers";
 import type { SelectCacheStrategyOptions } from "./types";
 
 /** Save the cache strategy form and wait for a response from the relevant endpoint */
@@ -138,7 +134,6 @@ export const selectCacheStrategy = ({
   strategy,
 }: SelectCacheStrategyOptions) => {
   log(`Selecting ${strategy.type} strategy for ${item.model}`);
-  wrapResult().as("previousResult");
 
   match(item)
     .with({ model: "database" }, ({ name }) => {
