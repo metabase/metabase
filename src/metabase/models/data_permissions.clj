@@ -128,7 +128,7 @@
                  accidentally use the cache of the wrong user, and `perms` are vectors of data_permissions entries.
 
   When checking permissions, if a DB has not been fetched, it will be added to the cache before the check returns."
-  nil)
+  (atom {:db-ids #{} :perms {}}))
 
 (defenterprise enforced-sandboxes-for-user
   "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
