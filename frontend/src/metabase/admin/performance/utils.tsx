@@ -320,3 +320,13 @@ export const getPerformanceTabName = (tabId: PerformanceTabId) =>
   PLUGIN_CACHING.getTabMetadata().find(
     ({ key }) => key === `performance-${tabId}`,
   )?.name;
+
+export const getDefaultValueForField = (
+  strategyType: CacheStrategyType,
+  fieldName?: string,
+) => {
+  const schema = getStrategyValidationSchema(
+    PLUGIN_CACHING.strategies[strategyType],
+  );
+  return fieldName ? schema.cast({})[fieldName] : "";
+};

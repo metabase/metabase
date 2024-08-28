@@ -2,7 +2,7 @@ import chalk from "chalk";
 
 import { HARDCODED_USERS } from "../constants/hardcoded-users";
 
-import { CONTAINER_NAME, USER_ATTRIBUTE_CUSTOMER_ID } from "./config";
+import { CONTAINER_NAME } from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -65,6 +65,11 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;
 
+export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
+  At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
+  You can add your tenant's IDs to the "customer_id" user attribute in settings.
+`;
+
 export const getExpressServerGeneratedMessage = (filePath: string) => {
   const NPM_INSTALL_DEPS_COMMAND = chalk.blue(
     "npm install express express-session jsonwebtoken cors node-fetch@2",
@@ -73,12 +78,6 @@ export const getExpressServerGeneratedMessage = (filePath: string) => {
   return `
   Generated an example Express.js server in "${filePath}".
   Add the dependencies with "${NPM_INSTALL_DEPS_COMMAND}"
-
   Start the server with "node ${filePath}".
 `;
 };
-
-export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
-  At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
-  You can add your tenant's IDs to the "${USER_ATTRIBUTE_CUSTOMER_ID}" user attribute in settings.
-`;
