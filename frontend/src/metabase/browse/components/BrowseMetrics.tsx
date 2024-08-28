@@ -35,7 +35,11 @@ export function BrowseMetrics() {
           >
             <Title order={1} color="text-dark">
               <Group spacing="sm">
-                <Icon size={24} color={"var(--mb-color-brand)"} name="metric" />
+                <Icon
+                  size={24}
+                  color={"var(--mb-color-icon-primary)"}
+                  name="metric"
+                />
                 {t`Metrics`}
               </Group>
             </Title>
