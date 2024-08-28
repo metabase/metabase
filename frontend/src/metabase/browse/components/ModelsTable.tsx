@@ -1,4 +1,4 @@
-import { type CSSProperties, type PropsWithChildren, useState } from "react";
+import { type MouseEvent, useCallback, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -20,15 +20,7 @@ import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import {
-  Box,
-  FixedSizeIcon,
-  Flex,
-  Icon,
-  type IconName,
-  type IconProps,
-  Skeleton,
-} from "metabase/ui";
+import { Box, FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -142,11 +134,11 @@ export const ModelsTable = ({
       <TBody>
         {skeleton ? (
           <Repeat times={7}>
-            <TBodyRowSkeleton />
+            <ModelRow />
           </Repeat>
         ) : (
           sortedModels.map((model: ModelResult) => (
-            <TBodyRow model={model} key={`${model.model}-${model.id}`} />
+            <ModelRow model={model} key={model.id} />
           ))
         )}
       </TBody>
@@ -154,104 +146,58 @@ export const ModelsTable = ({
   );
 };
 
-const TBodyRow = ({
-  model,
-  skeleton,
-}: {
-  model: ModelResult;
-  skeleton?: boolean;
-}) => {
-  const icon = getIcon(model);
+function SkeletonText() {
+  return <Skeleton natural h="16.8px" />;
+}
+
+const ModelRow = ({ model }: { model?: ModelResult }) => {
   const dispatch = useDispatch();
-  const { id, name } = model;
+
+  const handleClick = useCallback(
+    (event: MouseEvent) => {
+      if (!model) {
+        return;
+      }
+
+      // do not trigger click when selecting text
+      const selection = document.getSelection();
+      if (selection?.type === "Range") {
+        event.stopPropagation();
+        return;
+      }
+
+      const { id, name } = model;
+      const url = Urls.model({ id, name });
+      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+
+      trackModelClick(model.id);
+
+      if ((event.ctrlKey || event.metaKey) && event.button === 0) {
+        Urls.openInNewTab(subpathSafeUrl);
+      } else {
+        dispatch(push(url));
+      }
+    },
+    [model, dispatch],
+  );
 
   return (
-    <TableRow
-      onClick={(e: React.MouseEvent) => {
-        if (skeleton) {
-          return;
-        }
-        const url = Urls.model({ id, name });
-        const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
-
-        if ((e.ctrlKey || e.metaKey) && e.button === 0) {
-          Urls.openInNewTab(subpathSafeUrl);
-        } else {
-          dispatch(push(url));
-        }
-      }}
-      tabIndex={0}
-      key={model.id}
-    >
-      {/* Name */}
-      <NameCell
-        model={model}
-        icon={icon}
-        onClick={() => {
-          if (skeleton) {
-            return;
-          }
-          trackModelClick(model.id);
-        }}
-      />
-
-      {/* Collection */}
-      <Cell
-        data-testid={`path-for-collection: ${
-          model.collection
-            ? getCollectionName(model.collection)
-            : t`Untitled collection`
-        }`}
-        {...collectionProps}
-      >
-        <Link
-          className={S.collectionLink}
-          to={Urls.collection(model.collection)}
-          onClick={e => e.stopPropagation()}
-        >
-          <Flex gap="sm">
-            <FixedSizeIcon name="folder" />
-            <Box w="calc(100% - 1.5rem)">
-              <EllipsifiedCollectionPath collection={model.collection} />
-            </Box>
-          </Flex>
-        </Link>
-      </Cell>
-
-      {/* Description */}
-      <Cell {...descriptionProps}>
-        <EllipsifiedWithMarkdownTooltip>
-          {getModelDescription(model) || ""}
-        </EllipsifiedWithMarkdownTooltip>
-      </Cell>
-
-      {/* Adds a border-radius to the table */}
+    <TableRow onClick={handleClick} tabIndex={0}>
+      <NameCell model={model} />
+      <CollectionCell model={model} />
+      <DescriptionCell model={model} />
       <Columns.RightEdge.Cell />
     </TableRow>
   );
 };
 
-const NameCell = ({
-  model,
-  testIdPrefix = "table",
-  onClick,
-  icon,
-  children,
-}: PropsWithChildren<{
-  model?: ModelResult;
-  testIdPrefix?: string;
-  onClick?: () => void;
-  icon: IconProps;
-}>) => {
+function NameCell({ model }: { model?: ModelResult }) {
   const headingId = `model-${model?.id || "dummy"}-heading`;
+  const icon = getIcon(model);
   return (
-    <ItemNameCell
-      data-testid={`${testIdPrefix}-name`}
-      aria-labelledby={headingId}
-    >
+    <ItemNameCell data-testid={`table-name`} aria-labelledby={headingId}>
       <MaybeItemLink
         to={model ? Urls.model({ id: model.id, name: model.name }) : undefined}
-        onClick={onClick}
         style={{
           // To align the icons with "Name" in the <th>
           paddingInlineStart: "1.4rem",
@@ -264,46 +210,66 @@ const NameCell = ({
           color={"var(--mb-color-brand)"}
           style={{ flexShrink: 0 }}
         />
-        {children || (
+        {
           <EntityItem.Name
             name={model?.name || ""}
             variant="list"
             id={headingId}
           />
-        )}
+        }
       </MaybeItemLink>
     </ItemNameCell>
   );
-};
+}
 
-const CellTextSkeleton = () => {
-  return <Skeleton natural h="16.8px" />;
-};
+function CollectionCell({ model }: { model?: ModelResult }) {
+  const collectionName = model?.collection
+    ? getCollectionName(model.collection)
+    : t`Untitled collection`;
 
-const TBodyRowSkeleton = ({ style }: { style?: CSSProperties }) => {
-  const icon = { name: "model" as IconName };
-  return (
-    <TableRow skeleton style={style}>
-      {/* Name */}
-      <NameCell icon={icon}>
-        <CellTextSkeleton />
-      </NameCell>
-
-      {/* Collection */}
-      <Cell {...collectionProps}>
-        <Flex gap=".5rem">
-          <FixedSizeIcon name="folder" />
-          <CellTextSkeleton />
-        </Flex>
-      </Cell>
-
-      {/* Description */}
-      <Cell {...descriptionProps}>
-        <CellTextSkeleton />
-      </Cell>
-
-      {/* Adds a border-radius to the table */}
-      <Columns.RightEdge.Cell />
-    </TableRow>
+  const content = (
+    <Flex gap="sm">
+      <FixedSizeIcon name="folder" />
+      <Box w="calc(100% - 1.5rem)">
+        {model ? (
+          <EllipsifiedCollectionPath collection={model.collection} />
+        ) : (
+          <SkeletonText />
+        )}
+      </Box>
+    </Flex>
   );
-};
+
+  return (
+    <Cell
+      data-testid={`path-for-collection: ${collectionName}`}
+      {...collectionProps}
+    >
+      {model?.collection ? (
+        <Link
+          className={S.collectionLink}
+          to={Urls.collection(model.collection)}
+          onClick={e => e.stopPropagation()}
+        >
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
+    </Cell>
+  );
+}
+
+function DescriptionCell({ model }: { model?: ModelResult }) {
+  return (
+    <Cell {...descriptionProps}>
+      {model ? (
+        <EllipsifiedWithMarkdownTooltip>
+          {getModelDescription(model) || ""}
+        </EllipsifiedWithMarkdownTooltip>
+      ) : (
+        <SkeletonText />
+      )}
+    </Cell>
+  );
+}

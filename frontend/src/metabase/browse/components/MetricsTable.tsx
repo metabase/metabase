@@ -137,7 +137,7 @@ export function MetricsTable({
           </Repeat>
         ) : (
           sortedMetrics.map((metric: MetricResult) => (
-            <MetricRow metric={metric} key={`${metric.model}-${metric.id}`} />
+            <MetricRow metric={metric} key={metric.id} />
           ))
         )}
       </TBody>
