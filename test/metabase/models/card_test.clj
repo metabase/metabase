@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.lib.core :as lib]
@@ -195,7 +194,7 @@
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
     ;; We need the user to be defined in order to population the new revision related to the card update
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
         (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
                                                :tables {(mt/id :orders) (mt/id :people)}})
@@ -1020,7 +1019,7 @@
   (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         venues            (lib.metadata/table metadata-provider (mt/id :venues))
         query             (lib/query metadata-provider venues)]
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
+    (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {:dataset_query query}
                      :model/Card no-query {}]
         (is (=? {:can_run_adhoc_query true}

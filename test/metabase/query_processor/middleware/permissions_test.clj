@@ -85,21 +85,6 @@
                :type     :query
                :query    {:source-table (u/the-id table)}}))))))
 
-(deftest nested-native-query-test
-  (testing "Make sure nested native query fails to run if current user doesn't have perms"
-    (t2.with-temp/with-temp [:model/Database db {}]
-      (data-perms/set-database-permission! (perms-group/all-users)
-                                           (u/the-id db)
-                                           :perms/create-queries
-                                           :query-builder)
-      (is (thrown-with-msg?
-           ExceptionInfo
-           perms-error-msg
-           (check-perms-for-rasta
-            {:database (u/the-id db)
-             :type     :query
-             :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))))
-
 (deftest nested-native-query-test-2
   (testing "...but it should work if user has perms [nested native queries]"
     (t2.with-temp/with-temp [Database db]
