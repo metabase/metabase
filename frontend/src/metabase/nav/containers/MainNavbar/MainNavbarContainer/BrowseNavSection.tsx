@@ -61,12 +61,7 @@ export const BrowseNavSection = ({
       <DelayedLoadingAndErrorWrapper
         loading={areModelsLoading}
         error={modelsError}
-        loader={
-          <Flex py="sm" px="md" h="32.67px" gap="sm" align="center">
-            <Skeleton radius="md" h="md" w="md" />
-            <Skeleton radius="xs" w="4rem" h="1.2rem" />
-          </Flex>
-        }
+        loader={<SidebarSkeleton />}
         delay={0}
       >
         {!noModelsExist && (
@@ -96,12 +91,7 @@ export const BrowseNavSection = ({
       <DelayedLoadingAndErrorWrapper
         loading={areMetricsLoading}
         error={metricsError}
-        loader={
-          <Flex py="sm" px="md" h="32.67px" gap="sm" align="center">
-            <Skeleton radius="md" h="md" w="md" />
-            <Skeleton radius="xs" w="4rem" h="1.2rem" />
-          </Flex>
-        }
+        loader={<SidebarSkeleton />}
         delay={0}
       >
         {!noMetricsExist && (
@@ -119,3 +109,12 @@ export const BrowseNavSection = ({
     </CollapseSection>
   );
 };
+
+function SidebarSkeleton() {
+  return (
+    <Flex py="sm" px="md" h="32.67px" gap="sm" align="center">
+      <Skeleton radius="md" h="md" w="md" />
+      <Skeleton radius="xs" w="4rem" h="1.2rem" />
+    </Flex>
+  );
+}
