@@ -81,7 +81,6 @@
   true #_false)
 
 (defmethod tx/create-db! :databricks-jdbc
-  ;; very probably here database-name should be used as arg is db def!!!
   [driver {:keys [database-name], :as dbdef} & options]
   (let [schema (ddl.i/format-name driver database-name)]
     (cond
