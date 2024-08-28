@@ -120,15 +120,15 @@ export const DataPickerModal = ({
   );
 
   const handleCardChange = useCallback(
-    (item: QuestionPickerItem) => {
+    (questionPickerItem: QuestionPickerItem) => {
       // see comment for QuestionPickerItem definition to see why we need this hack
-      const notebookItem = item as NotebookDataPickerItem;
+      const item = questionPickerItem as NotebookDataPickerItem;
 
-      if (isFolderItem(notebookItem)) {
+      if (isFolderItem(item)) {
         // TODO: implement me
-      } else if (isValueItem(notebookItem)) {
-        onChange(getQuestionVirtualTableId(notebookItem.id));
-        tryLogRecentItem(notebookItem);
+      } else if (isValueItem(item)) {
+        onChange(getQuestionVirtualTableId(item.id));
+        tryLogRecentItem(item);
         onClose();
       }
     },
