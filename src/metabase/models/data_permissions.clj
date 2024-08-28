@@ -107,8 +107,9 @@
               :where [:and
                       [:= :pgm.user_id user-id]
                       [:= :p.db_id db-id]
-                      [:or [:= :p.table_id nil]
-                           [:= :mt.active true]]]}))
+                      [:or
+                       [:= :p.table_id nil]
+                       [:= :mt.active true]]]}))
 
 (defn- relevant-permissions-for-user-perm-and-db
   "Returns all relevant rows for a given user, permission type, and db_id, excluding permissions for deactivated
@@ -124,8 +125,9 @@
                       [:= :pgm.user_id user-id]
                       [:= :p.perm_type (u/qualified-name perm-type)]
                       [:= :p.db_id db-id]
-                      [:or [:= :p.table_id nil]
-                           [:= :mt.active true]]]}))
+                      [:or
+                       [:= :p.table_id nil]
+                       [:= :mt.active true]]]}))
 
 (def ^:dynamic *permissions-for-user*
   "A dynamically-bound atom containing a cache of data permissions that have been fetched so far for the current user.
