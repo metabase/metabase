@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Flex, Stack } from "metabase/ui";
-import WebSocketHandler from "metabase/query_builder/components/WebSocketHandler";
+import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import { BrowseContainer, BrowseMain } from "./BrowseContainer.styled";
 import ChatHistory from "./ChatItems/ChatHistory";
 
@@ -21,10 +21,10 @@ export const BrowseChat = () => {
               borderRight: "1px solid #e3e3e3",
             }}
           >
-            <WebSocketHandler
+            <ChatAssistant
               selectedMessages={selectedChatHistory}
               selectedThreadId={selectedThreadId}
-              appType={"default"}
+              chatType={"default"}
             />
           </Stack>
           <Stack

@@ -1,18 +1,106 @@
+import { useEffect, useState } from "react";
 import { LayoutRoot, ContentContainer, ChatSection } from "./HomeLayout.styled";
 import { ChatGreeting } from "metabase/browse/components/ChatItems/Welcome";
 import { HomeInitialOptions } from "metabase/browse/components/ChatItems/InitialOptions";
 import ChatPrompt from "metabase/browse/components/ChatItems/Prompt";
+import { useDispatch } from "metabase/lib/redux";
+import { push } from "react-router-redux"; // Import the push method for navigation
+import { setInitialMessage } from "metabase/redux/initialMessage";
+import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
+import {
+  BrowseContainer,
+  BrowseMain,
+} from "metabase/browse/components/BrowseContainer.styled";
+import { Flex, Stack } from "metabase/ui";
+import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
 
 export const HomeLayout = () => {
+  const [inputValue, setInputValue] = useState("");
+  const [showChatAssistant, setShowChatAssistant] = useState(false);
+  const [selectedChatHistory, setSelectedChatHistory] = useState([]);
+  const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [selectedChatType, setSelectedChatType] = useState("default");
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    setInputValue(""); // Clear the input value when the component mounts
+  }, []);
+
+  useEffect(() => {
+    if (window.location.pathname === "/") {
+      setSelectedChatType("default");
+    } else if (window.location.pathname === "/browse/insights") {
+      setSelectedChatType("insights");
+    } else if (window.location.pathname === "/browse/chat") {
+      setSelectedChatType("default");
+    }
+  }, [window.location.pathname]);
+
+  const handleSendMessage = () => {
+    if (!inputValue.trim()) return;
+
+    dispatch(setInitialMessage(inputValue)); // Set the initial message in Redux
+
+    if (window.location.pathname === "/") {
+      dispatch(push("/browse/chat")); // Navigate to /browse/chat
+    } else if (window.location.pathname === "/browse/insights") {
+      setShowChatAssistant(true); // Show the ChatAssistant component
+    }
+
+    setInputValue(""); // Clear the input value
+  };
+
   return (
-    <LayoutRoot data-testid="home-page">
-      <ContentContainer>
-        <ChatGreeting />
-        <HomeInitialOptions />
-      </ContentContainer>
-      <ChatSection>
-        <ChatPrompt />
-      </ChatSection>
-    </LayoutRoot>
+    <>
+      {!showChatAssistant ? (
+        <LayoutRoot data-testid="home-page">
+          <ContentContainer>
+            <ChatGreeting chatType={selectedChatType} />
+            <HomeInitialOptions />
+          </ContentContainer>
+          <ChatSection>
+            <ChatPrompt
+              chatType={selectedChatType}
+              inputValue={inputValue}
+              setInputValue={setInputValue}
+              onSendMessage={handleSendMessage}
+            />
+          </ChatSection>
+        </LayoutRoot>
+      ) : (
+        <BrowseContainer>
+          <BrowseMain>
+            <Flex style={{ height: "100%", width: "100%" }}>
+              <Stack
+                mb="lg"
+                spacing="xs"
+                style={{
+                  flexGrow: 1,
+                  marginTop: "1rem",
+                  borderRight: "1px solid #e3e3e3",
+                }}
+              >
+                <ChatAssistant
+                  selectedMessages={selectedChatHistory}
+                  selectedThreadId={selectedThreadId}
+                  chatType={selectedChatType}
+                />
+              </Stack>
+              <Stack
+                mb="lg"
+                spacing="xs"
+                style={{ minWidth: "300px", width: "300px", marginTop: "1rem" }}
+              >
+                <ChatHistory
+                  setSelectedChatHistory={setSelectedChatHistory}
+                  setThreadId={setSelectedThreadId}
+                  type="dataAgent"
+                />
+              </Stack>
+            </Flex>
+          </BrowseMain>
+        </BrowseContainer>
+      )}
+    </>
   );
 };

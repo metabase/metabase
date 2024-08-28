@@ -17,6 +17,7 @@ import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
+import type { InitialMessageState } from "./initialMessage";
 
 type ModalName = null | "collection" | "dashboard" | "action";
 
@@ -39,6 +40,7 @@ export interface State {
   modal: ModalName;
   undo: UndoState;
   downloads: DownloadsState;
+  initialMessage: InitialMessageState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

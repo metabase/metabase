@@ -54,7 +54,6 @@ import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import { BrowseChat } from "./browse/components/BrowseChat";
-import { BrowseInsights } from "./browse/components/BrowseInsights";
 import { BrowseSemanticLayerTable } from "./browse/components/BrowseSemanticLayerTable";
 import BrowseSchemas from "./browse/components/BrowseSchemas";
 import { BrowseTables } from "./browse/components/BrowseTables";
@@ -69,6 +68,7 @@ import { getApplicationName } from "./selectors/whitelabel";
 import { BrowseCubes } from "./browse/components/BrowseCubes";
 import CubeFlow from "./components/Cube/CubeFlow";
 import { BrowseSemanticLayers } from "./browse/components/BrowseSemanticLayers";
+import { HomeLayout } from "./home/components/HomeLayout";
 
 export const getRoutes = store => {
   const applicationName = getApplicationName(store.getState());
@@ -219,7 +219,7 @@ export const getRoutes = store => {
             <Route path="semantic-layer/:slug/cubes/:cubeName" component={BrowseCubes} />
             <Route path="semantic-layer/:slug/data-map" component={CubeFlow} />
             <Route path="chat" component={BrowseChat} />
-            <Route path="insights" component={BrowseInsights} />
+            <Route path="insights" component={HomeLayout} />
             <Route path="databases/:slug" component={BrowseSchemas} />
             <Route
               path="databases/:dbId/schema/:schemaName"

@@ -19,11 +19,11 @@ import { generateRandomId } from "metabase/lib/utils";
 import {
     adhocQuestionHash
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
+import { useSelector } from "metabase/lib/redux";
+import { getInitialMessage } from "metabase/redux/initialMessage";
 
-
-const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
-
-
+const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
+    const initialMessage = useSelector(getInitialMessage);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
@@ -50,6 +50,11 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
     const [error, setError] = useState(null);
     const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
+
+    useEffect(() => {
+        setMessages([])
+        setInputValue("")
+    }, [])
 
     useEffect(() => {
         if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
@@ -83,7 +88,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
     };
 
     const { ws, isConnected } = useWebSocket(
-        assistant_url,
+        "ws://localhost:8090",
         async e => {
             if (e.data) {
                 const data = JSON.parse(e.data);
@@ -331,7 +336,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
                 JSON.stringify({
                     type: "configure",
                     configData: [dbInputValue || 2, company_name],
-                    appType: appType
+                    appType: chatType,
                 }),
             );
         }
@@ -358,7 +363,7 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
             type: "query",
             task: inputValue,
             thread_id: threadId,
-            appType: appType
+            appType: chatType,
         };
         if (isConnected) {
             ws && ws.send(JSON.stringify(response));
@@ -409,6 +414,16 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
         );
         setApprovalChangeButtons(false);
     };
+
+    useEffect(() => {
+        if (initialMessage.message) {
+            setInputValue(initialMessage.message);
+            if (inputValue && ws) {
+                sendMessage();
+                setInputValue("");
+            }
+        }
+    }, [initialMessage, ws]);
 
     return (
         <>
@@ -811,4 +826,4 @@ const WebSocketHandler = ({ selectedMessages, selectedThreadId, appType }) => {
     );
 };
 
-export default WebSocketHandler;
+export default ChatAssistant;

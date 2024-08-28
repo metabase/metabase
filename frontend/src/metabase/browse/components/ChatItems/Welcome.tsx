@@ -1,14 +1,12 @@
 import { useMemo } from "react";
-import { t } from "ttag";
 import _ from "underscore";
 import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 
-export const ChatGreeting = (): JSX.Element => {
+export const ChatGreeting = ({ chatType }: any): JSX.Element => {
   const user = useSelector(getUser);
   const name = user?.first_name;
-  const message = useMemo(() => "Talk data to me", []);
   const subMessage = useMemo(
     () => "What would you like to create? Here are some suggestions",
     [],
@@ -23,7 +21,11 @@ export const ChatGreeting = (): JSX.Element => {
         gap: "1rem",
       }}
     >
-      <Icon size={64} name="chat" />
+      {chatType === "insights" ? (
+        <Icon size={64} name="lightbulb" color="#8A64DF" />
+      ) : (
+        <Icon size={64} name="chat" color="#8A64DF" />
+      )}
       <div
         style={{
           display: "flex",
@@ -39,7 +41,9 @@ export const ChatGreeting = (): JSX.Element => {
             fontWeight: "bolder",
           }}
         >
-          {message}
+          {chatType === "insights"
+            ? "Generate insights for me"
+            : "Talk data to me"}
         </div>
         <div
           style={{

@@ -7,6 +7,7 @@ import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import { CubeApi } from "./api/cubeApi";
 import { CheckpointsApi } from "./api/checkpointsApi";
 import { FeedbackApi } from "./api/feedbackApi";
+import { initialMessageReducer } from "./redux/initialMessage";
 
 export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({
@@ -16,6 +17,7 @@ export function getStore(reducers, history, intialState) {
     [CubeApi.reducerPath]: CubeApi.reducer,
     [CheckpointsApi.reducerPath]: CheckpointsApi.reducer,
     [FeedbackApi.reducerPath]: FeedbackApi.reducer,
+    initialMessage: initialMessageReducer,
   });
 
   return configureStore({
