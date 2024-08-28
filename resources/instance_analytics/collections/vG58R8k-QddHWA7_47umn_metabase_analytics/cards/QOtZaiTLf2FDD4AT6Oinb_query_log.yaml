@@ -247,8 +247,8 @@ result_metadata:
   fk_target_field_id:
   - Internal Metabase Database
   - public
-  - dashboard_favorite
-  - id
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
@@ -295,8 +295,8 @@ result_metadata:
   fk_target_field_id:
   - Internal Metabase Database
   - public
-  - dashboard_favorite
-  - id
+  - v_content
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public
