@@ -3,14 +3,14 @@
     "description": "Generic event to track interactions and actions that happen within Metabase. This should be used as a default schema for tracking events. If more specific context is needed, we can use custom context entities (https://docs.snowplow.io/docs/understanding-your-pipeline/entities/).",
     "self": {
       "vendor": "com.metabase",
-      "name": "structured_action",
+      "name": "event",
       "format": "jsonschema",
       "version": "1-0-0"
     },
     "type": "object",
     "properties": {
-      "name": {
-        "description": "Name of the action. Noun (target) + Verb in the past (action) which define the action taken - e.g. question-created, dashboard-updated, dashboard-auto-apply-filter-enabled",
+      "event": {
+        "description": "Name of the action. Noun (target) + Verb in the past (action) which define the action taken - e.g. question_created, dashboard_updated, dashboard_auto_apply_filter_enabled",
         "type": "string",
         "maxLength": 1024
       },
@@ -59,5 +59,5 @@
     "required": [
       "name"
     ],
-    "additionalProperties": false
+    "additionalProperties": true
   }
