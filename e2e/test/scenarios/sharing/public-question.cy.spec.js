@@ -1,4 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   assertSheetRowsCount,
   createPublicQuestionLink,
@@ -13,8 +14,6 @@ import {
   saveQuestion,
   visitQuestion,
 } from "e2e/support/helpers";
-
-import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
