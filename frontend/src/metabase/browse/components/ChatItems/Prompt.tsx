@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Button, Icon } from "metabase/ui";
 import TextArea from "metabase/core/components/TextArea";
 
-const PromptGreeting = () => {
+const PromptGreeting = ({ chatType }: any) => {
   return (
     <div
       style={{
@@ -14,21 +14,27 @@ const PromptGreeting = () => {
       }}
     >
       <div style={{ fontSize: "20px", color: "#5B26D3", fontWeight: "bolder" }}>
-        Ask a question or make a request to get started
+        {chatType === "insights"
+          ? "Ask a question that include the word “insight” to get started "
+          : "Ask a question or make a request to get started"}
       </div>
     </div>
   );
 };
 
-const ChatPrompt = () => {
-  const [inputValue, setInputValue] = useState("");
+const ChatPrompt = ({
+  chatType,
+  inputValue = "",
+  setInputValue,
+  onSendMessage,
+}: any) => {
   const inputRef = useRef<any>(null);
   const canSubmit = inputValue.length > 0;
 
   const handleKeyPress = (e: any) => {
     if (e.key === "Enter" && !e.shiftKey && inputValue.trim()) {
       e.preventDefault(); // Prevent creating a new line
-      sendMessage();
+      onSendMessage();
     }
   };
 
@@ -39,17 +45,10 @@ const ChatPrompt = () => {
     }
   }, [inputValue]);
 
-  const sendMessage = () => {
-    if (!inputValue.trim()) return;
-    console.log("🚀 ~ ChatPrompt ~ inputValue:", inputValue);
-    // Clear the input after sending the message
-    setInputValue("");
-  };
-
   return (
     <div style={{ flexShrink: 0, display: "flex", flexDirection: "column" }}>
       {/* New Prompt Greeting */}
-      <PromptGreeting />
+      <PromptGreeting chatType={chatType} />
 
       {/* Input and Button section */}
       <div
@@ -88,7 +87,7 @@ const ChatPrompt = () => {
         <Button
           variant="filled"
           disabled={!canSubmit}
-          onClick={sendMessage}
+          onClick={onSendMessage}
           style={{
             position: "absolute",
             right: "16px",
