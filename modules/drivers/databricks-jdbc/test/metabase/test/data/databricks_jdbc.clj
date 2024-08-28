@@ -27,10 +27,12 @@
 (doseq [[base-type database-type] {:type/BigInteger             "BIGINT"
                                    :type/Boolean                "BOOLEAN"
                                    :type/Date                   "DATE"
-                                   ;; TODO: Following is temporary, to enable creattion of attempts dataset.
+                                   ;; Even thought Databricks does not support time types, mapping for `:type/Time`
+                                   ;; is defined. It makes tests that use dataset with time columns usable with
+                                   ;; the driver, assuming those columns are not used. (Eg. `attempted-murders`.)
                                    :type/Time                   "TIMESTAMP_NTZ"
-                                   :type/DateTime               "TIMESTAMP"
-                                   :type/DateTimeWithTZ         "TIMESTAMP"
+                                   :type/DateTime               "TIMESTAMP_NTZ"
+                                   :type/DateTimeWithLocalTZ    "TIMESTAMP"
                                    :type/Decimal                "DECIMAL"
                                    :type/Float                  "DOUBLE"
                                    :type/Integer                "INTEGER"
