@@ -1029,7 +1029,7 @@ saved later when it is ready."
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
+  {:copy [:archived :collection_position :collection_preview :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
    :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at

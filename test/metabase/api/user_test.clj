@@ -418,10 +418,11 @@
                    (dissoc :is_qbnewb :last_login))
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
-                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login))))))
+                   (dissoc :is_qbnewb :has_question_and_dashboard :last_login :has_model))))))
     (testing "check that `has_question_and_dashboard` is `true`."
       (mt/with-temp [Dashboard _ {:name "dash1" :creator_id (mt/user->id :rasta)}
-                     Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]
+                     Card      _ {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}
+                     Card      _ {:name "model" :creator_id (mt/user->id :rasta) :type "model"}]
         (is (= (-> (merge
                     @user-defaults
                     {:email                      "rasta@metabase.com"
@@ -431,6 +432,7 @@
                      :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :has_question_and_dashboard true
+                     :has_model                  true
                      :custom_homepage            nil
                      :is_installer               (= 1 (mt/user->id :rasta))
                      :has_invited_second_user    (= 1 (mt/user->id :rasta))})
@@ -442,6 +444,10 @@
       (mt/with-empty-h2-app-db
         (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")
                         :has_question_and_dashboard)))))
+    (testing "on a fresh instance, `has_model` is `false`"
+      (mt/with-empty-h2-app-db
+        (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")
+                        :has_model)))))
     (testing "Custom homepage"
       (testing "If id is set but not enabled it is not included"
         (mt/with-temporary-setting-values [custom-homepage false
