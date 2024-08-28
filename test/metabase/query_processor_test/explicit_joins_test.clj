@@ -593,17 +593,17 @@
       (mt/dataset attempted-murders
         (is (= [["2019-11-01T07:23:18Z" "2019-11-01T07:23:18Z"]]
                (mt/formatted-rows
-                [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str]
-                (mt/run-mbql-query
-                 attempts
-                 {:fields [$datetime_tz]
-                  :filter [:and
-                           [:between $datetime_tz "2019-11-01" "2019-11-01"]
-                           [:between &attempts_joined.datetime_tz "2019-11-01" "2019-11-01"]]
-                  :joins  [{:alias        "attempts_joined"
-                            :condition    [:= $id &attempts_joined.id]
-                            :fields       [&attempts_joined.datetime_tz]
-                            :source-table $$attempts}]}))))))))
+                 [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str]
+                 (mt/run-mbql-query
+                   attempts
+                   {:fields [$datetime_tz]
+                    :filter [:and
+                             [:between $datetime_tz "2019-11-01" "2019-11-01"]
+                             [:between &attempts_joined.datetime_tz "2019-11-01" "2019-11-01"]]
+                    :joins  [{:alias        "attempts_joined"
+                              :condition    [:= $id &attempts_joined.id]
+                              :fields       [&attempts_joined.datetime_tz]
+                              :source-table $$attempts}]}))))))))
 
 (deftest ^:parallel expressions-referencing-joined-aggregation-expressions-test
   (testing (mt/normal-drivers-with-feature :nested-queries :left-join :expressions)

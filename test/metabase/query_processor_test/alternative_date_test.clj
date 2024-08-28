@@ -242,9 +242,10 @@
 
 (defmethod iso-8601-text-fields-query :databricks-jdbc
   [_driver]
-  (mt/dataset just-dates
-              (assoc (mt/mbql-query just_dates {:order-by [[:asc $id]]})
-                     :middleware {:format-rows? false})))
+  (mt/dataset
+    just-dates
+    (assoc (mt/mbql-query just_dates {:order-by [[:asc $id]]})
+           :middleware {:format-rows? false})))
 
 (defmulti iso-8601-text-fields-expected-rows
   "Expected rows for the [[iso-8601-text-fields]] test below."
@@ -337,9 +338,9 @@
 (defmethod iso-8601-text-fields-should-be-queryable-datetime-test-query :databricks-jdbc
   [_driver]
   (mt/mbql-query
-   times
-   {:filter [:= !day.ts "2008-10-19"]
-    :fields [$d $ts]}))
+    times
+    {:filter [:= !day.ts "2008-10-19"]
+     :fields [$d $ts]}))
 
 (deftest ^:parallel iso-8601-text-fields-should-be-queryable-datetime-test
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
