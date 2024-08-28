@@ -74,7 +74,7 @@ jobs:
         with:
           m2-cache-key: 'kondo'
       - name: Run clj-kondo
-        run: clojure -M:kondo:kondo/all
+        run: ./bin/kondo.sh
 
   be-linter-eastwood:
     needs: [files-changed, static-viz-files-changed]
