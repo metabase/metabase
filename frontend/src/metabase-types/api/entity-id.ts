@@ -17,7 +17,7 @@ But again, you really shouldn't need to do this. The only time any casting shoul
 is directly after we receive data from the server and we want to populate our objects and types.
 */
 
-export const NANOID_ALPHABET =
+const NANOID_ALPHABET =
   "_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 export const NANOID_LENGTH = 21;
 
