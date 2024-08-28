@@ -1,4 +1,7 @@
-import { type BaseEntityId, isNanoID } from "metabase-types/api/entity-id";
+import {
+  type BaseEntityId,
+  isBaseEntityID,
+} from "metabase-types/api/entity-id";
 
 import { Api } from "./api";
 
@@ -58,7 +61,7 @@ const entityIdApi = Api.injectEndpoints({
         Object.values(requestEntities)
           .flat()
           .forEach(entityId => {
-            if (!isNanoID(entityId)) {
+            if (!isBaseEntityID(entityId)) {
               throw new Error(`Entity ID ${entityId} must be a NanoID`);
             }
           });

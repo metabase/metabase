@@ -5,7 +5,7 @@ import {
   type EntityType,
   useTranslateEntityIdQuery,
 } from "metabase/api/entity-id";
-import { isNanoID } from "metabase-types/api/entity-id";
+import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 type UseValidatedEntityIdProps = {
   type: EntityType;
@@ -50,7 +50,7 @@ export const useValidatedEntityId = ({
         isLoading: false,
       },
       ({ id, entity_ids }) =>
-        isNanoID(id) && entity_ids[id]?.status === "success"
+        isBaseEntityID(id) && entity_ids[id]?.status === "success"
           ? entity_ids[id].id
           : null,
     )
