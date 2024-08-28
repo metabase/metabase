@@ -87,6 +87,10 @@ function findMetric(name: string) {
   return metricsTable().findByText(name).should("be.visible");
 }
 
+function getMetricsTableItem(index: number) {
+  return metricsTable().findAllByTestId("table-name").eq(index);
+}
+
 const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 describe("scenarios > browse > metrics", () => {
@@ -175,41 +179,17 @@ describe("scenarios > browse > metrics", () => {
 
       cy.visit("/browse/metrics");
 
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(0)
-        .should("contain", "Metric A");
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(1)
-        .should("contain", "Metric B");
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(2)
-        .should("contain", "Metric C");
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(3)
-        .should("contain", "Metric D");
+      getMetricsTableItem(0).should("contain", "Metric A");
+      getMetricsTableItem(1).should("contain", "Metric B");
+      getMetricsTableItem(2).should("contain", "Metric C");
+      getMetricsTableItem(3).should("contain", "Metric D");
 
       metricsTable().findByText("Description").click();
 
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(0)
-        .should("contain", "Metric D");
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(1)
-        .should("contain", "Metric C");
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(2)
-        .should("contain", "Metric B");
-      metricsTable()
-        .findAllByTestId("table-name")
-        .eq(3)
-        .should("contain", "Metric A");
+      getMetricsTableItem(0).should("contain", "Metric D");
+      getMetricsTableItem(1).should("contain", "Metric C");
+      getMetricsTableItem(2).should("contain", "Metric B");
+      getMetricsTableItem(3).should("contain", "Metric A");
     });
   });
 });
