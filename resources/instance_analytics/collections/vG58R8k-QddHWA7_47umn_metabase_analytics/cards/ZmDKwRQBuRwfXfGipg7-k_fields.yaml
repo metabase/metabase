@@ -241,11 +241,7 @@ result_metadata:
     - v_fields
     - fk_target_field_id
   - null
-  fk_target_field_id:
-  - Internal Metabase Database
-  - public
-  - action
-  - archived
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
