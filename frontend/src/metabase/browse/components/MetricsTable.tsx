@@ -1,13 +1,18 @@
-import { type MouseEvent, useCallback, useState } from "react";
+import { type MouseEvent, useCallback, useMemo, useState } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
+import {
+  useCreateBookmarkMutation,
+  useDeleteBookmarkMutation,
+} from "metabase/api";
 import { getCollectionName } from "metabase/collections/utils";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
 import {
+  ColumnHeader,
   ItemNameCell,
   MaybeItemLink,
   TBody,
@@ -17,9 +22,18 @@ import {
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
+import Questions from "metabase/entities/questions";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Skeleton } from "metabase/ui";
+import {
+  Button,
+  FixedSizeIcon,
+  Flex,
+  Icon,
+  type IconName,
+  Menu,
+  Skeleton,
+} from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
@@ -60,6 +74,10 @@ const collectionProps: ResponsiveProps = {
   containerName: itemsTableContainerName,
 };
 
+const menuProps = {
+  containerName: itemsTableContainerName,
+};
+
 export function MetricsTable({
   skeleton = false,
   metrics = [],
@@ -88,6 +106,8 @@ export function MetricsTable({
 
         {/* <col> for Description column */}
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
+
+        <TableColumn {...menuProps} width="36px" />
 
         <Columns.RightEdge.Col />
       </colgroup>
@@ -131,6 +151,11 @@ export function MetricsTable({
           >
             {t`Description`}
           </SortableColumnHeader>
+          <ColumnHeader
+            style={{
+              paddingInline: ".5rem",
+            }}
+          />
           <Columns.RightEdge.Header />
         </tr>
       </thead>
@@ -189,6 +214,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       <NameCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
+      <MenuCell metric={metric} />
       <Columns.RightEdge.Cell />
     </TableRow>
   );
@@ -290,6 +316,105 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         <SkeletonText />
       )}
+    </Cell>
+  );
+}
+
+type MetricAction = {
+  key: string;
+  title: string;
+  icon: IconName;
+  action: () => void;
+};
+
+function MenuCell({ metric }: { metric?: MetricResult }) {
+  const [createBookmark] = useCreateBookmarkMutation();
+  const [deleteBookmark] = useDeleteBookmarkMutation();
+  const dispatch = useDispatch();
+
+  const actions = useMemo(() => {
+    if (!metric) {
+      return [];
+    }
+
+    const actions: MetricAction[] = [];
+
+    if (metric.bookmark) {
+      actions.push({
+        key: "remove-bookmark",
+        title: t`Remove from bookmarks`,
+        icon: "bookmark",
+        action() {
+          deleteBookmark({
+            id: metric.id,
+            type: "card",
+          });
+        },
+      });
+    } else {
+      actions.push({
+        key: "add-bookmark",
+        title: c("Verb").t`Bookmark`,
+        icon: "bookmark",
+        action() {
+          createBookmark({
+            id: metric.id,
+            type: "card",
+          });
+        },
+      });
+    }
+
+    if (metric.collection) {
+      actions.push({
+        key: "open-collection",
+        title: t`Open collection`,
+        icon: "folder",
+        action() {
+          dispatch(push(Urls.collection(metric.collection)));
+        },
+      });
+    }
+
+    if (metric.can_write) {
+      actions.push({
+        key: "move-to-trash",
+        title: t`Move to trash`,
+        icon: "trash",
+        action() {
+          dispatch(
+            Questions.actions.setArchived(
+              { id: metric.id, model: "metric" },
+              true,
+            ),
+          );
+        },
+      });
+    }
+
+    return actions;
+  }, [metric, createBookmark, deleteBookmark, dispatch]);
+
+  return (
+    <Cell onClick={stopPropagation} style={{ padding: 0 }}>
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <Button size="sm" variant="subtle">
+            <Icon name="ellipsis" />
+          </Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          {actions.map(action => (
+            <Menu.Item
+              key={action.key}
+              icon={<Icon name={action.icon} />}
+              onClick={action.action}
+            >
+              {action.title}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
     </Cell>
   );
 }
