@@ -49,11 +49,11 @@ export const getSecondarySortColumn = (
   return sort_column === "name" ? "collection" : "name";
 };
 
-export const sortCards = (
-  metrics: (ModelResult | MetricResult)[],
+export function sortCards<T extends ModelResult | MetricResult>(
+  metrics: T[],
   sortingOptions: SortingOptions,
   localeCode: string = "en",
-) => {
+) {
   const { sort_column, sort_direction } = sortingOptions;
 
   if (!isValidSortColumn(sort_column)) {
@@ -78,7 +78,7 @@ export const sortCards = (
 
     return sort_direction === SortDirection.Asc ? result : -result;
   });
-};
+}
 
 /** Find the maximum number of recently viewed models to show.
  * This is roughly proportional to the number of models the user
