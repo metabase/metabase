@@ -1,5 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  FIRST_COLLECTION_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   assertIsEllipsified,
@@ -36,6 +39,7 @@ const ORDERS_SCALAR_MODEL_METRIC: StructuredQuestionDetailsWithName = {
     aggregation: [["count"]],
   },
   display: "scalar",
+  collection_id: FIRST_COLLECTION_ID as number,
 };
 
 const ORDERS_TIMESERIES_METRIC: StructuredQuestionDetailsWithName = {
@@ -192,6 +196,13 @@ describe("scenarios > browse > metrics", () => {
       getMetricsTableItem(1).should("contain", "Metric C");
       getMetricsTableItem(2).should("contain", "Metric B");
       getMetricsTableItem(3).should("contain", "Metric A");
+
+      metricsTable().findByText("Collection").click();
+
+      getMetricsTableItem(0).should("contain", "Metric B");
+      getMetricsTableItem(1).should("contain", "Metric A");
+      getMetricsTableItem(2).should("contain", "Metric C");
+      getMetricsTableItem(3).should("contain", "Metric D");
     });
   });
 });
