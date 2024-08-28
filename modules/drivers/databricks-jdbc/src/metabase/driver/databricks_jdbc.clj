@@ -164,23 +164,15 @@
         (when-let [t (.getTimestamp rs i)]
           (t/local-date-time t))))))
 
-(defn- valid-zone-id-str? [zone-id-str]
-  (contains? (java.time.ZoneId/getAvailableZoneIds) zone-id-str))
-
-;; TODO: Probably I can avoid offset vs zoned completely.
 (defn- date-time->results-local-date-time
   [dt]
   (if (instance? LocalDateTime dt)
     dt
-    (let [;; Use jvm timezone outside of query processor. Useful in test data loading.
-          ;; Is the value cached? Should be? This is called for every temporal dbricks param.
-          tz-str      (try (qp.timezone/results-timezone-id)
+    (let [tz-str      (try (qp.timezone/results-timezone-id)
                            (catch Throwable _
                              (log/trace "Failed to get `results-timezone-id`. Using system timezone.")
                              (qp.timezone/system-timezone-id)))
-          adjusted-dt (if (valid-zone-id-str? tz-str)
-                        (t/with-zone-same-instant (t/zoned-date-time dt) (t/zone-id tz-str))
-                        (t/with-offset-same-instant (t/offset-date-time dt) (t/zone-offset tz-str)))]
+          adjusted-dt (t/with-zone-same-instant (t/zoned-date-time dt) (t/zone-id tz-str))]
       (t/local-date-time adjusted-dt))))
 
 (defn- set-parameter-to-local-date-time
