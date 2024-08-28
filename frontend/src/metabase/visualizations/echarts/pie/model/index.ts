@@ -61,6 +61,7 @@ function getColDescs(
 export function getPieChartModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
+  hiddenSlices: Array<string | number> = [],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
 ): PieChartModel {
@@ -142,6 +143,7 @@ export function getPieChartModel(
         normalizedPercentage: value / total, // slice percentage values are normalized to 0-1 scale
         rowIndex: rowIndiciesByKey.get(key),
         color,
+        visible: !hiddenSlices.includes(key),
         isOther,
         noHover: false,
         includeInLegend: true,
@@ -168,6 +170,7 @@ export function getPieChartModel(
       displayValue: otherTotal,
       normalizedPercentage: otherTotal / total,
       color: renderingContext.getColor("text-light"),
+      visible: true,
       isOther: true,
       noHover: false,
       includeInLegend: true,
@@ -191,6 +194,7 @@ export function getPieChartModel(
       displayValue: 0,
       normalizedPercentage: 0,
       color: renderingContext.getColor("text-light"),
+      visible: true,
       isOther: true,
       noHover: true,
       includeInLegend: false,
