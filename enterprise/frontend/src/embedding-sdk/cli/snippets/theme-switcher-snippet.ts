@@ -1,10 +1,10 @@
 export const THEME_SWITCHER_SNIPPET = `
 import { useContext } from 'react'
 
-import { SampleThemeContext } from './metabase-provider'
+import { AnalyticsContext } from './analytics-provider'
 
 export const ThemeSwitcher = () => {
-  const { themeKey, setThemeKey } = useContext(SampleThemeContext)
+  const { themeKey, setThemeKey } = useContext(AnalyticsContext)
 
   const ThemeIcon = ICONS[themeKey]
 
