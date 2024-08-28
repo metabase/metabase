@@ -268,9 +268,9 @@
 
 (defmethod iso-8601-text-fields-expected-rows :databricks-jdbc
   [_driver]
-  [[1 "foo" #t "2004-10-19T10:23:54Z[UTC]" #t "2004-10-19"]
-   [2 "bar" #t "2008-10-19T10:23:54Z[UTC]" #t "2008-10-19"]
-   [3 "baz" #t "2012-10-19T10:23:54Z[UTC]" #t "2012-10-19"]])
+  [[1 "foo" (t/offset-date-time #t "2004-10-19T10:23:54Z") #t "2004-10-19"]
+   [2 "bar" (t/offset-date-time #t "2008-10-19T10:23:54Z") #t "2008-10-19"]
+   [3 "baz" (t/offset-date-time #t "2012-10-19T10:23:54Z") #t "2012-10-19"]])
 
 ;;; oracle doesn't have a time type
 (defmethod iso-8601-text-fields-expected-rows :oracle
