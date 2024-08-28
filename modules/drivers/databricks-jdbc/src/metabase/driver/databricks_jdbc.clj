@@ -147,10 +147,13 @@
 
 (defmethod sql.qp/datetime-diff [:databricks-jdbc :second]
   [_driver _unit x y]
-  (let [format-string (if (instance? LocalDate y)
+  [:-
+   [:unix_timestamp y (if (instance? LocalDate y)
                         (h2x/literal "yyyy-MM-dd")
                         (h2x/literal "yyyy-MM-dd HH:mm:ss"))]
-    [:- [:unix_timestamp y format-string] [:unix_timestamp x format-string]]))
+   [:unix_timestamp x (if (instance? LocalDate y)
+                        (h2x/literal "yyyy-MM-dd")
+                        (h2x/literal "yyyy-MM-dd HH:mm:ss"))]])
 
 (def ^:private timestamp-database-type-names #{"TIMESTAMP" "TIMESTAMP_NTZ"})
 
