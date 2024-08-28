@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -17,10 +16,6 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
   const icon = item.icon ? getCommandPaletteIcon(item, active) : null;
 
   const subtext = item.extra?.subtext;
-
-  const handleLinkClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-  }, []);
 
   const content = (
     <Flex
@@ -118,12 +113,7 @@ export const PaletteResultItem = ({ item, active }: PaletteResultItemProps) => {
 
   if (item.extra?.href) {
     return (
-      <Box
-        component={Link}
-        to={item.extra.href}
-        onClick={handleLinkClick}
-        w="100%"
-      >
+      <Box component={Link} to={item.extra.href} w="100%">
         {content}
       </Box>
     );
