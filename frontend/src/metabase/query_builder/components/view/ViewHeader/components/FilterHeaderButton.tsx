@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { getFilterItems } from "metabase/querying/components/FilterPanel/utils";
+import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -55,7 +55,7 @@ export function FilterHeaderButton({
           data-expanded={isExpanded}
           style={{ borderLeft: "none" }} // mantine puts a double border between buttons in groups
         >
-          <div color="white" className={ViewTitleHeaderS.FilterCountChip}>
+          <div className={ViewTitleHeaderS.FilterCountChip}>
             {items?.length}
           </div>
         </Button>
