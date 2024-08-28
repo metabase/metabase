@@ -6,7 +6,7 @@ export const trackNewQuestionSaved = (
   createdQuestion,
   isBasedOnExistingQuestion,
 ) => {
-  trackSchemaEvent("question", "1-0-2", {
+  trackSchemaEvent("question", {
     event: "new_question_saved",
     question_id: createdQuestion.id(),
     database_id: createdQuestion.databaseId(),
@@ -17,7 +17,7 @@ export const trackNewQuestionSaved = (
 };
 
 export const trackTurnIntoModelClicked = question => {
-  trackSchemaEvent("question", "1-0-2", {
+  trackSchemaEvent("question", {
     event: "turn_into_model_clicked",
     question_id: question.id(),
   });
