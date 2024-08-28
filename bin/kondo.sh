@@ -18,7 +18,7 @@ rm -rf .clj-kondo/metosin/malli-types-clj/
 rm -rf .clj-kondo/.cache
 
 # Initialize cache required for `hooks.metabase.test.data/dataset` hook.
-clj-kondo --dependencies --lint "test/metabase/test/data/dataset_definitions.clj"
+clojure -M:kondo --dependencies --lint "test/metabase/test/data/dataset_definitions.clj"
 
 # Run Kondo against all of our Clojure files in the various directories they might live.
 set -x
