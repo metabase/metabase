@@ -56,7 +56,6 @@ export function BrowseMetrics() {
                 error={metricsResult.error}
                 loading={metricsResult.isLoading}
                 style={{ flex: 1 }}
-                delay={0}
                 loader={<MetricsTable skeleton />}
               >
                 <MetricsTable metrics={metrics} />
