@@ -9124,6 +9124,30 @@ databaseChangeLog:
                     type: text
                     constraints:
                       nullable: true
+  - changeSet:
+      id: v52.2024-08-28T15:30:00
+      author: jordigiam
+      comment: Add agent_name and agent_description columns to postcheckpoints
+      preConditions:
+      - onFail: MARK_RAN
+      - dbms: postgresql, h2
+      - not:
+          - tableExists:
+              tableName: postcheckpoints
+      changes:
+        - addColumn:
+            tableName: postcheckpoints
+            columns:
+              - column:
+                  name: agent_name
+                  type: text
+                  constraints:
+                    nullable: true
+              - column:
+                  name: agent_description
+                  type: text
+                  constraints:
+                    nullable: true
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
