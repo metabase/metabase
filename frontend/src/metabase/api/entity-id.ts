@@ -46,11 +46,6 @@ export type TranslateEntityIdResponse = Record<
   TranslateEntityIdResponseSuccess | TranslateEntityIdResponseNotFound
 >;
 
-type TranslateEntityIdError = {
-  message: string;
-  explanation: Record<EntityType, [[string]]>;
-};
-
 const entityIdApi = Api.injectEndpoints({
   endpoints: builder => ({
     translateEntityId: builder.query<
@@ -69,19 +64,32 @@ const entityIdApi = Api.injectEndpoints({
           }
         }
 
-        return baseQuery({
+        // Todo: actually get the types to work on this. I spent hours on trying to make it work
+        // but the types might actually be busted.
+        const result = (await baseQuery({
           method: "POST",
           url: `/api/util/entity_id`,
           body: {
             entity_ids: requestEntities,
           },
-        });
+        })) as {
+          data?: {
+            entity_ids: TranslateEntityIdResponse;
+          };
+        };
+
+        if (!result) {
+          return {
+            error: {
+              message: "Unable to find entity IDs",
+              explanation: "",
+            },
+          };
+        }
+        return {
+          data: result.data?.entity_ids ?? {},
+        };
       },
-      // the error object has a bunch of other keys we don't want, so we pick those out
-      transformErrorResponse: (response: TranslateEntityIdError) => ({
-        message: response.message,
-        explanation: response.explanation,
-      }),
     }),
   }),
 });
