@@ -781,7 +781,7 @@
                                       "1,Serenity,Malcolm Reynolds"
                                       "2,Millennium Falcon, Han Solo"]))]
         (testing "Check the data was uploaded into the table correctly"
-          (is (= (header-with-auto-pk ["Unnamed column" "Ship Name" "Unnamed Column 2"])
+          (is (= (header-with-auto-pk ["Unnamed Column" "Ship Name" "Unnamed Column 2"])
                  (column-display-names-for-table table))))))))
 
 (deftest create-from-csv-duplicate-names-test
