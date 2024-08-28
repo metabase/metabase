@@ -15,6 +15,10 @@ import { sampleTenantIdsFromTables } from "../utils/sample-tenancy-column-values
 export const setupPermissions: CliStepMethod = async state => {
   const { cookie = "", instanceUrl = "", tenancyColumnNames = {} } = state;
 
+  if (!state.token) {
+    return [{ type: "success" }, state];
+  }
+
   let res;
   const collectionIds: number[] = [];
 

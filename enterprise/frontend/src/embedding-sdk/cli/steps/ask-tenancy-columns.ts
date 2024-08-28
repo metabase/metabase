@@ -5,6 +5,10 @@ import type { CliStepMethod } from "../types/cli";
 import { printHelperText } from "../utils/print";
 
 export const askForTenancyColumns: CliStepMethod = async state => {
+  if (!state.token) {
+    return [{ type: "success" }, state];
+  }
+
   printHelperText(
     `e.g. does your table have a customer_id column to isolate tenants?`,
   );
