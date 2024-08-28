@@ -75,7 +75,6 @@
             {:keys [catalog schema]} (:details database)
             dbmeta                   (.getMetaData conn)]
         (with-open [rs (.getTables dbmeta catalog schema nil
-                                   ;; manually verified
                                    (into-array String ["TABLE" "VIEW"]))]
           (let [rs-meta (.getMetaData rs)
                 col-count (.getColumnCount rs-meta)
