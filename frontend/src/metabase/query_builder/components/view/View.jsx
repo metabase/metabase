@@ -356,16 +356,7 @@ class View extends Component {
           updateQuestion={this.props.updateQuestion}
           className={CS.flexNoShrink}
         />
-        <ViewFooter
-          question={this.props.question}
-          result={this.props.result}
-          isShowingChartTypeSidebar={this.props.isShowingChartTypeSidebar}
-          isShowingRawTable={this.props.isShowingRawTable}
-          setUIControls={this.props.setUIControls}
-          isObjectDetail={this.props.isObjectDetail}
-          visualizationSettings={this.props.visualizationSettings}
-          className={CS.flexNoShrink}
-        />
+        <ViewFooter className={CS.flexNoShrink} />
       </QueryBuilderMain>
     );
   };
