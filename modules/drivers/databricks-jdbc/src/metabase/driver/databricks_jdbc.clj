@@ -50,14 +50,12 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :databricks-jdbc
   [_driver {:keys [catalog host http-path schema token] :as details}]
+  (assert (string? (not-empty catalog)) "Catalog is mandatory.")
   (merge
    {:classname        "com.databricks.client.jdbc.Driver"
     :subprotocol      "databricks"
-    ;; TODO: urlencode strings!
     :subname          (str "//" host ":443/"
-                          ;; TODO: following should be mandatory!
-                           (when (string? (not-empty catalog))
-                             (str ";ConnCatalog=" (codec/url-encode catalog)))
+                           ";ConnCatalog=" (codec/url-encode catalog)
                            (when (string? (not-empty schema))
                              (str ";ConnSchema=" (codec/url-encode schema))))
     :transportMode    "http"
