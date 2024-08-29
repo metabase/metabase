@@ -544,13 +544,19 @@ async function addIssueToProject({
     return;
   }
 
+  const authHeader = {
+    headers: {
+      authorization: `token ${process.env.GITHUB_TOKEN}`,
+    },
+  };
+
   const response = await github.graphql(`mutation {
     addProjectV2ItemById(input: {
       projectId: "${releaseIssueProject.id}",
       contentId: "${issue?.node_id}"
     })
     { item { id } }
-  }`) as { addProjectV2ItemById: { item: { id: string } } };
+  }`, authHeader) as { addProjectV2ItemById: { item: { id: string } } };
 
   const itemId = response.addProjectV2ItemById.item.id;
 
@@ -575,5 +581,5 @@ async function addIssueToProject({
         value: { text: "${version}" } }
       )
       { projectV2Item { id } }
-    }`);
+    }`, authHeader);
 }
