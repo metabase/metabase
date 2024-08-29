@@ -103,7 +103,7 @@ result_metadata:
   - v_dashboardcard
   - entity_id
   name: entity_id
-  semantic_type: null
+  semantic_type: type/PK
   settings: null
   visibility_type: normal
 - base_type: type/Text
@@ -125,7 +125,7 @@ result_metadata:
   - v_dashboardcard
   - entity_qualified_id
   name: entity_qualified_id
-  semantic_type: null
+  semantic_type: type/PK
   settings: null
   visibility_type: normal
 - base_type: type/Text

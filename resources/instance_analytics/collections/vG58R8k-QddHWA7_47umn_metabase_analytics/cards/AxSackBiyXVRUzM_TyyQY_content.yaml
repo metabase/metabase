@@ -279,8 +279,8 @@ result_metadata:
   fk_target_field_id:
   - Internal Metabase Database
   - public
-  - v_fields
-  - active
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -357,7 +357,7 @@ result_metadata:
   - v_content
   - collection_id
   name: collection_id
-  semantic_type: type/FK
+  semantic_type: null
   settings: null
   visibility_type: normal
 - base_type: type/Integer
@@ -375,8 +375,8 @@ result_metadata:
   fk_target_field_id:
   - Internal Metabase Database
   - public
-  - v_fields
-  - active
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -475,7 +475,7 @@ result_metadata:
   - v_content
   - action_model_id
   name: action_model_id
-  semantic_type: type/FK
+  semantic_type: null
   settings: null
   visibility_type: normal
 - base_type: type/Boolean
@@ -556,7 +556,11 @@ result_metadata:
     - v_content
     - question_database_id
   - base-type: type/Text
-  fk_target_field_id: null
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_databases
+  - entity_qualified_id
   id:
   - Internal Metabase Database
   - public

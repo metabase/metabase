@@ -41,6 +41,11 @@ result_metadata:
     - v_group_members
     - user_id
   - null
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -62,6 +67,7 @@ result_metadata:
     - v_group_members
     - group_id
   - null
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
@@ -83,6 +89,7 @@ result_metadata:
     - v_group_members
     - group_name
   - null
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public

@@ -332,8 +332,8 @@ result_metadata:
   fk_target_field_id:
   - Internal Metabase Database
   - public
-  - v_fields
-  - active
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
