@@ -517,6 +517,31 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
   });
 
   describe("> single series question grouped by month on dashboard", () => {
+    it("it should not apply formatting to the percent change", () => {
+      setup({
+        question: {
+          ...SUM_OF_TOTAL_MONTH,
+          visualization_settings: {
+            column_settings: {
+              '["name","sum"]': {
+                prefix: "pref",
+                suffix: "suf",
+              },
+            },
+          },
+        },
+      }).then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
+
+      showTooltipForCircleInSeries("#88BF4D", 1);
+      testTooltipPairs([
+        ["Created At", "May 2022"],
+        ["Sum of Total", "pref1,265.72suf"],
+        ["Compared to previous month", "+2,299.19%"],
+      ]);
+    });
+
     it("should show percent change in tooltip for timeseries axis", () => {
       setup({
         question: SUM_OF_TOTAL_MONTH,
