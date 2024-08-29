@@ -15,6 +15,7 @@ on:
 
 jobs:
   check-milestone:
+    permissions: write-all
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
