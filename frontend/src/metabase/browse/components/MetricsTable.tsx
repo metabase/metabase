@@ -20,14 +20,19 @@ import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { Box, FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
+import { FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import type { MetricResult } from "../types";
 import { getIcon } from "../utils";
 
-import { Cell, NameColumn, TableRow } from "./CardTable.styled";
+import {
+  Cell,
+  CollectionTableCell,
+  NameColumn,
+  TableRow,
+} from "./CardTable.styled";
 import S from "./ModelsTable.module.css";
 import { getMetricDescription, sortCards } from "./utils";
 
@@ -252,18 +257,17 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
   const content = (
     <Flex gap="sm">
       <FixedSizeIcon name="folder" />
-      <Box w="calc(100% - 1.5rem)">
-        {metric ? (
-          <EllipsifiedCollectionPath collection={metric.collection} />
-        ) : (
-          <SkeletonText />
-        )}
-      </Box>
+
+      {metric ? (
+        <EllipsifiedCollectionPath collection={metric.collection} />
+      ) : (
+        <SkeletonText />
+      )}
     </Flex>
   );
 
   return (
-    <Cell
+    <CollectionTableCell
       data-testid={`path-for-collection: ${collectionName}`}
       {...collectionProps}
     >
@@ -278,7 +282,7 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
       ) : (
         content
       )}
-    </Cell>
+    </CollectionTableCell>
   );
 }
 

@@ -54,3 +54,9 @@ export const NameColumn = styled(TableColumn)`
     width: 200px;
   }
 `;
+
+export const CollectionTableCell = styled(Cell)`
+  td& {
+    padding: 0;
+  }
+`;
