@@ -92,9 +92,7 @@ describe("formatting card errors to string", () => {
       type: "inactive-table",
     };
 
-    expect(formatErrorString([surpriseError])).toBe(
-      "I don't know what's wrong, but it's broken",
-    );
+    expect(formatErrorString([surpriseError])).toBe("Unknown data reference");
 
     expect(formatErrorString([surpriseError, productsError])).toBe(
       "Table Products is inactive",
