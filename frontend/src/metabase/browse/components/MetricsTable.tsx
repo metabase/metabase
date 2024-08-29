@@ -288,7 +288,11 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
   return (
     <Cell {...descriptionProps}>
       {metric ? (
-        <MarkdownPreview lineClamp={12}>
+        <MarkdownPreview
+          lineClamp={12}
+          allowedElements={["strong", "em"]}
+          oneLine
+        >
           {getMetricDescription(metric) || ""}
         </MarkdownPreview>
       ) : (

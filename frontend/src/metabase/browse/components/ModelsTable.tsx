@@ -278,7 +278,11 @@ function DescriptionCell({ model }: { model?: ModelResult }) {
   return (
     <Cell {...descriptionProps}>
       {model ? (
-        <MarkdownPreview lineClamp={12}>
+        <MarkdownPreview
+          lineClamp={12}
+          allowedElements={["strong", "em"]}
+          oneLine
+        >
           {getModelDescription(model) || ""}
         </MarkdownPreview>
       ) : (
