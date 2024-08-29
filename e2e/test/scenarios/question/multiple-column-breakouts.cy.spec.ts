@@ -1,9 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type DashboardDetails,
+  type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
   createQuestion,
   createQuestionAndDashboard,
-  type DashboardDetails,
   dragField,
   editDashboard,
   enterCustomColumnDetails,
@@ -19,7 +20,6 @@ import {
   restore,
   saveDashboard,
   startNewQuestion,
-  type StructuredQuestionDetails,
   summarize,
   tableInteractive,
   tableInteractiveBody,
@@ -723,12 +723,12 @@ describe("scenarios > question > multiple column breakouts", () => {
       it("should be able to add post-aggregation expressions for each breakout column", () => {
         function testDatePostAggregationExpression({
           questionDetails,
-          column1Name,
-          column2Name,
+          expression1,
+          expression2,
         }: {
           questionDetails: StructuredQuestionDetails;
-          column1Name: string;
-          column2Name: string;
+          expression1: string;
+          expression2: string;
         }) {
           createQuestion(questionDetails, { visitQuestion: true });
           openNotebook();
@@ -736,8 +736,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.log("add a post-aggregation expression for the first column");
           getNotebookStep("summarize").button("Custom column").click();
           enterCustomColumnDetails({
-            formula: `min(${column1Name})`,
-            name: "Min",
+            formula: expression1,
+            name: "Expression1",
             blur: true,
           });
           popover().button("Done").click();
@@ -745,8 +745,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.log("add a post-aggregation expression for the second column");
           getNotebookStep("expression", { stage: 1 }).icon("add").click();
           enterCustomColumnDetails({
-            formula: `max(${column2Name})`,
-            name: "Max",
+            formula: expression2,
+            name: "Expression2",
             blur: true,
           });
           popover().button("Done").click();
@@ -759,34 +759,54 @@ describe("scenarios > question > multiple column breakouts", () => {
         cy.log("temporal breakouts");
         testDatePostAggregationExpression({
           questionDetails: questionWith2TemporalBreakoutsDetails,
-          column1Name: "Created At: Year",
-          column2Name: "Created At: Month",
+          expression1: 'datetimeAdd([Created At: Year], 1, "year")',
+          expression2: 'datetimeAdd([Created At: Month], 1, "month")',
         });
         assertTableData({
-          columns: ["Min", "Max"],
-          firstRows: [["X", "X"]],
+          columns: [
+            "Created At",
+            "Created At",
+            "Count",
+            "Expression1",
+            "Expression2",
+          ],
+          firstRows: [
+            [
+              "January 1, 2022, 12:00 AM",
+              "April 1, 2022, 12:00 AM",
+              "1",
+              "January 1, 2023, 12:00 AM",
+              "May 1, 2022, 12:00 AM",
+            ],
+          ],
         });
 
         cy.log("'num-bins' breakouts");
         testDatePostAggregationExpression({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
-          column1Name: "Total: 10 bins",
-          column2Name: "Total: 50 bins",
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
+          expression1: "[Total: 10 bins] + 100",
+          expression2: "[Total: 10 bins] + 200",
         });
         assertTableData({
-          columns: ["Min", "Max"],
-          firstRows: [["X", "X"]],
+          columns: ["Total", "Total", "Count", "Expression1", "Expression2"],
+          firstRows: [["-60", "-50", "1", "40", "140"]],
         });
 
         cy.log("'max-bins' breakouts");
         testDatePostAggregationExpression({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
-          column1Name: "Latitude: 20°",
-          column2Name: "Latitude: 10°",
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          expression1: "[Latitude: 20°] + 100",
+          expression2: "[Latitude: 10°] + 200",
         });
         assertTableData({
-          columns: ["Min", "Max"],
-          firstRows: [["X", "X"]],
+          columns: [
+            "Latitude",
+            "Latitude",
+            "Count",
+            "Expression1",
+            "Expression2",
+          ],
+          firstRows: [["20.00000000° N", "20.00000000° N", "87", "120", "220"]],
         });
       });
 
