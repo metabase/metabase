@@ -532,14 +532,6 @@
     (.setAutoFilter ^SXSSFSheet sheet (new CellRangeAddress 0 0 0 (dec col-count)))
     (.createFreezePane ^SXSSFSheet sheet 0 1)))
 
-(defn- indices->area-ref
-  "Given the indices for the end-row and end-col, create an area reference"
-  [end-row end-col]
-  (let [start-ref (CellReference. 0 0)
-        end-ref (CellReference. ^Integer end-row ^Integer end-col)
-        ref-string (str (.formatAsString start-ref) ":" (.formatAsString end-ref))]
-    (AreaReference. ref-string SpreadsheetVersion/EXCEL2007)))
-
 ;; Possible Functions: https://poi.apache.org/apidocs/dev/org/apache/poi/ss/usermodel/DataConsolidateFunction.html
 ;; I'm only including the keys that seem to work for our Pivot Tables as of 2024-06-06
 (defn- col->aggregation-fn
@@ -577,8 +569,7 @@
 (defn- init-native-pivot
   [{:keys [pivot-grouping-key] :as pivot-spec}
    {:keys [ordered-cols col-settings viz-settings format-rows?]}]
-  (let [row-count-estimate          (apply max (conj (remove nil? (map #(get-in % [:fingerprint :global :distinct-count]) ordered-cols)) 20000))
-        idx-shift                   (fn [indices]
+  (let [idx-shift                   (fn [indices]
                                       (map (fn [idx]
                                              (if (> idx pivot-grouping-key)
                                                (dec idx)
@@ -599,7 +590,9 @@
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
         col-names                   (common/column-titles ordered-cols col-settings format-rows?)
         _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
-        area-ref                    (indices->area-ref row-count-estimate (dec (count ordered-cols)))
+        area-ref                    (AreaReference/getWholeColumn SpreadsheetVersion/EXCEL2007
+                                                                  "A"
+                                                                  (CellReference/convertNumToColString (dec (count ordered-cols))))
         ^XSSFPivotTable pivot-table (.createPivotTable ^XSSFSheet pivot-sheet
                                                        ^AreaReference area-ref
                                                        (CellReference. 0 0)
