@@ -150,12 +150,24 @@ describe("scenarios > browse > metrics", () => {
     });
 
     it("should open the collections in a new tab when alt-clicking a metric", () => {
+      cy.on("window:before:load", win => {
+        // prevent Cypress opening in a new window/tab and spy on this method
+        cy.stub(win, "open").as("open");
+      });
+
       createMetrics([ORDERS_SCALAR_METRIC]);
       cy.visit("/browse/metrics");
 
       findMetric(ORDERS_SCALAR_METRIC.name).should("be.visible").click({
         metaKey: true,
       });
+
+      cy.get("@open").should("have.been.calledOnce");
+      cy.get("@open").should(
+        "have.been.calledWithMatch",
+        /^\/question\/\d+-.*$/,
+        "_blank",
+      );
 
       // the page did not navigate on this page
       cy.location("pathname").should("eq", "/browse/metrics");

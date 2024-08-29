@@ -168,6 +168,9 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
       // TODO:
       // trackMetricClick(metric.id);
 
+      event.preventDefault();
+      event.stopPropagation();
+
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
       } else {
@@ -191,8 +194,12 @@ function SkeletonText() {
   return <Skeleton natural h="16.8px" />;
 }
 
-function stopPropagation(event: React.MouseEvent) {
+function stopPropagation(event: MouseEvent) {
   event.stopPropagation();
+}
+
+function preventDefault(event: MouseEvent) {
+  event.preventDefault();
 }
 
 function NameCell({ metric }: { metric?: MetricResult }) {
@@ -214,7 +221,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
           paddingInlineStart: "1.4rem",
           paddingInlineEnd: ".5rem",
         }}
-        onClick={stopPropagation}
+        onClick={preventDefault}
       >
         <Icon
           size={16}

@@ -150,6 +150,14 @@ function SkeletonText() {
   return <Skeleton natural h="16.8px" />;
 }
 
+function stopPropagation(event: MouseEvent) {
+  event.stopPropagation();
+}
+
+function preventDefault(event: MouseEvent) {
+  event.preventDefault();
+}
+
 const ModelRow = ({ model }: { model?: ModelResult }) => {
   const dispatch = useDispatch();
 
@@ -171,6 +179,9 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
       const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
       trackModelClick(model.id);
+
+      event.preventDefault();
+      event.stopPropagation();
 
       if ((event.ctrlKey || event.metaKey) && event.button === 0) {
         Urls.openInNewTab(subpathSafeUrl);
@@ -203,6 +214,7 @@ function NameCell({ model }: { model?: ModelResult }) {
           paddingInlineStart: "1.4rem",
           paddingInlineEnd: ".5rem",
         }}
+        onClick={preventDefault}
       >
         <Icon
           size={16}
@@ -249,7 +261,7 @@ function CollectionCell({ model }: { model?: ModelResult }) {
         <Link
           className={S.collectionLink}
           to={Urls.collection(model.collection)}
-          onClick={e => e.stopPropagation()}
+          onClick={stopPropagation}
         >
           {content}
         </Link>
