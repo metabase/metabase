@@ -2,7 +2,7 @@ import { t } from "ttag";
 import { useEffect, useState } from "react";
 
 import NoResults from "assets/img/no_results.svg";
-import { useGetCubeDataQuery, useUpdateCubeDataMutation, useSyncDatabaseSchemaMutation } from "metabase/api";
+import { useGetCubeDataQuery, useUpdateCubeDataMutation, useSyncDatabaseSchemaMutation, useListDatabasesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Button, Box } from "metabase/ui";
 
@@ -22,7 +22,19 @@ import { CubePreviewTable } from "metabase/components/Cube/CubePreviewTable";
 
 
 export const BrowseCubes = () => {
-  const { data: cubeData, isLoading, error } = useGetCubeDataQuery();
+  const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+  const databases = data?.data;
+  const [companyName, setCompanyName] = useState<string>('');
+  
+  useEffect(() => {
+      if (databases) {
+          const cubeDatabase = databases.find(database => database.is_cube === true);
+          if (cubeDatabase) {
+              setCompanyName(cubeDatabase.company_name!);
+          }
+      }
+  }, [databases]);
+  const { data: cubeData, isLoading, error } = useGetCubeDataQuery({companyName});
   const [updateCubeData] = useUpdateCubeDataMutation();
   const [ syncSChema ] = useSyncDatabaseSchemaMutation();
   const [dbId, setDbId] = useState<number | null>(null)
@@ -105,7 +117,8 @@ export const BrowseCubes = () => {
       };
 
       await updateCubeData({
-        payload
+        payload,
+        companyName
       })
 
       await syncDbSchema()

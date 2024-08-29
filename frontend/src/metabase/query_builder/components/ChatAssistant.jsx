@@ -28,7 +28,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
     const inputRef = useRef(null);
     const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
-    const company_name = process.env.COMPANY_NAME;
+    const [companyName, setCompanyName] = useState("");
     const [inputValue, setInputValue] = useState("");
     const [messages, setMessages] = useState([]);
     const [card, setCard] = useState(null);
@@ -53,12 +53,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const databases = data?.data;
-
     useEffect(() => {
         if (databases) {
             const cubeDatabase = databases.find(database => database.is_cube === true);
             if (cubeDatabase) {
                 setDBInputValue(cubeDatabase.id);
+                setCompanyName(cubeDatabase.company_name)
             }
         }
     }, [databases]);
@@ -347,7 +347,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue, company_name],
+                    configData: [dbInputValue, companyName],
                     appType: chatType,
                 }),
             );

@@ -3,14 +3,12 @@ import { CubeApi } from "./cubeApi";
 import { provideCubeDataTags } from "./tags";
 import { invalidateTags, tag } from "./tags";
 
-const company_name = process.env.COMPANY_NAME
-
 export const cubeDataApi = CubeApi.injectEndpoints({
     endpoints: builder => ({
         getCubeData: builder.query<CubeDataResponse, GetCubeDataRequest | void>({
-            query: () => ({
+            query: (companyName) => ({
                 method: 'GET',
-                url: `/company/company-cube-files/${company_name}`,
+                url: `/company/company-cube-files/${companyName}`,
             }),
             transformResponse: (response: Record<string, string>) => {
                 return Object.entries(response).map(([fileName, content]) => ({
@@ -20,11 +18,11 @@ export const cubeDataApi = CubeApi.injectEndpoints({
             },
             providesTags: (result) => {
                 return provideCubeDataTags(result ?? [])
-            } 
+            }
         }),
         updateCubeData: builder.mutation<void, UpdateCubeDataRequest>({
             query: (updateData) => ({
-                url: `/company/edit-cube-files/${company_name}`,
+                url: `/company/edit-cube-files/${updateData.companyName}`,
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

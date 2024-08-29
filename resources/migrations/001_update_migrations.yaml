@@ -9148,6 +9148,27 @@ databaseChangeLog:
                   type: text
                   constraints:
                     nullable: true
+  - changeSet:
+      id: v53.2024-08-29T10:00:00
+      author: jordigiam
+      comment: Add company_name column to metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: company_name
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: company_name
+                  type: text
+                  constraints:
+                    nullable: true
+
+
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

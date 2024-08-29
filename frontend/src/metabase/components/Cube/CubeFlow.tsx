@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   useNodesState,
   useEdgesState,
@@ -16,7 +16,7 @@ import NoResults from "assets/img/no_results.svg";
 import { createGraphData, createNewGraphData, CubeData, CubeFlowProps, extractCubeName, extractSQLInfo, extractTableName, FieldData, MapData, newExtractAllJoins } from "./utils";
 import CustomNode from "./CubeNode";
 import { getLayoutedElements } from "./LayoutedElements";
-import { useGetCubeDataQuery } from "metabase/api";
+import { useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
 import { BrowseContainer, BrowseHeader, BrowseSection, CenteredEmptyState } from "metabase/browse/components/BrowseContainer.styled";
 import { Box } from "@mantine/core";
@@ -26,7 +26,19 @@ const nodeTypes = {
 };
 
 const CubeFlow = () => {
-  const { data, isLoading, error } = useGetCubeDataQuery();
+  const { data: dbData, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+  const databases = dbData?.data;
+  const [companyName, setCompanyName] = useState<string>('');
+
+  useEffect(() => {
+    if (databases) {
+      const cubeDatabase = databases.find(database => database.is_cube === true);
+      if (cubeDatabase) {
+        setCompanyName(cubeDatabase.company_name!);
+      }
+    }
+  }, [databases]);
+  const { data, isLoading, error } = useGetCubeDataQuery({ companyName });
   const [showDefinition, setShowDefinition] = useState<boolean>(false)
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 
@@ -93,7 +105,7 @@ const CubeFlow = () => {
   const extractingField = (arr: any[]): FieldData[] => {
     const resultMap: { [key: string]: FieldData } = {};
 
-    const addField = (table: string, field: string, type?:string) => {
+    const addField = (table: string, field: string, type?: string) => {
       const id = `${table}-${field}`;
       if (!resultMap[id]) {
         resultMap[id] = { id, table, field, type };
@@ -134,7 +146,7 @@ const CubeFlow = () => {
   const createData = (arr: any[]): MapData[] => {
     const resultMap: { [key: string]: MapData } = {};
 
-    const addField = (sourceCube:string, sourceField:string, targetTable:string, targetField:string) => {
+    const addField = (sourceCube: string, sourceField: string, targetTable: string, targetField: string) => {
       const id = `${sourceCube}-${targetTable}`;
       if (!resultMap[id]) {
         resultMap[id] = { id, sourceCube, sourceField, targetTable, targetField };
@@ -151,10 +163,10 @@ const CubeFlow = () => {
           const [, sourceCube, sourceField] = sourceMatch;
           const [, targetCube, targetField] = targetMatch;
           const targetTableName = getTableName(targetCube);
-         
-          
+
+
           addField(sourceCube, sourceField, targetTableName, targetField);
-         }
+        }
       });
     });
 
@@ -163,35 +175,35 @@ const CubeFlow = () => {
 
   const newField = createData(modifiedValues)
 
-    extractField.forEach((field) => {
-      if (!tableGroups[field.table]) {
-        tableGroups[field.table] = [];
-      }
-      tableGroups[field.table].push(field);
-    });
+  extractField.forEach((field) => {
+    if (!tableGroups[field.table]) {
+      tableGroups[field.table] = [];
+    }
+    tableGroups[field.table].push(field);
+  });
 
-    const cubeData: CubeData = {};
+  const cubeData: CubeData = {};
 
-cubes.forEach((cube) => {
-  const cubeName = extractCubeName(cube.content);
-  const cubeInfo = extractSQLInfo(cube.content);
+  cubes.forEach((cube) => {
+    const cubeName = extractCubeName(cube.content);
+    const cubeInfo = extractSQLInfo(cube.content);
 
-  cubeData[cubeName] = {
-    fields: cubeInfo.fields
-  };
-});
+    cubeData[cubeName] = {
+      fields: cubeInfo.fields
+    };
+  });
 
 
   const oldGraphData = createGraphData(tableGroups, cubeData, tableNameArr, cubeNameArr)
   const graphData = createNewGraphData(tableGroups, cubeData, tableNameArr, cubeNameArr, newField)
   const [hoveredNode, setHoveredNode] = useState(null);
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
-    const nodes = graphData.nodes.map((node:any) => ({
+    const nodes = graphData.nodes.map((node: any) => ({
       id: node.id,
       type: "custom",
       data: {
         label: node.label,
-        fields: node.fields.map((field:any) => ({
+        fields: node.fields.map((field: any) => ({
           ...field,
           hasHandle: field.type === "source" || field.type === "target",
         })),
@@ -200,7 +212,7 @@ cubes.forEach((cube) => {
       },
       position: { x: 0, y: 0 },
     }));
-    const edges = graphData.edges.map((edge:any, index:any) => ({
+    const edges = graphData.edges.map((edge: any, index: any) => ({
       id: `e${index}`,
       source: edge.source,
       target: edge.target,
@@ -220,7 +232,7 @@ cubes.forEach((cube) => {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const onConnect = useCallback(
-    (params:any) =>
+    (params: any) =>
       setEdges((eds) =>
         addEdge(
           {
@@ -238,7 +250,7 @@ cubes.forEach((cube) => {
       ),
     [setEdges]
   );
-  const onNodeMouseEnter = useCallback((event:any, node:any) => {
+  const onNodeMouseEnter = useCallback((event: any, node: any) => {
     setHoveredNode(node.id);
   }, []);
   const onNodeMouseLeave = useCallback(() => {
@@ -321,70 +333,72 @@ cubes.forEach((cube) => {
   }, []);
 
   return (
-  <>
-  <BrowseContainer>
-  <BrowseHeader>
-      <BrowseSection>
-      <Flex
-      w="100%"
-      h="auto" // Adjust height if needed
-      direction="column" // Changed to column
-      justify="flex-start" // Align items at the start
-      align="flex-start"
-      gap="md"
-    >
-      <Title order={1} color="text-dark">
-        <Group spacing="sm">
-        {t`Data Map`}
-        </Group>
-      </Title>
-    </Flex>
-      </BrowseSection>
-    </BrowseHeader>
-    <div style={{ width: "80vw", height: "70vh", background: "#F9FBFC" }}>
-      <ReactFlow
-        nodes={highlightedNodes}
-        edges={highlightedEdges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeMouseEnter={onNodeMouseEnter}
-        onNodeMouseLeave={onNodeMouseLeave}
-        onInit={onInit}
-        fitView
-        attributionPosition="bottom-left"
-        nodeTypes={nodeTypes}
-        defaultEdgeOptions={{
-          type: "default",
-          animated: true,
-          style: { stroke: "#509EE3" },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: "#509EE3",
-          },
-        }}
-      >
-        <Background color="#555" gap={16} />
-        <Controls />
-      </ReactFlow>
-      <div style={{  position: "absolute",
-        right: 60,
-        top: 210,
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        gap: "10px"}}>
-        <button style={{
-            padding: "10px",
-            backgroundColor: "#509EE3",
-            color: "white",
-            border: "none",
-            borderRadius: "10px",
-            cursor: "pointer"
-          }} onClick={handleDefinition}>{showDefinition ? "Hide" : "Show"} Definition</button>
-      </div>
-    </div>
-    </BrowseContainer>
+    <>
+      <BrowseContainer>
+        <BrowseHeader>
+          <BrowseSection>
+            <Flex
+              w="100%"
+              h="auto" // Adjust height if needed
+              direction="column" // Changed to column
+              justify="flex-start" // Align items at the start
+              align="flex-start"
+              gap="md"
+            >
+              <Title order={1} color="text-dark">
+                <Group spacing="sm">
+                  {t`Data Map`}
+                </Group>
+              </Title>
+            </Flex>
+          </BrowseSection>
+        </BrowseHeader>
+        <div style={{ width: "80vw", height: "70vh", background: "#F9FBFC" }}>
+          <ReactFlow
+            nodes={highlightedNodes}
+            edges={highlightedEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onNodeMouseLeave}
+            onInit={onInit}
+            fitView
+            attributionPosition="bottom-left"
+            nodeTypes={nodeTypes}
+            defaultEdgeOptions={{
+              type: "default",
+              animated: true,
+              style: { stroke: "#509EE3" },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                color: "#509EE3",
+              },
+            }}
+          >
+            <Background color="#555" gap={16} />
+            <Controls />
+          </ReactFlow>
+          <div style={{
+            position: "absolute",
+            right: 60,
+            top: 210,
+            zIndex: 1000,
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px"
+          }}>
+            <button style={{
+              padding: "10px",
+              backgroundColor: "#509EE3",
+              color: "white",
+              border: "none",
+              borderRadius: "10px",
+              cursor: "pointer"
+            }} onClick={handleDefinition}>{showDefinition ? "Hide" : "Show"} Definition</button>
+          </div>
+        </div>
+      </BrowseContainer>
     </>
   );
 };

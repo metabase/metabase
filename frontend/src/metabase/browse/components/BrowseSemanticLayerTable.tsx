@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import NoResults from "assets/img/no_results.svg";
-import { useGetCubeDataQuery } from "metabase/api";
+import { useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Button, Box } from "metabase/ui";
 import * as Urls from "metabase/lib/urls";
@@ -19,7 +19,20 @@ import { MaybeItemLinkDataMap } from "metabase/components/ItemsTable/BaseItemsTa
 
 
 export const BrowseSemanticLayerTable = () => {
-  const { data: cubeData, isLoading, error } = useGetCubeDataQuery();
+  const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+  const databases = data?.data;
+  const [companyName, setCompanyName] = useState<string>('');
+  
+  useEffect(() => {
+      if (databases) {
+          const cubeDatabase = databases.find(database => database.is_cube === true);
+          if (cubeDatabase) {
+              setCompanyName(cubeDatabase.company_name!);
+          }
+      }
+  }, [databases]);
+  const { data: cubeData, isLoading, error } = useGetCubeDataQuery({companyName});
+
   const [selectedCube, setSelectedCube] = useState(null);
 
   const handleRowClick = (cube:any) => {
