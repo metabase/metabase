@@ -3,10 +3,13 @@ import {
   chartPathWithFillColor,
   createQuestion,
   echartsContainer,
+  editDashboard,
   getDashboardCard,
+  modal,
   popover,
   restore,
   scatterBubbleWithColor,
+  showDashboardCardActions,
   trendLine,
   visitDashboard,
 } from "e2e/support/helpers";
@@ -203,6 +206,9 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("1,500").should("exist");
         cy.findByText("1,200").should("exist");
       });
+
+      showSeries(2);
+      showSeries(3);
     });
 
     getDashboardCard(1).within(() => {
@@ -276,6 +282,43 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("54").should("not.exist"); // old max y-axis value
         cy.findByText("42").should("exist"); // new max y-axis value
       });
+    });
+
+    // Ensure can't toggle series visibility in edit mode
+    editDashboard();
+
+    function ensureCanNotToggleSeriesVisibility() {
+      cy.findAllByTestId("legend-item").eq(0).as("legend-item");
+
+      cy.get("@legend-item").findByLabelText("Hide series").should("not.exist");
+      cy.get("@legend-item")
+        .findByTestId("legend-item-dot")
+        .click({ force: true });
+
+      chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
+      chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+      chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+      chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    }
+
+    showDashboardCardActions(0);
+    getDashboardCard(0).findByLabelText("Show visualization options").click();
+
+    modal().within(() => {
+      ensureCanNotToggleSeriesVisibility();
+      cy.button("Cancel").click();
+    });
+
+    showDashboardCardActions(0);
+    getDashboardCard(0).findByLabelText("Add series").click();
+
+    modal().within(() => {
+      ensureCanNotToggleSeriesVisibility();
+      cy.button("Cancel").click();
+    });
+
+    getDashboardCard(0).within(() => {
+      ensureCanNotToggleSeriesVisibility();
     });
   });
 

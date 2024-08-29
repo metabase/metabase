@@ -31,7 +31,7 @@ export function LegendItemDot({
   }
 
   return (
-    <Root>
+    <Root data-testid="legend-item-dot">
       <OuterCircle />
       <InnerCircle color={color} isVisible={isVisible} />
     </Root>

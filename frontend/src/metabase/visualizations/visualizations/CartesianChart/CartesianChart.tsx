@@ -53,6 +53,7 @@ function _CartesianChart(props: VisualizationProps) {
     hovered,
     onChangeCardAndRun,
     onHoverChange,
+    canToggleSeriesVisibility,
     canRemoveSeries,
     onRemoveSeries,
   } = props;
@@ -148,7 +149,9 @@ function _CartesianChart(props: VisualizationProps) {
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
         onSelectSeries={onSelectSeries}
-        onToggleSeriesVisibility={handleToggleSeriesVisibility}
+        onToggleSeriesVisibility={
+          canToggleSeriesVisibility && handleToggleSeriesVisibility
+        }
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
