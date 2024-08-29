@@ -25,6 +25,11 @@
   [_database]
   [:name :type])
 
+(defmethod serdes/make-spec "Channel"
+  [_model-name _opts]
+  {:copy      [:name :description :type :details :active]
+   :transform {:created_at (serdes/date)}})
+
 (doto :model/Channel
   (derive :metabase/model)
   (derive :hook/timestamped?))
