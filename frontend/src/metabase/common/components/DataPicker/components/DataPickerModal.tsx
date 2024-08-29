@@ -20,7 +20,6 @@ import type {
   DataPickerItem,
   DataPickerModalOptions,
   DataPickerValue,
-  DataPickerValueItem,
 } from "../types";
 import {
   createShouldShowItem,
@@ -121,7 +120,7 @@ export const DataPickerModal = ({
   );
 
   const tabs = useMemo(() => {
-    const computedTabs: EntityTab<DataPickerValueItem["model"]>[] = [];
+    const computedTabs: EntityTab<DataPickerItem["model"]>[] = [];
 
     if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
       computedTabs.push({

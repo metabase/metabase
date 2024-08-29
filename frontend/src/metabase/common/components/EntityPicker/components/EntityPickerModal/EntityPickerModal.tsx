@@ -22,7 +22,11 @@ import type {
   TabFolderState,
   TypeWithModel,
 } from "../../types";
-import { computeInitialTab, getSearchTabText } from "../../utils";
+import {
+  computeInitialTab,
+  getSearchTabText,
+  isSearchModel,
+} from "../../utils";
 import {
   EntityPickerSearchInput,
   EntityPickerSearchResults,
@@ -84,7 +88,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
 
 export function EntityPickerModal<
   Id extends SearchResultId,
-  Model extends SearchModel,
+  Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
@@ -125,16 +129,20 @@ export function EntityPickerModal<
 
   const { open } = useModalOpen();
 
-  const tabModels = useMemo(
-    () => passedTabs.map(tab => tab.model).filter(Boolean),
-    [passedTabs],
-  );
+  const tabModels = useMemo((): SearchModel[] => {
+    return passedTabs
+      .map(tab => tab.model)
+      .filter(model => isSearchModel(model));
+  }, [passedTabs]);
 
   const filteredRecents = useMemo(() => {
-    const relevantModelRecents =
-      recentItems?.filter(recentItem =>
-        tabModels.includes(recentItem.model as Model),
-      ) || [];
+    if (!recentItems) {
+      return [];
+    }
+
+    const relevantModelRecents = recentItems.filter(recentItem => {
+      return tabModels.includes(recentItem.model);
+    });
 
     return recentFilter
       ? recentFilter(relevantModelRecents)

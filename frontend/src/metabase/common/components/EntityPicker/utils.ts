@@ -3,7 +3,11 @@ import { c, msgid } from "ttag";
 import { color } from "metabase/lib/colors";
 import type { ObjectWithModel } from "metabase/lib/icon";
 import { getIcon } from "metabase/lib/icon";
-import type { SearchResult, SearchResultId } from "metabase-types/api";
+import type {
+  SearchModel,
+  SearchResult,
+  SearchResultId,
+} from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "./types";
 
@@ -88,3 +92,7 @@ export function getSearchTabText(
     searchResults.length,
   );
 }
+
+export const isSearchModel = (model: string): model is SearchModel => {
+  return Boolean(model) && !["search", "recents"].includes(model);
+};
