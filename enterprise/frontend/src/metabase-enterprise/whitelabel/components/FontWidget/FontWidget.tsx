@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import MetabaseSettings from "metabase/lib/settings";
+import { useSetting } from "metabase/common/hooks";
 import { Select } from "metabase/ui";
 
 import type { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
@@ -9,7 +9,6 @@ import type { FontSetting, FontSettingKeys, FontSettingValues } from "./types";
 export interface FontWidgetProps {
   setting: FontSetting;
   settingValues: FontSettingValues;
-  availableFonts?: string[];
   onChange: (value: string) => void;
   onChangeSetting: (key: FontSettingKeys, value: unknown) => void;
 }
@@ -19,10 +18,10 @@ const CUSTOM = "custom";
 const FontWidget = ({
   setting,
   settingValues,
-  availableFonts = MetabaseSettings.get("available-fonts") || [],
   onChange,
   onChangeSetting,
 }: FontWidgetProps): JSX.Element => {
+  const availableFonts = useSetting("available-fonts");
   const value = !settingValues["application-font-files"]
     ? setting.value ?? setting.default
     : CUSTOM;
