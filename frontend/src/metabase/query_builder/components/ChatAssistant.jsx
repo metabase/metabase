@@ -21,7 +21,8 @@ import {
 } from "e2e/support/helpers/e2e-ad-hoc-question-helpers";
 import { useSelector } from "metabase/lib/redux";
 import { getInitialMessage } from "metabase/redux/initialMessage";
-
+import { useListDatabasesQuery } from "metabase/api";
+import { SemanticError } from "metabase/components/ErrorPages";
 const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
     const initialMessage = useSelector(getInitialMessage);
     const inputRef = useRef(null);
@@ -50,6 +51,17 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
     const [error, setError] = useState(null);
     const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
+    const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+    const databases = data?.data;
+
+    useEffect(() => {
+        if (databases) {
+            const cubeDatabase = databases.find(database => database.is_cube === true);
+            if (cubeDatabase) {
+                setDBInputValue(cubeDatabase.id);
+            }
+        }
+    }, [databases]);
 
     useEffect(() => {
         setMessages([])
@@ -335,7 +347,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 9, company_name],
+                    configData: [dbInputValue, company_name],
                     appType: chatType,
                 }),
             );
@@ -435,206 +447,210 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                     width: "100%",
                 }}
             >
-                <Button
-                    variant="outlined"
-                    style={{
-                        position: "absolute",
-                        top: "16px",
-                        right: "16px",
-                        cursor: "pointer",
-                        padding: "8px",
-                        color: "#FFF",
-                        borderRadius: "50%",
-                    }}
-                    onClick={() => setIsDBModalOpen(true)}
-                >
-                </Button>
-                <div
-                    style={{
-                        flex: "1 1 auto",
-                        overflowY: "auto",
-                        padding: "16px",
-                        borderRadius: "12px",
-                        marginBottom: "150px", // Adjust this value based on the input area height
-                    }}
-                >
-
-                    <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
-                        approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                    />
-
-                    {card && defaultQuestion && result && (
-                        <>
-                            <div
-                                style={{
-                                    flex: "1 0 50%",
-                                    padding: "16px",
-                                    overflow: "hidden",
-                                    height: "400px",
-                                    width: "auto",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                }}
-                            >
-                                <VisualizationResult
-                                    question={defaultQuestion}
-                                    isDirty={false}
-                                    queryBuilderMode={"view"}
-                                    result={result}
-                                    className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-                                    rawSeries={[{ card, data: result && result.data }]}
-                                    isRunning={false}
-                                    navigateToNewCardInsideQB={null}
-                                    onNavigateBack={() => console.log('back')}
-                                    timelineEvents={[]}
-                                    selectedTimelineEventIds={[]}
-                                />
-                            </div>
-                            <Button
-                                variant="outlined"
-                                style={{
-                                    width: "auto",
-                                    cursor: "pointer",
-                                    border: "1px solid #E0E0E0",
-                                    borderRadius: "8px",
-                                    marginBottom: "1rem",
-                                    color: "#FFF",
-                                    marginLeft: "auto",
-                                    marginRight: 0,
-                                    backgroundColor: "#8A64DF",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    padding: "0.5rem 1rem",
-                                    lineHeight: "1",
-                                }}
-                                onClick={openModal}
-                            >
-                                <Icon
-                                    size={18}
-                                    name="bookmark"
-                                    style={{
-                                        marginRight: "0.5rem",
-                                    }}
-                                />
-                                <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
-                            </Button>
-                        </>
-                    )}
-
-                    {insightsList.map((insight, index) => (
-                        <div key={index} style={{ marginBottom: "2rem" }}>
-                            <div style={{ marginBottom: "1rem" }}>
-                                <strong>Insight:</strong> {insight.insightExplanation}
-                            </div>
-                            <div
-                                style={{
-                                    padding: "16px",
-                                    overflow: "hidden",
-                                    height: "400px",
-                                    width: "auto",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
-                                    border: "1px solid #E0E0E0",
-                                    borderRadius: "8px",
-                                    backgroundColor: "#F8FAFD",
-                                }}
-                            >
-                                <VisualizationResult
-                                    question={insight.defaultQuestion}
-                                    isDirty={false}
-                                    queryBuilderMode={"view"}
-                                    result={insight.queryCard}
-                                    className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-                                    rawSeries={[{ card: insight.card, data: insight.queryCard && insight.queryCard.data }]}
-                                    isRunning={false}
-                                    navigateToNewCardInsideQB={null}
-                                    onNavigateBack={() => console.log('back')}
-                                    timelineEvents={[]}
-                                    selectedTimelineEventIds={[]}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                    <div
-                        style={{
-                            display: "flex",
-                            justifyContent: "center", // Center horizontally
-                            width: "calc(100% - 600px)",
-                            backgroundColor: "#FFF",
-                            position: "fixed",
-                            bottom: "5rem",
-                            left: "150px",
-                            zIndex: 10,
-                        }}
-                    >
+                {dbInputValue !== '' ? (
+                    <>
+                        <Button
+                            variant="outlined"
+                            style={{
+                                position: "absolute",
+                                top: "16px",
+                                right: "16px",
+                                cursor: "pointer",
+                                padding: "8px",
+                                color: "#FFF",
+                                borderRadius: "50%",
+                            }}
+                            onClick={() => setIsDBModalOpen(true)}
+                        >
+                        </Button>
                         <div
                             style={{
-                                display: "flex",
-                                alignItems: "center",
-                                width: "100%",
-                                padding: "8px",
-                                border: "1px solid #E0E0E0",
-                                borderRadius: "8px",
-                                backgroundColor: "#F8FAFD",
-                                position: "relative", // Important for absolute positioning inside this div
+                                flex: "1 1 auto",
+                                overflowY: "auto",
+                                padding: "16px",
+                                borderRadius: "12px",
+                                marginBottom: "150px", // Adjust this value based on the input area height
                             }}
                         >
-                            <TextArea
-                                ref={inputRef}
-                                value={inputValue}
-                                onChange={handleInputChange}
-                                onKeyPress={handleKeyPress}
-                                placeholder="Enter a prompt here..."
-                                style={{
-                                    width: "100%",
-                                    resize: "none",
-                                    overflowY: "auto",
-                                    height: "100px",
-                                    minHeight: "100px",
-                                    maxHeight: "220px",
-                                    padding: "12px",
-                                    paddingRight: "50px", // Space for the send button
-                                    lineHeight: "24px",
-                                    border: "none",
-                                    outline: "none",
-                                    boxSizing: "border-box",
-                                    borderRadius: "8px",
-                                    backgroundColor: "transparent",
-                                }}
+
+                            <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
+                                approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                             />
-                            <Button
-                                variant="filled"
-                                disabled={!isConnected}
-                                onClick={sendMessage}
+
+                            {card && defaultQuestion && result && (
+                                <>
+                                    <div
+                                        style={{
+                                            flex: "1 0 50%",
+                                            padding: "16px",
+                                            overflow: "hidden",
+                                            height: "400px",
+                                            width: "auto",
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <VisualizationResult
+                                            question={defaultQuestion}
+                                            isDirty={false}
+                                            queryBuilderMode={"view"}
+                                            result={result}
+                                            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+                                            rawSeries={[{ card, data: result && result.data }]}
+                                            isRunning={false}
+                                            navigateToNewCardInsideQB={null}
+                                            onNavigateBack={() => console.log('back')}
+                                            timelineEvents={[]}
+                                            selectedTimelineEventIds={[]}
+                                        />
+                                    </div>
+                                    <Button
+                                        variant="outlined"
+                                        style={{
+                                            width: "auto",
+                                            cursor: "pointer",
+                                            border: "1px solid #E0E0E0",
+                                            borderRadius: "8px",
+                                            marginBottom: "1rem",
+                                            color: "#FFF",
+                                            marginLeft: "auto",
+                                            marginRight: 0,
+                                            backgroundColor: "#8A64DF",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            padding: "0.5rem 1rem",
+                                            lineHeight: "1",
+                                        }}
+                                        onClick={openModal}
+                                    >
+                                        <Icon
+                                            size={18}
+                                            name="bookmark"
+                                            style={{
+                                                marginRight: "0.5rem",
+                                            }}
+                                        />
+                                        <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
+                                    </Button>
+                                </>
+                            )}
+
+                            {insightsList.map((insight, index) => (
+                                <div key={index} style={{ marginBottom: "2rem" }}>
+                                    <div style={{ marginBottom: "1rem" }}>
+                                        <strong>Insight:</strong> {insight.insightExplanation}
+                                    </div>
+                                    <div
+                                        style={{
+                                            padding: "16px",
+                                            overflow: "hidden",
+                                            height: "400px",
+                                            width: "auto",
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            border: "1px solid #E0E0E0",
+                                            borderRadius: "8px",
+                                            backgroundColor: "#F8FAFD",
+                                        }}
+                                    >
+                                        <VisualizationResult
+                                            question={insight.defaultQuestion}
+                                            isDirty={false}
+                                            queryBuilderMode={"view"}
+                                            result={insight.queryCard}
+                                            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+                                            rawSeries={[{ card: insight.card, data: insight.queryCard && insight.queryCard.data }]}
+                                            isRunning={false}
+                                            navigateToNewCardInsideQB={null}
+                                            onNavigateBack={() => console.log('back')}
+                                            timelineEvents={[]}
+                                            selectedTimelineEventIds={[]}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                            <div
                                 style={{
-                                    position: "absolute",
-                                    right: "10px",
-                                    bottom: "10px",
-                                    borderRadius: "8px",
-                                    width: "30px",
-                                    height: "30px",
-                                    padding: "0",
-                                    minWidth: "0",
-                                    backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
-                                    color: "#FFF",
-                                    border: "none",
-                                    cursor: isConnected ? "pointer" : "not-allowed",
                                     display: "flex",
-                                    justifyContent: "center",
-                                    alignItems: "center",
+                                    justifyContent: "center", // Center horizontally
+                                    width: "calc(100% - 600px)",
+                                    backgroundColor: "#FFF",
+                                    position: "fixed",
+                                    bottom: "5rem",
+                                    left: "150px",
+                                    zIndex: 10,
                                 }}
                             >
-                                <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
-                            </Button>
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        width: "100%",
+                                        padding: "8px",
+                                        border: "1px solid #E0E0E0",
+                                        borderRadius: "8px",
+                                        backgroundColor: "#F8FAFD",
+                                        position: "relative", // Important for absolute positioning inside this div
+                                    }}
+                                >
+                                    <TextArea
+                                        ref={inputRef}
+                                        value={inputValue}
+                                        onChange={handleInputChange}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="Enter a prompt here..."
+                                        style={{
+                                            width: "100%",
+                                            resize: "none",
+                                            overflowY: "auto",
+                                            height: "100px",
+                                            minHeight: "100px",
+                                            maxHeight: "220px",
+                                            padding: "12px",
+                                            paddingRight: "50px", // Space for the send button
+                                            lineHeight: "24px",
+                                            border: "none",
+                                            outline: "none",
+                                            boxSizing: "border-box",
+                                            borderRadius: "8px",
+                                            backgroundColor: "transparent",
+                                        }}
+                                    />
+                                    <Button
+                                        variant="filled"
+                                        disabled={!isConnected}
+                                        onClick={sendMessage}
+                                        style={{
+                                            position: "absolute",
+                                            right: "10px",
+                                            bottom: "10px",
+                                            borderRadius: "8px",
+                                            width: "30px",
+                                            height: "30px",
+                                            padding: "0",
+                                            minWidth: "0",
+                                            backgroundColor: isConnected ? "#8A64DF" : "#F1EBFF",
+                                            color: "#FFF",
+                                            border: "none",
+                                            cursor: isConnected ? "pointer" : "not-allowed",
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <Icon size={18} name="sendChat" style={{ paddingTop: "2px", paddingLeft: "2px" }} />
+                                    </Button>
+                                </div>
+                            </div>
+
+
                         </div>
-                    </div>
-
-
-                </div>
-
-
+                    </>
+                ): (
+                <SemanticError/>
+                )}
             </Box>
 
             {isDBModalOpen && (
