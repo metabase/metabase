@@ -16,7 +16,6 @@ import {
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
-import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -27,9 +26,9 @@ import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 import type { MetricResult } from "../types";
 import { getIcon } from "../utils";
 
-import S from "./BrowseTable.module.css";
 import {
   Cell,
+  CollectionLink,
   CollectionTableCell,
   NameColumn,
   TableRow,
@@ -272,13 +271,12 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
       {...collectionProps}
     >
       {metric?.collection ? (
-        <Link
-          className={S.collectionLink}
+        <CollectionLink
           to={Urls.collection(metric.collection)}
           onClick={stopPropagation}
         >
           {content}
-        </Link>
+        </CollectionLink>
       ) : (
         content
       )}

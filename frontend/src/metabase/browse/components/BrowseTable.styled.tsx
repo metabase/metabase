@@ -6,6 +6,7 @@ import {
   hideResponsively,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
+import Link from "metabase/core/components/Link";
 import { breakpoints } from "metabase/ui/theme";
 
 export const TableRow = styled.tr<{ skeleton?: boolean }>`
@@ -58,5 +59,15 @@ export const NameColumn = styled(TableColumn)`
 export const CollectionTableCell = styled(Cell)`
   td& {
     padding: 0;
+  }
+`;
+
+export const CollectionLink = styled(Link)`
+  display: block;
+  padding: 1em 0.5em;
+  box-sizing: border-box;
+
+  &:hover {
+    color: var(--mb-color-icon-primary) !important;
   }
 `;

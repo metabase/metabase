@@ -17,7 +17,6 @@ import {
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import Link from "metabase/core/components/Link";
 import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
@@ -29,9 +28,9 @@ import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
 import { getIcon } from "../utils";
 
-import S from "./BrowseTable.module.css";
 import {
   Cell,
+  CollectionLink,
   CollectionTableCell,
   NameColumn,
   TableRow,
@@ -262,13 +261,12 @@ function CollectionCell({ model }: { model?: ModelResult }) {
       {...collectionProps}
     >
       {model?.collection ? (
-        <Link
-          className={S.collectionLink}
+        <CollectionLink
           to={Urls.collection(model.collection)}
           onClick={stopPropagation}
         >
           {content}
-        </Link>
+        </CollectionLink>
       ) : (
         content
       )}

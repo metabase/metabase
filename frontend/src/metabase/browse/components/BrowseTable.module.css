@@ -1,9 +1,0 @@
-.collectionLink {
-  display: block;
-  padding: 1em 0.5em;
-  box-sizing: border-box;
-
-  &:hover {
-    color: var(--mb-color-icon-primary) !important;
-  }
-}
