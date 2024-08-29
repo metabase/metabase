@@ -62,7 +62,7 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
                }}
              >
                <div style={{display:"flex", flexDirection: "column", justifyContent:"center", alignItems: "center"}}>
-                <span>Please wait till we results are loaded...</span>
+                <span>Please wait till results are loaded...</span>
                 <Loader/>
                </div>
              </Skeleton>

@@ -69,7 +69,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         setMessages([])
         setInputValue("")
         let thread_Id = generateRandomId();
-        console.log('thread_Id',thread_Id)
         setThreadId(thread_Id)
     }, [])
 
@@ -191,7 +190,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         try {
             const fetchedCard = await CardApi.get({ cardId: cardId });
             const queryCard = await CardApi.query({ cardId: cardId });
-            const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
             const getDatasetQuery = fetchedCard?.dataset_query;
             const defaultQuestionTest = Question.create({
                 databaseId: 1,
@@ -200,7 +198,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                 display: fetchedCard.display,
                 visualization_settings: {},
                 dataset_query: getDatasetQuery,
-                metadata: cardMetadata.payload.entities
             });
             const itemtohash = {
                 dataset_query: {
@@ -216,13 +213,12 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             const hash1 = adhocQuestionHash(itemtohash);
             setResult(prevResult => Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]);
             setCodeQuery(prevCodeQuery => {
-                const query = queryCard?.data?.native_form?.query;
+                const query = queryCard?.data?.native_form?.query ?? "Sorry for some reason the query was not retrieved properly";
                 if (query) {
                   return Array.isArray(prevCodeQuery) ? [...prevCodeQuery, query] : [query];
                 }
                 return prevCodeQuery;
               });
-            // setCodeQuery(prevCodeQuery => Array.isArray(prevCodeQuery) ? [...prevCodeQuery, queryCard.data.native_form.query] : [queryCard.data.native_form.query]);
             setDefaultQuestion(prevDefaultQuestion => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
             setCard(prevCard => Array.isArray(prevCard) ? [...prevCard, fetchedCard] : [fetchedCard]);
             setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);              
@@ -273,7 +269,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                 hashes.push(hash);
     
                 setResult(prevResult => [...(prevResult || []), queryCards[index]]);
-                setCodeQuery(prevCodeQuery => [...(prevCodeQuery || []), queryCards[index].data.native_form.query]);
             });
     
             setDefaultQuestion(newQuestions);

@@ -57,7 +57,6 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }
       }, {});
 
       const rawChatGroups: any = Object.values(groupedHistory);
-      console.log('type',type)
       const filteredGroups = rawChatGroups.filter((group: any) =>
         Array.isArray(group.agent_name) && group.agent_name.includes(type)
       );
