@@ -17,7 +17,7 @@ interface SidesheetSubPageProps {
   children: React.ReactNode;
 }
 
-export const SideSheetSubPageTitle = ({
+export const SidesheetSubPageTitle = ({
   title,
   onClick,
 }: SidesheetSubPageTitleProps) => {
@@ -40,7 +40,7 @@ export const SidesheetSubPage = ({
 }: SidesheetSubPageProps) => (
   <Sidesheet
     isOpen={isOpen}
-    title={<SideSheetSubPageTitle title={title} onClick={onBack} />}
+    title={<SidesheetSubPageTitle title={title} onClick={onBack} />}
     onClose={onClose}
   >
     {children}

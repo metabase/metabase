@@ -35,8 +35,8 @@ export function Sidesheet({
   removeBodyPadding,
 }: SidesheetProps) {
   return (
-    <Modal.Root opened={!!isOpen} onClose={onClose} h="100dvh">
-      <Modal.Overlay aria-label={t`modal overlay`} />
+    <Modal.Root opened={isOpen} onClose={onClose} h="100dvh">
+      <Modal.Overlay aria-label="modal-overlay" />
       <Modal.Content
         transitionProps={{ transition: "slide-left" }}
         px="none"
@@ -50,7 +50,7 @@ export function Sidesheet({
               {title}
             </Modal.Title>
           )}
-          <Modal.CloseButton aria-label={t`close`} />
+          <Modal.CloseButton aria-label={t`Close`} />
         </Modal.Header>
         <Modal.Body
           data-testid="sidesheet"
