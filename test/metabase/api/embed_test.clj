@@ -561,7 +561,7 @@
               (client/client :get 200 (dashboard-url dash)))))
       (is (= successful-dashboard-info
              (dissoc-id-and-name
-              (client/client :get 200 ((:entity_id dash) dash))))))))
+              (client/client :get 200 (dashboard-url (:entity_id dash) dash))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
