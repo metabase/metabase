@@ -118,7 +118,6 @@
               :redshift
               (assoc details :additional-options "defaultRowFetchSize=1000")
 
-              ;; TMP
               :databricks-jdbc
               (assoc details :log-level 0)
 
