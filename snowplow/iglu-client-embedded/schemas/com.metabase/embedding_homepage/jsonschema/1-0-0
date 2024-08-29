@@ -3,7 +3,7 @@
   "description": "User interactions with the embedding-homepage",
   "self": {
     "vendor": "com.metabase",
-    "name": "embedding-homepage",
+    "name": "embedding_homepage",
     "format": "jsonschema",
     "version": "1-0-0"
   },
