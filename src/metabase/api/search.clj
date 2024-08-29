@@ -110,12 +110,8 @@
   so we can return its `:name`."
   [honeysql-query                                :- ms/Map
    collection-id-column                          :- keyword?
-   {:keys [current-user-perms
-           filter-items-in-personal-collection]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids current-user-perms)
-        collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-column
-                                  visible-collections)]
+   {:keys [filter-items-in-personal-collection]} :- SearchContext]
+  (let [collection-filter-clause (collection/visible-collection-filter-clause collection-id-column)]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
