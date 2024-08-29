@@ -1544,7 +1544,23 @@
                   :strategy "duration"
                   :config   {:duration 30 :unit "hours"}}]
                 (->> (t2/select :cache_config)
-                     (mapv #(update % :config json/decode true))))))))
+                     (mapv #(update % :config json/decode true)))))))))
+
+(deftest cache-config-handle-big-value-test
+  (testing "Caching config is correctly copied over"
+    (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)))}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
+      (migrate!)
+      (is (=? [{:model    "root"
+                :strategy "ttl"
+                :config   {:multiplier      2147483647
+                           :min_duration_ms 2147483647}}]
+              (->> (t2/select :cache_config)
+                   (mapv #(update % :config json/decode true))))))))
+
+(deftest cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
