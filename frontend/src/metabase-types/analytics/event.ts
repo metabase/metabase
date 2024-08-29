@@ -12,16 +12,9 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
 > = T;
 
-// Example usage. Remove when adding the first event.
-export type DoNotUseEvent1 = ValidateEvent<{
-  event: "do_not_use_1";
-  target_id: number | null;
+export type CsvUploadClickedEvent = ValidateEvent<{
+  event: "csv_upload_clicked";
+  triggered_from: "left_nav";
 }>;
 
-// Example usage. Remove when adding the first event.
-export type DoNotUseEvent2 = ValidateEvent<{
-  event: "do_not_use_2";
-  triggered_from: "location-1" | "location-2";
-}>;
-
-export type SimpleEvent = DoNotUseEvent1 | DoNotUseEvent2;
+export type SimpleEvent = CsvUploadClickedEvent;

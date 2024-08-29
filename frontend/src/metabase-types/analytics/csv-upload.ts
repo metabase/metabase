@@ -2,11 +2,10 @@ type CsvUploadEventSchema = {
   event: string;
   model_id?: number | null;
   upload_seconds?: number | null;
-  size_mb?: number | null;
-  num_columns?: number | null;
-  num_rows?: number | null;
-  generated_columns?: number | null;
-  source?: string | null;
+  size_mb: number | null;
+  num_columns: number | null;
+  num_rows: number | null;
+  generated_columns: number | null;
 };
 
 type ValidateEvent<
@@ -49,14 +48,8 @@ export type CsvAppendFailedEvent = ValidateEvent<{
   generated_columns: number;
 }>;
 
-export type CsvUploadClickedEvent = ValidateEvent<{
-  event: "csv_upload_clicked";
-  source: "left_nav";
-}>;
-
 export type CsvUploadEvent =
   | CsvUploadSuccessfulEvent
   | CsvUploadFailedEvent
   | CsvAppendSuccessfulEvent
-  | CsvAppendFailedEvent
-  | CsvUploadClickedEvent;
+  | CsvAppendFailedEvent;
