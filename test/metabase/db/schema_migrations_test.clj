@@ -32,9 +32,12 @@
             PermissionsGroup
             Table
             User]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.execute :as t2.execute]))
 
@@ -1107,3 +1110,58 @@
                          (is (t2/exists? (t2/table-name :model/Field) :id defective-field-id)))
                        (testing "Migrating up again should still work"
                          (migrate!))))))))))))))
+
+(deftest populate-new-permission-fields-works
+  (testing "Migration v49.2024-08-21T08:33:10"
+    (impl/test-migrations ["v49.2024-08-21T08:33:06" "v49.2024-08-21T08:33:10"] [migrate!]
+      (let [read-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                     {:slug "foo"}))
+            read-coll-path (perms/collection-read-path read-coll-id)
+            write-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                      {:slug "foo"}))
+            write-coll-path (perms/collection-readwrite-path write-coll-id)
+
+            ;; a nonexistent collection permission - should get deleted!
+            nonexistent-path "/collection/99123457/"
+            nonexistent-read-path "/collection/99123456/read/"
+
+            both-perms-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
+                                                                      {:slug "foo"}))]
+        (t2/insert! :permissions {:object nonexistent-path
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object nonexistent-read-path
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object read-coll-path :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object write-coll-path :group_id (u/the-id (perms-group/all-users))})
+
+        (t2/insert! :permissions {:object (perms/collection-readwrite-path both-perms-id)
+                                  :group_id (u/the-id (perms-group/all-users))})
+        (t2/insert! :permissions {:object (perms/collection-read-path both-perms-id)
+                                  :group_id (u/the-id (perms-group/all-users))})
+
+        (migrate!)
+        (testing "the valid permissions objects got updated correctly"
+          (is (= [{:collection_id read-coll-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read
+                   :object (str "/collection/" read-coll-id "/read/")}
+                  {:collection_id write-coll-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read-and-write
+                   :object (str "/collection/" write-coll-id "/")}
+                  ;; NOTE: We have two `:perms/collection-access` values for `both-perms-id`, because there were two
+                  ;; permissions rows to start with. The migration doesn't do any kind of coalescing or deduplication
+                  ;; - we may want do do that down the road.
+                  {:collection_id both-perms-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read-and-write
+                   :object (str "/collection/" both-perms-id "/")}
+                  {:collection_id both-perms-id
+                   :perm_type :perms/collection-access
+                   :perm_value :read
+                   :object (str "/collection/" both-perms-id "/read/")}]
+                 (->> [read-coll-id write-coll-id both-perms-id]
+                      (mapcat #(t2/select :model/Permissions :collection_id %))
+                      (map #(select-keys % [:collection_id :perm_type :perm_value :object]))))))
+        (testing "the invalid permissions (for a nonexistent table) were deleted"
+          (is (empty? (t2/select :model/Permissions :object [:in [nonexistent-path nonexistent-read-path]]))))))))
