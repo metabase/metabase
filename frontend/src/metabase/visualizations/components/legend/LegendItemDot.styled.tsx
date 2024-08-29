@@ -29,6 +29,7 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
 
 const rootStyle = css`
   position: relative;
+  min-width: 12px;
   width: 12px;
   height: 12px;
 `;
