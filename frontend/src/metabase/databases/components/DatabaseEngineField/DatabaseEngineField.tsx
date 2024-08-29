@@ -26,7 +26,10 @@ const DatabaseEngineField = ({
   const { values } = useFormikContext<DatabaseData>();
 
   const options = useMemo(() => {
-    return getEngineOptions(engines, engineKey, isAdvanced);
+    return getEngineOptions(engines, engineKey, isAdvanced).filter(
+      option =>
+        option.value === "postgres" || option.value === "bigquery-cloud-sdk",
+    );
   }, [engines, engineKey, isAdvanced]);
 
   return isAdvanced ? (

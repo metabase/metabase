@@ -297,6 +297,33 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
+  describe("browse databases connections link", () => {
+    it("should render", async () => {
+      await setup();
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases connections/i,
+      });
+      const link = within(listItem).getByRole("link");
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/browse/databases/connections");
+    });
+
+    it("should not render when a user has no data access", async () => {
+      await setup({ hasDataAccess: false });
+      expect(
+        screen.queryByRole("listitem", { name: /Browse chat/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be highlighted if selected", async () => {
+      await setup({ pathname: "/browse/databases/connections" });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases connections/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
   describe("browse chat link", () => {
     it("should render", async () => {
       await setup();

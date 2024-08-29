@@ -6,8 +6,9 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
-import { Box, Icon, Title } from "metabase/ui";
-
+import { Box, Icon, Title, Button } from "metabase/ui";
+import { push } from "react-router-redux";
+import { useDispatch } from "metabase/lib/redux";
 import {
   BrowseContainer,
   BrowseMain,
@@ -22,6 +23,7 @@ import {
 } from "./BrowseDatabases.styled";
 
 export const BrowseDatabases = () => {
+  const dispatch = useDispatch();
   const { data, isLoading, error } = useListDatabasesQuery();
   const databases = data?.data;
 
@@ -33,16 +35,28 @@ export const BrowseDatabases = () => {
     return <LoadingAndErrorWrapper loading />;
   }
 
-  const filteredDatabases = databases?.filter(database => database.is_cube === false);
+  const filteredDatabases = databases?.filter(
+    database => database.is_cube === false,
+  );
 
   if (!filteredDatabases?.length) {
     return (
       <CenteredEmptyState
         title={<Box mb=".5rem">{t`No databases here yet`}</Box>}
         illustrationElement={
-          <Box mb=".5rem">
-            <img src={NoResults} />
-          </Box>
+          <>
+            <Box mb=".5rem">
+              <img src={NoResults} />
+            </Box>
+            <Button
+              variant="filled"
+              onClick={() => {
+                dispatch(push("/browse/databases/connections"));
+              }}
+            >
+              {t`Add connection`}
+            </Button>
+          </>
         }
       />
     );
@@ -50,7 +64,29 @@ export const BrowseDatabases = () => {
 
   return (
     <BrowseContainer>
-      <BrowseDataHeader />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "1rem",
+          width: "100%",
+          maxWidth: "68rem",
+          marginLeft: "auto",
+          marginRight: "auto",
+        }}
+      >
+        <BrowseDataHeader />
+        <Button
+          variant="filled"
+          onClick={() => {
+            dispatch(push("/browse/databases/connections"));
+          }}
+        >
+          {t`Add connection`}
+        </Button>
+      </div>
       <BrowseMain>
         <BrowseSection>
           <DatabaseGrid data-testid="database-browser">
