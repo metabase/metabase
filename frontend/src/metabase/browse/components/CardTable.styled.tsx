@@ -15,9 +15,9 @@ export const TableRow = styled.tr<{ skeleton?: boolean }>`
   ${props =>
     props.skeleton
       ? `
-    :hover { background-color: unset ! important; }
-    td { cursor: unset ! important; }
-    `
+          :hover { background-color: unset ! important; }
+          td { cursor: unset ! important; }
+        `
       : `cursor: pointer;`}
 `;
 
@@ -30,6 +30,16 @@ export const Cell = styled.td<ResponsiveProps>`
   td& {
     padding: 0.25em 0.5rem 0.25em 0.5rem;
   }
+
+  &:focus-within,
+  &:focus {
+    outline: 2px solid var(--mb-color-focus);
+
+    a {
+      outline: none;
+    }
+  }
+
   ${hideResponsively}
 `;
 
