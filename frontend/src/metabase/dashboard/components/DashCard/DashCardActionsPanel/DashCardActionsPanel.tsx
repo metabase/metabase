@@ -3,7 +3,10 @@ import { memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
 import { isLinkDashCard, isVirtualDashCard } from "metabase/dashboard/utils";
+import { useModal } from "metabase/hooks/use-modal";
 import { Icon } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import type {
@@ -74,9 +77,13 @@ function DashCardActionsPanelInner({
     disableClickBehavior,
   } = getVisualizationRaw(series) ?? {};
 
+  const isDashboardCard = typeof dashcard?.card.dashboard_id === "number";
+
   const buttons = [];
 
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
+
+  const deleteConfirmationModal = useModal(false);
 
   const handleOnUpdateVisualizationSettings = useCallback(
     (settings: VisualizationSettings) => {
@@ -121,8 +128,12 @@ function DashCardActionsPanelInner({
       return;
     }
 
-    onRemove(dashcard);
-  }, [dashcard, onRemove]);
+    if (isDashboardCard) {
+      deleteConfirmationModal.open();
+    } else {
+      onRemove(dashcard);
+    }
+  }, [dashcard, onRemove, isDashboardCard, deleteConfirmationModal]);
 
   if (dashcard) {
     buttons.push(
@@ -181,7 +192,12 @@ function DashCardActionsPanelInner({
     }
   }
 
-  if (!isLoading && dashcard && !isVirtualDashCard(dashcard)) {
+  if (
+    !isLoading &&
+    dashcard &&
+    !isVirtualDashCard(dashcard) &&
+    !isDashboardCard
+  ) {
     buttons.push(
       <DashCardActionButton
         key="replace-question"
@@ -241,19 +257,48 @@ function DashCardActionsPanelInner({
   }
 
   return (
-    <DashCardActionsPanelContainer
-      data-testid="dashboardcard-actions-panel"
-      onMouseDown={onMouseDown}
-      isDashCardTabMenuOpen={isDashCardTabMenuOpen}
-      onLeftEdge={onLeftEdge}
-    >
-      <DashCardActionButtonsContainer>
-        {buttons}
-        <DashCardActionButton onClick={handleRemoveCard} tooltip={t`Remove`}>
-          <DashCardActionButton.Icon name="close" />
-        </DashCardActionButton>
-      </DashCardActionButtonsContainer>
-    </DashCardActionsPanelContainer>
+    <>
+      <DashCardActionsPanelContainer
+        data-testid="dashboardcard-actions-panel"
+        onMouseDown={onMouseDown}
+        isDashCardTabMenuOpen={isDashCardTabMenuOpen}
+        onLeftEdge={onLeftEdge}
+      >
+        <DashCardActionButtonsContainer>
+          {buttons}
+          <DashCardActionButton
+            onClick={handleRemoveCard}
+            tooltip={isDashboardCard ? t`Delete` : t`Remove`}
+          >
+            <DashCardActionButton.Icon name="close" />
+          </DashCardActionButton>
+        </DashCardActionButtonsContainer>
+      </DashCardActionsPanelContainer>
+      {isDashboardCard && (
+        <Modal
+          isOpen={isDashboardCard && deleteConfirmationModal.opened}
+          onClose={deleteConfirmationModal.close}
+          trapFocus
+        >
+          <ConfirmContent
+            title={t`Are you sure you want to delete this question?`}
+            message={
+              <>
+                {t`If you do this, this question won’t be available anymore.`}
+                <br />
+                {t`You can undo this action by going into the Dashboard Info → History.`}
+              </>
+            }
+            cancelButtonText={t`Cancel`}
+            confirmButtonText={t`Delete question`}
+            data-testid="delete-confirmation"
+            onAction={() => onRemove(dashcard)}
+            onCancel={deleteConfirmationModal.close}
+            onClose={deleteConfirmationModal.close}
+          />
+        </Modal>
+      )}
+    </>
   );
 }
 
