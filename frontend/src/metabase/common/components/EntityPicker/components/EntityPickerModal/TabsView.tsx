@@ -1,16 +1,18 @@
 import { Icon, Tabs } from "metabase/ui";
 
-import type { EntityTab } from "../../types";
+import type { EntityTab, EntityTabRenderProps } from "../../types";
 
 interface Props<Model extends string> {
   selectedTab: Model | "recents" | "search";
   tabs: EntityTab<Model | "recents" | "search">[];
+  onItemSelect: EntityTabRenderProps["onItemSelect"];
   onTabChange: (model: Model | "recents" | "search") => void;
 }
 
 export const TabsView = <Model extends string>({
   selectedTab,
   tabs,
+  onItemSelect,
   onTabChange,
 }: Props<Model>) => {
   return (
@@ -53,7 +55,7 @@ export const TabsView = <Model extends string>({
               height: 0,
             }}
           >
-            {tab.element}
+            {tab.render({ onItemSelect })}
           </Tabs.Panel>
         );
       })}

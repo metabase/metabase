@@ -1,5 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -19,6 +19,7 @@ import type {
 import type {
   EntityPickerOptions,
   EntityTab,
+  TabFolderState,
   TypeWithModel,
 } from "../../types";
 import { computeInitialTab, getSearchTabText } from "../../utils";
@@ -155,7 +156,7 @@ export function EntityPickerModal<
         model: "recents",
         displayName: t`Recents`,
         icon: "clock",
-        element: (
+        render: ({ onItemSelect }) => (
           <RecentsTab
             isLoading={isLoadingRecentItems}
             recentItems={filteredRecents}
@@ -173,7 +174,7 @@ export function EntityPickerModal<
         model: "search",
         displayName: getSearchTabText(searchResults, searchQuery),
         icon: "search",
-        element: (
+        render: ({ onItemSelect }) => (
           <EntityPickerSearchResults
             searchResults={searchResults}
             onItemSelect={onItemSelect}
@@ -193,7 +194,6 @@ export function EntityPickerModal<
     searchQuery,
     searchResults,
     selectedItem,
-    onItemSelect,
   ]);
 
   const hasTabs = tabs.length > 1;
@@ -201,9 +201,35 @@ export function EntityPickerModal<
     () => computeInitialTab({ initialValue, tabs, defaultToRecentTab }),
     [initialValue, tabs, defaultToRecentTab],
   );
-  const [selectedTab, setSelectedTab] = useState<string>(initialTab.model);
+  const [selectedTab, setSelectedTab] = useState<Model | "search" | "recents">(
+    initialTab.model,
+  );
   // we don't want to show bonus actions on recents or search tabs
   const showActionButtons = ["search", "recents"].includes(selectedTab);
+  const [tabFolderState, setTabFolderState] = useState<
+    TabFolderState<Model | "search" | "recents">
+  >({});
+  const selectedFolder = tabFolderState[selectedTab];
+
+  console.log(
+    selectedFolder
+      ? [selectedFolder.model, selectedFolder.id, selectedFolder.name].join(
+          " - ",
+        )
+      : null,
+  );
+
+  const handleSelectItem = useCallback(
+    (item: TypeWithModel<string | number, string>) => {
+      // TODO: if is folder
+      setTabFolderState(state => ({
+        ...state,
+        [selectedTab]: item,
+      }));
+      onItemSelect(item);
+    },
+    [selectedTab, onItemSelect],
+  );
 
   useEffect(() => {
     // when the searchQuery changes, switch to the search tab
@@ -272,10 +298,13 @@ export function EntityPickerModal<
               <TabsView
                 selectedTab={selectedTab}
                 tabs={tabs}
+                onItemSelect={handleSelectItem}
                 onTabChange={setSelectedTab}
               />
             ) : (
-              <SinglePickerView>{tabs[0].element}</SinglePickerView>
+              <SinglePickerView>
+                {tabs[0].render({ onItemSelect: handleSelectItem })}
+              </SinglePickerView>
             )}
             {!!hydratedOptions.hasConfirmButtons && onConfirm && (
               <ButtonBar

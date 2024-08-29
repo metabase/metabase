@@ -24,9 +24,13 @@ export type PickerStateItem<Item, Query> = {
 
 export type EntityPickerOptions = EntityPickerModalOptions;
 
+export type EntityTabRenderProps = {
+  onItemSelect: (item: TypeWithModel<string | number, string>) => void;
+};
+
 export type EntityTab<Model extends string> = {
   displayName: string;
-  element: JSX.Element;
+  render: (props: EntityTabRenderProps) => JSX.Element;
   icon: IconName;
   model: Model;
 };
@@ -49,3 +53,7 @@ export type ListProps<
 };
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";
+
+export type TabFolderState<Model extends string> = Partial<
+  Record<Model, TypeWithModel<unknown, string>>
+>;
