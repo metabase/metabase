@@ -550,7 +550,13 @@ async function addIssueToProject({
     },
   };
 
-  const response = await github.graphql(`mutation {
+  const graphqlWithAuth = github.graphql.defaults({
+    headers: {
+      authorization: `token secret123`,
+    },
+  });
+
+  const response = await graphqlWithAuth(`mutation {
     addProjectV2ItemById(input: {
       projectId: "${releaseIssueProject.id}",
       contentId: "${issue?.node_id}"
@@ -565,7 +571,7 @@ async function addIssueToProject({
     return;
   }
 
-  await github.graphql(`
+  await graphqlWithAuth(`
     mutation {
       setComment: updateProjectV2ItemFieldValue( input: {
         projectId: "${releaseIssueProject.id}"
