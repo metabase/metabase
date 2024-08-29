@@ -1,6 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useEffectOnce } from "react-use";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -80,7 +79,6 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   onClose: () => void;
   onConfirm?: () => void;
   onItemSelect: (item: Item) => void;
-  onTabChange: (tab: string) => void;
 }
 
 export function EntityPickerModal<
@@ -104,7 +102,6 @@ export function EntityPickerModal<
   onClose,
   onConfirm,
   onItemSelect,
-  onTabChange,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -208,26 +205,14 @@ export function EntityPickerModal<
   // we don't want to show bonus actions on recents or search tabs
   const showActionButtons = ["search", "recents"].includes(selectedTab);
 
-  const handleTabChange = useCallback(
-    (tab: string) => {
-      setSelectedTab(tab);
-      onTabChange(tab);
-    },
-    [onTabChange],
-  );
-
-  useEffectOnce(() => {
-    onTabChange(initialTab.model); // inform parent about the initial tab
-  });
-
   useEffect(() => {
     // when the searchQuery changes, switch to the search tab
     if (searchQuery) {
-      handleTabChange("search");
+      setSelectedTab("search");
     } else {
-      handleTabChange(initialTab.model);
+      setSelectedTab(initialTab.model);
     }
-  }, [handleTabChange, searchQuery, initialTab.model]);
+  }, [searchQuery, initialTab.model]);
 
   useWindowEvent(
     "keydown",
@@ -287,7 +272,7 @@ export function EntityPickerModal<
               <TabsView
                 selectedTab={selectedTab}
                 tabs={tabs}
-                onTabChange={handleTabChange}
+                onTabChange={setSelectedTab}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>

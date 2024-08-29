@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -20,13 +20,11 @@ import { useAvailableData } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
-  NotebookDataPickerFolderItem,
   NotebookDataPickerItem,
   NotebookDataPickerValueItem,
 } from "../types";
 import {
   createShouldShowItem,
-  isFolderItem,
   isMetricItem,
   isModelItem,
   isQuestionItem,
@@ -76,8 +74,7 @@ export const DataPickerModal = ({
   const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
     databaseId,
   });
-  const [tab, setTab] = useState<string>();
-  const [folderItem, setFolderItem] = useState<NotebookDataPickerFolderItem>();
+
   const { tryLogRecentItem } = useLogRecentItem();
 
   const modelsShouldShowItem = useMemo(() => {
@@ -111,15 +108,15 @@ export const DataPickerModal = ({
 
   const handleItemSelect = useCallback(
     (item: NotebookDataPickerItem) => {
-      if (isFolderItem(item)) {
-        setFolderItem(item);
-      } else if (isValueItem(item)) {
-        const id =
-          item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
-        onChange(id);
-        tryLogRecentItem(item);
-        onClose();
+      if (!isValueItem(item)) {
+        return;
       }
+
+      const id =
+        item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
+      onChange(id);
+      tryLogRecentItem(item);
+      onClose();
     },
     [onChange, onClose, tryLogRecentItem],
   );
@@ -212,7 +209,6 @@ export const DataPickerModal = ({
       title={title}
       onClose={onClose}
       onItemSelect={handleItemSelect}
-      onTabChange={setTab}
     />
   );
 };
