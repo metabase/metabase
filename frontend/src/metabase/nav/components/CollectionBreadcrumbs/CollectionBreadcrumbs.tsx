@@ -1,11 +1,14 @@
 import { Fragment } from "react";
 
+import { Badge } from "metabase/components/Badge";
 import { useToggle } from "metabase/hooks/use-toggle";
+import * as Urls from "metabase/lib/urls";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import type {
   Collection,
   CollectionEssentials,
   CollectionId,
+  Dashboard,
 } from "metabase-types/api";
 
 import {
@@ -17,11 +20,43 @@ import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
+  dashboard?: Dashboard;
   onClick?: (collection: CollectionEssentials) => void;
   baseCollectionId: CollectionId | null;
 }
 
+// TODO: clean up this... i don't like this it's called collection breadcrumbs when it also includes dashboard stuff
 export const CollectionBreadcrumbs = ({
+  collection,
+  dashboard,
+  onClick,
+  baseCollectionId = null,
+}: CollectionBreadcrumbsProps): JSX.Element | null => {
+  return (
+    <>
+      <InnerCollectionBreadcrumbs
+        onClick={onClick}
+        collection={collection}
+        baseCollectionId={baseCollectionId}
+      />
+      {dashboard && (
+        <>
+          <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>
+          <Badge
+            icon={{ name: "dashboard" }}
+            inactiveColor="text-light"
+            isSingleLine
+            to={Urls.dashboard(dashboard)}
+          >
+            {dashboard.name}
+          </Badge>
+        </>
+      )}
+    </>
+  );
+};
+
+export const InnerCollectionBreadcrumbs = ({
   collection,
   onClick,
   baseCollectionId = null,

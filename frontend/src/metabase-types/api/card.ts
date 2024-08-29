@@ -44,6 +44,7 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   collection?: Collection | null;
   collection_id: number | null;
   collection_position: number | null;
+  dashboard_id?: DashboardId | null;
 
   result_metadata: Field[];
   moderation_reviews?: ModerationReview[];
