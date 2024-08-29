@@ -168,11 +168,11 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                 loading={!database}
                 error={initializeError}
               >
-                <DatabaseEditContent>
-                  <DatabaseEditForm>
-                    {editingExistingDatabase && database.is_attached_dwh ? (
-                      <div>This database cannot be modified.</div>
-                    ) : (
+                {editingExistingDatabase && database.is_attached_dwh ? (
+                  <div>{t`This database cannot be modified.`}</div>
+                ) : (
+                  <DatabaseEditContent>
+                    <DatabaseEditForm>
                       <DatabaseForm
                         initialValues={database}
                         isAdvanced
@@ -180,10 +180,10 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
                         setIsDirty={setIsDirty}
                         autofocusFieldName={autofocusFieldName}
                       />
-                    )}
-                  </DatabaseEditForm>
-                  <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
-                </DatabaseEditContent>
+                    </DatabaseEditForm>
+                    <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
+                  </DatabaseEditContent>
+                )}
               </LoadingAndErrorWrapper>
             </div>
           </div>
