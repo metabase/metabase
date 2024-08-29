@@ -198,7 +198,7 @@ const ModelRow = ({ model }: { model?: ModelResult }) => {
   );
 
   return (
-    <TableRow onClick={handleClick} tabIndex={0}>
+    <TableRow onClick={handleClick}>
       <NameCell model={model} />
       <CollectionCell model={model} />
       <DescriptionCell model={model} />

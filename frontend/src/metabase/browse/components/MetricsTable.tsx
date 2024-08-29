@@ -187,7 +187,7 @@ function MetricRow({ metric }: { metric?: MetricResult }) {
   );
 
   return (
-    <TableRow onClick={handleClick} tabIndex={0}>
+    <TableRow onClick={handleClick}>
       <NameCell metric={metric} />
       <CollectionCell metric={metric} />
       <DescriptionCell metric={metric} />
