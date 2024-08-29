@@ -6,7 +6,12 @@ import { createModelFromTable } from "../utils/create-model-from-table";
 import { createXrayDashboardFromModel } from "../utils/xray-models";
 
 export const createModelsAndXrays: CliStepMethod = async state => {
-  const { instanceUrl = "", databaseId, cookie = "", tables = [] } = state;
+  const {
+    instanceUrl = "",
+    databaseId,
+    cookie = "",
+    chosenTables = [],
+  } = state;
 
   if (databaseId === undefined) {
     return [{ type: "error", message: "No database selected." }, state];
@@ -15,17 +20,19 @@ export const createModelsAndXrays: CliStepMethod = async state => {
   const spinner = ora("Creating models…").start();
 
   try {
+    const models = [];
+
     // Create a model for each table
-    const models = await Promise.all(
-      tables.map(table =>
-        createModelFromTable({
-          table,
-          databaseId,
-          cookie,
-          instanceUrl,
-        }),
-      ),
-    );
+    for (const table of chosenTables) {
+      const model = await createModelFromTable({
+        table,
+        databaseId,
+        cookie,
+        instanceUrl,
+      });
+
+      models.push(model);
+    }
 
     spinner.start("X-raying your data to create dashboards...");
 

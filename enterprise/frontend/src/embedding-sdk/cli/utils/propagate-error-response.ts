@@ -1,3 +1,5 @@
+import type { CliError } from "../types/cli";
+
 // Propagate the error from the API to the CLI.
 export const propagateErrorResponse = async (res: Response) => {
   if (res.ok) {
@@ -16,3 +18,10 @@ export const propagateErrorResponse = async (res: Response) => {
 
   throw new Error(errorText);
 };
+
+export function cliError(title: string, error: unknown): CliError {
+  const reason = error instanceof Error ? error.message : String(error);
+  const message = `${title}. Reason: ${reason}`;
+
+  return { type: "error", message };
+}
