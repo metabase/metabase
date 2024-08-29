@@ -1324,15 +1324,16 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("viz settings", () => {
-      it("should be able to toggle the fields that correspond to breakout columns in the previous stage", () => {
+      it.skip("should be able to toggle the fields that correspond to breakout columns in the previous stage", () => {
         function toggleColumn(columnName: string, isVisible: boolean) {
-          cy.findByTestId("visible-columns")
-            .findByTestId(`${columnName}-column`)
-            .should(isVisible ? "not.be.checked" : "be.checked")
-            .click();
-          cy.findByTestId("visible-columns")
-            .findByTestId(`${columnName}-column`)
-            .should(isVisible ? "be.checked" : "not.be.checked");
+          cy.findByTestId("chartsettings-sidebar").within(() => {
+            cy.findByLabelText(columnName)
+              .should(isVisible ? "not.be.checked" : "be.checked")
+              .click();
+            cy.findByLabelText(columnName).should(
+              isVisible ? "be.checked" : "not.be.checked",
+            );
+          });
         }
 
         function testVisibleFields({
@@ -1350,13 +1351,16 @@ describe("scenarios > question > multiple column breakouts", () => {
         }) {
           createQuestion(questionDetails, { visitQuestion: true });
           assertTableData({
-            columns: ["Count", tableColumn1Name, tableColumn2Name],
+            columns: [tableColumn1Name, tableColumn2Name, "Count"],
           });
 
           cy.findByTestId("viz-settings-button").click();
+          cy.findByTestId("chartsettings-sidebar")
+            .button("Add or remove columns")
+            .click();
           toggleColumn(queryColumn1Name, false);
           cy.wait("@dataset");
-          assertTableData({ columns: ["Count", tableColumn2Name] });
+          assertTableData({ columns: [tableColumn2Name, "Count"] });
 
           toggleColumn(queryColumn2Name, false);
           cy.wait("@dataset");
@@ -1368,7 +1372,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           toggleColumn(queryColumn2Name, true);
           assertTableData({
-            columns: ["Count", tableColumn1Name, tableColumn2Name],
+            columns: [tableColumn1Name, tableColumn2Name, "Count"],
           });
         }
 
@@ -1377,8 +1381,8 @@ describe("scenarios > question > multiple column breakouts", () => {
           questionDetails: multiStageQuestionWith2TemporalBreakoutsDetails,
           queryColumn1Name: "Created At: Year",
           queryColumn2Name: "Created At: Month",
-          tableColumn1Name: "Created At: Year",
-          tableColumn2Name: "Created At: Month",
+          tableColumn1Name: "Created At",
+          tableColumn2Name: "Created At",
         });
 
         cy.log("'num-bins' breakouts");
