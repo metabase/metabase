@@ -1,8 +1,18 @@
-import type { CardId } from "metabase-types/api";
+import type { ValidateSchema } from "./utils";
 
-export type IndexModelEntitiesEnabledEvent = {
-  event: "index_model_entities_enabled";
-  model_id: CardId;
+type ModelEventSchema = {
+  event: string;
+  model_id: number;
 };
+
+type ValidateEvent<T extends ModelEventSchema> = ValidateSchema<
+  T,
+  ModelEventSchema
+>;
+
+export type IndexModelEntitiesEnabledEvent = ValidateEvent<{
+  event: "index_model_entities_enabled";
+  model_id: number;
+}>;
 
 export type ModelEvent = IndexModelEntitiesEnabledEvent;
