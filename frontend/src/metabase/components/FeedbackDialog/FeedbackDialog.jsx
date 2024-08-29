@@ -145,11 +145,11 @@ const FeedbackDialog = ({ isOpen, onClose, messages }) => {
                     <Button
                         variant="outlined"
                         onClick={onClose}
-                        style={{ fontWeight: "400", border: "1px solid #223800", color: "#223800", backgroundColor: "#FFF", borderRadius: "8px", width: "100%" }}
+                        style={{ fontWeight: "400", border: "1px solid #587330", color: "#587330", backgroundColor: "#FFF", borderRadius: "8px", width: "100%" }}
                     >
                         Cancel
                     </Button>
-                    <Button variant="filled" onClick={handleSubmit} style={{ fontWeight: "400", border: "1px solid #223800", color: "#FFF", backgroundColor: "#223800", borderRadius: "8px", width: "100%" }}>
+                    <Button variant="filled" onClick={handleSubmit} style={{ fontWeight: "400", border: "1px solid #587330", color: "#FFF", backgroundColor: "#587330", borderRadius: "8px", width: "100%" }}>
                         Send feedback
                     </Button>
                 </Box>

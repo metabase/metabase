@@ -23,7 +23,8 @@ export const HomeLayout = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    setInputValue(""); // Clear the input value when the component mounts
+    setInputValue("");
+    dispatch(setInitialMessage(""));
   }, []);
 
   useEffect(() => {

@@ -147,7 +147,7 @@ export const PaddedSidebarLink = styled(SidebarLink)`
     props.url?.startsWith("/browse/chat") ? "#5B26D3" : "#4F525C"};
 
   &:hover {
-    background: #6a7161;
+    background: #587330;
     color: var(--mb-color-text-white);
 
     svg {
