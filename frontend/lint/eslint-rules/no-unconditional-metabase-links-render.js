@@ -10,6 +10,7 @@
 // 4. getLearnUrl selector from "metabase/selectors/settings"
 // 5. inline string "metabase.com/docs/"
 // 6. inline string "metabase.com/learn/"
+// 7. useDocsUrl hook
 //
 // If a link shouldn't be rendered conditionally e.g. it's only show for admins, or is rendered inside admin settings, you need to disable the rule with a reason.
 // e.g. "// eslint-disable-next-line no-unconditional-metabase-links-render -- This link only shows for admins."
@@ -18,11 +19,23 @@ function getImportNodeLocation(node) {
   return node.source.value;
 }
 
+function getParentDeclarationNode(node) {
+  if (node.parent.type === "VariableDeclarator" || !node.parent) {
+    return node.parent;
+  }
+  return getParentDeclarationNode(node.parent);
+}
+
 const ADD_COMMENT_MESSAGE =
   'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins."';
 const ERROR_MESSAGE =
   "Metabase links must be rendered conditionally.\n\nPlease import `getShowMetabaseLinks` selector from `metabase/selectors/whitelabel` and use it to conditionally render Metabase links.\n\nOr " +
   ADD_COMMENT_MESSAGE;
+
+const HOOK_ERROR_MESSAGE =
+  "Metabase links must be rendered conditionally.\n\nPlease destructure `showMetabaseLinks` from this hook and use it to conditionally render Metabase links.\n\nOr " +
+  ADD_COMMENT_MESSAGE;
+
 const LITERAL_METABASE_URL_REGEX =
   /(metabase\.com\/docs|metabase\.com\/learn)($|\/)/;
 
@@ -125,6 +138,26 @@ module.exports = {
             node,
             message: ERROR_MESSAGE,
           });
+        }
+
+        // call `useDocsUrl` hook
+        if (
+          node?.callee?.type === "Identifier" &&
+          node?.callee?.name === "useDocsUrl"
+        ) {
+          const parentDeclarationNode = getParentDeclarationNode(node);
+
+          const hasShowMetabaseLinksDestructured =
+            parentDeclarationNode?.id?.properties?.some(
+              prop => prop.key.name === "showMetabaseLinks",
+            );
+
+          if (!hasShowMetabaseLinksDestructured) {
+            context.report({
+              node,
+              message: HOOK_ERROR_MESSAGE,
+            });
+          }
         }
 
         // call `getLearnUrl` selector

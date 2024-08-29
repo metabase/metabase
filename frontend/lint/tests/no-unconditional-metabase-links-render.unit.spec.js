@@ -82,6 +82,19 @@ function MyComponent() {
   return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
 }`,
   },
+  {
+    code: `
+const { url, showMetabaseLinks } = useDocsUrl("permissions/data");`,
+  },
+  {
+    code: `
+const { url: docsUrl, showMetabaseLinks: shouldShowLink } = useDocsUrl("permissions/data");`,
+  },
+  {
+    code: `
+// eslint-disable-next-line no-unconditional-metabase-links-render -- Only shows for admins.
+const { url } = useDocsUrl("permissions/data");`,
+  },
 ];
 const INVALID_CASES = [
   {
@@ -190,6 +203,19 @@ function MyComponent() {
   return <a href="https://www.metabase.com/learn/getting-started/">Getting started</a>;
 }`,
     error: "Please use inline disable with comments instead.",
+  },
+  {
+    code: `
+const { url } = useDocsUrl("permissions/data");`,
+  },
+  {
+    code: `
+const { url: docsUrl } = useDocsUrl("permissions/data");`,
+  },
+  {
+    code: `
+// eslint-disable-next-line no-unconditional-metabase-links-render
+const { url } = useDocsUrl("permissions/data");`,
   },
 ];
 
