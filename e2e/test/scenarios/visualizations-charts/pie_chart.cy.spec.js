@@ -92,7 +92,9 @@ describe("scenarios > visualizations > pie chart", () => {
     });
   });
 
-  it("should truncate the center dimension label if it overflows", () => {
+  // Skipping since the mousemove trigger flakes too often, and there's already a loki
+  // test to cover truncation
+  it.skip("should truncate the center dimension label if it overflows", () => {
     visitQuestionAdhoc({
       dataset_query: {
         type: "query",

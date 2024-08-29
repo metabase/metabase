@@ -330,6 +330,10 @@ export function getPieRows(
 
   let otherCount = 0;
   newPieRows.forEach(pieRow => {
+    if (pieRow.hidden) {
+      return;
+    }
+
     const metricValue = checkNumber(
       checkNotNull(keyToCurrentDataRow.get(pieRow.key))[metricIndex],
     );
