@@ -564,15 +564,6 @@
         (assoc :aggregation-functions agg-fns)
         (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
 
-(defn- remove-unused-rows!
-  "For the pivot workbook, remove the unused black rows from the initialization."
-  [^XSSFSheet sheet used-rows]
-  (let [total-rows (.getLastRowNum sheet)]
-    (doseq [row-index (range total-rows used-rows -1)]
-      (let [row (.getRow sheet ^Integer row-index)]
-        (when row
-          (.removeRow sheet row))))))
-
 (defn- init-native-pivot
   [{:keys [pivot-grouping-key] :as pivot-spec}
    {:keys [ordered-cols col-settings viz-settings]}]
@@ -693,7 +684,6 @@
           (if pivot-options
             (try
               (let [pivot-workbook @pivot-workbook]
-                (remove-unused-rows! (spreadsheet/select-sheet "data" pivot-workbook) (inc row_count))
                 (spreadsheet/save-workbook-into-stream! os pivot-workbook))
               (finally
                 (.dispose workbook)
