@@ -235,7 +235,7 @@
                                  {:mvn/version "0.3.0"}                     ; Enables easy memory measurement
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2024.03.13"}                ; this is not for RUNNING kondo, but so we can hack on custom hooks code from the REPL.
+    clj-kondo/clj-kondo          {:mvn/version "2024.08.01"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
     djblue/portal                {:mvn/version "0.56.0"}                    ; ui for inspecting values
@@ -400,6 +400,71 @@
     "modules/drivers/vertica/test"]}
 
 ;;; Linters
+
+  ;; clojure -M:kondo --lint src test
+  ;;
+  ;; clojure -M:kondo --version
+  ;;
+  ;; clojure -M:kondo --copy-configs --dependencies --lint "$(clojure -A:dev -Spath)" --skip-lint --parallel
+  ;;
+  ;; Run Kondo from the JVM using the pinned version. Preferable to running the installed command since we can pin the
+  ;; version here which may be different from the version installed on your computer.
+  ;;
+  ;; Use this to only run Kondo against specific files.
+  :kondo
+  {:replace-deps
+   {clj-kondo/clj-kondo {:mvn/version "2024.08.01"}}
+
+   :main-opts
+   ["-m" "clj-kondo.main"]}
+
+  ;; clojure -M:kondo:kondo/all
+  ;;
+  ;; Like the command above but includes arguments so it lints everything.
+  :kondo/all
+  {:main-opts
+   ["-m" "clj-kondo.main"
+    ;; disabled for now since this seems to cause random failures -- see https://github.com/clj-kondo/clj-kondo/issues/2218
+    #_"--parallel"
+    ;; enable this if Kondo isn't working as expected or if LSP jump-to-definition is being fussy
+    #_"--debug"
+    "--lint"
+    "src"
+    "test"
+    "enterprise/backend/src"
+    "enterprise/backend/test"
+    "bin/build/src"
+    "bin/build/test"
+    "bin/lint-migrations-file/src"
+    "bin/lint-migrations-file/test"
+    "bin/release-list/src"
+    "bin/release-list/test"
+    "modules/drivers/athena/src"
+    "modules/drivers/athena/test"
+    "modules/drivers/bigquery-cloud-sdk/src"
+    "modules/drivers/bigquery-cloud-sdk/test"
+    "modules/drivers/druid-jdbc/src"
+    "modules/drivers/druid-jdbc/test"
+    "modules/drivers/druid/src"
+    "modules/drivers/druid/test"
+    "modules/drivers/mongo/src"
+    "modules/drivers/mongo/test"
+    "modules/drivers/oracle/src"
+    "modules/drivers/oracle/test"
+    "modules/drivers/presto-jdbc/src"
+    "modules/drivers/presto-jdbc/test"
+    "modules/drivers/redshift/src"
+    "modules/drivers/redshift/test"
+    "modules/drivers/snowflake/src"
+    "modules/drivers/snowflake/test"
+    "modules/drivers/sparksql/src"
+    "modules/drivers/sparksql/test"
+    "modules/drivers/sqlite/src"
+    "modules/drivers/sqlite/test"
+    "modules/drivers/sqlserver/src"
+    "modules/drivers/sqlserver/test"
+    "modules/drivers/vertica/src"
+    "modules/drivers/vertica/test"]}
 
   ;; clojure -M:ee:drivers:check
   ;;
