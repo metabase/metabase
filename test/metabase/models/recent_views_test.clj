@@ -144,6 +144,7 @@
                                                    :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
                                                    :timestamp String,
                                                    :display_name "Name",
+                                                   :table_schema nil
                                                    :model :table}]]
                                      [true true [{:description nil,
                                                   :can_write true,
@@ -152,6 +153,7 @@
                                                   :id table-id,
                                                   :database {:id db-id, :name "test-data", :initial_sync_status "incomplete"},
                                                   :timestamp String,
+                                                  :table_schema nil
                                                   :display_name "Name",
                                                   :model :table}]]]]
       (with-redefs [mi/can-read? (constantly read?)
@@ -192,6 +194,7 @@
                    :name "tablet",
                    :description nil,
                    :model :table,
+                   :table_schema nil
                    :display_name "I am the table",
                    :can_write true,
                    :database {:id db-id, :name "My DB", :initial_sync_status "incomplete"}}

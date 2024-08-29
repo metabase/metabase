@@ -32,6 +32,7 @@ export interface BaseRecentItem {
 export interface RecentTableItem extends BaseRecentItem {
   model: "table";
   display_name: string;
+  table_schema: string;
   database: {
     id: number;
     name: string;
@@ -54,6 +55,9 @@ export interface RecentCollectionItem extends BaseRecentItem {
 }
 
 export type RecentItem = RecentTableItem | RecentCollectionItem;
+
+export const isRecentTableItem = (item: RecentItem): item is RecentTableItem =>
+  item.model === "table";
 
 export interface RecentItemsResponse {
   recent_views: RecentItem[];
