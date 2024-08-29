@@ -1,6 +1,6 @@
 import type { ValidateSchema } from "./utils";
 
-type EventSchema = {
+type SimpleEventSchema = {
   event: string;
   target_id?: number | null;
   triggered_from?: string | null;
@@ -9,7 +9,10 @@ type EventSchema = {
   event_detail?: string | null;
 };
 
-type ValidateEvent<T extends EventSchema> = ValidateSchema<T, EventSchema>;
+type ValidateEvent<T extends SimpleEventSchema> = ValidateSchema<
+  T,
+  SimpleEventSchema
+>;
 
 // Example usage. Remove when adding the first event.
 export type DoNotUseEvent1 = ValidateEvent<{
@@ -23,4 +26,4 @@ export type DoNotUseEvent2 = ValidateEvent<{
   triggered_from: "location-1" | "location-2";
 }>;
 
-export type Event = DoNotUseEvent1 | DoNotUseEvent2;
+export type SimpleEvent = DoNotUseEvent1 | DoNotUseEvent2;
