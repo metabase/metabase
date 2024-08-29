@@ -61,7 +61,7 @@ export const useCommandPalette = ({
   const hasQuery = searchQuery.length > 0;
 
   const {
-    currentData: searchResults,
+    currentData: searchResultsTemp,
     isFetching: isSearchLoading,
     error: searchError,
   } = useSearchQuery(
@@ -76,9 +76,35 @@ export const useCommandPalette = ({
     },
   );
 
-  const { data: recentItems } = useListRecentsQuery(undefined, {
+  const searchResults = useMemo(() => {
+    return searchResultsTemp
+      ? {
+          ...searchResultsTemp,
+          data: searchResultsTemp.data.map(datum => {
+            if (datum.model === "card") {
+              return { ...datum, dashboard_id: 34 };
+            }
+
+            return datum;
+          }),
+        }
+      : searchResultsTemp;
+  }, [searchResultsTemp]);
+
+  const { data: recentItemsTemp } = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
+
+  const recentItems = useMemo(() => {
+    return (
+      recentItemsTemp?.map(item => {
+        if (item.model !== "card") {
+          return item;
+        }
+        return { ...item, dashboard_id: 34 };
+      }) ?? undefined
+    );
+  }, [recentItemsTemp]);
 
   const adminPaths = useSelector(getAdminPaths);
   const settingValues = useSelector(getSettings);
@@ -184,6 +210,15 @@ export const useCommandPalette = ({
           searchResults.data.map((result, index) => {
             const wrappedResult = Search.wrapEntity(result, dispatch);
             const icon = getIcon(wrappedResult);
+            const url =
+              wrappedResult.model === "card" &&
+              typeof wrappedResult.dashboard_id === "number"
+                ? Urls.modelToUrl({
+                    model: "dashboard",
+                    id: wrappedResult.dashboard_id,
+                    name: "",
+                  })
+                : wrappedResult.getUrl();
             return {
               id: `search-result-${result.model}-${result.id}`,
               name: result.name,
@@ -194,10 +229,11 @@ export const useCommandPalette = ({
               priority: Priority.NORMAL,
               perform: () => {
                 trackSearchClick("item", index, "command-palette");
+                dispatch(push(url));
               },
               extra: {
                 isVerified: result.moderated_status === "verified",
-                href: wrappedResult.getUrl(),
+                href: url,
                 iconColor: icon.color,
                 subtext: getSearchResultSubtext(wrappedResult),
               },
@@ -239,7 +275,20 @@ export const useCommandPalette = ({
           name: getName(item),
           icon: icon.name,
           section: "recent",
-          perform: () => {},
+          perform: () => {
+            // Need to keep this logic here for when user selects via keyboard
+            const href =
+              item.model === "card" && typeof item.dashboard_id === "number"
+                ? Urls.modelToUrl({
+                    model: "dashboard",
+                    id: item.dashboard_id,
+                    name: "",
+                  })
+                : Urls.modelToUrl(item);
+            if (href) {
+              dispatch(push(href));
+            }
+          },
           extra: {
             isVerified:
               item.model !== "table" && item.moderated_status === "verified",

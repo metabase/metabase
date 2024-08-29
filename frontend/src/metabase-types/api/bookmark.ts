@@ -15,7 +15,7 @@ export type BookmarkId = string;
 export interface Bookmark {
   authority_level?: string;
   card_id?: string;
-  dashboard_id?: string;
+  dashboard_id?: number;
   display?: string;
   id: BookmarkId;
   item_id: number;
