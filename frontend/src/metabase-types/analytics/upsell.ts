@@ -1,15 +1,13 @@
-import type { ValidateSchema } from "./utils";
-
 type UpsellEventSchema = {
   event: string;
   promoted_feature?: string | null;
   upsell_location?: string | null;
 };
 
-type ValidateEvent<T extends UpsellEventSchema> = ValidateSchema<
-  T,
-  UpsellEventSchema
->;
+type ValidateEvent<
+  T extends UpsellEventSchema &
+    Record<Exclude<keyof T, keyof UpsellEventSchema>, never>,
+> = T;
 
 export type UpsellViewedEvent = ValidateEvent<{
   event: "upsell_viewed";

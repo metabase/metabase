@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type MetabotEventSchema = {
   event: string;
   entity_type?: string | null;
@@ -10,10 +8,10 @@ type MetabotEventSchema = {
   is_rerun?: boolean | null;
 };
 
-type ValidateEvent<T extends MetabotEventSchema> = ValidateSchema<
-  T,
-  MetabotEventSchema
->;
+type ValidateEvent<
+  T extends MetabotEventSchema &
+    Record<Exclude<keyof T, keyof MetabotEventSchema>, never>,
+> = T;
 
 export type MetabotQueryRunEvent = ValidateEvent<{
   event: "metabot_query_run";

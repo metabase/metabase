@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type SimpleEventSchema = {
   event: string;
   target_id?: number | null;
@@ -9,10 +7,10 @@ type SimpleEventSchema = {
   event_detail?: string | null;
 };
 
-type ValidateEvent<T extends SimpleEventSchema> = ValidateSchema<
-  T,
-  SimpleEventSchema
->;
+type ValidateEvent<
+  T extends SimpleEventSchema &
+    Record<Exclude<keyof T, keyof SimpleEventSchema>, never>,
+> = T;
 
 // Example usage. Remove when adding the first event.
 export type DoNotUseEvent1 = ValidateEvent<{

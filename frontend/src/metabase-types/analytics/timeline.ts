@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type TimelineEventSchema = {
   event: string;
   source?: string | null;
@@ -8,10 +6,10 @@ type TimelineEventSchema = {
   time_matters?: boolean | null;
 };
 
-type ValidateEvent<T extends TimelineEventSchema> = ValidateSchema<
-  T,
-  TimelineEventSchema
->;
+type ValidateEvent<
+  T extends TimelineEventSchema &
+    Record<Exclude<keyof T, keyof TimelineEventSchema>, never>,
+> = T;
 
 export type NewEventCreatedEvent = ValidateEvent<{
   event: "new_event_created";

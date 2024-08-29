@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type SearchEventSchema = {
   event: string;
   runtime_milliseconds?: number | null;
@@ -18,10 +16,10 @@ type SearchEventSchema = {
   search_archived?: boolean | null;
 };
 
-type ValidateEvent<T extends SearchEventSchema> = ValidateSchema<
-  T,
-  SearchEventSchema
->;
+type ValidateEvent<
+  T extends SearchEventSchema &
+    Record<Exclude<keyof T, keyof SearchEventSchema>, never>,
+> = T;
 
 type SearchContentType =
   | "dashboard"

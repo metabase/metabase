@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type DashboardEventSchema = {
   event: string;
   dashboard_id: number;
@@ -12,10 +10,10 @@ type DashboardEventSchema = {
   dashboard_accessed_via?: string | null;
 };
 
-type ValidateEvent<T extends DashboardEventSchema> = ValidateSchema<
-  T,
-  DashboardEventSchema
->;
+type ValidateEvent<
+  T extends DashboardEventSchema &
+    Record<Exclude<keyof T, keyof DashboardEventSchema>, never>,
+> = T;
 
 export type DashboardCreatedEvent = ValidateEvent<{
   event: "dashboard_created";

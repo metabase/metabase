@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type EmbedShareEventSchema = {
   event: string;
   authorized_origins_set?: boolean | null;
@@ -7,10 +5,10 @@ type EmbedShareEventSchema = {
   number_embedded_dashboards?: number | null;
 };
 
-type ValidateEvent<T extends EmbedShareEventSchema> = ValidateSchema<
-  T,
-  EmbedShareEventSchema
->;
+type ValidateEvent<
+  T extends EmbedShareEventSchema &
+    Record<Exclude<keyof T, keyof EmbedShareEventSchema>, never>,
+> = T;
 
 export type EmbeddingEnabledEvent = ValidateEvent<{
   event: "embedding_enabled";

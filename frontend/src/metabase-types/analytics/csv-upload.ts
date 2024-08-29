@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type CsvUploadEventSchema = {
   event: string;
   model_id?: number | null;
@@ -11,10 +9,10 @@ type CsvUploadEventSchema = {
   source?: string | null;
 };
 
-type ValidateEvent<T extends CsvUploadEventSchema> = ValidateSchema<
-  T,
-  CsvUploadEventSchema
->;
+type ValidateEvent<
+  T extends CsvUploadEventSchema &
+    Record<Exclude<keyof T, keyof CsvUploadEventSchema>, never>,
+> = T;
 
 export type CsvUploadSuccessfulEvent = ValidateEvent<{
   event: "csv_upload_successful";

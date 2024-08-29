@@ -1,15 +1,13 @@
-import type { ValidateSchema } from "./utils";
-
 type AccountEventSchema = {
   event: string;
   version?: string | null;
   link?: string | null;
 };
 
-type ValidateEvent<T extends AccountEventSchema> = ValidateSchema<
-  T,
-  AccountEventSchema
->;
+type ValidateEvent<
+  T extends AccountEventSchema &
+    Record<Exclude<keyof T, keyof AccountEventSchema>, never>,
+> = T;
 
 export type NewUserCreatedEvent = ValidateEvent<{
   event: "new_user_created";

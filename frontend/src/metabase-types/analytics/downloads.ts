@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type DownloadsEventSchema = {
   event: string;
   resource_type?: string | null;
@@ -7,10 +5,10 @@ type DownloadsEventSchema = {
   export_type?: string | null;
 };
 
-type ValidateEvent<T extends DownloadsEventSchema> = ValidateSchema<
-  T,
-  DownloadsEventSchema
->;
+type ValidateEvent<
+  T extends DownloadsEventSchema &
+    Record<Exclude<keyof T, keyof DownloadsEventSchema>, never>,
+> = T;
 
 export type DownloadResultsClickedEvent = ValidateEvent<{
   event: "download_results_clicked";

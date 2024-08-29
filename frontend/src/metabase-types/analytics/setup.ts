@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type SetupEventSchema = {
   event: string;
   version: string;
@@ -11,10 +9,10 @@ type SetupEventSchema = {
   source?: string | null;
 };
 
-type ValidateEvent<T extends SetupEventSchema> = ValidateSchema<
-  T,
-  SetupEventSchema
->;
+type ValidateEvent<
+  T extends SetupEventSchema &
+    Record<Exclude<keyof T, keyof SetupEventSchema>, never>,
+> = T;
 
 type SetupVersion = "1.3.0";
 

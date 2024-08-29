@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type EmbedFlowParams = {
   locked?: number;
   enabled?: number;
@@ -33,10 +31,10 @@ type EmbedFlowEventSchema = {
   is_example_dashboard?: boolean | null;
 };
 
-type ValidateEvent<T extends EmbedFlowEventSchema> = ValidateSchema<
-  T,
-  EmbedFlowEventSchema
->;
+type ValidateEvent<
+  T extends EmbedFlowEventSchema &
+    Record<Exclude<keyof T, keyof EmbedFlowEventSchema>, never>,
+> = T;
 
 type EmbedFlowArtifact = "dashboard" | "question";
 

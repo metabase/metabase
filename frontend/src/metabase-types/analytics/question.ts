@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type QuestionEventSchema = {
   event: string;
   question_id: number;
@@ -10,10 +8,10 @@ type QuestionEventSchema = {
   custom_expressions_used?: string[] | null;
 };
 
-type ValidateEvent<T extends QuestionEventSchema> = ValidateSchema<
-  T,
-  QuestionEventSchema
->;
+type ValidateEvent<
+  T extends QuestionEventSchema &
+    Record<Exclude<keyof T, keyof QuestionEventSchema>, never>,
+> = T;
 
 export type NewQuestionSavedEvent = ValidateEvent<{
   event: "new_question_saved";

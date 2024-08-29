@@ -1,15 +1,13 @@
-import type { ValidateSchema } from "./utils";
-
 type BrowseDataEventSchema = {
   event: string;
   model_id?: number | null;
   table_id?: number | null;
 };
 
-type ValidateEvent<T extends BrowseDataEventSchema> = ValidateSchema<
-  T,
-  BrowseDataEventSchema
->;
+type ValidateEvent<
+  T extends BrowseDataEventSchema &
+    Record<Exclude<keyof T, keyof BrowseDataEventSchema>, never>,
+> = T;
 
 export type BrowseDataModelClickedEvent = ValidateEvent<{
   event: "browse_data_model_clicked";

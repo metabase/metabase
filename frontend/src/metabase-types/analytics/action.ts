@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type ActionEventSchema = {
   event: string;
   type: string;
@@ -8,10 +6,10 @@ type ActionEventSchema = {
   context?: string | null;
 };
 
-type ValidateEvent<T extends ActionEventSchema> = ValidateSchema<
-  T,
-  ActionEventSchema
->;
+type ValidateEvent<
+  T extends ActionEventSchema &
+    Record<Exclude<keyof T, keyof ActionEventSchema>, never>,
+> = T;
 
 type ActionType = "http" | "query" | "implicit";
 

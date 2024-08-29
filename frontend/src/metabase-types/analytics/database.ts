@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type DatabaseEventSchema = {
   event: string;
   database?: string | null;
@@ -9,10 +7,10 @@ type DatabaseEventSchema = {
   dbms_version?: string | null;
 };
 
-type ValidateEvent<T extends DatabaseEventSchema> = ValidateSchema<
-  T,
-  DatabaseEventSchema
->;
+type ValidateEvent<
+  T extends DatabaseEventSchema &
+    Record<Exclude<keyof T, keyof DatabaseEventSchema>, never>,
+> = T;
 
 export type DatabaseConnectionSuccessfulEvent = ValidateEvent<{
   event: "database_connection_successful";

@@ -1,15 +1,13 @@
-import type { ValidateSchema } from "./utils";
-
 type EmbeddingHomepageEventSchema = {
   event: string;
   dismiss_reason?: string | null;
   initial_tab?: string | null;
 };
 
-type ValidateEvent<T extends EmbeddingHomepageEventSchema> = ValidateSchema<
-  T,
-  EmbeddingHomepageEventSchema
->;
+type ValidateEvent<
+  T extends EmbeddingHomepageEventSchema &
+    Record<Exclude<keyof T, keyof EmbeddingHomepageEventSchema>, never>,
+> = T;
 
 export type EmbeddingHomepageDismissedEvent = ValidateEvent<{
   event: "embedding_homepage_dismissed";

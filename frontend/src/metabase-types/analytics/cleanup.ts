@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type CleanupEventSchema = {
   event: string;
   collection_id?: number | null;
@@ -7,10 +5,10 @@ type CleanupEventSchema = {
   cutoff_date?: string | null;
 };
 
-type ValidateEvent<T extends CleanupEventSchema> = ValidateSchema<
-  T,
-  CleanupEventSchema
->;
+type ValidateEvent<
+  T extends CleanupEventSchema &
+    Record<Exclude<keyof T, keyof CleanupEventSchema>, never>,
+> = T;
 
 export type StaleItemsReadEvent = ValidateEvent<{
   event: "stale_items_read";

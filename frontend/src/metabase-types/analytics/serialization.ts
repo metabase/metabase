@@ -1,5 +1,3 @@
-import type { ValidateSchema } from "./utils";
-
 type SerializationEventSchema = {
   event: string;
   source: string;
@@ -17,10 +15,10 @@ type SerializationEventSchema = {
   secrets?: boolean | null;
 };
 
-type ValidateEvent<T extends SerializationEventSchema> = ValidateSchema<
-  T,
-  SerializationEventSchema
->;
+type ValidateEvent<
+  T extends SerializationEventSchema &
+    Record<Exclude<keyof T, keyof SerializationEventSchema>, never>,
+> = T;
 
 export type SerializationEvent = ValidateEvent<{
   event: "serialization";

@@ -1,14 +1,12 @@
-import type { ValidateSchema } from "./utils";
-
 type SettingsEventSchema = {
   event: string;
   source?: string | null;
 };
 
-type ValidateEvent<T extends SettingsEventSchema> = ValidateSchema<
-  T,
-  SettingsEventSchema
->;
+type ValidateEvent<
+  T extends SettingsEventSchema &
+    Record<Exclude<keyof T, keyof SettingsEventSchema>, never>,
+> = T;
 
 export type TrackingPermissionEnabledEvent = ValidateEvent<{
   event: "tracking_permission_enabled";

@@ -1,14 +1,12 @@
-import type { ValidateSchema } from "./utils";
-
 type ModelEventSchema = {
   event: string;
   model_id: number;
 };
 
-type ValidateEvent<T extends ModelEventSchema> = ValidateSchema<
-  T,
-  ModelEventSchema
->;
+type ValidateEvent<
+  T extends ModelEventSchema &
+    Record<Exclude<keyof T, keyof ModelEventSchema>, never>,
+> = T;
 
 export type IndexModelEntitiesEnabledEvent = ValidateEvent<{
   event: "index_model_entities_enabled";
