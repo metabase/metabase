@@ -32,6 +32,7 @@ interface DatabaseFormProps {
   onEngineChange?: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
+  custom?: boolean;
 }
 
 export const DatabaseForm = ({
@@ -42,6 +43,7 @@ export const DatabaseForm = ({
   onCancel,
   onEngineChange,
   setIsDirty,
+  custom = false,
 }: DatabaseFormProps): JSX.Element => {
   const engines = useSelector(getEngines);
   const isHosted = useSelector(getIsHosted);
@@ -92,6 +94,7 @@ export const DatabaseForm = ({
         onEngineChange={handleEngineChange}
         onCancel={onCancel}
         setIsDirty={setIsDirty}
+        custom={custom}
       />
     </FormProvider>
   );
@@ -107,6 +110,7 @@ interface DatabaseFormBodyProps {
   onEngineChange: (engineKey: string | undefined) => void;
   onCancel?: () => void;
   setIsDirty?: (isDirty: boolean) => void;
+  custom?: boolean;
 }
 
 const DatabaseFormBody = ({
@@ -119,6 +123,7 @@ const DatabaseFormBody = ({
   onEngineChange,
   onCancel,
   setIsDirty,
+  custom,
 }: DatabaseFormBodyProps): JSX.Element => {
   const { values, dirty } = useFormikContext<DatabaseData>();
 
@@ -131,7 +136,10 @@ const DatabaseFormBody = ({
   }, [engine, values, isAdvanced]);
 
   return (
-    <Form data-testid="database-form">
+    <Form
+      data-testid="database-form"
+      style={{ width: custom ? "100%" : undefined }}
+    >
       <DatabaseEngineField
         engineKey={engineKey}
         engines={engines}
@@ -157,6 +165,7 @@ const DatabaseFormBody = ({
         isDirty={dirty}
         isAdvanced={isAdvanced}
         onCancel={onCancel}
+        custom={custom}
       />
     </Form>
   );
@@ -166,12 +175,14 @@ interface DatabaseFormFooterProps {
   isAdvanced: boolean;
   isDirty: boolean;
   onCancel?: () => void;
+  custom?: boolean;
 }
 
 const DatabaseFormFooter = ({
   isAdvanced,
   isDirty,
   onCancel,
+  custom,
 }: DatabaseFormFooterProps) => {
   const { values } = useFormikContext<DatabaseData>();
   const isNew = values.id == null;
@@ -198,9 +209,11 @@ const DatabaseFormFooter = ({
   } else {
     return (
       <LinkFooter>
-        <LinkButton type="button" onClick={onCancel}>
-          {t`I'll add my data later`}
-        </LinkButton>
+        {!custom && (
+          <LinkButton type="button" onClick={onCancel}>
+            {t`I'll add my data later`}
+          </LinkButton>
+        )}
       </LinkFooter>
     );
   }

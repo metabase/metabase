@@ -207,6 +207,8 @@ import key_component from "./key.svg?component";
 import key_source from "./key.svg?source";
 import label_component from "./label.svg?component";
 import label_source from "./label.svg?source";
+import lan_component from "./lan.svg?component";
+import lan_source from "./lan.svg?source";
 import ldap_component from "./ldap.svg?component";
 import ldap_source from "./ldap.svg?source";
 import lightbulb_component from "./lightbulb.svg?component";
@@ -315,6 +317,8 @@ import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
 import shield_source from "./shield.svg?source";
+import shopping_cart_component from "./shopping_cart.svg?component";
+import shopping_cart_source from "./shopping_cart.svg?source";
 import sidebar_closed_component from "./sidebar_closed.svg?component";
 import sidebar_closed_source from "./sidebar_closed.svg?source";
 import sidebar_open_component from "./sidebar_open.svg?component";
@@ -807,6 +811,10 @@ export const Icons = {
     component: label_component,
     source: label_source,
   },
+  lan: {
+    component: lan_component,
+    source: lan_source,
+  },
   ldap: {
     component: ldap_component,
     source: ldap_source,
@@ -974,6 +982,10 @@ export const Icons = {
   share: {
     component: share_component,
     source: share_source,
+  },
+  shopping_cart: {
+    component: shopping_cart_component,
+    source: shopping_cart_source,
   },
   split: {
     component: split_component,

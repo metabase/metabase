@@ -52,6 +52,7 @@ import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
+import { DatabasesConnections } from "./browse/components/DatabasesConnections";
 import { BrowseModels } from "./browse/components/BrowseModels";
 import { BrowseChat } from "./browse/components/BrowseChat";
 import { BrowseSemanticLayerTable } from "./browse/components/BrowseSemanticLayerTable";
@@ -214,6 +215,7 @@ export const getRoutes = store => {
             <IndexRedirect to="/browse/models" />
             <Route path="models" component={BrowseModels} />
             <Route path="databases" component={BrowseDatabases} />
+            <Route path="databases/connections" component={DatabasesConnections} />
             <Route path="semantic-layer" component={BrowseSemanticLayers} />
             <Route path="semantic-layer/:slug" component={BrowseSemanticLayerTable} />
             <Route path="semantic-layer/:slug/cubes/:cubeName" component={BrowseCubes} />
