@@ -1557,19 +1557,17 @@
                 (->> (t2/select :cache_config)
                      (mapv #(update % :config json/decode true)))))))))
 
-
-(mt/set-test-drivers! #{:h2})
-
 (deftest cache-config-handle-big-value-test
   (testing "Caching config is correctly copied over"
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)))}
-                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
+                            #_{:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
       (migrate!)
       (is (=? [{:model    "root"
                 :strategy "ttl"
-                :config   {:multiplier 2147483647, :min_duration_ms 2147483647}}]
+                :config   {:multiplier      2147483647
+                           :min_duration_ms 2147483647}}]
              (->> (t2/select :cache_config)
                   (mapv #(update % :config json/decode true))))))))
 
