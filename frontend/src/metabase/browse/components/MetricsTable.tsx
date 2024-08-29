@@ -78,6 +78,8 @@ const menuProps = {
   containerName: itemsTableContainerName,
 };
 
+const DOTMENU_WIDTH = 34;
+
 export function MetricsTable({
   skeleton = false,
   metrics = [],
@@ -107,7 +109,7 @@ export function MetricsTable({
         {/* <col> for Description column */}
         <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
 
-        <TableColumn {...menuProps} width="36px" />
+        <TableColumn {...menuProps} width={DOTMENU_WIDTH} />
 
         <Columns.RightEdge.Col />
       </colgroup>
@@ -399,7 +401,7 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
     <Cell onClick={stopPropagation} style={{ padding: 0 }}>
       <Menu position="bottom-end">
         <Menu.Target>
-          <Button size="sm" variant="subtle">
+          <Button size="xs" variant="subtle" px="sm">
             <Icon name="ellipsis" />
           </Button>
         </Menu.Target>
