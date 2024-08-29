@@ -16,10 +16,11 @@ import NoResults from "assets/img/no_results.svg";
 import { createGraphData, createNewGraphData, CubeData, CubeFlowProps, extractCubeName, extractSQLInfo, extractTableName, FieldData, MapData, newExtractAllJoins } from "./utils";
 import CustomNode from "./CubeNode";
 import { getLayoutedElements } from "./LayoutedElements";
-import { useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
+import { skipToken, useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "../LoadingAndErrorWrapper";
 import { BrowseContainer, BrowseHeader, BrowseSection, CenteredEmptyState } from "metabase/browse/components/BrowseContainer.styled";
 import { Box } from "@mantine/core";
+import { GetCubeDataRequest } from "metabase-types/api";
 
 const nodeTypes = {
   custom: CustomNode,
@@ -28,17 +29,17 @@ const nodeTypes = {
 const CubeFlow = () => {
   const { data: dbData, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
   const databases = dbData?.data;
-  const [companyName, setCompanyName] = useState<string>('');
-
-  useEffect(() => {
+  const companyName = useMemo(() => {
     if (databases) {
       const cubeDatabase = databases.find(database => database.is_cube === true);
-      if (cubeDatabase) {
-        setCompanyName(cubeDatabase.company_name!);
-      }
+      return cubeDatabase ? cubeDatabase.company_name : '';
     }
+    return '';
   }, [databases]);
-  const { data, isLoading, error } = useGetCubeDataQuery({ companyName });
+
+  const { data, isLoading, error } = useGetCubeDataQuery(
+    companyName ? { companyName } : skipToken
+  );
   const [showDefinition, setShowDefinition] = useState<boolean>(false)
   const reactFlowInstanceRef = useRef<ReactFlowInstance | null>(null);
 

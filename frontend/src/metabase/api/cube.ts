@@ -5,10 +5,10 @@ import { invalidateTags, tag } from "./tags";
 
 export const cubeDataApi = CubeApi.injectEndpoints({
     endpoints: builder => ({
-        getCubeData: builder.query<CubeDataResponse, GetCubeDataRequest | void>({
-            query: (companyName) => ({
+        getCubeData: builder.query<CubeDataResponse, GetCubeDataRequest>({
+            query: (data: GetCubeDataRequest) => ({
                 method: 'GET',
-                url: `/company/company-cube-files/${companyName}`,
+                url: `/company/company-cube-files/${data.companyName}`,
             }),
             transformResponse: (response: Record<string, string>) => {
                 return Object.entries(response).map(([fileName, content]) => ({
@@ -31,7 +31,7 @@ export const cubeDataApi = CubeApi.injectEndpoints({
             }),
             invalidatesTags: (_, error, { }) =>
                 invalidateTags(error, [
-                  tag("company-name"),
+                    tag("company-name"),
                 ]),
         })
     })
