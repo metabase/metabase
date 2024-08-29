@@ -17,7 +17,6 @@ services:
       - MB_DB_PASS=${MB_DB_PASS}
       - REACT_APP_SEMANTIC=${REACT_APP_SEMANTIC}
       - REACT_APP_WEBSOCKET_SERVER=${REACT_APP_WEBSOCKET_SERVER}
-      - REACT_APP_SERVER=${REACT_APP_SERVER}
       - VERSION=${VERSION}
     restart: always
     networks:

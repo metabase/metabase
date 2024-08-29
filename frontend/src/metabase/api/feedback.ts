@@ -1,8 +1,8 @@
-import { FeedbackApi } from "./feedbackApi";
 import { invalidateTags, listTag } from "./tags";
 import type { Feedback } from "metabase-types/api";
+import { Api } from "./api";
 // Update the API configuration for feedback
-export const feedbackApi = FeedbackApi.injectEndpoints({
+export const feedbackApi = Api.injectEndpoints({
   endpoints: builder => ({
     submitFeedback: builder.mutation<void, Feedback>({
       query: body => ({
