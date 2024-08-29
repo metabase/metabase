@@ -28,6 +28,7 @@ import { getIcon } from "../utils";
 
 import { Cell, NameColumn, TableRow } from "./CardTable.styled";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
+import S from "./ModelsTable.module.css";
 import { getMetricDescription, sortCards } from "./utils";
 
 type MetricsTableProps = {
@@ -267,7 +268,11 @@ function CollectionCell({ metric }: { metric?: MetricResult }) {
       {...collectionProps}
     >
       {metric?.collection ? (
-        <Link to={Urls.collection(metric.collection)} onClick={stopPropagation}>
+        <Link
+          className={S.collectionLink}
+          to={Urls.collection(metric.collection)}
+          onClick={stopPropagation}
+        >
           {content}
         </Link>
       ) : (
