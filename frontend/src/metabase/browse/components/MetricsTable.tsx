@@ -17,6 +17,7 @@ import {
 import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import Link from "metabase/core/components/Link";
+import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
@@ -27,7 +28,6 @@ import type { MetricResult } from "../types";
 import { getIcon } from "../utils";
 
 import { Cell, NameColumn, TableRow } from "./CardTable.styled";
-import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import S from "./ModelsTable.module.css";
 import { getMetricDescription, sortCards } from "./utils";
 
@@ -286,9 +286,9 @@ function DescriptionCell({ metric }: { metric?: MetricResult }) {
   return (
     <Cell {...descriptionProps}>
       {metric ? (
-        <EllipsifiedWithMarkdownTooltip>
+        <MarkdownPreview lineClamp={12}>
           {getMetricDescription(metric) || ""}
-        </EllipsifiedWithMarkdownTooltip>
+        </MarkdownPreview>
       ) : (
         <SkeletonText />
       )}

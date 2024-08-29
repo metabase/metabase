@@ -9,6 +9,7 @@ interface Props {
   children: string;
   className?: string;
   tooltipMaxWidth?: ComponentProps<typeof Tooltip>["maxWidth"];
+  lineClamp?: number;
 }
 
 const ALLOWED_ELEMENTS: string[] = [];
@@ -17,6 +18,7 @@ export const MarkdownPreview = ({
   children,
   className,
   tooltipMaxWidth,
+  lineClamp,
 }: Props) => {
   const { isTruncated, ref } = useIsTruncated();
 
@@ -35,7 +37,7 @@ export const MarkdownPreview = ({
       placement="bottom"
       isEnabled={isTruncated}
       tooltip={
-        <Markdown dark disallowHeading unstyleLinks>
+        <Markdown dark disallowHeading unstyleLinks lineClamp={lineClamp}>
           {children}
         </Markdown>
       }

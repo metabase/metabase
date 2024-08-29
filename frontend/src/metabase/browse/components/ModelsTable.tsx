@@ -18,6 +18,7 @@ import { Columns } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import Link from "metabase/core/components/Link";
+import { MarkdownPreview } from "metabase/core/components/MarkdownPreview";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Box, FixedSizeIcon, Flex, Icon, Skeleton } from "metabase/ui";
@@ -29,7 +30,6 @@ import type { ModelResult } from "../types";
 import { getIcon } from "../utils";
 
 import { Cell, NameColumn, TableRow } from "./CardTable.styled";
-import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import S from "./ModelsTable.module.css";
 import { getModelDescription, sortCards } from "./utils";
 
@@ -276,9 +276,9 @@ function DescriptionCell({ model }: { model?: ModelResult }) {
   return (
     <Cell {...descriptionProps}>
       {model ? (
-        <EllipsifiedWithMarkdownTooltip>
+        <MarkdownPreview lineClamp={12}>
           {getModelDescription(model) || ""}
-        </EllipsifiedWithMarkdownTooltip>
+        </MarkdownPreview>
       ) : (
         <SkeletonText />
       )}
