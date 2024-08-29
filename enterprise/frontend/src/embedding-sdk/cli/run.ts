@@ -6,17 +6,21 @@ import {
 } from "./constants/messages";
 import {
   addDatabaseConnectionStep,
+  askForTenancyColumns,
   checkIfReactProject,
   checkIsDockerRunning,
   checkSdkAvailable,
   createApiKey,
   createModelsAndXrays,
   generateCredentials,
+  generateExpressServerFile,
   generateReactComponentFiles,
   pickDatabaseTables,
   pollMetabaseInstance,
+  setupEmbeddingSettings,
   setupLicense,
   setupMetabaseInstance,
+  setupPermissions,
   showMetabaseCliTitle,
   startLocalMetabaseContainer,
 } from "./steps";
@@ -39,11 +43,20 @@ export const CLI_STEPS = [
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
+  { id: "setupLicense", executeStep: setupLicense },
+
+  // The following steps require the license to be defined first.
+  { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
+  { id: "askForTenancyColumns", executeStep: askForTenancyColumns },
+  { id: "setupPermissions", executeStep: setupPermissions },
   {
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
   },
-  { id: "setupLicense", executeStep: setupLicense },
+  {
+    id: "generateExpressServerFile",
+    executeStep: generateExpressServerFile,
+  },
 ] as const;
 
 export async function runCli() {
