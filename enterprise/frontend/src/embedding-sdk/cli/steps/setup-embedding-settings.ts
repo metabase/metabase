@@ -30,6 +30,10 @@ export const setupEmbeddingSettings: CliStepMethod = async state => {
       "jwt-group-sync": true,
       "jwt-user-provisioning-enabled?": true,
       "jwt-shared-secret": HARDCODED_JWT_SHARED_SECRET,
+
+      // This is a dummy required to activate the JWT feature,
+      // otherwise the API returns "SSO has not been enabled"
+      "jwt-identity-provider-uri": state.instanceUrl ?? "",
     };
   }
 
