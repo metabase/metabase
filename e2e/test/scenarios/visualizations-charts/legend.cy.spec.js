@@ -7,6 +7,7 @@ import {
   popover,
   restore,
   scatterBubbleWithColor,
+  trendLine,
   visitDashboard,
 } from "e2e/support/helpers";
 
@@ -62,7 +63,7 @@ const MANY_LEGEND_ITEMS_QUESTION = {
 };
 
 const SPLIT_AXIS_QUESTION = {
-  name: "two aggregations and split axis",
+  name: "two aggregations + split axis + trendline",
   display: "combo",
   query: {
     "source-table": ORDERS_ID,
@@ -71,6 +72,9 @@ const SPLIT_AXIS_QUESTION = {
       ["sum", ["field", ORDERS.QUANTITY, { "base-type": "type/Integer" }]],
     ],
     breakout: [ORDERS_CREATED_AT_FIELD_REF],
+  },
+  visualization_settings: {
+    "graph.show_trendline": true,
   },
 };
 
@@ -221,6 +225,7 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Sum of Quantity").should("exist");
         cy.findByText("30,000").should("exist");
       });
+      trendLine().should("have.length", 2);
 
       hideSeries(0); // Sum of Total
 
@@ -233,6 +238,7 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Sum of Quantity").should("exist");
         cy.findByText("30,000").should("exist");
       });
+      trendLine().should("have.length", 1);
 
       showSeries(0);
       hideSeries(1);
@@ -246,6 +252,7 @@ describe("scenarios > visualizations > legend", () => {
         cy.findByText("Sum of Quantity").should("not.exist");
         cy.findByText("30,000").should("not.exist");
       });
+      trendLine().should("have.length", 1);
     });
 
     getDashboardCard(3).within(() => {

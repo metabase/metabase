@@ -128,9 +128,13 @@ export const getTrendLines = (
     return;
   }
 
+  const visibleSeriesModels = seriesModels.filter(
+    seriesModel => seriesModel.visible,
+  );
+
   const seriesModelsWithTrends = getSeriesModelsWithTrends(
     rawSeries,
-    seriesModels,
+    visibleSeriesModels,
   );
 
   if (seriesModelsWithTrends.length === 0) {
