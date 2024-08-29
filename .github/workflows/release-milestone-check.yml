@@ -13,6 +13,12 @@ on:
         required: true
   pull_request: # FIXME for testing
 
+env:
+  GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+  GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+  SLACK_RELEASE_CHANNEL: "bot-testing"
+  SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
 jobs:
   check-milestone:
     permissions: write-all
@@ -25,10 +31,6 @@ jobs:
       - name: Prepare build scripts
         run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
       - uses: actions/github-script@v7
-        env:
-          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
-          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         with:
           script: | # js
             const {
