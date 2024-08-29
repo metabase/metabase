@@ -13,20 +13,25 @@ export const ANALYTICS_CSS_SNIPPET = `
   padding: 30px 0;
 }
 
-.analytics-header {
+.analytics-header,
+.analytics-header-left,
+.analytics-header-right {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 30px 0;
   column-gap: 15px;
 }
 
+.analytics-header {
+  justify-content: space-between;
+}
+
+.analytics-header-left {
+  justify-content: flex-start;
+}
+
 .analytics-header-right {
-  display: flex;
-  align-items: center;
   justify-content: flex-end;
-  padding: 30px 0;
-  column-gap: 15px;
 }
 
 .analytics-header-right > a {
@@ -45,5 +50,16 @@ export const ANALYTICS_CSS_SNIPPET = `
 .dashboard-select:focus {
   outline: 1px solid #509EE3;
   border-radius: 2px;
+}
+
+.analytics-auth-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+
+  color: var(--mb-color-text-primary);
+  font-size: 24px;
+  text-align: center;
 }
 `.trim();

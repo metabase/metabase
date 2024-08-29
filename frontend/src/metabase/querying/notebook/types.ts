@@ -42,7 +42,7 @@ export interface NotebookStepAction {
   action: (args: { openStep: (id: string) => void }) => void;
 }
 
-export interface NotebookStepUiComponentProps {
+export interface NotebookStepProps {
   step: NotebookStep;
   query: Lib.Query;
   stageIndex: number;
@@ -51,6 +51,14 @@ export interface NotebookStepUiComponentProps {
   reportTimezone: string;
   readOnly?: boolean;
   updateQuery: (query: Lib.Query) => Promise<void>;
+}
+
+export interface NotebookStepHeaderProps {
+  step: NotebookStep;
+  title: string;
+  color: string;
+  canRevert: boolean;
+  onRevert?: () => void;
 }
 
 export type OpenSteps = Record<NotebookStep["id"], boolean>;

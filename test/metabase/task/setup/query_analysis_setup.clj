@@ -39,10 +39,10 @@
       (t2/delete! :model/QueryAnalysis :card_id [:in (map :id [c1 c2 c3 c4 archived invalid])])
 
       ;; Make sure some other card has analysis
-      (query-analysis/analyze-card! c3)
+      (query-analysis/analyze!* c3)
 
       ;; And attempt to analyze an invalid query
-      (query-analysis/analyze-card! invalid)
+      (query-analysis/analyze!* invalid)
 
       (mt/call-with-map-params f [c1 c2 c3 c4 archived invalid]))))
 

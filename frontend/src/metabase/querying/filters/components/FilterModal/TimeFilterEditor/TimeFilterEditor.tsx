@@ -67,7 +67,7 @@ export function TimeFilterEditor({
   };
 
   return (
-    <HoverParent>
+    <HoverParent data-testid="time-filter-editor">
       <Grid grow>
         <Grid.Col span="auto">
           <FilterTitle

@@ -11,6 +11,7 @@ import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-va
 import { css, Global, useTheme } from "@emotion/react";
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
@@ -30,6 +31,7 @@ const globalStyles = css`
     ${rootStyle}
   }
 
+  ${saveDomImageStyles}
   ${baseStyle}
 `;
 
