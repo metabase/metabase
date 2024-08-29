@@ -12,7 +12,8 @@ import {
 
 import { createNativeQuestion } from "../../../support/helpers/api/createNativeQuestion";
 
-const TEST_TABLE = "scoreboard_actions";
+const SCOREBOARD_TABLE = "scoreboard_actions";
+const COLORS_TABLE = "colors27745";
 
 describeEE("query validator", { tags: "@external" }, () => {
   beforeEach(() => {
@@ -21,140 +22,124 @@ describeEE("query validator", { tags: "@external" }, () => {
     setTokenFeatures("all");
   });
 
-  describe("fields", () => {
-    it("picks up inactive and unknown fields", () => {
-      resetTestTable({ type: "postgres", table: TEST_TABLE });
-      resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: TEST_TABLE,
-      });
+  it("picks up inactive and unknown fields and tables", () => {
+    resetTestTable({ type: "postgres", table: SCOREBOARD_TABLE });
+    resetTestTable({ type: "postgres", table: COLORS_TABLE });
 
-      createNativeQuestion({
-        name: "Native inactive field",
-        native: { query: "Select team_name from scoreboard_actions" },
-        display: "table",
-        database: WRITABLE_DB_ID,
-      });
-
-      createNativeQuestion({
-        name: "Native unknown field",
-        native: { query: "Select foo from scoreboard_actions" },
-        display: "table",
-        database: WRITABLE_DB_ID,
-      });
-
-      cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-        ({ body: tables }) => {
-          const scoreboardTable = tables.find(
-            table => table.name === TEST_TABLE,
-          );
-
-          cy.request(`/api/table/${scoreboardTable.id}/query_metadata`).then(
-            ({ body: { fields } }) => {
-              const teamNameField = fields.find(
-                field => field.name === "team_name",
-              );
-
-              createQuestion({
-                name: "Structured inactive field",
-                query: {
-                  "source-table": scoreboardTable.id,
-                  fields: [["field", teamNameField.id]],
-                },
-                display: "table",
-                database: WRITABLE_DB_ID,
-              });
-            },
-          );
-        },
-      );
-
-      queryWritableDB(
-        `ALTER TABLE ${TEST_TABLE} RENAME COLUMN team_name TO team_name_`,
-      );
-
-      resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: TEST_TABLE,
-      });
-
-      cy.visit("/admin/troubleshooting/query-validator");
-
-      cy.findAllByRole("row")
-        .contains("tr", "Native inactive field")
-        .and("contain.text", "Field team_name is inactive");
-
-      cy.findAllByRole("row")
-        .contains("tr", "Native unknown field")
-        .and("contain.text", "Field foo is unknown");
-
-      cy.findAllByRole("row")
-        .contains("tr", "Structured inactive field")
-        .and("contain.text", "Field team_name is inactive");
+    resyncDatabase({
+      dbId: WRITABLE_DB_ID,
     });
-  });
 
-  describe("tables", () => {
-    it("should pick up inactive and unknown tables", () => {
-      resetTestTable({ type: "postgres", table: TEST_TABLE });
-      resyncDatabase(WRITABLE_DB_ID);
-
-      createNativeQuestion({
-        name: "Native inactive table",
-        native: { query: "Select team_name from scoreboard_actions" },
-        display: "table",
-        database: WRITABLE_DB_ID,
-      });
-
-      createNativeQuestion({
-        name: "Native unknown table",
-        native: { query: "Select * from electric_bugaloo" },
-        display: "line",
-      });
-
-      cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
-        ({ body: tables }) => {
-          const scoreboardTable = tables.find(
-            table => table.name === TEST_TABLE,
-          );
-
-          cy.request(`/api/table/${scoreboardTable.id}/query_metadata`).then(
-            ({ body: { fields } }) => {
-              const teamNameField = fields.find(
-                field => field.name === "team_name",
-              );
-
-              createQuestion({
-                name: "Structured inactive table",
-                query: {
-                  "source-table": scoreboardTable.id,
-                  fields: [["field", teamNameField.id]],
-                },
-                display: "table",
-                database: WRITABLE_DB_ID,
-              });
-            },
-          );
-        },
-      );
-
-      queryWritableDB(`DROP TABLE ${TEST_TABLE}`);
-
-      resyncDatabase(WRITABLE_DB_ID);
-      cy.visit("/admin/troubleshooting/query-validator");
-
-      cy.findAllByRole("row")
-        .contains("tr", "Native inactive table")
-        .and("contain.text", "Table scoreboard_actions is inactive");
-
-      cy.findAllByRole("row")
-        .contains("tr", "Native unknown table")
-        .and("contain.text", "Table electric_bugaloo is unknown");
-
-      cy.findAllByRole("row")
-        .contains("tr", "Structured inactive table")
-        .and("contain.text", "Table scoreboard_actions is inactive");
+    createNativeQuestion({
+      name: "Native inactive field",
+      native: { query: `Select team_name from ${SCOREBOARD_TABLE}` },
+      display: "table",
+      database: WRITABLE_DB_ID,
     });
+
+    createNativeQuestion({
+      name: "Native unknown field",
+      native: { query: `Select foo from ${SCOREBOARD_TABLE}` },
+      display: "table",
+      database: WRITABLE_DB_ID,
+    });
+
+    createNativeQuestion({
+      name: "Native inactive table",
+      native: { query: `Select team_name from ${COLORS_TABLE}` },
+      display: "table",
+      database: WRITABLE_DB_ID,
+    });
+
+    createNativeQuestion({
+      name: "Native unknown table",
+      native: { query: "Select * from electric_bugaloo" },
+      display: "line",
+    });
+
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body: tables }) => {
+        const scoreboardTable = tables.find(
+          table => table.name === SCOREBOARD_TABLE,
+        );
+
+        cy.request(`/api/table/${scoreboardTable.id}/query_metadata`).then(
+          ({ body: { fields } }) => {
+            const teamNameField = fields.find(
+              field => field.name === "team_name",
+            );
+
+            createQuestion({
+              name: "Structured inactive field",
+              query: {
+                "source-table": scoreboardTable.id,
+                fields: [["field", teamNameField.id]],
+              },
+              display: "table",
+              database: WRITABLE_DB_ID,
+            });
+          },
+        );
+      },
+    );
+
+    cy.request(`/api/database/${WRITABLE_DB_ID}/schema/public`).then(
+      ({ body: tables }) => {
+        const colorsTable = tables.find(table => table.name === COLORS_TABLE);
+
+        cy.request(`/api/table/${colorsTable.id}/query_metadata`).then(
+          ({ body: { fields } }) => {
+            const colorNameField = fields.find(field => field.name === "name");
+
+            createQuestion({
+              name: "Structured inactive table",
+              query: {
+                "source-table": colorsTable.id,
+                fields: [["field", colorNameField.id]],
+              },
+              display: "table",
+              database: WRITABLE_DB_ID,
+            });
+          },
+        );
+      },
+    );
+
+    queryWritableDB(
+      `ALTER TABLE ${SCOREBOARD_TABLE} RENAME COLUMN team_name TO team_name_`,
+    );
+
+    queryWritableDB(`DROP TABLE ${COLORS_TABLE}`);
+
+    resyncDatabase({
+      dbId: WRITABLE_DB_ID,
+    });
+
+    cy.visit("/admin/troubleshooting/query-validator");
+
+    cy.findAllByRole("row")
+      .contains("tr", "Native inactive field")
+      .and("contain.text", "Field team_name is inactive");
+
+    cy.findAllByRole("row")
+      .contains("tr", "Native unknown field")
+      .and("contain.text", "Field foo is unknown");
+
+    cy.findAllByRole("row")
+      .contains("tr", "Structured inactive field")
+      .and("contain.text", "Field team_name is inactive");
+
+    cy.findAllByRole("row")
+      .contains("tr", "Native inactive table")
+      .and("contain.text", "Table colors27745 is inactive");
+
+    cy.findAllByRole("row")
+      .contains("tr", "Native unknown table")
+      .and("contain.text", "Table electric_bugaloo is unknown");
+
+    cy.findAllByRole("row")
+      .contains("tr", "Structured inactive table")
+      .and("contain.text", "Table colors27745 is inactive");
   });
 });
 
