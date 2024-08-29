@@ -6,6 +6,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type {
   CollectionItemModel,
   DatabaseId,
+  RecentContexts,
   RecentItem,
   TableId,
 } from "metabase-types/api";
@@ -52,6 +53,8 @@ const QUESTION_PICKER_MODELS: CollectionItemModel[] = ["card"];
 const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
+
+const RECENTS_CONTEXT: RecentContexts[] = ["selections"];
 
 const options: DataPickerModalOptions = {
   ...defaultOptions,
@@ -198,17 +201,17 @@ export const DataPickerModal = ({
   return (
     <EntityPickerModal
       canSelectItem
-      recentFilter={recentFilter}
       defaultToRecentTab={false}
       initialValue={value}
       options={options}
+      recentsContext={RECENTS_CONTEXT}
+      recentFilter={recentFilter}
       searchParams={searchParams}
       selectedItem={value ?? null}
       tabs={tabs}
       title={title}
       onClose={onClose}
       onItemSelect={handleItemSelect}
-      recentsContext={["selections"]}
     />
   );
 };
