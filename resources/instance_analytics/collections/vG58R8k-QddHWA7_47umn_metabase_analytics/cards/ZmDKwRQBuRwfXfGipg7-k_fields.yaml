@@ -244,8 +244,8 @@ result_metadata:
   fk_target_field_id:
   - Internal Metabase Database
   - public
-  - action
-  - archived
+  - v_fields
+  - entity_id
   id:
   - Internal Metabase Database
   - public
