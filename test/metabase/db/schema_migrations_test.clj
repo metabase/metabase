@@ -1562,7 +1562,7 @@
     (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)))}
-                            #_{:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
       (migrate!)
       (is (=? [{:model    "root"
                 :strategy "ttl"
