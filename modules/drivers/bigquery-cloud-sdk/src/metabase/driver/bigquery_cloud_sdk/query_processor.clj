@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common :as driver.common]
-   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -983,11 +982,6 @@
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_driver]
   :mysql)
-
-;; convert LocalDate to an OffsetDateTime in UTC since BigQuery doesn't handle LocalDates as we'd like
-(defmethod driver.sql/->prepared-substitution [:bigquery-cloud-sdk LocalDate]
-  [driver t]
-  (driver.sql/->prepared-substitution driver (t/offset-date-time t (t/local-time 0) (t/zone-offset 0))))
 
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk FieldFilter]
   [driver                            :- :keyword
