@@ -226,7 +226,7 @@ function NameCell({ metric }: { metric?: MetricResult }) {
         <Icon
           size={16}
           {...icon}
-          color={"var(--mb-color-brand)"}
+          color="var(--mb-color-icon-primary)"
           style={{ flexShrink: 0 }}
         />
         {metric ? (

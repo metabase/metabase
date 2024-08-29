@@ -40,7 +40,7 @@ export function BrowseMetrics() {
               <Group spacing="sm">
                 <Icon
                   size={24}
-                  color={"var(--mb-color-icon-primary)"}
+                  color="var(--mb-color-icon-primary)"
                   name="metric"
                 />
                 {t`Metrics`}

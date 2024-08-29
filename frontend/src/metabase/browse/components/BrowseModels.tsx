@@ -95,7 +95,11 @@ export const BrowseModels = () => {
           >
             <Title order={1} color="text-dark">
               <Group spacing="sm">
-                <Icon size={24} color={"var(--mb-color-brand)"} name="model" />
+                <Icon
+                  size={24}
+                  color="var(--mb-color-icon-primary)"
+                  name="model"
+                />
                 {t`Models`}
               </Group>
             </Title>
