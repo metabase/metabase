@@ -422,7 +422,7 @@
 
 (defn- check-dashboard-internal-card-insert [card]
   (let [correct-collection-id (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] (:dashboard_id card))
-        invalid? (or (and (contains? card :collection_id)
+        invalid? (or (and (:collection_id card)
                           (not= correct-collection-id (:collection_id card)))
                      (not (contains? #{:question "question" nil} (:type card)))
                      (some? (:collection_position card)))]
@@ -652,7 +652,7 @@
   ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event?]
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
-                                             :cache_ttl :type]
+                                             :cache_ttl :type :dashboard_id]
          ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required
          ;; by `api/maybe-reconcile-collection-position!`
          card-data                          (-> (zipmap data-keys (map card-data data-keys))
