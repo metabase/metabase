@@ -28,7 +28,7 @@ export function EmbeddingSettings() {
       }),
     );
   }
-  updateSetting;
+
   return (
     <Box p="0.5rem 1rem 0">
       <SettingHeader

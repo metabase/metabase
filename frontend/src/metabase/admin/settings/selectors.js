@@ -1,11 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { SMTPConnectionForm } from "metabase/admin/settings/components/Email/SMTPConnectionForm";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DashboardSelector } from "metabase/components/DashboardSelector";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
@@ -24,6 +23,7 @@ import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
 import { EmbeddingSettings } from "./components/EmbeddingSettings";
+import { EmbeddingSdkSettings } from "./components/EmbeddingSettings/EmbeddingSdkSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "./components/UploadSettings";
@@ -478,39 +478,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
     ],
   },
   "embedding-in-other-applications/sdk": {
-    settings: [
-      {
-        key: "-breadcrumb",
-        widget: () => {
-          return (
-            <Breadcrumbs
-              size="large"
-              crumbs={[
-                [
-                  t`Embedding`,
-                  "/admin/settings/embedding-in-other-applications",
-                ],
-                [t`Embedding SDK for React`],
-              ]}
-            />
-          );
-        },
-      },
-      {
-        key: "authorized-cors-origins",
-        display_name: t`Cross-Origin Resource Sharing (CORS)`,
-        description: jt`Enter the origins for the websites or web apps where you want to allow SDK embedding, separated by a space. Here are the ${(
-          <ExternalLink
-            key="specs"
-            href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors"
-          >
-            {t`exact specifications`}
-          </ExternalLink>
-        )} for what can be entered.`,
-        placeholder: "https://*.example.com",
-        type: "string",
-      },
-    ],
+    component: EmbeddingSdkSettings,
+    settings: [],
   },
   "embedding-in-other-applications/full-app": {
     settings: [
