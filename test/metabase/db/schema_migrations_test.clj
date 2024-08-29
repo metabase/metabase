@@ -2469,8 +2469,8 @@
             (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
 
 (deftest populate-new-permission-fields-works
-  (testing "Migration v51.2024-08-21T08:33:10"
-    (impl/test-migrations ["v51.2024-08-21T08:33:06" "v51.2024-08-21T08:33:10"] [migrate!]
+  (testing "Migration v49.2024-08-21T08:33:10"
+    (impl/test-migrations ["v49.2024-08-21T08:33:06" "v49.2024-08-21T08:33:10"] [migrate!]
       (let [read-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
                                                                      {:slug "foo"}))
             read-coll-path (perms/collection-read-path read-coll-id)
