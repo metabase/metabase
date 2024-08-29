@@ -59,7 +59,7 @@
 ;;
 
 (mu/defn query->source-table-ids :- [:set [:or [:= ::native] ::lib.schema.id/table]]
-  "Return a sequence of all Table IDs referenced by `query`."
+  "Return a sequence of all Table IDs referenced by `query`, and/or the ::native keyword for native queries."
   [query :- :map]
   (set
    (flatten

@@ -270,6 +270,20 @@
                             qp.perms/*card-id* model-id]
                     (check! query)))))))))))
 
+(deftest inactive-table-test
+  (testing "Make sure a query on an inactive table fails to run"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [Database db {}
+                     Table    table {:db_id (u/the-id db)
+                                     :active false}]
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Table [\d,]+ is inactive."
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)}})))))))
+
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
     (mt/with-non-admin-groups-no-root-collection-perms
