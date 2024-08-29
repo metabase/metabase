@@ -11,7 +11,6 @@ on:
       commit:
         description: "A full-length commit SHA-1 hash"
         required: true
-  pull_request: # FIXME for testing
 
 jobs:
   check-milestone:
@@ -27,7 +26,7 @@ jobs:
       - uses: actions/github-script@v7
         env:
           GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
-          SLACK_RELEASE_CHANNEL: "bot-testing"
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
@@ -36,12 +35,8 @@ jobs:
               sendMilestoneCheckMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            // const version = '${{ inputs.version }}';
-            // const commitHash = '${{ inputs.commit }}';
-
-            // FIXME for testing
-            const version = 'v0.50.23';
-            const commitHash = '961a67397abf4010d2a575132bf53369f511c7c3';
+            const version = '${{ inputs.version }}';
+            const commitHash = '${{ inputs.commit }}';
 
             const issueCount = await checkMilestoneForRelease({
               github,
