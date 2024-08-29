@@ -63,9 +63,7 @@ class CreateAlertModalContentInner extends Component {
     this.props.fetchPulseFormInput();
   }
 
-  onAlertChange = alert => {
-    this.setState({ alert });
-  };
+  onAlertChange = alert => this.setState({ alert });
 
   onCreateAlert = async () => {
     const { question, createAlert, updateUrl, onAlertCreated } = this.props;

@@ -4,7 +4,6 @@ import { assoc, updateIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-// import Toggle from "metabase/core/components/Toggle";
 import { useListChannelsQuery } from "metabase/api/channel";
 import CS from "metabase/css/core/index.css";
 import { createChannel } from "metabase/lib/pulse";
