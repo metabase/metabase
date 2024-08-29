@@ -48,7 +48,7 @@ export const generateExpressServerFile: CliStepMethod = async state => {
 
   const snippet = getExpressServerSnippet({
     instanceUrl,
-    tenantIds: state.tenantIds ?? [],
+    tenantIdsMap: state.tenantIdsMap ?? [],
   });
 
   await fs.writeFile(`${mockServerDir}/server.js`, snippet.trim());

@@ -2,11 +2,7 @@ import chalk, { green } from "chalk";
 
 import { HARDCODED_USERS } from "../constants/hardcoded-users";
 
-import {
-  CONTAINER_NAME,
-  SDK_NPM_LINK,
-  USER_ATTRIBUTE_CUSTOMER_ID,
-} from "./config";
+import { CONTAINER_NAME, SDK_NPM_LINK } from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
@@ -28,16 +24,6 @@ export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docke
 export const INSTANCE_CONFIGURED_MESSAGE = `
   The instance has already been configured.
   ${DELETE_CONTAINER_MESSAGE}
-`;
-
-export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
-  Your have not selected any tables with a multi-tenancy column.
-  You can still use the SDK, but you will not be able to sandbox your tables.
-`;
-
-export const NO_TENANCY_COLUMN_WARNING_MESSAGE = `
-  Your have not selected any tables with a multi-tenancy column.
-  You can still use the SDK, but you will not be able to sandbox your tables.
 `;
 
 export const getGeneratedComponentFilesMessage = (path: string) => `
@@ -69,7 +55,7 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
 
 export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
   At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
-  You can add your tenant's IDs to the "${USER_ATTRIBUTE_CUSTOMER_ID}" user attribute in settings.
+  You can add your tenant ids to the user attribute in settings.
 `;
 
 export const SETUP_PRO_LICENSE_MESSAGE = `

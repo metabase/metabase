@@ -24,6 +24,7 @@ interface SampleFromTableOptions {
 }
 
 type TenantId = string | number;
+type TenantIdsMap = Record<string, TenantId[]>;
 
 /**
  * Sample tenant IDs from multiple chosen tables.
@@ -31,17 +32,21 @@ type TenantId = string | number;
  */
 export async function sampleTenantIdsFromTables(
   options: SampleFromTableOptions,
-): Promise<TenantId[] | null> {
+): Promise<TenantIdsMap | null> {
   const { chosenTables, databaseId, cookie, instanceUrl, tenancyColumnNames } =
     options;
 
+  const tenantIdsMap: TenantIdsMap = {};
+
   // Get sample values for the tenancy column.
   for (const table of chosenTables) {
+    const columnName = tenancyColumnNames[table.id];
+
     const values = await sampleTenantIds({
       table,
       limit: 15,
       databaseId,
-      columnName: tenancyColumnNames[table.id],
+      columnName,
 
       cookie,
       instanceUrl,
@@ -49,11 +54,15 @@ export async function sampleTenantIdsFromTables(
 
     // Skip this column if it has fewer rows than our mock user.
     if (values !== null && values.length >= HARDCODED_USERS.length) {
-      return values;
+      tenantIdsMap[columnName] = values;
     }
   }
 
-  return null;
+  if (Object.keys(tenantIdsMap).length === 0) {
+    return null;
+  }
+
+  return tenantIdsMap;
 }
 
 /**

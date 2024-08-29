@@ -130,7 +130,7 @@ export const setupPermissions: CliStepMethod = async state => {
   }
 
   try {
-    const tenantIds = await sampleTenantIdsFromTables({
+    const tenantIdsMap = await sampleTenantIdsFromTables({
       chosenTables: state.chosenTables ?? [],
       databaseId: state.databaseId ?? 0,
       tenancyColumnNames,
@@ -141,13 +141,13 @@ export const setupPermissions: CliStepMethod = async state => {
 
     // The tables don't have enough tenancy column values.
     // They have to set up the "customer_id" user attribute by themselves.
-    if (!tenantIds) {
+    if (!tenantIdsMap) {
       console.log(chalk.yellow(NOT_ENOUGH_TENANCY_COLUMN_ROWS));
 
       return [{ type: "success" }, state];
     }
 
-    return [{ type: "success" }, { ...state, tenantIds }];
+    return [{ type: "success" }, { ...state, tenantIdsMap }];
   } catch (error) {
     const message = `Failed to query tenancy column values (e.g. customer_id)`;
 
