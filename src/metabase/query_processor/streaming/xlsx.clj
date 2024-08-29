@@ -20,6 +20,7 @@
   (:import
    (java.io OutputStream)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (org.apache.poi.openxml4j.util ZipSecureFile)
    (org.apache.poi.ss SpreadsheetVersion)
    (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook DataConsolidateFunction)
    (org.apache.poi.ss.util CellReference CellRangeAddress AreaReference)
@@ -564,13 +565,19 @@
         (assoc :aggregation-functions agg-fns)
         (assoc :pivot-grouping-key (qp.pivot.postprocess/pivot-grouping-key titles)))))
 
+;; Below, we need to provide an AreaReference to create a pivot table.
+;; Creating an AreaReference will 'realize' every CellReference inside it, and so the larger the AreaReference,
+;; the more memory we use, and the larger the filesize.
+;; Unfortunately, we can't avoid this, so we try to only create a reference that matches the row count, which we can
+;; only estimate using fingerprint distinct counts (which cannot be guaranteed correct).
+;; So, by default we use some large number as a basis.
+;; We have to set the min Inflate Ratio lower than the default's 0.01 because otherwise we get a 'zip bomb detected' error.
+;; Since we're the ones creating the file, we can lower the ratio to get what we want.
+(ZipSecureFile/setMinInflateRatio 0.001)
 (defn- init-native-pivot
   [{:keys [pivot-grouping-key] :as pivot-spec}
    {:keys [ordered-cols col-settings viz-settings format-rows?]}]
-  (let [counts                      (remove nil? (map #(get-in % [:fingerprint :global :distinct-count]) ordered-cols))
-        row-count-estimate          (if (seq counts)
-                                      (apply max counts)
-                                      2000)
+  (let [row-count-estimate          (apply max (conj (remove nil? (map #(get-in % [:fingerprint :global :distinct-count]) ordered-cols)) 20000))
         idx-shift                   (fn [indices]
                                       (map (fn [idx]
                                              (if (> idx pivot-grouping-key)
@@ -590,9 +597,9 @@
         typed-cell-styles           (compute-typed-cell-styles wb data-format)
         data-sheet                  (spreadsheet/select-sheet "data" wb)
         pivot-sheet                 (spreadsheet/select-sheet "pivot" wb)
-        area-ref                    (indices->area-ref (int (* 1.5 row-count-estimate)) (dec (count ordered-cols)))
         col-names                   (common/column-titles ordered-cols col-settings format-rows?)
         _                           (add-row! data-sheet col-names ordered-cols col-settings cell-styles typed-cell-styles)
+        area-ref                    (indices->area-ref row-count-estimate (dec (count ordered-cols)))
         ^XSSFPivotTable pivot-table (.createPivotTable ^XSSFSheet pivot-sheet
                                                        ^AreaReference area-ref
                                                        (CellReference. 0 0)
