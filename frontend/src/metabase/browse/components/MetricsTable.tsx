@@ -33,7 +33,7 @@ import {
   CollectionTableCell,
   NameColumn,
   TableRow,
-} from "./CardTable.styled";
+} from "./BrowseTable.styled";
 import { getMetricDescription, sortCards } from "./utils";
 
 type MetricsTableProps = {

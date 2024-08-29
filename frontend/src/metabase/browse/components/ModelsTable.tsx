@@ -35,7 +35,7 @@ import {
   CollectionTableCell,
   NameColumn,
   TableRow,
-} from "./CardTable.styled";
+} from "./BrowseTable.styled";
 import { getModelDescription, sortCards } from "./utils";
 
 export interface ModelsTableProps {
