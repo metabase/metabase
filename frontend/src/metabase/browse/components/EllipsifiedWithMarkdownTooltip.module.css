@@ -12,6 +12,11 @@ div.inlineMarkdown {
   ol,
   p,
   ul {
+    /**
+     * These elements need to be inline for the truncation detection to work
+     * otherwise the tooltip will always render (event for short descriptions that are not truncated).
+     * The description is meant to render on a single line so changing the elements to be inline should not matter visually.
+     */
     display: inline;
   }
 }
