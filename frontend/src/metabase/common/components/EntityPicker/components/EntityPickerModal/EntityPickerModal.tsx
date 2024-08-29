@@ -1,5 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -54,14 +54,16 @@ export const defaultOptions: EntityPickerModalOptions = {
 // needs to be above popovers and bulk actions
 export const ENTITY_PICKER_Z_INDEX = BULK_ACTIONS_Z_INDEX;
 
+export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
+  "selections",
+  "views",
+];
+
 export interface EntityPickerModalProps<Model extends string, Item> {
   title?: string;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
-  onConfirm?: () => void;
-  onItemSelect: (item: Item) => void;
   canSelectItem: boolean;
-  onClose: () => void;
   tabs: EntityTab<Model>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
@@ -74,6 +76,10 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   defaultToRecentTab?: boolean;
   /**recentsContext: Defaults to returning recents based off both views and selections. Can be overridden by props */
   recentsContext?: RecentContexts[];
+  onClose: () => void;
+  onConfirm?: () => void;
+  onItemSelect: (item: Item) => void;
+  onTabChange: (tab: string) => void;
 }
 
 export function EntityPickerModal<
@@ -82,12 +88,9 @@ export function EntityPickerModal<
   Item extends TypeWithModel<Id, Model>,
 >({
   title = t`Choose an item`,
-  onItemSelect,
   canSelectItem,
-  onConfirm,
   selectedItem,
   initialValue,
-  onClose,
   tabs: passedTabs,
   options,
   actionButtons = [],
@@ -96,7 +99,11 @@ export function EntityPickerModal<
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
-  recentsContext = ["selections", "views"],
+  recentsContext = DEFAULT_RECENTS_CONTEXT,
+  onClose,
+  onConfirm,
+  onItemSelect,
+  onTabChange,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -120,7 +127,7 @@ export function EntityPickerModal<
   const { open } = useModalOpen();
 
   const tabModels = useMemo(
-    () => passedTabs.map(t => t.model).filter(Boolean),
+    () => passedTabs.map(tab => tab.model).filter(Boolean),
     [passedTabs],
   );
 
@@ -195,14 +202,22 @@ export function EntityPickerModal<
   // we don't want to show bonus actions on recents or search tabs
   const showActionButtons = ["search", "recents"].includes(selectedTab);
 
+  const handleTabChange = useCallback(
+    (tab: string) => {
+      setSelectedTab(tab);
+      onTabChange(tab);
+    },
+    [onTabChange],
+  );
+
   useEffect(() => {
     // when the searchQuery changes, switch to the search tab
     if (searchQuery) {
-      setSelectedTab("search");
+      handleTabChange("search");
     } else {
-      setSelectedTab(defaultTab.model);
+      handleTabChange(defaultTab.model);
     }
-  }, [searchQuery, defaultTab.model]);
+  }, [handleTabChange, searchQuery, defaultTab.model]);
 
   useWindowEvent(
     "keydown",
@@ -262,7 +277,7 @@ export function EntityPickerModal<
               <TabsView
                 selectedTab={selectedTab}
                 tabs={tabs}
-                onTabChange={setSelectedTab}
+                onTabChange={handleTabChange}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>

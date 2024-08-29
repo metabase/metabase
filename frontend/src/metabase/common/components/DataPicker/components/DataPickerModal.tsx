@@ -76,8 +76,8 @@ export const DataPickerModal = ({
   const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
     databaseId,
   });
+  const [tab, setTab] = useState<string>();
   const [folderItem, setFolderItem] = useState<NotebookDataPickerFolderItem>();
-
   const { tryLogRecentItem } = useLogRecentItem();
 
   const modelsShouldShowItem = useMemo(() => {
@@ -212,6 +212,7 @@ export const DataPickerModal = ({
       title={title}
       onClose={onClose}
       onItemSelect={handleItemSelect}
+      onTabChange={setTab}
     />
   );
 };
