@@ -1,5 +1,6 @@
 import { useWindowEvent } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffectOnce } from "react-use";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -194,11 +195,11 @@ export function EntityPickerModal<
   ]);
 
   const hasTabs = tabs.length > 1;
-  const defaultTab = useMemo(
+  const initialTab = useMemo(
     () => computeInitialTab({ initialValue, tabs, defaultToRecentTab }),
     [initialValue, tabs, defaultToRecentTab],
   );
-  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+  const [selectedTab, setSelectedTab] = useState<string>(initialTab.model);
   // we don't want to show bonus actions on recents or search tabs
   const showActionButtons = ["search", "recents"].includes(selectedTab);
 
@@ -210,14 +211,18 @@ export function EntityPickerModal<
     [onTabChange],
   );
 
+  useEffectOnce(() => {
+    onTabChange(initialTab.model); // inform parent about the initial tab
+  });
+
   useEffect(() => {
     // when the searchQuery changes, switch to the search tab
     if (searchQuery) {
       handleTabChange("search");
     } else {
-      handleTabChange(defaultTab.model);
+      handleTabChange(initialTab.model);
     }
-  }, [handleTabChange, searchQuery, defaultTab.model]);
+  }, [handleTabChange, searchQuery, initialTab.model]);
 
   useWindowEvent(
     "keydown",
