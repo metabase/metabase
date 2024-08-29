@@ -111,9 +111,8 @@
                  (update :entity_id boolean)
                  (update :collection_id boolean)
                  (update :collection boolean)
-                 (cond->
-                  (:param_values dashboard)
-                  (update :param_values not-empty)))]
+                 (cond-> (:param_values dashboard)
+                   (update :param_values not-empty)))]
     (cond-> dash
       (contains? dash :last-edit-info)
       (update :last-edit-info (fn [info]
