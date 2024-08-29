@@ -12,6 +12,7 @@ import {
   showDashboardCardActions,
   trendLine,
   visitDashboard,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS } = SAMPLE_DATABASE;
@@ -320,6 +321,35 @@ describe("scenarios > visualizations > legend", () => {
     getDashboardCard(0).within(() => {
       ensureCanNotToggleSeriesVisibility();
     });
+  });
+
+  it("should toggle series visibility on a public dashboard", () => {
+    cy.createDashboardWithQuestions({
+      questions: [SINGLE_AGGREGATION_QUESTION],
+      cards: [{ col: 0, row: 0, size_x: 24, size_y: 6 }],
+    }).then(({ dashboard }) => {
+      visitPublicDashboard(dashboard.id);
+    });
+
+    chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
+    chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
+    chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+    chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    echartsContainer().within(() => {
+      cy.findByText("Count").should("exist"); // y-axis label
+      cy.findByText("Created At").should("exist"); // x-axis label
+
+      // some y-axis values
+      cy.findByText("1,800").should("exist");
+      cy.findByText("1,500").should("exist");
+      cy.findByText("1,200").should("exist");
+    });
+
+    hideSeries(1); // Gadget
+    chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
+    chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
+    chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
+    chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
   });
 
   it("should toggle series visibility in the query builder", () => {
