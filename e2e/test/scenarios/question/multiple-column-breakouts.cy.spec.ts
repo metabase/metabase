@@ -1031,30 +1031,31 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Created At: Month",
         });
         assertTableData({
-          columns: ["Min of Created At: Month", "Max of Created At: Year"],
-          firstRows: [["April 1, 2022, 12:00 AM", "January 1, 2026, 12:00 AM"]],
+          // TODO QP bug, should be "Min of Created At: Year",  "Max of Created At: Month"
+          columns: ["Min of Created At: Month", "Max of Created At: Month"],
+          firstRows: [["January 1, 2022, 12:00 AM", "April 1, 2026, 12:00 AM"]],
         });
 
         cy.log("'num-bins' breakouts");
         testPostAggregationAggregation({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
           column1Name: "Total: 10 bins",
           column2Name: "Total: 50 bins",
         });
         assertTableData({
           columns: ["Min of Total", "Max of Total"],
-          firstRows: [["X", "X"]],
+          firstRows: [["-60", "155"]],
         });
 
         cy.log("'max-bins' breakouts");
         testPostAggregationAggregation({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
           column2Name: "Latitude: 10°",
         });
         assertTableData({
           columns: ["Min of Latitude", "Max of Latitude"],
-          firstRows: [["X", "X"]],
+          firstRows: [["20.00000000° N", "70.00000000° N"]],
         });
       });
 
@@ -1072,7 +1073,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           openNotebook();
 
           cy.log("add an aggregation");
-          getNotebookStep("summarize").button("Summarize");
+          getNotebookStep("summarize").button("Summarize").click();
           popover().findByText("Count of rows").click();
 
           cy.log("add a breakout for the first breakout column");
@@ -1101,30 +1102,37 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2Name: "Created At: Month",
         });
         assertTableData({
-          columns: ["X", "X"],
-          firstRows: [["X", "X"]],
+          // TODO QP bug, should be "Created At: Year", "Created At: Month"
+          columns: ["Created At: Month", "Created At: Month", "Count"],
+          firstRows: [["January 2022", "April 2022", "1"]],
         });
 
         cy.log("'num-bins' breakouts");
         testPostAggregationBreakout({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
+          questionDetails: questionWith2NumBinsBreakoutsDetails,
           column1Name: "Total: 10 bins",
           column2Name: "Total: 50 bins",
         });
         assertTableData({
-          columns: ["X", "X"],
-          firstRows: [["X", "X"]],
+          columns: ["Total", "Total", "Count"],
+          firstRows: [
+            ["-60  –  -40", "-60  –  -40", "1"],
+            ["0  –  20", "0  –  20", "3"],
+          ],
         });
 
         cy.log("'max-bins' breakouts");
         testPostAggregationBreakout({
-          questionDetails: questionWith2TemporalBreakoutsDetails,
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
           column1Name: "Latitude: 20°",
           column2Name: "Latitude: 10°",
         });
         assertTableData({
-          columns: ["X", "X"],
-          firstRows: [["X", "X"]],
+          columns: ["Latitude", "Latitude", "Count"],
+          firstRows: [
+            ["20° N  –  30° N", "20° N  –  30° N", "1"],
+            ["20° N  –  30° N", "30° N  –  40° N", "1"],
+          ],
         });
       });
     });
