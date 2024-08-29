@@ -38,6 +38,10 @@
      * are inline. Because we cannot control the types of elements being rendered, we force them all to
      * inline here.
      */
-    display: inline;
+    display: inline-block;
   }
+}
+
+.preview.oneLine {
+  white-space: normal;
 }

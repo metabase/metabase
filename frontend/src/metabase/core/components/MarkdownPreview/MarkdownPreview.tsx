@@ -14,6 +14,7 @@ interface Props {
   tooltipMaxWidth?: ComponentProps<typeof Tooltip>["maxWidth"];
   lineClamp?: number;
   allowedElements?: string[];
+  oneLine?: boolean;
 }
 
 const DEFAULT_ALLOWED_ELEMENTS: string[] = [];
@@ -24,6 +25,7 @@ export const MarkdownPreview = ({
   tooltipMaxWidth,
   lineClamp,
   allowedElements = DEFAULT_ALLOWED_ELEMENTS,
+  oneLine,
 }: Props) => {
   const { isTruncated, ref } = useIsTruncated();
 
@@ -50,7 +52,7 @@ export const MarkdownPreview = ({
       <div ref={setReactMarkdownRef}>
         <Markdown
           allowedElements={allowedElements}
-          className={classNames(C.preview, className)}
+          className={classNames(C.preview, className, oneLine && C.oneLine)}
           unwrapDisallowed
           lineClamp={1}
         >
