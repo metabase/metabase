@@ -352,10 +352,13 @@
     (entity-id-translation-counter!
      (compute-result processed-result (entity-id-translation-counter)))))
 
+(defn- add-total [counter]
+  (merge counter {:total (apply + (vals counter))}))
+
 (defn get-and-clear-translation-count!
   "Get and clear the entity-id translation counter. This is meant to be called during the daily stats collection process."
   []
-  (u/prog1 (entity-id-translation-counter)
+  (u/prog1 (add-total (entity-id-translation-counter))
     (entity-id-translation-counter! default-eid-translation-counter)))
 
 (mu/defn- entity-ids->id-for-model :- [:sequential [:tuple

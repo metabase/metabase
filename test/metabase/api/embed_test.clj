@@ -565,8 +565,7 @@
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
-    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"}
-                                                       :params   {}}))]
+    (let [dashboard-url (str "embed/dashboard/" (sign {:resource {:dashboard "8"} :params   {}}))]
       (is (re-matches
            #"Invalid input: .+got.+8.+"
              (client/client :get 400 dashboard-url))))))
