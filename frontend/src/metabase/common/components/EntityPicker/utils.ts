@@ -51,7 +51,7 @@ export const computeInitialTab = <
   initialValue?: Partial<Item>;
   tabs: EntityTab<Model>[];
   defaultToRecentTab: boolean;
-}) => {
+}): { model: Model | "search" | "recents" } => {
   const hasRecents = tabs.some(tab => tab.model === "recents");
 
   if (hasRecents && defaultToRecentTab) {
