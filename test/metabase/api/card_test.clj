@@ -3905,3 +3905,29 @@
                                     (< 0 (second (reverse row))))
                                   (get-in result [:data :rows]))]
                (first totals)))))))
+
+(deftest dashboard-internal-card-creation
+  (mt/with-temp [:model/Collection {coll-id :id} {}
+                 :model/Collection {other-coll-id :id} {}
+                 :model/Dashboard {dash-id :id} {:collection_id coll-id}]
+    (testing "We can create a dashboard internal card"
+      (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id)))
+    (testing "We can't create a dashboard internal card with a collection_id different that its dashboard's"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :collection_id other-coll-id)))
+    (testing "Note the bug: if you provide `collection_id=null`, we'll accept it."
+      (let [{id :id} (mt/user-http-request :crowberto :post 200 "card" (assoc (card-with-name-and-query)
+                                                                              :dashboard_id dash-id
+                                                                              :collection_id nil))]
+        (testing "BUT we'll ignore it in favor of the dashboard's collection_id"
+          (is (= coll-id (t2/select-one-fn :collection_id :model/Card id))))))
+    (testing "We can't create a dashboard internal card with a non-question `type`"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :type "model")))
+    (testing "We can't create a dashboard internal card with a non-null :collection_position"
+      (mt/user-http-request :crowberto :post 400 "card" (assoc (card-with-name-and-query)
+                                                               :dashboard_id dash-id
+                                                               :collection_position 5)))))
