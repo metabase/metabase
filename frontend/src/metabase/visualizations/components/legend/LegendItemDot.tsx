@@ -1,11 +1,16 @@
 import { t } from "ttag";
 
-import { Button, InnerCircle, OuterCircle } from "./LegendItemDot.styled";
+import {
+  InnerCircle,
+  OuterCircle,
+  Root,
+  RootButton,
+} from "./LegendItemDot.styled";
 
 interface LegendItemDotProps {
   isVisible: boolean;
   color: string;
-  onClick: () => void;
+  onClick?: () => void;
 }
 
 export function LegendItemDot({
@@ -13,13 +18,22 @@ export function LegendItemDot({
   color,
   onClick,
 }: LegendItemDotProps) {
+  if (onClick) {
+    return (
+      <RootButton
+        aria-label={isVisible ? t`Hide series` : t`Show series`}
+        onClick={onClick}
+      >
+        <OuterCircle />
+        <InnerCircle color={color} isVisible={isVisible} />
+      </RootButton>
+    );
+  }
+
   return (
-    <Button
-      aria-label={isVisible ? t`Hide series` : t`Show series`}
-      onClick={onClick}
-    >
+    <Root>
       <OuterCircle />
-      <InnerCircle color={color} isVisible={isVisible} />
-    </Button>
+      <InnerCircle color={color} isVisible />
+    </Root>
   );
 }

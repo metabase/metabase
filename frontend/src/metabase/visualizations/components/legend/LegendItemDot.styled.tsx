@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 export const OuterCircle = styled.div`
@@ -26,20 +27,26 @@ export const InnerCircle = styled.div<{ isVisible: boolean }>`
   transition: all 0.2s;
 `;
 
-export const Button = styled.button`
+const rootStyle = css`
   position: relative;
   width: 12px;
   height: 12px;
-  cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
+`;
 
-  ${props =>
-    props.onClick &&
-    `&:hover {
-      ${InnerCircle} {
-        transform: scale(0.8);
-      }
-      ${OuterCircle} {
-        transform: scale(1.3);
-      }
-    }`}
+export const Root = styled.div`
+  ${rootStyle}
+`;
+
+export const RootButton = styled.button`
+  ${rootStyle}
+  cursor: pointer;
+
+  &:hover {
+    ${InnerCircle} {
+      transform: scale(0.8);
+    }
+    ${OuterCircle} {
+      transform: scale(1.3);
+    }
+  }
 `;
