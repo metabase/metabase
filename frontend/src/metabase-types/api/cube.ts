@@ -6,8 +6,7 @@ export interface CubeDataItem {
 export  type CubeDataResponse = CubeDataItem[];
   
 export interface GetCubeDataRequest {
-    projectName: string;
-    [key: string]: unknown; // For any additional params
+    companyName: string;
   }
 
   export type UpdateCubeDataRequest = {
@@ -18,4 +17,5 @@ export interface GetCubeDataRequest {
             };
         };
     };
+    companyName: string;
 };

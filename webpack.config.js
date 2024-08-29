@@ -313,10 +313,8 @@ const config = {
         process.env.REACT_APP_WEBSOCKET_SERVER || "wss://dev.chat.omniloy.com",
       REACT_APP_SEMANTIC:
         process.env.REACT_APP_SEMANTIC || "https://dev.semantic.omniloy.com",
-
       REACT_APP_SERVER:
-        process.env.REACT_APP_SERVER || "https://dev.app.omniloy.com",    
-      COMPANY_NAME: process.env.COMPANY_NAME || "blank_street",
+        process.env.REACT_APP_SERVER || "https://dev.app.omniloy.com",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
