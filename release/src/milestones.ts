@@ -1,5 +1,6 @@
 import fs from "fs";
 
+import { graphql } from "@octokit/graphql";
 import _ from "underscore";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
@@ -544,7 +545,7 @@ async function addIssueToProject({
     return;
   }
 
-  const graphqlWithAuth = github.graphql.defaults({
+  const graphqlWithAuth = graphql.defaults({
     headers: {
       authorization: `token ${process.env.GITHUB_TOKEN}`,
     },
