@@ -71,7 +71,7 @@ interface DatabaseProps {
 }
 
 function MainNavbarContainer({
-  bookmarks,
+  bookmarks: bookmarksTemp,
   isAdmin,
   selectedItems,
   isOpen,
@@ -87,6 +87,14 @@ function MainNavbarContainer({
   onReorderBookmarks,
   ...props
 }: Props) {
+  const bookmarks: Bookmark[] = bookmarksTemp.map(bookmark => {
+    if (bookmark.type !== "card") {
+      return bookmark;
+    }
+
+    return { ...bookmark, dashboard_id: 34 };
+  });
+
   const [modal, setModal] = useState<NavbarModal>(null);
 
   const {
