@@ -45,6 +45,31 @@ export const GenericError = ({
   </ErrorPageRoot>
 );
 
+export const SemanticError = ({
+  title = t`We are working creating your semantic layer`,
+  message = t`Please try again in 24 hours.`,
+  details,
+}: {
+  title?: string;
+  message?: string;
+  details: ErrorDetailsProps["details"];
+}) => (
+  <ErrorPageRoot>
+    <EmptyState
+      title={title}
+      message={message}
+      illustrationElement={
+        <div
+          className={cx(
+            QueryBuilderS.QueryErrorImage,
+            QueryBuilderS.QueryErrorImageServerError,
+          )}
+        />
+      }
+    />
+  </ErrorPageRoot>
+);
+
 export const NotFound = ({
   title = t`We're a little lost...`,
   message = t`The page you asked for couldn't be found.`,
