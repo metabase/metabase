@@ -1,8 +1,11 @@
+import cx from "classnames";
 import { useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
 import { t } from "ttag";
 
 import { Icon, Text, Tooltip } from "metabase/ui";
+
+import Styles from "./copy-button.module.css";
 
 type CopyButtonProps = {
   value: CopyToClipboard.Props["text"];
@@ -14,7 +17,7 @@ type CopyButtonProps = {
 export const CopyButton = ({
   value,
   onCopy,
-  className,
+  className = cx(Styles.HoverHighlight, Styles.CursorPointer),
   style,
 }: CopyButtonProps) => {
   const [copied, setCopied] = useState(false);
