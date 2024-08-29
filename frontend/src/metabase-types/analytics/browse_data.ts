@@ -1,14 +1,25 @@
-import type { CardId, ConcreteTableId } from "metabase-types/api";
+import type { ValidateSchema } from "./utils";
 
-export type BrowseDataModelClickedEvent = {
+type BrowseDataEventSchema = {
+  event: string;
+  model_id?: number | null;
+  table_id?: number | null;
+};
+
+type ValidateEvent<T extends BrowseDataEventSchema> = ValidateSchema<
+  T,
+  BrowseDataEventSchema
+>;
+
+export type BrowseDataModelClickedEvent = ValidateEvent<{
   event: "browse_data_model_clicked";
-  model_id: CardId;
-};
+  model_id: number;
+}>;
 
-export type BrowseDataTableClickedEvent = {
+export type BrowseDataTableClickedEvent = ValidateEvent<{
   event: "browse_data_table_clicked";
-  table_id: ConcreteTableId;
-};
+  table_id: number;
+}>;
 
 export type BrowseDataEvent =
   | BrowseDataModelClickedEvent
