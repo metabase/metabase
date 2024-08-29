@@ -4,7 +4,7 @@ import type { SchemaName } from "metabase-types/api";
 
 import { ItemList, ListBox } from "../../EntityPicker";
 import { useAutoSelectOnlyItem } from "../hooks";
-import type { NotebookDataPickerFolderItem } from "../types";
+import type { DataPickerFolderItem } from "../types";
 import { getSchemaDisplayName } from "../utils";
 
 interface Props {
@@ -12,8 +12,8 @@ interface Props {
   isCurrentLevel: boolean;
   isLoading: boolean;
   schemas: SchemaName[] | undefined;
-  selectedItem: NotebookDataPickerFolderItem | null;
-  onClick: (item: NotebookDataPickerFolderItem) => void;
+  selectedItem: DataPickerFolderItem | null;
+  onClick: (item: DataPickerFolderItem) => void;
 }
 
 const isFolder = () => true;
@@ -26,7 +26,7 @@ export const SchemaList = ({
   selectedItem,
   onClick,
 }: Props) => {
-  const items: NotebookDataPickerFolderItem[] | undefined = useMemo(() => {
+  const items: DataPickerFolderItem[] | undefined = useMemo(() => {
     return schemas?.map(schema => ({
       id: schema,
       model: "schema",

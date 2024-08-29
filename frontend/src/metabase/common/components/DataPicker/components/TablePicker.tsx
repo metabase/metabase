@@ -12,9 +12,9 @@ import type { DatabaseId, SchemaName, TableId } from "metabase-types/api";
 
 import { AutoScrollBox } from "../../EntityPicker";
 import type {
-  NotebookDataPickerFolderItem,
-  NotebookDataPickerItem,
-  NotebookDataPickerValueItem,
+  DataPickerFolderItem,
+  DataPickerItem,
+  DataPickerValueItem,
   TablePickerValue,
 } from "../types";
 import { generateKey, getDbItem, getSchemaItem, getTableItem } from "../utils";
@@ -29,7 +29,7 @@ interface Props {
    */
   databaseId?: DatabaseId;
   value: TablePickerValue | undefined;
-  onItemSelect: (value: NotebookDataPickerItem) => void;
+  onItemSelect: (value: DataPickerItem) => void;
 }
 
 export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
@@ -79,7 +79,7 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
   );
 
   const handleFolderSelect = useCallback(
-    ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
+    ({ folder }: { folder: DataPickerFolderItem }) => {
       if (folder.model === "database") {
         if (dbId === folder.id) {
           setSchemaName(schemas?.length === 1 ? schemas[0] : undefined);
@@ -100,7 +100,7 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
   );
 
   const handleItemSelect = useCallback(
-    (item: NotebookDataPickerValueItem) => {
+    (item: DataPickerValueItem) => {
       setTableId(item.id);
       onItemSelect(item);
     },

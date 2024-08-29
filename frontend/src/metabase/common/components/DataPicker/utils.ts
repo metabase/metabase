@@ -15,19 +15,19 @@ import type {
 import type { QuestionPickerItem } from "../QuestionPicker";
 
 import type {
+  DataPickerFolderItem,
+  DataPickerItem,
   DataPickerValue,
+  DataPickerValueItem,
   ModelItem,
-  NotebookDataPickerFolderItem,
-  NotebookDataPickerItem,
-  NotebookDataPickerValueItem,
   QuestionItem,
   TablePickerValue,
 } from "./types";
 
 export const generateKey = (
-  dbItem: NotebookDataPickerFolderItem | null,
-  schemaItem: NotebookDataPickerFolderItem | null,
-  tableItem: NotebookDataPickerValueItem | null,
+  dbItem: DataPickerFolderItem | null,
+  schemaItem: DataPickerFolderItem | null,
+  tableItem: DataPickerValueItem | null,
 ) => {
   return [dbItem?.id, schemaItem?.id, tableItem?.id].join("-");
 };
@@ -68,7 +68,7 @@ export const getDataPickerValue = (
 export const getDbItem = (
   databases: Database[] | undefined,
   dbId: DatabaseId | undefined,
-): NotebookDataPickerFolderItem | null => {
+): DataPickerFolderItem | null => {
   if (typeof dbId === "undefined") {
     return null;
   }
@@ -81,7 +81,7 @@ export const getDbItem = (
 
 export const getSchemaItem = (
   schemaName: SchemaName | undefined,
-): NotebookDataPickerFolderItem | null => {
+): DataPickerFolderItem | null => {
   if (typeof schemaName === "undefined") {
     return null;
   }
@@ -94,7 +94,7 @@ export const getSchemaItem = (
 export const getTableItem = (
   tables: Table[] | undefined,
   tableId: TableId | undefined,
-): NotebookDataPickerValueItem | null => {
+): DataPickerValueItem | null => {
   if (typeof tableId === "undefined") {
     return null;
   }
@@ -138,14 +138,14 @@ export const isTableItem = (
 };
 
 export const isValueItem = (
-  item: NotebookDataPickerItem,
-): item is NotebookDataPickerValueItem => {
+  item: DataPickerItem,
+): item is DataPickerValueItem => {
   return ["table", "card", "dataset", "metric"].includes(item.model);
 };
 
 export const isFolderItem = (
-  item: NotebookDataPickerItem,
-): item is NotebookDataPickerFolderItem => {
+  item: DataPickerItem,
+): item is DataPickerFolderItem => {
   return ["collection", "database", "schema"].includes(item.model);
 };
 
