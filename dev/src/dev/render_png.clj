@@ -29,7 +29,7 @@
     (with-open [w (java.io.FileOutputStream. tmp-file)]
       (.write w ^bytes bytes))
     (.deleteOnExit tmp-file)
-    (dev.uos-open tmp-file)))
+    (dev.u/os-open tmp-file)))
 
 (defn render-card-to-png
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
