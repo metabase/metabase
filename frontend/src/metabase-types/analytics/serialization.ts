@@ -1,4 +1,28 @@
-export type SerializationEvent = {
+import type { ValidateSchema } from "./utils";
+
+type SerializationEventSchema = {
+  event: string;
+  source: string;
+  success: boolean;
+  direction?: string | null;
+  duration_ms?: number | null;
+  error_message?: string | null;
+  count?: number | null;
+  error_count?: number | null;
+  models?: string | null;
+  collection?: string | null;
+  all_collections?: boolean | null;
+  settings?: boolean | null;
+  field_values?: boolean | null;
+  secrets?: boolean | null;
+};
+
+type ValidateEvent<T extends SerializationEventSchema> = ValidateSchema<
+  T,
+  SerializationEventSchema
+>;
+
+export type SerializationEvent = ValidateEvent<{
   event: "serialization";
   direction: "import" | "export";
   source: "cli" | "api";
@@ -13,4 +37,4 @@ export type SerializationEvent = {
   settings: boolean;
   field_values: boolean;
   secrets: boolean;
-};
+}>;

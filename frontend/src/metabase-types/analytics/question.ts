@@ -1,91 +1,106 @@
-import type { CardId, DatabaseId } from "metabase-types/api";
+import type { ValidateSchema } from "./utils";
 
-export type NewQuestionSavedEvent = {
+type QuestionEventSchema = {
+  event: string;
+  question_id: number;
+  type?: string | null;
+  method?: string | null;
+  visualization_type?: string | null;
+  database_id?: number | null;
+  custom_expressions_used?: string[] | null;
+};
+
+type ValidateEvent<T extends QuestionEventSchema> = ValidateSchema<
+  T,
+  QuestionEventSchema
+>;
+
+export type NewQuestionSavedEvent = ValidateEvent<{
   event: "new_question_saved";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   type: "simple_question" | "custom_question" | "native_question";
   method: "from_scratch" | "existing_question";
   visualization_type: string;
-};
+}>;
 
-export type TurnIntoModelClickedEvent = {
+export type TurnIntoModelClickedEvent = ValidateEvent<{
   event: "turn_into_model_clicked";
-  question_id: CardId;
-};
+  question_id: number;
+}>;
 
-export type NotebookNativePreviewShownEvent = {
+export type NotebookNativePreviewShownEvent = ValidateEvent<{
   event: "notebook_native_preview_shown";
-  question_id: CardId;
-};
+  question_id: number;
+}>;
 
-export type NotebookNativePreviewHiddenEvent = {
+export type NotebookNativePreviewHiddenEvent = ValidateEvent<{
   event: "notebook_native_preview_hidden";
-  question_id: CardId;
-};
+  question_id: number;
+}>;
 
-export type ColumnCombineViaShortcutEvent = {
+export type ColumnCombineViaShortcutEvent = ValidateEvent<{
   event: "column_combine_via_shortcut";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnCombineViaColumnHeaderEvent = {
+export type ColumnCombineViaColumnHeaderEvent = ValidateEvent<{
   event: "column_combine_via_column_header";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnCombineViaPlusModalEvent = {
+export type ColumnCombineViaPlusModalEvent = ValidateEvent<{
   event: "column_combine_via_plus_modal";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnCompareViaShortcutEvent = {
+export type ColumnCompareViaShortcutEvent = ValidateEvent<{
   event: "column_compare_via_shortcut";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnCompareViaColumnHeaderEvent = {
+export type ColumnCompareViaColumnHeaderEvent = ValidateEvent<{
   event: "column_compare_via_column_header";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnCompareViaPlusModalEvent = {
+export type ColumnCompareViaPlusModalEvent = ValidateEvent<{
   event: "column_compare_via_plus_modal";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnExtractViaShortcutEvent = {
+export type ColumnExtractViaShortcutEvent = ValidateEvent<{
   event: "column_extract_via_shortcut";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnExtractViaColumnHeaderEvent = {
+export type ColumnExtractViaColumnHeaderEvent = ValidateEvent<{
   event: "column_extract_via_column_header";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
-export type ColumnExtractViaPlusModalEvent = {
+export type ColumnExtractViaPlusModalEvent = ValidateEvent<{
   event: "column_extract_via_plus_modal";
-  question_id: CardId;
-  database_id: DatabaseId | null;
+  question_id: number;
+  database_id: number | null;
   custom_expressions_used: string[];
-};
+}>;
 
 export type QuestionEvent =
   | NewQuestionSavedEvent
