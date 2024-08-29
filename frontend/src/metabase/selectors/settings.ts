@@ -15,7 +15,7 @@ export const getSettingsLoading = createSelector(
   settings => settings.loading,
 );
 
-type GetSettings<S extends State> = S["settings"]["values"];
+export type GetSettings<S extends State> = S["settings"]["values"];
 type GetSettingKey<S extends State> = keyof GetSettings<S>;
 
 export const getSetting = <S extends State, T extends GetSettingKey<S>>(

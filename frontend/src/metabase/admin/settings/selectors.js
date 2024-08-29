@@ -23,16 +23,11 @@ import {
 import { CloudPanel } from "./components/CloudPanel";
 import { BccToggleWidget } from "./components/Email/BccToggleWidget";
 import { SettingsEmailForm } from "./components/Email/SettingsEmailForm";
+import { EmbeddingSettings } from "./components/EmbeddingSettings";
 import SettingsLicense from "./components/SettingsLicense";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import { UploadSettings } from "./components/UploadSettings";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
-import {
-  EmbeddingSdkOptionCard,
-  InteractiveEmbeddingOptionCard,
-  StaticEmbeddingOptionCard,
-} from "./components/widgets/EmbeddingOption";
-import { EmbeddingSwitchWidget } from "./components/widgets/EmbeddingSwitchWidget";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import HttpsOnlyWidget from "./components/widgets/HttpsOnlyWidget";
 import {
@@ -430,26 +425,8 @@ export const ADMIN_SETTINGS_SECTIONS = {
     key: "enable-embedding",
     name: t`Embedding`,
     order: 100,
-    settings: [
-      {
-        key: "enable-embedding",
-        display_name: t`Embedding`,
-        description: null,
-        widget: EmbeddingSwitchWidget,
-      },
-      {
-        key: "-static-embedding",
-        widget: StaticEmbeddingOptionCard,
-      },
-      {
-        key: "-embedding-sdk",
-        widget: EmbeddingSdkOptionCard,
-      },
-      {
-        key: "-interactive-embedding",
-        widget: InteractiveEmbeddingOptionCard,
-      },
-    ],
+    component: EmbeddingSettings,
+    settings: [],
   },
   "embedding-in-other-applications/standalone": {
     settings: [
@@ -647,6 +624,15 @@ export const getSettings = createSelector(
         ? { ...setting, warning: warnings[setting.key] }
         : setting,
     ),
+);
+
+/**
+ * @typedef {import("metabase-types/store").State} State
+ *
+ * @type {(state: State) => Record<keyof import("metabase/selectors/settings").GetSettings<State>, any>}
+ */
+export const getSettingsByKey = createSelector(getSettings, settings =>
+  _.indexBy(settings, "key"),
 );
 
 // getSettings selector returns settings for admin setting page and values specified by
