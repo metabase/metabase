@@ -34,8 +34,8 @@ export const CompletedStep = (): JSX.Element | null => {
     setCheckboxValue(e.target.checked);
     trackEvent({
       event: "newsletter-toggle-clicked",
-      triggeredFrom: "setup",
-      eventDetail: e.target.checked ? "opted-in" : "opted-out",
+      triggered_from: "setup",
+      event_detail: e.target.checked ? "opted-in" : "opted-out",
     });
   };
 

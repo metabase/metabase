@@ -551,8 +551,8 @@ describeWithSnowplow("scenarios > setup", () => {
 
       expectGoodSnowplowEvent({
         event: "newsletter-toggle-clicked",
-        triggeredFrom: "setup",
-        eventDetail: "opted-in",
+        triggered_from: "setup",
+        event_detail: "opted-in",
       });
 
       cy.findByText(
@@ -561,8 +561,8 @@ describeWithSnowplow("scenarios > setup", () => {
 
       expectGoodSnowplowEvent({
         event: "newsletter-toggle-clicked",
-        triggeredFrom: "setup",
-        eventDetail: "opted-out",
+        triggered_from: "setup",
+        event_detail: "opted-out",
       });
     });
   });
