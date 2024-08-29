@@ -16,7 +16,6 @@ import {
   ExploreResultsLink,
   FilterHeaderButton,
   QuestionActions,
-  QuestionFiltersHeaderToggle,
   QuestionNotebookButton,
   QuestionSummarizeWidget,
   ToggleNativeQueryPreview,
@@ -132,10 +131,16 @@ export function ViewTitleHeaderRightSide({
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
-  const getRunButtonLabel = useCallback(
-    () => (isRunning ? t`Cancel` : t`Refresh`),
-    [isRunning],
-  );
+  const cacheStrategyType = result?.json_query?.["cache-strategy"]?.type;
+  const getRunButtonLabel = useCallback(() => {
+    if (isRunning) {
+      return t`Cancel`;
+    }
+    if ([undefined, "nocache"].includes(cacheStrategyType)) {
+      return `Refresh`;
+    }
+    return t`Clear cache and refresh`;
+  }, [isRunning, cacheStrategyType]);
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
@@ -144,19 +149,6 @@ export function ViewTitleHeaderRightSide({
 
   return (
     <ViewHeaderActionPanel data-testid="qb-header-action-panel">
-      {QuestionFiltersHeaderToggle.shouldRender({
-        question,
-        queryBuilderMode,
-        isObjectDetail,
-      }) && (
-        <QuestionFiltersHeaderToggle
-          className={cx(CS.ml2, CS.mr1)}
-          query={question.query()}
-          isExpanded={areFiltersExpanded}
-          onExpand={onExpandFilters}
-          onCollapse={onCollapseFilters}
-        />
-      )}
       {FilterHeaderButton.shouldRender({
         question,
         queryBuilderMode,
@@ -166,6 +158,10 @@ export function ViewTitleHeaderRightSide({
         <FilterHeaderButton
           className={cx(CS.hide, CS.smShow)}
           onOpenModal={onOpenModal}
+          query={question.query()}
+          isExpanded={areFiltersExpanded}
+          onExpand={onExpandFilters}
+          onCollapse={onCollapseFilters}
         />
       )}
       {QuestionSummarizeWidget.shouldRender({

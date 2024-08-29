@@ -11,6 +11,7 @@ import {
   getNotebookStep,
   hovercard,
   modal,
+  openNotebook,
   openQuestionActions,
   popover,
   queryBuilderHeader,
@@ -390,10 +391,12 @@ describe("scenarios > metrics > editing", () => {
     it("should create a metric with a custom aggregation expression based on 1 metric", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewMetric();
+      cy.intercept("POST", "/api/dataset/query_metadata").as("queryMetadata");
       entityPickerModal().within(() => {
         entityPickerModalTab("Metrics").click();
         cy.findByText(ORDERS_SCALAR_METRIC.name).click();
       });
+      cy.wait("@queryMetadata");
       getNotebookStep("summarize")
         .findByText(ORDERS_SCALAR_METRIC.name)
         .click();
@@ -404,6 +407,30 @@ describe("scenarios > metrics > editing", () => {
       popover().button("Update").click();
       saveMetric();
       verifyScalarValue("9,380");
+    });
+
+    it("should have metric-specific summarize step copy", () => {
+      createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) =>
+        visitMetric(card.id),
+      );
+      openNotebook();
+
+      cy.log("regular screen");
+      getNotebookStep("summarize").within(() => {
+        cy.findByText("Formula").should("be.visible");
+        cy.findAllByText("Default time dimension")
+          .filter(":visible")
+          .should("have.length", 1);
+      });
+
+      cy.log("mobile screen");
+      cy.viewport(800, 600);
+      getNotebookStep("summarize").within(() => {
+        cy.findByText("Formula").should("be.visible");
+        cy.findAllByText("Default time dimension")
+          .filter(":visible")
+          .should("have.length", 1);
+      });
     });
   });
 

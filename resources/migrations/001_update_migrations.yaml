@@ -6726,6 +6726,165 @@ databaseChangeLog:
       rollback: # No rollback needed since this is backward compatible
 
   - changeSet:
+      id: v49.2024-08-21T08:33:06
+      author: johnswanson
+      comment: Add permissions.perm_value
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_value
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: perm_value
+                  type: varchar(64)
+                  remarks: The value of the permission
+                  constraints:
+                    nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:07
+      author: johnswanson
+      comment: Add permissions.perm_type
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: perm_type
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: perm_type
+                  type: varchar(64)
+                  remarks: The type of the permission
+                  constraints:
+                    nullable: true
+            tableName: permissions
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:08
+      author: johnswanson
+      comment: Add permissions.collection_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: permissions
+                columnName: collection_id
+      changes:
+        - addColumn:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_id
+                  type: int
+                  remarks: The linked collection, if applicable
+                  constraints:
+                    nullable: true
+
+  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
+  - changeSet:
+      id: v49.2024-08-21T08:33:09
+      author: johnswanson
+      comment: Add `permissions.collection_id` foreign key constraint
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                - foreignKeyName: fk_permissions_ref_collection_id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: permissions
+            baseColumnNames: collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_permissions_ref_collection_id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:10
+      author: johnswanson
+      comment: Populate `perm_value`, `perm_type`, and `collection_id` on permissions
+      rollback: # not needed.
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: permissions/collection-access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/collection-access-mariadb.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/collection-access-h2.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:11
+      author: johnswanson
+      comment: Create index on `permissions.collection_id`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_collection_id
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: collection_id
+            indexName: idx_permissions_collection_id
+
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:12
+      author: johnswanson
+      comment: Index on `permissions.perm_type`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_type
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_type
+            indexName: idx_permissions_perm_type
+
+  - changeSet:
+      id: v49.2024-08-21T08:33:13
+      author: johnswanson
+      comment: Index on `permissions.perm_value`
+      rollback: # deleted with the column
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: permissions
+                indexName: idx_permissions_perm_value
+      changes:
+        - createIndex:
+            tableName: permissions
+            columns:
+              - column:
+                  name: perm_value
+            indexName: idx_permissions_perm_value
+
+  - changeSet:
       id: v50.2024-01-04T13:52:51
       author: noahmoss
       comment: Data permissions table
@@ -8960,158 +9119,6 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   - changeSet:
-      id: v51.2024-08-21T08:33:06
-      author: johnswanson
-      comment: Add permissions.perm_value
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: perm_value
-      changes:
-        - addColumn:
-            columns:
-              - column:
-                  name: perm_value
-                  type: varchar(64)
-                  remarks: The value of the permission
-                  constraints:
-                    nullable: true
-            tableName: permissions
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:07
-      author: johnswanson
-      comment: Add permissions.perm_type
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: perm_type
-      changes:
-        - addColumn:
-            columns:
-              - column:
-                  name: perm_type
-                  type: varchar(64)
-                  remarks: The type of the permission
-                  constraints:
-                    nullable: true
-            tableName: permissions
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:08
-      author: johnswanson
-      comment: Add permissions.collection_id
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - columnExists:
-                tableName: permissions
-                columnName: collection_id
-      changes:
-        - addColumn:
-            tableName: permissions
-            columns:
-              - column:
-                  name: collection_id
-                  type: int
-                  remarks: The linked collection, if applicable
-                  constraints:
-                    nullable: true
-
-  # FK constraint is added separately because deleteCascade doesn't work in addColumn -- see #14321
-  - changeSet:
-      id: v51.2024-08-21T08:33:09
-      author: johnswanson
-      comment: Add `permissions.collection_id` foreign key constraint
-      preConditions:
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: permissions
-            baseColumnNames: collection_id
-            referencedTableName: collection
-            referencedColumnNames: id
-            constraintName: fk_permissions_ref_collection_id
-            onDelete: CASCADE
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:10
-      author: johnswanson
-      comment: Populate `perm_value`, `perm_type`, and `collection_id` on permissions
-      rollback: # not needed.
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: permissions/collection-access.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: permissions/collection-access-mariadb.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: permissions/collection-access-h2.sql
-            relativeToChangelogFile: true
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:11
-      author: johnswanson
-      comment: Create index on `permissions.collection_id`
-      rollback: # deleted with the column
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_collection_id
-      changes:
-        - createIndex:
-            tableName: permissions
-            columns:
-              - column:
-                  name: collection_id
-            indexName: idx_permissions_collection_id
-
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:12
-      author: johnswanson
-      comment: Index on `permissions.perm_type`
-      rollback: # deleted with the column
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_perm_type
-      changes:
-        - createIndex:
-            tableName: permissions
-            columns:
-              - column:
-                  name: perm_type
-            indexName: idx_permissions_perm_type
-
-  - changeSet:
-      id: v51.2024-08-21T08:33:13
-      author: johnswanson
-      comment: Index on `permissions.perm_value`
-      rollback: # deleted with the column
-      preConditions:
-        - not:
-            - indexExists:
-                tableName: permissions
-                indexName: idx_permissions_perm_value
-      changes:
-        - createIndex:
-            tableName: permissions
-            columns:
-              - column:
-                  name: perm_value
-            indexName: idx_permissions_perm_value
-
-  - changeSet:
       id: v51.2024-08-26T08:53:46
       author: crisptrutski
       comment: Add a status column to track the progress and outcome of query analysis
@@ -9128,6 +9135,27 @@ databaseChangeLog:
                   name: status
                   type: ${text.type}
                   remarks: running, failed, or completed
+
+  - changeSet:
+      id: v51.2024-08-27T00:00:00
+      author: devurandom
+      comment: Add is_attached_dwh to metabase_database
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: metabase_database
+                columnName: is_attached_dwh
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              - column:
+                  name: is_attached_dwh
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: 'This is an attached data warehouse, do not serialize it and hide its details from the UI'
+                  constraints:
+                    nullable: false
 
   - changeSet:
       id: v51.2024-08-27T17:57:12
