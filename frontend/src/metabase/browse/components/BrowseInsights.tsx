@@ -7,6 +7,7 @@ import ChatHistory from "./ChatItems/ChatHistory";
 export const BrowseInsights = () => {
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [oldCardId, setOldCardId] = useState(null);
 
   return (
     <BrowseContainer>
@@ -25,6 +26,7 @@ export const BrowseInsights = () => {
               selectedMessages={selectedChatHistory}
               selectedThreadId={selectedThreadId}
               chatType={"insights"}
+              oldCardId={oldCardId}
             />
           </Stack>
           <Stack
@@ -36,6 +38,7 @@ export const BrowseInsights = () => {
               setSelectedChatHistory={setSelectedChatHistory}
               setThreadId={setSelectedThreadId}
               type="getInsights"
+              setOldCardId={setOldCardId}
             />
           </Stack>
         </Flex>

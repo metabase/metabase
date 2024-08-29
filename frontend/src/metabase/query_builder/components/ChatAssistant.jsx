@@ -23,7 +23,7 @@ import { useSelector } from "metabase/lib/redux";
 import { getInitialMessage } from "metabase/redux/initialMessage";
 import { useListDatabasesQuery } from "metabase/api";
 import { SemanticError } from "metabase/components/ErrorPages";
-const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
+const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId }) => {
     const initialMessage = useSelector(getInitialMessage);
     const inputRef = useRef(null);
     const dispatch = useDispatch();
@@ -31,26 +31,28 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
     const [companyName, setCompanyName] = useState("");
     const [inputValue, setInputValue] = useState("");
     const [messages, setMessages] = useState([]);
-    const [card, setCard] = useState(null);
-    const [reasoning, setReasoning] = useState(null);
-    const [sources, setSources] = useState(null);
-    const [result, setResult] = useState(null);
-    const [defaultQuestion, setDefaultQuestion] = useState(null);
-    const [codeQuery, setCodeQuery] = useState(null);
+    const [card, setCard] = useState([]);
+    const [reasoning, setReasoning] = useState([]);
+    const [sources, setSources] = useState([]);
+    const [selectedIndex, setSelectedIndex] = useState(null)
+    const [result, setResult] = useState([]);
+    const [defaultQuestion, setDefaultQuestion] = useState([]);
+    const [codeQuery, setCodeQuery] = useState([]);
     const [isDBModalOpen, setIsDBModalOpen] = useState(false);
     const [dbInputValue, setDBInputValue] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedTab, setSelectedTab] = useState("reasoning");
     const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
-    const threadId = generateRandomId();
+    const [threadId, setThreadId] = useState('')
     const [insightsList, setInsightsList] = useState([]);
-    const [cardHash, setCardHash] = useState(null);
+    const [cardHash, setCardHash] = useState([]);
     const [id, setId] = useState(0);
     const [useTextArea, setUseTextArea] = useState(false);
     const [error, setError] = useState(null);
     const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
+    const [visualizationIndex, setVisualizationIndex] = useState(-1);
     const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
     const databases = data?.data;
     useEffect(() => {
@@ -66,20 +68,42 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
     useEffect(() => {
         setMessages([])
         setInputValue("")
+        let thread_Id = generateRandomId();
+        setThreadId(thread_Id)
     }, [])
 
     useEffect(() => {
         if (selectedMessages && selectedThreadId && selectedMessages.length > 0) {
+            let visualizationIdx = 0;
+            setThreadId(selectedThreadId)
             const parsedMessages = selectedMessages.flatMap((messageGroup) => {
-                return messageGroup.text.map(([senderType, messageText]) => ({
+                const messages = messageGroup.text.map(([senderType, messageText]) => ({
                     id: generateRandomId(),
                     text: messageText,
                     sender: senderType === "human" ? "user" : "server",
                     type: "text",
                     thread_id: selectedThreadId,
                 }));
+            
+                
+                for (let i = 0; i < messages.length; i++) {
+                    if (messages[i].text.includes("It was executed successfully, ready for your next task")) {
+                        messages[i-1].sender = "server"
+                        if (i > 0) {
+                            messages[i - 1].showVisualization = true;
+                            messages[i - 1].visualizationIdx = visualizationIdx;
+                            messages[i - 1].showButton = false;
+                            visualizationIdx++;
+                        }
+                    }
+                }
+            
+                return messages;
             });
-
+            setDefaultQuestion([]);
+            setCard([]);
+            setCardHash([]);
+            handleGetDatasetQueryWithCards(oldCardId)
             setMessages(parsedMessages);
         }
     }, [selectedMessages]);
@@ -122,11 +146,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
         () => console.log("WebSocket opened"),
     );
 
-    const openModal = () => {
+    const openModal = (cardIndex) => {
+        setSelectedIndex(cardIndex)
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
+        setSelectedIndex(null)
         setIsModalOpen(false);
     };
 
@@ -157,13 +183,13 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
 
     const handleGetDatasetQuery = async func => {
         const { cardId, reasoning, sources } = func.arguments;
-        setSources(sources);
-        setReasoning(reasoning);
+        setSources(prevSources => [...prevSources, sources]);
+        setReasoning(prevReasoning => [...prevReasoning, reasoning]);
+
         setId(func.arguments.cardId);
         try {
             const fetchedCard = await CardApi.get({ cardId: cardId });
             const queryCard = await CardApi.query({ cardId: cardId });
-            const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
             const getDatasetQuery = fetchedCard?.dataset_query;
             const defaultQuestionTest = Question.create({
                 databaseId: 1,
@@ -172,7 +198,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                 display: fetchedCard.display,
                 visualization_settings: {},
                 dataset_query: getDatasetQuery,
-                metadata: cardMetadata.payload.entities
             });
             const itemtohash = {
                 dataset_query: {
@@ -185,12 +210,18 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                 type: "question"
             }
             const newQuestion = defaultQuestionTest.setCard(fetchedCard);
-            setResult(queryCard);
-            setCodeQuery(queryCard.data.native_form.query);
-            setDefaultQuestion(newQuestion);
-            setCard(fetchedCard);
             const hash1 = adhocQuestionHash(itemtohash);
-            setCardHash(hash1)
+            setResult(prevResult => Array.isArray(prevResult) ? [...prevResult, queryCard] : [queryCard]);
+            setCodeQuery(prevCodeQuery => {
+                const query = queryCard?.data?.native_form?.query ?? "Sorry for some reason the query was not retrieved properly";
+                if (query) {
+                  return Array.isArray(prevCodeQuery) ? [...prevCodeQuery, query] : [query];
+                }
+                return prevCodeQuery;
+              });
+            setDefaultQuestion(prevDefaultQuestion => Array.isArray(prevDefaultQuestion) ? [...prevDefaultQuestion, newQuestion] : [newQuestion]);
+            setCard(prevCard => Array.isArray(prevCard) ? [...prevCard, fetchedCard] : [fetchedCard]);
+            setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);              
         } catch (error) {
             console.error("Error fetching card content:", error);
             setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
@@ -199,6 +230,60 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
             removeLoadingMessage();
         }
     };
+
+    const handleGetDatasetQueryWithCards = async (cardIds) => {
+        setIsLoading(true);
+        try {
+            const fetchedCards = await Promise.all(cardIds.map(cardId => CardApi.get({ cardId })));
+            const queryCards = await Promise.all(cardIds.map(cardId => CardApi.query({ cardId })));
+    
+            const newQuestions = [];
+            const hashes = [];
+            
+            fetchedCards.forEach((fetchedCard, index) => {
+                const getDatasetQuery = fetchedCard?.dataset_query;
+                const defaultQuestionTest = Question.create({
+                    databaseId: 1,
+                    name: fetchedCard.name,
+                    type: "query",
+                    display: fetchedCard.display,
+                    visualization_settings: {},
+                    dataset_query: getDatasetQuery
+                });
+    
+                const itemtohash = {
+                    dataset_query: {
+                        database: getDatasetQuery.database,
+                        type: "query",
+                        query: getDatasetQuery.query
+                    },
+                    display: fetchedCard.display,
+                    visualization_settings: {},
+                    type: "question"
+                };
+                
+                const newQuestion = defaultQuestionTest.setCard(fetchedCard);
+                newQuestions.push(newQuestion);
+    
+                const hash = adhocQuestionHash(itemtohash);
+                hashes.push(hash);
+    
+                setResult(prevResult => [...(prevResult || []), queryCards[index]]);
+            });
+    
+            setDefaultQuestion(newQuestions);
+            setCard(fetchedCards);
+            setCardHash(hashes);
+            
+        } catch (error) {
+            console.error("Error fetching card content:", error);
+            setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
+        } finally {
+            setIsLoading(false);
+            removeLoadingMessage();
+        }
+    };
+    
 
     const handleGetInsights = async func => {
         const { insights } = func.arguments;
@@ -285,10 +370,23 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
         const hasError =
             data.message.toLowerCase().includes("error") ||
             data.message.toLowerCase().includes("failed");
-        addServerMessage(
-            data.message || "Received a message from the server.",
-            "text",
-        );
+        if(data.type === "result" && !hasError) {
+            setVisualizationIndex((prevIndex) => {
+                const currentIndex = prevIndex + 1;
+                addServerMessageWithInfo(
+                  data.message || "Received a message from the server.",
+                  "text",
+                  true,
+                  currentIndex
+                );
+                return currentIndex;
+              });
+        } else {
+            addServerMessage(
+                data.message || "Received a message from the server.",
+                "text",
+            )
+        }
         if (hasError) {
             setError(data.message);
         }
@@ -309,6 +407,20 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                 text: message,
                 sender: "server",
                 type: type,
+            }
+        ]);
+    };
+
+    const addServerMessageWithInfo = (message, type, showVisualization, visualizationIdx) => {
+        setMessages(prevMessages => [
+            ...prevMessages,
+            {
+                id: Date.now() + Math.random(),
+                text: message,
+                sender: "server",
+                type: type,
+                showVisualization: showVisualization,
+                visualizationIdx: visualizationIdx
             }
         ]);
     };
@@ -352,7 +464,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                 }),
             );
         }
-
         setMessages(prevMessages => [
             ...prevMessages,
 
@@ -473,68 +584,10 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                             }}
                         >
 
-                            <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
-                                approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                            />
-
-                            {card && defaultQuestion && result && (
-                                <>
-                                    <div
-                                        style={{
-                                            flex: "1 0 50%",
-                                            padding: "16px",
-                                            overflow: "hidden",
-                                            height: "400px",
-                                            width: "auto",
-                                            display: "flex",
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                        }}
-                                    >
-                                        <VisualizationResult
-                                            question={defaultQuestion}
-                                            isDirty={false}
-                                            queryBuilderMode={"view"}
-                                            result={result}
-                                            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-                                            rawSeries={[{ card, data: result && result.data }]}
-                                            isRunning={false}
-                                            navigateToNewCardInsideQB={null}
-                                            onNavigateBack={() => console.log('back')}
-                                            timelineEvents={[]}
-                                            selectedTimelineEventIds={[]}
-                                        />
-                                    </div>
-                                    <Button
-                                        variant="outlined"
-                                        style={{
-                                            width: "auto",
-                                            cursor: "pointer",
-                                            border: "1px solid #E0E0E0",
-                                            borderRadius: "8px",
-                                            marginBottom: "1rem",
-                                            color: "#FFF",
-                                            marginLeft: "auto",
-                                            marginRight: 0,
-                                            backgroundColor: "#8A64DF",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            padding: "0.5rem 1rem",
-                                            lineHeight: "1",
-                                        }}
-                                        onClick={openModal}
-                                    >
-                                        <Icon
-                                            size={18}
-                                            name="bookmark"
-                                            style={{
-                                                marginRight: "0.5rem",
-                                            }}
-                                        />
-                                        <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
-                                    </Button>
-                                </>
-                            )}
+                    <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
+                        approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
+                        card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} 
+                    />
 
                             {insightsList.map((insight, index) => (
                                 <div key={index} style={{ marginBottom: "2rem" }}>
@@ -675,7 +728,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                     </div>
                 </Modal>
             )}
-            {isModalOpen && (
+            {isModalOpen && selectedIndex !== null && (
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
                     <div style={{ padding: "20px", position: "relative" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -690,7 +743,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                         <div style={{ marginBottom: "20px", paddingLeft: "1rem", paddingRight: "1rem" }}>
                             <h4 style={{ marginBottom: "10px", color: "#5B6B7B", fontWeight: "600" }}>Sources</h4>
                             <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-                                {sources?.tables?.map((table, index) => (
+                                {sources[selectedIndex]?.tables?.map((table, index) => (
                                     <div
                                         key={index}
                                         style={{
@@ -779,7 +832,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                                 value="reasoning"
                                 style={{ backgroundColor: "#F8FAFD", padding: "1rem", height: "350px", overflowY: "auto", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}
                             >
-                                {reasoning.split("\n").map((point, index) => (
+                                {reasoning[selectedIndex].split("\n").map((point, index) => (
                                     point.trim() && (
                                         <p key={index} style={{ marginBottom: "1rem", fontSize: "16px" }}>
                                             {point}
@@ -792,7 +845,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType }) => {
                                 value="codeQuery"
                                 style={{ backgroundColor: "#F8FAFD", padding: "1rem", height: "350px", overflowY: "auto", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}
                             >
-                                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{codeQuery}</pre>
+                                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{codeQuery[selectedIndex]}</pre>
                             </Tabs.Panel>
                         </Tabs>
 

@@ -7,6 +7,7 @@ import ChatHistory from "./ChatItems/ChatHistory";
 export const BrowseChat = () => {
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
+  const [oldCardId, setOldCardId] = useState(null);
 
   return (
     <BrowseContainer>
@@ -25,6 +26,7 @@ export const BrowseChat = () => {
               selectedMessages={selectedChatHistory}
               selectedThreadId={selectedThreadId}
               chatType={"default"}
+              oldCardId={oldCardId}
             />
           </Stack>
           <Stack
@@ -36,6 +38,7 @@ export const BrowseChat = () => {
               setSelectedChatHistory={setSelectedChatHistory}
               setThreadId={setSelectedThreadId}
               type="dataAgent"
+              setOldCardId={setOldCardId}
             />
           </Stack>
         </Flex>
