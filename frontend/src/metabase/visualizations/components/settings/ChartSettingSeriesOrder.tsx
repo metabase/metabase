@@ -132,7 +132,7 @@ export const ChartSettingSeriesOrder = ({
             <Select
               initiallyOpened
               searchable
-              placeholder={t`Select a field`}
+              placeholder={t`Select a series`}
               data={hiddenItems.map(item => ({
                 value: item.key,
                 label: getItemTitle(item),
