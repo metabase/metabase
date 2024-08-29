@@ -206,7 +206,7 @@ function NameCell({ model }: { model?: ModelResult }) {
   const headingId = `model-${model?.id || "dummy"}-heading`;
   const icon = getIcon(model);
   return (
-    <ItemNameCell data-testid={`table-name`} aria-labelledby={headingId}>
+    <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
       <MaybeItemLink
         to={model ? Urls.model({ id: model.id, name: model.name }) : undefined}
         style={{
