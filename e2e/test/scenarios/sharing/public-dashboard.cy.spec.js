@@ -263,6 +263,18 @@ describe("scenarios > public > dashboard", () => {
 
     filterWidget().findByText("002").should("be.visible");
   });
+
+  it("should allow to set locale from the `locale` query parameter", () => {
+    cy.get("@dashboardId").then(id => {
+      visitPublicDashboard(id, {
+        params: { locale: "de" },
+      });
+    });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
+    cy.findByText("Registerkarte als PDF exportieren").should("be.visible");
+    cy.url().should("include", "locale=de");
+  });
 });
 
 describeEE("scenarios [EE] > public > dashboard", () => {

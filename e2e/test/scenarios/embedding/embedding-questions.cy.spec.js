@@ -5,6 +5,7 @@ import {
   describeEE,
   echartsContainer,
   filterWidget,
+  main,
   openStaticEmbeddingModal,
   popover,
   restore,
@@ -219,8 +220,10 @@ describe("scenarios > embedding > questions", () => {
       });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Februar 11, 2025, 9:40 PM");
+    main().findByText("Februar 11, 2025, 9:40 PM");
+    main().findByText("Zeilen", { exact: false });
+
+    cy.url().should("include", "locale=de");
   });
 });
 
