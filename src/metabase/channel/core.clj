@@ -49,13 +49,10 @@
 ;;                                             Utils                                               ;;
 ;; ------------------------------------------------------------------------------------------------;;
 
-(defn- find-and-load-metabase-channels!
+(defn find-and-load-metabase-channels!
   "Load namespaces that start with `metabase.channel."
   []
   (doseq [ns-symb u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.channel.")]
     (log/info "Loading channel namespace:" (u/format-color :blue ns-symb))
     (classloader/require ns-symb)))
-
-(when-not *compile-files*
-  (find-and-load-metabase-channels!))
