@@ -2,26 +2,25 @@
   "Improve feedback loop for dealing with png rendering code. Will create images using the rendering that underpins
   pulses and subscriptions and open those images without needing to send them to slack or email."
   (:require
-    [clojure.data.csv :as csv]
-    [clojure.java.io :as io]
-    [dev.util :as dev.u]
-    [hiccup.core :as hiccup]
-    [metabase.email.messages :as messages]
-    [metabase.models :refer [Card]]
-    [metabase.models.card :as card]
-    [metabase.pulse :as pulse]
-    [metabase.pulse.markdown :as markdown]
-    [metabase.pulse.render :as render]
-    [metabase.pulse.render.image-bundle :as img]
-    [metabase.pulse.render.png :as png]
-    [metabase.pulse.render.style :as style]
-    [metabase.query-processor :as qp]
-    [metabase.test :as mt]
-    [toucan2.core :as t2])
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
+   [dev.util :as dev.u]
+   [hiccup.core :as hiccup]
+   [metabase.email.messages :as messages]
+   [metabase.models :refer [Card]]
+   [metabase.models.card :as card]
+   [metabase.pulse :as pulse]
+   [metabase.pulse.markdown :as markdown]
+   [metabase.pulse.render :as render]
+   [metabase.pulse.render.image-bundle :as img]
+   [metabase.pulse.render.png :as png]
+   [metabase.pulse.render.style :as style]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
+   [toucan2.core :as t2])
   (:import (java.io File)))
 
 (set! *warn-on-reflection* true)
-
 
 (defn open-png-bytes
   "Given a byte array, writes it to a temporary file, then opens that file in the default application for png files."
@@ -38,9 +37,9 @@
   [card-id]
   (let [{:keys [dataset_query result_metadata], card-type :type, :as card} (t2/select-one card/Card :id card-id)
         query-results (qp/process-query
-                        (cond-> dataset_query
-                          (= card-type :model)
-                          (assoc-in [:info :metadata/model-metadata] result_metadata)))
+                       (cond-> dataset_query
+                         (= card-type :model)
+                         (assoc-in [:info :metadata/model-metadata] result_metadata)))
         png-bytes     (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                        card
                                                        query-results
@@ -149,7 +148,7 @@
        (cellfn nil)
        (cellfn
         [:div {:style (style/style {:font-family             "Lato"
-                                    :font-size               "13px" #_ "0.875em"
+                                    :font-size               "13px" #_"0.875em"
                                     :font-weight             "400"
                                     :font-style              "normal"
                                     :color                   "#4c5773"
@@ -176,7 +175,6 @@
   "Given a dashboard ID, renders all of the dashcards into an html document."
   [dashboard-id]
   (hiccup/html (render-dashboard-to-hiccup dashboard-id)))
-
 
 (defn render-dashboard-to-html-and-open
   "Given a dashboard ID, renders all of the dashcards to an html file and opens it."

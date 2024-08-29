@@ -7,7 +7,7 @@
 
 (comment
  ;; to register the :metabase-test channel implementation
- api.channel-test/keepme)
+  api.channel-test/keepme)
 
 (deftest channel-api-test
   (testing "/api/channel"
