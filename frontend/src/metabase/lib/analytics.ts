@@ -15,7 +15,7 @@ const VERSIONS: Record<SchemaType, string> = {
   action: "1-0-0",
   browse_data: "1-0-0",
   cleanup: "1-0-0",
-  csvupload: "1-0-4",
+  csvupload: "1-0-3",
   dashboard: "1-1-5",
   database: "1-0-1",
   downloads: "1-0-0",
