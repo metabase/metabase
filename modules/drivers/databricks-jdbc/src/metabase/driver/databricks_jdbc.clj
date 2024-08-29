@@ -110,9 +110,6 @@
   [_driver]
   :mysql)
 
-;; TODO: Using INTERVAL -- `filter-by-expression-time-interval-test`
-;; https://docs.databricks.com/en/sql/language-manual/functions/dayofweek.html
-;; TODO: again, verify this is necessary after removal of all hive stuff!
 (defmethod sql.qp/date [:databricks-jdbc :day-of-week] [driver _ expr]
   (sql.qp/adjust-day-of-week driver [:dayofweek (h2x/->timestamp expr)]))
 
