@@ -567,7 +567,10 @@
 (defn- init-native-pivot
   [{:keys [pivot-grouping-key] :as pivot-spec}
    {:keys [ordered-cols col-settings viz-settings format-rows?]}]
-  (let [row-count-estimate          (apply max (remove nil? (map #(get-in % [:fingerprint :global :distinct-count]) ordered-cols)))
+  (let [counts                      (remove nil? (map #(get-in % [:fingerprint :global :distinct-count]) ordered-cols))
+        row-count-estimate          (if (seq counts)
+                                      (apply max counts)
+                                      2000)
         idx-shift                   (fn [indices]
                                       (map (fn [idx]
                                              (if (> idx pivot-grouping-key)
@@ -629,7 +632,7 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts (when (and (public-settings/native-pivot-exports-enabled-in-v50) pivot-export-options)
+        (let [opts (when (and (public-settings/temp-native-pivot-exports) pivot-export-options)
                      (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                      :pivot-rows []}
                                                     pivot-export-options) ordered-cols))]

@@ -934,7 +934,7 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    true
   :type       :integer)
 
-(defsetting native-pivot-exports-enabled-in-v50
+(defsetting temp-native-pivot-exports
   (deferred-tru "Enable pivot tables in xlsx exports. This is a temporary env var that will be superceded in 51 by (#46995)")
   :visibility :internal
   :export?    true

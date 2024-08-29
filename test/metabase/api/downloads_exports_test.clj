@@ -431,7 +431,7 @@
                                                                [:avg [:field (mt/id :products :rating) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
-        (mt/with-temporary-setting-values [public-settings/native-pivot-exports-enabled-in-v50 true]
+        (mt/with-temporary-setting-values [public-settings/temp-native-pivot-exports true]
           (let [result (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
                 pivot  (with-open [in (io/input-stream result)]
                          (->> (spreadsheet/load-workbook in)
@@ -456,7 +456,7 @@
                                                 :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]
                                                                [:field (mt/id :products :created_at) {:base-type :type/DateTime :temporal-unit :month}]]}}}]
-        (mt/with-temporary-setting-values [public-settings/native-pivot-exports-enabled-in-v50 true]
+        (mt/with-temporary-setting-values [public-settings/temp-native-pivot-exports true]
           (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
                 [pivot data] (with-open [in (io/input-stream result)]
                                (let [wb    (spreadsheet/load-workbook in)
@@ -490,7 +490,7 @@
                                                {:source-table (mt/id :products)
                                                 :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
                                                 :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}}]
-        (mt/with-temporary-setting-values [public-settings/native-pivot-exports-enabled-in-v50 true]
+        (mt/with-temporary-setting-values [public-settings/temp-native-pivot-exports true]
           (let [result       (mt/user-http-request :crowberto :post 200 (format "card/%d/query/xlsx?format_rows=false" pivot-card-id))
                 [pivot data] (with-open [in (io/input-stream result)]
                                (let [wb    (spreadsheet/load-workbook in)
