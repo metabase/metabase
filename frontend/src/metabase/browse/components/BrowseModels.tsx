@@ -139,7 +139,6 @@ export const BrowseModels = () => {
                     recentModelsResult.isLoading || modelsResult.isLoading
                   }
                   style={{ flex: 1 }}
-                  delay={0}
                   loader={<RecentModels skeleton />}
                 >
                   <RecentModels models={recentModels} />
@@ -148,7 +147,6 @@ export const BrowseModels = () => {
                   error={modelsResult.error}
                   loading={modelsResult.isLoading}
                   style={{ flex: 1 }}
-                  delay={0}
                   loader={<ModelsTable skeleton />}
                 >
                   <ModelsTable models={filteredModels} />
