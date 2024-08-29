@@ -7,17 +7,19 @@ redirect_from:
 
 # Public sharing
 
-You can create and share public links (URLs) for questions and dashboards. You can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
+> Only admins can create public links and iframes.
+
+Admins can create and share public links (URLs) for questions and dashboards. People can view them as standalone destinations (URLs) or as embedded iframes in another page or app. In both cases, the public item will display static (view-only) results of your question or dashboard, so visitors won't be able to drill-down into the underlying data on their own.
 
 ## Create a public link for a question
 
 ![Create a public link for a question](../images/create-a-public-link.png)
 
-You can find the **Sharing** icon at the bottom right corner of a question. You can create a link to view the question as is, or to [export the results of a question](#public-link-to-export-question-results-in-csv-xlsx-json).
+Admins can find the **Sharing** icon at the bottom right corner of a question. You can create a link to view the question as is, or to [export the results of a question](#public-link-to-export-question-results-in-csv-xlsx-json).
 
 ## Create a public link for a dashboard
 
-To share a dashboard via a public link, click on the **Sharing** button in the top right menu.
+To share a dashboard via a public link, admins can click on the **Sharing** button in the top right menu.
 
 ![Sharing a dashboard](../images/dashboard-sharing.png)
 

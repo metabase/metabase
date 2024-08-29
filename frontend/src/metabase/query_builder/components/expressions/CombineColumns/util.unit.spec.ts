@@ -42,10 +42,27 @@ const INT = createMockField({
   name: "INT",
   display_name: "Int",
   base_type: "type/Integer",
+  effective_type: "type/Integer",
+});
+
+const DATE = createMockField({
+  id: 5,
+  name: "DATE",
+  display_name: "Date",
+  base_type: "type/Date",
+  effective_type: "type/Date",
+});
+
+const TIME = createMockField({
+  id: 6,
+  name: "TIME",
+  display_name: "Time",
+  base_type: "type/Time",
+  effective_type: "type/Time",
 });
 
 const TABLE = createMockTable({
-  fields: [EMAIL, URL, STRING, INT],
+  fields: [EMAIL, URL, STRING, INT, DATE, TIME],
 });
 
 const DATABASE = createMockDatabase({
@@ -127,10 +144,12 @@ describe("CombineColumns", () => {
         { separator: "#", column: getColumn("STRING") },
         { separator: "&", column: null },
         { separator: "%", column: getColumn("INT") },
+        { separator: "@", column: getColumn("DATE") },
+        { separator: "?", column: getColumn("TIME") },
       ];
 
       const name = getExample(columnsAndSeparators);
-      expect(name).toBe("email@example.com#text&%123");
+      expect(name).toBe("email@example.com#text&%123@2042-01-01?12:34:56.789");
     });
   });
 });

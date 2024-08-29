@@ -1557,6 +1557,20 @@
                 (->> (t2/select :cache_config)
                      (mapv #(update % :config json/decode true)))))))))
 
+(deftest cache-config-handle-big-value-test
+  (testing "Caching config is correctly copied over"
+    (impl/test-migrations ["v50.2024-06-12T12:33:07"] [migrate!]
+      (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "true")}
+                            {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt (str (bigint 10e11)))}
+                            {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt (str (bigint 10e11)))}])
+      (migrate!)
+      (is (=? [{:model    "root"
+                :strategy "ttl"
+                :config   {:multiplier      2147483647
+                           :min_duration_ms 2147483647}}]
+              (->> (t2/select :cache_config)
+                   (mapv #(update % :config json/decode true))))))))
+
 (deftest cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
@@ -2558,8 +2572,8 @@
             (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
 
 (deftest populate-new-permission-fields-works
-  (testing "Migration v51.2024-08-21T08:33:10"
-    (impl/test-migrations ["v51.2024-08-21T08:33:06" "v51.2024-08-21T08:33:10"] [migrate!]
+  (testing "Migration v49.2024-08-21T08:33:10"
+    (impl/test-migrations ["v49.2024-08-21T08:33:06" "v49.2024-08-21T08:33:10"] [migrate!]
       (let [read-coll-id (t2/insert-returning-pk! :collection (merge (mt/with-temp-defaults :model/Collection)
                                                                      {:slug "foo"}))
             read-coll-path (perms/collection-read-path read-coll-id)
