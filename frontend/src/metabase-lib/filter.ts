@@ -6,9 +6,9 @@ import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 import {
   isBoolean,
   isCoordinate,
+  isDateOrDateTime,
   isNumeric,
   isStringOrStringLike,
-  isTemporal,
   isTime,
 } from "./column_types";
 import {
@@ -211,7 +211,11 @@ export function coordinateFilterParts(
   }
 
   const [column, ...otherArgs] = args;
-  if (!isColumnMetadata(column) || !isCoordinate(column)) {
+  if (
+    !isColumnMetadata(column) ||
+    !isNumeric(column) ||
+    !isCoordinate(column)
+  ) {
     return null;
   }
 
@@ -300,7 +304,7 @@ export function specificDateFilterParts(
   const [column, ...serializedValues] = args;
   if (
     !isColumnMetadata(column) ||
-    !isTemporal(column) ||
+    !isDateOrDateTime(column) ||
     !isStringLiteralArray(serializedValues)
   ) {
     return null;
@@ -399,14 +403,19 @@ export function excludeDateFilterParts(
   }
 
   const [column, ...serializedValues] = args;
-  if (!isColumnMetadata(column) || !isTemporal(column)) {
+  if (!isColumnMetadata(column)) {
+    return null;
+  }
+
+  const columnWithoutBucket = withTemporalBucket(column, null);
+  if (!isDateOrDateTime(columnWithoutBucket)) {
     return null;
   }
 
   const bucket = temporalBucket(column);
   if (!bucket) {
     return serializedValues.length === 0
-      ? { column, operator, bucket, values: [] }
+      ? { column: columnWithoutBucket, operator, bucket, values: [] }
       : null;
   }
 
@@ -423,7 +432,7 @@ export function excludeDateFilterParts(
   }
 
   return {
-    column,
+    column: columnWithoutBucket,
     operator,
     bucket: bucketInfo.shortName,
     values,
@@ -494,7 +503,8 @@ export function defaultFilterParts(
     isStringOrStringLike(column) ||
     isNumeric(column) ||
     isBoolean(column) ||
-    isTemporal(column)
+    isDateOrDateTime(column) ||
+    isTime(column)
   ) {
     return null;
   }
@@ -728,7 +738,7 @@ function relativeDateFilterPartsWithoutOffset({
   const [column, value, bucket] = args;
   if (
     !isColumnMetadata(column) ||
-    !isTemporal(column) ||
+    !isDateOrDateTime(column) ||
     !isNumberOrCurrentLiteral(value) ||
     !isStringLiteral(bucket) ||
     !isRelativeDateBucket(bucket)
@@ -773,7 +783,7 @@ function relativeDateFilterPartsWithOffset({
   const [column, intervalParts] = offsetParts.args;
   if (
     !isColumnMetadata(column) ||
-    !isTemporal(column) ||
+    !isDateOrDateTime(column) ||
     !isExpression(intervalParts) ||
     intervalParts.operator !== "interval"
   ) {
@@ -825,7 +835,7 @@ function relativeDateFilterPartsRelativeTimeInterval({
 
   const [column, value, bucket, offsetValue, offsetBucket] = args;
 
-  if (!isColumnMetadata(column) || !isTemporal(column)) {
+  if (!isColumnMetadata(column) || !isDateOrDateTime(column)) {
     return null;
   }
 

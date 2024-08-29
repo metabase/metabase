@@ -258,7 +258,10 @@ function Dashboard(props: DashboardProps) {
       });
 
       if (!isSuccessfulFetchDashboardResult(result)) {
-        setErrorPage(result.payload);
+        const payload = result.payload as { isCancelled?: boolean };
+        if (!payload.isCancelled) {
+          setErrorPage(result.payload);
+        }
         return;
       }
 

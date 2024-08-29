@@ -12,7 +12,7 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-type UseDownloadDataParams = {
+export type UseDownloadDataParams = {
   question: Question;
   result: Dataset;
   dashboardId?: DashboardId;

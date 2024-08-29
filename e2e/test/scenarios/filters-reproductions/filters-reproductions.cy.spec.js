@@ -1138,7 +1138,7 @@ describe("issue 35043", () => {
       .should("have.text", "Created At is Apr 15 – May 22, 2024")
       .click();
 
-    cy.findByTestId("datetime-filter-picker").within(() => {
+    cy.findByTestId("date-filter-picker").within(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByDisplayValue("May 22, 2024").type("{backspace}2").blur();
       cy.findByDisplayValue("May 22, 2022").should("exist");
