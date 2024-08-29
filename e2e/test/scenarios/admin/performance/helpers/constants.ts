@@ -38,7 +38,6 @@ export const sampleQuestion: StrategyBearer & {
   name: "Slow question",
   database: WRITABLE_DB_ID,
   native: {
-    // Selecting an MD5 string makes it easy to see whether the result is cached
     query: `SELECT * FROM ${TEST_TABLE}, pg_sleep(${questionRuntime / 1000})`,
   },
 };
