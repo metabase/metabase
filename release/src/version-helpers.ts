@@ -1,4 +1,4 @@
-import { compare as compareVersions, coerce } from "semver";
+import { coerce, compare as compareVersions } from "semver";
 
 import type { GithubProps, Tag } from "./types";
 
@@ -204,6 +204,11 @@ export function ignorePatches(version: string) {
   return version.split('.').length < 4;
 }
 
+export function isPatchVersion(version: string) {
+  // v0.50.20.1
+  return version.split('.').length === 4;
+}
+
 const normalizeVersionForSorting = (version: string) =>
   version.replace(/^(v?)(0|1)\./, '');
 
@@ -231,6 +236,7 @@ export function getLastReleaseFromTags(tags: Tag[]) {
   return tags
     .map(tag => tag.ref.replace('refs/tags/', ''))
     .filter(tag => !isRCVersion(tag)) // we want to ignore RC tags because release notes should be cumulative
+    .filter(v => !isPatchVersion(v)) // ignore patch versions since we don't release notes for them
     .sort(versionSort)
     .reverse()[0];
 }

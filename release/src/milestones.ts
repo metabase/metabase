@@ -2,25 +2,25 @@ import fs from "fs";
 
 import _ from "underscore";
 
-import { nonUserFacingLabels } from "./constants";
+import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import {
   findMilestone,
+  getIssueWithCache,
   getMilestoneIssues,
   getMilestones,
-  getIssueWithCache,
 } from "./github";
 import {
+  getBackportSourcePRNumber,
   getLinkedIssues,
   getPRsFromCommitMessage,
-  getBackportSourcePRNumber,
 } from "./linked-issues";
-import type { Issue, GithubProps, Milestone, Commit, ReleaseProps } from "./types";
+import type { Commit, GithubProps, Issue, Milestone, ReleaseProps } from "./types";
 import {
+  getLastReleaseTag,
   getMajorVersion,
   getVersionFromReleaseBranch,
-  versionSort,
   ignorePatches,
-  getLastReleaseTag,
+  versionSort,
 } from "./version-helpers";
 
 function isBackport(pullRequest: Issue) {
@@ -35,6 +35,7 @@ const isNotNull = <T>(value: T | null): value is T => value !== null;
 
 const excludedLabels = [
   ...nonUserFacingLabels,
+  ...hiddenLabels,
   '.Already Fixed',
 ];
 
