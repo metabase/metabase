@@ -6,7 +6,7 @@ type UpsellEventProps = {
 };
 
 export const trackUpsellViewed = ({ source, campaign }: UpsellEventProps) => {
-  trackSchemaEvent("upsell", "1-0-0", {
+  trackSchemaEvent("upsell", {
     event: "upsell_viewed",
     promoted_feature: campaign,
     upsell_location: source,
@@ -14,7 +14,7 @@ export const trackUpsellViewed = ({ source, campaign }: UpsellEventProps) => {
 };
 
 export const trackUpsellClicked = ({ source, campaign }: UpsellEventProps) => {
-  trackSchemaEvent("upsell", "1-0-0", {
+  trackSchemaEvent("upsell", {
     event: "upsell_clicked",
     promoted_feature: campaign,
     upsell_location: source,

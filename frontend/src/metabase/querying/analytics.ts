@@ -6,7 +6,7 @@ export const trackColumnCombineViaColumnHeader = (
   query: Lib.Query,
   question?: Question,
 ) => {
-  trackSchemaEvent("question", "1-0-4", {
+  trackSchemaEvent("question", {
     event: "column_combine_via_column_header",
     custom_expressions_used: ["concat"],
     database_id: Lib.databaseID(query),
@@ -20,7 +20,7 @@ export const trackColumnExtractViaHeader = (
   extraction: Lib.ColumnExtraction,
   question?: Question,
 ) => {
-  trackSchemaEvent("question", "1-0-4", {
+  trackSchemaEvent("question", {
     event: "column_extract_via_column_header",
     custom_expressions_used: Lib.functionsUsedByExtraction(
       query,
