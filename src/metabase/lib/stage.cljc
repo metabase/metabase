@@ -139,7 +139,8 @@
                                   (lib.metadata.calculation/column-name query stage-number col))]]
        (-> (merge
             col
-            {:lib/source               :source/previous-stage
+            {
+             :lib/source               :source/previous-stage
              :lib/source-column-alias  source-alias
              :lib/desired-column-alias (unique-name-fn source-alias)}
             (when (:metabase.lib.card/force-broken-id-refs col)

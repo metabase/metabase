@@ -1324,7 +1324,7 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("viz settings", () => {
-      it.skip("should be able to toggle the fields that correspond to breakout columns in the previous stage", () => {
+      it("should be able to toggle the fields that correspond to breakout columns in the previous stage", () => {
         function toggleColumn(columnName: string, isVisible: boolean) {
           cy.findByTestId("chartsettings-sidebar").within(() => {
             cy.findByLabelText(columnName)
@@ -1372,7 +1372,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
           toggleColumn(queryColumn2Name, true);
           assertTableData({
-            columns: [tableColumn1Name, tableColumn2Name, "Count"],
+            columns: ["Count", tableColumn1Name, tableColumn2Name],
           });
         }
 
