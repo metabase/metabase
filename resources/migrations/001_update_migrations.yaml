@@ -8173,6 +8173,28 @@ databaseChangeLog:
       rollback: # not needed, columns will be deleted
 
   - changeSet:
+      id: v50.2024-05-30T16:04:20
+      author: escherize
+      comment: Add context to recent views table
+      changes:
+        - addColumn:
+            tableName: recent_views
+            columns:
+              - column:
+                  name: context
+                  remarks: The contextual action that netted a recent view.
+                  type: varchar(256)
+                  defaultValue: "view"
+                  constraints:
+                    nullable: false
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: recent_views
+              columnName: context
+
+  - changeSet:
       id: v50.2024-06-12T12:33:07
       author: piranha
       comment: 'Decrypt some settings so the next migration runs well'
@@ -8371,23 +8393,6 @@ databaseChangeLog:
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateMetricsToV2"
-
-  - changeSet:
-      id: v51.2024-05-30T16:04:20
-      author: escherize
-      comment: Add context to recent views table
-      changes:
-        - addColumn:
-            tableName: recent_views
-            columns:
-              - column:
-                  name: context
-                  remarks: The contextual action that netted a recent view.
-                  type: varchar(256)
-                  defaultValue: "view"
-                  constraints:
-                    nullable: false
-      preConditions:
 
   - changeSet:
       id: v51.2024-06-07T12:37:36
