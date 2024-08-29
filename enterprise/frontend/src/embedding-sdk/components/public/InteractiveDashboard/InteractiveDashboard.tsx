@@ -3,6 +3,7 @@ import _ from "underscore";
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import {
+  SdkError,
   SdkLoader,
   withPublicComponentWrapper,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
@@ -118,15 +119,19 @@ const InteractiveDashboardInner = ({
 export const InteractiveDashboard =
   withPublicComponentWrapper<InteractiveDashboardProps>(
     ({ dashboardId, ...rest }) => {
-      const { id, isLoading } = useValidatedEntityId({
+      const { id, isLoading } = useValidatedEntityId<DashboardId>({
         type: "dashboard",
         id: dashboardId,
       });
 
-      return isLoading ? (
-        <SdkLoader />
-      ) : (
-        <InteractiveDashboardInner dashboardId={id as DashboardId} {...rest} />
-      );
+      if (isLoading) {
+        return <SdkLoader />;
+      }
+
+      if (!id) {
+        return <SdkError message="ID not found" />;
+      }
+
+      return <InteractiveDashboardInner dashboardId={id} {...rest} />;
     },
   );

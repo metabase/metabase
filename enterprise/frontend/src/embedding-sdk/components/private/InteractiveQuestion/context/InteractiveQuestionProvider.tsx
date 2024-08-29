@@ -4,9 +4,8 @@ import { useLoadQuestion } from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated-entity-id";
-import type { QueryParams } from "metabase/query_builder/actions";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
-import type { CardId } from "metabase-types/api";
+import type { CardEntityId, CardId } from "metabase-types/api";
 
 import type {
   InteractiveQuestionContextType,
@@ -32,15 +31,14 @@ export const InteractiveQuestionProvider = ({
   componentPlugins,
   onNavigateBack,
   children,
-}: Omit<InteractiveQuestionProviderProps, "options"> & {
-  options?: QueryParams;
+}: Omit<InteractiveQuestionProviderProps, "cardId"> & {
+  cardId?: CardId | CardEntityId;
 }) => {
-  const { id, isLoading: isLoadingValidatedId } = useValidatedEntityId({
-    type: "card",
-    id: initId,
-  });
-
-  const cardId = id as CardId;
+  const { id: cardId, isLoading: isLoadingValidatedId } =
+    useValidatedEntityId<CardId>({
+      type: "card",
+      id: initId,
+    });
 
   const {
     question,

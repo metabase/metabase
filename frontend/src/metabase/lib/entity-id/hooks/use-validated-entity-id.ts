@@ -25,10 +25,14 @@ type UseValidatedEntityIdProps = {
  * @param {string | number | null | undefined} params.id - The ID to validate and potentially translate.
  *
  */
-export const useValidatedEntityId = ({
+export const useValidatedEntityId = <T>({
   type,
   id,
-}: UseValidatedEntityIdProps) => {
+}: UseValidatedEntityIdProps): {
+  id: T | null;
+  isLoading: boolean;
+  isError: boolean;
+} => {
   const {
     data: entity_ids,
     isError,
@@ -54,10 +58,10 @@ export const useValidatedEntityId = ({
           },
           ({ id, entity_ids }) =>
             isBaseEntityID(id) && entity_ids[id]?.status === "success"
-              ? entity_ids[id].id
+              ? (entity_ids[id].id as T)
               : null,
         )
-        .otherwise(() => id),
+        .otherwise(() => id as T),
     [entity_ids, id, isError, isLoading],
   );
 
