@@ -29,13 +29,13 @@ import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
 import { getIcon } from "../utils";
 
+import S from "./BrowseTable.module.css";
 import {
   Cell,
   CollectionTableCell,
   NameColumn,
   TableRow,
 } from "./CardTable.styled";
-import S from "./ModelsTable.module.css";
 import { getModelDescription, sortCards } from "./utils";
 
 export interface ModelsTableProps {

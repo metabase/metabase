@@ -27,13 +27,13 @@ import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 import type { MetricResult } from "../types";
 import { getIcon } from "../utils";
 
+import S from "./BrowseTable.module.css";
 import {
   Cell,
   CollectionTableCell,
   NameColumn,
   TableRow,
 } from "./CardTable.styled";
-import S from "./ModelsTable.module.css";
 import { getMetricDescription, sortCards } from "./utils";
 
 type MetricsTableProps = {
