@@ -441,6 +441,7 @@
                      [:and
                       [:= :collection_id (:id collection)]
                       [:= :c.archived_directly false]])
+                   [:= :c.dashboard_id nil]
                    [:= :archived (boolean archived?)]
                    (case card-type
                      :model
@@ -652,6 +653,7 @@
                   (t2/reducible-query {:select-distinct [:collection_id :type]
                                        :from            [:report_card]
                                        :where           [:and
+                                                         [:= :dashboard_id nil]
                                                          [:= :archived false]
                                                          [:in :collection_id descendant-collection-ids]]})))
 
