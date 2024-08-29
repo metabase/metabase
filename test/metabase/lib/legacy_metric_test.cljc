@@ -203,3 +203,16 @@
                 :lib/source-column-alias  "metric"
                 :lib/type                 :metadata/column}]
               (lib/returned-columns query -1 query))))))
+
+(deftest ^:parallel metrics-inherit-the-name-of-the-aggregation-test
+  (testing "Metrics inherit the name of the aggregation to be in sync with the QP (#40355)"
+    (let [query  (lib/query metadata-provider (meta/table-metadata :venues))
+          metric (first (lib/available-legacy-metrics query))
+          query  (-> query
+                     (lib/aggregate metric)
+                     (lib/append-stage))
+          query  (-> query
+                     (lib/filter (lib/> (first (lib/returned-columns query)) 1)))]
+      (is (=? {:stages [{}
+                        {:filters [[:> {} [:field {:base-type :type/Integer, :effective-type :type/Integer} "sum"] 1]]}]}
+              query)))))

@@ -121,3 +121,18 @@
                                                   (cond-> metric-metadata
                                                     aggregation-pos (assoc :aggregation-position aggregation-pos))))
                                               metrics)))))))
+
+(defmethod lib.metadata.calculation/metadata-method :metric
+  [query stage-number [_ _opts metric-id-or-name :as metric-ref]]
+  (if (string? metric-id-or-name)
+    ((get-method lib.metadata.calculation/metadata-method :default) query stage-number metric-ref)
+    (let [metric-metadata (resolve-metric query metric-id-or-name)
+          metric-aggregation (-> metric-metadata
+                                 :definition
+                                 mbql.normalize/normalize
+                                 lib.convert/->pMBQL
+                                 :aggregation
+                                 first)
+          display-name (lib.metadata.calculation/display-name query stage-number metric-metadata)]
+      (assoc (lib.metadata.calculation/metadata query stage-number metric-aggregation)
+             :display-name display-name))))
