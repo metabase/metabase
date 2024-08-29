@@ -148,8 +148,12 @@ export function EntityPickerModal<
     const hasRecentsTab =
       hydratedOptions.hasRecents && filteredRecents.length > 0;
     const hasSearchTab = !!searchQuery;
+    // This is to prevent different tab being initially open and then flickering back
+    // to recents tab once recents have loaded (due to computeInitialTab)
+    const shouldOptimisticallyAddRecentsTabWhileLoading =
+      defaultToRecentTab && isLoadingRecentItems;
 
-    if (hasRecentsTab) {
+    if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
         model: "recents",
         displayName: t`Recents`,
@@ -184,6 +188,7 @@ export function EntityPickerModal<
 
     return computedTabs;
   }, [
+    defaultToRecentTab,
     filteredRecents,
     hydratedOptions.hasRecents,
     isLoadingRecentItems,
