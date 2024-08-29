@@ -185,7 +185,8 @@
   The above conditions must hold for every joined source too."
   [query :- ::lib.schema/query]
   (let [stages (:stages query)]
-    (editable-stages? query stages)))
+    (mu/disable-enforcement
+      (editable-stages? query stages))))
 
 ;;; TODO -- I'm wondering if we need both this AND [[bulk-metadata-or-throw]]... most of the rest of the stuff here
 ;;; throws if we can't fetch the metadata, not sure what situations we wouldn't want to do that in places that use
