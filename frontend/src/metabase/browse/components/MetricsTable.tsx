@@ -401,7 +401,12 @@ function MenuCell({ metric }: { metric?: MetricResult }) {
     <Cell onClick={stopPropagation} style={{ padding: 0 }}>
       <Menu position="bottom-end">
         <Menu.Target>
-          <Button size="xs" variant="subtle" px="sm">
+          <Button
+            size="xs"
+            variant="subtle"
+            px="sm"
+            aria-label={t`Metric options`}
+          >
             <Icon name="ellipsis" />
           </Button>
         </Menu.Target>
