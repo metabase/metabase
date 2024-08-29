@@ -1,6 +1,13 @@
-import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
+import {
+  describeEE,
+  queryWritableDB,
+  resetTestTable,
+  restore,
+  setTokenFeatures,
+} from "e2e/support/helpers";
 
 import {
+  TEST_TABLE,
   instanceDefault,
   questionRuntime,
   sampleAdaptiveStrategy,
@@ -17,7 +24,6 @@ import {
   resetServerTime,
   setupDashboardTest,
   setupQuestionTest,
-  wrapResult,
 } from "./helpers/e2e-performance-helpers";
 import {
   disableCaching,
@@ -35,7 +41,7 @@ const testCacheStrategy = ({
   it = itFunction,
 }: CacheTestParameters) => {
   it(description, () => {
-    const { reload, visitItem } =
+    const { visitItem } =
       item.model === "question"
         ? setupQuestionTest(sampleQuestion)
         : setupDashboardTest(sampleDashboard, sampleQuestion);
@@ -47,36 +53,27 @@ const testCacheStrategy = ({
         item: itemToConfigure,
         strategy,
       });
-
-      visitItem();
     });
 
     const expectedCacheDuration = getExpectedCacheDuration(strategy);
+    queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='Old Value';`);
 
-    advanceServerClockBy(expectedCacheDuration - 2000)
-      .then(() => {
-        reload();
-        wrapResult().as("firstResultBeforeCacheShouldExpire");
-      })
-      .then(() => advanceServerClockBy(1000))
-      .then(() => {
-        reload();
-        wrapResult().as("secondResultBeforeCacheShouldExpire");
-      })
-      .then(() => advanceServerClockBy(5000))
-      .then(() => {
-        reload();
-        wrapResult().as("resultAfterCacheShouldExpire");
-      });
+    // first visit causes us to cache it
+    visitItem();
+    cy.findByTestId("visualization-root").findByText("Old Value");
 
-    cy.then(function () {
-      expect(this.firstResultBeforeCacheShouldExpire).to.eq(
-        this.secondResultBeforeCacheShouldExpire,
-      );
-      expect(this.resultAfterCacheShouldExpire).to.not.eq(
-        this.secondResultBeforeCacheShouldExpire,
-      );
-    });
+    // value changes in the DB
+    queryWritableDB(`UPDATE ${TEST_TABLE} SET my_text='New Value';`);
+
+    // check that old value is still cached
+    advanceServerClockBy(expectedCacheDuration - 1000);
+    visitItem();
+    cy.findByTestId("visualization-root").findByText("Old Value");
+
+    // check that the cache expires when expected
+    advanceServerClockBy(2000);
+    visitItem();
+    cy.findByTestId("visualization-root").findByText("New Value");
   });
 };
 
@@ -87,7 +84,7 @@ const testDoNotCachePolicy = ({
   it = itFunction,
 }: CacheTestParameters) => {
   it(description, () => {
-    const { reload, visitItem } =
+    const { visitItem } =
       item.model === "question"
         ? setupQuestionTest(sampleQuestion)
         : setupDashboardTest(sampleDashboard, sampleQuestion);
@@ -100,7 +97,7 @@ const testDoNotCachePolicy = ({
       cy.then(function () {
         disableCaching({ item: inheritsStrategyFrom ?? item });
         visitItem();
-        reload();
+        visitItem();
       });
     }
 
@@ -128,8 +125,10 @@ describe(
       beforeEach(() => {
         resetServerTime();
         interceptRoutes();
-        restore("postgres-12");
+        resetTestTable({ type: "postgres", table: TEST_TABLE });
+        restore("postgres-writable");
         cy.signInAsAdmin();
+        // resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: TEST_TABLE });
         setTokenFeatures("all");
       });
 

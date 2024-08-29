@@ -6,7 +6,7 @@ import {
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
-import type { CacheStrategy, CacheableModel } from "metabase-types/api";
+import type { CacheStrategy } from "metabase-types/api";
 
 import { questionRuntime } from "./constants";
 import type { DashboardDetails } from "./types";
@@ -55,13 +55,12 @@ export const setupQuestionTest = (
     visitQuestion: true,
     wrapId: true,
   });
-  const reload = reloadQuestion;
   const visitItem = () =>
     cy.then(function () {
       log("Visiting the question");
       visitQuestion("@questionId");
     });
-  return { reload, visitItem };
+  return { visitItem };
 };
 
 export const setupDashboardTest = (
@@ -73,60 +72,14 @@ export const setupDashboardTest = (
     dashboardDetails,
     visitDashboard: true,
   });
-  const reload = reloadDashboard;
+
   const waitForQuery = () => cy.wait("@dashcardQuery");
   const visitItem = () =>
     cy.then(function () {
       visitDashboard(this.dashboardId);
     });
-  return { reload, visitItem, waitForQuery };
+  return { visitItem, waitForQuery };
 };
-
-export const reloadItem = ({
-  /** 'Model' in the sense of 'type of thing' */
-  model,
-  endpointAlias,
-}: {
-  model: CacheableModel;
-  endpointAlias: string;
-}) => {
-  log(`Reload ${model}`);
-  cy.reload();
-  return cy.wait(endpointAlias).then(interception => {
-    cy.wrap(interception.response?.body.running_time).as("queryRuntime");
-  });
-};
-
-export const reloadQuestion = () =>
-  reloadItem({ model: "question", endpointAlias: "@cardQuery" });
-export const reloadDashboard = () =>
-  reloadItem({ model: "dashboard", endpointAlias: "@dashcardQuery" });
-
-export const resultIsCached = (previousResult: string, nextResult: string) =>
-  previousResult === nextResult;
-export const resultIsFresh = (previousResult: string, nextResult: string) =>
-  previousResult !== nextResult;
-
-/** The caching tests load a question (sometimes inside a dashboard) which has
- * just one result: an MD5 string. This function finds that string and wraps
- * it. */
-export const wrapResult = () =>
-  cy.url().then(url => {
-    const timeout = 10000 + questionRuntime * 3;
-    const cell = url.includes("dashboard")
-      ? cy.findAllByTestId("cell-data", { timeout }).first()
-      : cy
-          .get("#main-data-grid", { timeout })
-          .findAllByTestId("cell-data")
-          .first();
-    cell.invoke("text").then(result => {
-      expect(
-        result.length,
-        "The result, ${result}, has the correct length",
-      ).to.eq(32);
-      return cy.wrap(result);
-    });
-  });
 
 export const saveQuestion = ({ withName }: { withName: string }) => {
   log("Save the question");
