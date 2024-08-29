@@ -500,10 +500,10 @@ describe("scenarios > admin > databases > exceptions", () => {
     cy.visit("/admin/databases/1");
     cy.wait("@loadDatabase");
 
-    cy.get("nav").should("contain", "Metabase Admin");
-    cy.get("span").contains(/Sample Database/i);
-    cy.get("div").contains("This database cannot be modified.");
-    cy.button("Remove this database").should("not.exist");
+    cy.findByTestId("main-logo");
+    cy.findByTestId("breadcrumbs").findByText("Sample Database");
+    cy.findByRole("main").findByText("This database cannot be modified.");
+    cy.findByTestId("database-actions-panel").should("not.exist");
   });
 
   it("should show error upon a bad request", () => {
