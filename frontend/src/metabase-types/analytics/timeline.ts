@@ -1,11 +1,24 @@
-import type { CardId, CollectionId } from "metabase-types/api";
+import type { ValidateSchema } from "./utils";
 
-export type NewEventCreatedEvent = {
+type TimelineEventSchema = {
+  event: string;
+  source?: string | null;
+  question_id?: number | null;
+  collection_id?: number | null;
+  time_matters?: boolean | null;
+};
+
+type ValidateEvent<T extends TimelineEventSchema> = ValidateSchema<
+  T,
+  TimelineEventSchema
+>;
+
+export type NewEventCreatedEvent = ValidateEvent<{
   event: "new_event_created";
   source: "questions" | "collections" | "api";
-  question_id: CardId | null;
-  collection_id: CollectionId | null;
+  question_id: number | null;
+  collection_id: number | null;
   time_matters: boolean;
-};
+}>;
 
 export type TimelineEvent = NewEventCreatedEvent;

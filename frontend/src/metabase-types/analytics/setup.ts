@@ -1,6 +1,24 @@
-export type SetupVersion = "1.3.0";
+import type { ValidateSchema } from "./utils";
 
-export type StepSeenEvent = {
+type SetupEventSchema = {
+  event: string;
+  version: string;
+  step?: string | null;
+  step_number?: number | null;
+  usage_reason?: string | null;
+  database?: string | null;
+  valid_token_present?: boolean | null;
+  source?: string | null;
+};
+
+type ValidateEvent<T extends SetupEventSchema> = ValidateSchema<
+  T,
+  SetupEventSchema
+>;
+
+type SetupVersion = "1.3.0";
+
+export type StepSeenEvent = ValidateEvent<{
   event: "step_seen";
   version: SetupVersion;
   step:
@@ -14,31 +32,31 @@ export type StepSeenEvent = {
     | "data_usage"
     | "completed";
   step_number: number;
-};
+}>;
 
-export type UsageReasonSelectedEvent = {
+export type UsageReasonSelectedEvent = ValidateEvent<{
   event: "usage_reason_selected";
   version: SetupVersion;
   usage_reason: "self-service-analytics" | "embedding" | "both" | "not-sure";
-};
+}>;
 
-export type LicenseTokenStepSubmittedEvent = {
+export type LicenseTokenStepSubmittedEvent = ValidateEvent<{
   event: "license_token_step_submitted";
   version: SetupVersion;
   valid_token_present: boolean;
-};
+}>;
 
-export type DatabaseSelectedEvent = {
+export type DatabaseSelectedEvent = ValidateEvent<{
   event: "database_selected";
   version: SetupVersion;
   database: string;
-};
+}>;
 
-export type AddDataLaterClickedEvent = {
+export type AddDataLaterClickedEvent = ValidateEvent<{
   event: "add_data_later_clicked";
   version: SetupVersion;
   source: "pre_selection" | "post_selection";
-};
+}>;
 
 export type SetupEvent =
   | StepSeenEvent
