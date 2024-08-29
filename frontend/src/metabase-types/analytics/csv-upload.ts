@@ -1,4 +1,22 @@
-export type CsvUploadSuccessfulEvent = {
+import type { ValidateSchema } from "./utils";
+
+type CsvUploadEventSchema = {
+  event: string;
+  model_id?: number | null;
+  upload_seconds?: number | null;
+  size_mb?: number | null;
+  num_columns?: number | null;
+  num_rows?: number | null;
+  generated_columns?: number | null;
+  source?: string | null;
+};
+
+type ValidateEvent<T extends CsvUploadEventSchema> = ValidateSchema<
+  T,
+  CsvUploadEventSchema
+>;
+
+export type CsvUploadSuccessfulEvent = ValidateEvent<{
   event: "csv_upload_successful";
   model_id: number;
   size_mb: number;
@@ -6,37 +24,37 @@ export type CsvUploadSuccessfulEvent = {
   num_rows: number;
   generated_columns: number;
   upload_seconds: number;
-};
+}>;
 
-export type CsvUploadFailedEvent = {
+export type CsvUploadFailedEvent = ValidateEvent<{
   event: "csv_upload_failed";
   size_mb: number;
   num_columns: number;
   num_rows: number;
   generated_columns: number;
-};
+}>;
 
-export type CsvAppendSuccessfulEvent = {
+export type CsvAppendSuccessfulEvent = ValidateEvent<{
   event: "csv_append_successful";
   size_mb: number;
   num_columns: number;
   num_rows: number;
   generated_columns: number;
   upload_seconds: number;
-};
+}>;
 
-export type CsvAppendFailedEvent = {
+export type CsvAppendFailedEvent = ValidateEvent<{
   event: "csv_append_failed";
   size_mb: number;
   num_columns: number;
   num_rows: number;
   generated_columns: number;
-};
+}>;
 
-export type CsvUploadClickedEvent = {
+export type CsvUploadClickedEvent = ValidateEvent<{
   event: "csv_upload_clicked";
   source: "left_nav";
-};
+}>;
 
 export type CsvUploadEvent =
   | CsvUploadSuccessfulEvent
