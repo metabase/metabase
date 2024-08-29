@@ -8,7 +8,7 @@ export const NewButton = styled(Button)`
   align-items: center;
   height: 2.25rem;
   padding: 0.5rem;
-  background-color: #223800 !important;
+  background-color: #587330 !important;
   border: none !important;
 
   ${Button.TextContainer} {

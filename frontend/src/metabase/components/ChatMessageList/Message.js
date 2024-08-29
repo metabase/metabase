@@ -13,7 +13,8 @@ const Message = ({
   const isUser = message.sender === "user";
   const hasError =
     message.text.toLowerCase().includes("error") ||
-    message.text.toLowerCase().includes("failed");
+    message.text.toLowerCase().includes("failed") ||
+    message.text.toLowerCase().includes("issue");
 
   return (
     <div
@@ -71,20 +72,21 @@ const Message = ({
             variant="outlined"
             style={{
               cursor: "pointer",
-              border: "1px solid #223800",
+              border: "1px solid #587330",
               borderRadius: "8px",
-              color: "#223800",
+              color: "#587330",
               backgroundColor: "#FFF",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              marginLeft: "auto", // Aligns the button to the right
+              marginLeft: "auto",
               padding: "0.6rem 1rem",
               lineHeight: "1",
               marginRight: "10px",
               fontWeight: "bold",
+              width: "10rem",
             }}
-            onClick={onFeedbackClick} // Trigger feedback logic
+            onClick={onFeedbackClick}
           >
             <span
               style={{
@@ -110,10 +112,10 @@ const Message = ({
               variant="outlined"
               style={{
                 cursor: "pointer",
-                border: "1px solid #223800",
+                border: "1px solid #587330",
                 borderRadius: "8px",
                 color: "#FFF",
-                backgroundColor: "#223800",
+                backgroundColor: "#587330",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -139,9 +141,9 @@ const Message = ({
               variant="outlined"
               style={{
                 cursor: "pointer",
-                border: "1px solid #223800",
+                border: "1px solid #587330",
                 borderRadius: "8px",
-                color: "#223800",
+                color: "#587330",
                 backgroundColor: "#FFF",
                 display: "flex",
                 alignItems: "center",

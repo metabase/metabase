@@ -97,7 +97,7 @@ function ProfileLink({ adminItems, onLogout }) {
         triggerProps={{
           color: color("text-medium"),
           hover: {
-            backgroundColor: "#223800",
+            backgroundColor: "#587330",
             color: color("text-white"),
           },
         }}

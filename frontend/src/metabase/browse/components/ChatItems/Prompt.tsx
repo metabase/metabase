@@ -90,11 +90,11 @@ const ChatPrompt = ({
           onClick={onSendMessage}
           style={{
             position: "absolute",
-            right: "16px",
-            bottom: "16px",
+            right: "10px",
+            bottom: "10px",
             borderRadius: "8px",
-            width: "40px",
-            height: "40px",
+            width: "30px",
+            height: "30px",
             padding: "0",
             minWidth: "0",
             backgroundColor: canSubmit ? "#8A64DF" : "#F1EBFF",
@@ -106,7 +106,11 @@ const ChatPrompt = ({
             alignItems: "center",
           }}
         >
-          <Icon size={26} name="sendChat" />
+          <Icon
+            size={18}
+            name="sendChat"
+            style={{ paddingTop: "2px", paddingLeft: "2px" }}
+          />
         </Button>
       </div>
     </div>

@@ -14,7 +14,7 @@ export const SidebarIcon = styled(Icon)<{
   ${props =>
     !props.color &&
     css`
-      color: #223800;
+      color: #587330;
     `}
 `;
 
@@ -48,7 +48,7 @@ export const NodeRoot = styled(TreeNode.Root)<{
   }
 
   &:hover {
-    background-color: #223800;
+    background-color: #587330;
     color: var(--mb-color-brand);
 
     ${ExpandToggleButton} {

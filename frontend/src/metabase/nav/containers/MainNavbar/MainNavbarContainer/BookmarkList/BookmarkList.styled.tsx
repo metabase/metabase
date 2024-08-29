@@ -9,7 +9,8 @@ export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
 
   &:hover {
     button {
-      color: var(--mb-color-brand);
+      color: #fff;
+      background: #587330;
       opacity: 0.5;
 
       > svg:focus {
@@ -20,8 +21,7 @@ export const SidebarBookmarkItem = styled(DraggableSidebarLink)`
 
   button {
     opacity: 0;
-    color: ${props =>
-      props.isSelected ? color("text-white") : color("brand")};
+    color: #76797d;
     cursor: pointer;
     margin-top: 3px;
 
