@@ -23,7 +23,7 @@
 
   <Loggers>
     <Logger name="com.mchange" level="ERROR"/>
-    <Logger name="liquibase" level="ERROR"/>
+    <Logger name="liquibase" level="INFO"/>
     <Logger name="metabase" level="INFO"/>
     <Logger name="metabase-enterprise" level="INFO"/>
     <Logger name="metabase.metabot" level="DEBUG"/>
