@@ -9,7 +9,9 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addTextBox,
+  appBar,
   cartesianChartCircle,
+  createDashboard,
   createDashboardWithTabs,
   dashboardGrid,
   dashboardHeader,
@@ -22,7 +24,9 @@ import {
   getDashboardCards,
   getTextCardDetails,
   goToTab,
+  main,
   modal,
+  navigationSidebar,
   openQuestionsSidebar,
   popover,
   queryBuilderHeader,
@@ -1497,6 +1501,49 @@ describe("issue 42165", () => {
 
       cy.wait("@dataset");
       cy.title().should("eq", "fooBarQuestion · Metabase");
+    });
+  });
+});
+
+describe("issue 47170", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cy.request("POST", `/api/bookmark/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+    createDashboard({ name: "Dashboard A" }, { wrapId: true }).then(
+      dashboardId => {
+        cy.request("POST", `/api/bookmark/dashboard/${dashboardId}`);
+      },
+    );
+
+    cy.intercept(
+      {
+        method: "GET",
+        url: "/api/dashboard/*",
+        middleware: true,
+      },
+      req => {
+        req.on("response", res => {
+          res.setThrottle(2);
+        });
+      },
+    );
+  });
+
+  it("should not show error when dashboard fetch request is cancelled (metabase#47170)", () => {
+    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
+
+    appBar().button("Toggle sidebar").click();
+    navigationSidebar().findByText("Dashboard A").click();
+    appBar().button("Toggle sidebar").click();
+    navigationSidebar().findByText("Orders in a dashboard").click();
+
+    main().within(() => {
+      cy.findByText("Something’s gone wrong").should("not.exist");
+      cy.findByText("Orders in a dashboard").should("exist");
+      getDashboardCards().should("have.length", 1);
     });
   });
 });
