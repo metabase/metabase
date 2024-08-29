@@ -1148,10 +1148,12 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: string;
           columnMaxValue: string;
         }) {
-          modal()
-            .findByTestId(`filter-column-${columnName}`)
-            .findByLabelText("More options")
-            .click();
+          modal().within(() => {
+            cy.findByText("Summaries").click();
+            cy.findByTestId(`filter-column-${columnName}`)
+              .findByLabelText("More options")
+              .click();
+          });
           popover().within(() => {
             cy.findByText("Specific dates…").click();
             cy.findByText("Between").click();
@@ -1196,7 +1198,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          visualize();
+          modal().button("Apply filters").click();
           cy.wait("@dataset");
         }
 
@@ -1209,16 +1211,17 @@ describe("scenarios > question > multiple column breakouts", () => {
           columnMinValue: number;
           columnMaxValue: number;
         }) {
-          modal()
-            .findByTestId(`filter-column-${columnName}`)
-            .findByPlaceholderText("Min")
-            .clear()
-            .type(String(columnMinValue));
-          modal()
-            .findByTestId(`filter-column-${columnName}`)
-            .findByPlaceholderText("Max")
-            .clear()
-            .type(String(columnMaxValue));
+          modal().within(() => {
+            cy.findByText("Summaries").click();
+            cy.findByTestId(`filter-column-${columnName}`)
+              .findByPlaceholderText("Min")
+              .clear()
+              .type(String(columnMinValue));
+            cy.findByTestId(`filter-column-${columnName}`)
+              .findByPlaceholderText("Max")
+              .clear()
+              .type(String(columnMaxValue));
+          });
         }
 
         function testNumericPostAggregationFilter({
@@ -1256,7 +1259,7 @@ describe("scenarios > question > multiple column breakouts", () => {
           });
 
           cy.log("assert query results");
-          visualize();
+          modal().button("Apply filters").click();
           cy.wait("@dataset");
         }
 
@@ -1271,11 +1274,11 @@ describe("scenarios > question > multiple column breakouts", () => {
           column2MaxValue: "May 31, 2023",
         });
         assertTableData({
-          columns: ["Created At: Year", "Created At: Month", "Count"],
+          columns: ["Created At", "Created At", "Count"],
           firstRows: [
-            ["2023", "March 2023", "256"],
-            ["2023", "April 2023", "238"],
-            ["2023", "May 2023", "271"],
+            ["January 1, 2023, 12:00 AM", "March 1, 2023, 12:00 AM", "256"],
+            ["January 1, 2023, 12:00 AM", "April 1, 2023, 12:00 AM", "238"],
+            ["January 1, 2023, 12:00 AM", "May 1, 2023, 12:00 AM", "271"],
           ],
         });
         assertQueryBuilderRowCount(3);
@@ -1293,30 +1296,30 @@ describe("scenarios > question > multiple column breakouts", () => {
         assertTableData({
           columns: ["Total", "Total", "Count"],
           firstRows: [
-            ["40  –  60", "50  –  55", "1,070"],
-            ["40  –  60", "55  –  60", "877"],
+            ["20", "20", "214"],
+            ["20", "25", "396"],
           ],
         });
-        assertQueryBuilderRowCount(2);
+        assertQueryBuilderRowCount(7);
 
         cy.log("'bin-width' breakouts");
         testNumericPostAggregationFilter({
-          questionDetails: questionWith2NumBinsBreakoutsDetails,
-          column1Name: "Total: 10 bins",
+          questionDetails: questionWith2BinWidthBreakoutsDetails,
+          column1Name: "Latitude: 20°",
           column1MinValue: 10,
           column1MaxValue: 50,
-          column2Name: "Total: 50 bins",
+          column2Name: "Latitude: 10°",
           column2MinValue: 10,
           column2MaxValue: 50,
         });
         assertTableData({
-          columns: ["Total", "Total", "Count"],
+          columns: ["Latitude", "Latitude", "Count"],
           firstRows: [
-            ["40  –  60", "50  –  55", "1,070"],
-            ["40  –  60", "55  –  60", "877"],
+            ["20.00000000° N", "20.00000000° N", "87"],
+            ["20.00000000° N", "30.00000000° N", "1,176"],
           ],
         });
-        assertQueryBuilderRowCount(2);
+        assertQueryBuilderRowCount(4);
       });
     });
 
