@@ -554,12 +554,12 @@
             ;; Just assert that something was returned by the query and no exception was thrown
             (is (partial= [] (t2/query (str "SELECT 1 FROM " view-name))))))
         #_#_;; TODO: this is commented out temporarily because it flakes for MySQL (metabase#37884)
-        (migrate! :down 47)
-        (testing "Views should be removed when downgrading"
-          (doseq [view-name new-view-names]
-            (is (thrown?
-                 clojure.lang.ExceptionInfo
-                 (t2/query (str "SELECT 1 FROM " view-name))))))))))
+            (migrate! :down 47)
+          (testing "Views should be removed when downgrading"
+            (doseq [view-name new-view-names]
+              (is (thrown?
+                   clojure.lang.ExceptionInfo
+                   (t2/query (str "SELECT 1 FROM " view-name))))))))))
 
 (deftest activity-data-migration-test
   (testing "Migration v48.00-049"
@@ -1568,8 +1568,8 @@
                 :strategy "ttl"
                 :config   {:multiplier      2147483647
                            :min_duration_ms 2147483647}}]
-             (->> (t2/select :cache_config)
-                  (mapv #(update % :config json/decode true))))))))
+              (->> (t2/select :cache_config)
+                   (mapv #(update % :config json/decode true))))))))
 
 (deftest cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
