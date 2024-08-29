@@ -52,7 +52,10 @@
   (merge
    {:classname        "com.databricks.client.jdbc.Driver"
     :subprotocol      "databricks"
-    :subname          (str "//" host ":443/"
+    ;; Reading through the changelog revealed `EnableArrow=0` solves multiple problems. Including the exception logged
+    ;; during first `can-connect?` call. Ref:
+    ;; https://databricks-bi-artifacts.s3.us-east-2.amazonaws.com/simbaspark-drivers/jdbc/2.6.40/docs/release-notes.txt
+    :subname          (str "//" host ":443/;EnableArrow=0"
                            ";ConnCatalog=" (codec/url-encode catalog)
                            (when (string? (not-empty schema))
                              (str ";ConnSchema=" (codec/url-encode schema))))
