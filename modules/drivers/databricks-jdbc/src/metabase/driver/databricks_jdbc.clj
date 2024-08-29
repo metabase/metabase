@@ -179,6 +179,9 @@
           (t/local-date-time t))))))
 
 (defn- date-time->results-local-date-time
+  "For datetime types with zone info generate LocalDateTime as in that zone. Databricks java driver does not support
+  setting OffsetDateTime or ZonedDateTime parameters. It uses parameters as in session timezone. Hence, this function
+  shifts LocalDateTime so wall clock corresponds to Databricks' timezone."
   [dt]
   (if (instance? LocalDateTime dt)
     dt
