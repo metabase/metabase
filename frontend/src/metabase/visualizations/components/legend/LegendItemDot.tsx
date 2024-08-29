@@ -33,7 +33,7 @@ export function LegendItemDot({
   return (
     <Root>
       <OuterCircle />
-      <InnerCircle color={color} isVisible />
+      <InnerCircle color={color} isVisible={isVisible} />
     </Root>
   );
 }
