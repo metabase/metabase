@@ -1212,39 +1212,6 @@
                            [:= :personal_owner_id nil]
                            (or where true)]})))
 
-(defmethod serdes/extract-one "Collection"
-  ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
-  ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
-  ;; Use the :slug as the human-readable label.
-  [_model-name _opts coll]
-  (let [fetch-collection (fn [id]
-                           (t2/select-one Collection :id id))
-        parent           (some-> coll
-                                 :id
-                                 fetch-collection
-                                 (t2/hydrate :parent_id)
-                                 :parent_id
-                                 fetch-collection)
-        parent-id        (when parent
-                           (or (:entity_id parent) (serdes/identity-hash parent)))
-        owner-email      (when (:personal_owner_id coll)
-                           (t2/select-one-fn :email 'User :id (:personal_owner_id coll)))]
-    (-> (serdes/extract-one-basics "Collection" coll)
-        (dissoc :location)
-        (assoc :parent_id parent-id :personal_owner_id owner-email)
-        (assoc-in [:serdes/meta 0 :label] (:slug coll)))))
-
-(defmethod serdes/load-xform "Collection" [{:keys [parent_id] :as contents}]
-  (let [loc        (if parent_id
-                     (let [{:keys [id location]} (serdes/lookup-by-id Collection parent_id)]
-                       (str location id "/"))
-                     "/")]
-    (-> contents
-        (dissoc :parent_id)
-        (assoc :location loc)
-        (update :personal_owner_id serdes/*import-user*)
-        serdes/load-xform-basics)))
-
 (defmethod serdes/dependencies "Collection"
   [{:keys [parent_id]}]
   (if parent_id
@@ -1272,6 +1239,36 @@
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
   (let [parental (get collections (:entity_id coll))]
     (concat ["collections"] parental [(last parental)])))
+
+(defn- parent-id->location-path [parent-id]
+  (if-not parent-id
+    "/"
+    ;; It would be great to use a cache rather than a database call to fetch the parent.
+    (let [{:keys [id location]} (t2/select-one Collection parent-id)]
+      (str location id "/"))))
+
+(defmethod serdes/make-spec "Collection" [_model-name _opts]
+  {:copy [:archive_operation_id
+          :archived
+          :archived_directly
+          :authority_level
+          :description
+          :entity_id
+          :is_sample
+          :name
+          :namespace
+          :slug
+          :type]
+   :skip []
+   :transform {:created_at        (serdes/date)
+               ;; We only dump the parent id, and recalculate the location from that on load.
+               :location          (serdes/as :parent_id
+                                             (serdes/compose
+                                              (serdes/fk :model/Collection)
+                                              {:export location-path->parent-id
+                                               :import parent-id->location-path}))
+               :personal_owner_id (serdes/fk :model/User)}})
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |
