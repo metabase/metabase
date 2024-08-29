@@ -11,6 +11,7 @@ on:
       commit:
         description: "A full-length commit SHA-1 hash"
         required: true
+  pull_request: # FIXME for testing
 
 jobs:
   check-milestone:
@@ -18,6 +19,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         with:
           sparse-checkout: release
       - name: Prepare build scripts
@@ -34,8 +37,12 @@ jobs:
               sendMilestoneCheckMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
-            const version = '${{ inputs.version }}';
-            const commitHash = '${{ inputs.commit }}';
+            // const version = '${{ inputs.version }}';
+            // const commitHash = '${{ inputs.commit }}';
+
+            // FIXME for testing
+            const version = 'v0.50.23';
+            const commitHash = '961a67397abf4010d2a575132bf53369f511c7c3';
 
             const issueCount = await checkMilestoneForRelease({
               github,
