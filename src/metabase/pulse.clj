@@ -77,10 +77,11 @@
                    :context       :pulse ; TODO - we should support for `:dashboard-subscription` and use that to differentiate the two
                    :export-format :api
                    :parameters    parameters
+                   :constraints   nil
                    :middleware    {:process-viz-settings? true
                                    :js-int-to-string?     false}
                    :run           (fn [query info]
-                                    (qp/process-query-and-save-with-max-results-constraints!
+                                    (qp/process-query-and-save-execution!
                                      (assoc query :async? false)
                                      info)))]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty]) (is-card-empty? (assoc card :result result)))
