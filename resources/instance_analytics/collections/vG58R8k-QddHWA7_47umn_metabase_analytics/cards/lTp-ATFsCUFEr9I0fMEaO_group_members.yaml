@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -42,6 +41,11 @@ result_metadata:
     - v_group_members
     - user_id
   - null
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
   id:
   - Internal Metabase Database
   - public
@@ -63,6 +67,7 @@ result_metadata:
     - v_group_members
     - group_id
   - null
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
@@ -84,6 +89,7 @@ result_metadata:
     - v_group_members
     - group_name
   - null
+  fk_target_field_id: null
   id:
   - Internal Metabase Database
   - public
@@ -101,7 +107,7 @@ serdes/meta:
 - id: lTp-ATFsCUFEr9I0fMEaO
   label: group_members
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-15T20:43:59.203362Z'
+archived_directly: false
 metabase_version: null
+source_card_id: null
 type: model
