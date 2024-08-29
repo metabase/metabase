@@ -629,7 +629,7 @@
     (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols format-rows? pivot-export-options]} :data}
                {col-settings ::mb.viz/column-settings :as viz-settings}]
-        (let [opts (when (and (public-settings/native-pivot-exports) pivot-export-options)
+        (let [opts (when (and (public-settings/native-pivot-exports-enabled-in-v50) pivot-export-options)
                      (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                      :pivot-rows []}
                                                     pivot-export-options) ordered-cols))]
