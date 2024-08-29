@@ -126,7 +126,7 @@ const ConnectedDashboardInner = ({
 export const ConnectedDashboard = connector<
   ComponentType<ConnectedDashboardProps & ReduxProps>
 >(({ dashboardId: initId, ...rest }) => {
-  const { id: dashboardId, isLoading } = useValidatedEntityId<DashboardId>({
+  const { id: dashboardId, isLoading } = useValidatedEntityId({
     type: "dashboard",
     id: initId,
   });

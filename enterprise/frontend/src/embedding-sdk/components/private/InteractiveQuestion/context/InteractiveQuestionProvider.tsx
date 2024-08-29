@@ -34,11 +34,10 @@ export const InteractiveQuestionProvider = ({
 }: Omit<InteractiveQuestionProviderProps, "cardId"> & {
   cardId?: CardId | CardEntityId;
 }) => {
-  const { id: cardId, isLoading: isLoadingValidatedId } =
-    useValidatedEntityId<CardId>({
-      type: "card",
-      id: initId,
-    });
+  const { id: cardId, isLoading: isLoadingValidatedId } = useValidatedEntityId({
+    type: "card",
+    id: initId,
+  });
 
   const {
     question,

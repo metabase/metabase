@@ -1,17 +1,9 @@
-import { useMemo } from "react";
-import { P, match } from "ts-pattern";
-
 import { skipToken } from "metabase/api";
-import {
-  type EntityType,
-  useTranslateEntityIdQuery,
-} from "metabase/api/entity-id";
+import { useTranslateEntityIdQuery } from "metabase/api/entity-id";
+import type { BaseEntityId, CardId, DashboardId } from "metabase-types/api";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
-type UseValidatedEntityIdProps = {
-  type: EntityType;
-  id: string | number | null | undefined;
-};
+type SUPPORTED_ENTITIES = { dashboard: DashboardId; card: CardId };
 
 /**
  * A hook that validates and potentially translates an entity ID.
@@ -25,49 +17,61 @@ type UseValidatedEntityIdProps = {
  * @param {string | number | null | undefined} params.id - The ID to validate and potentially translate.
  *
  */
-export const useValidatedEntityId = <T>({
+export const useValidatedEntityId = <
+  TEntity extends keyof SUPPORTED_ENTITIES,
+  TReturnedId = SUPPORTED_ENTITIES[TEntity],
+>({
   type,
   id,
-}: UseValidatedEntityIdProps): {
-  id: T | null;
-  isLoading: boolean;
-  isError: boolean;
-} => {
+}: {
+  type: TEntity;
+  id: BaseEntityId | string | number | null | undefined;
+}):
+  | { id: TReturnedId; isLoading: false; isError: false }
+  | {
+      id: null;
+      isLoading: true;
+      isError: false;
+    }
+  | {
+      id: null;
+      isLoading: false;
+      isError: true;
+    } => {
+  const isEntityId = isBaseEntityID(id);
   const {
     data: entity_ids,
     isError,
     isLoading,
   } = useTranslateEntityIdQuery(
-    id
+    id && isEntityId
       ? {
           [type]: [id],
         }
       : skipToken,
   );
 
-  const validatedId = useMemo(
-    () =>
-      match({ id, entity_ids, isError, isLoading })
-        .with({ isLoading: true }, () => null)
-        .with(
-          {
-            id: P.string,
-            entity_ids: P.not(P.nullish),
-            isError: false,
-            isLoading: false,
-          },
-          ({ id, entity_ids }) =>
-            isBaseEntityID(id) && entity_ids[id]?.status === "success"
-              ? (entity_ids[id].id as T)
-              : null,
-        )
-        .otherwise(() => id as T),
-    [entity_ids, id, isError, isLoading],
-  );
+  if (!isEntityId) {
+    // no need to translate anything if the id is already not a entity id
+    return { id: id as TReturnedId, isLoading: false, isError: false } as const;
+  }
 
-  return {
-    id: validatedId,
-    isLoading,
-    isError,
-  };
+  if (isLoading) {
+    return { id: null, isLoading: true, isError: false } as const;
+  }
+
+  if (isError) {
+    return { id: null, isLoading: false, isError: true } as const;
+  }
+
+  if (entity_ids && entity_ids[id]?.status === "success") {
+    return {
+      id: entity_ids[id].id as TReturnedId,
+      isLoading: false,
+      isError: false,
+    } as const;
+  }
+
+  // something went wrong, either entity_ids is empty or the translation failed
+  return { id: null, isLoading: false, isError: true } as const;
 };

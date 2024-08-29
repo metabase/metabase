@@ -19,7 +19,6 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
 
 import { InteractiveDashboardProvider } from "./context";
 
@@ -119,7 +118,7 @@ const InteractiveDashboardInner = ({
 export const InteractiveDashboard =
   withPublicComponentWrapper<InteractiveDashboardProps>(
     ({ dashboardId, ...rest }) => {
-      const { id, isLoading } = useValidatedEntityId<DashboardId>({
+      const { id, isLoading } = useValidatedEntityId({
         type: "dashboard",
         id: dashboardId,
       });

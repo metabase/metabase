@@ -48,7 +48,7 @@ const StaticQuestionInner = ({
   parameterValues,
 }: StaticQuestionProps): JSX.Element | null => {
   const { isLoading: isValidatingEntityId, id: questionId } =
-    useValidatedEntityId<CardId>({
+    useValidatedEntityId({
       type: "card",
       id: initId,
     });

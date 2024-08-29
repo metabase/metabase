@@ -17,7 +17,6 @@ import { useValidatedEntityId } from "metabase/lib/entity-id/hooks/use-validated
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
 
 export type StaticDashboardProps = SdkDashboardDisplayProps &
   PublicOrEmbeddedDashboardEventHandlersProps;
@@ -82,7 +81,7 @@ export const StaticDashboardInner = ({
 
 const StaticDashboard = withPublicComponentWrapper<StaticDashboardProps>(
   ({ dashboardId, ...rest }) => {
-    const { isLoading, id } = useValidatedEntityId<DashboardId>({
+    const { isLoading, id } = useValidatedEntityId({
       type: "dashboard",
       id: dashboardId,
     });
