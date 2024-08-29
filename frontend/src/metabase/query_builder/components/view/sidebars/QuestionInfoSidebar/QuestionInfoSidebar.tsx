@@ -5,7 +5,6 @@ import { t } from "ttag";
 import {
   Sidesheet,
   SidesheetCard,
-  SidesheetSubPage,
   SidesheetTabPanelContainer,
 } from "metabase/common/components/Sidesheet";
 import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
@@ -20,6 +19,8 @@ import { Stack, Tabs } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import ModelCacheManagementSection from "../ModelCacheManagementSection";
+
+import Styles from "./QuestionInfoSidebar.module.css";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -58,19 +59,13 @@ export const QuestionInfoSidebar = ({
 
   if (page === "caching") {
     return (
-      <SidesheetSubPage
-        isOpen
-        title={t`Cache settings`}
+      <PLUGIN_CACHING.SidebarCacheForm
+        item={question}
+        model="question"
         onBack={() => setPage("default")}
         onClose={handleClose}
-      >
-        <PLUGIN_CACHING.SidebarCacheForm
-          item={question}
-          model="question"
-          onClose={handleClose}
-          pt="md"
-        />
-      </SidesheetSubPage>
+        pt="md"
+      />
     );
   }
 
@@ -80,6 +75,7 @@ export const QuestionInfoSidebar = ({
       onClose={handleClose}
       isOpen={isOpen}
       removeBodyPadding
+      data-testid="question-info-sidebar"
     >
       <Tabs
         defaultValue="overview"
@@ -93,19 +89,21 @@ export const QuestionInfoSidebar = ({
           <Tabs.Panel value="overview">
             <Stack spacing="lg">
               <SidesheetCard title={t`Description`}>
-                <EditableText
-                  initialValue={description}
-                  placeholder={
-                    !description && !canWrite
-                      ? t`No description`
-                      : t`Add description`
-                  }
-                  isOptional
-                  isMultiline
-                  isMarkdown
-                  isDisabled={!canWrite}
-                  onChange={handleSave}
-                />
+                <div className={Styles.EditableTextContainer}>
+                  <EditableText
+                    initialValue={description}
+                    placeholder={
+                      !description && !canWrite
+                        ? t`No description`
+                        : t`Add description`
+                    }
+                    isOptional
+                    isMultiline
+                    isMarkdown
+                    isDisabled={!canWrite}
+                    onChange={handleSave}
+                  />
+                </div>
                 <PLUGIN_MODERATION.ModerationReviewText question={question} />
                 {question.type() === "model" && !question.isArchived() && (
                   <Link

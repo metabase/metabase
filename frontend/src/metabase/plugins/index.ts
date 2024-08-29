@@ -407,7 +407,9 @@ export const PLUGIN_CACHING = {
   DashboardStrategySidebar: PluginPlaceholder as any,
   SidebarCacheSection:
     PluginPlaceholder as ComponentType<SidebarCacheSectionProps>,
-  SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
+  SidebarCacheForm: PluginPlaceholder as ComponentType<
+    SidebarCacheFormProps & { onBack: () => void }
+  >,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
