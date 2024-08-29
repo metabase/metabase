@@ -1,5 +1,5 @@
 import type { FormikHelpers } from "formik";
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
@@ -15,7 +15,7 @@ import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
 import { getResponseErrorMessage } from "metabase/lib/errors";
 import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { Button, Chip, Flex, Alert, Text, Group, Icon } from "metabase/ui";
+import { Alert, Button, Chip, Flex, Group, Icon, Text } from "metabase/ui";
 import type {
   NotificationAuthMethods,
   NotificationAuthType,

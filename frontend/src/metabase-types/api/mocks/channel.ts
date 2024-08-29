@@ -1,4 +1,4 @@
-import type { NotificationChannel, ChannelDetails } from "../notifications";
+import type { ChannelDetails, NotificationChannel } from "../notifications";
 
 export const createMockChannelDetails = (
   opts: Partial<ChannelDetails>,

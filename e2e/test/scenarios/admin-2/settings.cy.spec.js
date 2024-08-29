@@ -6,6 +6,7 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  WEBHOOK_TEST_URL,
   describeEE,
   describeWithSnowplow,
   echartsContainer,
@@ -30,7 +31,6 @@ import {
   undoToast,
   visitQuestion,
   visitQuestionAdhoc,
-  WEBHOOK_TEST_URL,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;

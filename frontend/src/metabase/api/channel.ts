@@ -1,4 +1,4 @@
-import type { NotificationChannel, ChannelDetails } from "metabase-types/api";
+import type { ChannelDetails, NotificationChannel } from "metabase-types/api";
 
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, provideChannelListTags } from "./tags";

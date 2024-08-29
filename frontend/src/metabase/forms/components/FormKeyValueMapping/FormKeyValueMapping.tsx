@@ -5,7 +5,7 @@ import {
   MappingEditor,
   type MappingEditorProps,
 } from "metabase/core/components/MappingEditor";
-import { Box, Text, type BoxProps } from "metabase/ui";
+import { Box, type BoxProps, Text } from "metabase/ui";
 
 type Props = BoxProps & {
   name: string;
