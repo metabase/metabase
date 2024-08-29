@@ -716,8 +716,9 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     );
 
     main().findByText("Februar 11, 2025, 9:40 PM");
+    cy.icon("clock").realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
-    cy.findByText("exportieren", { exact: false });
+    cy.findByText("Automatische Aktualisierung").should("be.visible");
 
     cy.url().should("include", "locale=de");
   });

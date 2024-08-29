@@ -271,8 +271,9 @@ describe("scenarios > public > dashboard", () => {
       });
     });
 
+    cy.icon("clock").realHover();
     // eslint-disable-next-line no-unscoped-text-selectors -- we don't care where the text is
-    cy.findByText("Registerkarte als PDF exportieren").should("be.visible");
+    cy.findByText("Automatische Aktualisierung").should("be.visible");
     cy.url().should("include", "locale=de");
   });
 });
