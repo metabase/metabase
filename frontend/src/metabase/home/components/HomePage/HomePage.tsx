@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
-import { TestTabbedSidesheet } from "metabase/common/components/Sidesheet/Sidesheet.samples";
 import {
   useDatabaseListQuery,
   useSearchListQuery,
@@ -43,7 +42,6 @@ export const HomePage = (): JSX.Element => {
 
   return (
     <HomeLayout hasMetabot={getHasMetabot(databases, models, isMetabotEnabled)}>
-      <TestTabbedSidesheet />
       <HomeContent />
     </HomeLayout>
   );
