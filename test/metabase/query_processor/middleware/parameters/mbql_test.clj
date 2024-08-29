@@ -56,14 +56,43 @@
                  {:hash   "abc123"
                   :name   "foo"
                   :type   :id
-                  :target [:dimension [:field (mt/id :venues :name) nil]]
+                  :target [:dimension [:field (mt/id :venues :name) nil] nil]
                   :value  "Cam's Toucannery"}
                  {:hash   "def456"
                   :name   "bar"
                   :type   :category
-                  :target [:dimension [:field (mt/id :venues :id) nil]]
+                  :target [:dimension [:field (mt/id :venues :id) nil] {}]
                   :value  999})
                 (assoc-in [:query :filter] [:and [:= [:field (mt/id :venues :id) nil] 12]])))))))
+
+(deftest ^:parallel multi-stage-test
+  (testing "adding parameters to different stages"
+    (is (= {:database 1,
+            :type     :query,
+            :query    {:source-query {:source-table 1000,
+                                      :aggregation  [[:count]],
+                                      :breakout     [[:field 17 nil]],
+                                      :filter       [:= [:field 809 nil] "Cam's Toucannery"]},
+                       :filter [:and
+                                [:> [:field "count" {:base-type :type/Integer}] 0]
+                                [:<= [:field "count" {:base-type :type/Integer}] 30]]}}
+           (expand-parameters
+            {:database   1
+             :type       :query
+             :query      {:source-query {:source-table 1000
+                                         :aggregation  [[:count]]
+                                         :breakout     [[:field 17 nil]]}
+                          :filter       [:> [:field "count" {:base-type :type/Integer}] 0]}
+             :parameters [{:hash   "abc123"
+                           :name   "foo"
+                           :type   "id"
+                           :target [:dimension [:field 809 nil] {:stage-number -2}]
+                           :value  "Cam's Toucannery"}
+                          {:hash   "def456"
+                           :name   "bar"
+                           :type   :number/<=
+                           :target [:dimension [:field "count" {:base-type :type/Integer}] {:stage-number 1}]
+                           :value  [30]}]})))))
 
 (deftest ^:parallel date-range-parameters-test
   (testing "date range parameters"

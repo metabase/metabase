@@ -339,7 +339,7 @@
            :size-mb           (file-size-mb csv-file)}
           (catch Throwable e
             (driver/drop-table! driver (:id db) table-name)
-            (throw (ex-info (ex-message e) {:status-code 400}))))))))
+            (throw (ex-info (ex-message e) {:status-code 400} e))))))))
 
 ;;;; +------------------+
 ;;;; |  Create upload
