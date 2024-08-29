@@ -47,13 +47,19 @@
 (defmacro with-new-secret-key! {:style/indent 0} [& body]
   `(do-with-new-secret-key! (fn [] ~@body)))
 
-(defn card-token [card-or-id & [additional-token-keys entity-id]]
-  (sign (merge {:resource {:question (or entity-id (u/the-id card-or-id))}
+(defn- the-id-or-entity-id
+  "u/the-id doesn't work on entity-ids, so we should just pass them through."
+  [id-or-entity-id]
+  (try (u/the-id id-or-entity-id)
+       (catch Exception _ id-or-entity-id)))
+
+(defn card-token [card-or-id & [additional-token-keys]]
+  (sign (merge {:resource {:question (the-id-or-entity-id card-or-id)}
                 :params   {}}
                additional-token-keys)))
 
-(defn dash-token [dash-or-id & [additional-token-keys entity-id]]
-  (sign (merge {:resource {:dashboard (or entity-id (u/the-id dash-or-id))}
+(defn dash-token [dash-or-id & [additional-token-keys]]
+  (sign (merge {:resource {:dashboard (the-id-or-entity-id dash-or-id)}
                 :params   {}}
                additional-token-keys)))
 
@@ -277,10 +283,10 @@
 
 (defn card-query-url
   "Generate a query URL for an embedded card"
-  [card response-format-route-suffix & [additional-token-keys entity-id]]
+  [card-or-id response-format-route-suffix & [additional-token-keys]]
   {:pre [(#{"" "/json" "/csv" "/xlsx"} response-format-route-suffix)]}
   (str "embed/card/"
-       (card-token card additional-token-keys entity-id)
+       (card-token card-or-id additional-token-keys)
        "/query"
        response-format-route-suffix))
 
@@ -313,7 +319,7 @@
                 (is (= "Embedding is not enabled."
                        (client/real-client :get 400 (card-query-url card response-format))))
                 (is (= "Embedding is not enabled."
-                       (client/real-client :get 400 (card-query-url card response-format {} (:entity_id card)))))))))))))
+                       (client/real-client :get 400 (card-query-url (:entity_id card) response-format {}))))))))))))
 
 (deftest card-query-test-2
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
@@ -331,7 +337,7 @@
                 #_{:clj-kondo/ignore [:deprecated-var]}
                 (test-query-results
                  response-format
-                 (client/real-client :get expected-status (card-query-url card response-format {} (:entity_id card))
+                 (client/real-client :get expected-status (card-query-url (:entity_id card) response-format)
                                      {:request-options request-options}))))))))))
 
 (deftest card-query-test-3
@@ -352,7 +358,7 @@
                 (is (= {:status     "failed"
                         :error      "An error occurred while running the query."
                         :error_type "invalid-query"}
-                       (client/real-client :get expected-status (card-query-url card response-format {} (:entity_id card)))))))))))))
+                       (client/real-client :get expected-status (card-query-url (:entity_id card) response-format))))))))))))
 
 (deftest card-query-test-4
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
@@ -366,7 +372,7 @@
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails with entity ids"
             (with-temp-card [card]
               (is (= "Embedding is not enabled for this object."
-                     (client/real-client :get 400 (card-query-url card response-format {} (:entity_id card)) {}))))))))))
+                     (client/real-client :get 400 (card-query-url (:entity_id card) response-format) {}))))))))))
 
 (deftest card-query-test-5
   (testing "GET /api/embed/card/:token/query and GET /api/embed/card/:token/query/:export-format"
@@ -379,7 +385,7 @@
               (is (= "Message seems corrupt or manipulated"
                      (client/real-client :get 400 (with-new-secret-key! (card-query-url card response-format)))))
               (is (= "Message seems corrupt or manipulated"
-                     (client/real-client :get 400 (with-new-secret-key! (card-query-url card response-format {} (:entity_id card)))))))))))))
+                     (client/real-client :get 400 (with-new-secret-key! (card-query-url (:entity_id card) response-format))))))))))))
 
 (deftest download-formatted-without-constraints-test
   (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if "
@@ -395,7 +401,7 @@
           (let [results (client/client :get 200 (card-query-url card "/csv"))]
             (is (= 101
                    (count (csv/read-csv results)))))
-          (let [entity-id-results (client/client :get 200 (card-query-url card "/csv" {} (:entity_id card)))]
+          (let [entity-id-results (client/client :get 200 (card-query-url (:entity_id card) "/csv"))]
             (is (= 101
                    (count (csv/read-csv entity-id-results))))))))))
 
@@ -555,7 +561,7 @@
               (client/client :get 200 (dashboard-url dash)))))
       (is (= successful-dashboard-info
              (dissoc-id-and-name
-              (client/client :get 200 (dashboard-url dash {} (:entity_id dash)))))))))
+              (client/client :get 200 ((:entity_id dash) dash))))))))
 
 (deftest bad-dashboard-id-fails
   (with-embedding-enabled-and-new-secret-key!
@@ -1549,9 +1555,9 @@
 
 ;; Pivot tables
 
-(defn- pivot-card-query-url [card response-format & [additional-token-keys entity-id]]
+(defn- pivot-card-query-url [card-or-id response-format & [additional-token-keys]]
   (str "/embed/pivot/card/"
-       (card-token card additional-token-keys entity-id)
+       (card-token card-or-id additional-token-keys)
        "/query"
        response-format))
 
@@ -1577,7 +1583,7 @@
                   (is (= 6 (count (get-in result [:data :cols]))))
                   (is (= 1144 (count rows))))
                 (let [eid-result (client/client :get expected-status
-                                                (pivot-card-query-url card "" {} (:entity_id card))
+                                                (pivot-card-query-url (:entity_id card) "")
                                                 {:request-options nil})
                       eid-rows   (mt/rows eid-result)]
                   (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
@@ -1596,10 +1602,12 @@
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key! (pivot-card-query-url card ""))))))))))))
 
-(defn- pivot-dashcard-url [dashcard & [additional-token-keys entity-id]]
-  (str "embed/pivot/dashboard/" (dash-token (:dashboard_id dashcard) additional-token-keys entity-id)
-       "/dashcard/" (u/the-id dashcard)
-       "/card/" (:card_id dashcard)))
+(defn- pivot-dashcard-url
+  ([dashcard] (pivot-dashcard-url dashcard (:dashboard_id dashcard)))
+  ([dashcard dashboard-id & [additional-token-keys]]
+   (str "embed/pivot/dashboard/" (dash-token dashboard-id additional-token-keys)
+        "/dashcard/" (u/the-id dashcard)
+        "/card/" (:card_id dashcard))))
 
 (deftest pivot-dashcard-success-test
   (mt/test-drivers (api.pivots/applicable-drivers)
@@ -1608,13 +1616,13 @@
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
                                        :card     (api.pivots/pivot-card)
                                        :dashcard {:parameter_mappings []}}]
-          (let [result (client/client :get 202 (pivot-dashcard-url dashcard))
+          (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard)))
                 rows   (mt/rows result)]
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
             (is (= 6 (count (get-in result [:data :cols]))))
             (is (= 1144 (count rows))))
-          (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard {} (dashcard->dash-eid dashcard)))
+          (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard (dashcard->dash-eid dashcard)))
                 eid-rows   (mt/rows eid-result)]
             (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status eid-result)))
@@ -1670,14 +1678,14 @@
                    (client/client :get 400 (pivot-dashcard-url dashcard)))))
 
           (testing "if `:locked` param is supplied, request should succeed"
-            (let [result (client/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}}))
+            (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}))
                   rows   (mt/rows result)]
               (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
               (is (= "completed" (:status result)))
               (is (= 6 (count (get-in result [:data :cols]))))
               (is (= 1144 (count rows)))))
           (testing "if `:locked` param is supplied, request should succeed with entity-id"
-            (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}} (dashcard->dash-eid dashcard)))
+            (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard (dashcard->dash-eid dashcard) {:params {:abc 100}}))
                   eid-rows   (mt/rows eid-result)]
               (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
               (is (= "completed" (:status eid-result)))
@@ -1699,7 +1707,7 @@
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
           (is (= "You're not allowed to specify a value for :abc."
-                 (client/client :get 400 (pivot-dashcard-url dashcard {:params {:abc 100}})))))
+                 (client/client :get 400 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}})))))
 
         (testing "If a `:disabled` param is passed in the URL the request should fail"
           (is (= "You're not allowed to specify a value for :abc."
@@ -1719,10 +1727,10 @@
                                      :dashcard {:parameter_mappings []}}]
         (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
           (is (= "You can't specify a value for :abc if it's already set in the JWT."
-                 (client/client :get 400 (str (pivot-dashcard-url dashcard {:params {:abc 100}}) "?abc=200")))))
+                 (client/client :get 400 (str (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}) "?abc=200")))))
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
-          (let [result (client/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}}))
+          (let [result (client/client :get 202 (pivot-dashcard-url dashcard (:dashboard_id dashcard) {:params {:abc 100}}))
                 rows   (mt/rows result)]
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
@@ -1730,7 +1738,7 @@
             (is (= 1144 (count rows)))))
 
         (testing "If an `:enabled` param is present in the JWT, that's ok with entity-id"
-          (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}} (dashcard->dash-eid dashcard)))
+          (let [eid-result (client/client :get 202 (pivot-dashcard-url dashcard (dashcard->dash-eid dashcard) {:params {:abc 100}}))
                 eid-rows   (mt/rows eid-result)]
             (is (nil? (:row_count eid-result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status eid-result)))
