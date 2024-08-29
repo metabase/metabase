@@ -1,8 +1,8 @@
 import { t } from "ttag";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import NoResults from "assets/img/no_results.svg";
-import { useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
+import { skipToken, useGetCubeDataQuery, useListDatabasesQuery } from "metabase/api";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Button, Box } from "metabase/ui";
 import * as Urls from "metabase/lib/urls";
@@ -16,22 +16,23 @@ import {
 import { BrowseSemanticHeader } from "./BrowseSemanticHeader";
 import { SemanticTable } from "./SemanticTable";
 import { MaybeItemLinkDataMap } from "metabase/components/ItemsTable/BaseItemsTable.styled";
+import { GetCubeDataRequest } from "metabase-types/api";
 
 
 export const BrowseSemanticLayerTable = () => {
-  const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
-  const databases = data?.data;
-  const [companyName, setCompanyName] = useState<string>('');
-  
-  useEffect(() => {
-      if (databases) {
-          const cubeDatabase = databases.find(database => database.is_cube === true);
-          if (cubeDatabase) {
-              setCompanyName(cubeDatabase.company_name!);
-          }
-      }
+  const { data: dbData, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+  const databases = dbData?.data;
+  const companyName = useMemo(() => {
+    if (databases) {
+      const cubeDatabase = databases.find(database => database.is_cube === true);
+      return cubeDatabase ? cubeDatabase.company_name : '';
+    }
+    return '';
   }, [databases]);
-  const { data: cubeData, isLoading, error } = useGetCubeDataQuery({companyName});
+
+  const { data: cubeData, isLoading, error } = useGetCubeDataQuery(
+    companyName ? { companyName } : skipToken
+  );
 
   const [selectedCube, setSelectedCube] = useState(null);
 
