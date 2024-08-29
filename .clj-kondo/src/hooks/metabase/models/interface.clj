@@ -1,5 +1,7 @@
 (ns hooks.metabase.models.interface
-  (:require [clj-kondo.hooks-api :as hooks]))
+  (:require
+   [clj-kondo.hooks-api :as hooks]
+   [hooks.common]))
 
 (defn define-hydration-method
   "This is used for both [[metabase.models.interface/define-simple-hydration-method]] and
@@ -14,5 +16,6 @@
                      (hooks/token-node 'defn)
                      fn-name
                      fn-tail))))
-                 (with-meta (update (meta node) :clj-kondo/ignore #(hooks/vector-node (cons :clojure-lsp/unused-public-var (:children %))))))]
+                 (with-meta (meta node))
+                 hooks.common/add-lsp-ignore-unused-public-var-metadata)]
     {:node node}))
