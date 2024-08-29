@@ -1,8 +1,8 @@
-import { CheckpointsApi } from "./checkpointsApi";
 import { provideCheckpointsTags } from "./tags";
+import { Api } from "./api";
 
 // Update the API configuration
-export const checkpointsApi = CheckpointsApi.injectEndpoints({
+export const checkpointsApi = Api.injectEndpoints({
   endpoints: builder => ({
     listCheckpoints: builder.query<any, void>({
       // Specify `void` to indicate no arguments
