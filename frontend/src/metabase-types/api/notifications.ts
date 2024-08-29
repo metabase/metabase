@@ -16,6 +16,7 @@ export type Channel = {
   details: Record<string, string>;
   enabled?: boolean;
   recipients?: User[];
+  channel_id?: number;
 } & Pick<
   ScheduleSettings,
   "schedule_day" | "schedule_type" | "schedule_hour" | "schedule_frame"
@@ -84,19 +85,18 @@ export type NotificationChannel<Details = ChannelDetails> = {
   description: string;
 };
 
-type ScheduleValue = "hourly" | "daily" | "weekly" | "monthly";
-
 export type SlackChannelSpec = ChannelSpec & {
   fields: ChannelField[];
 };
 
-type EmailChannelSpec = ChannelSpec & {
+export type EmailChannelSpec = ChannelSpec & {
   recipients: ChannelSpecRecipients;
 };
 export interface ChannelApiResponse {
   channels: {
-    email: SlackChannelSpec;
-    slack: EmailChannelSpec;
+    email: EmailChannelSpec;
+    slack: SlackChannelSpec;
+    http: ChannelSpec;
   };
 }
 

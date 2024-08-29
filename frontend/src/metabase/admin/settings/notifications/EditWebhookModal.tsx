@@ -9,9 +9,9 @@ import { Modal } from "metabase/ui";
 import type { NotificationChannel } from "metabase-types/api";
 
 import {
-  handleFieldError,
   WebhookForm,
   type WebhookFormProps,
+  handleFieldError,
 } from "./WebhookForm";
 import { buildAuthInfo, channelToForm } from "./utils";
 
