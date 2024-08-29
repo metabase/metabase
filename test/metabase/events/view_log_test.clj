@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.api.common :as api]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
    [metabase.api.public-test :as public-test]
@@ -94,10 +93,12 @@
 
         (testing "If a user is bound, has_access is recorded in EE based on the user's current permissions"
           (mt/with-full-data-perms-for-all-users!
-            (binding [api/*current-user-id* (u/id user)]
+            (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-              (is (true? (:has_access (latest-view (u/id user) (u/id table)))))
+              (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
 
+            ;; Bind the user again to flush the perms cache
+            (mt/with-current-user (u/id user)
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
               (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
@@ -265,7 +266,7 @@
 (deftest get-embedded-card-embedding-logs-view-test
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Card card {:enable_embedding true}]
           (testing "GET /api/embed/card/:token"
             (client/client :get 200 (embed-test/card-url card))
@@ -275,7 +276,7 @@
 (deftest embedded-dashboard-card-query-view-log-test
   (mt/with-premium-features #{:audit-app}
     (testing "Running a query for a card in a public dashboard logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}
                        :model/Card          card     {}
                        :model/DashboardCard dashcard {:dashboard_id (:id dash)
@@ -288,7 +289,7 @@
 (deftest get-embedded-dashboard-logs-view-test
   (mt/with-premium-features #{:audit-app}
     (testing "Viewing an embedding logs the correct view log event."
-      (embed-test/with-embedding-enabled-and-new-secret-key
+      (embed-test/with-embedding-enabled-and-new-secret-key!
         (mt/with-temp [:model/Dashboard dash {:enable_embedding true}]
           (testing "GET /api/embed/dashboard/:token"
             (client/client :get 200 (embed-test/dashboard-url dash))

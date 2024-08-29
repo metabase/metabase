@@ -34,9 +34,9 @@
    :visualization_settings mi/transform-visualization-settings})
 
 (t2/define-before-insert :model/DashboardCard
- [dashcard]
- (merge {:parameter_mappings     []
-         :visualization_settings {}} dashcard))
+  [dashcard]
+  (merge {:parameter_mappings     []
+          :visualization_settings {}} dashcard))
 
 (declare series)
 
@@ -81,7 +81,6 @@
    :visualization_settings
    :row :col
    :created_at])
-
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
 
@@ -372,15 +371,7 @@
                                         :import serdes/import-parameter-mappings}
                :visualization_settings {:export serdes/export-visualization-settings
                                         :import serdes/import-visualization-settings}
-               :series
-               (-> (serdes/nested :model/DashboardCardSeries :dashboardcard_id
-                                  (assoc opts
-                                         :sort-by :position
-                                         :key-field :card_id))
-                   ;; FIXME: this waits to be removed when `extract-nested` (instead of using hydration) is
-                   ;; implemented; see comment at `make-spec` for `DashboardCardSeries`
-                   (assoc :export (fn [data]
-                                    (vec (map-indexed (fn [i x]
-                                                        {:card_id  (serdes/*export-fk* (:id x) :model/Card)
-                                                         :position i})
-                                                      data)))))}})
+               :series                 (serdes/nested :model/DashboardCardSeries :dashboardcard_id
+                                                      (assoc opts
+                                                             :sort-by :position
+                                                             :key-field :card_id))}})

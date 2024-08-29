@@ -17,7 +17,7 @@ import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getUser } from "metabase/selectors/user";
-import { Text, Stack, Switch } from "metabase/ui";
+import { Stack, Switch, Text } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import {

@@ -11,7 +11,6 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import { alertIsValid } from "metabase/lib/alert";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseCookies from "metabase/lib/cookies";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
 import {
@@ -74,11 +73,6 @@ class CreateAlertModalContentInner extends Component {
     await updateUrl(question, { dirty: false });
 
     onAlertCreated();
-    MetabaseAnalytics.trackStructEvent(
-      "Alert",
-      "Create",
-      alert.alert_condition,
-    );
   };
 
   proceedFromEducationalScreen = () => {
@@ -111,7 +105,6 @@ class CreateAlertModalContentInner extends Component {
           onClose={onCancel}
           entityNamePlural={t`alerts`}
           channels={isAdmin ? ["email", "Slack"] : ["email"]}
-          fullPageModal
         />
       );
     }

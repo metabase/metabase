@@ -1,21 +1,21 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  visitQuestionAdhoc,
-  sidebar,
-  getDraggableElements,
-  popover,
-  visitDashboard,
-  cypressWaitAll,
-  moveDnDKitElement,
+  assertEChartsTooltip,
   chartPathWithFillColor,
-  echartsContainer,
-  getValueLabels,
-  createQuestion,
   chartPathsWithFillColors,
   createNativeQuestion,
-  testStackedTooltipRows,
+  createQuestion,
+  cypressWaitAll,
+  echartsContainer,
+  getDraggableElements,
+  getValueLabels,
+  moveDnDKitElement,
+  popover,
+  restore,
+  sidebar,
+  visitDashboard,
+  visitQuestionAdhoc,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -617,12 +617,22 @@ describe("scenarios > visualizations > bar chart", () => {
     });
 
     chartPathWithFillColor("#88BF4D").first().realHover();
-    popover().within(() => {
-      cy.contains("Sum of Total");
-      // half of the unscaled metric
-      cy.contains("21,078.43");
-      // full value of the unscale metric
-      cy.contains("42,156.87");
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        {
+          color: "#88BF4D",
+          name: "Sum of Total",
+          value: "21,078.43",
+          index: 0,
+        },
+        {
+          color: "#98D9D9",
+          name: "Sum of Total",
+          value: "42,156.87",
+          index: 1,
+        },
+      ],
     });
   });
 
@@ -648,43 +658,123 @@ describe("scenarios > visualizations > bar chart", () => {
     );
 
     chartPathWithFillColor("#A989C5").eq(0).realHover();
-    testStackedTooltipRows([
-      ["blue", "2", "20.00 %"],
-      ["yellow", "8", "80.00 %"],
-      ["Total", "10", "100 %"],
-    ]);
+    assertEChartsTooltip({
+      rows: [
+        {
+          color: "#A989C5",
+          name: "blue",
+          value: "2",
+          secondaryValue: "20.00 %",
+        },
+        {
+          color: "#F9D45C",
+          name: "yellow",
+          value: "8",
+          secondaryValue: "80.00 %",
+        },
+        {
+          name: "Total",
+          value: "10",
+          secondaryValue: "100 %",
+        },
+      ],
+    });
     resetHoverState();
 
     chartPathWithFillColor("#A989C5").eq(1).realHover();
-    testStackedTooltipRows([
-      ["blue", "-16", "-200.00 %"],
-      ["yellow", "8", "100 %"],
-      ["Total", "-8", "-100.00 %"],
-    ]);
+    assertEChartsTooltip({
+      rows: [
+        {
+          color: "#A989C5",
+          name: "blue",
+          value: "-16",
+          secondaryValue: "-200.00 %",
+        },
+        {
+          color: "#F9D45C",
+          name: "yellow",
+          value: "8",
+          secondaryValue: "100 %",
+        },
+        {
+          name: "Total",
+          value: "-8",
+          secondaryValue: "-100.00 %",
+        },
+      ],
+    });
     resetHoverState();
 
     chartPathWithFillColor("#A989C5").eq(2).realHover();
-    testStackedTooltipRows([
-      ["blue", "-7", "-350.00 %"],
-      ["yellow", "5", "250.00 %"],
-      ["Total", "-2", "-100.00 %"],
-    ]);
+    assertEChartsTooltip({
+      rows: [
+        {
+          color: "#A989C5",
+          name: "blue",
+          value: "-7",
+          secondaryValue: "-350.00 %",
+        },
+        {
+          color: "#F9D45C",
+          name: "yellow",
+          value: "5",
+          secondaryValue: "250.00 %",
+        },
+        {
+          name: "Total",
+          value: "-2",
+          secondaryValue: "-100.00 %",
+        },
+      ],
+    });
     resetHoverState();
 
     chartPathWithFillColor("#A989C5").eq(3).realHover();
-    testStackedTooltipRows([
-      ["blue", "2", "Infinity %"],
-      ["yellow", "-2", "-Infinity %"],
-      ["Total", "0", "NaN %"],
-    ]);
+    assertEChartsTooltip({
+      rows: [
+        {
+          color: "#A989C5",
+          name: "blue",
+          value: "2",
+          secondaryValue: "Infinity %",
+        },
+        {
+          color: "#F9D45C",
+          name: "yellow",
+          value: "-2",
+          secondaryValue: "-Infinity %",
+        },
+        {
+          name: "Total",
+          value: "0",
+          secondaryValue: "NaN %",
+        },
+      ],
+    });
     resetHoverState();
 
     chartPathWithFillColor("#A989C5").eq(4).realHover();
-    testStackedTooltipRows([
-      ["blue", "3", "300.00 %"],
-      ["yellow", "-2", "-200.00 %"],
-      ["Total", "1", "100 %"],
-    ]);
+    assertEChartsTooltip({
+      rows: [
+        {
+          color: "#A989C5",
+          name: "blue",
+          value: "3",
+          secondaryValue: "300.00 %",
+        },
+        {
+          color: "#F9D45C",
+          name: "yellow",
+          value: "-2",
+          secondaryValue: "-200.00 %",
+        },
+        {
+          name: "Total",
+          value: "1",
+          secondaryValue: "100 %",
+        },
+      ],
+    });
     resetHoverState();
   });
 });

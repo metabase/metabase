@@ -140,7 +140,9 @@
                                 "application/vnd.geo+json"
                                 "application/json"
                                 "text/plain"}
-        ok-content-type? (some #(str/starts-with? (get-in resp [:headers :content-type]) %)
+        ;; if the content-type header is missing, just pretend it's `text/plain` and let it through
+        content-type (get-in resp [:headers :content-type] "text/plain")
+        ok-content-type? (some #(str/starts-with? content-type %)
                                allowed-content-types)]
     (cond
       (not success?)

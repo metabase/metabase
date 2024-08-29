@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
 
+import { useSdkDispatch, useSdkStore } from "embedding-sdk/store";
 import {
   NAVIGATE_TO_NEW_CARD,
   reset as dashboardReset,
 } from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { useDispatch, useStore } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -19,8 +19,8 @@ export const useCommonDashboardParams = ({
 }: {
   dashboardId: DashboardId;
 }) => {
-  const dispatch = useDispatch();
-  const store = useStore();
+  const dispatch = useSdkDispatch();
+  const store = useSdkStore();
 
   const [adhocQuestionUrl, setAdhocQuestionUrl] = useState<string | null>(null);
 

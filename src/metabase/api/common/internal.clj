@@ -29,24 +29,29 @@
 
 (defn handle-nonstandard-namespaces
   "HACK to make sure some enterprise endpoints are consistent with the code.
-  The right way to fix this is to move them -- see #22687"
+   The right way to fix this is to move them -- see #22687"
   [name]
-  (-> name
-      (str/replace #"^metabase\.api\." "/api/")
-      ;; HACK to make sure some enterprise endpoints are consistent with the code.
-      ;; The right way to fix this is to move them -- see #22687
-      ;; /api/ee/sandbox/table -> /api/table, this is an override route for /api/table if sandbox is available
-      (str/replace #"^metabase-enterprise\.sandbox\.api\.table" "/api/table")
-      ;; /api/ee/sandbox -> /api/mt
-      (str/replace #"^metabase-enterprise\.sandbox\.api\." "/api/mt/")
-      ;; /api/ee/content-verification -> /api/moderation-review
-      (str/replace #"^metabase-enterprise\.content-verification\.api\." "/api/moderation-review/")
-      ;; /api/ee/sso/sso/ -> /auth/sso
-      (str/replace #"^metabase-enterprise\.sso\.api\." "/auth/")
-      ;; this should be only the replace for enterprise once we resolved #22687
-      (str/replace #"^metabase-enterprise\.serialization\.api" "/api/ee/serialization")
-      (str/replace #"^metabase-enterprise\.advanced-config\.api\.logs" "/api/ee/logs")
-      (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/")))
+  (let [replacements
+        [;; Standard API replacement
+         ["^metabase\\.api\\." "/api/"]
+         ;; /api/ee/sandbox/table -> /api/table, this is an override route for /api/table if sandbox is available
+         ["^metabase-enterprise\\.sandbox\\.api\\.table" "/api/table"]
+         ;; /api/ee/sandbox -> /api/mt
+         ["^metabase-enterprise\\.sandbox\\.api\\." "/api/mt/"]
+         ;; /api/ee/content-verification -> /api/moderation-review
+         ["^metabase-enterprise\\.content-verification\\.api\\." "/api/moderation-review/"]
+         ;; /api/ee/sso/sso/ -> /auth/sso
+         ["^metabase-enterprise\\.sso\\.api\\." "/auth/"]
+         ["^metabase-enterprise\\.serialization\\.api" "/api/ee/serialization"]
+         ["^metabase-enterprise\\.advanced-config\\.api\\.logs" "/api/ee/logs"]
+         ["^metabase-enterprise\\.query-reference-validation\\.api" "/api/ee/query-reference-validation"]
+         ["^metabase-enterprise\\.upload-management\\.api" "/api/ee/upload-management"]
+         ;; this should be the only replace for enterprise once we resolved #22687
+         ["^metabase-enterprise\\.([^\\.]+)\\.api\\." "/api/ee/$1/"]]]
+    (reduce (fn [result [pattern replacement]]
+              (str/replace result (re-pattern pattern) replacement))
+            name
+            replacements)))
 
 (defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
@@ -90,14 +95,14 @@
     ;; we can ignore the warning printed by umd/describe when schema is `nil`.
     (binding [*out* (new java.io.StringWriter)]
       (umd/describe schema))
-       (catch Exception _
-         (ex-data
-          (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
-            (log/warn
-             (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
-                             (u/pprint-to-str schema)
-                             (u/add-period route-str)))))
-         "")))
+    (catch Exception _
+      (ex-data
+       (when (and schema config/is-dev?) ;; schema is nil for any var without a schema. That's ok!
+         (log/warn
+          (u/format-color 'red (str "Invalid Malli Schema: %s defined at %s")
+                          (u/pprint-to-str schema)
+                          (u/add-period route-str)))))
+      "")))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -111,18 +116,18 @@
   "Generate the `params` section of the documentation for a `defendpoint`-defined function by using the
   `param-symb->schema` map passed in after the argslist."
   [param-symb->schema route-str]
-  ;; these are here
-  (when (seq param-symb->schema)
-    (str "\n\n### PARAMS:\n\n"
-         (str/join "\n\n"
-                   (for [[param-symb schema] param-symb->schema]
-                     (let [p-name (param-name param-symb schema)
+  (let [params (for [[param-symb schema] param-symb->schema
+                     :let [p-name (param-name param-symb schema)
                            p-desc (dox-for-schema schema route-str)]
-                       (format "-  **`%s`** %s"
-                               p-name
-                               (if (str/blank? p-desc) ; some params lack descriptions
-                                 p-desc
-                                 (u/add-period p-desc)))))))))
+                     :when (not (or
+                                 (str/blank? p-name)
+                                 (= "_" p-name)))]
+                 (format "-  **`%s`** %s"
+                         p-name
+                         (u/add-period p-desc)))]
+    (when (seq params)
+      (str "\n\n### PARAMS:\n\n"
+           (str/join "\n\n" params)))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
@@ -221,7 +226,7 @@
   "Note: this is called in a macro context, so it can potentially be passed a symbol that resolves to a schema."
   [schema]
   (let [schema      (try #_:clj-kondo/ignore
-                         (eval schema)
+                     (eval schema)
                          (catch Exception _ #_:clj-kondo/ignore
                                 (requiring-resolve-form schema)))
         schema-type (mc/type schema)]

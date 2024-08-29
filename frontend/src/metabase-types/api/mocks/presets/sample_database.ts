@@ -7,15 +7,15 @@ import type {
   Table,
 } from "metabase-types/api";
 import {
+  createMockColumn,
   createMockDatabase,
-  createMockTable,
+  createMockDateTimeFieldFingerprint,
   createMockField,
   createMockFingerprint,
   createMockGlobalFieldFingerprint,
-  createMockTextFieldFingerprint,
   createMockNumberFieldFingerprint,
-  createMockDateTimeFieldFingerprint,
-  createMockColumn,
+  createMockTable,
+  createMockTextFieldFingerprint,
 } from "metabase-types/api/mocks";
 
 export const SAMPLE_DB_ID = 1;
@@ -861,7 +861,7 @@ export const createPeopleCreatedAtField = (opts?: Partial<Field>): Field =>
     name: "CREATED_AT",
     display_name: "Created At",
     base_type: "type/DateTime",
-    effective_type: "type/Text",
+    effective_type: "type/DateTime",
     semantic_type: "type/CreationTimestamp",
     default_dimension_option: DEFAULT_TEMPORAL_BUCKETING_OPTION,
     dimension_options: createTemporalFieldBucketingOptions(),

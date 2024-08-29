@@ -7,9 +7,9 @@ import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
 import type { User, UserListResult } from "metabase-types/api";
 import {
-  createMockUser,
   createMockSettings,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 

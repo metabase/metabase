@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { onCloseQuestionInfo } from "metabase/query_builder/actions";
-import { syncVizSettingsWithQuery } from "metabase/querying";
+import { syncVizSettingsWithQuery } from "metabase/querying/viz-settings/utils/sync-viz-settings";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

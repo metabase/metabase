@@ -18,19 +18,19 @@ import {
   Z_INDEXES,
 } from "metabase/visualizations/echarts/cartesian/constants/style";
 import type {
-  SeriesModel,
-  DataKey,
-  StackTotalDataKey,
-  ChartDataset,
-  Datum,
-  XAxisModel,
-  TimeSeriesXAxisModel,
-  NumericXAxisModel,
-  NumericAxisScaleTransforms,
-  LabelFormatter,
-  ChartDataDensity,
   CartesianChartModel,
+  ChartDataDensity,
+  ChartDataset,
   ComboChartDataDensity,
+  DataKey,
+  Datum,
+  LabelFormatter,
+  NumericAxisScaleTransforms,
+  NumericXAxisModel,
+  SeriesModel,
+  StackTotalDataKey,
+  TimeSeriesXAxisModel,
+  XAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { EChartsSeriesOption } from "metabase/visualizations/echarts/cartesian/option/types";
 import type {

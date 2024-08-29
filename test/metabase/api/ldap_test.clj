@@ -17,7 +17,7 @@
 
 (deftest ldap-settings-test
   (testing "PUT /api/ldap/settings"
-    (ldap.test/with-ldap-server
+    (ldap.test/with-ldap-server!
       (testing "Valid LDAP settings can be saved via an API call"
         (mt/user-http-request :crowberto :put 200 "ldap/settings" (ldap-test-details)))
 
@@ -54,7 +54,7 @@
                                      (assoc (ldap-test-details) :ldap-port "" :ldap-enabled false))))))))
 
 (deftest ldap-enabled-test
-  (ldap.test/with-ldap-server
+  (ldap.test/with-ldap-server!
     (testing "`ldap-enabled` setting validates currently saved LDAP settings"
       (mt/with-temporary-setting-values [ldap-enabled false]
         (with-redefs [ldap/test-current-ldap-details (constantly {:status :ERROR :message "test error"})]

@@ -4,25 +4,25 @@ import type { ColorGetter } from "metabase/visualizations/types";
 
 import Gauge from "./Gauge";
 import {
-  START_ANGLE,
-  CHART_WIDTH,
-  GAUGE_OUTER_RADIUS,
   CHART_VERTICAL_MARGIN,
-  GAUGE_INNER_RADIUS,
-  SEGMENT_LABEL_MARGIN,
+  CHART_WIDTH,
   DISTANCE_TO_MIDDLE_LABEL_ANCHOR,
+  GAUGE_INNER_RADIUS,
+  GAUGE_OUTER_RADIUS,
   MAX_SEGMENT_VALUE_WIDTH,
   SEGMENT_LABEL_FONT_SIZE,
+  SEGMENT_LABEL_MARGIN,
+  START_ANGLE,
 } from "./constants";
 import type { Card, Data, GaugeLabelData, Position } from "./types";
 import {
-  populateDefaultColumnSettings,
-  removeDuplicateElements,
   calculateRelativeValueAngle,
   calculateSegmentLabelPosition,
   calculateSegmentLabelTextAnchor,
-  gaugeSorter,
   fixSwappedMinMax,
+  gaugeSorter,
+  populateDefaultColumnSettings,
+  removeDuplicateElements,
 } from "./utils";
 
 export interface GaugeContainerProps {

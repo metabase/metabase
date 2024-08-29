@@ -4,6 +4,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  type DashboardDetails,
+  type StructuredQuestionDetails,
   createDashboardWithTabs,
   createQuestionAndDashboard,
   dashboardParameterSidebar,
@@ -13,8 +15,6 @@ import {
   restore,
   updateDashboardCards,
   visitDashboard,
-  type DashboardDetails,
-  type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -579,7 +579,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ORDERS_CREATED_AT_FIELD,
       [
         {
-          name: "Unit of Time",
+          name: "Time grouping",
           slug: "unit-of-time",
           id: "fed1b910",
           type: "temporal-unit",
@@ -588,7 +588,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ],
     );
     editDashboard();
-    editFilter("Unit of Time");
+    editFilter("Time grouping");
 
     dashboardParameterSidebar()
       .findAllByLabelText("chevrondown icon")

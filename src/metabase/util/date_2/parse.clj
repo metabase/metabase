@@ -7,8 +7,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
   (:import
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
-   (java.time.format DateTimeFormatter)
+   (java.time Instant LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.time.format DateTimeFormatter DateTimeParseException)
    (java.time.temporal Temporal TemporalAccessor TemporalField TemporalQueries)))
 
 (set! *warn-on-reflection* true)
@@ -47,6 +47,17 @@
    {:error/message "Instance of a java.time.temporal.Temporal"}
    (partial instance? Temporal)])
 
+(def ^:private utc-zone-region (t/zone-id "UTC"))
+
+(defn- try-parse-as-iso-timestamp
+  "Fastpath for parsing ISO Instant timestamp if it matches the required length. Return nil if the length doesn't match
+  or the parsing fails, otherwise return a ZonedDateTime instance at UTC."
+  [^String s]
+  (when (and s (= (.length s) (.length "1970-01-01T00:00:00Z")))
+    (try (let [temporal-accessor (.parse DateTimeFormatter/ISO_INSTANT s)]
+           (.atZone (Instant/from temporal-accessor) utc-zone-region))
+         (catch DateTimeParseException _))))
+
 (mu/defn parse-with-formatter :- [:maybe InstanceOfTemporal]
   "Parse a String with a DateTimeFormatter, returning an appropriate instance of an `java.time` temporal class."
   [formattr
@@ -61,7 +72,7 @@
           zone-offset       (query temporal-accessor :zone-offset)
           zone-id           (or (query temporal-accessor :zone-id)
                                 (when (= zone-offset ZoneOffset/UTC)
-                                  (t/zone-id "UTC")))
+                                  utc-zone-region))
           literal-type      [(cond
                                zone-id     :zone
                                zone-offset :offset
@@ -135,4 +146,5 @@
 (defn parse
   "Parse a string into a `java.time` object."
   [^String s]
-  (parse-with-formatter formatter s))
+  (or (try-parse-as-iso-timestamp s) ;; Try the fastpath first.
+      (parse-with-formatter formatter s)))

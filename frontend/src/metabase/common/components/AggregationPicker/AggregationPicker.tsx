@@ -1,19 +1,26 @@
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import {
+  HoverParent,
+  PopoverDefaultIcon,
+  PopoverHoverTarget,
+} from "metabase/components/MetadataInfo/InfoIcon";
+import { Popover } from "metabase/components/MetadataInfo/Popover";
 import AccordionList from "metabase/core/components/AccordionList";
+import Markdown from "metabase/core/components/Markdown";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import {
-  canAddTemporalCompareAggregation,
   CompareAggregations,
+  canAddTemporalCompareAggregation,
 } from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
-import { Box, Icon } from "metabase/ui";
+import { Box, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
@@ -33,19 +40,20 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  onAdd: (aggregations: Lib.Aggregable[]) => void;
-  onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   type: "operator";
   operator: Lib.AggregationOperator;
+  name: string;
 };
 
 type MetricListItem = Lib.MetricDisplayInfo & {
   type: "metric";
   metric: Lib.MetricMetadata;
+  name: string;
   selected: boolean;
 };
 
@@ -67,9 +75,8 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   hasExpressionInput = true,
-  onAdd,
-  onSelect,
   onClose,
+  onQueryChange,
 }: AggregationPickerProps) {
   const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
@@ -100,6 +107,25 @@ export function AggregationPicker({
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
+
+  const onSelect = useCallback(
+    function (aggregation: Lib.Aggregable) {
+      const isUpdate = clause != null && clauseIndex != null;
+      if (isUpdate) {
+        const nextQuery = Lib.replaceClause(
+          query,
+          stageIndex,
+          clause,
+          aggregation,
+        );
+        onQueryChange(nextQuery);
+      } else {
+        const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
+        onQueryChange(nextQuery);
+      }
+    },
+    [query, stageIndex, clause, clauseIndex, onQueryChange],
+  );
 
   const sections = useMemo(() => {
     const sections: Section[] = [];
@@ -239,8 +265,8 @@ export function AggregationPicker({
   );
 
   const handleCompareSubmit = useCallback(
-    (aggregations: Lib.ExpressionClause[]) => {
-      onAdd(aggregations);
+    (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
+      onQueryChange(query);
 
       if (question) {
         trackColumnCompareViaShortcut(
@@ -253,7 +279,7 @@ export function AggregationPicker({
 
       onClose?.();
     },
-    [query, stageIndex, question, onAdd, onClose],
+    [stageIndex, question, onClose, onQueryChange],
   );
 
   if (isComparing) {
@@ -318,10 +344,13 @@ export function AggregationPicker({
         itemIsSelected={checkIsItemSelected}
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
+        renderItemExtra={renderItemIcon}
+        renderItemWrapper={renderItemWrapper}
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
         withBorders
+        globalSearch
       />
     </Box>
   );
@@ -346,6 +375,40 @@ function ColumnPickerHeader({
 
 function renderItemName(item: ListItem) {
   return item.displayName;
+}
+
+function renderItemWrapper(content: ReactNode) {
+  return <HoverParent>{content}</HoverParent>;
+}
+
+function renderItemIcon(item: ListItem) {
+  if (item.type !== "metric") {
+    return null;
+  }
+
+  if (!item.description) {
+    return null;
+  }
+
+  return (
+    <Flex pr="sm" align="center">
+      <Popover
+        position="right"
+        content={
+          <Box p="md">
+            <Markdown disallowHeading unstyleLinks>
+              {item.description}
+            </Markdown>
+          </Box>
+        }
+      >
+        <span aria-label={t`More info`}>
+          <PopoverDefaultIcon name="empty" size={18} />
+          <PopoverHoverTarget name="info_filled" hasDescription size={18} />
+        </span>
+      </Popover>
+    </Flex>
+  );
 }
 
 function omitItemDescription() {
@@ -390,6 +453,7 @@ function getOperatorListItem(
   return {
     ...operatorInfo,
     type: "operator",
+    name: operatorInfo.displayName,
     operator,
   };
 }
@@ -404,6 +468,7 @@ function getMetricListItem(
   return {
     ...metricInfo,
     type: "metric",
+    name: metricInfo.displayName,
     metric,
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,

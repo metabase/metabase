@@ -67,8 +67,13 @@ export type OnChangeCardAndRunOpts = {
 
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
+export type ColumnSettings = OptionsType & {
+  "pivot_table.column_show_totals"?: boolean;
+  [key: string]: unknown;
+};
+
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (col: RemappingHydratedDatasetColumn) => Record<string, unknown>;
+  column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
 };
 
 export interface StaticVisualizationProps {
@@ -96,9 +101,11 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isEditing: boolean;
+  isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
   hovered?: HoveredObject;
+  clicked?: ClickObject;
   className?: string;
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];

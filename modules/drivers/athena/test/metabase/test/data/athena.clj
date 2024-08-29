@@ -22,6 +22,12 @@
 
 (sql-jdbc.tx/add-test-extensions! :athena)
 
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:athena feature]
+    [_driver _feature _database]
+    false))
+
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 ;; Athena doesn't support dashes in Table names... we'll just go ahead and convert them all to underscores, even for DB
@@ -144,12 +150,13 @@
     ;; data twice. If you do, you'll have to manually delete those folders from the s3 bucket.
     ;;
     ;; -- Cam
-    (format #_"CREATE TABLE `%s`.`%s` (%s) LOCATION '%s' TBLPROPERTIES ('table_type'='ICEBERG');"
-            "CREATE EXTERNAL TABLE `%s`.`%s` (%s) LOCATION '%s';"
-            (ddl.i/format-name driver database-name)
-            (ddl.i/format-name driver table-name)
-            fields
-            (s3-location-for-table driver database-name table-name))))
+    (format
+     #_"CREATE TABLE `%s`.`%s` (%s) LOCATION '%s' TBLPROPERTIES ('table_type'='ICEBERG');"
+     "CREATE EXTERNAL TABLE `%s`.`%s` (%s) LOCATION '%s';"
+     (ddl.i/format-name driver database-name)
+     (ddl.i/format-name driver table-name)
+     fields
+     (s3-location-for-table driver database-name table-name))))
 
 (comment
   (let [test-data-dbdef (tx/get-dataset-definition @(requiring-resolve 'metabase.test.data.dataset-definitions/test-data))
@@ -245,7 +252,7 @@
                   (pr-str database-name))
 
       :else
-      (binding [ ;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
+      (binding [;; This tells Athena to convert `timestamp with time zone` literals to `timestamp` because otherwise it gets
                 ;; very fussy! See [[athena/*loading-data*]] for more info.
                 athena/*loading-data*  true]
         (log/infof "Creating Athena database %s" (pr-str database-name))
@@ -255,14 +262,6 @@
 
 (defmethod tx/sorts-nil-first? :athena
   [_driver _base-type]
-  false)
-
-(defmethod tx/supports-time-type? :athena
-  [_driver]
-  false)
-
-(defmethod tx/supports-timestamptz-type? :athena
-  [_driver]
   false)
 
 (mu/defmethod tx/dataset-already-loaded? :athena

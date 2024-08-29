@@ -50,11 +50,26 @@ Permission levels include:
 - [Impersonated](#impersonated-view-data-permission)
 - [Blocked](#blocked-view-data-permission)
 
+View data permission settings apply to different levels in your database:
+
+| View data permission | Database | Schema | Table |
+| -------------------- | -------- | ------ | ----- |
+| Can view             | ✅        | ✅      | ✅     |
+| Granular\*           | ✅        | ✅      | ❌     |
+| Sandboxed            | ❌        | ❌      | ✅     |
+| Impersonated         | ✅        | ❌      | ❌     |
+| Blocked              | ✅        | ✅      | ✅     |
+
+
+\* The "Granular" setting is not itself a type of permission; it just signals that permissions are set at a level below the current level. For example, you can select "Granular" at a schema level to set permissions per table for tables in that schema.
+
 In the free, open-source version of Metabase, the **View data** setting defaults to "Can view". Since the setting's options aren't available in the OSS version, Metabase will only display this **View data** setting in the Pro/Enterprise version.
 
 For which questions, models, and dashboards a group can view, instead see [collection permissions](collections.md).
 
 ### Can view data permission
+
+{% include plans-blockquote.html feature="Can view data permission" %}
 
 Setting to **Can view** means the group can view all the data for the data source, provided they have [collection permissions](./collections.md) to view questions, models, and dashboards.
 
@@ -72,7 +87,7 @@ For tables, you have the option to set either **Can view** or **Sandboxed**.
 
 {% include plans-blockquote.html feature="Sandboxed view data permission" %}
 
-Allows you to set row-level permissions based on user attributes.
+Allows you to set row-level permissions based on user attributes. Can only be configured at the table level.
 
 See [Data sandboxes](./data-sandboxes.md).
 
@@ -88,13 +103,13 @@ See [impersonated view data permissions](./impersonation.md)
 
 {% include plans-blockquote.html feature="Blocked view data permission" %}
 
-**Blocked** ensures people in a group can’t see the data from this database, regardless of their permissions at the collection level.
+**Blocked** ensures people in a group can’t see the data from this database, schema, or table, regardless of their permissions at the collection level.
 
-The Blocked view data permission can only be set at the database level.
+The Blocked view data permission can be set at the database, schema, or table level. Essentially, what Blocked does is make collections permissions _insufficient_ to view a question. For example, even if a question is in a collection that the group has access to, but that question queries a data source that is Blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the data permissions to that data source.
 
-Essentially, what Block does is make collections permissions insufficient to view a question. For example, even if a question is in a collection that the group has access to, but that question queries a data source that is blocked for that group, people in that group won't be able to view that question _unless_ they're in another group with the relevant data permissions.
+Setting blocked access for a group ALWAYS prevents the group from viewing questions built with the native query editor that query ANY tables from the same database. So even if you only block a single table in a database, the group won't be able to view the results of SQL questions that query ANY table in that database. The reason: Metabase doesn't (yet) parse SQL queries, so it can't know for sure whether the SQL queries the table you want to block.
 
-If a person in a blocked group belongs to _another_ group that _does_ have View data access to the data source, that more privileged access will take precedence (overruling the block), and they'll be able to view that question.
+If a person in a Blocked group belongs to _another_ group that has its View data permission set to "Can view", that more permissive access will take precedence, and they'll be able to view that question.
 
 ## Create queries permissions
 

@@ -20,8 +20,11 @@
 
 (tx/add-test-extensions! :mongo)
 
-(defmethod tx/supports-time-type? :mongo [_driver] false)
-(defmethod tx/supports-timestamptz-type? :mongo [_driver] false)
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:mongo feature]
+    [_driver _feature _database]
+    false))
 
 ;; During tests don't treat Mongo as having FK support
 (defmethod driver/database-supports? [:mongo :foreign-keys] [_driver _feature _db] (not config/is-test?))
@@ -79,9 +82,9 @@
           (try
             ;; Insert each row
             (mongo.util/insert-one (mongo.util/collection db (name table-name))
-                                  (into (ordered-map/ordered-map :_id (inc i))
-                                        (cond->> (zipmap field-names row)
-                                          *remove-nil?* (m/remove-vals nil?))))
+                                   (into (ordered-map/ordered-map :_id (inc i))
+                                         (cond->> (zipmap field-names row)
+                                           *remove-nil?* (m/remove-vals nil?))))
             ;; If row already exists then nothing to do
             (catch com.mongodb.MongoException _)))))))
 

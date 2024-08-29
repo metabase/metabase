@@ -5,12 +5,12 @@ import { useCreateApiKeyMutation } from "metabase/api";
 import {
   Form,
   FormErrorMessage,
-  FormProvider,
   FormGroupWidget,
+  FormProvider,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Text, Button, Group, Modal, Stack } from "metabase/ui";
+import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import type { CreateApiKeyRequest } from "metabase-types/api";
 
 import { SecretKeyModal } from "./SecretKeyModal";
@@ -39,7 +39,6 @@ export const CreateApiKeyModal = ({ onClose }: { onClose: () => void }) => {
     return (
       <Modal
         size="30rem"
-        padding="xl"
         opened
         onClose={onClose}
         title={t`Create a new API Key`}

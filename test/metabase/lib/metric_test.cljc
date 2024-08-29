@@ -14,6 +14,7 @@
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private metric-id 100)
+(def ^:private second-metric-id 101)
 
 (def ^:private metric-definition
   (-> lib.tu/venues-query
@@ -30,8 +31,27 @@
             :dataset-query metric-definition
             :description   "Number of toucans plus number of pelicans"}]})
 
+(def ^:private multiple-metrics-db
+  {:cards [{:id            metric-id
+            :name          "Sum of Cans"
+            :type          :metric
+            :database-id   (meta/id)
+            :table-id      (meta/id :venues)
+            :dataset-query metric-definition
+            :description   "Number of toucans plus number of pelicans"}
+           {:id            second-metric-id
+            :name          "A Sum of Tigers"
+            :type          :metric
+            :database-id   (meta/id)
+            :table-id      (meta/id :venues)
+            :dataset-query metric-definition
+            :description   "Number of toucans plus number of pelicans"}]})
+
 (def ^:private metadata-provider
   (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db))
+
+(def ^:private metadata-provider-with-multiple-metrics
+  (lib.tu/mock-metadata-provider meta/metadata-provider multiple-metrics-db))
 
 (def ^:private metadata-provider-with-cards
   (lib.tu/mock-metadata-provider lib.tu/metadata-provider-with-mock-cards metrics-db))
@@ -197,7 +217,7 @@
                  (lib/query (lib.tu/mock-metadata-provider
                              meta/metadata-provider
                              (assoc-in metrics-db [:cards 0 :archived] true))
-                   (meta/table-metadata :venues))))))
+                            (meta/table-metadata :venues))))))
     (testing "Should return the position in the list of aggregations"
       (let [metrics (lib.metric/available-metrics query-with-metric)]
         (is (=? [(assoc expected-metric-metadata :aggregation-position 0)]
@@ -211,6 +231,12 @@
                     :aggregation-position 0}]
                   (map #(lib/display-info query-with-metric %)
                        metrics)))))))
+
+  (testing "Should return the available metrics as sorted"
+    (let [query   (lib/query metadata-provider-with-multiple-metrics (meta/table-metadata :venues))
+          metrics (lib.metric/available-metrics query)]
+      (is (=? [{:id second-metric-id} {:id metric-id}] metrics))))
+
   (testing "Metrics based on cards are available"
     (let [metric {:name "Metrics"
                   :id 2

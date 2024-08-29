@@ -73,36 +73,36 @@
     (liquibase/with-liquibase [liquibase conn]
       (try
         ;; Consolidating the changeset requires the lock, so we may need to release it first.
-       (when (= :force direction)
-         (liquibase/release-lock-if-needed! liquibase))
+        (when (= :force direction)
+          (liquibase/release-lock-if-needed! liquibase))
         ;; Releasing the locks does not depend on the changesets, so we skip this step as it might require locking.
-       (when-not (= :release-locks direction)
-         (liquibase/consolidate-liquibase-changesets! conn liquibase))
+        (when-not (= :release-locks direction)
+          (liquibase/consolidate-liquibase-changesets! conn liquibase))
 
-       (log/info "Liquibase is ready.")
-       (case direction
-         :up            (liquibase/migrate-up-if-needed! liquibase data-source)
-         :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
-         :down          (apply liquibase/rollback-major-version conn liquibase args)
-         :print         (print-migrations-and-quit-if-needed! liquibase data-source)
-         :release-locks (liquibase/force-release-locks! liquibase))
+        (log/info "Liquibase is ready.")
+        (case direction
+          :up            (liquibase/migrate-up-if-needed! liquibase data-source)
+          :force         (liquibase/force-migrate-up-if-needed! liquibase data-source)
+          :down          (apply liquibase/rollback-major-version conn liquibase args)
+          :print         (print-migrations-and-quit-if-needed! liquibase data-source)
+          :release-locks (liquibase/force-release-locks! liquibase))
        ;; Migrations were successful; commit everything and re-enable auto-commit
-       (.commit conn)
-       (.setAutoCommit conn true)
-       :done
+        (.commit conn)
+        (.setAutoCommit conn true)
+        :done
        ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
        ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
        ;; clear the lock in that case, so handle that case separately
-       (catch LockException e
-         (.rollback conn)
-         (throw e))
+        (catch LockException e
+          (.rollback conn)
+          (throw e))
        ;; If for any reason any part of the migrations fail then rollback all changes
-       (catch Throwable e
-         (.rollback conn)
+        (catch Throwable e
+          (.rollback conn)
          ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
          ;; operation without releasing the lock first, the real error will get hidden behind a lock error
-         (liquibase/release-lock-if-needed! liquibase)
-         (throw e))))))
+          (liquibase/release-lock-if-needed! liquibase)
+          (throw e))))))
 
 (mu/defn- verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
@@ -162,9 +162,9 @@
       (binding [mdb.connection/*application-db*           (mdb.connection/application-db db-type data-source :create-pool? false) ; should already be a pool
                 config/*disable-setting-cache*            true
                 custom-migrations/*create-sample-content* create-sample-content?]
-         (verify-db-connection db-type data-source)
-         (error-if-downgrade-required! data-source)
-         (run-schema-migrations! data-source auto-migrate?))))
+        (verify-db-connection db-type data-source)
+        (error-if-downgrade-required! data-source)
+        (run-schema-migrations! data-source auto-migrate?))))
   :done)
 
 (defn release-migration-locks!

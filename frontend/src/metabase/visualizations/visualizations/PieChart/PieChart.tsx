@@ -5,12 +5,17 @@ import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend"
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
 import { getPieChartOption } from "metabase/visualizations/echarts/pie/option";
+import { getTooltipOption } from "metabase/visualizations/echarts/pie/tooltip";
+import {
+  useCloseTooltipOnScroll,
+  usePieChartValuesColorsClasses,
+} from "metabase/visualizations/echarts/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
 import { ChartRenderer } from "./PieChart.styled";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
-import { getTooltipModel, useChartEvents } from "./use-chart-events";
+import { useChartEvents } from "./use-chart-events";
 
 Object.assign(PieChart, PIE_CHART_DEFINITION);
 
@@ -25,6 +30,7 @@ export function PieChart(props: VisualizationProps) {
   } = props;
   const hoveredIndex = props.hovered?.index;
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType>();
   const [sideLength, setSideLength] = useState(0);
 
@@ -47,8 +53,8 @@ export function PieChart(props: VisualizationProps) {
     [chartModel, settings, renderingContext],
   );
   const option = useMemo(
-    () =>
-      getPieChartOption(
+    () => ({
+      ...getPieChartOption(
         chartModel,
         formatters,
         settings,
@@ -56,6 +62,8 @@ export function PieChart(props: VisualizationProps) {
         sideLength,
         hoveredIndex,
       ),
+      tooltip: getTooltipOption(chartModel, formatters, containerRef),
+    }),
     [
       chartModel,
       formatters,
@@ -66,6 +74,8 @@ export function PieChart(props: VisualizationProps) {
     ],
   );
 
+  const valuesColorsCss = usePieChartValuesColorsClasses(chartModel);
+
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
   }, []);
@@ -75,7 +85,7 @@ export function PieChart(props: VisualizationProps) {
     [],
   );
 
-  const eventHandlers = useChartEvents(props, chartRef, chartModel, formatters);
+  const eventHandlers = useChartEvents(props, chartRef, chartModel);
 
   const legendTitles = chartModel.slices
     .filter(s => s.data.includeInLegend)
@@ -103,17 +113,12 @@ export function PieChart(props: VisualizationProps) {
     props.onHoverChange(
       hoverData && {
         ...hoverData,
-        stackedTooltipModel: getTooltipModel(
-          hoverData.index,
-          chartModel,
-          formatters,
-        ),
       },
     );
 
+  useCloseTooltipOnScroll(chartRef);
+
   return (
-    // @ts-expect-error - `ChartWithLegend` has bad types due to it being in js
-    // and due to using a HoC
     <ChartWithLegend
       legendTitles={legendTitles}
       legendColors={legendColors}
@@ -125,9 +130,8 @@ export function PieChart(props: VisualizationProps) {
       isDashboard={isDashboard}
     >
       <ChartRenderer
+        ref={containerRef}
         option={option}
-        width={"auto"}
-        height={"auto"}
         onInit={handleInit}
         onResize={handleResize}
         eventHandlers={eventHandlers}
@@ -135,8 +139,8 @@ export function PieChart(props: VisualizationProps) {
         // we need it to be `false`, otherwise echarts will bug out and be stuck
         // in emphasis state after hovering a slice
         notMerge={false}
-        style={null}
       />
+      {valuesColorsCss}
     </ChartWithLegend>
   );
 }

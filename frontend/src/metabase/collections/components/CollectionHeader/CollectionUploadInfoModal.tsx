@@ -8,10 +8,10 @@ import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 
 import {
-  InfoModalTitle,
   InfoModalBody,
-  NewBadge,
   InfoModalContainer,
+  InfoModalTitle,
+  NewBadge,
 } from "./CollectionUpload.styled";
 
 export const UploadInfoModal = ({

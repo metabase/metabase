@@ -1,24 +1,25 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  visitQuestion,
-  popover,
-  visitIframe,
-  openStaticEmbeddingModal,
-  echartsContainer,
+  assertEChartsTooltip,
   cartesianChartCircle,
-  testPairedTooltipValues,
   describeEE,
+  echartsContainer,
   filterWidget,
-  visitEmbeddedPage,
+  main,
+  openStaticEmbeddingModal,
+  popover,
+  restore,
   setTokenFeatures,
+  visitEmbeddedPage,
+  visitIframe,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 import {
-  regularQuestion,
-  questionWithAggregation,
   joinedQuestion,
+  questionWithAggregation,
+  regularQuestion,
 } from "./shared/embedding-questions";
 
 const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
@@ -107,12 +108,11 @@ describe("scenarios > embedding > questions", () => {
     echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    cartesianChartCircle().last().realHover();
+    cartesianChartCircle().last().trigger("mousemove");
 
-    popover().within(() => {
-      testPairedTooltipValues("Created At", "Aug 2022");
-      testPairedTooltipValues("Math", "2");
-      testPairedTooltipValues("Count", "79");
+    assertEChartsTooltip({
+      header: "Aug 2022",
+      rows: [{ name: "2", value: "79" }],
     });
   });
 
@@ -219,8 +219,10 @@ describe("scenarios > embedding > questions", () => {
       });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Februar 11, 2025, 9:40 PM");
+    main().findByText("Februar 11, 2025, 9:40 PM");
+    main().findByText("Zeilen", { exact: false });
+
+    cy.url().should("include", "locale=de");
   });
 });
 

@@ -19,7 +19,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmacro with-actions-test-data-and-actions-permissively-enabled
+(defmacro with-actions-test-data-and-actions-permissively-enabled!
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
   {:style/indent 0}
   [& body]
@@ -38,7 +38,7 @@
 (deftest create-test
   (testing "row/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (let [response (actions/perform-action! :row/create
                                                 (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
           (is (=? {:created-row {(format-field-name :id)   76
@@ -52,7 +52,7 @@
 (deftest create-invalid-data-test
   (testing "row/create -- invalid data"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (is (= 75
                (categories-row-count)))
         (is (thrown-with-msg? Exception (case driver/*driver*
@@ -72,7 +72,7 @@
 (deftest update-test
   (testing "row/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (is (= {:rows-updated [1]}
                (actions/perform-action! :row/update
                                         (assoc (mt/mbql-query categories {:filter [:= $id 50]})
@@ -85,7 +85,7 @@
 (deftest delete-test
   (testing "row/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (is (= {:rows-deleted [1]}
                (actions/perform-action! :row/delete
                                         (mt/mbql-query categories {:filter [:= $id 50]})))
@@ -107,7 +107,7 @@
                                  [:created-row [:map {:closed true}
                                                 [(format-field-name :id)   ms/PositiveInt]
                                                 [(format-field-name :name) ms/NonBlankString]]]]
-                         result)))}
+                                result)))}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {(format-field-name :name) "updated_row"})
@@ -210,7 +210,7 @@
   (testing "row/delete"
     (testing "should return error message if value cannot be parsed correctly for Field in question"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-        (with-actions-test-data-and-actions-permissively-enabled
+        (with-actions-test-data-and-actions-permissively-enabled!
           (is (thrown-with-msg? Exception #"Error filtering against :type/(Big)?Integer Field: unable to parse String \"one\" to a :type/(Big)?Integer"
                                 ;; TODO -- this really should be returning a 400 but we need to rework the code in
                                 ;; [[metabase.driver.sql-jdbc.actions]] a little to have that happen without changing other stuff
@@ -227,7 +227,7 @@
     (testing "FK constraint violations errors should have nice error messages (at least for Postgres) (#24021)"
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
         (mt/with-actions-test-data-tables #{"venues" "categories"}
-          (with-actions-test-data-and-actions-permissively-enabled
+          (with-actions-test-data-and-actions-permissively-enabled!
 
             ;; attempting to delete the `Pizza` category should fail because there are several rows in `venues` that have
             ;; this `category_id` -- it's an FK constraint violation.
@@ -255,7 +255,7 @@
 (deftest bulk-create-happy-path-test
   (testing "bulk/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (is (= 75
                (categories-row-count)))
         (is (= {:created-rows [{(format-field-name :id) 76, (format-field-name :name) "NEW_A"}
@@ -275,7 +275,7 @@
 (deftest bulk-create-failure-test
   (testing "bulk/create"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (testing "error in some of the rows in request body"
           (is (= 75
                  (categories-row-count)))
@@ -311,7 +311,7 @@
 (deftest bulk-delete-happy-path-test
   (testing "bulk/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (is (= 75
                (categories-row-count)))
         (is (= {:success true}
@@ -326,7 +326,7 @@
 (deftest bulk-delete-failure-test
   (testing "bulk/delete"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (testing "error in some of the rows"
           (is (= 75
                  (categories-row-count)))
@@ -389,7 +389,7 @@
 (deftest bulk-update-happy-path-test
   (testing "bulk/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (is (= [[1 "African"]
                 [2 "American"]
                 [3 "Artisan"]]
@@ -413,7 +413,7 @@
 (deftest bulk-update-failure-test
   (testing "bulk/update"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
-      (with-actions-test-data-and-actions-permissively-enabled
+      (with-actions-test-data-and-actions-permissively-enabled!
         (let [id                 (format-field-name :id)
               name               (format-field-name :name)
               update-categories! (fn [rows]
@@ -497,7 +497,7 @@
     (let [username "username", password "password"]
       (with-open [ssh-server (basic-auth-ssh-server username password)]
         (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
-          (with-actions-test-data-and-actions-permissively-enabled
+          (with-actions-test-data-and-actions-permissively-enabled!
             (let [ssh-port (.getPort ^SshServer ssh-server)]
               (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
                 (t2/update! 'Database (mt/id)
@@ -528,11 +528,11 @@
                           "None of the errors are from ssh")))))
               (testing "Can perform custom actions on ssh-enabled database"
                 (let [query (update (mt/native-query
-                                     {:query "update categories set name = 'foo' where id = {{id}}"
-                                      :template-tags {:id {:id "id"
-                                                           :name "id"
-                                                           :type "number"
-                                                           :display-name "Id"}}})
+                                      {:query "update categories set name = 'foo' where id = {{id}}"
+                                       :template-tags {:id {:id "id"
+                                                            :name "id"
+                                                            :type "number"
+                                                            :display-name "Id"}}})
                                     :type name)]
                   (mt/with-actions [{card-id :id} {:type :model
                                                    :dataset_query (mt/mbql-query categories)}

@@ -10,7 +10,7 @@ Metabase supports MongoDB version 4.2 or higher.
 
 ## How Metabase syncs data in MongoDB
 
-Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first ten thousand documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
+Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first 10,000 documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/db-connection.md).
 
 ## Connecting to MongoDB
 
@@ -35,11 +35,11 @@ The default way to connect to MongoDB is to fill out your connection details in 
 
 You'll also have the option to **Use a secure connection (SSL)**. Enable SSL and paste the contents of the server's SSL certificate chain in the input text box. This option is available for this method of connection only (i.e. you cannot include a certificate when connecting with a connection string).
 
-## Advanced settings for direct connection
+### Advanced settings for direct connection
 
 - **Use DNS SRV when connecting** Using this option requires that provided host is a FQDN. If connecting to an Atlas cluster, you might need to enable this option. If you don't know what this means, leave this disabled.
 
-## Using a connection string
+### Using a connection string
 
 If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
 
@@ -51,12 +51,53 @@ Metabase currently does NOT support the following connection string parameters:
 
 If you need to use a certificate, connect via the [default method](#using-metabase-fields) and enable **Use a secure connection(SSL)**.
 
-## Settings common to both connection options
+### Settings common to both connection options
 
 - **Use an SSH tunnel**: Some database installations can only be accessed by connecting through an SSH bastion host. This option also provides an extra layer of security when a VPN is not available. Enabling this is usually slower than a direct connection.
 - **Rerun queries for simple exploration**: When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.
 - **Choose when syncs and scans happen**: By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.
 - **Periodically refingerprint tables**: This setting — disabled by default — enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
+
+## Connecting to a MongoDB Atlas cluster
+
+> You can use Metabase with Atlas Dedicated and Shared clusters. Metabase does not currently support Atlas Serverless.
+
+### Whitelist IP addresses
+
+If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
+
+1. Log into your [Atlas cluster](https://cloud.mongodb.com)
+2. Go to **Network Access**
+3. Add the IP addresses that your Metabase uses to connect.
+
+### Connect Metabase to your Atlas cluster
+
+> The connection string provided in Atlas "Connect" interface does not include the database. Metabase requires you to provide a database name when connecting, so you'll need to edit the connection string to add the database name.
+
+1. Log into your [Atlas account](https://cloud.mongodb.com)
+
+2. Select the cluster you want to connect to, and click **Connect**.
+
+   ![Your cluster screengrab](../images/atlas-connect.png)
+
+3. Select **Drivers**.
+
+4. Copy the connection string from **Add your connection string into your application code** section.
+
+   ![Connect screengrab](../images/connection-string.png)
+
+5. In Metabase, go to Admin -> Databases, and click the **Add database** button.
+6. Select MongoDB from the dropdown, and enter a **Display name** for this database.
+7. Click on **"Paste the connection string"** and paste your connection string.
+8. Edit the connection string to include the name of the database after `/`:
+
+   ```
+   mongodb+srv://metabot:metapass@my-test-cluster.a5ej7.mongodb.net/DATABASE_NAME?retryWrites=true&w=majority&appName=my-test-cluster
+   ```
+
+If you're using Metabase fields to input connection information for your Atlas cluster instead of using the connection string, you might need to turn on **Use DNS SRV when connecting**.
+
+See more information about [Advanced options](#settings-common-to-both-connection-options).
 
 ## Configuring SSL via the command line
 
@@ -74,26 +115,6 @@ java -Djavax.net.ssl.trustStore=cacerts.jks -Djavax.net.ssl.trustStorePassword=c
 ```
 
 Learn more about [configuring SSL with MongoDB](http://mongodb.github.io/mongo-java-driver/3.0/driver/reference/connecting/ssl/).
-
-## Connecting to a MongoDB Atlas cluster
-
-To make sure you are using the correct connection configuration:
-
-1. Log into your [Atlas cluster](https://cloud.mongodb.com)
-
-2. Select the cluster you want to connect to, and click **Connect**.
-
-   ![Your cluster screengrab](../images/mongo_1.png "Your cluster")
-
-3. Click **Connect Your Application**.
-
-   ![Connect screengrab](../images/mongo_2.png "Connect")
-
-4. Select **Java** and version.
-
-5. The resulting connection string has the relevant information to provide to Metabase's `Add a Database` form for MongoDB.
-
-6. You will likely want to select the option `Use DNS SRV`, which newer Atlas clusters use by default.
 
 ## General connectivity concerns
 

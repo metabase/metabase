@@ -28,9 +28,9 @@
 (comment hiccup.util/keep-me)
 
 (p/import-vars
-  [datetime
-   format-temporal-str
-   temporal-string?])
+ [datetime
+  format-temporal-str
+  temporal-string?])
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
@@ -68,8 +68,10 @@
                             java.lang.Float      (format "%.20f" value)
                             (str value))
                           (strip-trailing-zeroes (str decimal)))
-           d          (last (str/split val-string #"[^\d*]"))]
-       (count d)))))
+           decimal-idx (str/index-of val-string decimal)]
+       (if decimal-idx
+         (- (count val-string) decimal-idx 1)
+         0)))))
 
 (defn- sig-figs-after-decimal
   [value decimal]
@@ -123,6 +125,8 @@
                                                                    (:type/Currency global-settings))
                                                                  (:type/Number global-settings)
                                                                  column-settings)
+        currency        (when currency?
+                          (keyword (or currency "USD")))
         integral?       (isa? (or effective_type base_type) :type/Integer)
         relation?       (isa? semantic_type :Relation/*)
         percent?        (or (isa? semantic_type :type/Percentage) (= number-style "percent"))
@@ -134,7 +138,10 @@
                              (cond-> decimal (.setDecimalSeparator decimal))
                              (cond-> grouping (.setGroupingSeparator grouping)))
         base               (cond-> (if (or scientific? relation?) "0" "#,##0")
-                             (not grouping) (str/replace #"," ""))]
+                             (not grouping) (str/replace #"," ""))
+        ;; A small cache of decimal-digits->formatter to avoid creating new ones all the time. This cache is bound by
+        ;; the maximum number of decimal digits we can format which is 20 (constrained by `digits-after-decimal`).
+        fmtr-cache         (volatile! {})]
     (fn [value]
       (if (number? value)
         (let [scaled-value      (cond-> (* value (or scale 1))
@@ -144,7 +151,12 @@
               decimal-digits (cond
                                decimals decimals ;; if user ever specifies # of decimals, use that
                                integral? 0
-                               currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
+                               scientific? (min 2 (max decimals-in-value
+                                                       ;; Scientific representation can introduce its own decimal
+                                                       ;; digits even in integer numbers. Count how many integer
+                                                       ;; digits are in the number (but limit to 2).
+                                                       (int (Math/log10 (abs scaled-value)))))
+                               currency? (get-in currency/currency [currency :decimal_digits])
                                percent?  (min 2 decimals-in-value) ;; 5.5432 -> %554.32
                                :else (if (>= (abs scaled-value) 1)
                                        (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
@@ -152,27 +164,36 @@
                                          (if (> n-figs 2)
                                            (max 2 (- decimals-in-value (- n-figs 2))) ;; values less than 1 round to 2 sig-dig
                                            decimals-in-value))))
-              fmt-str (cond-> base
-                        (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
-                        scientific? (str "E0"))
-              fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
-          (map->NumericWrapper
-           {:num-value value
-            :num-str   (let [inline-currency? (and currency?
-                                                   (false? (::mb.viz/currency-in-header column-settings)))]
-                         (str (when prefix prefix)
-                              (when (and inline-currency? (or (nil? currency-style)
-                                                              (= currency-style "symbol")))
-                                (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
-                              (when (and inline-currency? (= currency-style "code"))
-                                (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
-                              (cond-> (.format fmtr scaled-value)
-                                (and (not currency?) (not decimals))
-                                (strip-trailing-zeroes decimal)
-                                percent?    (str "%"))
-                              (when (and inline-currency? (= currency-style "name"))
-                                (str \space (get-in currency/currency [(keyword (or currency "USD")) :name_plural])))
-                              (when suffix suffix)))}))
+              fmtr (or (@fmtr-cache decimal-digits)
+                       (let [fmt-str (cond-> base
+                                       (not (zero? decimal-digits)) (str "." (apply str (repeat decimal-digits "0")))
+                                       scientific? (str "E0"))
+                             fmtr (doto (DecimalFormat. fmt-str symbols) (.setRoundingMode RoundingMode/HALF_UP))]
+                         (vswap! fmtr-cache assoc decimal-digits fmtr)
+                         fmtr))]
+          (->NumericWrapper
+           (let [inline-currency? (and currency?
+                                       (false? (::mb.viz/currency-in-header column-settings)))
+                 sb (StringBuilder.)]
+             ;; Using explicit StringBuilder to avoid touching the slow `clojure.core/str` multi-arity.
+             (when prefix (.append sb prefix))
+             (when (and inline-currency? (or (nil? currency-style)
+                                             (= currency-style "symbol")))
+               (.append sb (get-in currency/currency [currency :symbol])))
+             (when (and inline-currency? (= currency-style "code"))
+               (.append sb (get-in currency/currency [currency :code]))
+               (.append sb \space))
+             (.append sb (cond-> (.format ^DecimalFormat fmtr scaled-value)
+                           (and (not currency?) (not decimals))
+                           (strip-trailing-zeroes decimal)))
+             (when percent?
+               (.append sb "%"))
+             (when (and inline-currency? (= currency-style "name"))
+               (.append sb \space)
+               (.append sb (get-in currency/currency [currency :name_plural])))
+             (when suffix (.append sb suffix))
+             (str sb))
+           value))
         value))))
 
 (mu/defn format-number :- (ms/InstanceOfClass NumericWrapper)

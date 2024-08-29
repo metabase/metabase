@@ -4,7 +4,10 @@ import {
   addCustomColumn,
   addSummaryField,
   addSummaryGroupingField,
+  createQuestion,
   enterCustomColumnDetails,
+  entityPickerModal,
+  entityPickerModalTab,
   filter,
   filterField,
   getNotebookStep,
@@ -22,9 +25,6 @@ import {
   summarize,
   visitQuestionAdhoc,
   visualize,
-  createQuestion,
-  entityPickerModal,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
@@ -831,7 +831,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.get("@metricId").then(metricId => {
       const questionDetails = {
         query: {
-          "source-table": `card__${metricId}`,
+          "source-table": ORDERS_ID,
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],

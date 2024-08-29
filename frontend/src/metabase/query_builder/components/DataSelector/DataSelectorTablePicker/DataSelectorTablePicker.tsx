@@ -13,7 +13,7 @@ import { color } from "metabase/lib/colors";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import { isNotNull } from "metabase/lib/types";
-import { rem, Box, Icon, DelayGroup, Flex } from "metabase/ui";
+import { Box, DelayGroup, Flex, Icon, rem } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";

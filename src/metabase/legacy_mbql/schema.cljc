@@ -185,7 +185,6 @@
   `relative-datetime` form."
   (one-of absolute-datetime relative-datetime time))
 
-
 ;;; -------------------------------------------------- Other Values --------------------------------------------------
 
 (mr/def ::ValueTypeInfo
@@ -207,7 +206,6 @@
 (defclause ^:internal value
   value    :any
   type-info [:maybe ::ValueTypeInfo])
-
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
@@ -990,7 +988,6 @@
 (defclause ^{:requires-features #{:percentile-aggregations}} percentile
   field-or-expression [:ref ::FieldOrExpressionDef], percentile NumericExpressionArg)
 
-
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
 (defclause metric
@@ -1037,7 +1034,6 @@
    [:aggregation-options aggregation-options]
    [:unnamed-aggregation UnnamedAggregation]])
 
-
 ;;; ---------------------------------------------------- Order-By ----------------------------------------------------
 
 ;; order-by is just a series of `[<direction> <field>]` clauses like
@@ -1052,7 +1048,6 @@
 (mr/def ::OrderBy
   "Schema for an `order-by` clause subclause."
   (one-of asc desc))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    Queries                                                     |
@@ -1241,7 +1236,6 @@
    NativeQuery:Common
    [:map
     [:native :any]]])
-
 
 ;;; ----------------------------------------------- MBQL [Inner] Query -----------------------------------------------
 
@@ -1465,7 +1459,6 @@
     (fn [{:keys [breakout fields]}]
       (empty? (set/intersection (set breakout) (set fields))))]])
 
-
 ;;; ----------------------------------------------------- Params -----------------------------------------------------
 
 (mr/def ::WidgetType
@@ -1480,8 +1473,18 @@
             [:map
              [:id ::lib.schema.common/non-blank-string]]])
 
-(defclause dimension
-  target [:or Field template-tag])
+(mr/def ::dimension
+  [:and
+   {:doc/title [:span [:code ":dimension"] " clause"]}
+   [:fn {:error/message "must be a `:dimension` clause"} (partial helpers/is-clause? :dimension)]
+   [:catn
+    [:tag [:= :dimension]]
+    [:target [:schema [:or [:ref ::Field] [:ref ::template-tag]]]]
+    [:options [:? [:maybe [:map {:error/message "dimension options"} [:stage-number {:optional true} :int]]]]]]])
+
+(def ^{:clause-name :dimension} dimension
+  "Schema for a valid dimension clause."
+  [:ref ::dimension])
 
 (defclause variable
   target template-tag)
@@ -1606,7 +1609,6 @@
   incorporated into an export. Used by `metabase.query-processor.middleware.visualization-settings`; default
   `false`."}
     [:maybe :boolean]]])
-
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 

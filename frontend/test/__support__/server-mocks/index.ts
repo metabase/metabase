@@ -20,6 +20,7 @@ export * from "./native-query-snippet";
 export * from "./revision";
 export * from "./permissions";
 export * from "./public";
+export * from "./pulse";
 export * from "./search";
 export * from "./segment";
 export * from "./session";

@@ -93,6 +93,8 @@
                     {:base-type base-type})
                   (when-let [effective-type ((some-fn :effective-type :base-type) opts)]
                     {:effective-type effective-type})
+                  (when-let [original-effective-type (::original-effective-type opts)]
+                    {::original-effective-type original-effective-type})
                   ;; TODO -- some of the other stuff in `opts` probably ought to be merged in here as well. Also, if
                   ;; the Field is temporally bucketed, the base-type/effective-type would probably be affected, right?
                   ;; We should probably be taking that into consideration?
@@ -345,11 +347,13 @@
 
 (defmethod lib.temporal-bucket/with-temporal-bucket-method :metadata/column
   [metadata unit]
-  (if unit
-    (assoc metadata
-           ::temporal-unit unit
-           ::original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata))
-    (dissoc metadata ::temporal-unit ::original-effective-type)))
+  (let [original-effective-type ((some-fn ::original-effective-type :effective-type :base-type) metadata)]
+    (if unit
+      (assoc metadata
+             ::temporal-unit unit
+             ::original-effective-type original-effective-type)
+      (cond-> (dissoc metadata ::temporal-unit ::original-effective-type)
+        original-effective-type (assoc :effective-type original-effective-type)))))
 
 (defmethod lib.temporal-bucket/available-temporal-buckets-method :field
   [query stage-number field-ref]
@@ -637,13 +641,13 @@
         source (:lib/source column)]
     (-> (case source
           (:source/table-defaults
-            :source/fields
-            :source/card
-            :source/previous-stage
-            :source/expressions
-            :source/aggregations
-            :source/breakouts)         (cond-> query
-                                         (contains? stage :fields) (include-field stage-number column))
+           :source/fields
+           :source/card
+           :source/previous-stage
+           :source/expressions
+           :source/aggregations
+           :source/breakouts)         (cond-> query
+                                        (contains? stage :fields) (include-field stage-number column))
           :source/joins               (add-field-to-join query stage-number column)
           :source/implicitly-joinable (include-field query stage-number column)
           :source/native              (throw (ex-info (native-query-fields-edit-error) {:query query :stage stage-number}))
@@ -657,7 +661,7 @@
 
 (defn- remove-matching-ref [column refs]
   (let [match (lib.equality/find-matching-ref column refs)]
-     (remove #(= % match) refs)))
+    (remove #(= % match) refs)))
 
 (defn- exclude-field
   "This is called only for fields that plausibly need removing. If the stage has no `:fields`, this will populate it.
@@ -710,7 +714,7 @@
            :source/implicitly-joinable) (exclude-field query stage-number column)
           :source/joins                 (remove-field-from-join query stage-number column)
           :source/native                (throw (ex-info (native-query-fields-edit-error)
-                                                         {:query query :stage stage-number}))
+                                                        {:query query :stage stage-number}))
 
           (:source/breakouts
            :source/aggregations)        (throw (ex-info (source-clauses-only-fields-edit-error)

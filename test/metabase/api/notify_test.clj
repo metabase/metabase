@@ -71,9 +71,9 @@
                        ([payload expected-code]
                         (mt/with-temporary-setting-values [api-key "test-api-key"]
                           (mt/client :post expected-code (format "notify/db/%d" (u/the-id (mt/db)))
-                                          {:request-options api-headers}
-                                          (merge {:synchronous? true}
-                                                 payload)))))]
+                                     {:request-options api-headers}
+                                     (merge {:synchronous? true}
+                                            payload)))))]
       (testing "sync just table when table is provided"
         (let [long-sync-called? (promise), short-sync-called? (promise)]
           (with-redefs [sync/sync-table!                                 (fn [_table] (deliver long-sync-called? true))

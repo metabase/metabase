@@ -1,4 +1,4 @@
-import { keyframes, type MantineThemeOverride } from "@mantine/core";
+import { type MantineThemeOverride, keyframes } from "@mantine/core";
 
 const shimmerAnimation = keyframes`
 0% {

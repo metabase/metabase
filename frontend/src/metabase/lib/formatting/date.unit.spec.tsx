@@ -1,8 +1,8 @@
 import {
   DATE_RANGE_FORMAT_SPECS,
+  SPECIFIC_DATE_TIME_UNITS,
   formatDateTimeForParameter,
   formatDateTimeRangeWithUnit,
-  SPECIFIC_DATE_TIME_UNITS,
 } from "metabase/lib/formatting/date";
 
 describe("formatDateTimeRangeWithUnit", () => {

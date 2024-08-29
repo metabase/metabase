@@ -7,7 +7,7 @@
    [metabase.models.field :refer [Field]]
    [metabase.models.interface :as mi]
    [metabase.models.table :refer [Table]]
-   [metabase.test.util.log :as tu.log]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -146,31 +146,36 @@
                (mi/encrypted-json-out
                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
     (testing "Logs an error message when incoming data looks encrypted"
-      (is (=? [[:error JsonParseException "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"]]
-              (tu.log/with-log-messages-for-level :error
-                (mi/encrypted-json-out
-                 (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (mi/encrypted-json-out
+         (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1}"))
+        (is (=? [{:level   :error
+                  :e       JsonParseException
+                  :message "Could not decrypt encrypted field! Have you forgot to set MB_ENCRYPTION_SECRET_KEY?"}]
+                (messages)))))
     (testing "Invalid JSON throws correct error"
-      (is (=? [[:error JsonParseException "Error parsing JSON"]]
-              (tu.log/with-log-messages-for-level :error
-                (mi/encrypted-json-out "{\"a\": 1"))))
-      (is (=? [[:error JsonParseException "Error parsing JSON"]]
-              (tu.log/with-log-messages-for-level :error
-                (encryption-test/with-secret-key "qwe"
-                  (mi/encrypted-json-out
-                   (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))))))))
+      (mt/with-log-messages-for-level [messages :error]
+        (mi/encrypted-json-out "{\"a\": 1")
+        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+                (messages))))
+      (mt/with-log-messages-for-level [messages :error]
+        (encryption-test/with-secret-key "qwe"
+          (mi/encrypted-json-out
+           (encryption/encrypt (encryption/secret-key->hash "qwe") "{\"a\": 1")))
+        (is (=? [{:level :error, :e JsonParseException, :message "Error parsing JSON"}]
+                (messages)))))))
 
-(deftest instances-with-hydrated-data-test
+(deftest ^:parallel instances-with-hydrated-data-test
   (let [things [{:id 2} nil {:id 1}]]
     (is (= [{:id 2 :even-id? true} nil {:id 1 :even-id? false}]
            (mi/instances-with-hydrated-data
-             things :even-id?
-             #(into {} (comp (remove nil?)
-                             (map (juxt :id (comp even? :id))))
-                    things)
-             :id)))))
+            things :even-id?
+            #(into {} (comp (remove nil?)
+                            (map (juxt :id (comp even? :id))))
+                   things)
+            :id)))))
 
-(deftest normalize-mbql-clause-impostor-in-visualization-settings-test
+(deftest ^:parallel normalize-mbql-clause-impostor-in-visualization-settings-test
   (let [viz-settings
         {"table.pivot_column" "TAX",
          "graph.metrics" ["expression"],

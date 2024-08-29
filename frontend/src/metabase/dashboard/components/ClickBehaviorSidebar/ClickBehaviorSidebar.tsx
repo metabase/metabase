@@ -12,12 +12,12 @@ import {
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
-  Dashboard,
-  DashCardId,
   ClickBehavior,
-  DatasetColumn,
+  DashCardId,
   DashCardVisualizationSettings,
+  Dashboard,
   DashboardCard,
+  DatasetColumn,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";

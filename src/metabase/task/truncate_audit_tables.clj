@@ -116,7 +116,7 @@ If set to 0, Metabase will keep all rows.")
                  (triggers/with-identity (triggers/key truncate-audit-tables-trigger-key))
                  (triggers/start-now)
                  (triggers/with-schedule
-                   (cron/schedule
-                    (cron/cron-schedule truncate-audit-tables-cron)
-                    (cron/with-misfire-handling-instruction-do-nothing))))]
+                  (cron/schedule
+                   (cron/cron-schedule truncate-audit-tables-cron)
+                   (cron/with-misfire-handling-instruction-do-nothing))))]
     (task/schedule-task! job trigger)))

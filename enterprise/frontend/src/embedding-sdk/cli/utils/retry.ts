@@ -10,15 +10,22 @@ export async function retry<T>(
 ): Promise<T> {
   const { retries = 10, delay = 1000 } = options ?? {};
 
+  let lastError: unknown;
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await task();
     } catch (error) {
+      lastError = error;
+
       if (attempt < retries) {
         await waitFor(delay);
       }
     }
   }
 
-  throw new Error("retry attempt exceeded");
+  const reason =
+    lastError instanceof Error ? lastError.message : String(lastError);
+
+  throw new Error(`${reason} (retried ${retries} times)`);
 }

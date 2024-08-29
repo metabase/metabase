@@ -609,8 +609,8 @@
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (lib.metadata/field (qp.store/metadata-provider) stored-field-id))]
     (and
-      (some? stored-field)
-      (lib.field/json-field? stored-field))))
+     (some? stored-field)
+     (lib.field/json-field? stored-field))))
 
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
@@ -625,7 +625,6 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -755,8 +754,8 @@
 
       true
       (as-> params ;; from outer cond->
-        (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
-                       :ssl-use-client-auth)
+            (dissoc params :ssl-root-cert :ssl-root-cert-options :ssl-client-key :ssl-client-cert :ssl-key-password
+                    :ssl-use-client-auth)
         (apply dissoc params all-subprops)))))
 
 (def ^:private disable-ssl-params
@@ -910,11 +909,12 @@
   [driver db-id table-name column-names values]
   (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
     (let [copy-manager (CopyManager. (.unwrap ^Connection (:connection conn) PgConnection))
-          [sql & _]    (sql/format {::copy       (keyword table-name)
-                                    :columns     (map keyword column-names)
-                                    ::from-stdin "''"}
-                                   :quoted true
-                                   :dialect (sql.qp/quote-style driver))
+          dialect      (sql.qp/quote-style driver)
+          [sql & _] (sql/format {::copy       (keyword table-name)
+                                 :columns     (sql-jdbc.common/quote-columns dialect column-names)
+                                 ::from-stdin "''"}
+                                :quoted true
+                                :dialect dialect)
           ;; On Postgres with a large file, 100 (3.76m) was significantly faster than 50 (4.03m) and 25 (4.27m). 1,000 was a
           ;; little faster but not by much (3.63m), and 10,000 threw an error:
           ;;     PreparedStatement can have at most 65,535 parameters

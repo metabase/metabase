@@ -16,6 +16,7 @@ import {
   createDashboardWithTabs,
   createNativeQuestion,
   createQuestion,
+  dashboardParameterSidebar,
   dashboardParametersContainer,
   editDashboard,
   filterWidget,
@@ -30,16 +31,16 @@ import {
   saveDashboard,
   selectDashboardFilter,
   setFilter,
+  setModelMetadata,
   sidebar,
+  tableHeaderClick,
+  tableInteractive,
   undoToast,
   updateDashboardCards,
   visitDashboard,
   visitEmbeddedPage,
   visitModel,
   visitPublicDashboard,
-  setModelMetadata,
-  tableHeaderClick,
-  dashboardParameterSidebar,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -240,7 +241,7 @@ describe("issue 8030 + 32444", () => {
   });
 });
 
-describe("issue 12720", () => {
+describe("issue 12720, issue 47172", () => {
   function clickThrough(title) {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.findAllByTestId("dashcard-container").contains(title).click();
@@ -291,7 +292,7 @@ describe("issue 12720", () => {
             {
               card_id: SQL_ID,
               row: 0,
-              col: 6, // making sure it doesn't overlap the existing card
+              col: 8, // making sure it doesn't overlap the existing card
               size_x: 7,
               size_y: 5,
               parameter_mappings: [
@@ -329,6 +330,33 @@ describe("issue 12720", () => {
 
     clickThrough("12720_SQL");
     clickThrough("Orders");
+  });
+
+  it("should apply the specific (before|after) filter on a native question with field filter (metabase#47172)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+
+    getDashboardCard(1).within(() => {
+      cy.findByTestId("TableFooter").should("exist");
+      cy.findByText("There was a problem displaying this chart.").should(
+        "not.exist",
+      );
+
+      cy.log("Drill down to the question");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.findByText(questionDetails.name).click();
+    });
+
+    cy.location("search").should("eq", `?filter=${dashboardFilter.default}`);
+    cy.wait("@cardQuery");
+    tableInteractive().should("be.visible").and("contain", "97.44");
+    cy.findByTestId("question-row-count").should(
+      "not.have.text",
+      "Showing 0 rows",
+    );
+    cy.findByTestId("question-row-count").should(
+      "have.text",
+      "Showing 1,980 rows",
+    );
   });
 });
 
@@ -963,7 +991,7 @@ describe("issue 16177", () => {
   it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Quantity");
     dashboardParameterSidebar().findByText("No default").click();
     popover().findByText("Yesterday").click();
@@ -1182,7 +1210,7 @@ describe("issue 22482", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -1239,8 +1267,10 @@ describe("issue 22788", () => {
 
   function addFilterAndAssert() {
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Gizmo");
     cy.findAllByText("Doohickey").should("not.exist");
@@ -2130,8 +2160,10 @@ describe("issue 27768", () => {
     saveDashboard();
 
     filterWidget().click();
-    popover().findByText("Gizmo").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByRole("searchbox").type("Gizmo");
+      cy.button("Add filter").click();
+    });
 
     cy.findAllByText("Doohickey").should("not.exist");
 
@@ -2780,7 +2812,9 @@ describe("issue 43799", () => {
       },
     );
     editDashboard();
-    cy.findByTestId("dashboard-header").findByLabelText("Add a filter").click();
+    cy.findByTestId("dashboard-header")
+      .findByLabelText("Add a filter or parameter")
+      .click();
     popover().findByText("Text or Category").click();
     getDashboardCard().findByText("Select…").click();
     popover().findByText("People - User → Source").click();
@@ -2941,7 +2975,7 @@ describe("issue 27579", () => {
   it("should be able to remove the last exclude hour option (metabase#27579)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Created At");
     saveDashboard();
     filterWidget().click();
@@ -3573,10 +3607,10 @@ describe("issue 34955", () => {
       visitDashboard(dashboard_id);
       editDashboard();
 
-      setFilter("Time", "Single Date", "On");
+      setFilter("Date picker", "Single Date", "On");
       connectFilterToColumn(ccName);
 
-      setFilter("Time", "Date Range", "Between");
+      setFilter("Date picker", "Date Range", "Between");
       connectFilterToColumn(ccName);
 
       saveDashboard();

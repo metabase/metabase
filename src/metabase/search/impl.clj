@@ -93,11 +93,11 @@
     [[(t2/table-name db-model) alias]]))
 
 (mu/defn- base-query-for-model :- [:map {:closed true}
-                                            [:select :any]
-                                            [:from :any]
-                                            [:where :any]
-                                            [:join {:optional true} :any]
-                                            [:left-join {:optional true} :any]]
+                                   [:select :any]
+                                   [:from :any]
+                                   [:where :any]
+                                   [:join {:optional true} :any]
+                                   [:left-join {:optional true} :any]]
   "Create a HoneySQL query map with `:select`, `:from`, and `:where` clauses for `model`, suitable for the `UNION ALL`
   used in search."
   [model :- SearchableModel context :- SearchContext]
@@ -110,22 +110,18 @@
   so we can return its `:name`."
   [honeysql-query                                :- ms/Map
    model                                         :- :string
-   {:keys [current-user-perms
-           filter-items-in-personal-collection
+   {:keys [filter-items-in-personal-collection
            archived]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids
-                                  current-user-perms
+  (let [collection-id-col        (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-filter-clause (collection/visible-collection-filter-clause
+                                  collection-id-col
                                   {:include-archived-items :all
                                    :include-trash-collection? true
                                    :permission-level (if archived
                                                        :write
-                                                       :read)})
-        collection-id-col        (if (= model "collection")
-                                   :collection.id
-                                   :collection_id)
-        collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-col
-                                  visible-collections)]
+                                                       :read)})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))
@@ -285,28 +281,10 @@
       (with-last-editing-info "dashboard")))
 
 (defn- add-model-index-permissions-clause
-  [query current-user-perms]
-  (let [build-path (fn [x y z] (h2x/concat (h2x/literal x) y (h2x/literal z)))
-        has-perm-clause (fn [x y z] [:in (build-path x y z) current-user-perms])]
-    (if (contains? current-user-perms "/")
-      query
-      ;; User has /collection/:id/ or /collection/:id/read/ for the collection the model is in. We will check
-      ;; permissions on the database after the query is complete, in `check-permissions-for-model`
-      (let [has-root-access?
-            (or (contains? current-user-perms "/collection/root/")
-                (contains? current-user-perms "/collection/root/read/"))
-
-            collection-perm-clause
-            [:or
-             (when has-root-access? [:= :collection_id nil])
-             [:and
-              [:not= :collection_id nil]
-              [:or
-               (has-perm-clause "/collection/" :collection_id "/")
-               (has-perm-clause "/collection/" :collection_id "/read/")]]]]
-        (sql.helpers/where
-         query
-         collection-perm-clause)))))
+  [query _current-user-perms]
+  (sql.helpers/where
+   query
+   (collection/visible-collection-filter-clause)))
 
 (defmethod search-query-for-model "indexed-entity"
   [model {:keys [current-user-perms] :as search-ctx}]
@@ -473,20 +451,20 @@
   "Adds `collection_effective_ancestors` to *datasets* in the search results."
   [search-results]
   (let [annotate     (fn [result]
-                        (cond-> result
-                          (= (:model result) "dataset")
-                          (assoc :collection_effective_ancestors
-                                 (->> (t2/hydrate
-                                       (if (nil? (:collection_id result))
-                                         collection/root-collection
-                                         {:location (:collection_location result)})
-                                       :effective_ancestors)
-                                      :effective_ancestors
+                       (cond-> result
+                         (= (:model result) "dataset")
+                         (assoc :collection_effective_ancestors
+                                (->> (t2/hydrate
+                                      (if (nil? (:collection_id result))
+                                        collection/root-collection
+                                        {:location (:collection_location result)})
+                                      :effective_ancestors)
+                                     :effective_ancestors
                                       ;; two pieces for backwards compatibility:
                                       ;; - remove the root collection
                                       ;; - remove the `personal_owner_id`
-                                      (remove collection.root/is-root-collection?)
-                                      (map #(dissoc % :personal_owner_id))))))]
+                                     (remove collection.root/is-root-collection?)
+                                     (map #(dissoc % :personal_owner_id))))))]
     (map annotate search-results)))
 
 (defn- add-collection-effective-location

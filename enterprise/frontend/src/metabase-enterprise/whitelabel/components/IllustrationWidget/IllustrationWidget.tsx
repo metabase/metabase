@@ -1,5 +1,5 @@
 import type { ChangeEvent } from "react";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
@@ -15,8 +15,8 @@ import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
 import {
   LighthouseImage,
-  SailboatImage,
   PreviewImage,
+  SailboatImage,
 } from "./IllustrationWidget.styled";
 
 export interface StringSetting {

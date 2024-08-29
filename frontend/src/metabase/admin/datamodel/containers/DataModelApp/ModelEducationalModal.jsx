@@ -9,10 +9,10 @@ import CS from "metabase/css/core/index.css";
 import MetabaseSettings from "metabase/lib/settings";
 
 import {
-  Content,
-  Description,
   ButtonLink,
   CenteredRow,
+  Content,
+  Description,
 } from "./ModelEducationalModal.styled";
 
 ModelEducationalModal.propTypes = {

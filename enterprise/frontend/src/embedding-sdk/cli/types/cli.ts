@@ -16,11 +16,20 @@ export type CliState = Partial<{
   /** Metabase instance settings */
   settings: Settings;
 
-  /** Database tables selected by the user */
+  /** Database tables present in the instance */
   tables: Table[];
+
+  /** Database tables selected by the user */
+  chosenTables: Table[];
 
   /** IDs and names of auto-generated dashboards */
   dashboards: DashboardInfo[];
+
+  /** Tenancy column names for the selected tables (e.g. orders -> shop_id) */
+  tenancyColumnNames: Record<string, string>;
+
+  /** Sample values of the tenancy column (e.g. customer_id) from the selected tables */
+  tenantIds: (string | number)[];
 }>;
 
 export type CliError = {

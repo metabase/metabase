@@ -6,7 +6,7 @@ dayjs.extend(duration);
 dayjs.extend(relativeTime);
 
 /** Intercept routes for caching tests */
-export const interceptRoutes = () => {
+export const interceptPerformanceRoutes = () => {
   cy.intercept("POST", "/api/dataset").as("dataset");
   cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   cy.intercept("PUT", "/api/cache").as("putCacheConfig");
@@ -20,6 +20,7 @@ export const interceptRoutes = () => {
   cy.intercept("POST", "/api/cache/invalidate?include=overrides&database=*").as(
     "invalidateCacheForSampleDatabase",
   );
+  cy.intercept("POST", "/api/cache/invalidate?*").as("invalidateCache");
 };
 
 /** Cypress log messages sometimes occur out of order so it is helpful to log to the console as well. */
@@ -28,5 +29,14 @@ export const log = (message: string) => {
   console.log(message);
 };
 
-export const databaseCachingSettingsPage = () =>
-  cy.findByRole("main", { name: "Database caching settings" });
+export const databaseCachingPage = () =>
+  cy.findByRole("tabpanel", { name: "Database caching" });
+
+export const visitDashboardAndQuestionCachingTab = () => {
+  cy.visit("/admin/performance");
+  cy.findByRole("tablist")
+    .get("[aria-selected]")
+    .contains("Database caching")
+    .should("be.visible");
+  cy.findByRole("tab", { name: "Dashboard and question caching" }).click();
+};

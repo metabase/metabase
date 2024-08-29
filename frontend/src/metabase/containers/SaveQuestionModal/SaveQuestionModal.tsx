@@ -1,6 +1,6 @@
 import {
-  SaveQuestionForm,
   LLMSuggestionQuestionInfo,
+  SaveQuestionForm,
   SaveQuestionTitle,
 } from "metabase/components/SaveQuestionForm";
 import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
@@ -27,10 +27,9 @@ export const SaveQuestionModal = ({
     multiStep={multiStep}
     initialCollectionId={initialCollectionId}
   >
-    <Modal.Root onClose={onCancel} opened={true}>
+    <Modal.Root onClose={onCancel} opened={true} padding="40px">
       <Modal.Overlay />
-
-      <Modal.Content p="md" data-testid="save-question-modal">
+      <Modal.Content data-testid="save-question-modal">
         <Modal.Header>
           <Modal.Title>
             <SaveQuestionTitle />

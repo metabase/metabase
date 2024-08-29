@@ -259,7 +259,6 @@
 (defn- ->iso-8601-date-time [t]
   (t/format :iso-local-date-time t))
 
-
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
   [{:keys [start end]} field-clause]
@@ -406,9 +405,9 @@
       (m/update-existing :end #(if inclusive-end?
                                  %
                                  (u.date/add % (case (:unit temporal-range)
-                                                   (:year :quarter :month :week :day)
-                                                   :day
-                                                   (:unit temporal-range)) 1)))))
+                                                 (:year :quarter :month :week :day)
+                                                 :day
+                                                 (:unit temporal-range)) 1)))))
 
 (def ^:private DateStringRange
   "Schema for a valid date range returned by `date-string->range`."
@@ -507,6 +506,13 @@
     {:start date-str
      :end   date-str}))
 
+(defn- maybe-adjust-open-range
+  [{:keys [start end] :as range} unit-fn]
+  (assert (some some? [start end]))
+  (cond (and start end) range
+        start           (update range :start t/+ (unit-fn 1))
+        end             (update range :end   t/- (unit-fn 1))))
+
 (mu/defn date-str->datetime-range :- DateStringRange
   "Generate range from `date-range-str`.
 
@@ -526,7 +532,8 @@
                        (catch Throwable _
                          (fallback-raw-range raw-date-str)))]
     (-> (update-vals range-raw date-str->qp-aware-offset-dt)
-        (update :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
+        (m/update-existing :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
+        (maybe-adjust-open-range (date-str->unit-fn ((some-fn :start :end) range-raw)))
         format-date-range)))
 
 (mu/defn date-string->filter :- mbql.s/Filter

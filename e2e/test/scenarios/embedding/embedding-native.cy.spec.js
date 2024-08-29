@@ -1,15 +1,15 @@
 import {
-  restore,
-  popover,
-  filterWidget,
+  assertEmbeddingParameter,
   clearFilterWidget,
+  closeStaticEmbeddingModal,
+  filterWidget,
+  openStaticEmbeddingModal,
+  popover,
+  publishChanges,
+  restore,
+  setEmbeddingParameter,
   visitEmbeddedPage,
   visitIframe,
-  openStaticEmbeddingModal,
-  closeStaticEmbeddingModal,
-  publishChanges,
-  setEmbeddingParameter,
-  assertEmbeddingParameter,
 } from "e2e/support/helpers";
 
 import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";

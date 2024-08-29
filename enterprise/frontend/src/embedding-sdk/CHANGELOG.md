@@ -1,3 +1,33 @@
+## [0.1.32](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.31...embedding-sdk-0.1.32) (2024-08-23)
+
+
+### Bug Fixes
+
+* **sdk:** apply the default viz height only in visualization view ([#47169](https://github.com/metabase/metabase/issues/47169)) ([852ddc2](https://github.com/metabase/metabase/commit/852ddc274a7cc0986580a3b14a98cbb19d5221fd))
+
+
+### Features
+
+* **sdk:** Edit Question ([#46894](https://github.com/metabase/metabase/issues/46894)) ([0a6d0a1](https://github.com/metabase/metabase/commit/0a6d0a1928722839067d0ba8ca71a966b9c3ea37))
+* **sdk:** embedding cli opens the metabase store to get trial token and applies the license ([#46810](https://github.com/metabase/metabase/issues/46810)) ([4453abb](https://github.com/metabase/metabase/commit/4453abb13ad29f32876e0f19895e440bd5a72840))
+
+
+
+## [0.1.31](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.30...embedding-sdk-0.1.31) (2024-08-16)
+
+
+### Bug Fixes
+
+* **sdk:** optimistic update query builder and update questions in notebook ([#46652](https://github.com/metabase/metabase/issues/46652)) ([3df927c](https://github.com/metabase/metabase/commit/3df927c9749167447c615379363c37e81222e86c))
+
+
+### Features
+
+* **sdk:** Add CreateDashboardModal component and hook ([#46802](https://github.com/metabase/metabase/issues/46802)) ([b9ba40d](https://github.com/metabase/metabase/commit/b9ba40d88a22ff4ce918d535b8e0804ddc15f05d))
+* **sdk:** Create Question ([#46618](https://github.com/metabase/metabase/issues/46618)) ([8394213](https://github.com/metabase/metabase/commit/8394213df0e63adac9ec288a72586fc93001fd8b))
+
+
+
 ## [0.1.30](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.29...embedding-sdk-0.1.30) (2024-08-13)
 
 

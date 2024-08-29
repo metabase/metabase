@@ -1,15 +1,18 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
-  visitQuestion,
-  saveQuestion,
-  downloadAndAssert,
   assertSheetRowsCount,
-  openNewPublicLinkDropdown,
+  createNativeQuestion,
   createPublicQuestionLink,
+  downloadAndAssert,
+  filterWidget,
+  main,
   modal,
   openNativeEditor,
+  openNewPublicLinkDropdown,
+  openSharingMenu,
+  restore,
+  saveQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -102,7 +105,7 @@ describe("scenarios > public > question", () => {
       cy.signInAsNormalUser().then(() => {
         visitQuestion(id);
 
-        cy.icon("share").click();
+        openSharingMenu("Public link");
 
         cy.findByTestId("public-link-popover-content").within(() => {
           cy.findByText("Public link").should("be.visible");
@@ -192,6 +195,42 @@ describe("scenarios > public > question", () => {
         });
       });
     });
+  });
+
+  it("should allow to set locale from the `locale` query parameter", () => {
+    createNativeQuestion(
+      {
+        name: "Native question with a parameter",
+        native: {
+          query:
+            "select '2025-2-11'::DATE as date, {{some_parameter}} as some_parameter ",
+          "template-tags": {
+            some_parameter: {
+              type: "text",
+              name: "some_parameter",
+              id: "1e0806a0-155b-4e24-80bc-c050720201d0",
+              "display-name": "Some Parameter",
+              default: "some default value",
+            },
+          },
+        },
+      },
+      { wrapId: true },
+    );
+
+    cy.get("@questionId").then(id => {
+      cy.request("POST", `/api/card/${id}/public_link`).then(
+        ({ body: { uuid } }) => {
+          cy.visit(
+            `/public/question/${uuid}?locale=de&some_parameter=some_value`,
+          );
+        },
+      );
+    });
+
+    main().findByText("Februar 11, 2025");
+
+    cy.url().should("include", "locale=de");
   });
 });
 

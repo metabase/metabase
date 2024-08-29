@@ -67,7 +67,7 @@
    :map
    [:fn
     {:error/message "map with a single key"}
-    #(= (count %) 1) ]
+    #(= (count %) 1)]
    [:multi
     {:dispatch (fn [m]
                  (first (keys m)))}
@@ -90,11 +90,9 @@
     [\"_id\" \"date\" \"user_id\" \"venue_id\"]"
   [:sequential :string])
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 
 ;; TODO - We already have a *query* dynamic var in metabase.query-processor.interface. Do we need this one too?
 (def ^:dynamic ^:private *query* nil)
@@ -231,12 +229,10 @@
       {"$dateFromString" {:dateString field-name
                           :onError    field-name}}
 
-
       (isa? coercion :Coercion/ISO8601->Date)
       (throw (ex-info (tru "MongoDB does not support parsing strings as dates. Try parsing to a datetime instead")
                       {:type              qp.error-type/unsupported-feature
                        :coercion-strategy coercion}))
-
 
       (isa? coercion :Coercion/ISO8601->Time)
       (throw (ex-info (tru "MongoDB does not support parsing strings as times. Try parsing to a datetime instead")
@@ -429,12 +425,12 @@
   (let [report-zone (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo (lib.metadata/database (qp.store/metadata-provider)))
                                    "UTC"))
         t           (condp = (class t)
-                     java.time.LocalDate      t
-                     java.time.LocalTime      t
-                     java.time.LocalDateTime  t
-                     java.time.OffsetTime     (t/offset-time t report-zone)
-                     java.time.OffsetDateTime (t/offset-date-time t report-zone)
-                     java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
+                      java.time.LocalDate      t
+                      java.time.LocalTime      t
+                      java.time.LocalDateTime  t
+                      java.time.OffsetTime     (t/offset-time t report-zone)
+                      java.time.OffsetDateTime (t/offset-date-time t report-zone)
+                      java.time.ZonedDateTime  (t/offset-date-time t report-zone))]
     (letfn [(extract [unit]
               (u.date/extract t unit))
             (bucket [unit]
@@ -736,7 +732,7 @@
     {$not (str-match-pattern field options prefix (second value) suffix)}
     (do
       (assert (and (contains? #{nil "^"} prefix) (contains? #{nil "$"} suffix))
-        "Wrong prefix or suffix value.")
+              "Wrong prefix or suffix value.")
       {$regexMatch {"input" (->rvalue field)
                     "regex" (if (= (first value) :value)
                               (str prefix (->rvalue value) suffix)
@@ -801,7 +797,6 @@
 (defmethod compile-filter :or
   [[_ & args]]
   {$or (mapv compile-filter args)})
-
 
 ;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
 ;; to negate everything, with the exception of the string filter clauses, which we will convert to a `{not <regex}`
@@ -874,7 +869,6 @@
 
 (defmethod compile-cond :not [[_ subclause]]
   (compile-cond (negate subclause)))
-
 
 ;;; ----------------------------------------------------- joins ------------------------------------------------------
 
@@ -1253,7 +1247,6 @@
           ;; now add additional clauses to the end of :query as applicable
           (update :query into pipeline-stages)))))
 
-
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
 (mu/defn- order-by->$sort :- $SortStage
@@ -1335,7 +1328,6 @@
     pipeline-ctx
     (update pipeline-ctx :query conj {$limit limit})))
 
-
 ;;; ------------------------------------------------------ page ------------------------------------------------------
 
 (defn- handle-page [{{page-num :page, items-per-page :items, :as page-clause} :page} pipeline-ctx]
@@ -1366,8 +1358,8 @@
             handle-page])))
 
 (mu/defn- generate-aggregation-pipeline :- [:map
-                                                     [:projections Projections]
-                                                     [:query Pipeline]]
+                                            [:projections Projections]
+                                            [:query Pipeline]]
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
   (add-aggregation-pipeline inner-query))
@@ -1404,9 +1396,9 @@
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-               {:type  qp.error-type/invalid-query
-                :query s}
-               e)))))
+                      {:type  qp.error-type/invalid-query
+                       :query s}
+                      e)))))
 
 (defn- mbql->native-rec
   "Compile a potentially nested MBQL query."

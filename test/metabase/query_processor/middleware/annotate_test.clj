@@ -460,7 +460,7 @@
   (qp.store/with-metadata-provider meta/metadata-provider
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
-      (is (=? {:cols [{:name           "metric"
+      (is (=? {:cols [{:name           "totalEvents"
                        :display_name   "Total Events"
                        :base_type      :type/Text
                        :effective_type :type/Text
@@ -483,8 +483,8 @@
 (defn- infered-col-type
   [expr]
   (-> (add-column-info (lib.tu.macros/mbql-query venues {:expressions {"expr" expr}
-                                              :fields      [[:expression "expr"]]
-                                              :limit       10})
+                                                         :fields      [[:expression "expr"]]
+                                                         :limit       10})
                        {})
       :cols
       first
@@ -492,9 +492,9 @@
 
 (deftest ^:parallel computed-columns-inference
   (letfn [(infer [expr] (-> (lib.tu.macros/mbql-query venues
-                                           {:expressions {"expr" expr}
-                                            :fields [[:expression "expr"]]
-                                            :limit 10})
+                              {:expressions {"expr" expr}
+                               :fields [[:expression "expr"]]
+                               :limit 10})
                             (add-column-info {})
                             :cols
                             first))]

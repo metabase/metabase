@@ -5,20 +5,24 @@ import {
   getMetabaseInstanceSetupCompleteMessage,
 } from "./constants/messages";
 import {
-  addEmbeddingToken,
+  addDatabaseConnectionStep,
+  askForTenancyColumns,
+  checkIfReactProject,
   checkIsDockerRunning,
+  checkSdkAvailable,
   createApiKey,
+  createModelsAndXrays,
   generateCredentials,
+  generateExpressServerFile,
+  generateReactComponentFiles,
+  pickDatabaseTables,
   pollMetabaseInstance,
+  setupEmbeddingSettings,
+  setupLicense,
   setupMetabaseInstance,
+  setupPermissions,
   showMetabaseCliTitle,
   startLocalMetabaseContainer,
-  checkIfReactProject,
-  checkSdkAvailable,
-  addDatabaseConnectionStep,
-  pickDatabaseTables,
-  createModelsAndXrays,
-  generateReactComponentFiles,
 } from "./steps";
 import type { CliState } from "./types/cli";
 import { printEmptyLines, printInfo } from "./utils/print";
@@ -27,7 +31,6 @@ export const CLI_STEPS = [
   { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
-  { id: "addEmbeddingToken", executeStep: addEmbeddingToken },
   { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
   { id: "generateCredentials", executeStep: generateCredentials },
   {
@@ -40,9 +43,19 @@ export const CLI_STEPS = [
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
+  { id: "setupLicense", executeStep: setupLicense },
+
+  // The following steps require the license to be defined first.
+  { id: "setupEmbeddingSettings", executeStep: setupEmbeddingSettings },
+  { id: "askForTenancyColumns", executeStep: askForTenancyColumns },
+  { id: "setupPermissions", executeStep: setupPermissions },
   {
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
+  },
+  {
+    id: "generateExpressServerFile",
+    executeStep: generateExpressServerFile,
   },
 ] as const;
 

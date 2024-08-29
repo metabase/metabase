@@ -16,7 +16,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.types :as types]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
@@ -38,6 +38,8 @@
                           :padding     :16px})}
            (trs "There was a problem with this question.")]}))
 
+(def ^:private error-rendered-message (deferred-trs "An error occurred while displaying this card."))
+
 (def ^:private error-rendered-info
   "Default rendered-info map when there is an error displaying a card on the static viz side.
   Is a delay due to the call to `trs`."
@@ -50,7 +52,7 @@
                          {:color       style/color-error
                           :font-weight 700
                           :padding     :16px})}
-           (trs "An error occurred while displaying this card.")]}))
+           error-rendered-message]}))
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
@@ -403,11 +405,11 @@
              :src   (:image-src image-bundle)}]]}))
 
 (defn- get-col-by-name
-    [cols col-name]
-    (->> (map-indexed (fn [idx m] [idx m]) cols)
-         (some (fn [[idx col]]
-                 (when (= col-name (:name col))
-                   [idx col])))))
+  [cols col-name]
+  (->> (map-indexed (fn [idx m] [idx m]) cols)
+       (some (fn [[idx col]]
+               (when (= col-name (:name col))
+                 [idx col])))))
 
 (mu/defmethod render :scalar :- formatter/RenderedPulseCard
   [_chart-type _render-type timezone-id _card _dashcard {:keys [cols rows viz-settings]}]
@@ -561,8 +563,8 @@
         raw-rows       (map (juxt x-axis-rowfn y-axis-rowfn)
                             (formatter/row-preprocess x-axis-rowfn y-axis-rowfn rows))
         rows          (if (and funnel-viz (all-unique? funnel-viz))
-                         (funnel-rows funnel-viz raw-rows)
-                         raw-rows)
+                        (funnel-rows funnel-viz raw-rows)
+                        raw-rows)
         [x-col y-col] cols
         settings      (as-> (->js-viz x-col y-col viz-settings) jsviz-settings
                         (assoc jsviz-settings :step    {:name   (:display_name x-col)

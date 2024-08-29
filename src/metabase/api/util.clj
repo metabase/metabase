@@ -11,8 +11,10 @@
    [metabase.analytics.stats :as stats]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
+   [metabase.api.embed.common :as api.embed.common]
    [metabase.config :as config]
    [metabase.logger :as logger]
+   [metabase.public-settings.premium-features :as premium-features]
    [metabase.troubleshooting :as troubleshooting]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -79,8 +81,9 @@
   "Returns version and system information relevant to filing a bug report against Metabase."
   []
   (validation/check-has-application-permission :monitoring)
-  {:system-info   (troubleshooting/system-info)
-   :metabase-info (troubleshooting/metabase-info)})
+  (cond-> {:metabase-info (troubleshooting/metabase-info)}
+    (not (premium-features/is-hosted?))
+    (assoc :system-info (troubleshooting/system-info))))
 
 (api/defendpoint GET "/diagnostic_info/connection_pool_info"
   "Returns database connection pool info for the current Metabase instance."
@@ -89,5 +92,11 @@
   (let [pool-info (prometheus/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
     (assoc (response/response {:connection-pools pool-info}) :headers headers, :status 200)))
+
+(api/defendpoint POST "/entity_id"
+  "Translate entity IDs to model IDs."
+  [:as {{:keys [entity_ids]} :body}]
+  {entity_ids :map}
+  {:entity_ids (api.embed.common/model->entity-ids->ids entity_ids)})
 
 (api/define-routes)

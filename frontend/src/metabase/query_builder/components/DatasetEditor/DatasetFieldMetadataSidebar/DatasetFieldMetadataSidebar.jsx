@@ -11,17 +11,17 @@ import {
   Form,
   FormProvider,
   FormRadioGroup,
+  FormSwitch,
   FormTextInput,
   FormTextarea,
-  FormSwitch,
 } from "metabase/forms";
 import { color } from "metabase/lib/colors";
 import {
-  field_visibility_types,
   field_semantic_types,
+  field_visibility_types,
 } from "metabase/lib/core";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
-import { Radio, Tabs, Box } from "metabase/ui";
+import { Box, Radio, Tabs } from "metabase/ui";
 import ColumnSettings, {
   hasColumnSettingsWidgets,
 } from "metabase/visualizations/components/ColumnSettings";
@@ -32,9 +32,9 @@ import { isFK } from "metabase-lib/v1/types/utils/isa";
 import { EDITOR_TAB_INDEXES } from "../constants";
 
 import {
+  Divider,
   MainFormContainer,
   ViewAsFieldContainer,
-  Divider,
 } from "./DatasetFieldMetadataSidebar.styled";
 import MappedFieldPicker from "./MappedFieldPicker";
 import SemanticTypePicker, { FKTargetPicker } from "./SemanticTypePicker";

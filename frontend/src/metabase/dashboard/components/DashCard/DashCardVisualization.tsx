@@ -21,13 +21,13 @@ import Visualization from "metabase/visualizations/components/Visualization";
 import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
-  Dashboard,
   DashCardId,
+  Dashboard,
+  DashboardCard,
   Dataset,
   Series,
   VirtualCardDisplay,
   VisualizationSettings,
-  DashboardCard,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";

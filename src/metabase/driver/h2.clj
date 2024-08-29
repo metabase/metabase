@@ -172,7 +172,6 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type qp.error-type/db})))))))
 
-
 (defn- make-h2-parser
   "Returns an H2 Parser object for the given (H2) database ID"
   ^Parser [h2-db-id]
@@ -185,9 +184,9 @@
         (Parser. session)))))
 
 (mu/defn- classify-query :- [:maybe
-                                      [:map
-                                       [:command-types [:vector pos-int?]]
-                                       [:remaining-sql [:maybe :string]]]]
+                             [:map
+                              [:command-types [:vector pos-int?]]
+                              [:remaining-sql [:maybe :string]]]]
   "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
    More info on command types here:
    https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
@@ -322,7 +321,6 @@
   ;; where the driver is loaded.
   (System/getProperty "user.timezone"))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -433,7 +431,6 @@
 (defmethod sql.qp/datetime-diff [:h2 :hour] [_driver _unit x y] (h2x// (datediff :millisecond x y) 3600000))
 (defmethod sql.qp/datetime-diff [:h2 :minute] [_driver _unit x y] (datediff :minute x y))
 (defmethod sql.qp/datetime-diff [:h2 :second] [_driver _unit x y] (datediff :second x y))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

@@ -440,11 +440,11 @@
 (defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
   (str-to-date "%Y-%m-%d"
                (h2x/concat (h2x/year expr)
-                          (h2x/literal "-")
-                          (h2x/- (h2x/* (h2x/quarter expr)
-                                      3)
-                                2)
-                          (h2x/literal "-01"))))
+                           (h2x/literal "-")
+                           (h2x/- (h2x/* (h2x/quarter expr)
+                                         3)
+                                  2)
+                           (h2x/literal "-01"))))
 
 (defmethod sql.qp/->honeysql [:mysql :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
@@ -520,7 +520,7 @@
 
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."
-  { ;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
+  {;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
    :zeroDateTimeBehavior "convertToNull"
    ;; Force UTF-8 encoding of results
    :useUnicode           true
@@ -793,11 +793,12 @@
     (let [temp-file (File/createTempFile table-name ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsvs (map (partial row->tsv driver (count column-names)) values)
-              sql  (sql/format {::load   [file-path (keyword table-name)]
-                                :columns (map keyword column-names)}
-                               :quoted  true
-                               :dialect (sql.qp/quote-style driver))]
+        (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
+              dialect (sql.qp/quote-style driver)
+              sql     (sql/format {::load   [file-path (keyword table-name)]
+                                   :columns (sql-jdbc.common/quote-columns dialect column-names)}
+                                  :quoted true
+                                  :dialect dialect)]
           (with-open [^java.io.Writer writer (jio/writer file-path)]
             (doseq [value (interpose \newline tsvs)]
               (.write writer (str value))))
