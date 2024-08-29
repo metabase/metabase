@@ -189,10 +189,10 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
           </div>
         </ErrorBoundary>
 
-        {editingExistingDatabase && (
+        {editingExistingDatabase && !database.is_attached_dwh && (
           <Sidebar
             database={database}
-            isAdmin={isAdmin && !database.is_attached_dwh}
+            isAdmin={isAdmin}
             isModelPersistenceEnabled={isModelPersistenceEnabled}
             updateDatabase={updateDatabase}
             deleteDatabase={deleteDatabase}
