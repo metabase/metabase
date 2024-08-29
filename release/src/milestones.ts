@@ -387,7 +387,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issue.number,
       version,
       comment: 'Issue in milestone, cannot find commit',
-    });
+    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
   }
 
   for (const issueNumber of issuesInCommitsNotInMilestone) {
@@ -398,7 +398,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issueNumber,
       version,
       comment: 'Issue in release branch, needs milestone',
-    });
+    }).catch((e) => console.error(`error adding issue ${issueNumber} to project`, e));
   }
 
   for (const issue of openMilestoneIssues) {
@@ -409,7 +409,7 @@ export async function checkMilestoneForRelease({
       issueNumber: issue.number,
       version,
       comment: 'Issue still open in milestone',
-    });
+    }).catch((e) => console.error(`error adding issue ${issue.number} to project`, e));
   }
 
   const logText = await generateLog({
@@ -530,7 +530,7 @@ async function addIssueToProject({
   comment,
   version,
 }: GithubProps & { issueNumber: number, comment: string, version: string }) {
-  console.log(`Adding issue #${issueNumber} to project`)
+  console.log(`Possible problem issue: #${issueNumber} - ${comment}`);
 
   const issue = await getIssueWithCache({
     github,
@@ -544,15 +544,9 @@ async function addIssueToProject({
     return;
   }
 
-  const authHeader = {
-    headers: {
-      authorization: `token ${process.env.GITHUB_TOKEN}`,
-    },
-  };
-
   const graphqlWithAuth = github.graphql.defaults({
     headers: {
-      authorization: `token secret123`,
+      authorization: `token ${process.env.GITHUB_TOKEN}`,
     },
   });
 
@@ -562,7 +556,7 @@ async function addIssueToProject({
       contentId: "${issue?.node_id}"
     })
     { item { id } }
-  }`, authHeader) as { addProjectV2ItemById: { item: { id: string } } };
+  }`) as { addProjectV2ItemById: { item: { id: string } } };
 
   const itemId = response.addProjectV2ItemById.item.id;
 
@@ -587,5 +581,5 @@ async function addIssueToProject({
         value: { text: "${version}" } }
       )
       { projectV2Item { id } }
-    }`, authHeader);
+    }`);
 }
