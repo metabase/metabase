@@ -359,7 +359,7 @@
   (if (string? id)
     (let [model (->model pre-model)
           [[_ {:keys [status] :as info}]] (entity-ids->id-for-model model [id])]
-      (if-not (= "ok" status)
+      (if-not (= "success" status)
         (throw (ex-info "problem looking up id from entity_id"
                         {:pre-model pre-model
                          :model model
