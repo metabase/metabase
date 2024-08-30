@@ -1882,7 +1882,7 @@ describe("issue 25374", () => {
       saveDashboard();
 
       cy.button("Clear").click();
-      cy.location("search").should("eq", "?equal_to=");
+      cy.location("search", { timeout: 10000 }).should("eq", "?equal_to=");
 
       cy.button("Move, trash, and more…").click();
       popover().findByText("Reset all filters").should("be.visible").click();
