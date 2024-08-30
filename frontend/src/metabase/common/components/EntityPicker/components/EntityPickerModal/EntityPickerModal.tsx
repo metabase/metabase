@@ -213,7 +213,7 @@ export function EntityPickerModal<
     initialTab.model,
   );
   // we don't want to show bonus actions on recents or search tabs
-  const showActionButtons = ["search", "recents"].includes(selectedTab);
+  const showActionButtons = !["search", "recents"].includes(selectedTab);
   const [tabFolderState, setTabFolderState] = useState<
     TabFolderState<Model | "search" | "recents">
   >({});
