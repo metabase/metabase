@@ -33,6 +33,9 @@ export type CliState = Partial<{
 
   /** Directory where the Express.js mock server is saved to */
   mockServerDir: string;
+
+  /** Directory where the React components are saved to */
+  reactComponentDir: string;
 }>;
 
 export type CliError = {

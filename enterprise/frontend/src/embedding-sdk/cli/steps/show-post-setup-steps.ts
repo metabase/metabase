@@ -15,7 +15,11 @@ export const showPostSetupSteps: CliStepMethod = async state => {
 `;
 
   const STEP_2 = `
-  Import the ${green("<AnalyticsPage />")} component in your React frontend.
+  Import the component in your React frontend.
+  ${green(`import { AnalyticsPage } from "./${state.reactComponentDir}";`)}
+
+  Add the component to your page.
+  ${green(`<AnalyticsPage />`)}
 `;
 
   const STEP_3 = getMetabaseInstanceSetupCompleteMessage(
