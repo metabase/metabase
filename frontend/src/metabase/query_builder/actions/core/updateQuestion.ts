@@ -29,6 +29,9 @@ import { onCloseQuestionInfo, setQueryBuilderMode, setUIControls } from "../ui";
 
 import { computeQuestionPivotTable } from "./pivot-table";
 import { getAdHocQuestionWithVizSettings } from "./utils";
+import { useMemo } from "react";
+import { useListDatabasesQuery } from "metabase/api";
+import Databases from "metabase/entities/databases";
 
 function shouldTemplateTagEditorBeVisible({
   currentQuestion,
@@ -185,7 +188,7 @@ export const SET_ARCHIVED_QUESTION = "metabase/question/SET_ARCHIVED_QUESTION";
 export const setArchivedQuestion = createThunkAction(
   SET_ARCHIVED_QUESTION,
   function (question, archived = true, undoing = false) {
-    return async function (dispatch) {
+    return async function (dispatch, getState) {
       const result = (await dispatch(
         Questions.actions.update({ id: question.card().id }, { archived }),
       )) as { payload: { object: Card } };
@@ -201,13 +204,27 @@ export const setArchivedQuestion = createThunkAction(
       );
       const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
       const ws = new WebSocket(assistant_url!);
-
+      const databases = Databases.selectors.getList(getState());  
+      let companyName = '';
+      let cubeDatabase = null;
+  
+      if (databases) {
+        cubeDatabase = databases.find((database: { is_cube: boolean; }) => database.is_cube === true);
+        if (cubeDatabase) {
+          companyName = cubeDatabase.company_name!;
+        }
+      }
+  
+      if (cubeDatabase) {
       ws.onopen = () => {
         console.log("WebSocket connection opened.");
+        console.log("Websocket :" ,companyName)
         ws.send(
           JSON.stringify({
             type: "deleteDocuments",
             data: {
+              company_name: companyName,
+              databaseID: cubeDatabase.id,
               ids: [question.card().id]
             },
           })
@@ -226,7 +243,7 @@ export const setArchivedQuestion = createThunkAction(
       ws.onclose = () => {
         console.log("WebSocket connection closed.");
       };
-
+    }
 
       if (archived) {
         dispatch(setUIControls({ isNativeEditorOpen: false }));
