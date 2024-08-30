@@ -134,7 +134,7 @@ export const InteractiveEmbeddingOptionCard = () => {
         href={`${quickStartUrl}?utm_source=${plan}&utm_media=embed-settings`}
       >
         {t`Check out our Quick Start`}
-        <Icon name="share" />
+        <Icon name="share" aria-hidden />
       </BoldExternalLink>
       {isEE ? (
         <LinkButton
