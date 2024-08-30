@@ -10,7 +10,6 @@ import {
   main,
   navigationSidebar,
   restore,
-  tooltip,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -190,7 +189,6 @@ describe("scenarios > browse > metrics", () => {
 
       metricsTable()
         .findByText(/This is a/)
-        .parent()
         .should("be.visible")
         .then(el => assertIsEllipsified(el[0]));
 
@@ -198,7 +196,7 @@ describe("scenarios > browse > metrics", () => {
         .findByText(/This is a/)
         .realHover();
 
-      tooltip().should("be.visible").should("contain", "This is a");
+      cy.findAllByText(/should be truncated/).should("have.length", 2);
     });
 
     it("should be possible to sort the metrics", () => {
