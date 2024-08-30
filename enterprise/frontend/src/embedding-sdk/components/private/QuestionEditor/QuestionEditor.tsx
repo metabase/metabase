@@ -3,81 +3,25 @@ import { useState } from "react";
 
 import type { InteractiveQuestionProps } from "embedding-sdk/components/public/InteractiveQuestion";
 import { InteractiveQuestion } from "embedding-sdk/components/public/InteractiveQuestion";
-import {
-  LLMSuggestionQuestionInfo,
-  SaveQuestionForm,
-  SaveQuestionTitle,
-} from "metabase/components/SaveQuestionForm";
-import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
-import type { SaveQuestionProps } from "metabase/components/SaveQuestionForm/types";
+import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { Box, Flex, Group, Modal, type ModalProps, Tabs } from "metabase/ui";
+import { Box, Group, Tabs } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
-export const SaveQuestionModalInner = ({
-  question,
-  originalQuestion,
-  onSave,
-  onCreate,
-  ...modalProps
-}: SaveQuestionProps & Omit<ModalProps, "title">) => (
-  <SaveQuestionProvider
-    question={question}
-    originalQuestion={originalQuestion ?? null}
-    onSave={onSave}
-    onCreate={onCreate}
-  >
-    <Modal.Root padding="2.5rem" {...modalProps}>
-      <Modal.Overlay />
-      <Modal.Content data-testid="save-question-modal">
-        <Modal.Header>
-          <Modal.Title>
-            <SaveQuestionTitle />
-          </Modal.Title>
-          <Flex align="center" justify="flex-end" gap="sm">
-            <LLMSuggestionQuestionInfo />
-            <Modal.CloseButton />
-          </Flex>
-        </Modal.Header>
-        <Modal.Body>
-          <SaveQuestionForm
-            onSave={modalProps.onClose}
-            onCancel={modalProps.onClose}
-          />
-        </Modal.Body>
-      </Modal.Content>
-    </Modal.Root>
-  </SaveQuestionProvider>
-);
-
-export const SaveQuestionModal = (modalProps: Omit<ModalProps, "title">) => {
-  const { originalQuestion, question } = useInteractiveQuestionContext();
-  const handleCreate = useCreateQuestion();
-  const handleSave = useSaveQuestion();
-
-  return (
-    question && (
-      <SaveQuestionModalInner
-        onCreate={handleCreate}
-        onSave={handleSave}
-        originalQuestion={originalQuestion ?? null}
-        question={question}
-        {...modalProps}
-      />
-    )
-  );
-};
-
 const QuestionEditorInner = () => {
-  const { queryResults, runQuestion } = useInteractiveQuestionContext();
+  const { originalQuestion, question, queryResults, runQuestion } =
+    useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
   >("notebook");
   const [isSaveModalOpen, { open: openSaveModal, close: closeSaveModal }] =
     useDisclosure(false);
+
+  const handleCreate = useCreateQuestion();
+  const handleSave = useSaveQuestion();
 
   const onOpenVisualizationTab = async () => {
     setActiveTab("visualization");
@@ -123,8 +67,15 @@ const QuestionEditorInner = () => {
       </Tabs>
 
       {/* Refer to the SaveQuestionProvider for context on why we have to do it like this */}
-      {isSaveModalOpen && (
-        <SaveQuestionModal opened={true} onClose={closeSaveModal} />
+      {isSaveModalOpen && question && (
+        <SaveQuestionModal
+          question={question}
+          originalQuestion={originalQuestion ?? null}
+          opened={true}
+          onClose={closeSaveModal}
+          onCreate={handleCreate}
+          onSave={handleSave}
+        />
       )}
     </Box>
   );
