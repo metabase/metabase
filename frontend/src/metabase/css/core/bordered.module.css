@@ -9,6 +9,10 @@
   border: var(--border-size) var(--border-style) var(--mb-color-border);
 }
 
+.borderedImportant {
+  border: var(--border-size) var(--border-style) var(--mb-color-border) !important;
+}
+
 .borderBottom {
   border-bottom: var(--border-size) var(--border-style) var(--mb-color-border);
 }
@@ -76,4 +80,8 @@
 
 .borderMedium {
   border-width: var(--border-size-medium);
+}
+
+.borderW1 {
+  border-width: var(--border-size);
 }

@@ -11,6 +11,7 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
 import type {
   Card,
+  CardDisplayType,
   DatasetColumn,
   DatasetData,
   RawSeries,
@@ -209,7 +210,7 @@ export type VisualizationDefinition = {
   name?: string;
   noun?: string;
   uiName: string;
-  identifier: string;
+  identifier: CardDisplayType;
   aliases?: string[];
   iconName: IconName;
 

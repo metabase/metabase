@@ -59,7 +59,25 @@ export interface PublicCard {
   dataset_query: PublicDatasetQuery;
 }
 
-export type CardDisplayType = string;
+export type CardDisplayType =
+  | "table"
+  | "bar"
+  | "line"
+  | "pie"
+  | "scalar"
+  | "row"
+  | "area"
+  | "combo"
+  | "pivot"
+  | "smartscalar"
+  | "gauge"
+  | "progress"
+  | "funnel"
+  | "object"
+  | "map"
+  | "scatter"
+  | "waterfall"
+  | (string & unknown);
 
 export interface UnsavedCard<Q extends DatasetQuery = DatasetQuery> {
   display: CardDisplayType;

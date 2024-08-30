@@ -46,7 +46,7 @@ import {
 import { ViewFooter } from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
-import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
+import { ChartTypeSidebar } from "./sidebars/ChartTypeSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import { SummarizeSidebar } from "./sidebars/SummarizeSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
@@ -93,7 +93,18 @@ class View extends Component {
     }
 
     if (isShowingChartTypeSidebar) {
-      return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
+      return (
+        <ChartTypeSidebar
+          question={this.props.question}
+          result={this.props.result}
+          onOpenChartSettings={this.props.onOpenChartSettings}
+          onCloseChartType={this.props.onCloseChartType}
+          updateQuestion={this.props.updateQuestion}
+          setUIControls={this.props.setUIControls}
+          query={this.props.query}
+          onClose={onCloseChartType}
+        />
+      );
     }
 
     return null;
