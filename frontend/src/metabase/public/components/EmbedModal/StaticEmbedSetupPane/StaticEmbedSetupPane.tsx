@@ -43,7 +43,9 @@ import { getDefaultDisplayOptions } from "./config";
 import { EMBED_MODAL_TABS } from "./tabs";
 import type { ActivePreviewPane, EmbedCodePaneVariant } from "./types";
 
-const countEmbeddingParameterOptions = (embeddingParams: EmbeddingParameters) =>
+const countEmbeddingParameterOptions = (
+  embeddingParams: EmbeddingParameters,
+): Record<EmbeddingParameterVisibility, number> =>
   Object.values(embeddingParams).reduce(
     (acc, value) => {
       acc[value] += 1;
