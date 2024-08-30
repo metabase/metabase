@@ -5,11 +5,13 @@ import { ModelFilterControls } from "./ModelFilterControls";
 import { VerifiedFilter } from "./VerifiedFilter";
 import { availableModelFilters, useModelFilterSettings } from "./utils";
 
-if (hasPremiumFeature("content_verification")) {
-  Object.assign(PLUGIN_CONTENT_VERIFICATION, {
-    VerifiedFilter,
-    ModelFilterControls,
-    availableModelFilters,
-    useModelFilterSettings,
-  });
-}
+export const activateContentVerificationPlugin = () => {
+  if (hasPremiumFeature("content_verification")) {
+    Object.assign(PLUGIN_CONTENT_VERIFICATION, {
+      VerifiedFilter,
+      ModelFilterControls,
+      availableModelFilters,
+      useModelFilterSettings,
+    });
+  }
+};

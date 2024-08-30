@@ -1,6 +1,6 @@
 import type { Action, Store } from "@reduxjs/toolkit";
-import { type JSX, type ReactNode, useEffect } from "react";
-import { memo } from "react";
+import type { JSX, ReactNode } from "react";
+import { memo, useEffect } from "react";
 import { Provider } from "react-redux";
 
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
@@ -19,11 +19,14 @@ import {
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { SDKConfig } from "embedding-sdk/types";
 import type { MetabaseTheme } from "embedding-sdk/types/theme";
+import { useSelector } from "metabase/lib/redux";
 import { setOptions } from "metabase/redux/embed";
+import { getSetting } from "metabase/selectors/settings";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
+import { activateEEPlugins } from "metabase-enterprise/plugins";
 
-import "metabase/css/vendor.css";
 import "metabase/css/index.module.css";
+import "metabase/css/vendor.css";
 
 export interface MetabaseProviderProps {
   children: ReactNode;
@@ -77,6 +80,7 @@ export const MetabaseProviderInternal = ({
 
   return (
     <Provider store={store}>
+      <PluginsActivator />
       <EmotionCacheProvider>
         <SdkThemeProvider theme={theme}>
           <AppInitializeController className={className} config={config}>
@@ -93,3 +97,23 @@ export const MetabaseProvider = memo(function MetabaseProvider(
 ) {
   return <MetabaseProviderInternal store={store} {...props} />;
 });
+
+const PluginsActivator = () => {
+  // it needs to be nested in the provider to be able to use useSelector
+  // we can't just use useSelector in the MetabaseProvider because it would be outside of  redux's <Provider>
+
+  const tokenFeatures = useSelector(state =>
+    getSetting(state, "token-features"),
+  );
+
+  useEffect(() => {
+    if (
+      tokenFeatures &&
+      Object.values(tokenFeatures).some(value => value === true)
+    ) {
+      activateEEPlugins();
+    }
+  }, [tokenFeatures]);
+
+  return null;
+};
