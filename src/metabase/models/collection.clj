@@ -1248,8 +1248,7 @@
       (str location id "/"))))
 
 (defmethod serdes/make-spec "Collection" [_model-name _opts]
-  {:copy [:archive_operation_id
-          :archived
+  {:copy [:archived
           :archived_directly
           :authority_level
           :description

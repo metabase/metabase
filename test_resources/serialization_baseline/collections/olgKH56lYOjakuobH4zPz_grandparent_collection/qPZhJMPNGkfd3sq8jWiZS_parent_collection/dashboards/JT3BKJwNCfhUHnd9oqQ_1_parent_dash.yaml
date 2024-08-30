@@ -20,7 +20,6 @@ serdes/meta:
 - id: JT3BKJwNCfhUHnd9oqQ_1
   label: parent_dash
   model: Dashboard
-archived_directly: false
 dashcards: []
 initially_published_at: null
 tabs: []

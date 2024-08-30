@@ -25,7 +25,5 @@ serdes/meta:
 - id: ze7O4-8qRFH1v2Ho2apT1
   label: root_card
   model: Card
-archived_directly: false
 metabase_version: v1.48.1-SNAPSHOT (53cf083)
-source_card_id: null
 type: question

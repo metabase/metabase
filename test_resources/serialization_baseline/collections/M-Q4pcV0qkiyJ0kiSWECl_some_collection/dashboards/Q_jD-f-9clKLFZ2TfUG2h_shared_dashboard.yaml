@@ -20,7 +20,6 @@ serdes/meta:
 - id: Q_jD-f-9clKLFZ2TfUG2h
   label: shared_dashboard
   model: Dashboard
-archived_directly: false
 dashcards:
 - entity_id: UkpFcfUZMZt9ehChwnrAO
   card_id: f1C68pznmrpN1F5xFDj6d

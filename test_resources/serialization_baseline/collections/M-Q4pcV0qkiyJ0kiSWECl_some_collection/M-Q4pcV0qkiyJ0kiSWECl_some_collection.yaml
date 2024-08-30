@@ -13,6 +13,4 @@ serdes/meta:
 - id: M-Q4pcV0qkiyJ0kiSWECl
   label: some_collection
   model: Collection
-archive_operation_id: null
-archived_directly: null
 is_sample: false
