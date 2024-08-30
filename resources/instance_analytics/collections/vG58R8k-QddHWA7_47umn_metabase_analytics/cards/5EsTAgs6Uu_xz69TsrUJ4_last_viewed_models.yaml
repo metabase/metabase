@@ -313,7 +313,6 @@ serdes/meta:
 - id: 5EsTAgs6Uu_xz69TsrUJ4
   label: last_viewed_models
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (a98530f)
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

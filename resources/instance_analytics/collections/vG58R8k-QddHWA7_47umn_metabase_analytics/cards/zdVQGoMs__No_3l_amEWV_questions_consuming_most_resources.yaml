@@ -132,7 +132,6 @@ serdes/meta:
 - id: zdVQGoMs__No_3l_amEWV
   label: questions_consuming_most_resources
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (901f705)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

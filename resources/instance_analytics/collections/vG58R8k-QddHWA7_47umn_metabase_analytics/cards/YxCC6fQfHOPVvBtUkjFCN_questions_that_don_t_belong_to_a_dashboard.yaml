@@ -148,7 +148,6 @@ serdes/meta:
 - id: YxCC6fQfHOPVvBtUkjFCN
   label: questions_that_don_t_belong_to_a_dashboard
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (901f705)
 source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

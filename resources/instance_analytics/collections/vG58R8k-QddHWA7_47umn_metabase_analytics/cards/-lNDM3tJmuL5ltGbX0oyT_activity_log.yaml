@@ -308,7 +308,6 @@ serdes/meta:
 - id: -lNDM3tJmuL5ltGbX0oyT
   label: activity_log
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: null
 type: model

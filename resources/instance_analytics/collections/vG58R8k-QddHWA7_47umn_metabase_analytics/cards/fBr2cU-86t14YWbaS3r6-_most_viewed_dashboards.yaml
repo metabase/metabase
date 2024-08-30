@@ -200,7 +200,6 @@ serdes/meta:
 - id: fBr2cU-86t14YWbaS3r6-
   label: most_viewed_dashboards
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

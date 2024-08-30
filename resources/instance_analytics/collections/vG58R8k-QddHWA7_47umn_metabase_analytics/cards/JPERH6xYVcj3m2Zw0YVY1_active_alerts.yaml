@@ -74,7 +74,6 @@ serdes/meta:
 - id: JPERH6xYVcj3m2Zw0YVY1
   label: active_alerts
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

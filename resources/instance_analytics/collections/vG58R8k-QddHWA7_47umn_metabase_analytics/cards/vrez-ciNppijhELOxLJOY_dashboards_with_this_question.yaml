@@ -222,7 +222,6 @@ serdes/meta:
 - id: vrez-ciNppijhELOxLJOY
   label: dashboards_with_this_question
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: pKdvc0pwu1zDi8NqnyJkt
 type: question

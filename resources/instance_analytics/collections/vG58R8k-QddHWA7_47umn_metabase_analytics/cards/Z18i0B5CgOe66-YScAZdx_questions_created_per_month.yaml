@@ -73,7 +73,6 @@ serdes/meta:
 - id: Z18i0B5CgOe66-YScAZdx
   label: questions_created_per_month
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: -lNDM3tJmuL5ltGbX0oyT
 type: question

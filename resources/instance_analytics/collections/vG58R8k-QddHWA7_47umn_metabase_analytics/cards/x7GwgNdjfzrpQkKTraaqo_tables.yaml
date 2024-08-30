@@ -285,7 +285,6 @@ serdes/meta:
 - id: x7GwgNdjfzrpQkKTraaqo
   label: tables
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (0e09ac7)
 source_card_id: null
 type: model

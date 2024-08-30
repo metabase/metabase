@@ -107,7 +107,6 @@ serdes/meta:
 - id: lTp-ATFsCUFEr9I0fMEaO
   label: group_members
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: null
 type: model

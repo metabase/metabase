@@ -197,7 +197,6 @@ serdes/meta:
 - id: T1vsVJUAfg30Fqiw4Dywa
   label: most_viewed_cards
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

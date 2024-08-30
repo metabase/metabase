@@ -72,7 +72,6 @@ serdes/meta:
 - id: -_XgVaPuz7MY8jlG0wSEC
   label: question_performance
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (13e6090)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

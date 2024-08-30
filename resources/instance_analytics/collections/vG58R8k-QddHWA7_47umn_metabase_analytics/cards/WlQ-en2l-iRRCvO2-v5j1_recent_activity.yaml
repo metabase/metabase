@@ -418,7 +418,6 @@ serdes/meta:
 - id: WlQ-en2l-iRRCvO2-v5j1
   label: recent_activity
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (ad99d37)
 source_card_id: -lNDM3tJmuL5ltGbX0oyT
 type: question

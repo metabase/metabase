@@ -124,7 +124,6 @@ serdes/meta:
 - id: _p6UGMWOQn5-yf03uGsaN
   label: most_active_people_on_this_dashboard
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

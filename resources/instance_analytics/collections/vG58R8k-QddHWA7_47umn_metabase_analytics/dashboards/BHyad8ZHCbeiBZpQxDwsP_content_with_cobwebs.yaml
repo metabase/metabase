@@ -27,7 +27,6 @@ serdes/meta:
 - id: BHyad8ZHCbeiBZpQxDwsP
   label: content_with_cobwebs
   model: Dashboard
-archived_directly: false
 dashcards:
 - entity_id: mO1Hmv7RPBY81C-HiGBVl
   card_id: -fFVxT-GLz6WO41bvw-Ar

@@ -68,7 +68,6 @@ serdes/meta:
 - id: DHMhMa1FYxiyIgM7_xdgR
   label: person_overview
   model: Dashboard
-archived_directly: false
 dashcards:
 - entity_id: GciAp1qdJrTUEX1rv9wVy
   card_id: JPERH6xYVcj3m2Zw0YVY1

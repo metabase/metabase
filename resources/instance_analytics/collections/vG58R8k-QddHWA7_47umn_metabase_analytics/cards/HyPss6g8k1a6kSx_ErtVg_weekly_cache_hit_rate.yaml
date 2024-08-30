@@ -110,7 +110,6 @@ serdes/meta:
 - id: HyPss6g8k1a6kSx_ErtVg
   label: weekly_cache_hit_rate
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (9aa572c)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

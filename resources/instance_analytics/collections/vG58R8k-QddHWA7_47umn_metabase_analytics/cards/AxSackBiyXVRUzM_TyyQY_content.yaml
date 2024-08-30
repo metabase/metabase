@@ -624,7 +624,6 @@ serdes/meta:
 - id: AxSackBiyXVRUzM_TyyQY
   label: content
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: null
 type: model

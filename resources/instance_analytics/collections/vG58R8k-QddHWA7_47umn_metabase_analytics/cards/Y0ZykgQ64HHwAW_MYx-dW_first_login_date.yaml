@@ -36,7 +36,6 @@ serdes/meta:
 - id: Y0ZykgQ64HHwAW_MYx-dW
   label: first_login_date
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: 0wVIfjBJWclD0lKeABYYl
 type: question

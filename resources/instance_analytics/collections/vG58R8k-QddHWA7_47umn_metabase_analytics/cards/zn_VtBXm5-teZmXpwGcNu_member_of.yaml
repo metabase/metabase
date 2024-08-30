@@ -146,7 +146,6 @@ serdes/meta:
 - id: zn_VtBXm5-teZmXpwGcNu
   label: member_of
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: lTp-ATFsCUFEr9I0fMEaO
 type: question

@@ -33,7 +33,6 @@ serdes/meta:
 - id: 3CtVT_JDxNvMM5aFLtEHR
   label: is_admin_
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: 0wVIfjBJWclD0lKeABYYl
 type: question

@@ -302,7 +302,6 @@ serdes/meta:
 - id: pKdvc0pwu1zDi8NqnyJkt
   label: dashboard_cards
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: null
 type: model

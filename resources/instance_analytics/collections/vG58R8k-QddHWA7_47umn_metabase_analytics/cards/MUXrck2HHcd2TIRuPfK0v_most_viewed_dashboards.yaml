@@ -230,7 +230,6 @@ serdes/meta:
 - id: MUXrck2HHcd2TIRuPfK0v
   label: most_viewed_dashboards
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

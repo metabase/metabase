@@ -75,7 +75,6 @@ serdes/meta:
 - id: Vm-4GYORvVbGu9jHVLfg1
   label: question_views_per_month
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

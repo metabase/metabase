@@ -553,7 +553,6 @@ serdes/meta:
 - id: fwkC3nWB_uouifA5kkaBp
   label: alerts
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (44d194b)
 source_card_id: skoPT2xiuEcUV8vFkHE6S
 type: question

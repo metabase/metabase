@@ -87,7 +87,6 @@ serdes/meta:
 - id: uEf4gbDzXkj9q1uvkaTny
   label: person_detail
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (ad99d37)
 source_card_id: 0wVIfjBJWclD0lKeABYYl
 type: question

@@ -131,7 +131,6 @@ serdes/meta:
 - id: mm8k37Rgk7ChMNwAUdXK2
   label: slowest_dashboards
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (901f705)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

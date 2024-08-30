@@ -49,7 +49,6 @@ serdes/meta:
 - id: tKEl86EXMyTDIoO9nyFTV
   label: last_content_viewed_at
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (901f705)
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

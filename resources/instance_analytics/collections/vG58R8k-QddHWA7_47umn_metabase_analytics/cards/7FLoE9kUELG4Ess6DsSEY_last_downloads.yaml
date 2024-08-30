@@ -821,7 +821,6 @@ serdes/meta:
 - id: 7FLoE9kUELG4Ess6DsSEY
   label: last_downloads
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (a98530f)
 source_card_id: QOtZaiTLf2FDD4AT6Oinb
 type: question

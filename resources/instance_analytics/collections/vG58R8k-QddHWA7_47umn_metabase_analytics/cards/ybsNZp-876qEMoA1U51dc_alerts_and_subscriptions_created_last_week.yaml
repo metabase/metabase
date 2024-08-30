@@ -107,7 +107,6 @@ serdes/meta:
 - id: ybsNZp-876qEMoA1U51dc
   label: alerts_and_subscriptions_created_last_week
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: 5ojUtU9iE-DCggHdFPIll
 type: question

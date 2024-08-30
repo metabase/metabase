@@ -515,7 +515,6 @@ serdes/meta:
 - id: QOtZaiTLf2FDD4AT6Oinb
   label: query_log
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (0e09ac7)
 source_card_id: null
 type: model

@@ -224,7 +224,6 @@ serdes/meta:
 - id: P6Ityjj7igswKh4NgZZjz
   label: view_log
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (7c47e04)
 source_card_id: null
 type: model

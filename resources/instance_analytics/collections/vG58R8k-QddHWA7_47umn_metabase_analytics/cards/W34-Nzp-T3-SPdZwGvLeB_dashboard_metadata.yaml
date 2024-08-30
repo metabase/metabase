@@ -207,7 +207,6 @@ serdes/meta:
 - id: W34-Nzp-T3-SPdZwGvLeB
   label: dashboard_metadata
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

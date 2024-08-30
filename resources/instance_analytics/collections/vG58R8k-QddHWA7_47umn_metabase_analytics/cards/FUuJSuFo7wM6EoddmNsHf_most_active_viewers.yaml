@@ -189,7 +189,6 @@ serdes/meta:
 - id: FUuJSuFo7wM6EoddmNsHf
   label: most_active_viewers
   model: Card
-archived_directly: false
 metabase_version: null
 source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question

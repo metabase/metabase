@@ -663,7 +663,6 @@ serdes/meta:
 - id: g-99yx3A8bwFtrfuWdIgb
   label: active_dashboard_subscriptions
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (5c1ab5e)
 source_card_id: 5ojUtU9iE-DCggHdFPIll
 type: question

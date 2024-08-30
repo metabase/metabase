@@ -34,7 +34,6 @@ serdes/meta:
 - id: vFnGZMNN2K_KW1I0B52bq
   label: metabase_metrics
   model: Dashboard
-archived_directly: false
 dashcards:
 - entity_id: Qv9D3jXGGbsyLURLlKoIG
   card_id: gYt6bo9DFKz6tSeDLxYVs

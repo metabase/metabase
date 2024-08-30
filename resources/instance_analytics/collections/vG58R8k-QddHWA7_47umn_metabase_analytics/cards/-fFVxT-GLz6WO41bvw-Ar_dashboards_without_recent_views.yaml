@@ -120,7 +120,6 @@ serdes/meta:
 - id: -fFVxT-GLz6WO41bvw-Ar
   label: dashboards_without_recent_views
   model: Card
-archived_directly: false
 metabase_version: vUNKNOWN (901f705)
 source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question
