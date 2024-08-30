@@ -5,9 +5,18 @@ import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { getShortStrategyLabel } from "metabase/admin/performance/utils";
 import { FixedSizeIcon, Flex, Title, Tooltip, useHover } from "metabase/ui";
-import type { Config } from "metabase-types/api";
+import type { Config as CacheConfig } from "metabase-types/api";
 
 import { PolicyToken, StyledLauncher } from "./StrategyFormLauncher.styled";
+
+export type StrategyFormLauncherProps = {
+  forId: number;
+  targetId: number | null;
+  title: string;
+  updateTargetId: UpdateTargetId;
+  configs: CacheConfig[];
+  isFormDirty: boolean;
+};
 
 export const StrategyFormLauncher = ({
   forId,
@@ -16,14 +25,7 @@ export const StrategyFormLauncher = ({
   updateTargetId,
   configs,
   isFormDirty,
-}: {
-  forId: number;
-  targetId: number | null;
-  title: string;
-  updateTargetId: UpdateTargetId;
-  configs: Config[];
-  isFormDirty: boolean;
-}) => {
+}: StrategyFormLauncherProps) => {
   const forRoot = forId === rootId;
 
   const config = findWhere(configs, { model_id: forId });
@@ -32,7 +34,7 @@ export const StrategyFormLauncher = ({
   const rootStrategy = rootConfig?.strategy ?? { type: "nocache" };
   const savedStrategy = config?.strategy;
 
-  const inheritsRootStrategy = savedStrategy === undefined;
+  const inheritsRootStrategy = !forRoot && savedStrategy === undefined;
   const strategy = savedStrategy ?? rootStrategy;
   const isBeingEdited = targetId === forId;
 
@@ -61,6 +63,7 @@ export const StrategyFormLauncher = ({
       updateTargetId(forId, isFormDirty);
     }
   };
+  const shouldDisableTooltip = !inheritsRootStrategy;
 
   return (
     <StyledLauncher
@@ -71,6 +74,9 @@ export const StrategyFormLauncher = ({
       inheritsRootStrategy={inheritsRootStrategy}
       justify="space-between"
       gap="md"
+      data-testid={`strategy-form-launcher${
+        shouldDisableTooltip ? "" : "-with-tooltip"
+      }`}
     >
       <Flex gap="0.5rem" color="text-medium" align="center">
         <FixedSizeIcon name={forRoot ? "star" : "database"} color="inherit" />
@@ -81,7 +87,7 @@ export const StrategyFormLauncher = ({
       <Flex wrap="nowrap" lh="1.5rem" gap=".5rem">
         <Tooltip
           position="bottom"
-          disabled={!inheritsRootStrategy}
+          disabled={shouldDisableTooltip}
           label={t`Using default policy`}
         >
           <PolicyToken
