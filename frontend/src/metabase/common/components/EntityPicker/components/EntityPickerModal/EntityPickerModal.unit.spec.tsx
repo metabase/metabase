@@ -49,14 +49,14 @@ const TEST_CARD_TAB: EntityTab<SampleModelType> = {
   icon: "audit",
   displayName: "All the foo",
   model: "card",
-  element: <TestPicker name="foo" />,
+  render: () => <TestPicker name="foo" />,
 };
 
 const TEST_TABLE_TAB: EntityTab<SampleModelType> = {
   icon: "audit",
   displayName: "All the bar",
   model: "table",
-  element: <TestPicker name="bar" />,
+  render: () => <TestPicker name="bar" />,
 };
 
 const mockSearchResults = createMockSearchResults({
@@ -142,7 +142,7 @@ describe("EntityPickerModal", () => {
           icon: "folder",
           displayName: "All the bar",
           model: "table",
-          element: <TestPicker name="bar" />,
+          render: () => <TestPicker name="bar" />,
         },
       ],
     });
