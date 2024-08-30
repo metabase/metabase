@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 import { connect } from "react-redux";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -440,12 +441,14 @@ class View extends Component {
 
     const leftSidebar = this.getLeftSidebar();
     const rightSidebar = this.getRightSidebar();
-    // FIXME this sucks
-    const rightSidebarWidth = isShowingTimelineSidebar
-      ? SIDEBAR_SIZES.TIMELINE
-      : isShowingQuestionInfoSidebar
-      ? 0
-      : SIDEBAR_SIZES.NORMAL;
+
+    const rightSidebarWidth = match({
+      isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
+    })
+      .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
+      .with({ isShowingQuestionInfoSidebar: true }, () => 0)
+      .otherwise(() => SIDEBAR_SIZES.NORMAL);
 
     return (
       <div className={CS.fullHeight}>
