@@ -1,7 +1,8 @@
-import { HARDCODED_USERS } from "embedding-sdk/cli/constants/hardcoded-users";
-import type { CliState } from "embedding-sdk/cli/types/cli";
+import { sample } from "underscore";
 
 import { HARDCODED_JWT_SHARED_SECRET } from "../constants/config";
+import { HARDCODED_USERS } from "../constants/hardcoded-users";
+import type { CliState } from "../types/cli";
 
 type Options = Pick<CliState, "instanceUrl" | "tenantIdsMap">;
 
@@ -16,9 +17,15 @@ export const getExpressServerSnippet = (options: Options) => {
     // Assign one of the tenant id in the user's database to their Metabase user attributes.
     // This is hard-coded for demonstration purposes.
     for (const tenancyColumnName in tenantIdsMap) {
-      const tenancyColumnValues = tenantIdsMap[tenancyColumnName];
+      const tenantIds = tenantIdsMap[tenancyColumnName];
+      let tenantId = tenantIds[i];
 
-      tenancyAttributes[tenancyColumnName] = tenancyColumnValues[i];
+      // If there isn't enough tenants, we sample a tenant.
+      if (tenantId === undefined) {
+        tenantId = sample(tenantIds) ?? 0;
+      }
+
+      tenancyAttributes[tenancyColumnName] = tenantId;
     }
 
     return { ...user, ...tenancyAttributes };

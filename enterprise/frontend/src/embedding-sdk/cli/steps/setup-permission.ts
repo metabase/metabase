@@ -1,5 +1,5 @@
 import { SANDBOXED_GROUP_NAMES } from "../constants/config";
-import { getNotEnoughTenantsMessage } from "../constants/messages";
+import { getNoTenantMessage } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { getCollectionPermissions } from "../utils/get-collection-permissions";
 import { getPermissionsForGroups } from "../utils/get-permission-groups";
@@ -138,9 +138,9 @@ export const setupPermissions: CliStepMethod = async state => {
         instanceUrl,
       });
 
-    // Some of the chosen tables don't have enough tenants for the demo.
+    // Warn if some of the chosen tables doesn't have any tenant.
     if (unsampledTableNames.length > 0) {
-      console.log(getNotEnoughTenantsMessage(unsampledTableNames));
+      console.log(getNoTenantMessage(unsampledTableNames));
     }
 
     return [{ type: "success" }, { ...state, tenantIdsMap }];

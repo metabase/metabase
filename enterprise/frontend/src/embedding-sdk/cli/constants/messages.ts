@@ -1,7 +1,5 @@
 import { blue, green, yellow } from "chalk";
 
-import { HARDCODED_USERS } from "../constants/hardcoded-users";
-
 import { CONTAINER_NAME, SDK_NPM_LINK } from "./config";
 
 export const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
@@ -53,17 +51,15 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;
 
-const USER_COUNT = HARDCODED_USERS.length;
-
-export const getNotEnoughTenantsMessage = (unsampledTableNames: string[]) => {
+export const getNoTenantMessage = (unsampledTableNames: string[]) => {
   const tables = unsampledTableNames.join(", ");
   const warningTitle = `Sandboxing is not configured for the following tables: ${tables}.`;
 
   return `
   ${yellow(warningTitle)}
 
-  At least ${USER_COUNT} tenants are needed for the sandboxing demo.
-  You can add your tenant ids to your user attribute, e.g. "customer_id: 5".
+  At least one tenant is needed to demonstrate sandboxing.
+  You can assign your tenant's id to your user attribute, e.g. "customer_id: 5".
 `;
 };
 

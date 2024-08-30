@@ -1,7 +1,5 @@
 import type { Dataset, FieldReference, Table } from "metabase-types/api";
 
-import { HARDCODED_USERS } from "../constants/hardcoded-users";
-
 import { propagateErrorResponse } from "./propagate-error-response";
 
 interface Options {
@@ -53,8 +51,8 @@ export async function sampleTenantIdsFromTables(
       instanceUrl,
     });
 
-    // Skip this column if it has fewer rows than our mock user.
-    if (values !== null && values.length >= HARDCODED_USERS.length) {
+    // Skip this table if it has no tenants.
+    if (values && values.length > 0) {
       tenantIdsMap[columnName] = values;
     } else {
       unsampledTableNames.push(table.name);
