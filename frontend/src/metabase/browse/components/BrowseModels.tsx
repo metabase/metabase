@@ -25,7 +25,7 @@ import {
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
 import { ModelsTable } from "./ModelsTable";
 import { RecentModels } from "./RecentModels";
-import { getMaxRecentModelCount } from "./utils";
+import { getMaxRecentItemsCount } from "./utils";
 
 const { availableModelFilters, useModelFilterSettings, ModelFilterControls } =
   PLUGIN_CONTENT_VERIFICATION;
@@ -73,7 +73,7 @@ export const BrowseModels = () => {
   );
 
   const recentModels = useMemo(() => {
-    const cap = getMaxRecentModelCount(models.length);
+    const cap = getMaxRecentItemsCount(models.length);
     return filteredRecentModels.slice(0, cap);
   }, [filteredRecentModels, models.length]);
 

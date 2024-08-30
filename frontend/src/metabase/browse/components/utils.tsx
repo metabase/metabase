@@ -80,17 +80,22 @@ export function sortCards<T extends ModelResult | MetricResult>(
   });
 }
 
-/** Find the maximum number of recently viewed models to show.
+/**
+ * Find the maximum number of recently viewed models to show.
  * This is roughly proportional to the number of models the user
- * has permission to see */
-export const getMaxRecentModelCount = (
+ * has permission to see
+ */
+export const getMaxRecentItemsCount = (
   /** How many models the user has permission to see */
-  modelCount: number,
+  itemCount: number | undefined,
 ) => {
-  if (modelCount > 20) {
+  if (itemCount === undefined) {
+    return Infinity;
+  }
+  if (itemCount > 20) {
     return 8;
   }
-  if (modelCount > 9) {
+  if (itemCount > 9) {
     return 4;
   }
   return 0;
