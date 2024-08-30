@@ -16,8 +16,9 @@ is_full_sync: true
 is_on_demand: false
 is_sample: false
 is_audit: false
-metadata_sync_schedule: 0 8 * * * ? *
-cache_field_values_schedule: 0 0 19 * * ? *
+is_attached_dwh: false
+metadata_sync_schedule: 0 3 * * * ? *
+cache_field_values_schedule: 0 0 11 * * ? *
 settings:
   database-source-dataset-name: test-data
 caveats: null
