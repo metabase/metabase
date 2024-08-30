@@ -8,7 +8,6 @@
   (:require
    [clojure.walk :as walk]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
@@ -16,6 +15,7 @@
    [metabase.query-processor.middleware.resolve-joins :as qp.middleware.resolve-joins]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -86,10 +86,10 @@
   (let [filter-clause (:filter inner-query)
         keep-filter? (nil? (lib.util.match/match-one filter-clause :expression))
         source (as-> (select-keys inner-query [:source-table :source-query :source-metadata :joins :expressions]) source
-                 ;; preprocess this without a current user context so it's not subject to permissions checks. To get
-                 ;; here in the first place we already had to do perms checks to make sure the query we're transforming
-                 ;; is itself ok, so we don't need to run another check
-                 (binding [api/*current-user-id* nil]
+                 ;; preprocess this without an admin user context so it's not subject to permissions checks. To get here
+                 ;; in the first place we already had to do perms checks to make sure the query we're transforming is
+                 ;; itself ok, so we don't need to run another check
+                 (mw.session/as-admin
                    ((requiring-resolve 'metabase.query-processor.preprocess/preprocess)
                     {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                      :type     :query
