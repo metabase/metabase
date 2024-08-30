@@ -22,6 +22,7 @@
                               :llm-autodescription
                               :no-upsell
                               :official-collections
+                              :query-reference-validation
                               :sandboxes
                               :scim
                               :serialization
@@ -48,6 +49,7 @@
             :hosting                        true
             :llm_autodescription            true
             :official_collections           true
+            :query_reference_validation     true
             :sandboxes                      true
             :scim                           true
             :session_timeout_config         true

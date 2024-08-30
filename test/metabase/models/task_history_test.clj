@@ -101,3 +101,47 @@
                        :ended_at   (mt/malli=? some?)
                        :duration   (mt/malli=? nat-int?)}
                       (t2/select-one :model/TaskHistory :task task-name))))))))))
+
+(deftest with-task-history-using-callback-test
+  (mt/with-model-cleanup [:model/TaskHistory]
+    (testing "on-success-info"
+      (let [task-name (mt/random-name)]
+        (task-history/with-task-history {:task            task-name
+                                         :task_details    {:id 1}
+                                         :on-success-info (fn [info result]
+                                                            (testing "info should have task_details and updated status"
+                                                              (is (= {:task_details {:id 1}
+                                                                      :status       :success}
+                                                                     info)))
+                                                            (update info :task_details assoc :result result))}
+          42)
+        (is (= {:status       :success
+                :task_details {:id     1
+                               :result 42}}
+               (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))
+
+    (testing "on-fail-info"
+      (let [task-name (mt/random-name)]
+        (u/ignore-exceptions
+          (task-history/with-task-history {:task         task-name
+                                           :task_details {:id 1}
+                                           :on-fail-info (fn [info e]
+                                                           (testing "info should have task_details and updated status"
+                                                             (is (=? {:status       :failed
+                                                                      :task_details {:status        :failed
+                                                                                     :message       "test"
+                                                                                     :stacktrace    (mt/malli=? :any)
+                                                                                     :ex-data       {:reason :test}
+                                                                                     :original-info {:id 1}}}
+                                                                     info)))
+                                                           (update info :task_details assoc :reason (ex-message e)))}
+            (throw (ex-info "test" {:reason :test}))))
+        (is (=? {:status       :failed
+                 :task_details {:status        "failed"
+                                :exception     "class clojure.lang.ExceptionInfo"
+                                :message       "test"
+                                :stacktrace    (mt/malli=? :any)
+                                :ex-data       {:reason "test"}
+                                :original-info {:id 1}
+                                :reason         "test"}}
+                (t2/select-one [:model/TaskHistory :status :task_details] :task task-name)))))))

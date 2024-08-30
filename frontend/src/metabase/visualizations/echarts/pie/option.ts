@@ -59,9 +59,7 @@ function getTotalGraphicOption(
     );
     labelText = truncateText(
       hoveredIndex != null
-        ? formatters
-            .formatDimension(chartModel.slices[hoveredIndex].data.key)
-            .toUpperCase()
+        ? chartModel.slices[hoveredIndex].data.name.toUpperCase()
         : TOTAL_TEXT,
       outerRadius,
       DIMENSIONS.total.labelFontSize,

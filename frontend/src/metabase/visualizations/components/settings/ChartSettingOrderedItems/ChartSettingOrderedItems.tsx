@@ -11,6 +11,7 @@ interface SortableItem {
   enabled: boolean;
   color?: string;
   icon?: IconProps["name"];
+  isOther?: boolean;
 }
 
 interface SortableColumnFunctions<T> {
@@ -47,38 +48,41 @@ export function ChartSettingOrderedItems<T extends SortableItem>({
   });
 
   const renderItem = useCallback(
-    ({ item, id }: { item: T; id: string | number }) => (
-      <Sortable
-        id={id}
-        key={`sortable-${id}`}
-        disabled={isDragDisabled}
-        draggingStyle={{ opacity: 0.5 }}
-      >
-        <ColumnItem
-          title={getItemName(item)}
-          onEdit={
-            onEdit
-              ? (targetElement: HTMLElement) => onEdit(item, targetElement)
-              : undefined
-          }
-          onRemove={onRemove && item.enabled ? () => onRemove(item) : undefined}
-          onClick={onClick ? () => onClick(item) : undefined}
-          onAdd={onAdd ? () => onAdd(item) : undefined}
-          onEnable={
-            onEnable && !item.enabled ? () => onEnable(item) : undefined
-          }
-          onColorChange={
-            onColorChange
-              ? (color: string) => onColorChange(item, color)
-              : undefined
-          }
-          color={item.color}
-          draggable={!isDragDisabled}
-          icon={item.icon}
-          role="listitem"
-        />
-      </Sortable>
-    ),
+    ({ item, id }: { item: T; id: string | number }) =>
+      !item.isOther ? (
+        <Sortable
+          id={id}
+          key={`sortable-${id}`}
+          disabled={isDragDisabled}
+          draggingStyle={{ opacity: 0.5 }}
+        >
+          <ColumnItem
+            title={getItemName(item)}
+            onEdit={
+              onEdit
+                ? (targetElement: HTMLElement) => onEdit(item, targetElement)
+                : undefined
+            }
+            onRemove={
+              onRemove && item.enabled ? () => onRemove(item) : undefined
+            }
+            onClick={onClick ? () => onClick(item) : undefined}
+            onAdd={onAdd ? () => onAdd(item) : undefined}
+            onEnable={
+              onEnable && !item.enabled ? () => onEnable(item) : undefined
+            }
+            onColorChange={
+              onColorChange
+                ? (color: string) => onColorChange(item, color)
+                : undefined
+            }
+            color={item.color}
+            draggable={!isDragDisabled}
+            icon={item.icon}
+            role="listitem"
+          />
+        </Sortable>
+      ) : null,
     [
       isDragDisabled,
       getItemName,

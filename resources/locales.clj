@@ -19,6 +19,7 @@
    "ja"
    "ko"
    "lv"
+   "ms"
    "nb"
    "nl"
    "pl"
