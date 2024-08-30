@@ -633,8 +633,7 @@
 
 (defn- annotate-collections
   [parent-coll colls]
-  (let [visible-collection-ids (collection/visible-collection-ids {:include-archived-items :all})
-        descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
+  (let [descendant-collections (collection/descendants-flat parent-coll (collection/visible-collection-filter-clause
                                                                          :id
                                                                          {:include-archived-items :all}))
 
@@ -668,10 +667,9 @@
 
         ;; the set of collections that contain collections (in terms of *effective* location)
         collections-containing-collections
-        (->> descendant-collections
-             (reduce (fn [accu {:keys [location] :as _coll}]
-                       (let [effective-location (collection/effective-location-path location visible-collection-ids)
-                             parent-id (collection/location-path->parent-id effective-location)]
+        (->> (t2/hydrate descendant-collections :effective_parent)
+             (reduce (fn [accu {:keys [effective_parent] :as _coll}]
+                       (let [parent-id (:id effective_parent)]
                          (conj accu parent-id)))
                      #{}))
 
