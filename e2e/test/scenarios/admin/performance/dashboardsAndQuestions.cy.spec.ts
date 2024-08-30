@@ -19,7 +19,7 @@ import {
 import {
   advanceServerClockBy,
   getExpectedCacheDuration,
-  interceptRoutes,
+  interceptPerformanceRoutes,
   log,
   resetServerTime,
   setupDashboardTest,
@@ -124,7 +124,7 @@ describe(
     describeEE("ee", () => {
       beforeEach(() => {
         resetServerTime();
-        interceptRoutes();
+        interceptPerformanceRoutes();
         resetTestTable({ type: "postgres", table: TEST_TABLE });
         restore("postgres-writable");
         cy.signInAsAdmin();
@@ -263,7 +263,7 @@ describe(
     describe("oss", { tags: "@OSS" }, () => {
       beforeEach(() => {
         resetServerTime();
-        interceptRoutes();
+        interceptPerformanceRoutes();
         restore("postgres-12");
         cy.signInAsAdmin();
       });
