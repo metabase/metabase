@@ -11,6 +11,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -85,17 +86,6 @@
        x))
    x))
 
-(defn- remove-lib-uuids
-  "Two queries should be the same even if they have different :lib/uuids, because they might have both been converted
-  from the same legacy query."
-  [x]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (dissoc x :lib/uuid)
-       x))
-   x))
-
 (mu/defn- select-keys-for-hashing
   "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
@@ -105,7 +95,7 @@
     (cond-> query
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters)
-      true                 remove-lib-uuids
+      true                 lib.schema.util/remove-lib-uuids
       true                 walk-query-sort-maps)))
 
 (mu/defn query-hash :- bytes?

@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.util
   (:refer-clojure :exclude [ref])
   (:require
+   [clojure.walk :as walk]
    [metabase.lib.options :as lib.options]
    [metabase.util.malli.registry :as mr]))
 
@@ -71,3 +72,13 @@
                          (dissoc acc k)
                          acc))
                      options options)))))))
+
+(defn remove-lib-uuids
+  "Recursively remove all uuids from x."
+  [x]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (dissoc x :lib/uuid)
+       x))
+   x))
