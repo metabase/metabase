@@ -29,7 +29,11 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  * Programmatically generate token and visit the embedded page for a question or a dashboard
  *
  * @param {EmbedPayload} payload - The {@link EmbedPayload} we pass to this function
- * @param {{[setFilters]: object, pageStyle: PageStyle, [hideFilters]: string[]}} options
+ * @param {*} options
+ * @param {object} [options.setFilters]
+ * @param {PageStyle} options.pageStyle
+ * @param {string[]} [options.hideFilters]
+ * @param {object} [options.qs]
  *
  * @example
  * visitEmbeddedPage(payload, {
@@ -40,7 +44,7 @@ import { openSharingMenu } from "./e2e-sharing-helpers";
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = {}, hideFilters = [], pageStyle = {}, onBeforeLoad } = {},
+  { setFilters = {}, hideFilters = [], pageStyle = {}, onBeforeLoad, qs } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
 
@@ -63,7 +67,7 @@ export function visitEmbeddedPage(
 
     cy.visit({
       url: urlRoot,
-      qs: setFilters,
+      qs: { ...setFilters, ...qs },
       onBeforeLoad: window => {
         onBeforeLoad?.(window);
         if (urlHash) {

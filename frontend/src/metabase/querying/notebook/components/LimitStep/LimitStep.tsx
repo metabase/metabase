@@ -6,7 +6,7 @@ import CS from "metabase/css/core/index.css";
 import LimitInput from "metabase/query_builder/components/LimitInput";
 import * as Lib from "metabase-lib";
 
-import type { NotebookStepUiComponentProps } from "../../types";
+import type { NotebookStepProps } from "../../types";
 import { NotebookCell } from "../NotebookCell";
 
 export function LimitStep({
@@ -14,7 +14,7 @@ export function LimitStep({
   step,
   color,
   updateQuery,
-}: NotebookStepUiComponentProps) {
+}: NotebookStepProps) {
   const { stageIndex } = step;
 
   const limit = Lib.currentLimit(query, stageIndex);

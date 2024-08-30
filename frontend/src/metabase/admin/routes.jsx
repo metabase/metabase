@@ -47,6 +47,7 @@ import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_TOOLS,
+  PLUGIN_ADMIN_TROUBLESHOOTING,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_CACHING,
 } from "metabase/plugins";
@@ -145,6 +146,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
             />
           </Route>
           <Route path="logs" component={Logs} />
+          {PLUGIN_ADMIN_TROUBLESHOOTING.EXTRA_ROUTES}
         </Route>
       </Route>
       {/* SETTINGS */}
