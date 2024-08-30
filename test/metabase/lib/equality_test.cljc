@@ -663,3 +663,17 @@
       (is (=? {:name "NAME"
                :id (meta/id :categories :name)}
               (lib.equality/find-matching-column query -1 a-ref cols))))))
+
+(deftest ^:parallel find-matching-ref-multiple-breakouts-test
+  (testing "find-matching-ref should be able to distinguish between multiple breakouts of the same column in the previous stage"
+    (let [column-metadata   (meta/field-metadata :orders :created-at)
+          query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/aggregate (lib/count))
+                                (lib/breakout (lib/with-temporal-bucket column-metadata :year))
+                                (lib/breakout (lib/with-temporal-bucket column-metadata :month))
+                                (lib/append-stage))
+          fieldable-columns (lib/fieldable-columns query)]
+      (is (=? [:field {} "CREATED_AT"]
+              (lib.equality/find-matching-ref (first fieldable-columns) (mapv lib.ref/ref fieldable-columns))))
+      (is (=? [:field {} "CREATED_AT_2"]
+              (lib.equality/find-matching-ref (second fieldable-columns) (mapv lib.ref/ref fieldable-columns)))))))

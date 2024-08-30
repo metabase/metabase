@@ -987,6 +987,36 @@
               (is (=? implied-query
                       (lib/add-field implied-query -1 (nth implicit-columns 6)))))))))))
 
+(deftest ^:parallel add-field-multiple-breakouts-test
+  (testing "multiple breakouts of the same column in the previous stage"
+    (let [column-metadata   (meta/field-metadata :orders :created-at)
+          query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                                (lib/aggregate (lib/count))
+                                (lib/breakout (lib/with-temporal-bucket column-metadata :year))
+                                (lib/breakout (lib/with-temporal-bucket column-metadata :month))
+                                (lib/append-stage))
+          fieldable-columns (lib/fieldable-columns query)]
+      (testing "removing the column coming from the first breakout"
+        (is (=? [[:field {} "CREATED_AT_2"] [:field {} "count"]]
+                (-> query
+                    (lib/remove-field 1 (first fieldable-columns))
+                    fields-of))))
+      (testing "removing the column coming from the second breakout"
+        (is (=? [[:field {} "CREATED_AT"] [:field {} "count"]]
+                (-> query
+                    (lib/remove-field 1 (second fieldable-columns))
+                    fields-of))))
+      (testing "removing and adding back the column from the first breakout"
+        (is (nil? (-> query
+                      (lib/remove-field 1 (first fieldable-columns))
+                      (lib/add-field 1 (first fieldable-columns))
+                      fields-of))))
+      (testing "removing and adding back the columnd from the second breakout"
+        (is (nil? (-> query
+                      (lib/remove-field 1 (second fieldable-columns))
+                      (lib/add-field 1 (second fieldable-columns))
+                      fields-of)))))))
+
 (defn- clean-ref [column]
   (-> column
       lib/ref

@@ -21,7 +21,6 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing
     :as lib.schema.temporal-bucketing]
-   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
@@ -584,25 +583,17 @@
   (cond-> query
     (not (:fields (lib.util/query-stage query stage-number))) (populate-fields-for-stage stage-number)))
 
-(defn- include-field
-  "Adds a `column` ref to the `:field` clause of the query if is not already included. Populates the `:fields` clause in
-   case it is not yet present in the `query`.
-
-  We use `lib.equality/find-matching-ref` to check if the `column` ref is in the list of refs. The matching logic is
-  generous and it can match a column with a ref of the underlying column but with different options. To overcome
-  this issue we find the ref for the `column` twice - once for the original query, and again for the updated query. If
-  we get different refs that means it is safe to include this column."
-  [query stage-number column]
-  (let [populated-query   (query-with-fields query stage-number)
-        original-field-refs (fields query-with-fields stage-number)
-        updated-field-refs  (conj original-field-refs (lib.ref/ref column))
-        original-match-ref  (lib.equality/find-matching-ref column original-field-refs)
-        updated-match-ref   (lib.equality/find-matching-ref column updated-field-refs)]
-    (if (and (lib.schema.util/distinct-refs? updated-field-refs)
-             (or (not original-match-ref) (not (lib.equality/= original-match-ref updated-match-ref))))
-      (lib.util/update-query-stage populated-query stage-number assoc :fields updated-field-refs)
+(defn- include-field [query stage-number column]
+  (let [populated  (query-with-fields query stage-number)
+        field-refs (fields populated stage-number)
+        match-ref  (lib.equality/find-matching-ref column field-refs)
+        column-ref (lib.ref/ref column)]
+    (if (and match-ref
+             (or (string? (last column-ref))
+                 (integer? (last match-ref))))
       ;; If the column is already found, do nothing and return the original query.
-      query)))
+      query
+      (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
 
 (defn- add-field-to-join [query stage-number column]
   (let [column-ref   (lib.ref/ref column)
