@@ -1,7 +1,6 @@
 import fs from "fs/promises";
 
 import { input, number, password, select } from "@inquirer/prompts";
-import chalk from "chalk";
 import { EventEmitter } from "events";
 import fileSelector from "inquirer-file-selector";
 import toggle from "inquirer-toggle";
@@ -11,7 +10,7 @@ import type { Engine, EngineField } from "metabase-types/api";
 
 import { CLI_SHOWN_DB_FIELDS } from "../constants/database";
 
-import { printWithPadding } from "./print";
+import { printHelperText } from "./print";
 
 interface Options {
   engine: Engine;
@@ -54,7 +53,7 @@ export async function askForDatabaseConnectionInfo(options: Options) {
     const message = `${name}:`;
 
     if (helperText) {
-      printWithPadding(`${chalk.gray(helperText)}`);
+      printHelperText(helperText);
     }
 
     const value = await askForConnectionValue(field, message, engineKey);

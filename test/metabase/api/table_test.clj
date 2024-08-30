@@ -39,6 +39,7 @@
                          :uploads_table_prefix])
    {:engine                      "h2"
     :name                        "test-data (h2)"
+    :is_attached_dwh             false
     :is_sample                   false
     :is_full_sync                true
     :is_on_demand                false

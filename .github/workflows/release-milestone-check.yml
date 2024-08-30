@@ -14,6 +14,7 @@ on:
 
 jobs:
   check-milestone:
+    permissions: write-all
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     steps:
@@ -24,9 +25,9 @@ jobs:
         run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
       - uses: actions/github-script@v7
         env:
+          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
         with:
           script: | # js
             const {
