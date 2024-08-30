@@ -666,14 +666,14 @@
 
 (deftest ^:parallel find-matching-ref-multiple-breakouts-test
   (testing "should be able to distinguish between multiple breakouts of the same column in the previous stage"
-    (let [column-metadata   (meta/field-metadata :orders :created-at)
-          query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
-                                (lib/aggregate (lib/count))
-                                (lib/breakout (lib/with-temporal-bucket column-metadata :year))
-                                (lib/breakout (lib/with-temporal-bucket column-metadata :month))
-                                (lib/append-stage))
-          fieldable-columns (lib/fieldable-columns query)]
+    (let [query       (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :year))
+                          (lib/breakout (lib/with-temporal-bucket (meta/field-metadata :orders :created-at) :month))
+                          (lib/append-stage))
+          columns     (lib/fieldable-columns query)
+          column-refs (mapv lib.ref/ref columns)]
       (is (=? [:field {} "CREATED_AT"]
-              (lib.equality/find-matching-ref (first fieldable-columns) (mapv lib.ref/ref fieldable-columns))))
+              (lib.equality/find-matching-ref (first columns) column-refs)))
       (is (=? [:field {} "CREATED_AT_2"]
-              (lib.equality/find-matching-ref (second fieldable-columns) (mapv lib.ref/ref fieldable-columns)))))))
+              (lib.equality/find-matching-ref (second columns) column-refs))))))
