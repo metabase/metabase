@@ -841,6 +841,13 @@ SeriesOrderSettingsDoNotMatchSeriesCount.args = {
   renderingContext,
 };
 
+export const TrendGoalLinesWithScalingPowScaleCustomRange = Template.bind({});
+TrendGoalLinesWithScalingPowScaleCustomRange.args = {
+  rawSeries: data.trendGoalLinesWithScalingPowScaleCustomRange as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,
