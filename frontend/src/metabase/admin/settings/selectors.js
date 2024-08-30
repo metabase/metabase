@@ -584,7 +584,7 @@ export const getSectionsWithPlugins = _.once(() =>
   updateSectionsWithPlugins(ADMIN_SETTINGS_SECTIONS),
 );
 
-export const getSettings = createSelector(
+const getSettings = createSelector(
   state => state.admin.settings.settings,
   state => state.admin.settings.warnings,
   (settings, warnings) =>
