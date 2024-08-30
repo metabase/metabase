@@ -10,9 +10,9 @@ import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrateg
 import { SidesheetSubPage } from "metabase/common/components/Sidesheet";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import type { SidebarCacheFormProps } from "metabase/plugins";
+import { Stack } from "metabase/ui";
 import type { CacheStrategy } from "metabase-types/api";
 
-import { SidebarCacheFormBody } from "./SidebarCacheForm.styled";
 import { getItemId, getItemName } from "./utils";
 
 const SidebarCacheForm_Base = ({
@@ -59,12 +59,13 @@ const SidebarCacheForm_Base = ({
       isOpen
       title={t`Cache settings`}
       onBack={() =>
-        isStrategyFormDirty ? askBeforeDiscardingChanges(onClose) : onClose()
+        isStrategyFormDirty ? askBeforeDiscardingChanges(onBack) : onBack()
       }
       onClose={onClose}
     >
-      <SidebarCacheFormBody
-        align="flex-start"
+      <Stack
+        align="space-between"
+        h="calc(100% + 2.5rem)" // to make bottom padding nice with scroll containers
         spacing="md"
         aria-labelledby={headingId}
         {...groupProps}
@@ -85,7 +86,7 @@ const SidebarCacheForm_Base = ({
           />
         </DelayedLoadingAndErrorWrapper>
         {confirmationModal}
-      </SidebarCacheFormBody>
+      </Stack>
     </SidesheetSubPage>
   );
 };
