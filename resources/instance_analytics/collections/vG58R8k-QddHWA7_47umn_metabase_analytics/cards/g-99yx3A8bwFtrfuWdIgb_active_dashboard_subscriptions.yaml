@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -400,7 +399,11 @@ result_metadata:
     - v_subscriptions
     - creator_id
   - null
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_fields
+  - active
   id:
   - Internal Metabase Database
   - public
@@ -516,10 +519,10 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Dashboard
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
-    : column_title: Creator
+    '["name","full_name"]':
+      column_title: Creator
+    '["name","name"]':
+      column_title: Dashboard
   table.cell_column: schedule_hour
   table.columns:
   - enabled: false
@@ -660,7 +663,6 @@ serdes/meta:
 - id: g-99yx3A8bwFtrfuWdIgb
   label: active_dashboard_subscriptions
   model: Card
-initially_published_at: null
-last_used_at: '2024-05-16T21:01:37.986341Z'
 metabase_version: vUNKNOWN (5c1ab5e)
+source_card_id: 5ojUtU9iE-DCggHdFPIll
 type: question
