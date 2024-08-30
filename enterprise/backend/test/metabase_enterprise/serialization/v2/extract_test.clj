@@ -32,9 +32,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2])
-  (:import
-   (java.time OffsetDateTime)))
+   [toucan2.core :as t2]))
 
 (comment
   ;; Use this spell in your test body to add the given fixtures to the round trip baseline.
@@ -716,7 +714,7 @@
                    :creator_id  "ann@heart.band"
                    :definition  {:source-table ["My Database" nil "Schemaless Table"]
                                  :aggregation [[:sum [:field ["My Database" nil "Schemaless Table" "Some Field"] nil]]]}
-                   :created_at  OffsetDateTime}
+                   :created_at  string?}
                   ser))
           (is (not (contains? ser :id)))
 
