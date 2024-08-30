@@ -82,11 +82,11 @@ describeEE("scenarios > premium > content verification", () => {
         // 2. Question's history
         questionInfoButton().click();
         sidesheet().within(() => {
+          cy.findByText(/You verified this/);
           cy.findByRole("tab", { name: "History" }).click();
-          cy.findAllByText("You verified this")
-            .should("have.length", 2)
-            .and("be.visible");
+          cy.findByText("You verified this");
         });
+        cy.findByLabelText("Close").click();
 
         // 3. Recently viewed list
         openCommandPalette();
@@ -125,6 +125,7 @@ describeEE("scenarios > premium > content verification", () => {
           cy.findByText("You removed verification");
           cy.findByText("You verified this"); // Implicit assertion - there can be only one :)
         });
+        cy.findByLabelText("Close").click();
 
         // 3. Recently viewed list
         openCommandPalette();
@@ -178,12 +179,11 @@ describeEE("scenarios > premium > content verification", () => {
 
         questionInfoButton().click();
         sidesheet().within(() => {
+          cy.findAllByText(/A moderator verified this/);
           cy.findByRole("tab", { name: "History" }).click();
-          cy.findAllByText("A moderator verified this").should(
-            "have.length",
-            2,
-          );
+          cy.findAllByText("A moderator verified this");
         });
+        cy.findByLabelText("Close").click();
 
         commandPaletteSearch("orders");
         cy.log("Verified content should show up higher in search results");
@@ -229,6 +229,7 @@ describeEE("scenarios > premium > content verification", () => {
         cy.contains(/created this./);
         cy.contains(/verified this/).should("not.exist");
       });
+      cy.findByLabelText("Close").click();
 
       commandPaletteSearch("orders");
       cy.log(
