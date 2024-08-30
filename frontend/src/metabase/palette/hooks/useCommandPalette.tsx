@@ -26,7 +26,7 @@ import {
 } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, type IconName } from "metabase/ui";
-import type { RecentItem } from "metabase-types/api";
+import { type RecentItem, isRecentTableItem } from "metabase-types/api";
 
 import type { PaletteAction } from "../types";
 import { filterRecentItems } from "../utils";
@@ -194,7 +194,6 @@ export const useCommandPalette = ({
               priority: Priority.NORMAL,
               perform: () => {
                 trackSearchClick("item", index, "command-palette");
-                dispatch(push(wrappedResult.getUrl()));
               },
               extra: {
                 isVerified: result.moderated_status === "verified",
@@ -240,13 +239,7 @@ export const useCommandPalette = ({
           name: getName(item),
           icon: icon.name,
           section: "recent",
-          perform: () => {
-            // Need to keep this logic here for when user selects via keyboard
-            const href = Urls.modelToUrl(item);
-            if (href) {
-              dispatch(push(href));
-            }
-          },
+          perform: () => {},
           extra: {
             isVerified:
               item.model !== "table" && item.moderated_status === "verified",
@@ -257,7 +250,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [dispatch, recentItems]);
+  }, [recentItems]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,
@@ -316,16 +309,21 @@ export const getSearchResultSubtext = (wrappedSearchResult: any) => {
       />
     )} ${wrappedSearchResult.model_name}`;
   } else {
-    return (
-      wrappedSearchResult.getCollection().name ||
-      wrappedSearchResult.database_name
-    );
+    if (wrappedSearchResult.model === "table") {
+      return wrappedSearchResult.table_schema
+        ? `${wrappedSearchResult.database_name} (${wrappedSearchResult.table_schema})`
+        : wrappedSearchResult.database_name;
+    } else {
+      return wrappedSearchResult.getCollection().name;
+    }
   }
 };
 
 export const getRecentItemSubtext = (item: RecentItem) => {
-  if (item.model === "table") {
-    return item.database.name;
+  if (isRecentTableItem(item)) {
+    return item.table_schema
+      ? `${item.database.name} (${item.table_schema})`
+      : item.database.name;
   } else if (item.parent_collection.id === null) {
     return ROOT_COLLECTION.name;
   } else {

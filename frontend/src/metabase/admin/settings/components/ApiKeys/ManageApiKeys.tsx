@@ -50,7 +50,7 @@ const columns = [
   { key: "masked_key", name: t`Key` },
   { key: "updated_by_name", name: t`Last modified by` },
   { key: "updated_at", name: t`Last modified on` },
-  { key: "actions", name: "" },
+  { key: "actions", name: "", sortable: false },
 ];
 
 function ApiKeysTable({

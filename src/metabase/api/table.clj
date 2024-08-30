@@ -8,6 +8,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.card :refer [Card]]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -64,11 +65,11 @@
         (t2/hydrate :db :pk_field)
         fix-schema)))
 
-(defn- update-table!*
+(mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} body]
-  {id ms/PositiveInt}
+  [{:keys [id] :as existing-table} :- [:map [:id ::lib.schema.id/table]]
+   body]
   (when-let [changes (not-empty (u/select-keys-when body
                                                     :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                                                     :present [:description :caveats :points_of_interest :visibility_type]))]

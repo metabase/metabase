@@ -123,6 +123,10 @@
    :model/Action
    (fn [_] {:creator_id (rasta-id)})
 
+   :model/Channel
+   (fn [_] (default-timestamped
+            {:name (u.random/random-name)}))
+
    :model/Dashboard
    (fn [_] (default-timestamped
             {:creator_id (rasta-id)

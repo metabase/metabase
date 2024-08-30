@@ -1588,3 +1588,15 @@
                     (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]
         (is (= [[20]] (mt/formatted-rows
                        [int] (qp/process-query query))))))))
+
+(deftest ^:parallel multiple-bucketings-of-a-column-test
+  (testing "Multiple bucketings of a column in a nested query should be returned (#46644)"
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+          created-at-field (lib.metadata/field mp (mt/id :orders :created_at))
+          base-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+                         (lib/breakout (lib/with-temporal-bucket created-at-field :week))
+                         (lib/breakout (lib/with-temporal-bucket created-at-field :month))
+                         (lib/limit 3))]
+      (is (=? (mt/rows (qp/process-query base-query))
+              (mt/rows (qp/process-query (lib/append-stage base-query))))))))

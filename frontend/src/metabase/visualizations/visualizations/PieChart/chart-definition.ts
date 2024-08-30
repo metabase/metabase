@@ -2,28 +2,39 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
+import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { nestedSettings } from "metabase/visualizations/lib/settings/nested";
 import {
   dimensionSetting,
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import {
-  getColors,
   getDefaultPercentVisibility,
   getDefaultShowLegend,
   getDefaultSliceThreshold,
+  getDefaultSortRows,
+  getPieRows,
 } from "metabase/visualizations/shared/settings/pie";
+import { SERIES_SETTING_KEY } from "metabase/visualizations/shared/settings/series";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  VisualizationDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
+
+import { SliceNameWidget } from "./SliceNameWidget";
 
 export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   uiName: t`Pie`,
@@ -79,6 +90,98 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       title: t`Dimension`,
       showColumnSetting: true,
     }),
+    "pie.rows": {
+      section: t`Data`,
+      widget: ChartSettingOrderedSimple,
+      getHidden: (_rawSeries, settings) => settings["pie.dimension"] == null,
+      getValue: (rawSeries, settings) => {
+        return getPieRows(rawSeries, settings, (value, options) =>
+          String(formatValue(value, options)),
+        );
+      },
+      getProps: (
+        _rawSeries,
+        vizSettings: ComputedVisualizationSettings,
+        onChange,
+        _extra,
+        onChangeSettings,
+      ) => {
+        return {
+          onChangeSeriesColor: (sliceKey: string, color: string) => {
+            const pieRows = vizSettings["pie.rows"];
+            if (pieRows == null) {
+              throw Error("Missing `pie.rows` setting");
+            }
+
+            onChange(
+              pieRows.map(row => {
+                if (row.key !== sliceKey) {
+                  return row;
+                }
+                return { ...row, color, defaultColor: false };
+              }),
+            );
+          },
+          onSortEnd: (newPieRows: PieRow[]) =>
+            onChangeSettings({
+              "pie.sort_rows": false,
+              "pie.rows": newPieRows,
+            }),
+        };
+      },
+      readDependencies: [
+        "pie.dimension",
+        "pie.metric",
+        "pie.colors",
+        "pie.sort_rows",
+        "pie.slice_threshold",
+      ],
+    },
+    "pie.sort_rows": {
+      hidden: true,
+      getDefault: getDefaultSortRows,
+    },
+    ...nestedSettings(SERIES_SETTING_KEY, {
+      widget: SliceNameWidget,
+      getHidden: (
+        [{ card }]: RawSeries,
+        _settings: ComputedVisualizationSettings,
+        { isDashboard }: { isDashboard: boolean },
+      ) => !isDashboard || card?.display === "waterfall",
+      getSection: (
+        _series: RawSeries,
+        _settings: ComputedVisualizationSettings,
+        { isDashboard }: { isDashboard: boolean },
+      ) => (isDashboard ? t`Display` : t`Style`),
+      marginBottom: "0",
+      getProps: (
+        _series: any,
+        vizSettings: ComputedVisualizationSettings,
+        _onChange: any,
+        _extra: any,
+        onChangeSettings: (newSettings: ComputedVisualizationSettings) => void,
+      ) => {
+        const pieRows = vizSettings["pie.rows"];
+        if (pieRows == null) {
+          return { pieRows: [], updateRowName: () => null };
+        }
+
+        return {
+          pieRows,
+          updateRowName: (newName: string, key: string | number) => {
+            onChangeSettings({
+              "pie.rows": pieRows.map(row => {
+                if (row.key !== key) {
+                  return row;
+                }
+                return { ...row, name: newName };
+              }),
+            });
+          },
+        };
+      },
+      readDependencies: ["pie.rows"],
+    } as any), // any type cast needed to avoid type error from confusion with destructured object params in `nestedSettings`
     ...metricSetting("pie.metric", {
       section: t`Data`,
       title: t`Measure`,
@@ -132,68 +235,5 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       widget: "number",
       getDefault: getDefaultSliceThreshold,
     },
-    "pie.colors": {
-      section: t`Display`,
-      title: t`Colors`,
-      widget: "colors",
-      getValue: getColors,
-      getProps: (series, settings) => ({
-        seriesValues: settings["pie._dimensionValues"] || [],
-        seriesTitles: settings["pie._dimensionTitles"] || [],
-      }),
-      getDisabled: (series, settings) => !settings["pie._dimensionValues"],
-    },
-    "pie._dimensionIndex": {
-      getValue: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => _.findIndex(cols, col => col.name === settings["pie.dimension"]),
-      readDependencies: ["pie.dimension"],
-    },
-    "pie._dimensionValues": {
-      getValue: (
-        [
-          {
-            data: { rows },
-          },
-        ],
-        settings,
-      ) => {
-        const dimensionIndex = settings["pie._dimensionIndex"];
-        if (dimensionIndex == null || dimensionIndex < 0) {
-          return null;
-        }
-
-        return rows.map(row => String(row[dimensionIndex]));
-      },
-      readDependencies: ["pie._dimensionIndex"],
-    },
-    "pie._dimensionTitles": {
-      getValue: (
-        [
-          {
-            data: { rows, cols },
-          },
-        ],
-        settings,
-      ) => {
-        const dimensionIndex = settings["pie._dimensionIndex"];
-        if (dimensionIndex == null || dimensionIndex < 0) {
-          return null;
-        }
-
-        return rows.map(row =>
-          formatValue(
-            row[dimensionIndex],
-            settings.column(cols[dimensionIndex]),
-          ),
-        );
-      },
-      readDependencies: ["pie._dimensionIndex"],
-    },
-  },
+  } as VisualizationSettingsDefinitions,
 };
