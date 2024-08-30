@@ -17,9 +17,7 @@ describe("SettingsEditor", () => {
       });
 
       await userEvent.click(screen.getByText("Embedding"));
-      expect(
-        screen.getByText("Interactive embedding with iframes"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
       expect(
         screen.getByText(/Embed dashboards, questions/),
       ).toBeInTheDocument();
@@ -32,9 +30,7 @@ describe("SettingsEditor", () => {
         initialRoute: FULL_APP_EMBEDDING_URL,
       });
 
-      expect(
-        screen.getByText("Interactive embedding with iframes"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
       expect(
         screen.getByText(/Embed dashboards, questions/),
       ).toBeInTheDocument();

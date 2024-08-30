@@ -41,8 +41,8 @@ export function EmbeddingSettings({
           />
         </SetByEnvVarWrapper>
         <StaticEmbeddingOptionCard />
-        <InteractiveEmbeddingOptionCard />
         <EmbeddingSdkOptionCard />
+        <InteractiveEmbeddingOptionCard />
       </Stack>
     </Box>
   );

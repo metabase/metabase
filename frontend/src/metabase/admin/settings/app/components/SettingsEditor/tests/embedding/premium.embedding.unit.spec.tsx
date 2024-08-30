@@ -60,7 +60,7 @@ describe("[EE, with token] embedding settings", () => {
         expect(
           within(
             screen.getByRole("article", {
-              name: "Interactive embedding with iframes",
+              name: "Interactive embedding",
             }),
           ).getByRole("button", { name: "Configure" }),
         ).toBeDisabled();

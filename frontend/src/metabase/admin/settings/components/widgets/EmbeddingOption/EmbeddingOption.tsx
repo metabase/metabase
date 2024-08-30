@@ -78,7 +78,7 @@ export const StaticEmbeddingOptionCard = () => {
           })}
         />
       }
-      title={t`Static embedding with iframes`}
+      title={t`Static embedding`}
       description={jt`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.${
         shouldPromptToUpgrade && (
           <Text size="sm" mt="xs" key="upgrade-text">
@@ -97,6 +97,30 @@ export const StaticEmbeddingOptionCard = () => {
     </EmbeddingOption>
   );
 };
+
+export function EmbeddingSdkOptionCard() {
+  const isEmbeddingEnabled = useSetting("enable-embedding");
+  const isEE = PLUGIN_EMBEDDING.isEnabled();
+
+  return (
+    <EmbeddingOption
+      icon={
+        <SdkIcon
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: !isEmbeddingEnabled,
+          })}
+        />
+      }
+      title={t`Embedding SDK for React`}
+      label={t`PRO & ENTERPRISE`}
+      description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
+    >
+      <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
+        {!isEE ? t`Try it out` : t`Configure`}
+      </LinkButton>
+    </EmbeddingOption>
+  );
+}
 
 export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
@@ -119,7 +143,7 @@ export const InteractiveEmbeddingOptionCard = () => {
           })}
         />
       }
-      title={t`Interactive embedding with iframes`}
+      title={t`Interactive embedding`}
       label={t`PRO & ENTERPRISE`}
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
@@ -154,30 +178,6 @@ export const InteractiveEmbeddingOptionCard = () => {
     </EmbeddingOption>
   );
 };
-
-export function EmbeddingSdkOptionCard() {
-  const isEmbeddingEnabled = useSetting("enable-embedding");
-  const isEE = PLUGIN_EMBEDDING.isEnabled();
-
-  return (
-    <EmbeddingOption
-      icon={
-        <SdkIcon
-          className={cx(EmbeddingOptionStyle.icon, {
-            [EmbeddingOptionStyle.disabled]: !isEmbeddingEnabled,
-          })}
-        />
-      }
-      title={t`Interactive embedding SDK for React`}
-      label={t`PRO & ENTERPRISE`}
-      description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
-    >
-      <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
-        {!isEE ? t`Try it out` : t`Configure`}
-      </LinkButton>
-    </EmbeddingOption>
-  );
-}
 
 // component={Link} breaks the styling when the button is disabled
 // disabling a link button doesn't look like a common enough scenario to make an exported component

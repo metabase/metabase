@@ -118,7 +118,7 @@ const goToInteractiveEmbeddingSettings = async () => {
   await userEvent.click(
     within(
       screen.getByRole("article", {
-        name: "Interactive embedding with iframes",
+        name: "Interactive embedding",
       }),
     ).getByText("Configure"),
   );

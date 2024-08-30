@@ -51,7 +51,7 @@ describe("SettingsEditor", () => {
     expect(
       within(
         screen.getByRole("article", {
-          name: "Interactive embedding with iframes",
+          name: "Interactive embedding",
         }),
       ).getByRole("link", { name: "Learn More" }),
     ).toBeInTheDocument();
