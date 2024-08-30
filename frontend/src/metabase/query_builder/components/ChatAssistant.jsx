@@ -49,6 +49,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
     const [cardHash, setCardHash] = useState([]);
     const [id, setId] = useState(0);
     const [useTextArea, setUseTextArea] = useState(false);
+    const [showError, setShowError] = useState(false);
     const [error, setError] = useState(null);
     const [toolWaitingResponse, setToolWaitingResponse] = useState(null);
     const [approvalChangeButtons, setApprovalChangeButtons] = useState(false);
@@ -224,6 +225,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             setCardHash(prevCardHash => Array.isArray(prevCardHash) ? [...prevCardHash, hash1] : [hash1]);              
         } catch (error) {
             console.error("Error fetching card content:", error);
+            setShowError(true)
             setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
@@ -277,6 +279,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             
         } catch (error) {
             console.error("Error fetching card content:", error);
+            setShowError(true)
             setError("There was an error fetching the dataset. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
@@ -315,6 +318,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
 
         } catch (error) {
             console.error("Error fetching card content:", error);
+            setShowError(true)
             setError("There was an error fetching the insights. Please provide feedback if this issue persists.");
         } finally {
             setIsLoading(false);
@@ -586,6 +590,7 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
                         approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
                         card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
+                        showError={showError}
                     />
                             <div
                                 style={{

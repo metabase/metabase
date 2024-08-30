@@ -60,9 +60,14 @@ const ChatHistory = ({ setSelectedChatHistory, setThreadId, type, setOldCardId }
       const filteredGroups = rawChatGroups.filter((group: any) =>
         Array.isArray(group.agent_name) && group.agent_name.includes(type)
       );
-      const chatGroups = filteredGroups.filter((group: any) =>
-        Array.isArray(group.card_id) && group.card_id.length > 0
-      );
+      let chatGroups;
+      if(type == "getInsights") {
+        chatGroups = filteredGroups;
+      } else {
+        chatGroups = filteredGroups.filter((group: any) =>
+          Array.isArray(group.card_id) && group.card_id.length > 0
+        );
+      }
 
       const today = dayjs().startOf("day");
       const last7Days = dayjs().subtract(7, "day").startOf("day");

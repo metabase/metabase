@@ -4,9 +4,10 @@ import CS from "metabase/css/core/index.css";
 import cx from "classnames";
 import { Box, Button, Icon, Textarea, Loader, Flex } from "metabase/ui";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
+import { MonospaceErrorDisplay } from "../ErrorDetails/ErrorDetails.styled";
 import { Skeleton } from "metabase/ui";
 
-const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick, card, defaultQuestion, result, openModal, insightsList }) => {
+const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick, card, defaultQuestion, result, openModal, insightsList, showError }) => {
   const messageEndRef = useRef(null);
 
   useEffect(() => {
@@ -61,10 +62,16 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
                  alignItems: "center",
                }}
              >
-               <div style={{display:"flex", flexDirection: "column", justifyContent:"center", alignItems: "center"}}>
-                <span>Please wait till results are loaded...</span>
-                <Loader/>
-               </div>
+               {showError ? (
+                 <MonospaceErrorDisplay>
+                 Sorry there was some issue loading the result
+               </MonospaceErrorDisplay>
+               ) : (
+                 <div style={{display:"flex", flexDirection: "column", justifyContent:"center", alignItems: "center"}}>
+                   <span>Please wait till results are loaded...</span>
+                   <Loader/>
+                 </div>
+               )}
              </Skeleton>
              
             ):(
