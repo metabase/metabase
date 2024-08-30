@@ -71,13 +71,14 @@
                 user-attributes    (:login_attributes @api/*current-user*)
                 role               (get user-attributes role-attribute)]
             (cond
-              (and (some? role) (not (string? role)))
-              (throw (ex-info (tru "Connection impersonation attribute is invalid: role must be a single string.")
+              (nil? role)
+              (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
                               {:user-id api/*current-user-id*
                                :conn-impersonations conn-impersonations}))
 
-              (str/blank? role)
-              (throw (ex-info (tru "User does not have attribute required for connection impersonation.")
+              (or (not (string? role))
+                  (str/blank? role))
+              (throw (ex-info (tru "Connection impersonation attribute is invalid: role must be a single non-empty string.")
                               {:user-id api/*current-user-id*
                                :conn-impersonations conn-impersonations}))
               :else

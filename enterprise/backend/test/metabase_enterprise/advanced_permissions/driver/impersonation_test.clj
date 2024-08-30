@@ -70,7 +70,7 @@
                                                  :attributes     {"impersonation_attr" ["one" "two" "three"]}}
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Connection impersonation attribute is invalid: role must be a single string."
+           #"Connection impersonation attribute is invalid: role must be a single non-empty string."
            (@#'impersonation/connection-impersonation-role (mt/db)))))))
 
 (deftest conn-impersonation-test-postgres
