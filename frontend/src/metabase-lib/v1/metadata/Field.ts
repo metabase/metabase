@@ -546,7 +546,7 @@ class FieldInner extends Base {
 
   isJsonUnfolded() {
     const database = this.table?.database;
-    return this.json_unfolding ?? database?.details["json-unfolding"] ?? true;
+    return this.json_unfolding ?? database?.details?.["json-unfolding"] ?? true;
   }
 
   canUnfoldJson() {

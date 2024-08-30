@@ -93,7 +93,11 @@
                                 :type        "select"
                                 :displayName "Post to"
                                 :options     []
-                                :required    true}]}})
+                                :required    true}]}
+   :http  {:type              "http"
+           :name              "Webhook"
+           :allows_recipients false
+           :schedules         [:hourly :daily :weekly :monthly]}})
 
 (defn channel-type?
   "Is `channel-type` a valid value as a channel type? :tv:"
@@ -296,7 +300,7 @@
 (defn create-pulse-channel!
   "Create a new `PulseChannel` along with all related data associated with the channel such as
   `PulseChannelRecipients`."
-  [{:keys [channel_type details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
+  [{:keys [channel_type channel_id details enabled pulse_id recipients schedule_type schedule_day schedule_hour schedule_frame]
     :or   {details          {}
            recipients       []}}]
   {:pre [(channel-type? channel_type)
@@ -307,20 +311,21 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        {:keys [id]}       (first (t2/insert-returning-instances!
-                                   PulseChannel
-                                   :pulse_id       pulse_id
-                                   :channel_type   channel_type
-                                   :details        (cond-> details
-                                                     (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
-                                   :enabled        enabled
-                                   :schedule_type  schedule_type
-                                   :schedule_hour  (when (not= schedule_type :hourly)
-                                                     schedule_hour)
-                                   :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
-                                                     schedule_day)
-                                   :schedule_frame (when (= schedule_type :monthly)
-                                                     schedule_frame)))]
+        id                 (t2/insert-returning-pk!
+                            PulseChannel
+                            :pulse_id       pulse_id
+                            :channel_type   channel_type
+                            :channel_id     channel_id
+                            :details        (cond-> details
+                                              (supports-recipients? channel_type) (assoc :emails (get recipients-by-type false)))
+                            :enabled        enabled
+                            :schedule_type  schedule_type
+                            :schedule_hour  (when (not= schedule_type :hourly)
+                                              schedule_hour)
+                            :schedule_day   (when (contains? #{:weekly :monthly} schedule_type)
+                                              schedule_day)
+                            :schedule_frame (when (= schedule_type :monthly)
+                                              schedule_frame))]
     (when (and (supports-recipients? channel_type) (seq (get recipients-by-type true)))
       (update-recipients! id (get recipients-by-type true)))
     ;; return the id of our newly created channel
