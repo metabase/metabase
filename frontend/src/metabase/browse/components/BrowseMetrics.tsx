@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import NoResults from "assets/img/metrics_bot.svg";
+import { useListRecentsQuery } from "metabase/api";
 import { useFetchMetrics } from "metabase/common/hooks/use-fetch-metrics";
 import EmptyState from "metabase/components/EmptyState";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
@@ -15,15 +17,23 @@ import {
   BrowseSection,
 } from "./BrowseContainer.styled";
 import { MetricsTable } from "./MetricsTable";
+import { RecentMetrics } from "./RecentMetrics";
+import { getMaxRecentItemsCount } from "./utils";
 
 export function BrowseMetrics() {
   const metricsResult = useFetchMetrics({
     filter_items_in_personal_collection: "exclude",
     model_ancestors: false,
   });
+
   const metrics = metricsResult.data?.data as MetricResult[] | undefined;
 
+  const recentMetricsResult = useRecentMetrics(metrics);
+  const recentMetrics = recentMetricsResult.data;
+
   const isEmpty = !metricsResult.isLoading && !metrics?.length;
+  const isLoading = metricsResult.isLoading || recentMetricsResult.isLoading;
+  const error = metricsResult.error || recentMetricsResult.error;
 
   return (
     <BrowseContainer>
@@ -56,11 +66,12 @@ export function BrowseMetrics() {
               <MetricsEmptyState />
             ) : (
               <DelayedLoadingAndErrorWrapper
-                error={metricsResult.error}
-                loading={metricsResult.isLoading}
+                error={error}
+                loading={isLoading}
                 style={{ flex: 1 }}
                 loader={<MetricsTable skeleton />}
               >
+                <RecentMetrics metrics={recentMetrics} />
                 <MetricsTable metrics={metrics} />
               </DelayedLoadingAndErrorWrapper>
             )}
@@ -87,4 +98,19 @@ function MetricsEmptyState() {
       </Box>
     </Flex>
   );
+}
+
+function useRecentMetrics(metrics: MetricResult[] | undefined) {
+  const { data, isLoading, error } = useListRecentsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
+
+  const recentMetrics = useMemo(() => {
+    const maxRecentMetricsCount = getMaxRecentItemsCount(metrics?.length);
+    return data
+      ?.filter(recent => recent.model === "metric")
+      ?.slice(0, maxRecentMetricsCount);
+  }, [data, metrics]);
+
+  return { data: recentMetrics, isLoading, error };
 }
