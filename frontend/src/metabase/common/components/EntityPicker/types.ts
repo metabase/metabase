@@ -33,11 +33,7 @@ export type EntityTabRenderProps<
   onItemSelect: (item: Item) => void;
 };
 
-/**
- * It's not really an "entity" tab, as it is also used for recents and search tabs
- * TODO: rename
- */
-export type EntityTab<
+export type EntityPickerTab<
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
@@ -45,10 +41,13 @@ export type EntityTab<
   displayName: string;
   render: (props: EntityTabRenderProps<Id, Model, Item>) => JSX.Element;
   icon: IconName;
-  model: TabId<Model>;
+  model: EntityPickerTabId<Model>;
 };
 
-export type TabId<Model extends string> = Model | "recents" | "search";
+export type EntityPickerTabId<Model extends string> =
+  | Model
+  | "recents"
+  | "search";
 
 export type ListProps<
   Id,

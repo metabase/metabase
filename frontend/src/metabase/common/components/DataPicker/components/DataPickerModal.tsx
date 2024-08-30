@@ -11,7 +11,7 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import { QuestionPicker } from "../../QuestionPicker";
@@ -121,7 +121,7 @@ export const DataPickerModal = ({
   );
 
   const tabs = useMemo(() => {
-    const computedTabs: EntityTab<
+    const computedTabs: EntityPickerTab<
       DataPickerItem["id"],
       DataPickerItem["model"],
       DataPickerItem

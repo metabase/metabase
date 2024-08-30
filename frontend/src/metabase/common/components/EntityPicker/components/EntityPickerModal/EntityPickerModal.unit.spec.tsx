@@ -18,7 +18,7 @@ import {
   createMockSearchResults,
 } from "metabase-types/api/mocks";
 
-import type { EntityTab, TypeWithModel } from "../../types";
+import type { EntityPickerTab, TypeWithModel } from "../../types";
 
 import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
@@ -26,7 +26,7 @@ import { EntityPickerModal } from "./EntityPickerModal";
 type SampleId = number;
 type SampleModel = "card" | "table";
 type SampleItem = TypeWithModel<SampleId, SampleModel>;
-type SampleTab = EntityTab<SampleId, SampleModel, SampleItem>;
+type SampleTab = EntityPickerTab<SampleId, SampleModel, SampleItem>;
 
 interface SetupOpts {
   title?: string;

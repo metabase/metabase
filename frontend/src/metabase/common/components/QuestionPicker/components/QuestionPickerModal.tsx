@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
@@ -85,7 +85,7 @@ export const QuestionPickerModal = ({
     }
   };
 
-  const tabs: EntityTab<
+  const tabs: EntityPickerTab<
     QuestionPickerItem["id"],
     QuestionPickerItem["model"],
     QuestionPickerItem

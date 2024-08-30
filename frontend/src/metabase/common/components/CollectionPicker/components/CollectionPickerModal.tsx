@@ -5,7 +5,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import type { EntityTab } from "../../EntityPicker";
+import type { EntityPickerTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
 import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
@@ -106,7 +106,7 @@ export const CollectionPickerModal = ({
     : [];
 
   const tabs: [
-    EntityTab<
+    EntityPickerTab<
       CollectionPickerItem["id"],
       CollectionPickerItem["model"],
       CollectionPickerItem

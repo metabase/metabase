@@ -18,7 +18,7 @@ import type {
 
 import type {
   EntityPickerOptions,
-  EntityTab,
+  EntityPickerTab,
   TabFolderState,
   TypeWithModel,
 } from "../../types";
@@ -73,7 +73,7 @@ export interface EntityPickerModalProps<
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
-  tabs: EntityTab<Id, Model, Item>[];
+  tabs: EntityPickerTab<Id, Model, Item>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   recentFilter?: (results: RecentItem[]) => RecentItem[];
@@ -153,8 +153,8 @@ export function EntityPickerModal<
       : relevantModelRecents;
   }, [recentItems, tabModels, recentFilter]);
 
-  const tabs: EntityTab<Id, Model, Item>[] = useMemo(() => {
-    const computedTabs: EntityTab<Id, Model, Item>[] = [];
+  const tabs: EntityPickerTab<Id, Model, Item>[] = useMemo(() => {
+    const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
     const hasRecentsTab =
       hydratedOptions.hasRecents && filteredRecents.length > 0;
     const hasSearchTab = !!searchQuery;

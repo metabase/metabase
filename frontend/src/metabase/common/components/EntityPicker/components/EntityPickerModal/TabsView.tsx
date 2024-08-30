@@ -2,7 +2,7 @@ import { Icon, Tabs } from "metabase/ui";
 import type { SearchResultId } from "metabase-types/api";
 
 import type {
-  EntityTab,
+  EntityPickerTab,
   EntityTabRenderProps,
   TypeWithModel,
 } from "../../types";
@@ -13,7 +13,7 @@ interface Props<
   Item extends TypeWithModel<Id, Model>,
 > {
   selectedTab: Model | "recents" | "search";
-  tabs: EntityTab<Id, Model | "recents" | "search", Item>[];
+  tabs: EntityPickerTab<Id, Model | "recents" | "search", Item>[];
   onItemSelect: EntityTabRenderProps<Id, Model, Item>["onItemSelect"];
   onTabChange: (model: Model | "recents" | "search") => void;
 }

@@ -9,7 +9,7 @@ import type {
   SearchResultId,
 } from "metabase-types/api";
 
-import type { EntityTab, TypeWithModel } from "./types";
+import type { EntityPickerTab, TypeWithModel } from "./types";
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
@@ -54,7 +54,7 @@ export const computeInitialTab = <
   defaultToRecentTab,
 }: {
   initialValue?: Partial<Item>;
-  tabs: EntityTab<Id, Model, Item>[];
+  tabs: EntityPickerTab<Id, Model, Item>[];
   defaultToRecentTab: boolean;
 }): { model: Model | "search" | "recents" } => {
   const hasRecents = tabs.some(tab => tab.model === "recents");
