@@ -1,5 +1,4 @@
-import { type ComponentType, useMemo } from "react";
-import { useEffectOnce } from "react-use";
+import type { ComponentType } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { Flex } from "metabase/ui";
@@ -58,13 +57,7 @@ export function NestedItemPicker<
     }
   };
 
-  const lastSelectedItem = useMemo(() => findLastSelectedItem(path), [path]);
-
-  useEffectOnce(() => {
-    if (lastSelectedItem && isFolder(lastSelectedItem)) {
-      onFolderSelect({ folder: lastSelectedItem });
-    }
-  });
+  const lastSelectedItem = findLastSelectedItem(path);
 
   return (
     <AutoScrollBox
