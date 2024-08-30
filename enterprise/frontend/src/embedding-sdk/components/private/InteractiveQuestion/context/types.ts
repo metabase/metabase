@@ -8,6 +8,7 @@ import type { Mode } from "metabase/visualizations/click-actions/Mode";
 export type InteractiveQuestionConfig = {
   componentPlugins?: SdkPluginsConfig;
   onNavigateBack?: () => void;
+  enableSave?: boolean;
 };
 
 export type QuestionMockLocationParameters = {
@@ -27,7 +28,7 @@ export type InteractiveQuestionContextType = Omit<
   LoadQuestionHookResult,
   "loadQuestion"
 > &
-  Pick<InteractiveQuestionConfig, "onNavigateBack"> & {
+  Pick<InteractiveQuestionConfig, "onNavigateBack" | "enableSave"> & {
     plugins: SdkPluginsConfig | null;
     mode: Mode | null | undefined;
     resetQuestion: () => void;

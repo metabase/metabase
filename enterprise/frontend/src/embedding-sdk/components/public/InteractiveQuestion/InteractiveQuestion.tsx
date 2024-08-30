@@ -26,12 +26,14 @@ import type { CardId } from "metabase-types/api";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: CardId;
+  enableSave?: boolean;
   plugins?: SdkPluginsConfig;
 }>;
 
 export const _InteractiveQuestion = ({
   questionId,
   withResetButton = true,
+  enableSave = true,
   withTitle = false,
   customTitle,
   plugins,
@@ -40,7 +42,11 @@ export const _InteractiveQuestion = ({
 }: InteractiveQuestionProps &
   InteractiveQuestionResultProps): JSX.Element | null => {
   return (
-    <InteractiveQuestionProvider cardId={questionId} componentPlugins={plugins}>
+    <InteractiveQuestionProvider
+      cardId={questionId}
+      componentPlugins={plugins}
+      enableSave={enableSave}
+    >
       {children ?? (
         <InteractiveQuestionResult
           height={height}
