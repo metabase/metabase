@@ -13,6 +13,7 @@ import {
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import { getBreakoutDistinctValues } from "metabase/visualizations/echarts/cartesian/model/series";
 import type {
+  BaseSeriesModel,
   ChartDataset,
   DataKey,
   Datum,
@@ -623,7 +624,7 @@ const interpolateTimeSeriesData = (
 
 export function scaleDataset(
   dataset: ChartDataset,
-  seriesModels: SeriesModel[],
+  seriesModels: BaseSeriesModel[],
   settings: ComputedVisualizationSettings,
 ): ChartDataset {
   const scalingByDataKey: Record<DataKey, number> = {};
