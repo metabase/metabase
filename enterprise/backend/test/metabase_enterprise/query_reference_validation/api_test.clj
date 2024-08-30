@@ -240,8 +240,8 @@
               :data
               [{:id card-3}
                {:id card-2}
-               {:id card-1}
-               {:id card-5}]}
+               {:id card-5}
+               {:id card-1}]}
              (-> (get! {:sort_column "collection" :sort_direction "desc"})
                  (select-keys [:total :data])
                  (with-data-keys [:id]))))
