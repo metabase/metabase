@@ -90,7 +90,7 @@
         (do-with-mysql-local-infile-off thunk)))))
 
 (defmacro ^:private with-mysql-local-infile-on-and-off
-  "Exectute the body with local_infile on, and then again with local_infile off"
+  "Execute the body with local_infile on, and then again with local_infile off"
   [& body]
   `(do-with-mysql-local-infile-on-and-off (fn [] ~@body)))
 
@@ -415,45 +415,46 @@
 
 (deftest create-from-csv-display-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (let [test-names-match (fn [table expected]
-                             (is (= expected
-                                    (:display_name table)
-                                    (:name (table->card table)))))]
-      (testing "The table's display name and model's name is humanized from the CSV file name"
-        (let [csv-file-prefix "some_FILE-prefix"]
-          (do-with-uploaded-example-csv!
-           {:csv-file-prefix csv-file-prefix}
-           (fn [model]
-             (with-upload-table! [table (card->table model)]
-               (test-names-match table "Some File Prefix"))))))
-      (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
-        (let [csv-file-prefix "出色的"]
-          (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+    (with-mysql-local-infile-on-and-off
+      (let [test-names-match (fn [table expected]
+                               (is (= expected
+                                      (:display_name table)
+                                      (:name (table->card table)))))]
+        (testing "The table's display name and model's name is humanized from the CSV file name"
+          (let [csv-file-prefix "some_FILE-prefix"]
             (do-with-uploaded-example-csv!
              {:csv-file-prefix csv-file-prefix}
              (fn [model]
                (with-upload-table! [table (card->table model)]
-                 (test-names-match table "出色的")
-                 (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
-                        (:name table)))))))))
-      (testing "The names should be truncated to the right size"
-        ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
-        (let [max-bytes 50]
-          (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
-                        upload/max-bytes (constantly max-bytes)]
-            (doseq [^String c ["a" "出"]]
-              (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
-                    char-size            (count (.getBytes ^String c "UTF-8"))]
-                (do-with-uploaded-example-csv!
-                 {:csv-file-prefix long-csv-file-prefix}
-                 (fn [model]
-                   (with-upload-table! [table (card->table model)]
-                     (testing "The card name should be truncated to max bytes with UTF-8 encoding"
-                       (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
-                              (:name (table->card table)))))
-                     (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
-                       (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
-                              (:display_name table)))))))))))))))
+                 (test-names-match table "Some File Prefix"))))))
+        (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
+          (let [csv-file-prefix "出色的"]
+            (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+              (do-with-uploaded-example-csv!
+               {:csv-file-prefix csv-file-prefix}
+               (fn [model]
+                 (with-upload-table! [table (card->table model)]
+                   (test-names-match table "出色的")
+                   (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                          (:name table)))))))))
+        (testing "The names should be truncated to the right size"
+         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
+          (let [max-bytes 50]
+            (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
+                          upload/max-bytes (constantly max-bytes)]
+              (doseq [^String c ["a" "出"]]
+                (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
+                      char-size            (count (.getBytes ^String c "UTF-8"))]
+                  (do-with-uploaded-example-csv!
+                   {:csv-file-prefix long-csv-file-prefix}
+                   (fn [model]
+                     (with-upload-table! [table (card->table model)]
+                       (testing "The card name should be truncated to max bytes with UTF-8 encoding"
+                         (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                                (:name (table->card table)))))
+                       (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
+                         (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                                (:display_name table))))))))))))))))
 
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
@@ -486,8 +487,7 @@
 (defn- query-table [table]
   (query (:db_id table) (:id table)))
 
-(defn- column-names-for-table
-  [table]
+(defn- column-names-for-table [table]
   (->> (query-table table)
        mt/cols
        (map (comp u/lower-case-en :name))))
@@ -743,6 +743,34 @@
                          [2 false]
                          [Long/MAX_VALUE true]])
                        (rows-for-table table)))))))))))
+
+(deftest create-from-csv-non-ascii-test
+  (testing "Upload a CSV file with a datetime column"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+        (with-upload-table!
+          [table (create-from-csv-and-sync-with-defaults!
+                  :file (csv-file-with ["ID,名前,年齢,職業,都市"
+                                        "1,佐藤太郎,25,エンジニア,東京"
+                                        "2,鈴木花子,30,デザイナー,大阪"
+                                        "3,田中一郎,28,マーケター,名古屋"
+                                        "4,山田次郎,35,プロジェクトマネージャー,福岡"
+                                        "5,中村美咲,32,データサイエンティスト,札幌"]))]
+          (testing "Check the data was uploaded into the table correctly"
+            (is (= #_(header-with-auto-pk ["ID" "名前" "年齢" "職業" "都市"])
+                 (header-with-auto-pk ["id"
+                                       "%e5%90%8d%e5%89%8d"
+                                       "%e5%b9%b4%e9%bd%a2"
+                                       "%e8%81%b7%e6%a5%ad"
+                                       "%e9%83%bd%e5%b8%82"])
+                   (column-names-for-table table)))
+            (is (= (rows-with-auto-pk
+                    [[1 "佐藤太郎" 25 "エンジニア" "東京"]
+                     [2 "鈴木花子" 30 "デザイナー" "大阪"]
+                     [3 "田中一郎" 28 "マーケター" "名古屋"]
+                     [4 "山田次郎" 35 "プロジェクトマネージャー" "福岡"]
+                     [5 "中村美咲" 32 "データサイエンティスト" "札幌"]])
+                   (rows-for-table table)))))))))
 
 (deftest create-from-csv-empty-header-test
   (testing "Upload a CSV file with a blank column name"
@@ -2265,6 +2293,6 @@
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
 
 (deftest unique-long-column-names-test
-  (let [original ["αbcdεf"     "αbcdεfg"   "αbc_2_etc" "αbc_3_xyz"]
+  (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
         expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))

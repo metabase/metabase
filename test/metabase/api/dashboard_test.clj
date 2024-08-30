@@ -111,8 +111,7 @@
                  (update :entity_id boolean)
                  (update :collection_id boolean)
                  (update :collection boolean)
-                 (cond->
-                  (:param_values dashboard)
+                 (cond-> (:param_values dashboard)
                    (update :param_values not-empty)))]
     (cond-> dash
       (contains? dash :last-edit-info)
@@ -4716,18 +4715,18 @@
           uncached-calls-count (atom 0)
           cached-calls-count   (atom 0)]
       ;; Get _uncached_ call count of t2/select count for :metadata/table
-      (with-redefs [t2/select (fn [& args]
-                                (when (= :metadata/table (first args))
-                                  (swap! uncached-calls-count inc))
-                                (apply original-select-fn args))]
+      (mt/with-dynamic-redefs [t2/select (fn [& args]
+                                           (when (= :metadata/table (first args))
+                                             (swap! uncached-calls-count inc))
+                                           (apply original-select-fn args))]
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id d)))
         (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id d))))
       ;; Get _cached_ call count of t2/select count for :metadata/table
       (let [load-id (str (random-uuid))]
-        (with-redefs [t2/select (fn [& args]
-                                  (when (= :metadata/table (first args))
-                                    (swap! cached-calls-count inc))
-                                  (apply original-select-fn args))]
+        (mt/with-dynamic-redefs [t2/select (fn [& args]
+                                             (when (= :metadata/table (first args))
+                                               (swap! cached-calls-count inc))
+                                             (apply original-select-fn args))]
           (mt/user-http-request :crowberto :get 200
                                 (format "dashboard/%d?dashboard_load_id=%s" (:id d) load-id))
           (mt/user-http-request :crowberto :get 200
@@ -4744,9 +4743,9 @@
         (let [original-metadata-table @#'lib.metadata.protocols/table
               providers               (atom [])
               load-id                 (str (random-uuid))]
-          (with-redefs [lib.metadata.protocols/table (fn [mp table-id]
-                                                       (swap! providers conj mp)
-                                                       (original-metadata-table mp table-id))]
+          (mt/with-dynamic-redefs [lib.metadata.protocols/table (fn [mp table-id]
+                                                                  (swap! providers conj mp)
+                                                                  (original-metadata-table mp table-id))]
             (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query"
                                                        (:id d) (:id dc1) (:id c1))
                                   {"dashboard_load_id" load-id})

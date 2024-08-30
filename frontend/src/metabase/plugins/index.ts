@@ -87,6 +87,11 @@ export const PLUGIN_ADMIN_TOOLS = {
   EXTRA_ROUTES: [],
 };
 
+export const PLUGIN_ADMIN_TROUBLESHOOTING = {
+  EXTRA_ROUTES: [] as ReactNode[],
+  GET_EXTRA_NAV: (): ReactNode[] => [],
+};
+
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
   sections: typeof ADMIN_SETTINGS_SECTIONS,

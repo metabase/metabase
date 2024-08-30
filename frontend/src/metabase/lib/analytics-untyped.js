@@ -1,14 +1,7 @@
 import * as Snowplow from "@snowplow/browser-tracker";
 
-import { shouldLogAnalytics } from "metabase/env";
 import Settings from "metabase/lib/settings";
 import { getUserId } from "metabase/selectors/user";
-
-export const createTracker = store => {
-  if (Settings.snowplowEnabled()) {
-    createSnowplowTracker(store);
-  }
-};
 
 export const trackPageView = url => {
   if (!url || !Settings.trackingEnabled()) {
@@ -19,39 +12,10 @@ export const trackPageView = url => {
     trackSnowplowPageView(getSanitizedUrl(url));
   }
 };
-
-export const trackSchemaEvent = (schema, version, data) => {
-  if (shouldLogAnalytics) {
-    const { event, ...other } = data;
-    // eslint-disable-next-line no-console
-    console.log(
-      `%c[SNOWPLOW EVENT]%c, ${event}`,
-      "background: #222; color: #bada55",
-      "color: ",
-      other,
-    );
-  }
-
-  if (!schema || !Settings.trackingEnabled()) {
-    return;
-  }
-
+export const createTracker = store => {
   if (Settings.snowplowEnabled()) {
-    trackSnowplowSchemaEvent(schema, version, data);
+    createSnowplowTracker(store);
   }
-};
-
-const createSnowplowTracker = store => {
-  Snowplow.newTracker("sp", Settings.snowplowUrl(), {
-    appId: "metabase",
-    platform: "web",
-    eventMethod: "post",
-    discoverRootDomain: true,
-    contexts: { webPage: true },
-    anonymousTracking: { withServerAnonymisation: true },
-    stateStorageStrategy: "none",
-    plugins: [createSnowplowPlugin(store)],
-  });
 };
 
 const createSnowplowPlugin = store => {
@@ -83,19 +47,23 @@ const createSnowplowPlugin = store => {
   };
 };
 
+const createSnowplowTracker = store => {
+  Snowplow.newTracker("sp", Settings.snowplowUrl(), {
+    appId: "metabase",
+    platform: "web",
+    eventMethod: "post",
+    discoverRootDomain: true,
+    contexts: { webPage: true },
+    anonymousTracking: { withServerAnonymisation: true },
+    stateStorageStrategy: "none",
+    plugins: [createSnowplowPlugin(store)],
+  });
+};
+
 const trackSnowplowPageView = url => {
   Snowplow.setReferrerUrl("#");
   Snowplow.setCustomUrl(url);
   Snowplow.trackPageView();
-};
-
-const trackSnowplowSchemaEvent = (schema, version, data) => {
-  Snowplow.trackSelfDescribingEvent({
-    event: {
-      schema: `iglu:com.metabase/${schema}/jsonschema/${version}`,
-      data,
-    },
-  });
 };
 
 const getSanitizedUrl = url => {
