@@ -118,12 +118,12 @@ export const setCardAndRun = (nextCard, { shouldUpdateUrl = true } = {}) => {
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
-        await loadCard(card.original_card_id, { dispatch, getState })
+      await loadCard(card.original_card_id, { dispatch, getState })
       : // Otherwise, use a current card as the original card if the card has been saved
       // This is needed for checking whether the card is in dirty state or not
       card.id
-      ? card
-      : null;
+        ? card
+        : null;
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
@@ -217,7 +217,7 @@ export const apiCreateQuestion = question => {
       createdQuestion,
       isBasedOnExistingQuestion(getState()),
     );
-        // Saving a card, locks in the current display as though it had been
+    // Saving a card, locks in the current display as though it had been
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
     const cardId = card.id
@@ -225,24 +225,38 @@ export const apiCreateQuestion = question => {
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
     const ws = new WebSocket(assistant_url);
 
-    ws.onopen = () => {
-      console.log("WebSocket connection opened.");
-      ws.send(
-        JSON.stringify({
-          type: "addDocuments",
-          data: {
-            pageContents: [name],
-            metadata: [{
-              databaseID: 1,
-              id: cardId,
-              type: "card" 
-            }],
-            docId: [cardId],
-          },
-        })
-      );
-      ws.close();
-    };
+    let companyName = '';
+    let cubeDatabase = null;
+
+    if (databases) {
+      cubeDatabase = databases.find(database => database.is_cube === true);
+      if (cubeDatabase) {
+        companyName = cubeDatabase.company_name;
+      }
+    }
+
+    if (cubeDatabase) {
+      ws.onopen = () => {
+        console.log("WebSocket connection opened.");
+        console.log("Websocket:", companyName);
+        ws.send(
+          JSON.stringify({
+            type: "addDocuments",
+            data: {
+              company_name: companyName,
+              pageContents: [name],
+              metadata: [{
+                databaseID: cubeDatabase.id,
+                id: cardId,
+                type: "card"
+              }],
+              docId: [cardId],
+            },
+          })
+        );
+        ws.close();
+      };
+    }
 
     ws.onmessage = (e) => {
       console.log("WebSocket Message:", e.data);
@@ -256,7 +270,7 @@ export const apiCreateQuestion = question => {
       console.log("WebSocket connection closed.");
     };
 
-   //ws.close();
+    //ws.close();
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
     await dispatch(loadMetadataForCard(card));
