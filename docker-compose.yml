@@ -18,13 +18,13 @@ services:
       - REACT_APP_SEMANTIC=${REACT_APP_SEMANTIC}
       - REACT_APP_WEBSOCKET_SERVER=${REACT_APP_WEBSOCKET_SERVER}
       - VERSION=${VERSION}
-      - HOSTNAME=${HOSTNAME}
+      - HOSTNAME_APP=${HOSTNAME_APP}
     restart: always
     networks:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.omnibase.rule=Host(`${HOSTNAME}`)"
+      - "traefik.http.routers.omnibase.rule=Host(`${HOSTNAME_APP}`)"
       - "traefik.http.routers.omnibase.entrypoints=websecure"
       - "traefik.http.routers.omnibase.tls.certResolver=letsencrypt"
       - "traefik.http.services.omnibase.loadbalancer.server.port=3000"
