@@ -86,7 +86,10 @@ export const useCommandPalette = ({
           ...searchResultsTemp,
           data: searchResultsTemp.data.map(datum => {
             if (datum.model === "card") {
-              return { ...datum, dashboard_id: 34 };
+              return {
+                ...datum,
+                dashboard_id: (window as any).dashboard_id ?? 34,
+              };
             }
 
             return datum;
@@ -105,7 +108,7 @@ export const useCommandPalette = ({
         if (item.model !== "card") {
           return item;
         }
-        return { ...item, dashboard_id: 34 };
+        return { ...item, dashboard_id: (window as any).dashboard_id ?? 34 };
       }) ?? undefined
     );
   }, [recentItemsTemp]);
