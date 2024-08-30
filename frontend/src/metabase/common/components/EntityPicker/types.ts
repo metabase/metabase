@@ -25,7 +25,7 @@ export type PickerStateItem<Item, Query> = {
 
 export type EntityPickerOptions = EntityPickerModalOptions;
 
-export type EntityTabRenderProps<
+export type EntityPickerTabRenderProps<
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
@@ -39,7 +39,7 @@ export type EntityPickerTab<
   Item extends TypeWithModel<Id, Model>,
 > = {
   displayName: string;
-  render: (props: EntityTabRenderProps<Id, Model, Item>) => JSX.Element;
+  render: (props: EntityPickerTabRenderProps<Id, Model, Item>) => JSX.Element;
   icon: IconName;
   model: EntityPickerTabId<Model>;
 };
