@@ -8,7 +8,7 @@ import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
 const QuestionEditorInner = () => {
-  const { queryResults, runQuestion, enableSave } =
+  const { queryResults, runQuestion, isSaveEnabled } =
     useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
@@ -46,7 +46,7 @@ const QuestionEditorInner = () => {
                   closeSaveForm();
                 }}
               />
-              {enableSave && (
+              {isSaveEnabled && (
                 <InteractiveQuestion.SaveButton onClick={openSaveForm} />
               )}
             </Group>
@@ -64,7 +64,7 @@ const QuestionEditorInner = () => {
         </Tabs.Panel>
       </Tabs>
 
-      {enableSave && isSaveFormOpen && (
+      {isSaveEnabled && isSaveFormOpen && (
         <Overlay center>
           <Paper>
             <InteractiveQuestion.SaveQuestionForm onClose={closeSaveForm} />
@@ -77,13 +77,13 @@ const QuestionEditorInner = () => {
 
 export const QuestionEditor = ({
   questionId,
-  enableSave,
+  isSaveEnabled,
   plugins,
 }: InteractiveQuestionProps) => (
   <InteractiveQuestion
     questionId={questionId}
     plugins={plugins}
-    enableSave={enableSave}
+    isSaveEnabled={isSaveEnabled}
   >
     <QuestionEditorInner />
   </InteractiveQuestion>

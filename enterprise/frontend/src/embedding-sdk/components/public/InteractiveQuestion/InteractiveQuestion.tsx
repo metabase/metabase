@@ -26,14 +26,14 @@ import type { CardId } from "metabase-types/api";
 
 export type InteractiveQuestionProps = PropsWithChildren<{
   questionId?: CardId;
-  enableSave?: boolean;
+  isSaveEnabled?: boolean;
   plugins?: SdkPluginsConfig;
 }>;
 
 export const _InteractiveQuestion = ({
   questionId,
   withResetButton = true,
-  enableSave = true,
+  isSaveEnabled = true,
   withTitle = false,
   customTitle,
   plugins,
@@ -45,7 +45,7 @@ export const _InteractiveQuestion = ({
     <InteractiveQuestionProvider
       cardId={questionId}
       componentPlugins={plugins}
-      enableSave={enableSave}
+      isSaveEnabled={isSaveEnabled}
     >
       {children ?? (
         <InteractiveQuestionResult

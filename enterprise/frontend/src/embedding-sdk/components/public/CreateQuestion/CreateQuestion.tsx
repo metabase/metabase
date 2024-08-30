@@ -4,12 +4,12 @@ import type { InteractiveQuestionProps } from "../InteractiveQuestion";
 
 type CreateQuestionProps = Pick<
   InteractiveQuestionProps,
-  "plugins" | "enableSave"
+  "plugins" | "isSaveEnabled"
 >;
 
 export const CreateQuestion = ({
   plugins,
-  enableSave,
+  isSaveEnabled,
 }: CreateQuestionProps = {}) => (
-  <QuestionEditor plugins={plugins} enableSave={enableSave} />
+  <QuestionEditor plugins={plugins} isSaveEnabled={isSaveEnabled} />
 );
