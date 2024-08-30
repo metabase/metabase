@@ -102,6 +102,7 @@ import timezoneTicksPlacement from "./timezone-ticks-placement.json";
 import trendComboLog from "./trend-combo-log.json";
 import trendComboPower from "./trend-combo-power.json";
 import trendCombo from "./trend-combo.json";
+import trendGoalLinesWithScalingPowScaleCustomRange from "./trend-goal-lines-with-scaling-pow-scale-custom-range.json";
 import trendMultiSeriesArea from "./trend-multi-series-area.json";
 import trendMultiSeriesBar from "./trend-multi-series-bar.json";
 import trendMultiSeriesLine from "./trend-multi-series-line.json";
@@ -232,4 +233,5 @@ export const data = {
   combinedWithInvalidSettings,
   stackedChartCustomYAxisRange,
   seriesOrderSettingsDoNotMatchSeriesCount,
+  trendGoalLinesWithScalingPowScaleCustomRange,
 };
