@@ -129,6 +129,7 @@ export const DataPickerModal = ({
 
     if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
       computedTabs.push({
+        id: "models-tab",
         displayName: t`Models`,
         model: "dataset" as const,
         icon: "model",
@@ -150,6 +151,7 @@ export const DataPickerModal = ({
 
     if (hasMetrics && hasNestedQueriesEnabled && models.includes("metric")) {
       computedTabs.push({
+        id: "metrics-tab",
         displayName: t`Metrics`,
         model: "metric" as const,
         icon: "metric",
@@ -171,6 +173,7 @@ export const DataPickerModal = ({
 
     if (models.includes("table")) {
       computedTabs.push({
+        id: "tables-tab",
         displayName: t`Tables`,
         model: "table" as const,
         icon: "table",
@@ -186,6 +189,7 @@ export const DataPickerModal = ({
 
     if (hasQuestions && hasNestedQueriesEnabled && models.includes("card")) {
       computedTabs.push({
+        id: "questions-tab",
         displayName: t`Saved questions`,
         model: "card" as const,
         icon: "folder",

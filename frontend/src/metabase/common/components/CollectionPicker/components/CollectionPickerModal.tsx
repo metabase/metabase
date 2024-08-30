@@ -113,8 +113,9 @@ export const CollectionPickerModal = ({
     >,
   ] = [
     {
+      id: "collections-tab",
       displayName: t`Collections`,
-      model: "collection",
+      model: "collection" as const,
       icon: "folder",
       render: ({ onItemSelect }) => (
         <CollectionPicker

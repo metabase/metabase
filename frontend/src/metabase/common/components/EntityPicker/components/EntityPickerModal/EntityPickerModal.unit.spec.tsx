@@ -49,6 +49,7 @@ const TestPicker = ({ name }: { name: string }) => (
 );
 
 const TEST_CARD_TAB: SampleTab = {
+  id: "cards-tab",
   icon: "audit",
   displayName: "All the foo",
   model: "card",
@@ -56,6 +57,7 @@ const TEST_CARD_TAB: SampleTab = {
 };
 
 const TEST_TABLE_TAB: SampleTab = {
+  id: "tables-tab",
   icon: "audit",
   displayName: "All the bar",
   model: "table",
@@ -139,15 +141,7 @@ describe("EntityPickerModal", () => {
 
   it("should show a tab list when more than 1 tab is supplied", async () => {
     setup({
-      tabs: [
-        TEST_CARD_TAB,
-        {
-          icon: "folder",
-          displayName: "All the bar",
-          model: "table",
-          render: () => <TestPicker name="bar" />,
-        },
-      ],
+      tabs: [TEST_CARD_TAB, TEST_TABLE_TAB],
     });
 
     const tabList = await screen.findByRole("tablist");

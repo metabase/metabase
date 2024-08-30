@@ -33,21 +33,23 @@ export type EntityPickerTabRenderProps<
   onItemSelect: (item: Item) => void;
 };
 
+export type EntityPickerTabId = string;
+
 export type EntityPickerTab<
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > = {
+  id: EntityPickerTabId;
   displayName: string;
   render: (props: EntityPickerTabRenderProps<Id, Model, Item>) => JSX.Element;
   icon: IconName;
-  model: EntityPickerTabId<Model>;
+  /**
+   * Recents & Search tabs don't have models associated with them - hence null
+   * (they provide the same models as the other tabs combined).
+   */
+  model: Model | null;
 };
-
-export type EntityPickerTabId<Model extends string> =
-  | Model
-  | "recents"
-  | "search";
 
 export type ListProps<
   Id,
@@ -68,6 +70,6 @@ export type ListProps<
 
 export type FilterItemsInPersonalCollection = "only" | "exclude";
 
-export type TabFolderState<Model extends string> = Partial<
-  Record<Model, TypeWithModel<unknown, string>>
+export type TabFolderState = Partial<
+  Record<EntityPickerTabId, TypeWithModel<unknown, string>>
 >;

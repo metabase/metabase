@@ -3,6 +3,7 @@ import type { SearchResultId } from "metabase-types/api";
 
 import type {
   EntityPickerTab,
+  EntityPickerTabId,
   EntityPickerTabRenderProps,
   TypeWithModel,
 } from "../../types";
@@ -12,10 +13,10 @@ interface Props<
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 > {
-  selectedTab: Model | "recents" | "search";
-  tabs: EntityPickerTab<Id, Model | "recents" | "search", Item>[];
+  selectedTabId: EntityPickerTabId;
+  tabs: EntityPickerTab<Id, Model, Item>[];
   onItemSelect: EntityPickerTabRenderProps<Id, Model, Item>["onItemSelect"];
-  onTabChange: (model: Model | "recents" | "search") => void;
+  onTabChange: (tabId: EntityPickerTabId) => void;
 }
 
 export const TabsView = <
@@ -23,7 +24,7 @@ export const TabsView = <
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
-  selectedTab,
+  selectedTabId,
   tabs,
   onItemSelect,
   onTabChange,
@@ -31,7 +32,7 @@ export const TabsView = <
   return (
     <Tabs
       keepMounted
-      value={selectedTab}
+      value={selectedTabId}
       style={{
         flexGrow: 1,
         height: 0,
@@ -41,14 +42,14 @@ export const TabsView = <
     >
       <Tabs.List px="1rem">
         {tabs.map(tab => {
-          const { model, icon, displayName } = tab;
+          const { id, icon, displayName } = tab;
 
           return (
             <Tabs.Tab
-              key={model}
-              value={model}
+              key={id}
+              value={id}
               icon={<Icon name={icon} />}
-              onClick={() => onTabChange(model)}
+              onClick={() => onTabChange(id)}
             >
               {displayName}
             </Tabs.Tab>
@@ -57,12 +58,12 @@ export const TabsView = <
       </Tabs.List>
 
       {tabs.map(tab => {
-        const { model } = tab;
+        const { id } = tab;
 
         return (
           <Tabs.Panel
-            key={model}
-            value={model}
+            key={id}
+            value={id}
             style={{
               flexGrow: 1,
               height: 0,

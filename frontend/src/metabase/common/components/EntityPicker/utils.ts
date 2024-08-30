@@ -3,13 +3,15 @@ import { c, msgid } from "ttag";
 import { color } from "metabase/lib/colors";
 import type { ObjectWithModel } from "metabase/lib/icon";
 import { getIcon } from "metabase/lib/icon";
-import type {
-  SearchModel,
-  SearchResult,
-  SearchResultId,
+import {
+  SEARCH_MODELS,
+  type SearchModel,
+  type SearchResult,
+  type SearchResultId,
 } from "metabase-types/api";
 
 import type { EntityPickerTab, TypeWithModel } from "./types";
+import { RECENTS_TAB_ID } from "./constants";
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
@@ -44,7 +46,7 @@ export const isSelectedItem = <Id, Model extends string>(
   );
 };
 
-export const computeInitialTab = <
+export const computeInitialTabId = <
   Id extends SearchResultId,
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
@@ -56,20 +58,21 @@ export const computeInitialTab = <
   initialValue?: Partial<Item>;
   tabs: EntityPickerTab<Id, Model, Item>[];
   defaultToRecentTab: boolean;
-}): { model: Model | "search" | "recents" } => {
-  const hasRecents = tabs.some(tab => tab.model === "recents");
+}): string => {
+  const hasRecents = tabs.some(tab => tab.id === RECENTS_TAB_ID);
 
   if (hasRecents && defaultToRecentTab) {
-    return { model: "recents" };
+    return RECENTS_TAB_ID;
   }
-  if (
-    initialValue?.model &&
-    tabs.some(tab => tab.model === initialValue.model)
-  ) {
-    return { model: initialValue.model };
-  } else {
-    return { model: tabs[0].model };
+
+  const initialValueTab =
+    initialValue?.model && tabs.find(tab => tab.model === initialValue.model);
+
+  if (initialValueTab) {
+    return initialValueTab.id;
   }
+
+  return tabs[0].id;
 };
 
 const emptySearchResultTranslationContext = c(
@@ -95,5 +98,5 @@ export function getSearchTabText(
 }
 
 export const isSearchModel = (model: string): model is SearchModel => {
-  return Boolean(model) && !["search", "recents"].includes(model);
+  return SEARCH_MODELS.some(searchModel => searchModel === model);
 };

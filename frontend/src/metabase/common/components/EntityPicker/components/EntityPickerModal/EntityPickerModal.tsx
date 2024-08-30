@@ -19,11 +19,12 @@ import type {
 import type {
   EntityPickerOptions,
   EntityPickerTab,
+  EntityPickerTabId,
   TabFolderState,
   TypeWithModel,
 } from "../../types";
 import {
-  computeInitialTab,
+  computeInitialTabId,
   getSearchTabText,
   isSearchModel,
 } from "../../utils";
@@ -41,6 +42,7 @@ import {
   SinglePickerView,
 } from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
+import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
 
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
@@ -135,7 +137,7 @@ export function EntityPickerModal<
 
   const tabModels = useMemo((): SearchModel[] => {
     return passedTabs.flatMap(({ model }) => {
-      return isSearchModel(model) ? [model] : [];
+      return model && isSearchModel(model) ? [model] : [];
     });
   }, [passedTabs]);
 
@@ -165,7 +167,8 @@ export function EntityPickerModal<
 
     if (hasRecentsTab || shouldOptimisticallyAddRecentsTabWhileLoading) {
       computedTabs.push({
-        model: "recents",
+        id: RECENTS_TAB_ID,
+        model: null,
         displayName: t`Recents`,
         icon: "clock",
         render: ({ onItemSelect }) => (
@@ -183,7 +186,8 @@ export function EntityPickerModal<
 
     if (hasSearchTab) {
       computedTabs.push({
-        model: "search",
+        id: SEARCH_TAB_ID,
+        model: null,
         displayName: getSearchTabText(searchResults, searchQuery),
         icon: "search",
         render: ({ onItemSelect }) => (
@@ -209,19 +213,18 @@ export function EntityPickerModal<
   ]);
 
   const hasTabs = tabs.length > 1;
-  const initialTab = useMemo(
-    () => computeInitialTab({ initialValue, tabs, defaultToRecentTab }),
+  const initialTabId = useMemo(
+    () => computeInitialTabId({ initialValue, tabs, defaultToRecentTab }),
     [initialValue, tabs, defaultToRecentTab],
   );
-  const [selectedTab, setSelectedTab] = useState<Model | "search" | "recents">(
-    initialTab.model,
-  );
+  const [selectedTabId, setSelectedTabId] =
+    useState<EntityPickerTabId>(initialTabId);
   // we don't want to show bonus actions on recents or search tabs
-  const showActionButtons = !["search", "recents"].includes(selectedTab);
-  const [tabFolderState, setTabFolderState] = useState<
-    TabFolderState<Model | "search" | "recents">
-  >({});
-  const selectedFolder = tabFolderState[selectedTab];
+  const showActionButtons = ![SEARCH_TAB_ID, RECENTS_TAB_ID].includes(
+    selectedTabId,
+  );
+  const [tabFolderState, setTabFolderState] = useState<TabFolderState>({});
+  const selectedFolder = tabFolderState[selectedTabId];
 
   console.log(
     selectedFolder
@@ -236,21 +239,21 @@ export function EntityPickerModal<
       // TODO: if is folder
       setTabFolderState(state => ({
         ...state,
-        [selectedTab]: item,
+        [selectedTabId]: item,
       }));
       onItemSelect(item);
     },
-    [selectedTab, onItemSelect],
+    [selectedTabId, onItemSelect],
   );
 
   useEffect(() => {
     // when the searchQuery changes, switch to the search tab
     if (searchQuery) {
-      setSelectedTab("search");
+      setSelectedTabId(SEARCH_TAB_ID);
     } else {
-      setSelectedTab(initialTab.model);
+      setSelectedTabId(initialTabId);
     }
-  }, [searchQuery, initialTab.model]);
+  }, [searchQuery, initialTabId]);
 
   useWindowEvent(
     "keydown",
@@ -308,10 +311,10 @@ export function EntityPickerModal<
           <ErrorBoundary>
             {hasTabs ? (
               <TabsView
-                selectedTab={selectedTab}
+                selectedTabId={selectedTabId}
                 tabs={tabs}
                 onItemSelect={handleSelectItem}
-                onTabChange={setSelectedTab}
+                onTabChange={setSelectedTabId}
               />
             ) : (
               <SinglePickerView>

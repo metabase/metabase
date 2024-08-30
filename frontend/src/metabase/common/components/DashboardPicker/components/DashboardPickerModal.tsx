@@ -120,8 +120,9 @@ export const DashboardPickerModal = ({
     DashboardPickerItem
   >[] = [
     {
+      id: "dashboards-tab",
       displayName: t`Dashboards`,
-      model: "dashboard",
+      model: "dashboard" as const,
       icon: "dashboard",
       render: ({ onItemSelect }) => (
         <DashboardPicker

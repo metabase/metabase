@@ -91,8 +91,9 @@ export const QuestionPickerModal = ({
     QuestionPickerItem
   >[] = [
     {
+      id: "questions-tab",
       displayName: t`Questions`,
-      model: "card",
+      model: "card" as const,
       icon: "table",
       render: ({ onItemSelect }) => (
         <QuestionPicker
@@ -104,8 +105,9 @@ export const QuestionPickerModal = ({
       ),
     },
     {
+      id: "models-tab",
       displayName: t`Models`,
-      model: "dataset",
+      model: "dataset" as const,
       icon: "model",
       render: ({ onItemSelect }) => (
         <QuestionPicker
@@ -117,8 +119,9 @@ export const QuestionPickerModal = ({
       ),
     },
     {
+      id: "metrics-tab",
       displayName: t`Metrics`,
-      model: "metric",
+      model: "metric" as const,
       icon: "metric",
       render: ({ onItemSelect }) => (
         <QuestionPicker
