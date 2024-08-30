@@ -50,7 +50,7 @@ export const goToInteractiveEmbeddingSettings = async () => {
       screen.getByRole("article", {
         name: "Interactive embedding with iframes",
       }),
-    ).getByText("Configure"),
+    ).getByRole("button", { name: "Configure" }),
   );
 };
 
