@@ -39,6 +39,7 @@
 
 (def ^:private default-search-row
   {:archived                   false
+   :dashboard_id               false
    :effective_location         nil
    :location                   nil
    :bookmark                   nil
@@ -1590,3 +1591,25 @@
                 (when (pos? attempts-left)
                   (Thread/sleep 200)
                   (recur (dec attempts-left))))))))))
+
+(deftest dashboard-id-is-returned-for-dashboard-internal-cards
+  (testing "Dashboard internal cards get a dashboard_id when searched"
+    (let [search-name (random-uuid)
+          named #(str search-name "-" %)]
+      (mt/with-temp [:model/Dashboard {dash-id :id} {:name (named "dashboard")}
+                     :model/Card {card-id :id} {:dashboard_id dash-id :name (named "dashboard card")}
+                     :model/Card {reg-card-id :id} {:name (named "regular card")}]
+        (testing "The card data includes the `dashboard_id`"
+          (is (= dash-id
+                 (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                      :data
+                      (filter #(= card-id (:id %)))
+                      first
+                      :dashboard_id))))
+        (testing "Regular cards don't have it"
+          (is (nil?
+               (->> (mt/user-http-request :crowberto :get 200 "/search" :q search-name)
+                    :data
+                    (filter #(= reg-card-id (:id %)))
+                    first
+                    :dashboard_id))))))))

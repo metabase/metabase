@@ -174,6 +174,8 @@
    :last_editor_id      :integer
    :moderated_status    :text
    :display             :text
+
+   :dashboard_id        :integer
    ;; returned for Metric and Segment
    :table_id            :integer
    :table_schema        :text
@@ -294,7 +296,7 @@
 
 (defmethod columns-for-model "card"
   [_]
-  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id
+  (conj default-columns :collection_id :archived_directly :collection_position :dataset_query :display :creator_id :dashboard_id
         [:collection.name :collection_name]
         [:collection.type :collection_type]
         [:collection.location :collection_location]
