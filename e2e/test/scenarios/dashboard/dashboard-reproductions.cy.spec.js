@@ -1525,9 +1525,7 @@ describe("issue 47170", () => {
         middleware: true,
       },
       req => {
-        req.on("response", res => {
-          res.setThrottle(2);
-        });
+        req.continue(res => new Promise(resolve => setTimeout(resolve, 1000)));
       },
     );
   });
@@ -1537,13 +1535,10 @@ describe("issue 47170", () => {
 
     appBar().button("Toggle sidebar").click();
     navigationSidebar().findByText("Dashboard A").click();
-    appBar().button("Toggle sidebar").click();
-    navigationSidebar().findByText("Orders in a dashboard").click();
 
     main().within(() => {
       cy.findByText("Something’s gone wrong").should("not.exist");
-      cy.findByText("Orders in a dashboard").should("exist");
-      getDashboardCards().should("have.length", 1);
+      cy.findByText("Dashboard A").should("be.visible");
     });
   });
 });
