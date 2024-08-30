@@ -244,7 +244,7 @@
 (defn- get-notification-info
   [pulse parts pulse-channel]
   (let [alert? (nil? (:dashboard_id pulse))]
-    (merge {:payload-type  (if alert?
+    (merge {:payload_type  (if alert?
                              :notification/alert
                              :notification/dashboard-subscription)
             :payload       (if alert? (first parts) parts)

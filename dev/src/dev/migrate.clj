@@ -83,6 +83,8 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (println (format "Rollbacked %d migrations. Latest migration: %s" n (latest-migration)))))
 
+
+
 (defn migration-status
   "Print the latest migration ID."
   []
@@ -159,3 +161,8 @@
                                  (str x "\n" y)) acc data))
                  {}
                  (map #(change->sql % sql-generator-factory database) (.getChanges change-set))))))))
+
+(comment
+  (rollback! :count 1)
+  (rollback! :id "v51.2024-08-30T08:00:03")
+  (migrate!))

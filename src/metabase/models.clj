@@ -6,6 +6,7 @@
    [metabase.models.cache-config :as cache-config]
    [metabase.models.card :as card]
    [metabase.models.channel :as models.channel]
+   [metabase.models.channel-template :as channel-template]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision
     :as c-perm-revision]
@@ -24,6 +25,7 @@
    [metabase.models.model-index :as model-index]
    [metabase.models.moderation-review :as moderation-review]
    [metabase.models.native-query-snippet :as native-query-snippet]
+   [metabase.models.notification :as notification]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -66,6 +68,7 @@
          c-perm-revision/keep-me
          cache-config/keep-me
          card/keep-me
+         channel-template/keep-me
          collection/keep-me
          dashboard-card-series/keep-me
          dashboard-card/keep-me
@@ -82,6 +85,7 @@
          moderation-review/keep-me
          models.channel/keep-me
          native-query-snippet/keep-me
+         notification/keep-me
          parameter-card/keep-me
          perms-group-membership/keep-me
          perms-group/keep-me

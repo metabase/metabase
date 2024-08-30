@@ -102,3 +102,14 @@
                                      [non-user-email]
                                      (messages/render-pulse-email timezone pulse dashboard payload non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                        System Event                                             ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+
+(defmethod channel/render-notification
+  [:channel/email :notification/system-event]
+  [_channel-type notification-info recipients]
+  (def notification-info notification-info)
+  [])
