@@ -16,11 +16,9 @@ import { Button, type ButtonProps, Flex, Icon, Text, Title } from "metabase/ui";
 
 import EmbeddingOptionStyle from "./EmbeddingOption.module.css";
 import { BoldExternalLink, Label, StyledCard } from "./EmbeddingOption.styled";
-import InteractiveEmbeddingOff from "./InteractiveEmbeddingOff.svg?component";
-import InteractiveEmbeddingOn from "./InteractiveEmbeddingOn.svg?component";
+import InteractiveEmbedding from "./InteractiveEmbedding.svg?component";
 import SdkIcon from "./SdkIcon.svg?component";
-import StaticEmbeddingOff from "./StaticEmbeddingOff.svg?component";
-import StaticEmbeddingOn from "./StaticEmbeddingOn.svg?component";
+import StaticEmbedding from "./StaticEmbedding.svg?component";
 
 interface EmbeddingOptionProps {
   title: string;
@@ -69,7 +67,13 @@ export const StaticEmbeddingOptionCard = () => {
 
   return (
     <EmbeddingOption
-      icon={enabled ? <StaticEmbeddingOn /> : <StaticEmbeddingOff />}
+      icon={
+        <StaticEmbedding
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: !enabled,
+          })}
+        />
+      }
       title={t`Static embedding`}
       description={jt`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.${
         shouldPromptToUpgrade && (
@@ -105,11 +109,11 @@ export const InteractiveEmbeddingOptionCard = () => {
   return (
     <EmbeddingOption
       icon={
-        !isEE || enabled ? (
-          <InteractiveEmbeddingOn />
-        ) : (
-          <InteractiveEmbeddingOff />
-        )
+        <InteractiveEmbedding
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: isEE && !enabled,
+          })}
+        />
       }
       title={t`Interactive embedding`}
       label={t`PRO & ENTERPRISE`}

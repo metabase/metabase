@@ -1,6 +1,5 @@
 <svg width="40" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    :root{--mb-color-logo-primary:#509EE3;--mb-color-logo-secondary:#CBE2F7}</style>
+  <style>:root{--mb-color-logo-primary:#509EE3;--mb-color-logo-secondary:#CBE2F7}</style>
   <g clip-path="url(#a)">
     <rect x="1.25" y="1.25" width="37.5" height="29.5" rx="2.75"
       stroke="var(--mb-color-logo-secondary)" stroke-width="2.5" />
