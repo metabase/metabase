@@ -812,7 +812,6 @@
   potemkin/deftype+                                                                     clojure.core/deftype
   toucan.db/with-call-counting                                                          clojure.core/fn
   toucan2.core/with-call-count                                                          clojure.core/fn}
- >>>>>>> master
 
  :hooks
  {:analyze-call
