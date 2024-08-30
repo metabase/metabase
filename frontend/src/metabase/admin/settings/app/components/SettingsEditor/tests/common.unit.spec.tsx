@@ -17,14 +17,15 @@ describe("SettingsEditor", () => {
       });
 
       await userEvent.click(screen.getByText("Embedding"));
-      await userEvent.click(screen.getByText("Interactive embedding"));
-      expect(screen.queryByText("Authorized origins")).not.toBeInTheDocument();
       expect(
-        screen.queryByText("SameSite cookie setting"),
-      ).not.toBeInTheDocument();
+        screen.getByText("Interactive embedding with iframes"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Embed dashboards, questions/),
+      ).toBeInTheDocument();
     });
 
-    it("should allow visiting the full-app embedding page even if embedding is not enabled", async () => {
+    it("should redirect users back to embedding settings page when visiting the full-app embedding page when embedding is not enabled", async () => {
       await setup({
         settings: [createMockSettingDefinition({ key: "enable-embedding" })],
         settingValues: createMockSettings({ "enable-embedding": false }),
@@ -32,9 +33,11 @@ describe("SettingsEditor", () => {
       });
 
       expect(
+        screen.getByText("Interactive embedding with iframes"),
+      ).toBeInTheDocument();
+      expect(
         screen.getByText(/Embed dashboards, questions/),
       ).toBeInTheDocument();
-      expect(screen.getByText("Interactive embedding")).toBeInTheDocument();
     });
   });
 

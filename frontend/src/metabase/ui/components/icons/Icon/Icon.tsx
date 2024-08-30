@@ -33,6 +33,7 @@ export const Icon = forwardRef<SVGSVGElement, IconProps>(function Icon(
       role="img"
       ref={ref}
       aria-label={`${name} icon`}
+      aria-hidden
       className={cx(`Icon Icon-${name}`, className)}
       width={size}
       height={size}

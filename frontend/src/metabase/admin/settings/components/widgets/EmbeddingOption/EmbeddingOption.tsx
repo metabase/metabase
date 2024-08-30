@@ -5,6 +5,7 @@ import { jt, t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
 import {
@@ -35,11 +36,14 @@ function EmbeddingOption({
   children,
   icon,
 }: EmbeddingOptionProps) {
+  const titleId = useUniqueId();
   return (
-    <StyledCard compact>
+    <StyledCard compact role="article" aria-labelledby={titleId}>
       {icon}
       <Flex gap="md" mt="md" mb="sm" direction={"row"}>
-        <Title order={2}>{title}</Title>
+        <Title id={titleId} order={2}>
+          {title}
+        </Title>
         {label && <Label>{label}</Label>}
       </Flex>
       <Text lh={"1.25rem"} mb={"lg"}>

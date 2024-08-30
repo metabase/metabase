@@ -1,4 +1,4 @@
-import { act, screen } from "__support__/ui";
+import { act, screen, within } from "__support__/ui";
 
 import type { SetupOpts } from "./setup";
 import {
@@ -58,7 +58,11 @@ describe("[EE, with token] embedding settings", () => {
         });
 
         expect(
-          await screen.findByRole("button", { name: "Configure" }),
+          within(
+            screen.getByRole("article", {
+              name: "Interactive embedding with iframes",
+            }),
+          ).getByRole("button", { name: "Configure" }),
         ).toBeDisabled();
 
         act(() => {
