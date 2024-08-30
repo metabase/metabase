@@ -65,7 +65,7 @@ export const SaveQuestionForm = ({
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
         <FormSubmitButton
-          title={t`Save`}
+          label={t`Save`}
           data-testid="save-question-button"
           variant="filled"
           onSuccess={onSaveSuccess}
