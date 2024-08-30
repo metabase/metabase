@@ -97,7 +97,6 @@ export const ImpersonationModalView = ({
         {modalMessage}{" "}
         <ExternalLink
           className={CS.link}
-          // eslint-disable-next-line no-unconditional-metabase-links-render -- Admin settings
           href={permsDocsUrl}
         >{t`Learn More`}</ExternalLink>
       </ImpersonationDescription>

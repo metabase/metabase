@@ -206,16 +206,23 @@ function MyComponent() {
   },
   {
     code: `
-const { url } = useDocsUrl("permissions/data");`,
+function MyComponent() {
+  const { url } = useDocsUrl("permissions/data");
+  let foo="bar";
+}`,
+    error: /Metabase links must be rendered conditionally/,
   },
   {
     code: `
 const { url: docsUrl } = useDocsUrl("permissions/data");`,
+    error: /Metabase links must be rendered conditionally/,
   },
   {
     code: `
 // eslint-disable-next-line no-unconditional-metabase-links-render
 const { url } = useDocsUrl("permissions/data");`,
+    error:
+      /Please add comment to indicate the reason why this rule needs to be disabled./,
   },
 ];
 
