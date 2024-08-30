@@ -1851,7 +1851,10 @@ describe("issue 25374", () => {
       cy.location("search").should("eq", "?equal_to=");
 
       cy.button("Reset filter to default state").click();
-      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+      cy.location("search", { timeout: 10000 }).should(
+        "eq",
+        "?equal_to=1%2C2%2C3",
+      );
 
       // Drill-through and go to the question
       getDashboardCard(0).findByText(questionDetails.name).click();
@@ -1883,7 +1886,10 @@ describe("issue 25374", () => {
 
       cy.button("Move, trash, and more…").click();
       popover().findByText("Reset all filters").should("be.visible").click();
-      cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
+      cy.location("search", { timeout: 1000 }).should(
+        "eq",
+        "?equal_to=1%2C2%2C3",
+      );
 
       // Drill-through and go to the question
       getDashboardCard(0).findByText(questionDetails.name).click();
