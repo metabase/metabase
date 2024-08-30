@@ -41,6 +41,8 @@ export type BaseSeriesModel = {
   name: string;
   color: string;
   dataKey: DataKey;
+  column: DatasetColumn;
+  columnIndex: number;
 };
 
 export type RegularSeriesModel = BaseSeriesModel & {
@@ -53,9 +55,6 @@ export type RegularSeriesModel = BaseSeriesModel & {
 
   cardId?: number;
   tooltipName: string;
-
-  column: DatasetColumn;
-  columnIndex: number;
 };
 
 export type BreakoutSeriesModel = RegularSeriesModel & {
