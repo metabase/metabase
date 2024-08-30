@@ -29,7 +29,6 @@ export const InteractiveQuestionProvider = ({
   deserializedCard,
   componentPlugins,
   onNavigateBack,
-  isSaveEnabled = true,
   children,
 }: Omit<InteractiveQuestionProviderProps, "options"> & {
   options?: QueryParams;
@@ -77,7 +76,6 @@ export const InteractiveQuestionProvider = ({
     originalQuestion,
     queryResults,
     mode,
-    isSaveEnabled,
   };
 
   useEffect(() => {

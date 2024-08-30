@@ -7,9 +7,12 @@ import { Box, Group, Overlay, Paper, Tabs } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../InteractiveQuestion/context";
 
-const QuestionEditorInner = () => {
-  const { queryResults, runQuestion, isSaveEnabled } =
-    useInteractiveQuestionContext();
+export type QuestionEditorProps = {
+  isSaveEnabled?: boolean;
+};
+
+const QuestionEditorInner = ({ isSaveEnabled }: QuestionEditorProps) => {
+  const { queryResults, runQuestion } = useInteractiveQuestionContext();
 
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | (string & unknown) | null
@@ -77,14 +80,10 @@ const QuestionEditorInner = () => {
 
 export const QuestionEditor = ({
   questionId,
-  isSaveEnabled,
+  isSaveEnabled = true,
   plugins,
-}: InteractiveQuestionProps) => (
-  <InteractiveQuestion
-    questionId={questionId}
-    plugins={plugins}
-    isSaveEnabled={isSaveEnabled}
-  >
-    <QuestionEditorInner />
+}: InteractiveQuestionProps & QuestionEditorProps) => (
+  <InteractiveQuestion questionId={questionId} plugins={plugins}>
+    <QuestionEditorInner isSaveEnabled={isSaveEnabled} />
   </InteractiveQuestion>
 );
