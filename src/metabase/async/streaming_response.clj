@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clojure.core.async :as a]
+   [clojure.walk :as walk]
    [compojure.response]
    [metabase.async.streaming-response.thread-pool :as thread-pool]
    [metabase.async.util :as async.u]
@@ -57,8 +58,15 @@
     (with-open [os os]
       (log/trace (u/pprint-to-str (list 'write-error! obj)))
       (try
-        (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
-          (json/generate-stream obj writer))
+        (let [obj (if (map? obj)
+                    (walk/prewalk (fn [x]
+                                    (if (map? x)
+                                      (apply dissoc x [:json_query :preprocessed])
+                                      x))
+                                  obj)
+                    obj)]
+          (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
+            (json/generate-stream obj writer)))
         (catch EofException _)
         (catch Throwable e
           (log/error e "Error writing error to output stream" obj))))))
