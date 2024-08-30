@@ -1,10 +1,12 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  assertEChartsTooltip,
   chartPathWithFillColor,
   createQuestion,
   echartsContainer,
   editDashboard,
   getDashboardCard,
+  leftSidebar,
   modal,
   popover,
   restore,
@@ -144,6 +146,19 @@ describe("scenarios > visualizations > legend", () => {
       ],
     }).then(({ dashboard }) => visitDashboard(dashboard.id));
 
+    getDashboardCard(0).within(() =>
+      chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+    );
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { name: "Doohickey", value: "177" },
+        { name: "Gadget", value: "199" },
+        { name: "Gizmo", value: "158" },
+        { name: "Widget", value: "210" },
+      ],
+    });
+
     getDashboardCard(0).within(() => {
       chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
       chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
@@ -170,7 +185,20 @@ describe("scenarios > visualizations > legend", () => {
       chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
       chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
       chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+    });
 
+    getDashboardCard(0).within(() =>
+      chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover(),
+    );
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { name: "Doohickey", value: "177" },
+        { name: "Widget", value: "210" },
+      ],
+    });
+
+    getDashboardCard(0).within(() => {
       hideSeries(3); // Widget
       chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
       chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
@@ -359,6 +387,18 @@ describe("scenarios > visualizations > legend", () => {
     chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 5);
     chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
     chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+
+    chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { name: "Doohickey", value: "177" },
+        { name: "Gadget", value: "199" },
+        { name: "Gizmo", value: "158" },
+        { name: "Widget", value: "210" },
+      ],
+    });
+
     echartsContainer().within(() => {
       cy.findByText("Count").should("exist"); // y-axis label
       cy.findByText("Created At").should("exist"); // x-axis label
@@ -380,6 +420,15 @@ describe("scenarios > visualizations > legend", () => {
     chartPathWithFillColor(CATEGORY_COLOR.GADGET).should("have.length", 0);
     chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
     chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
+
+    chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { name: "Doohickey", value: "177" },
+        { name: "Widget", value: "210" },
+      ],
+    });
 
     hideSeries(3); // Widget
     chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
@@ -416,6 +465,42 @@ describe("scenarios > visualizations > legend", () => {
       cy.findByText("1,800").should("exist");
       cy.findByText("1,500").should("exist");
       cy.findByText("1,200").should("exist");
+    });
+
+    showSeries(2);
+    showSeries(3);
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Stack - 100%").click();
+    });
+    cy.wait(500);
+
+    chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { name: "Doohickey", value: "177", secondaryValue: "23.79 %" },
+        { name: "Gadget", value: "199", secondaryValue: "26.75 %" },
+        { name: "Gizmo", value: "158", secondaryValue: "21.24 %" },
+        { name: "Widget", value: "210", secondaryValue: "28.23 %" },
+      ],
+      footer: { name: "Total", value: "744", secondaryValue: "100 %" },
+    });
+
+    hideSeries(2); // Gizmo
+    hideSeries(3); // Widget
+
+    chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    assertEChartsTooltip({
+      header: "2022",
+      rows: [
+        { name: "Doohickey", value: "177", secondaryValue: "47.07 %" },
+        { name: "Gadget", value: "199", secondaryValue: "52.93 %" },
+      ],
+      footer: { name: "Total", value: "376", secondaryValue: "100 %" },
     });
   });
 });
