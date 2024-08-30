@@ -49,7 +49,7 @@
   --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
-  --mb-color-bg-light: #f9fbfc;
+  --mb-color-bg-light: var(--mb-base-color-gray-10);
   --mb-color-bg-white: var(--mb-base-color-white);
   --mb-color-bg-error: #ed6e6e55;
   --mb-color-bg-night: #42484e;
@@ -63,6 +63,7 @@
   --mb-color-text-tertiary: var(--mb-color-text-light);
   --mb-color-text-selected: var(--mb-base-color-white);
   --mb-color-text-hover: var(--mb-base-color-brand-40);
+  --mb-color-text-disabled: var(--mb-base-color-gray-50);
   --mb-color-text-brand: var(--mb-base-color-brand-40);
   --mb-color-text-white: var(--mb-base-color-white);
   --mb-color-background: var(--mb-base-color-white);
