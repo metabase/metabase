@@ -41,6 +41,20 @@
   metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   [_query])
 
+(defn- check-query-does-not-access-inactive-tables
+  "Throws an exception if any of the tables referenced by this query are marked as inactive in the app DB.
+  These queries would (likely) fail anyway since an inactive table one is either deleted, or Metabase's connection
+  doesn't have access to it. But we can reject them preemptively for a more consistent experience, and to avoid
+  needing to cache permissions for inactive tables."
+  [{database-id :database, :as outer-query}]
+  (qp.store/with-metadata-provider database-id
+    (let [table-ids (filter int? (query-perms/query->source-table-ids outer-query))]
+      (doseq [table-id table-ids]
+        (let [table (lib.metadata.protocols/table (qp.store/metadata-provider) table-id)]
+          (when-not (:active table)
+            (throw (ex-info (tru "Table {0} is inactive." table-id)
+                            (select-keys table [:name :id])))))))))
+
 (mu/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
@@ -84,6 +98,7 @@
                 (pr-str (data-perms/permissions-for-user *current-user-id*)))
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
+    (check-query-does-not-access-inactive-tables outer-query)
     (let [card-id (or *card-id* (:qp/source-card-id outer-query))
           required-perms (query-perms/required-perms-for-query outer-query :already-preprocessed? true)]
       (cond

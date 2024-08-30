@@ -13,9 +13,10 @@ export const createMockRecentTableItem = (
   name: "my_cool_table",
   display_name: "My Cool Table",
   timestamp: "2021-03-01T00:00:00.000Z",
+  table_schema: "PUBLIC",
   database: {
     id: 1,
-    name: "My Cool Collection",
+    name: "My Cool Database",
     initial_sync_status: "complete",
   },
   ...opts,

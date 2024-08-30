@@ -624,7 +624,7 @@
     {:keys [:metadata/model-metadata :alias/escaped->original]} :info} rff]
   (fn add-column-info-rff* [metadata]
     (if (and (= query-type :query)
-             ;; we should have type metadata eiter in the query fields
+             ;; we should have type metadata either in the query fields
              ;; or in the result metadata for the following code to work
              (or (->> query :query keys (some #{:aggregation :breakout :fields}))
                  (every? :base_type (:cols metadata))))
