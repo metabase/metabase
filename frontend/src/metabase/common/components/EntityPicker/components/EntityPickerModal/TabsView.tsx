@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-
 import { Icon, Tabs } from "metabase/ui";
 import type { SearchResultId } from "metabase-types/api";
 
@@ -31,19 +29,8 @@ export const TabsView = <
   onItemSelect,
   onTabChange,
 }: Props<Id, Model, Item>) => {
-  const [previouslyOpenedTabs, setPreviouslyOpenedTabs] = useState<
-    EntityPickerTabId[]
-  >([]);
-
-  useEffect(() => {
-    if (!previouslyOpenedTabs.includes(selectedTabId)) {
-      setPreviouslyOpenedTabs(tabs => [...tabs, selectedTabId]);
-    }
-  }, [previouslyOpenedTabs, selectedTabId]);
-
   return (
     <Tabs
-      keepMounted
       value={selectedTabId}
       style={{
         flexGrow: 1,
@@ -71,13 +58,6 @@ export const TabsView = <
 
       {tabs.map(tab => {
         const { id } = tab;
-        const isOpen = selectedTabId === id;
-        const wasOpen = previouslyOpenedTabs.includes(id);
-        /**
-         * Optimization due to keepMounted: do not render tabs that were never open.
-         * This prevents data loading requests from unopened tabs being fired.
-         */
-        const shouldRender = isOpen || wasOpen;
 
         return (
           <Tabs.Panel
@@ -88,7 +68,7 @@ export const TabsView = <
               height: 0,
             }}
           >
-            {shouldRender && tab.render({ onItemSelect })}
+            {tab.render({ onItemSelect })}
           </Tabs.Panel>
         );
       })}
