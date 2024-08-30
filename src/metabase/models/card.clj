@@ -406,9 +406,11 @@
 (def ^:dynamic ^:private *updating-dashboard-collection-id* false)
 
 (defn- is-valid-dashboard-internal-card-for-update [card changes]
-  (or (not (dashboard-internal-card? card))
+  (or (and (not (dashboard-internal-card? card))
+           (not (contains? changes :dashboard_id)))
       (and
        (or *updating-dashboard-collection-id* (not (contains? changes :collection_id)))
+       (not (contains? changes :archived))
        (not (contains? changes :collection_position))
        (or (not (contains? changes :type))
            (contains? #{:question "question" nil} (:type changes))))))
