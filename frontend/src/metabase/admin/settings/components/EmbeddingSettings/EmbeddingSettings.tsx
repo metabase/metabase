@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
 import { Box, Stack } from "metabase/ui";
 
 import { getSettingsByKey } from "../../selectors";
-import { updateSetting } from "../../settings";
 import SettingHeader from "../SettingHeader";
 import { SetByEnvVarWrapper } from "../SettingsSetting";
 import {
@@ -14,19 +13,16 @@ import {
 } from "../widgets/EmbeddingOption";
 import { EmbeddingSwitchWidget } from "../widgets/EmbeddingSwitchWidget";
 
-export function EmbeddingSettings() {
+import type { AdminSettingComponentProps } from "./types";
+
+export function EmbeddingSettings({
+  updateSetting,
+}: AdminSettingComponentProps) {
   const enableEmbeddingSetting =
     useSelector(getSettingsByKey)["enable-embedding"];
 
-  const dispatch = useDispatch();
-
   function onChangeEnableEmbedding(value: boolean) {
-    dispatch(
-      updateSetting({
-        key: "enable-embedding",
-        value,
-      }),
-    );
+    updateSetting("enable-embedding", value);
   }
 
   return (

@@ -6,16 +6,22 @@
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.models.setting :as setting :refer [defsetting]]
-   [metabase.public-settings :as public-settings]
    [metabase.util.embed :as embed]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [toucan2.core :as t2]))
 
 (defsetting embedding-app-origin
-  (deferred-tru "Allow this origin to embed the full {0} application"
-                (public-settings/application-name-for-setting-descriptions))
+  (deferred-tru "Allow this origin to embed the full Metabase application")
   :feature    :embedding
   :visibility :public
+  :audit      :getter)
+
+(defsetting embedding-app-origins-sdk
+  (deferred-tru "Allow this origin to embed Metabase SDK")
+  :feature    :embedding-sdk
+  :export?    true
+  :visibility :public
+  :encryption :never
   :audit      :getter)
 
 (defsetting enable-embedding
