@@ -6,6 +6,7 @@ import { Api } from "metabase/api";
 import { PLUGIN_REDUX_MIDDLEWARES } from "metabase/plugins";
 import { CubeApi } from "./api/cubeApi";
 import { initialMessageReducer } from "./redux/initialMessage";
+import { databaseReducer } from "./redux/initialDb";
 
 export function getStore(reducers, history, intialState) {
   const reducer = combineReducers({
@@ -14,6 +15,7 @@ export function getStore(reducers, history, intialState) {
     [Api.reducerPath]: Api.reducer,
     [CubeApi.reducerPath]: CubeApi.reducer,
     initialMessage: initialMessageReducer,
+    database: databaseReducer
   });
 
   return configureStore({

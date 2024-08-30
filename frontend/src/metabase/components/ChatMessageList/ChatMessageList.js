@@ -47,7 +47,7 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
           {/* Conditionally render visualization under the specific message */}
           {message.showVisualization && card && defaultQuestion && result && (
             <>
-            {card.length < 1 ? (
+            {card.length < 1 && insightsList.length < 1 ? (
                <Skeleton
                variant="rect"
                animate={true}
@@ -76,84 +76,84 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
              
             ):(
 
-            
-            <div>
-              {card.map((singleCard, cardIndex) => (
-                message.visualizationIdx === cardIndex && (
-                  <div key={cardIndex} style={{ display: 'flex', flexDirection: 'column', marginBottom: '2rem', height: "400px", width: "auto" }}>
-                  <div
-                    style={{
-                      flex: "1 0 50%",
-                      padding: "16px",
-                      overflow: "hidden",
-                      height: "400px",
-                      width: "auto",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                    >
-              <VisualizationResult
-                question={defaultQuestion[cardIndex]}
-                isDirty={false}
-                queryBuilderMode={"view"}
-                result={result[cardIndex]}
-                className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-                rawSeries={[{ card: singleCard, data: result[cardIndex]?.data }]}
-                isRunning={false}
-                navigateToNewCardInsideQB={null}
-                onNavigateBack={() => console.log('back')}
-                timelineEvents={[]}
-                selectedTimelineEventIds={[]}
-                /> 
-
-                  </div>
-                  {message.showButton === false ? (
-                    <div></div>
-                  ):(
-                    <Button
-                      variant="outlined"
+              <>
+              {insightsList.length < 1 ? (
+                <div>
+                {card.map((singleCard, cardIndex) => (
+                  message.visualizationIdx === cardIndex && (
+                    <div key={cardIndex} style={{ display: 'flex', flexDirection: 'column', marginBottom: '2rem', height: "400px", width: "auto" }}>
+                    <div
                       style={{
+                        flex: "1 0 50%",
+                        padding: "16px",
+                        overflow: "hidden",
+                        height: "400px",
                         width: "auto",
-                        cursor: "pointer",
-                        border: "1px solid #E0E0E0",
-                        borderRadius: "8px",
-                        marginBottom: "1rem",
-                        color: "#FFF",
-                        marginLeft: "auto",
-                        marginRight: 0,
-                        backgroundColor: "#8A64DF",
                         display: "flex",
+                        justifyContent: "center",
                         alignItems: "center",
-                        padding: "0.5rem 1rem",
-                        lineHeight: "1",
                       }}
-                      onClick={() => openModal(cardIndex)}
                       >
-                      <Icon
-                        size={18}
-                        name="bookmark"
+                <VisualizationResult
+                  question={defaultQuestion[cardIndex]}
+                  isDirty={false}
+                  queryBuilderMode={"view"}
+                  result={result[cardIndex]}
+                  className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+                  rawSeries={[{ card: singleCard, data: result[cardIndex]?.data }]}
+                  isRunning={false}
+                  navigateToNewCardInsideQB={null}
+                  onNavigateBack={() => console.log('back')}
+                  timelineEvents={[]}
+                  selectedTimelineEventIds={[]}
+                  /> 
+  
+                    </div>
+                    {message.showButton === false ? (
+                      <div></div>
+                    ):(
+                      <Button
+                        variant="outlined"
                         style={{
-                          marginRight: "0.5rem",
+                          width: "auto",
+                          cursor: "pointer",
+                          border: "1px solid #E0E0E0",
+                          borderRadius: "8px",
+                          marginBottom: "1rem",
+                          color: "#FFF",
+                          marginLeft: "auto",
+                          marginRight: 0,
+                          backgroundColor: "#8A64DF",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: "0.5rem 1rem",
+                          lineHeight: "1",
                         }}
-                        />
-                      <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
-                    </Button>
-                  )}
-                </div> 
-                )
-              ))}
-            </div>
-            )}
-                </>
-          )}
-        </div>
-      ))}
-      {/* Insights Section */}
-      {insightsList && insightsList.length > 0 && (
-        <div style={{ marginTop: "2rem" }}>
+                        onClick={() => openModal(cardIndex)}
+                        >
+                        <Icon
+                          size={18}
+                          name="bookmark"
+                          style={{
+                            marginRight: "0.5rem",
+                          }}
+                          />
+                        <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
+                      </Button>
+                    )}
+                  </div> 
+                  )
+                ))}
+              </div>
+              ): (
+                <>
+                {insightsList && insightsList.length > 0 && (
+                  <div>
+                {insightsList.map((insightList, insightIndex) => (
+                  message.visualizationIdx === insightIndex && (
+                <div style={{ marginTop: "2rem" }}>
           <h2 style={{ marginBottom: "1rem" }}>Insights</h2>
-          {insightsList.map((insight, index) => (
+          {insightList.map((insight, index) => (
             <div key={index} style={{ marginBottom: "2rem" }}>
               <div style={{ marginBottom: "1rem" }}>
                 <strong>Insight:</strong> {insight.insightExplanation}
@@ -189,8 +189,19 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
             </div>
           ))}
         </div>
-      )}
-      
+         )
+        ))}
+        </div>
+        )}
+        </>
+              )}
+            
+            </>
+            )}
+                </>
+          )}
+        </div>
+      ))}
       <div ref={messageEndRef} />
     </div>
   );

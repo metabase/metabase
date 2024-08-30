@@ -13,8 +13,7 @@ const Message = ({
   const isUser = message.sender === "user";
   const hasError =
     message.text.toLowerCase().includes("error") ||
-    message.text.toLowerCase().includes("failed") ||
-    message.text.toLowerCase().includes("issue");
+    message.text.toLowerCase().includes("failed");
 
   return (
     <div

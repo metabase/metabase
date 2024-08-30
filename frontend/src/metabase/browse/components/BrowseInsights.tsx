@@ -8,6 +8,7 @@ export const BrowseInsights = () => {
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
   const [oldCardId, setOldCardId] = useState(null);
+  const [insights, setInsights] = useState([]);
 
   return (
     <BrowseContainer>
@@ -27,6 +28,7 @@ export const BrowseInsights = () => {
               selectedThreadId={selectedThreadId}
               chatType={"insights"}
               oldCardId={oldCardId}
+              insights={insights}
             />
           </Stack>
           <Stack
@@ -39,6 +41,7 @@ export const BrowseInsights = () => {
               setThreadId={setSelectedThreadId}
               type="getInsights"
               setOldCardId={setOldCardId}
+              setInsights={setInsights}
             />
           </Stack>
         </Flex>

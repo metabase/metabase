@@ -6,6 +6,7 @@ import ChatPrompt from "metabase/browse/components/ChatItems/Prompt";
 import { useDispatch } from "metabase/lib/redux";
 import { push } from "react-router-redux"; // Import the push method for navigation
 import { setInitialMessage } from "metabase/redux/initialMessage";
+import { setDBInputValue, setCompanyName } from "metabase/redux/initialDb";
 import ChatAssistant from "metabase/query_builder/components/ChatAssistant";
 import {
   BrowseContainer,
@@ -13,6 +14,7 @@ import {
 } from "metabase/browse/components/BrowseContainer.styled";
 import { Flex, Stack } from "metabase/ui";
 import ChatHistory from "metabase/browse/components/ChatItems/ChatHistory";
+import { useListDatabasesQuery } from "metabase/api";
 
 export const HomeLayout = () => {
   const [inputValue, setInputValue] = useState("");
@@ -22,7 +24,19 @@ export const HomeLayout = () => {
   const [selectedChatType, setSelectedChatType] = useState("default");
   const [selectedChatHistoryType, setSelectedChatHistoryType] = useState("dataAgent");
   const [oldCardId, setOldCardId] = useState(null);
+  const [insights, setInsights] = useState([]);
   const dispatch = useDispatch();
+  const { data, isLoading: dbLoading, error: dbError } = useListDatabasesQuery();
+    const databases = data?.data;
+    useEffect(() => {
+        if (databases) {
+            const cubeDatabase = databases.find(database => database.is_cube === true);
+            if (cubeDatabase) {
+              dispatch(setDBInputValue(cubeDatabase.id as number));
+              dispatch(setCompanyName(cubeDatabase.company_name as string));
+            }
+        }
+    }, [databases]);
 
   useEffect(() => {
     setInputValue("");
@@ -33,12 +47,15 @@ export const HomeLayout = () => {
     if (window.location.pathname === "/") {
       setSelectedChatType("default");
       setSelectedChatHistoryType("dataAgent")
+      setInsights([])
     } else if (window.location.pathname === "/browse/insights") {
       setSelectedChatType("insights");
       setSelectedChatHistoryType("getInsights")
+      setInsights(insights)
     } else if (window.location.pathname === "/browse/chat") {
       setSelectedChatType("default");
       setSelectedChatHistoryType("dataAgent")
+      setInsights([])
     }
   }, [window.location.pathname]);
 
@@ -91,6 +108,7 @@ export const HomeLayout = () => {
                   selectedThreadId={selectedThreadId}
                   chatType={selectedChatType}
                   oldCardId={oldCardId}
+                  insights={insights}
                 />
               </Stack>
               <Stack
@@ -103,6 +121,7 @@ export const HomeLayout = () => {
                   setThreadId={setSelectedThreadId}
                   type={selectedChatHistoryType}
                   setOldCardId={setOldCardId}
+                  setInsights={setInsights}
                 />
               </Stack>
             </Flex>
