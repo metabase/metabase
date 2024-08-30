@@ -411,7 +411,7 @@
    (with-open [bos (ByteArrayOutputStream.)
                os  (BufferedOutputStream. bos)]
      (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
-       (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
+       (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols :format-rows? true}} viz-settings)
        (doall (map-indexed
                (fn [i row] (qp.si/write-row! results-writer row i ordered-cols viz-settings))
                rows))
