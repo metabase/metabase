@@ -74,7 +74,7 @@ export const StaticEmbeddingOptionCard = () => {
           })}
         />
       }
-      title={t`Static embedding`}
+      title={t`Static embedding with iframes`}
       description={jt`Use static embedding when you don’t want to give people ad hoc query access to their data for whatever reason, or you want to present data that applies to all of your tenants at once.${
         shouldPromptToUpgrade && (
           <Text size="sm" mt="xs" key="upgrade-text">
@@ -115,7 +115,7 @@ export const InteractiveEmbeddingOptionCard = () => {
           })}
         />
       }
-      title={t`Interactive embedding`}
+      title={t`Interactive embedding with iframes`}
       label={t`PRO & ENTERPRISE`}
       description={jt`Use interactive embedding when you want to ${(
         <ExternalLink
