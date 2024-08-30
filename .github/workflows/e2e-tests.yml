@@ -145,6 +145,7 @@ jobs:
           postgres: ${{ matrix.name != 'mongo'}}
           mysql: ${{ matrix.name != 'mongo'}}
           mongo: ${{ matrix.name == 'mongo'}}
+          webhook: true
 
       - name: Retrieve uberjar artifact for ${{ matrix.edition }}
         uses: actions/download-artifact@v4

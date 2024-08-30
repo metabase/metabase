@@ -181,6 +181,7 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
     vizSettings: VisualizationSettings,
     onChange: (value: TValue) => void,
     extra: unknown,
+    onChangeSettings: (value: Record<string, any>) => void,
   ) => TProps;
   readDependencies?: string[];
   writeDependencies?: string[];

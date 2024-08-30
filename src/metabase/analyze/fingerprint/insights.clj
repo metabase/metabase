@@ -190,42 +190,43 @@
   [{:keys [numbers datetimes]}]
   (let [datetime   (first datetimes)
         x-position (:position datetime)
-        xfn        #(some-> %
-                            (nth x-position)
-                            ;; at this point in the pipeline, dates are still strings
-                            fingerprinters/->temporal
-                            ->millis-from-epoch
-                            ms->day)]
+        xfn        #(nth % x-position)]
     (fingerprinters/with-error-handling
-      (apply redux/juxt
-             (for [number-col numbers]
-               (redux/post-complete
-                (let [y-position (:position number-col)
-                      yfn        #(nth % y-position)]
-                  ((filter (comp u/real-number? yfn))
-                   (redux/juxt ((map yfn) (last-n 2))
-                               ((map xfn) (last-n 2))
-                               (stats/simple-linear-regression xfn yfn)
-                               (best-fit xfn yfn))))
-                (fn [[[y-previous y-current] [x-previous x-current] fit best-fit-equation]]
-                  (let [[offset slope] (some-> fit p/parameters)
-                        unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
-                                       (if (or (nil? unit)
-                                               (= unit :default))
-                                         (infer-unit x-previous x-current)
-                                         unit))
-                        show-change? (valid-period? x-previous x-current unit)]
-                    (fingerprinters/robust-map
-                     :last-value     y-current
-                     :previous-value (when show-change?
-                                       y-previous)
-                     :last-change    (when show-change?
-                                       (change y-current y-previous))
-                     :slope          slope
-                     :offset         offset
-                     :best-fit       best-fit-equation
-                     :col            (:name number-col)
-                     :unit           unit))))))
+      ((map (fn [row]
+              ;; Convert string datetime into days-from-epoch early.
+              (update (vec row) x-position #(some-> %
+                                                    fingerprinters/->temporal
+                                                    ->millis-from-epoch
+                                                    ms->day))))
+       (apply redux/juxt
+              (for [number-col numbers]
+                (redux/post-complete
+                 (let [y-position (:position number-col)
+                       yfn        #(nth % y-position)]
+                   ((filter (comp u/real-number? yfn))
+                    (redux/juxt ((map yfn) (last-n 2))
+                                ((map xfn) (last-n 2))
+                                (stats/simple-linear-regression xfn yfn)
+                                (best-fit xfn yfn))))
+                 (fn [[[y-previous y-current] [x-previous x-current] fit best-fit-equation]]
+                   (let [[offset slope] (some-> fit p/parameters)
+                         unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+                                        (if (or (nil? unit)
+                                                (= unit :default))
+                                          (infer-unit x-previous x-current)
+                                          unit))
+                         show-change? (valid-period? x-previous x-current unit)]
+                     (fingerprinters/robust-map
+                      :last-value     y-current
+                      :previous-value (when show-change?
+                                        y-previous)
+                      :last-change    (when show-change?
+                                        (change y-current y-previous))
+                      :slope          slope
+                      :offset         offset
+                      :best-fit       best-fit-equation
+                      :col            (:name number-col)
+                      :unit           unit)))))))
       (format "Error generating timeseries insight keyed by: %s"
               (sync-util/name-for-logging (mi/instance :model/Field datetime))))))
 

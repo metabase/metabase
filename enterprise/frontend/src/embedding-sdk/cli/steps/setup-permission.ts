@@ -18,7 +18,7 @@ export const setupPermissions: CliStepMethod = async state => {
   let res;
   const collectionIds: number[] = [];
 
-  // Create new collections sequentially
+  // Create new customer collections sequentially
   try {
     for (const groupName of SANDBOXED_GROUP_NAMES) {
       res = await fetch(`${instanceUrl}/api/collection`, {

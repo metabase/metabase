@@ -77,6 +77,13 @@ HideTotal.args = {
   renderingContext,
 };
 
+export const ReorderedRenamedSlices = Template.bind({});
+ReorderedRenamedSlices.args = {
+  rawSeries: data.reorderedRenamedSlices as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const SmallMinimumSlicePercentage = Template.bind({});
 SmallMinimumSlicePercentage.args = {
   rawSeries: data.smallMinimumSlicePercentage as any,
@@ -234,13 +241,6 @@ SingleDimension.args = {
 export const LongDimensionName = Template.bind({});
 LongDimensionName.args = {
   rawSeries: data.longDimensionName as any,
-  dashcardSettings: {},
-  renderingContext,
-};
-
-export const SortedMetricCol = Template.bind({});
-SortedMetricCol.args = {
-  rawSeries: data.sortedMetricCol as any,
   dashcardSettings: {},
   renderingContext,
 };
