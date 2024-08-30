@@ -51,7 +51,6 @@ docker_setup_env() {
     file_env 'REACT_APP_SEMANTIC'
     file_env 'REACT_APP_WEBSOCKET_SERVER'
     file_env 'HOSTNAME_APP'
-    file_env 'SERVICE_APP'
 }
 
 # detect if the container is started as root or not
