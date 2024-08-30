@@ -7,28 +7,24 @@ const collectTestsByType = ({ type, suite, path, cache = [] }) => {
   const localCache = cache;
   const { [type]: typeList, suites, tests } = suite;
 
-  if (typeList.length > 0) {
-    for (const uuid of typeList) {
-      const foundTestByUuid = tests.find(test => test.uuid === uuid);
-      if (!foundTestByUuid) {
-        logger.error(`Test with uuid ${uuid} not found`);
-        throw new Error(`Test with uuid ${uuid} not found`);
-      }
-      logger.debug(`Found test with uuid ${uuid}`);
-      foundTestByUuid.path = path;
-      localCache.push({ path, ...foundTestByUuid });
+  for (const uuid of typeList) {
+    const foundTestByUuid = tests.find(test => test.uuid === uuid);
+    if (!foundTestByUuid) {
+      logger.error(`Test with uuid ${uuid} not found`);
+      throw new Error(`Test with uuid ${uuid} not found`);
     }
+    logger.debug(`Found test with uuid ${uuid}`);
+    foundTestByUuid.path = path;
+    localCache.push({ path, ...foundTestByUuid });
   }
 
-  if (suites.length > 0) {
-    for (const subSuite of suites) {
-      collectTestsByType({
-        type,
-        suite: subSuite,
-        path: subSuite.file || path,
-        cache: localCache,
-      });
-    }
+  for (const subSuite of suites) {
+    collectTestsByType({
+      type,
+      suite: subSuite,
+      path: subSuite.file || path,
+      cache: localCache,
+    });
   }
 
   return localCache;
@@ -93,7 +89,7 @@ function formatSummary(report) {
 
     tests.forEach(test => {
       summary += `| ${test.title}`;
-      summary += "<p></p>"; // adds extra space between title and
+      summary += "<p></p>"; // adds extra space after title
       summary += `<details>`;
       summary += "<summary>❌ ";
       summary += `<code>${truncateError(test.error)}</code>`;
