@@ -5,7 +5,6 @@ import type { CleanupEvent } from "./cleanup";
 import type { CsvUploadEvent } from "./csv-upload";
 import type { DashboardEvent } from "./dashboard";
 import type { DatabaseEvent } from "./database";
-import type { DownloadsEvent } from "./downloads";
 import type { EmbedFlowEvent } from "./embed-flow";
 import type { EmbedShareEvent } from "./embed-share";
 import type { EmbeddingHomepageEvent } from "./embedding-homepage";
@@ -29,7 +28,6 @@ export type SchemaEventMap = {
   csvupload: CsvUploadEvent;
   dashboard: DashboardEvent;
   database: DatabaseEvent;
-  downloads: DownloadsEvent;
   embed_flow: EmbedFlowEvent;
   embed_share: EmbedShareEvent;
   embedding_homepage: EmbeddingHomepageEvent;

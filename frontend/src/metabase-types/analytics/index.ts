@@ -5,7 +5,6 @@ export * from "./cleanup";
 export * from "./csv-upload";
 export * from "./dashboard";
 export * from "./database";
-export * from "./downloads";
 export * from "./embed-flow";
 export * from "./embed-share";
 export * from "./embedding-homepage";
