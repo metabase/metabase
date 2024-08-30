@@ -5,7 +5,6 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
 import type { RecentItem, SearchResult } from "metabase-types/api";
 
-import type { CollectionPickerModel } from "../../CollectionPicker";
 import type { EntityTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
@@ -115,7 +114,11 @@ export const DashboardPickerModal = ({
     </Button>,
   ];
 
-  const tabs: EntityTab<CollectionPickerModel>[] = [
+  const tabs: EntityTab<
+    DashboardPickerItem["id"],
+    DashboardPickerItem["model"],
+    DashboardPickerItem
+  >[] = [
     {
       displayName: t`Dashboards`,
       model: "dashboard",

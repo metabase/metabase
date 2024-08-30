@@ -1,4 +1,5 @@
 import type { IconName } from "metabase/ui";
+import type { SearchResultId } from "metabase-types/api";
 
 import type { EntityPickerModalOptions } from "./components/EntityPickerModal";
 
@@ -24,16 +25,30 @@ export type PickerStateItem<Item, Query> = {
 
 export type EntityPickerOptions = EntityPickerModalOptions;
 
-export type EntityTabRenderProps = {
-  onItemSelect: (item: TypeWithModel<string | number, string>) => void;
+export type EntityTabRenderProps<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> = {
+  onItemSelect: (item: Item) => void;
 };
 
-export type EntityTab<Model extends string> = {
+/**
+ * It's not really an "entity" tab, as it is also used for recents and search tabs
+ * TODO: rename
+ */
+export type EntityTab<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> = {
   displayName: string;
-  render: (props: EntityTabRenderProps) => JSX.Element;
+  render: (props: EntityTabRenderProps<Id, Model, Item>) => JSX.Element;
   icon: IconName;
-  model: Model;
+  model: TabId<Model>;
 };
+
+export type TabId<Model extends string> = Model | "recents" | "search";
 
 export type ListProps<
   Id,

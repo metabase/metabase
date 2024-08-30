@@ -64,12 +64,16 @@ export const DEFAULT_RECENTS_CONTEXT: RecentContexts[] = [
   "views",
 ];
 
-export interface EntityPickerModalProps<Model extends string, Item> {
+export interface EntityPickerModalProps<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> {
   title?: string;
   selectedItem: Item | null;
   initialValue?: Partial<Item>;
   canSelectItem: boolean;
-  tabs: EntityTab<Model>[];
+  tabs: EntityTab<Id, Model, Item>[];
   options?: Partial<EntityPickerOptions>;
   searchResultFilter?: (results: SearchResult[]) => SearchResult[];
   recentFilter?: (results: RecentItem[]) => RecentItem[];
@@ -107,7 +111,7 @@ export function EntityPickerModal<
   onClose,
   onConfirm,
   onItemSelect,
-}: EntityPickerModalProps<Model, Item>) {
+}: EntityPickerModalProps<Id, Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
     useListRecentsQuery(
@@ -149,8 +153,8 @@ export function EntityPickerModal<
       : relevantModelRecents;
   }, [recentItems, tabModels, recentFilter]);
 
-  const tabs: EntityTab<Model | "recents" | "search">[] = useMemo(() => {
-    const computedTabs: EntityTab<Model | "recents" | "search">[] = [];
+  const tabs: EntityTab<Id, Model, Item>[] = useMemo(() => {
+    const computedTabs: EntityTab<Id, Model, Item>[] = [];
     const hasRecentsTab =
       hydratedOptions.hasRecents && filteredRecents.length > 0;
     const hasSearchTab = !!searchQuery;
@@ -228,7 +232,7 @@ export function EntityPickerModal<
   );
 
   const handleSelectItem = useCallback(
-    (item: TypeWithModel<string | number, string>) => {
+    (item: Item) => {
       // TODO: if is folder
       setTabFolderState(state => ({
         ...state,

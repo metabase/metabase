@@ -45,15 +45,16 @@ export const isSelectedItem = <Id, Model extends string>(
 };
 
 export const computeInitialTab = <
-  Item extends TypeWithModel<SearchResultId, Model>,
+  Id extends SearchResultId,
   Model extends string,
+  Item extends TypeWithModel<Id, Model>,
 >({
   initialValue,
   tabs,
   defaultToRecentTab,
 }: {
   initialValue?: Partial<Item>;
-  tabs: EntityTab<Model>[];
+  tabs: EntityTab<Id, Model, Item>[];
   defaultToRecentTab: boolean;
 }): { model: Model | "search" | "recents" } => {
   const hasRecents = tabs.some(tab => tab.model === "recents");

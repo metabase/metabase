@@ -182,3 +182,10 @@ const hasDatabaseId = (
 ): value is Pick<CollectionItem, "database_id"> => {
   return typeof value === "object" && value != null && "database_id" in value;
 };
+
+export const castQuestionPickerItemToDataPickerItem = (
+  item: QuestionPickerItem,
+): DataPickerItem => {
+  // see comment for QuestionPickerItem definition to see why we need this cast
+  return item as DataPickerItem;
+};

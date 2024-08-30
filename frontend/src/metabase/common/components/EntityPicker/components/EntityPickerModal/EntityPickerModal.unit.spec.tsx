@@ -23,21 +23,24 @@ import type { EntityTab, TypeWithModel } from "../../types";
 import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
 
-type SampleModelType = "card" | "table";
+type SampleId = number;
+type SampleModel = "card" | "table";
+type SampleItem = TypeWithModel<SampleId, SampleModel>;
+type SampleTab = EntityTab<SampleId, SampleModel, SampleItem>;
 
 interface SetupOpts {
   title?: string;
   onItemSelect?: () => void;
   onClose?: () => void;
   onConfirm?: () => void;
-  tabs?: EntityTab<SampleModelType>[];
+  tabs?: SampleTab[];
   options?: EntityPickerModalOptions;
-  selectedItem?: null | TypeWithModel<number, SampleModelType>;
+  selectedItem?: SampleItem | null;
   actionButtons?: JSX.Element[];
   recentFilter?: (item: RecentItem[]) => RecentItem[];
   recentItems?: RecentItem[];
   defaultToRecentTab?: boolean;
-  initialValue?: { model: SampleModelType };
+  initialValue?: { model: SampleModel };
   searchDelay?: number;
 }
 
@@ -45,14 +48,14 @@ const TestPicker = ({ name }: { name: string }) => (
   <p>{`Test picker ${name}`}</p>
 );
 
-const TEST_CARD_TAB: EntityTab<SampleModelType> = {
+const TEST_CARD_TAB: SampleTab = {
   icon: "audit",
   displayName: "All the foo",
   model: "card",
   render: () => <TestPicker name="foo" />,
 };
 
-const TEST_TABLE_TAB: EntityTab<SampleModelType> = {
+const TEST_TABLE_TAB: SampleTab = {
   icon: "audit",
   displayName: "All the bar",
   model: "table",

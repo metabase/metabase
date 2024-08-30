@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchResult } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -105,7 +105,13 @@ export const CollectionPickerModal = ({
       ]
     : [];
 
-  const tabs: [EntityTab<SearchModel>] = [
+  const tabs: [
+    EntityTab<
+      CollectionPickerItem["id"],
+      CollectionPickerItem["model"],
+      CollectionPickerItem
+    >,
+  ] = [
     {
       displayName: t`Collections`,
       model: "collection",

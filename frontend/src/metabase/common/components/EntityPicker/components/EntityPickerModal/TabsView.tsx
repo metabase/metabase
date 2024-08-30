@@ -1,20 +1,33 @@
 import { Icon, Tabs } from "metabase/ui";
+import type { SearchResultId } from "metabase-types/api";
 
-import type { EntityTab, EntityTabRenderProps } from "../../types";
+import type {
+  EntityTab,
+  EntityTabRenderProps,
+  TypeWithModel,
+} from "../../types";
 
-interface Props<Model extends string> {
+interface Props<
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+> {
   selectedTab: Model | "recents" | "search";
-  tabs: EntityTab<Model | "recents" | "search">[];
-  onItemSelect: EntityTabRenderProps["onItemSelect"];
+  tabs: EntityTab<Id, Model | "recents" | "search", Item>[];
+  onItemSelect: EntityTabRenderProps<Id, Model, Item>["onItemSelect"];
   onTabChange: (model: Model | "recents" | "search") => void;
 }
 
-export const TabsView = <Model extends string>({
+export const TabsView = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>({
   selectedTab,
   tabs,
   onItemSelect,
   onTabChange,
-}: Props<Model>) => {
+}: Props<Id, Model, Item>) => {
   return (
     <Tabs
       keepMounted

@@ -22,6 +22,7 @@ import type {
   DataPickerValue,
 } from "../types";
 import {
+  castQuestionPickerItemToDataPickerItem,
   createShouldShowItem,
   isMetricItem,
   isModelItem,
@@ -120,7 +121,11 @@ export const DataPickerModal = ({
   );
 
   const tabs = useMemo(() => {
-    const computedTabs: EntityTab<DataPickerItem["model"]>[] = [];
+    const computedTabs: EntityTab<
+      DataPickerItem["id"],
+      DataPickerItem["model"],
+      DataPickerItem
+    >[] = [];
 
     if (hasModels && hasNestedQueriesEnabled && models.includes("dataset")) {
       computedTabs.push({
@@ -133,7 +138,11 @@ export const DataPickerModal = ({
             models={MODEL_PICKER_MODELS}
             options={options}
             shouldShowItem={modelsShouldShowItem}
-            onItemSelect={onItemSelect}
+            onItemSelect={questionPickerItem => {
+              const item =
+                castQuestionPickerItemToDataPickerItem(questionPickerItem);
+              onItemSelect(item);
+            }}
           />
         ),
       });
@@ -150,7 +159,11 @@ export const DataPickerModal = ({
             models={METRIC_PICKER_MODELS}
             options={options}
             shouldShowItem={metricsShouldShowItem}
-            onItemSelect={onItemSelect}
+            onItemSelect={questionPickerItem => {
+              const item =
+                castQuestionPickerItemToDataPickerItem(questionPickerItem);
+              onItemSelect(item);
+            }}
           />
         ),
       });
@@ -182,7 +195,11 @@ export const DataPickerModal = ({
             models={QUESTION_PICKER_MODELS}
             options={options}
             shouldShowItem={questionsShouldShowItem}
-            onItemSelect={onItemSelect}
+            onItemSelect={questionPickerItem => {
+              const item =
+                castQuestionPickerItemToDataPickerItem(questionPickerItem);
+              onItemSelect(item);
+            }}
           />
         ),
       });

@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import type { CollectionPickerModel } from "../../CollectionPicker";
 import type { EntityTab } from "../../EntityPicker";
 import {
   EntityPickerModal,
@@ -86,7 +85,11 @@ export const QuestionPickerModal = ({
     }
   };
 
-  const tabs: EntityTab<CollectionPickerModel>[] = [
+  const tabs: EntityTab<
+    QuestionPickerItem["id"],
+    QuestionPickerItem["model"],
+    QuestionPickerItem
+  >[] = [
     {
       displayName: t`Questions`,
       model: "card",
