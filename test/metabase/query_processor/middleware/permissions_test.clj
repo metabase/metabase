@@ -85,6 +85,21 @@
                :type     :query
                :query    {:source-table (u/the-id table)}}))))))
 
+(deftest nested-native-query-test
+  (testing "Make sure nested native query fails to run if current user doesn't have perms"
+    (t2.with-temp/with-temp [:model/Database db {}]
+      (data-perms/set-database-permission! (perms-group/all-users)
+                                           (u/the-id db)
+                                           :perms/create-queries
+                                           :query-builder)
+      (is (thrown-with-msg?
+           ExceptionInfo
+           perms-error-msg
+           (check-perms-for-rasta
+            {:database (u/the-id db)
+             :type     :query
+             :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))))
+
 (deftest nested-native-query-test-2
   (testing "...but it should work if user has perms [nested native queries]"
     (t2.with-temp/with-temp [Database db]
@@ -254,6 +269,20 @@
                   (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path (u/the-id collection))})
                             qp.perms/*card-id* model-id]
                     (check! query)))))))))))
+
+(deftest inactive-table-test
+  (testing "Make sure a query on an inactive table fails to run"
+    (mt/with-full-data-perms-for-all-users!
+      (mt/with-temp [Database db {}
+                     Table    table {:db_id (u/the-id db)
+                                     :active false}]
+        (is (thrown-with-msg?
+             ExceptionInfo
+             #"Table [\d,]+ is inactive."
+             (check-perms-for-rasta
+              {:database (u/the-id db)
+               :type     :query
+               :query    {:source-table (u/the-id table)}})))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"

@@ -7,7 +7,6 @@ import type {
 import type { PieChartModel } from "./model/types";
 
 export interface PieChartFormatters {
-  formatDimension: (value: unknown) => string;
   formatMetric: (value: unknown, isCompact?: boolean) => string;
   formatPercent: (value: unknown, location: "legend" | "chart") => string;
 }
@@ -19,20 +18,12 @@ export function getPieChartFormatters(
 ): PieChartFormatters {
   const { column: getColumnSettings } = settings;
   if (!getColumnSettings) {
-    throw Error(`"settings.column" is undefined`);
+    throw Error("`settings.column` is undefined");
   }
 
-  const dimensionColSettings = getColumnSettings(
-    chartModel.colDescs.dimensionDesc.column,
-  );
   const metricColSettings = getColumnSettings(
     chartModel.colDescs.metricDesc.column,
   );
-
-  const formatDimension = (value: unknown) =>
-    renderingContext.formatValue(value, {
-      ...dimensionColSettings,
-    });
 
   const formatMetric = (value: unknown, isCompact: boolean = false) =>
     renderingContext.formatValue(value, {
@@ -60,5 +51,5 @@ export function getPieChartFormatters(
     });
   };
 
-  return { formatDimension, formatMetric, formatPercent };
+  return { formatMetric, formatPercent };
 }

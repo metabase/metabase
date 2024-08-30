@@ -25,7 +25,7 @@ export function getPieChartLegend(
       .map(s => {
         const label = s.data.isOther
           ? OTHER_SLICE_KEY // need to use this instead of `s.data.key` to ensure type is string
-          : formatters.formatDimension(s.data.key);
+          : s.data.name;
 
         return {
           name: label,

@@ -146,7 +146,7 @@ function openAlertForQuestion(id) {
 }
 
 function toggleChannel(channel) {
-  cy.findByText(channel).parent().find("input").click();
+  cy.findByText(channel).parent().find("input").click({ force: true });
 }
 
 function saveAlert() {

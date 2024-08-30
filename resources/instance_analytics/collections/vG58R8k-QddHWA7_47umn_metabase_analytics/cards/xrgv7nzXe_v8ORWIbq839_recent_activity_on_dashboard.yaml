@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -198,6 +197,8 @@ visualization_settings:
   column_settings:
     '["name","full_name"]':
       column_title: Person
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: Person
   table.cell_column: model_id
   table.columns:
   - enabled: true
@@ -234,6 +235,7 @@ serdes/meta:
 - id: xrgv7nzXe_v8ORWIbq839
   label: recent_activity_on_dashboard
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: null
+source_card_id: -lNDM3tJmuL5ltGbX0oyT
 type: question

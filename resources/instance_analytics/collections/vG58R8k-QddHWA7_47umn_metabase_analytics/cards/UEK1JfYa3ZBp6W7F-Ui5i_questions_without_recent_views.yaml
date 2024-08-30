@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -105,14 +104,14 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    '["name","Days since last view"]':
+    '["ref",["expression","Days since last view"]]':
       show_mini_bar: true
-    '["name","entity_id"]':
+    '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer"}]]':
       column_title: Question ID
       link_text: ''
       link_url: /question/{{entity_id}}
       view_as: link
-    '["name","name"]':
+    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text"}]]':
       link_text: ''
       link_url: /question/{{entity_id}}
       view_as: link
@@ -121,6 +120,7 @@ serdes/meta:
 - id: UEK1JfYa3ZBp6W7F-Ui5i
   label: questions_without_recent_views
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (901f705)
+source_card_id: AxSackBiyXVRUzM_TyyQY
 type: question

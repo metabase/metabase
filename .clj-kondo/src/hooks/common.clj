@@ -288,8 +288,8 @@
     (-> (hooks/vector-node
          [(hooks/vector-node (map :model binding-infos))
           (-> (hooks/list-node (list* (hooks/token-node `let)
-                                    (hooks/vector-node (mapcat (juxt :binding :value) binding-infos))
-                                    body))
+                                      (hooks/vector-node (mapcat (juxt :binding :value) binding-infos))
+                                      body))
               (with-meta (meta body)))])
         (with-meta (meta body)))))
 
@@ -364,11 +364,11 @@
   where the first arg should be linted and appear to be used."
   [{{[_ arg & body] :children} :node}]
   (let [node* (hooks/list-node
-                (list*
-                  (hooks/token-node 'let)
-                  (hooks/vector-node [(hooks/token-node (gensym "_"))
-                                      arg])
-                  body))]
+               (list*
+                (hooks/token-node 'let)
+                (hooks/vector-node [(hooks/token-node (gensym "_"))
+                                    arg])
+                body))]
     {:node node*}))
 
 (defn node->qualified-symbol [node]
@@ -407,3 +407,17 @@
 
   ;; should be 1
   (format-string-specifier-count "%-02d"))
+
+(defn add-lsp-ignore-unused-public-var-metadata
+  "Add
+
+    ^{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+
+  metadata to a node to suppress LSP warnings."
+  [node]
+  (letfn [(update-ignores [existing-ignores]
+            (hooks/vector-node
+             (cons
+              (hooks/keyword-node :clojure-lsp/unused-public-var)
+              (:children existing-ignores))))]
+    (vary-meta node update :clj-kondo/ignore update-ignores)))
