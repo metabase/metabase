@@ -10,6 +10,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.log]
    [metabase.util.performance :as perf]
    [redux.core :as redux])
   (:import
@@ -65,25 +66,30 @@
                                       ~v
                                       (catch Throwable _#))]))))
 
-(defmacro ^:private with-reduced-error
-  [msg & body]
-  `(let [result# (sync-util/with-error-handling ~msg ~@body)]
-     (if (instance? Throwable result#)
-       (reduced result#)
-       result#)))
+(defmacro ^:private do-with-error-handling
+  "This macro and its usage is written in a specific way to ensure that try-catch blocks don't produce closures."
+  [form action-on-exception msg]
+  `(if sync-util/*log-exceptions-and-continue?*
+     (try ~form
+          (catch Throwable e#
+            (metabase.util.log/warn e# ~msg)
+            (~action-on-exception e#)))
+     ~form))
 
 (defn with-error-handling
   "Wrap `rf` in an error-catching transducer."
   [rf msg]
+  ;; This function is written in a specific way to ensure that try-catch blocks don't produce closures.
   (fn
-    ([] (with-reduced-error msg (rf)))
+    ([]
+     (do-with-error-handling (rf) reduced msg))
     ([acc]
-     (unreduced
-      (if (or (reduced? acc)
-              (instance? Throwable acc))
-        acc
-        (with-reduced-error msg (rf acc)))))
-    ([acc e] (with-reduced-error msg (rf acc e)))))
+     (if (or (reduced? acc)
+             (instance? Throwable acc))
+       (unreduced acc)
+       (do-with-error-handling (unreduced (rf acc)) identity msg)))
+    ([acc e]
+     (do-with-error-handling (rf acc e) reduced msg))))
 
 (defn robust-fuse
   "Like `redux/fuse` but wraps every reducing fn in `with-error-handling` and returns `nil` for
