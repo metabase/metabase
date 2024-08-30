@@ -1,4 +1,4 @@
-import chalk, { green } from "chalk";
+import { blue, green, yellow } from "chalk";
 
 import { HARDCODED_USERS } from "../constants/hardcoded-users";
 
@@ -40,7 +40,7 @@ export const getEmbeddingFailedMessage = (reason: string) => `
 export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   // eslint-disable-next-line no-unconditional-metabase-links-render -- link for the CLI message
   `
-  Metabase is running at ${chalk.blue(instanceUrl)}
+  Metabase is running at ${blue(instanceUrl)}
   You can find your login credentials at METABASE_LOGIN.json
 
   Metabase will phone home some data collected via Snowplow.
@@ -53,10 +53,19 @@ export const getMetabaseInstanceSetupCompleteMessage = (instanceUrl: string) =>
   Read more: https://www.metabase.com/docs/latest/installation-and-operation/information-collection
 `;
 
-export const NOT_ENOUGH_TENANCY_COLUMN_ROWS = `
-  At least ${HARDCODED_USERS.length} rows with valid tenancy columns are needed for sandboxing.
-  You can add your tenant ids to the user attribute in settings.
+const USER_COUNT = HARDCODED_USERS.length;
+
+export const getNotEnoughTenantsMessage = (unsampledTableNames: string[]) => {
+  const tables = unsampledTableNames.join(", ");
+  const warningTitle = `Sandboxing is not configured for the following tables: ${tables}.`;
+
+  return `
+  ${yellow(warningTitle)}
+
+  At least ${USER_COUNT} tenants are needed for the sandboxing demo.
+  You can add your tenant ids to your user attribute, e.g. "customer_id: 5".
 `;
+};
 
 export const SETUP_PRO_LICENSE_MESSAGE = `
   This tool can set up permissions for multi-tenancy and a mock back-end server that

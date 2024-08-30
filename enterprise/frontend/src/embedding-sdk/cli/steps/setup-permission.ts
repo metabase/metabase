@@ -1,7 +1,5 @@
-import chalk from "chalk";
-
 import { SANDBOXED_GROUP_NAMES } from "../constants/config";
-import { NOT_ENOUGH_TENANCY_COLUMN_ROWS } from "../constants/messages";
+import { getNotEnoughTenantsMessage } from "../constants/messages";
 import type { CliStepMethod } from "../types/cli";
 import { getCollectionPermissions } from "../utils/get-collection-permissions";
 import { getPermissionsForGroups } from "../utils/get-permission-groups";
@@ -130,21 +128,19 @@ export const setupPermissions: CliStepMethod = async state => {
   }
 
   try {
-    const tenantIdsMap = await sampleTenantIdsFromTables({
-      chosenTables: state.chosenTables ?? [],
-      databaseId: state.databaseId ?? 0,
-      tenancyColumnNames,
+    const { tenantIdsMap, unsampledTableNames } =
+      await sampleTenantIdsFromTables({
+        chosenTables: state.chosenTables ?? [],
+        databaseId: state.databaseId ?? 0,
+        tenancyColumnNames,
 
-      cookie,
-      instanceUrl,
-    });
+        cookie,
+        instanceUrl,
+      });
 
-    // The tables don't have enough tenancy column values.
-    // They have to set up the "customer_id" user attribute by themselves.
-    if (!tenantIdsMap) {
-      console.log(chalk.yellow(NOT_ENOUGH_TENANCY_COLUMN_ROWS));
-
-      return [{ type: "success" }, state];
+    // Some of the chosen tables don't have enough tenants for the demo.
+    if (unsampledTableNames.length > 0) {
+      console.log(getNotEnoughTenantsMessage(unsampledTableNames));
     }
 
     return [{ type: "success" }, { ...state, tenantIdsMap }];

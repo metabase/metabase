@@ -32,11 +32,12 @@ type TenantIdsMap = Record<string, TenantId[]>;
  */
 export async function sampleTenantIdsFromTables(
   options: SampleFromTableOptions,
-): Promise<TenantIdsMap | null> {
+) {
   const { chosenTables, databaseId, cookie, instanceUrl, tenancyColumnNames } =
     options;
 
   const tenantIdsMap: TenantIdsMap = {};
+  const unsampledTableNames: string[] = [];
 
   // Get sample values for the tenancy column.
   for (const table of chosenTables) {
@@ -55,14 +56,12 @@ export async function sampleTenantIdsFromTables(
     // Skip this column if it has fewer rows than our mock user.
     if (values !== null && values.length >= HARDCODED_USERS.length) {
       tenantIdsMap[columnName] = values;
+    } else {
+      unsampledTableNames.push(table.name);
     }
   }
 
-  if (Object.keys(tenantIdsMap).length === 0) {
-    return null;
-  }
-
-  return tenantIdsMap;
+  return { tenantIdsMap, unsampledTableNames };
 }
 
 /**
