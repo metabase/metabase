@@ -39,6 +39,7 @@ import type {
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 import type {
   DashboardSidebarName,
   SelectedTabId,
@@ -521,7 +522,7 @@ function isSuccessfulFetchDashboardResult(
 export function isCancelledFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is CancelledFetchDashboardResult {
-  return !!(result as CancelledFetchDashboardResult)?.payload?.isCancelled;
+  return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }
 
 export { Dashboard };
