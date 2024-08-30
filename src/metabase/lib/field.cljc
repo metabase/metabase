@@ -585,9 +585,8 @@
     (not (:fields (lib.util/query-stage query stage-number))) (populate-fields-for-stage stage-number)))
 
 (defn- include-field
-  "Adds a `column` ref to the `:field` clause of the query if is not already included.
-
-  We need to populate the `:fields` clause in case it is not yet present in the `query`.
+  "Adds a `column` ref to the `:field` clause of the query if is not already included. Populates the `:fields` clause in
+   case it is not yet present in the `query`.
 
   We use `lib.equality/find-matching-ref` to check if the `column` ref is in the list of refs. The matching logic is
   generous and it can match a column with a ref of the underlying column but with different options. To overcome
@@ -602,6 +601,7 @@
     (if (and (lib.schema.util/distinct-refs? updated-field-refs)
              (or (not original-match-ref) (not (lib.equality/= original-match-ref updated-match-ref))))
       (lib.util/update-query-stage populated-query stage-number assoc :fields updated-field-refs)
+      ;; If the column is already found, do nothing and return the original query.
       query)))
 
 (defn- add-field-to-join [query stage-number column]
