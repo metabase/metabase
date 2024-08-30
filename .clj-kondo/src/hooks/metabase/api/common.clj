@@ -1,7 +1,8 @@
 (ns hooks.metabase.api.common
   (:require
    [clj-kondo.hooks-api :as api]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [hooks.common]))
 
 (defn route-fn-name
   "route fn hook"
@@ -25,7 +26,7 @@
                           (api/token-node (route-fn-name (api/sexpr method) (api/sexpr route)))
                           body))
                         (with-meta (meta node)))))
-                  (with-meta {:clj-kondo/ignore [:clojure-lsp/unused-public-var]}))))]
+                  hooks.common/add-lsp-ignore-unused-public-var-metadata)))]
     (update arg :node update-defendpoint)))
 
 (comment

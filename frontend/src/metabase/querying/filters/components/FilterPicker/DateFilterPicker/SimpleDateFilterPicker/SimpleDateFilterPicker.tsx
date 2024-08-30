@@ -1,7 +1,5 @@
-import {
-  type DatePickerValue,
-  SimpleDatePicker,
-} from "metabase/querying/filters/components/DatePicker";
+import type { DatePickerValue } from "metabase/querying/filters/components/DatePicker";
+import { SimpleDatePicker } from "metabase/querying/filters/components/DatePicker/SimpleDatePicker";
 import { useDateFilter } from "metabase/querying/filters/hooks/use-date-filter";
 import type * as Lib from "metabase-lib";
 
@@ -36,7 +34,7 @@ export function SimpleDateFilterPicker({
   };
 
   return (
-    <div data-testid="datetime-filter-picker">
+    <div data-testid="date-filter-picker">
       <SimpleDatePicker
         value={value}
         availableOperators={availableOperators}

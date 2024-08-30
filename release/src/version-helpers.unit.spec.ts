@@ -1,21 +1,21 @@
 import type { Tag } from "./types";
 import {
-  isValidVersionString,
-  getOSSVersion,
+  findNextPatchVersion,
+  getBuildRequirements,
   getEnterpriseVersion,
-  isEnterpriseVersion,
-  isRCVersion,
-  getVersionType,
+  getGenericVersion,
+  getLastReleaseFromTags,
+  getMilestoneName,
+  getNextVersions,
+  getOSSVersion,
   getReleaseBranch,
   getVersionFromReleaseBranch,
+  getVersionType,
+  isEnterpriseVersion,
   isLatestVersion,
-  getBuildRequirements,
-  getNextVersions,
-  getGenericVersion,
-  getMilestoneName,
-  findNextPatchVersion,
+  isRCVersion,
+  isValidVersionString,
   versionSort,
-  getLastReleaseFromTags,
 } from "./version-helpers";
 
 describe("version-helpers", () => {
@@ -482,7 +482,7 @@ describe("version-helpers", () => {
       expect(latest).toBe('v0.12.2');
     });
 
-    it('should return the latest release tag for patch versions', () => {
+    it('should not return the latest release tag for patch versions', () => {
       const latest = getLastReleaseFromTags([
         { ref: 'refs/tags/v0.12.0' },
         { ref: 'refs/tags/v0.11.2' },
@@ -492,7 +492,7 @@ describe("version-helpers", () => {
         { ref: 'refs/tags/v0.12.2.3' },
         { ref: 'refs/tags/v0.12.2.2' },
       ] as Tag[]);
-      expect(latest).toBe('v0.12.2.3');
+      expect(latest).toBe('v0.12.2');
     });
 
     it('should return the latest tag for major version', () => {
