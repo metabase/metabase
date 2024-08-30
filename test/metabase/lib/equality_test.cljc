@@ -665,7 +665,7 @@
               (lib.equality/find-matching-column query -1 a-ref cols))))))
 
 (deftest ^:parallel find-matching-ref-multiple-breakouts-test
-  (testing "find-matching-ref should be able to distinguish between multiple breakouts of the same column in the previous stage"
+  (testing "should be able to distinguish between multiple breakouts of the same column in the previous stage"
     (let [column-metadata   (meta/field-metadata :orders :created-at)
           query             (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                                 (lib/aggregate (lib/count))
