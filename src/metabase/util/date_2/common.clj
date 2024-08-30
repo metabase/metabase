@@ -1,4 +1,4 @@
-˚(ns metabase.util.date-2.common
+(ns metabase.util.date-2.common
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
