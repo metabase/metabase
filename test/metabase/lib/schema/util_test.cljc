@@ -1,6 +1,6 @@
 (ns metabase.lib.schema.util-test
   (:require
-   [clojure.test :refer [are deftest is]]
+   [clojure.test :refer [are deftest is testing]]
    [malli.core :as mc]
    [malli.error :as me]
    [metabase.lib.schema.util :as lib.schema.util]))
@@ -141,3 +141,50 @@
 
     query-with-no-duplicate-uuids
     query-with-no-uuids))
+
+(deftest ^:parallel distinct-ignoring-uuids-schema-test
+  (testing "distinct values ignoring uuids"
+    (are [x] (not (mc/explain ::lib.schema.util/distinct-ignoring-uuids x))
+      [1 2 3]
+      [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
+       {:b 2, :lib/uuid "00000000-0000-0000-0000-000000000000"}]
+      [[:asc
+        {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        [:field
+         {:lib/uuid "00000000-0000-0000-0000-000000000000"
+          :base-type :type/BigInteger
+          :effective-type :type/BigInteger}
+         63400]]
+       [:asc
+        {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        [:field
+         {:lib/uuid "00000000-0000-0000-0000-000000000000"
+          :base-type :type/BigInteger
+          :effective-type :type/BigInteger}
+         63401]]]))
+
+  (testing "non-distinct values ignoring uuids"
+    (are [x] (mc/explain ::lib.schema.util/distinct-ignoring-uuids x)
+      [1 2 1 3]
+      [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
+       {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000001"}]
+      [[:asc
+        {:lib/uuid "00000000-0000-0000-0000-000000000000"}
+        [:field
+         {:lib/uuid "00000000-0000-0000-0000-000000000000"
+          :base-type :type/BigInteger
+          :effective-type :type/BigInteger}
+         63400]]
+       [:asc
+        {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+        [:field
+         {:lib/uuid "00000000-0000-0000-0000-000000000001"
+          :base-type :type/BigInteger
+          :effective-type :type/BigInteger}
+         63400]]]))
+
+  (testing "humanized error message"
+    (is (= ["Duplicate values ignoring uuids in: [{:a 1} {:a 1}]"]
+           (me/humanize (mc/explain ::lib.schema.util/distinct-ignoring-uuids
+                                    [{:a 1, :lib/uuid "00000000-0000-0000-0000-000000000000"}
+                                     {:a 1, :lib/uuid "00000000-0000-0000-0000-000000000001"}]))))))

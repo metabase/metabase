@@ -3,6 +3,7 @@
   (:require
    [clojure.walk :as walk]
    [metabase.lib.options :as lib.options]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (declare collect-uuids*)
@@ -82,3 +83,17 @@
        (dissoc x :lib/uuid)
        x))
    x))
+
+(mr/def ::distinct-ignoring-uuids
+  [:fn
+   {:error/message "values must be distinct ignoring uuids"
+    :error/fn      (fn [{:keys [value]} _]
+                     (str "Duplicate values ignoring uuids in: " (pr-str (remove-lib-uuids value))))}
+   (comp u/empty-or-distinct? remove-lib-uuids)])
+
+(defn distinct-ignoring-uuids
+  "Add an additional constraint to `schema` that requires all elements to be distinct after removing uuids."
+  [schema]
+  [:and
+   schema
+   [:ref ::distinct-ignoring-uuids]])
