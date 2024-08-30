@@ -10,8 +10,8 @@ import {
   type SearchResultId,
 } from "metabase-types/api";
 
-import type { EntityPickerTab, TypeWithModel } from "./types";
 import { RECENTS_TAB_ID } from "./constants";
+import type { EntityPickerTab, TypeWithModel } from "./types";
 
 export const getEntityPickerIcon = <Id, Model extends string>(
   item: TypeWithModel<Id, Model>,
