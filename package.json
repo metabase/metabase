@@ -23,6 +23,7 @@
     "@react-oauth/google": "^0.11.1",
     "@reduxjs/toolkit": "^2.2.5",
     "@snowplow/browser-tracker": "^3.1.6",
+    "@tanstack/react-table": "^8.20.1",
     "@tanstack/react-virtual": "^3.1.2",
     "@tippyjs/react": "^4.2.6",
     "@types/react-router": "3.0.27",

@@ -1,10 +1,13 @@
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren } from "react";
+
+import { useSelector } from "metabase/lib/redux";
+import { getIsDndAvailable } from "metabase/selectors/app";
 
 import type { BaseItemsTableProps } from "metabase/components/ItemsTable/BaseItemsTable";
-import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 import type { CollectionItem } from "metabase-types/api";
 
+// TODO: reduce props to what are actually needed
 type BaseItemTableRowProps = PropsWithChildren<
   {
     testIdPrefix: string;
@@ -19,7 +22,6 @@ type BaseItemTableRowProps = PropsWithChildren<
     | "collection"
     | "selectedItems"
     | "onDrop"
-    | "ItemComponent"
     | "databases"
     | "bookmarks"
     | "createBookmark"
@@ -33,91 +35,37 @@ type BaseItemTableRowProps = PropsWithChildren<
 >;
 
 export const TableRow = ({
-  testIdPrefix,
-  databases,
-  bookmarks,
-  createBookmark,
-  deleteBookmark,
-  ItemComponent = DefaultItemRenderer,
-  isPinned,
-  onCopy,
-  onMove,
-  onToggleSelected,
-  item,
-  isSelected,
-  itemKey,
   collection,
-  onClick,
-  showActionMenu,
-}: BaseItemTableRowProps) => (
-  <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
-    <ItemComponent
-      onClick={onClick}
-      testIdPrefix={testIdPrefix}
-      item={item}
-      isSelected={isSelected}
-      databases={databases}
-      bookmarks={bookmarks}
-      createBookmark={createBookmark}
-      deleteBookmark={deleteBookmark}
-      collection={collection}
-      isPinned={isPinned}
-      onCopy={onCopy}
-      onMove={onMove}
-      onToggleSelected={onToggleSelected}
-      showActionMenu={showActionMenu}
-    />
-  </tr>
-);
-
-export const ItemDragSourceTableRow = ({
-  testIdPrefix,
-  databases,
-  bookmarks,
-  createBookmark,
-  deleteBookmark,
-  ItemComponent = DefaultItemRenderer,
-  isPinned,
-  onCopy,
-  onMove,
-  onToggleSelected,
-  item,
   isSelected,
+  item,
   itemKey,
-  collection,
-  onClick,
-  selectedItems,
   onDrop,
-  showActionMenu,
+  selectedItems,
+  testIdPrefix,
+  children,
 }: BaseItemTableRowProps) => {
-  return (
-    <ItemDragSource
-      item={item}
-      collection={collection}
-      isSelected={isSelected}
-      selected={selectedItems}
-      onDrop={onDrop}
-      key={`item-drag-source-${itemKey}`}
-    >
-      {/* We can't use <TableRow> due to React DnD throwing an error: Only native element nodes can now be passed to React DnD connectors. */}
-      <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
-        <ItemComponent
-          testIdPrefix={testIdPrefix}
-          item={item}
-          isSelected={isSelected}
-          databases={databases}
-          bookmarks={bookmarks}
-          createBookmark={createBookmark}
-          deleteBookmark={deleteBookmark}
-          collection={collection}
-          isPinned={isPinned}
-          onCopy={onCopy}
-          onMove={onMove}
-          onToggleSelected={onToggleSelected}
-          onClick={onClick}
-          showActionMenu={showActionMenu}
-        />
-      </tr>
-    </ItemDragSource>
+  const isDndAvailable = useSelector(getIsDndAvailable);
+
+  const tr = (
+    <tr key={itemKey} data-testid={testIdPrefix} style={{ height: 48 }}>
+      {children}
+    </tr>
   );
+
+  if (isDndAvailable) {
+    return (
+      <ItemDragSource
+        item={item}
+        collection={collection}
+        isSelected={isSelected}
+        selected={selectedItems}
+        onDrop={onDrop}
+        key={`item-drag-source-${itemKey}`}
+      >
+        {tr}
+      </ItemDragSource>
+    );
+  }
+
+  return tr;
 };

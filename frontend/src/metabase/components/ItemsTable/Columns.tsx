@@ -1,6 +1,7 @@
-import type { PropsWithChildren } from "react";
+import { useCallback, type PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
+import { color } from "metabase/lib/colors";
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";
@@ -14,10 +15,8 @@ import { useSelector } from "metabase/lib/redux";
 import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
-import type { IconProps } from "metabase/ui";
-import type { CollectionItem, SearchResult } from "metabase-types/api";
+import type { CollectionItem } from "metabase-types/api";
 
-import type { SortableColumnHeaderProps } from "./BaseItemsTable";
 import { SortableColumnHeader } from "./BaseItemsTable";
 import {
   BulkSelectWrapper,
@@ -32,8 +31,7 @@ import {
   RowActionsContainer,
   TableColumn,
 } from "./BaseItemsTable.styled";
-
-type HeaderProps = Omit<SortableColumnHeaderProps, "name">;
+import { createColumnHelper } from "@tanstack/react-table";
 
 const ItemLinkComponent = ({
   onClick,
@@ -55,92 +53,125 @@ const ItemLinkComponent = ({
   );
 };
 
-export const Columns = {
-  Select: {
-    Col: () => <col style={{ width: "70px" }} />,
-    Header: ({
-      selectedItems,
-      hasUnselected,
-      onSelectAll,
-      onSelectNone,
-    }: {
-      selectedItems?: (CollectionItem | SearchResult)[];
-      hasUnselected?: boolean;
-      onSelectAll?: () => void;
-      onSelectNone?: () => void;
-    }) => (
-      <ColumnHeader>
-        <BulkSelectWrapper>
-          <CheckBox
-            checked={!!selectedItems?.length}
-            indeterminate={!!selectedItems?.length && !!hasUnselected}
-            onChange={hasUnselected ? onSelectAll : onSelectNone}
-            aria-label={t`Select all items`}
+const columnHelper = createColumnHelper<CollectionItem>();
+
+// TODO: make this not a function and hoist this up the table component so it doesn't have to be prop drilled
+export const getColumns = ({
+  sortingOptions,
+  onSortingOptionsChange,
+  isTrashed,
+  collection,
+  databases,
+  bookmarks,
+  onCopy,
+  onMove,
+  createBookmark,
+  deleteBookmark,
+  showActionMenu,
+  selectedItems,
+  hasUnselected,
+  onSelectAll,
+  onSelectNone,
+  onToggleSelected,
+  canSelect,
+  isInDragLayer,
+  getIsSelected,
+}: {
+  sortingOptions: any;
+  onSortingOptionsChange: any;
+  isTrashed: any;
+  showActionMenu: any;
+  selectedItems: any;
+  hasUnselected: any;
+  onSelectAll: any;
+  onSelectNone: any;
+  onToggleSelected: any;
+  canSelect: any;
+  isInDragLayer: any;
+  getIsSelected: any;
+} & Omit<ActionMenuProps, "item">) => [
+  columnHelper.accessor(row => row, {
+    id: "select",
+    size: canSelect ? 70 : 0,
+    header: () =>
+      canSelect ? (
+        <ColumnHeader>
+          <BulkSelectWrapper>
+            <CheckBox
+              checked={!!selectedItems?.length}
+              indeterminate={!!selectedItems?.length && !!hasUnselected}
+              onChange={hasUnselected ? onSelectAll : onSelectNone}
+              aria-label={t`Select all items`}
+            />
+          </BulkSelectWrapper>
+        </ColumnHeader>
+      ) : null,
+    cell: ({ row }) => {
+      const item = row.original;
+      const icon = item.getIcon();
+      if (item.model === "card" || item.archived) {
+        icon.color = color("text-light");
+      }
+
+      const isPinned = false; // TODO: figure out how to determine if item is pinned
+      const isSelected = getIsSelected(item);
+
+      const handleSelectionToggled = useCallback(() => {
+        onToggleSelected?.(item);
+      }, [item, onToggleSelected]);
+
+      if (!canSelect) {
+        return null;
+      }
+
+      return (
+        <ItemCell data-testid={`table-check`}>
+          <EntityIconCheckBox
+            variant="list"
+            icon={icon}
+            pinned={isPinned}
+            selected={isSelected}
+            onToggleSelected={handleSelectionToggled}
+            selectable
+            showCheckbox
           />
-        </BulkSelectWrapper>
-      </ColumnHeader>
-    ),
-    Cell: ({
-      testIdPrefix,
-      icon,
-      isPinned,
-      isSelected,
-      handleSelectionToggled,
-    }: {
-      testIdPrefix: string;
-      icon: IconProps;
-      isPinned?: boolean;
-      isSelected?: boolean;
-      handleSelectionToggled: () => void;
-    }) => (
-      <ItemCell data-testid={`${testIdPrefix}-check`}>
-        <EntityIconCheckBox
-          variant="list"
-          icon={icon}
-          pinned={isPinned}
-          selected={isSelected}
-          onToggleSelected={handleSelectionToggled}
-          selectable
-          showCheckbox
-        />
-      </ItemCell>
-    ),
-  },
-  Type: {
-    Col: () => <col style={{ width: "70px" }} />,
-    Header: ({
-      sortingOptions,
-      onSortingOptionsChange,
-      title = t`Type`,
-    }: HeaderProps) => (
+        </ItemCell>
+      );
+    },
+  }),
+
+  columnHelper.accessor(row => row.model, {
+    id: "type",
+    size: 70,
+    header: () => (
       <SortableColumnHeader
         name="model"
         sortingOptions={sortingOptions}
         onSortingOptionsChange={onSortingOptionsChange}
         style={{ marginInlineStart: 6 }}
       >
-        {title}
+        {t`Type`}
       </SortableColumnHeader>
     ),
-    Cell: ({
-      testIdPrefix = "table",
-      icon,
-      isPinned,
-    }: {
-      testIdPrefix?: string;
-      icon: IconProps;
-      isPinned?: boolean;
-    }) => (
-      <ItemCell data-testid={`${testIdPrefix}-type`}>
-        <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
-      </ItemCell>
-    ),
-  },
-  Name: {
-    Col: ({ isInDragLayer }: { isInDragLayer: boolean }) => (
-      <col style={{ width: isInDragLayer ? "10rem" : undefined }} />
-    ),
-    Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
+    cell: ({ row }) => {
+      const item = row.original;
+      const isPinned = false; // TODO: figure out how to determine if item is pinned
+      const icon = item.getIcon();
+      if (item.model === "card" || item.archived) {
+        icon.color = color("text-light");
+      }
+
+      return (
+        <ItemCell data-testid={`table-type`}>
+          <EntityIconCheckBox variant="list" icon={icon} pinned={isPinned} />
+        </ItemCell>
+      );
+    },
+  }),
+  columnHelper.accessor(row => row.name, {
+    id: "name",
+    size: isInDragLayer ? 160 : undefined,
+    header: () => (
       <SortableColumnHeader
         name="name"
         sortingOptions={sortingOptions}
@@ -149,56 +180,33 @@ export const Columns = {
         {t`Name`}
       </SortableColumnHeader>
     ),
-    Cell: ({
-      item,
-      testIdPrefix = "table",
-      includeDescription = true,
-      onClick,
-    }: {
-      item: CollectionItem;
-      testIdPrefix?: string;
-      includeDescription?: boolean;
-      onClick?: (item: CollectionItem) => void;
-    }) => {
-      return (
-        <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-          <ItemLinkComponent onClick={onClick} item={item}>
-            <EntityItem.Name name={item.name} variant="list" />
-            <PLUGIN_MODERATION.ModerationStatusIcon
+    cell: ({ cell, row: { original: item } }) => (
+      <ItemNameCell data-testid={`tanstack-name`}>
+        <ItemLinkComponent onClick={() => console.log("TODO")} item={item}>
+          <EntityItem.Name name={cell.getValue()} variant="list" />
+          <PLUGIN_MODERATION.ModerationStatusIcon
+            size={16}
+            status={item.moderated_status}
+          />
+          {item.description && (!!true || false) /*includeDescription*/ && (
+            <DescriptionIcon
+              name="info"
               size={16}
-              status={item.moderated_status}
+              tooltip={
+                <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                  {item.description}
+                </Markdown>
+              }
             />
-            {item.description && includeDescription && (
-              <DescriptionIcon
-                name="info"
-                size={16}
-                tooltip={
-                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                    {item.description}
-                  </Markdown>
-                }
-              />
-            )}
-          </ItemLinkComponent>
-        </ItemNameCell>
-      );
-    },
-  },
-  LastEditedBy: {
-    Col: () => (
-      <TableColumn
-        style={{ width: "140px" }}
-        hideAtContainerBreakpoint="sm"
-        containerName="ItemsTableContainer"
-      />
+          )}
+        </ItemLinkComponent>
+      </ItemNameCell>
     ),
-    Header: ({
-      sortingOptions,
-      onSortingOptionsChange,
-      isTrashed,
-    }: HeaderProps & {
-      isTrashed: boolean;
-    }) => (
+  }),
+  columnHelper.accessor(row => row["last-edit-info"], {
+    id: "lastEditedBy",
+    size: 140,
+    header: () => (
       <SortableColumnHeader
         name="last_edited_by"
         sortingOptions={sortingOptions}
@@ -211,42 +219,20 @@ export const Columns = {
           : t`Last edited by`}
       </SortableColumnHeader>
     ),
-    Cell: ({
-      testIdPrefix = "table",
-      item,
-    }: {
-      testIdPrefix?: string;
-      item: CollectionItem;
-    }) => {
-      const lastEditInfo = item["last-edit-info"];
-      const lastEditedBy = getLastEditedBy(lastEditInfo) ?? "";
-
-      return (
-        <ItemCell
-          data-testid={`${testIdPrefix}-last-edited-by`}
-          hideAtContainerBreakpoint="sm"
-          containerName="ItemsTableContainer"
-        >
-          <Ellipsified>{lastEditedBy}</Ellipsified>
-        </ItemCell>
-      );
-    },
-  },
-  LastEditedAt: {
-    Col: () => (
-      <TableColumn
-        style={{ width: "140px" }}
-        hideAtContainerBreakpoint="md"
+    cell: ({ cell }) => (
+      <ItemCell
+        data-testid={`table-last-edited-by`}
+        hideAtContainerBreakpoint="sm"
         containerName="ItemsTableContainer"
-      />
+      >
+        <Ellipsified>{getLastEditedBy(cell.getValue())}</Ellipsified>
+      </ItemCell>
     ),
-    Header: ({
-      sortingOptions,
-      onSortingOptionsChange,
-      isTrashed,
-    }: HeaderProps & {
-      isTrashed: boolean;
-    }) => (
+  }),
+  columnHelper.accessor(row => row["last-edit-info"], {
+    id: "lastEditedAt",
+    size: 140,
+    header: () => (
       <SortableColumnHeader
         name="last_edited_at"
         sortingOptions={sortingOptions}
@@ -259,17 +245,11 @@ export const Columns = {
           : t`Last edited at`}
       </SortableColumnHeader>
     ),
-    Cell: ({
-      testIdPrefix,
-      item,
-    }: {
-      testIdPrefix: string;
-      item: CollectionItem;
-    }) => {
-      const lastEditInfo = item["last-edit-info"];
+    cell: ({ cell }) => {
+      const lastEditInfo = cell.getValue();
       return (
         <ItemCell
-          data-testid={`${testIdPrefix}-last-edited-at`}
+          data-testid={`table-last-edited-at`}
           data-server-date
           hideAtContainerBreakpoint="md"
           containerName="ItemsTableContainer"
@@ -282,20 +262,14 @@ export const Columns = {
         </ItemCell>
       );
     },
-  },
-  ActionMenu: {
-    Header: () => <th></th>,
-    Col: () => <col style={{ width: "100px" }} />,
-    Cell: ({
-      item,
-      collection,
-      databases,
-      bookmarks,
-      onCopy,
-      onMove,
-      createBookmark,
-      deleteBookmark,
-    }: ActionMenuProps) => {
+  }),
+  columnHelper.accessor(row => row, {
+    id: "actionMenu",
+    size: 100,
+    header: () => (showActionMenu ? <th></th> : null),
+    cell: ({ row: { original: item } }) => {
+      if (!showActionMenu) return null;
+
       return (
         <ItemCell>
           <RowActionsContainer>
@@ -316,21 +290,22 @@ export const Columns = {
         </ItemCell>
       );
     },
-  },
+  }),
   /** Applies a border-radius to the right edge of the table.
    * This is needed since columns can be hidden responsively,
    * and so we can't just apply the border-radius to the last column in the DOM */
-  RightEdge: {
-    Header: () => <th></th>,
-    Col: () => <col style={{ width: "1rem" }} />,
-    Cell: () => <ItemCell />,
-  },
-};
+  columnHelper.accessor(row => row, {
+    id: "rightEdge",
+    size: 16,
+    header: () => <th></th>,
+    cell: () => <ItemCell />,
+  }),
+];
 
-const getLastEditedBy = (lastEditInfo?: Edit) => {
+const getLastEditedBy = (lastEditInfo?: Edit): string => {
   if (!lastEditInfo) {
     return "";
   }
   const name = getFullName(lastEditInfo);
-  return name || lastEditInfo.email;
+  return name || lastEditInfo.email || "";
 };

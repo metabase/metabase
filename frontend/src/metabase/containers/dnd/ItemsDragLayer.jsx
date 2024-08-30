@@ -77,6 +77,7 @@ class DraggedItems extends Component {
     return index >= 0;
   };
 
+  // TODO: add back pinned items
   renderItem = ({ item, ...itemProps }) => {
     const isPinned = this.checkIsPinned(item);
     const key = `${item.model}-${item.id}`;
@@ -94,6 +95,7 @@ class DraggedItems extends Component {
         </td>
       );
     }
+
     return (
       <BaseItemsTable.Item
         key={key}
@@ -119,7 +121,6 @@ class DraggedItems extends Component {
       >
         <BaseItemsTable
           items={items}
-          ItemComponent={props => this.renderItem(props)}
           headless
           isInDragLayer
           style={{ width: allPinned ? 400 : undefined }}

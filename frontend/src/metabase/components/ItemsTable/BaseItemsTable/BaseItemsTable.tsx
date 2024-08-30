@@ -1,5 +1,10 @@
-import type { HTMLAttributes, PropsWithChildren } from "react";
 import { useMemo } from "react";
+import type { HTMLAttributes, PropsWithChildren } from "react";
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
 
 import type {
   CreateBookmark,
@@ -9,9 +14,6 @@ import type {
   OnToggleSelectedWithItem,
 } from "metabase/collections/types";
 import { isTrashedCollection } from "metabase/collections/utils";
-import { BaseItemsTableBody } from "metabase/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
-import type { ItemRendererProps } from "metabase/components/ItemsTable/DefaultItemRenderer";
-import { DefaultItemRenderer } from "metabase/components/ItemsTable/DefaultItemRenderer";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
 import {
@@ -19,6 +21,7 @@ import {
   SortDirection,
   type SortingOptions,
 } from "metabase-types/api/sorting";
+import { TableRow } from "metabase/components/ItemsTable/BaseItemTableRow";
 
 import {
   ColumnHeader,
@@ -26,8 +29,9 @@ import {
   SortingIcon,
   Table,
 } from "../BaseItemsTable.styled";
-import { Columns } from "../Columns";
+import { getColumns } from "../Columns";
 import type { ResponsiveProps } from "../utils";
+import { TBody } from "../BaseItemsTable.styled";
 
 export type SortableColumnHeaderProps = {
   name?: SortColumn;
@@ -116,7 +120,6 @@ export type BaseItemsTableProps = {
   /** Used for dragging */
   headless?: boolean;
   isInDragLayer?: boolean;
-  ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   includeColGroup?: boolean;
   onClick?: (item: CollectionItem) => void;
   showActionMenu?: boolean;
@@ -143,7 +146,6 @@ export const BaseItemsTable = ({
   getIsSelected = () => false,
   headless = false,
   isInDragLayer = false,
-  ItemComponent = DefaultItemRenderer,
   includeColGroup = true,
   showActionMenu = true,
   onClick,
@@ -153,77 +155,104 @@ export const BaseItemsTable = ({
     collection?.can_write && typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);
 
+  const table = useReactTable({
+    data: items,
+    columns: getColumns({
+      sortingOptions,
+      onSortingOptionsChange,
+      isTrashed,
+      collection,
+      databases,
+      bookmarks,
+      onCopy,
+      onMove,
+      createBookmark,
+      deleteBookmark,
+      showActionMenu,
+      selectedItems,
+      hasUnselected,
+      onSelectAll,
+      onSelectNone,
+      onToggleSelected,
+      canSelect,
+      isInDragLayer,
+      getIsSelected,
+    }),
+    getCoreRowModel: getCoreRowModel(),
+  });
+
   return (
     <Table isInDragLayer={isInDragLayer} {...props}>
-      {includeColGroup && (
-        <colgroup>
-          {canSelect && <Columns.Select.Col />}
-          <Columns.Type.Col />
-          <Columns.Name.Col isInDragLayer={isInDragLayer} />
-          <Columns.LastEditedBy.Col />
-          <Columns.LastEditedAt.Col />
-          {showActionMenu && <Columns.ActionMenu.Col />}
-          <Columns.RightEdge.Col />
-        </colgroup>
-      )}
+      {includeColGroup &&
+        table
+          .getHeaderGroups()
+          .map(headerGroup => (
+            <colgroup key={headerGroup.id}>
+              {headerGroup.headers.map(header =>
+                header.column.columnDef.size !== 0 ? (
+                  <col
+                    key={header.id}
+                    style={{ width: header.column.columnDef.size }}
+                  />
+                ) : null,
+              )}
+            </colgroup>
+          ))}
+
       {!headless && (
         <thead
           data-testid={
             isPinned ? "pinned-items-table-head" : "items-table-head"
           }
         >
-          <tr>
-            {canSelect && (
-              <Columns.Select.Header
-                selectedItems={selectedItems}
-                hasUnselected={hasUnselected}
-                onSelectAll={onSelectAll}
-                onSelectNone={onSelectNone}
-              />
-            )}
-            <Columns.Type.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-            />
-            <Columns.Name.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-            />
-            <Columns.LastEditedBy.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-              isTrashed={isTrashed}
-            />
-            <Columns.LastEditedAt.Header
-              sortingOptions={sortingOptions}
-              onSortingOptionsChange={onSortingOptionsChange}
-              isTrashed={isTrashed}
-            />
-            {showActionMenu && <Columns.ActionMenu.Header />}
-            <Columns.RightEdge.Header />
-          </tr>
+          {table.getHeaderGroups().map(headerGroup => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map(header =>
+                flexRender(header.column.columnDef.header, header.getContext()),
+              )}
+            </tr>
+          ))}
         </thead>
       )}
-      <BaseItemsTableBody
-        items={items}
-        getIsSelected={getIsSelected}
-        isPinned={isPinned}
-        collection={collection}
-        selectedItems={selectedItems}
-        onDrop={onDrop}
-        ItemComponent={ItemComponent}
-        databases={databases}
-        bookmarks={bookmarks}
-        createBookmark={createBookmark}
-        deleteBookmark={deleteBookmark}
-        onCopy={onCopy}
-        onMove={onMove}
-        onToggleSelected={onToggleSelected}
-        onClick={onClick}
-        showActionMenu={showActionMenu}
-      />
+
+      <TBody>
+        {table.getRowModel().rows.map(row => {
+          const item = row.original;
+          const isSelected = getIsSelected(item);
+
+          const testIdPrefix = `${isPinned ? "pinned-" : ""}collection-entry`;
+          const itemKey = `${item.model}-${item.id}`;
+
+          return (
+            <TableRow
+              key={itemKey}
+              itemKey={itemKey}
+              testIdPrefix={testIdPrefix}
+              item={item}
+              isSelected={isSelected}
+              selectedItems={selectedItems}
+              onDrop={onDrop}
+              collection={collection}
+              databases={databases}
+              bookmarks={bookmarks}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              onCopy={onCopy}
+              onMove={onMove}
+              onToggleSelected={onToggleSelected}
+              items={items}
+              onClick={onClick}
+              showActionMenu={showActionMenu}
+            >
+              {row
+                .getVisibleCells()
+                .map(cell =>
+                  flexRender(cell.column.columnDef.cell, cell.getContext()),
+                )}
+            </TableRow>
+          );
+        })}
+      </TBody>
     </Table>
   );
 };
-
-BaseItemsTable.Item = DefaultItemRenderer;
