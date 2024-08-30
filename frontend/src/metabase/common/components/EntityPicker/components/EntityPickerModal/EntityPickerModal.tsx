@@ -22,6 +22,7 @@ import type {
   TypeWithModel,
 } from "../../types";
 import { EntityPickerSearchInput } from "../EntityPickerSearch/EntityPickerSearch";
+import { LoadingSpinner } from "../LoadingSpinner";
 import { RecentsTab } from "../RecentsTab";
 
 import { ButtonBar } from "./ButtonBar";
@@ -70,6 +71,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   defaultToRecentTab?: boolean;
   /**recentsContext: Defaults to returning recents based off both views and selections. Can be overridden by props */
   recentsContext?: RecentContexts[];
+  isLoadingTabs?: boolean;
 }
 
 export function EntityPickerModal<
@@ -93,6 +95,7 @@ export function EntityPickerModal<
   searchParams,
   defaultToRecentTab = true,
   recentsContext = ["selections", "views"],
+  isLoadingTabs = false,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -220,34 +223,38 @@ export function EntityPickerModal<
           <Modal.CloseButton size={21} pos="relative" top="1px" />
         </Modal.Header>
         <ModalBody p="0">
-          <ErrorBoundary>
-            {hasTabs ? (
-              <TabsView
-                tabs={tabs}
-                onItemSelect={onItemSelect}
-                searchQuery={searchQuery}
-                searchResults={searchResults}
-                selectedItem={selectedItem}
-                initialValue={initialValue}
-                defaultToRecentTab={defaultToRecentTab}
-                setShowActionButtons={setShowActionButtons}
-              />
-            ) : (
-              <SinglePickerView data-testid="single-picker-view">
-                {tabs?.[0]?.element}
-              </SinglePickerView>
-            )}
-            {!!hydratedOptions.hasConfirmButtons && onConfirm && (
-              <ButtonBar
-                onConfirm={onConfirm}
-                onCancel={onClose}
-                canConfirm={canSelectItem}
-                actionButtons={showActionButtons ? actionButtons : []}
-                confirmButtonText={options?.confirmButtonText}
-                cancelButtonText={options?.cancelButtonText}
-              />
-            )}
-          </ErrorBoundary>
+          {!isLoadingTabs && !isLoadingRecentItems ? (
+            <ErrorBoundary>
+              {hasTabs ? (
+                <TabsView
+                  tabs={tabs}
+                  onItemSelect={onItemSelect}
+                  searchQuery={searchQuery}
+                  searchResults={searchResults}
+                  selectedItem={selectedItem}
+                  initialValue={initialValue}
+                  defaultToRecentTab={defaultToRecentTab}
+                  setShowActionButtons={setShowActionButtons}
+                />
+              ) : (
+                <SinglePickerView data-testid="single-picker-view">
+                  {tabs?.[0]?.element}
+                </SinglePickerView>
+              )}
+              {!!hydratedOptions.hasConfirmButtons && onConfirm && (
+                <ButtonBar
+                  onConfirm={onConfirm}
+                  onCancel={onClose}
+                  canConfirm={canSelectItem}
+                  actionButtons={showActionButtons ? actionButtons : []}
+                  confirmButtonText={options?.confirmButtonText}
+                  cancelButtonText={options?.cancelButtonText}
+                />
+              )}
+            </ErrorBoundary>
+          ) : (
+            <LoadingSpinner />
+          )}
         </ModalBody>
       </ModalContent>
     </Modal.Root>
