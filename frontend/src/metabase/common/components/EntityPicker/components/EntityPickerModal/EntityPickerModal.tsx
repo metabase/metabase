@@ -16,6 +16,7 @@ import type {
   SearchResultId,
 } from "metabase-types/api";
 
+import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
 import type {
   EntityPickerOptions,
   EntityPickerTab,
@@ -42,7 +43,6 @@ import {
   SinglePickerView,
 } from "./EntityPickerModal.styled";
 import { TabsView } from "./TabsView";
-import { RECENTS_TAB_ID, SEARCH_TAB_ID } from "../../constants";
 
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
