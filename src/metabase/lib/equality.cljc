@@ -361,9 +361,8 @@
   (let [ref-tails (group-by ref-id-or-name refs)
         matches   (or (some->> column :lib/source-uuid (get ref-tails) not-empty)
                       (not-empty (get ref-tails (:id column)))
-                      (if-let [desired-column-alias (:lib/desired-column-alias column)]
-                        (get ref-tails desired-column-alias)
-                        (get ref-tails (:name column)))
+                      (not-empty (get ref-tails (:lib/desired-column-alias column)))
+                      (get ref-tails (:name column))
                       [])]
     (case (count matches)
       0 nil
