@@ -7,8 +7,8 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(deftest dataset-download-test
-  (testing "POST /api/card/:format should respect sandboxing"
+(deftest card-download-test
+  (testing "POST /api/card/:id/query/csv should respect sandboxing"
     (mt/with-model-cleanup [:model/Card]
       (met/with-gtaps! (mt/$ids people
                          {:gtaps      {:people {:remappings {"state" [:dimension $people.state]}}}
