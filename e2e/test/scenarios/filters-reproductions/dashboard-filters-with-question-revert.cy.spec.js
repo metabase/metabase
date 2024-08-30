@@ -113,6 +113,8 @@ describe("issue 35954", () => {
           cy.log("Revert the question to its original (GUI) version");
           cy.intercept("POST", "/api/revision/revert").as("revertQuestion");
           questionInfoButton().click();
+          cy.findByRole("tab", { name: "History" }).click();
+
           cy.findByTestId("saved-question-history-list")
             .find("li")
             .filter(":contains(You created this)")

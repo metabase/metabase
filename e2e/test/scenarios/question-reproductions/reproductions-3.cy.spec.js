@@ -38,6 +38,7 @@ import {
   rightSidebar,
   saveQuestion,
   setModelMetadata,
+  sidesheet,
   startNewQuestion,
   summarize,
   tableHeaderClick,
@@ -265,7 +266,7 @@ describe("issue 38176", () => {
     cy.findByTestId("query-builder-main").button("Get Answer").click();
 
     questionInfoButton().click();
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findByText("History");
 
       cy.findByPlaceholderText("Add description")
@@ -274,6 +275,7 @@ describe("issue 38176", () => {
 
       cy.wait("@updateQuestion");
       cy.findByText(/added a description/i);
+      cy.findByRole("tab", { name: "History" }).click();
       cy.findByTestId("question-revert-button").click();
 
       cy.findByText(/reverted to an earlier version/i).should("be.visible");

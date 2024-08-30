@@ -24,6 +24,7 @@ import {
   restore,
   rightSidebar,
   selectFilterOperator,
+  sidesheet,
   summarize,
   tableHeaderClick,
   visitQuestion,
@@ -194,7 +195,7 @@ describe("scenarios > question > saved", () => {
     visitQuestion(ORDERS_QUESTION_ID);
     questionInfoButton().click();
 
-    rightSidebar().within(() => {
+    sidesheet().within(() => {
       cy.findByText("History");
 
       cy.findByPlaceholderText("Add description")

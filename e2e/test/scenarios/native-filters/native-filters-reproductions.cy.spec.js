@@ -219,6 +219,7 @@ describe("issue 12581", () => {
     cy.wait("@cardQuery");
 
     cy.findByTestId("revision-history-button").click();
+    cy.findByRole("tab", { name: "History" }).click();
     // Make sure sidebar opened and the history loaded
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/You created this/i);
