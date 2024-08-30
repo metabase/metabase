@@ -46,7 +46,7 @@ export function EmbeddingSdkSettings({
           size="large"
           crumbs={[
             [t`Embedding`, "/admin/settings/embedding-in-other-applications"],
-            [t`Interactive embedding`],
+            [t`Embedding SDK for React`],
           ]}
         />
         <Box>
