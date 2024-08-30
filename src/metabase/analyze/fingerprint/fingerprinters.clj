@@ -10,6 +10,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.performance :as perf]
    [redux.core :as redux])
   (:import
    (com.bigml.histogram Histogram)
@@ -23,20 +24,21 @@
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
   [& rfs]
-  (fn
-    ([] (mapv (fn [rf] (rf)) rfs))
-    ([accs] (mapv (fn [rf acc] (rf (unreduced acc))) rfs accs))
-    ([accs row]
-     (let [all-reduced? (volatile! true)
-           results      (mapv (fn [rf acc x]
-                                (if-not (reduced? acc)
-                                  (do (vreset! all-reduced? false)
-                                      (rf acc x))
-                                  acc))
-                              rfs accs row)]
-       (if @all-reduced?
-         (reduced results)
-         results)))))
+  (let [rfs (vec rfs)]
+    (fn
+      ([] (perf/mapv (fn [rf] (rf)) rfs))
+      ([accs] (perf/mapv (fn [rf acc] (rf (unreduced acc))) rfs accs))
+      ([accs row]
+       (let [all-reduced? (volatile! true)
+             results      (perf/mapv (fn [rf acc x]
+                                       (if-not (reduced? acc)
+                                         (do (vreset! all-reduced? false)
+                                             (rf acc x))
+                                         acc))
+                                     rfs accs row)]
+         (if @all-reduced?
+           (reduced results)
+           results))))))
 
 (defn constant-fingerprinter
   "Constantly return `init`."
