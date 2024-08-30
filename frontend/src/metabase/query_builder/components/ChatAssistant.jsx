@@ -293,8 +293,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
             for (const insight of insights) {
                 const fetchedCard = await CardApi.get({ cardId: insight.cardId });
                 const queryCard = await CardApi.query({ cardId: insight.cardId });
-                const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
-                const getDatasetQuery = fetchedCard?.dataset_query;
                 const defaultQuestionTest = Question.create({
                     databaseId: 1,
                     name: fetchedCard.name,
@@ -302,7 +300,6 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
                     display: fetchedCard.display,
                     visualization_settings: {},
                     dataset_query: getDatasetQuery,
-                    metadata: cardMetadata.payload.entities
                 });
                 const newQuestion = defaultQuestionTest.setCard(fetchedCard);
 
@@ -538,15 +535,17 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
         setApprovalChangeButtons(false);
     };
 
+
     useEffect(() => {
         if (initialMessage.message) {
             setInputValue(initialMessage.message);
-            if (inputValue && ws) {
+    
+            if (ws && isConnected) {
                 sendMessage();
-                setInputValue("");
             }
         }
-    }, [initialMessage, ws]);
+    }, [initialMessage, ws, isConnected]);
+
 
     return (
         <>
@@ -586,44 +585,8 @@ const ChatAssistant = ({ selectedMessages, selectedThreadId, chatType, oldCardId
 
                     <ChatMessageList messages={messages} isLoading={isLoading} onFeedbackClick={handleFeedbackDialogOpen}
                         approvalChangeButtons={approvalChangeButtons} onApproveClick={handleAccept} onDenyClick={handleDeny}
-                        card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} 
+                        card={card} defaultQuestion={defaultQuestion} result={result} openModal={openModal} insightsList={insightsList}
                     />
-
-                            {insightsList.map((insight, index) => (
-                                <div key={index} style={{ marginBottom: "2rem" }}>
-                                    <div style={{ marginBottom: "1rem" }}>
-                                        <strong>Insight:</strong> {insight.insightExplanation}
-                                    </div>
-                                    <div
-                                        style={{
-                                            padding: "16px",
-                                            overflow: "hidden",
-                                            height: "400px",
-                                            width: "auto",
-                                            display: "flex",
-                                            justifyContent: "center",
-                                            alignItems: "center",
-                                            border: "1px solid #E0E0E0",
-                                            borderRadius: "8px",
-                                            backgroundColor: "#F8FAFD",
-                                        }}
-                                    >
-                                        <VisualizationResult
-                                            question={insight.defaultQuestion}
-                                            isDirty={false}
-                                            queryBuilderMode={"view"}
-                                            result={insight.queryCard}
-                                            className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-                                            rawSeries={[{ card: insight.card, data: insight.queryCard && insight.queryCard.data }]}
-                                            isRunning={false}
-                                            navigateToNewCardInsideQB={null}
-                                            onNavigateBack={() => console.log('back')}
-                                            timelineEvents={[]}
-                                            selectedTimelineEventIds={[]}
-                                        />
-                                    </div>
-                                </div>
-                            ))}
                             <div
                                 style={{
                                     display: "flex",
