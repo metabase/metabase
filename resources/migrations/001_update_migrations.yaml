@@ -8156,6 +8156,27 @@ databaseChangeLog:
               );
               DELETE FROM collection WHERE type = 'trash';
 
+
+  - changeSet:
+      id: v50.2024-05-14T12:42:43
+      author: johnswanson
+      comment: |
+        Re-populate the new permissions columns. This is a duplicate of `v49.2024-08-21T08:33:10`.
+      rollback: # not needed.
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: permissions/collection-access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: permissions/collection-access-mariadb.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/collection-access-h2.sql
+            relativeToChangelogFile: true
+
   - changeSet:
       id: v50.2024-05-15T13:13:13
       author: adam-james
