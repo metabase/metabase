@@ -103,7 +103,7 @@
                    :can_write :can_delete :can_restore [:collection :effective_location])
        present-collections))
 
-(api/defendpoint GET "/:id/stale"
+(api/defendpoint GET "/:id"
   "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
   - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
   - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
