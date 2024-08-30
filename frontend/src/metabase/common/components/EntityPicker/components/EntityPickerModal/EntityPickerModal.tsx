@@ -130,9 +130,9 @@ export function EntityPickerModal<
   const { open } = useModalOpen();
 
   const tabModels = useMemo((): SearchModel[] => {
-    return passedTabs
-      .map(tab => tab.model)
-      .filter(model => isSearchModel(model));
+    return passedTabs.flatMap(({ model }) => {
+      return isSearchModel(model) ? [model] : [];
+    });
   }, [passedTabs]);
 
   const filteredRecents = useMemo(() => {
