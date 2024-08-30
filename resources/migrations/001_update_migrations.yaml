@@ -8603,6 +8603,113 @@ databaseChangeLog:
       preConditions:
 
   - changeSet:
+      id: v51.2024-07-08T10:00:00
+      author: qnkhuat
+      comment: Create channel table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: channel
+      changes:
+        - createTable:
+            tableName: channel
+            remarks: Channel configurations
+            columns:
+              - column:
+                  name: id
+                  remarks: Unique ID
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  remarks: channel name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: description
+                  remarks: channel description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  name: type
+                  remarks: Channel type
+                  type: varchar(32)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: details
+                  remarks: Channel details, used to store authentication information or channel-specific settings
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: whether the channel is active
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  remarks: Timestamp when the channel was inserted
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  remarks: Timestamp when the channel was updated
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:01
+      author: qnkhuat
+      comment: Create pulse_channel.channel_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: pulse_channel
+                columnName: channel_id
+      changes:
+        - addColumn:
+            tableName: pulse_channel
+            columns:
+              - column:
+                  name: channel_id
+                  type: integer
+                  remarks: The channel ID
+
+  - changeSet:
+      id: v51.2024-07-08T10:00:02
+      author: qnkhuat
+      comment: Add fk constraint to pulse_channel.channel_id
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - foreignKeyConstraintExists:
+                foreignKeyName: fk_pulse_channel_channel_id
+                foreignKyeTableName: pulse_channel
+
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: pulse_channel
+            baseColumnNames: channel_id
+            referencedTableName: channel
+            referencedColumnNames: id
+            constraintName: fk_pulse_channel_channel_id
+            nullable: true
+            deleteCascade: true
+
+  - changeSet:
       id: v51.2024-07-09T17:15:43
       author: tsmacdonald
       comment: Fix default boolean value for query_field.explicit_reference
