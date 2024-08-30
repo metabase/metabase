@@ -27,7 +27,7 @@ export const getExpressServerSnippet = (options: Options) => {
   let tenancyAttributeMaps = "";
 
   for (const tenancyColumnName in tenantIdsMap) {
-    tenancyAttributeMaps += `${tenancyColumnName}: user.${tenancyColumnName},\n`;
+    tenancyAttributeMaps += `      ${tenancyColumnName}: user.${tenancyColumnName},\n`;
   }
 
   return `
@@ -65,7 +65,7 @@ async function metabaseAuthHandler(req, res) {
       last_name: user.lastName,
       groups: user.groups,
       exp: Math.round(Date.now() / 1000) + 60 * 10, // 10 minutes expiration
-      ${tenancyAttributeMaps}
+${tenancyAttributeMaps}
     },
     // This is the JWT signing secret in your Metabase JWT authentication setting
     METABASE_JWT_SHARED_SECRET,
