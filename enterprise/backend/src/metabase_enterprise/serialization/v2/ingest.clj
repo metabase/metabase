@@ -91,11 +91,14 @@
           kw-id        (keyword id)]
       (if (= ["Setting"] (mapv :model abs-path))
         {:serdes/meta abs-path :key kw-id :value (get settings kw-id)}
-        (->> abs-path
-             strip-labels
-             (get @cache)
-             second
-             ingest-file)))))
+        (try
+          (->> abs-path
+               strip-labels
+               (get @cache)
+               second
+               ingest-file)
+          (catch Exception e
+            (throw (ex-info "Unable to ingest file" {:abs-path abs-path} e))))))))
 
 (defn ingest-yaml
   "Creates a new Ingestable on a directory of YAML files, as created by
