@@ -646,7 +646,7 @@
               (reset! pivot-grouping-key (:pivot-grouping-key opts)))
             (let [wb (init-workbook {:ordered-cols ordered-cols
                                      :col-settings col-settings
-                                     :format-rows? format-rows?})]
+                                     :format-rows? true})]
               (vreset! workbook-data wb)))
 
           (let [{:keys [workbook sheet]} @workbook-data
