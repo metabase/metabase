@@ -110,9 +110,9 @@ export const CollectionPickerModal = ({
       displayName: t`Collections`,
       model: "collection",
       icon: "folder",
-      element: (
+      render: ({ onItemSelect }) => (
         <CollectionPicker
-          onItemSelect={handleItemSelect}
+          onItemSelect={onItemSelect}
           shouldDisableItem={shouldDisableItem}
           initialValue={value}
           options={options}

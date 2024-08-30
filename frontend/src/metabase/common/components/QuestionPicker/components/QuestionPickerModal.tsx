@@ -91,9 +91,9 @@ export const QuestionPickerModal = ({
       displayName: t`Questions`,
       model: "card",
       icon: "table",
-      element: (
+      render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={handleItemSelect}
+          onItemSelect={onItemSelect}
           initialValue={value}
           options={options}
           models={["card"]}
@@ -104,9 +104,9 @@ export const QuestionPickerModal = ({
       displayName: t`Models`,
       model: "dataset",
       icon: "model",
-      element: (
+      render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={handleItemSelect}
+          onItemSelect={onItemSelect}
           initialValue={value}
           options={options}
           models={["dataset"]}
@@ -117,9 +117,9 @@ export const QuestionPickerModal = ({
       displayName: t`Metrics`,
       model: "metric",
       icon: "metric",
-      element: (
+      render: ({ onItemSelect }) => (
         <QuestionPicker
-          onItemSelect={handleItemSelect}
+          onItemSelect={onItemSelect}
           initialValue={value}
           options={options}
           models={["metric"]}
