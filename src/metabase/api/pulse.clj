@@ -229,7 +229,8 @@
   (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
-                       (assoc-in [:email :configured] (email/email-configured?)))]
+                       (assoc-in [:email :configured] (email/email-configured?))
+                       (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
                  (premium-features/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)

@@ -72,7 +72,7 @@ export const ImpersonationModalView = ({
   // Does the "role" field need to first be filled out on the DB details page?
   const roleRequired =
     database.features?.includes("connection-impersonation-requires-role") &&
-    database.details["role"] == null;
+    (!database.details || database.details["role"] == null);
 
   // for redshift, we impersonate using users, not roles
   const impersonationUsesUsers = database.engine === "redshift";

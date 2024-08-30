@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -419,6 +418,7 @@ serdes/meta:
 - id: WlQ-en2l-iRRCvO2-v5j1
   label: recent_activity
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: vUNKNOWN (ad99d37)
+source_card_id: -lNDM3tJmuL5ltGbX0oyT
 type: question
