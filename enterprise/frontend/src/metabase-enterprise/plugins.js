@@ -20,6 +20,7 @@ import "./collections";
 import "./content_verification";
 import "./whitelabel";
 import "./embedding";
+import "./embedding-sdk";
 import "./snippets";
 import "./sharing";
 import "./moderation";

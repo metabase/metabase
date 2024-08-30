@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import { Box, Stack } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 
@@ -36,6 +37,7 @@ export function EmbeddingSdkSettings({
   function onChangeSdkOrigins(value: string | null) {
     updateSetting(sdkOriginsSetting.key, value);
   }
+  const hasEmbeddingSdkFeature = PLUGIN_EMBEDDING_SDK.isEnabled();
 
   return (
     <Box p="0.5rem 1rem 0">
@@ -57,6 +59,7 @@ export function EmbeddingSdkSettings({
               setting={sdkOriginsSetting}
               onChange={onChangeSdkOrigins}
               type="text"
+              disabled={!hasEmbeddingSdkFeature}
             />
           </SetByEnvVarWrapper>
         </Box>
