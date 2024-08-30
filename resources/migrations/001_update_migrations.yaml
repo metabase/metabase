@@ -8136,12 +8136,13 @@ databaseChangeLog:
       id: v50.2024-05-14T12:42:42
       author: johnswanson
       comment: Create the Trash collection
+      validCheckSum: ANY
       changes:
         - sql:
             sql: >-
               INSERT INTO collection (name, slug, entity_id, type) VALUES ('Trash', 'trash', 'trashtrashtrashtrasht', 'trash');
-              INSERT INTO permissions (object, group_id)
-              SELECT CONCAT('/collection/', c.id, '/'), pg.id
+              INSERT INTO permissions (object, group_id, perm_type, perm_value, collection_id)
+              SELECT CONCAT('/collection/', c.id, '/'), pg.id, 'perms/collection-access', 'read-and-write', c.id
               FROM collection c
               CROSS JOIN permissions_group pg
               WHERE c.type = 'trash' AND pg.name != 'Administrators';
