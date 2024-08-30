@@ -179,7 +179,7 @@
    :type         :boolean
    :display-name (deferred-tru "Periodically refingerprint tables")
    :description  (deferred-tru
-                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
+                   (str "This enables Omniloy to scan for additional field values during syncs allowing smarter "
                         "behavior, like improved auto-binning on your bar charts."))
    :visible-if   {"advanced-options" true}})
 
