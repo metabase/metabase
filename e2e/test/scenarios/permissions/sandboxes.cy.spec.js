@@ -1,33 +1,34 @@
-import { USER_GROUPS, SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   NORMAL_USER_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  chartPathWithFillColor,
   describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
+  filter,
   modal,
+  openNotebook,
   openOrdersTable,
   openPeopleTable,
   openReviewsTable,
-  openNotebook,
+  openSharingMenu,
   popover,
-  restore,
   remapDisplayValueToFK,
-  setupSMTP,
-  visualize,
-  summarize,
-  filter,
-  visitQuestion,
-  visitDashboard,
-  sidebar,
-  startNewQuestion,
+  restore,
+  selectFilterOperator,
   sendEmailAndAssert,
   setTokenFeatures,
-  selectFilterOperator,
-  entityPickerModal,
-  chartPathWithFillColor,
-  entityPickerModalTab,
+  setupSMTP,
+  sidebar,
+  startNewQuestion,
+  summarize,
+  visitDashboard,
+  visitQuestion,
+  visualize,
 } from "e2e/support/helpers";
 
 const {
@@ -961,7 +962,7 @@ describeEE("formatting > sandboxes", () => {
 
       cy.signInAsSandboxedUser();
       visitDashboard(ORDERS_DASHBOARD_ID);
-      cy.findByLabelText("subscriptions").click();
+      openSharingMenu("Subscriptions");
 
       // should forward to email since that is the only one setup
       sidebar().findByText("Email this dashboard").should("exist");
@@ -1057,7 +1058,7 @@ describeEE("formatting > sandboxes", () => {
 
         cy.signInAsSandboxedUser();
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.findByLabelText("subscriptions").click();
+        openSharingMenu("Subscriptions");
 
         sidebar()
           .findByPlaceholderText("Enter user names or email addresses")

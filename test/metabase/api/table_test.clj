@@ -8,8 +8,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.http-client :as client]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.models :refer [Card Database Field FieldValues Table]]
+   [metabase.models :refer [Card Collection Database Field FieldValues Table]]
    [metabase.models.data-permissions :as data-perms]
+   [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
@@ -38,6 +39,7 @@
                          :uploads_table_prefix])
    {:engine                      "h2"
     :name                        "test-data (h2)"
+    :is_attached_dwh             false
     :is_sample                   false
     :is_full_sync                true
     :is_on_demand                false
@@ -173,14 +175,14 @@
                                                  :entity_type  "entity/GenericTable"
                                                  :schema       nil}]
         (is (= (merge
-                 (dissoc (table-defaults) :segments :field_values :metrics :db)
-                 (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
-                                            :id table-id)
-                             :pk_field)
-                 {:schema       ""
-                  :name         "schemaless_table"
-                  :display_name "Schemaless"
-                  :db_id        database-id})
+                (dissoc (table-defaults) :segments :field_values :metrics :db)
+                (t2/hydrate (t2/select-one [Table :id :created_at :updated_at :initial_sync_status :view_count]
+                                           :id table-id)
+                            :pk_field)
+                {:schema       ""
+                 :name         "schemaless_table"
+                 :display_name "Schemaless"
+                 :db_id        database-id})
                (dissoc (mt/user-http-request :rasta :get 200 (str "table/" table-id))
                        :db)))))))
 
@@ -519,7 +521,7 @@
                                                             (t2/select-one [Table
                                                                             :id :created_at :updated_at
                                                                             :initial_sync_status :view_count]
-                                                              :id (mt/id :checkins))
+                                                                           :id (mt/id :checkins))
                                                             {:schema       "PUBLIC"
                                                              :name         "CHECKINS"
                                                              :display_name "Checkins"
@@ -539,7 +541,7 @@
                                                                (t2/select-one [Table
                                                                                :id :created_at :updated_at
                                                                                :initial_sync_status :view_count]
-                                                                 :id (mt/id :users))
+                                                                              :id (mt/id :users))
                                                                {:schema       "PUBLIC"
                                                                 :name         "USERS"
                                                                 :display_name "Users"
@@ -631,13 +633,13 @@
 
 (defn- with-numeric-dimension-options [field]
   (assoc field
-    :default_dimension_option (var-get #'api.table/numeric-default-index)
-    :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
+         :default_dimension_option (var-get #'api.table/numeric-default-index)
+         :dimension_options (var-get #'api.table/numeric-dimension-indexes)))
 
 (defn- with-coordinate-dimension-options [field]
   (assoc field
-    :default_dimension_option (var-get #'api.table/coordinate-default-index)
-    :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
+         :default_dimension_option (var-get #'api.table/coordinate-default-index)
+         :dimension_options (var-get #'api.table/coordinate-dimension-indexes)))
 
 ;; Make sure metadata for 'virtual' tables comes back as expected
 (deftest ^:parallel virtual-table-metadata-test
@@ -747,34 +749,45 @@
                    (mt/user-http-request :crowberto :get 200
                                          (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
 
-(deftest ^:parallel include-metrics-for-card-test
+(deftest include-metrics-for-card-test
   (testing "GET /api/table/:id/query_metadata"
-    (testing "Test metrics being included with cards"
-      (t2.with-temp/with-temp [Card model {:name          "Venues model"
-                                           :database_id   (mt/id)
-                                           :type          :model
-                                           :dataset_query (mt/mbql-query venues)}]
-        (let [card-virtual-table-id (str "card__" (:id model))
-              metric-query {:database 2
-                            :type "query"
-                            :query {:source-table card-virtual-table-id
-                                    :aggregation [["count"]]}}]
-          (t2.with-temp/with-temp [Card metric {:name          "Venues metric"
-                                                :database_id   (mt/id)
-                                                :type          :metric
-                                                :dataset_query metric-query}]
-            (is (=? {:display_name      "Venues model"
-                     :db_id             (mt/id)
-                     :id                card-virtual-table-id
-                     :type              "model"
-                     :metrics [{:source_card_id (:id model)
-                                :table_id (:table_id model)
-                                :database_id (mt/id)
-                                :name "Venues metric"
-                                :type "metric"
-                                :dataset_query metric-query
-                                :id (:id metric)}]}
+    (t2.with-temp/with-temp [Card model {:name          "Venues model"
+                                         :database_id   (mt/id)
+                                         :type          :model
+                                         :dataset_query (mt/mbql-query venues)}]
+      (let [card-virtual-table-id (str "card__" (:id model))
+            metric-query          {:database 2
+                                   :type     "query"
+                                   :query    {:source-table card-virtual-table-id
+                                              :aggregation  [["count"]]}}]
+        (t2.with-temp/with-temp [Collection coll   {:name "My Collection"}
+                                 Card       metric {:name          "Venues metric"
+                                                    :database_id   (mt/id)
+                                                    :collection_id (:id coll)
+                                                    :type          :metric
+                                                    :dataset_query metric-query}]
+          (perms/revoke-collection-permissions! (perms-group/all-users) (:id coll))
+          (testing "Test metrics being included with cards"
+            (is (=? {:display_name "Venues model"
+                     :db_id        (mt/id)
+                     :id           card-virtual-table-id
+                     :type         "model"
+                     :metrics      [{:source_card_id (:id model)
+                                     :table_id       (:table_id model)
+                                     :database_id    (mt/id)
+                                     :name           "Venues metric"
+                                     :type           "metric"
+                                     :dataset_query  metric-query
+                                     :id             (:id metric)}]}
                     (mt/user-http-request :crowberto :get 200
+                                          (format "table/card__%d/query_metadata" (u/the-id model))))))
+          (testing "Test metrics not being included with cards from inaccessible collections"
+            (is (=? {:display_name "Venues model"
+                     :db_id        (mt/id)
+                     :id           card-virtual-table-id
+                     :type         "model"
+                     :metrics      nil}
+                    (mt/user-http-request :lucky :get 200
                                           (format "table/card__%d/query_metadata" (u/the-id model)))))))))))
 
 (defn- narrow-fields [category-names api-response]

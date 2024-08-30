@@ -6,7 +6,6 @@ import { updateSetting } from "metabase/admin/settings/settings";
 import { getEngines } from "metabase/databases/selectors";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import Databases from "metabase/entities/databases";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import {
   combineReducers,
   createThunkAction,
@@ -75,7 +74,10 @@ export const selectEngine = createAction(SELECT_ENGINE);
 // Migration is run as a separate action because that makes it easy to track in tests
 const migrateDatabaseToNewSchedulingSettings = database => {
   return async function (dispatch, getState) {
-    if (database.details["let-user-control-scheduling"] == null) {
+    if (
+      database.details &&
+      database.details["let-user-control-scheduling"] == null
+    ) {
       dispatch({
         type: MIGRATE_TO_NEW_SCHEDULING_SETTINGS,
         payload: {
@@ -110,7 +112,10 @@ export const initializeDatabase = function (databaseId) {
         dispatch({ type: INITIALIZE_DATABASE, payload: database });
 
         // If the new scheduling toggle isn't set, run the migration
-        if (database.details["let-user-control-scheduling"] == null) {
+        if (
+          database.details &&
+          database.details["let-user-control-scheduling"] == null
+        ) {
           dispatch(migrateDatabaseToNewSchedulingSettings(database));
         }
       } catch (error) {
@@ -133,13 +138,12 @@ export const initializeDatabase = function (databaseId) {
 
 export const addSampleDatabase = createThunkAction(
   ADD_SAMPLE_DATABASE,
-  function (query) {
-    return async function (dispatch, getState) {
+  function () {
+    return async function (dispatch) {
       try {
         dispatch({ type: ADDING_SAMPLE_DATABASE });
         const sampleDatabase = await MetabaseApi.db_add_sample_database();
         dispatch(Databases.actions.invalidateLists());
-        MetabaseAnalytics.trackStructEvent("Databases", "Add Sample Data");
         return sampleDatabase;
       } catch (error) {
         console.error("error adding sample database", error);
@@ -153,52 +157,32 @@ export const addSampleDatabase = createThunkAction(
 export const createDatabase = function (database) {
   editParamsForUserControlledScheduling(database);
 
-  return async function (dispatch, getState) {
+  return async function (dispatch) {
     try {
       dispatch({ type: CREATE_DATABASE_STARTED });
       const action = await dispatch(Databases.actions.create(database));
       const savedDatabase = Databases.HACK_getObjectFromAction(action);
-      MetabaseAnalytics.trackStructEvent(
-        "Databases",
-        "Create",
-        database.engine,
-      );
 
       dispatch({ type: CREATE_DATABASE });
 
       return savedDatabase;
     } catch (error) {
       console.error("error creating a database", error);
-      MetabaseAnalytics.trackStructEvent(
-        "Databases",
-        "Create Failed",
-        database.engine,
-      );
       throw error;
     }
   };
 };
 
 export const updateDatabase = function (database) {
-  return async function (dispatch, getState) {
+  return async function (dispatch) {
     try {
       dispatch({ type: UPDATE_DATABASE_STARTED, payload: { database } });
       const action = await dispatch(Databases.actions.update(database));
       const savedDatabase = Databases.HACK_getObjectFromAction(action);
-      MetabaseAnalytics.trackStructEvent(
-        "Databases",
-        "Update",
-        database.engine,
-      );
 
       dispatch({ type: UPDATE_DATABASE, payload: { database: savedDatabase } });
       return savedDatabase;
     } catch (error) {
-      MetabaseAnalytics.trackStructEvent(
-        "Databases",
-        "Update Failed",
-        database.engine,
-      );
       dispatch({ type: UPDATE_DATABASE_FAILED, payload: { error } });
       throw error;
     }
@@ -208,7 +192,7 @@ export const updateDatabase = function (database) {
 // NOTE Atte Keinänen 7/26/17: Original monolithic saveDatabase was broken out to smaller actions
 // but `saveDatabase` action creator is still left here for keeping the interface for React components unchanged
 export const saveDatabase = function (database) {
-  return async function (dispatch, getState) {
+  return async function (dispatch) {
     const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
       return await dispatch(createDatabase(database));
@@ -218,17 +202,13 @@ export const saveDatabase = function (database) {
   };
 };
 
-export const deleteDatabase = function (databaseId, isDetailView = true) {
-  return async function (dispatch, getState) {
+export const deleteDatabase = function (databaseId) {
+  return async function (dispatch) {
     try {
       dispatch({ type: DELETE_DATABASE_STARTED, payload: databaseId });
       await dispatch(Databases.actions.delete({ id: databaseId }));
       dispatch(push("/admin/databases/"));
-      MetabaseAnalytics.trackStructEvent(
-        "Databases",
-        "Delete",
-        isDetailView ? "Using Detail" : "Using List",
-      );
+
       dispatch({ type: DELETE_DATABASE, payload: { databaseId } });
     } catch (error) {
       console.error("error deleting database", error);
@@ -243,7 +223,7 @@ export const deleteDatabase = function (databaseId, isDetailView = true) {
 export const dismissSyncSpinner = createThunkAction(
   DISMISS_SYNC_SPINNER,
   function (databaseId) {
-    return async function (dispatch, getState) {
+    return async function () {
       try {
         await MetabaseApi.db_dismiss_sync_spinner({ dbId: databaseId });
       } catch (error) {

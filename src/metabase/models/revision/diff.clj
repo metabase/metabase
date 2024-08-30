@@ -55,12 +55,11 @@
 
     [:collection_id (prev-coll-id :guard int?) coll-id]
     (deferred-tru "moved {0} from {1} to {2}"
-      identifier
-      (t2/select-one-fn :name 'Collection prev-coll-id)
-      (if coll-id
-        (t2/select-one-fn :name 'Collection coll-id)
-        (deferred-tru "Our analytics")))
-
+                  identifier
+                  (t2/select-one-fn :name 'Collection prev-coll-id)
+                  (if coll-id
+                    (t2/select-one-fn :name 'Collection coll-id)
+                    (deferred-tru "Our analytics")))
 
     [:visualization_settings _ _]
     (deferred-tru "changed the visualization settings")

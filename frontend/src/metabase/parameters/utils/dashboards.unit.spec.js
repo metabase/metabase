@@ -1,17 +1,17 @@
 import { createMockMetadata } from "__support__/metadata";
 import {
   createParameter,
-  setParameterName,
+  getDashboardUiParameters,
+  getFilteringParameterValuesMap,
   hasMapping,
   hasMatchingParameters,
-  getFilteringParameterValuesMap,
-  getDashboardUiParameters,
+  setParameterName,
 } from "metabase/parameters/utils/dashboards";
 import Question from "metabase-lib/v1/Question";
 import Field from "metabase-lib/v1/metadata/Field";
 import {
-  createSampleDatabase,
   PRODUCTS,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const metadata = createMockMetadata({

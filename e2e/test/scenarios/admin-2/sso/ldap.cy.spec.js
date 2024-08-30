@@ -1,18 +1,18 @@
 import {
+  describeEE,
   modal,
   popover,
   restore,
-  describeEE,
+  setTokenFeatures,
   setupLdap,
   typeAndBlurUsingLabel,
-  setTokenFeatures,
 } from "e2e/support/helpers";
 
 import {
-  crudGroupMappingsWidget,
   checkGroupConsistencyAfterDeletingMappings,
+  crudGroupMappingsWidget,
 } from "./shared/group-mappings-widget";
-import { getUserProvisioningInput, getSuccessUi } from "./shared/helpers";
+import { getSuccessUi, getUserProvisioningInput } from "./shared/helpers";
 
 describe(
   "scenarios > admin > settings > SSO > LDAP",

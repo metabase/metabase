@@ -369,7 +369,7 @@
 
     clj -X metabase.util.malli.doc/generate-legacy-mbql-dox :target-dir '\"target/docs/schemas/legacy-mbql\"'"
   [{:keys [target-dir]
-                                 :or   {target-dir "docs/legacy-mbql"}}]
+    :or   {target-dir "docs/legacy-mbql"}}]
   (require 'metabase.legacy-mbql.schema)
   (generate-documentation! :metabase.legacy-mbql.schema/Query
                            target-dir))

@@ -9,20 +9,17 @@ import {
 } from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
+  Box,
+  Button,
   Radio,
+  Select,
   Stack,
   Text,
   TextInput,
-  Box,
-  Select,
-  Button,
 } from "metabase/ui";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import {
-  isFilterParameter,
-  isTemporalUnitParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   getIsMultiSelect,
   parameterHasNoDisplayValue,
@@ -170,10 +167,10 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
-      {sectionId && isFilterParameter(parameter) && (
+      {sectionId && (
         <>
           <Box mb="xl">
-            <SettingLabel>{t`Filter type`}</SettingLabel>
+            <SettingLabel>{t`Filter or parameter type`}</SettingLabel>
             <Select
               data={dataTypeSectionsData}
               value={sectionId}
@@ -194,7 +191,7 @@ export const ParameterSettings = ({
       )}
       {isTemporalUnitParameter(parameter) && (
         <Box mb="xl">
-          <SettingLabel>{t`Unit of Time options`}</SettingLabel>
+          <SettingLabel>{t`Time grouping options`}</SettingLabel>
           <TemporalUnitSettings
             parameter={parameter}
             onChangeTemporalUnits={onChangeTemporalUnits}

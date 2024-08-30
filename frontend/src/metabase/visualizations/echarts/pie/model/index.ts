@@ -1,23 +1,26 @@
-import Color from "color";
 import { pie } from "d3";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { checkNotNull } from "metabase/lib/types";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
+import {
+  getAggregatedRows,
+  getKeyFromDimensionValue,
+} from "metabase/visualizations/shared/settings/pie";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "metabase/visualizations/types";
-import type { RawSeries, RowValue } from "metabase-types/api";
+import type { RawSeries } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
-import { OTHER_SLICE_MIN_PERCENTAGE, OTHER_SLICE_KEY } from "../constants";
+import { OTHER_SLICE_KEY, OTHER_SLICE_MIN_PERCENTAGE } from "../constants";
 
 import type {
-  PieColumnDescriptors,
   PieChartModel,
+  PieColumnDescriptors,
   PieSliceData,
 } from "./types";
 
@@ -55,21 +58,6 @@ function getColDescs(
   };
 }
 
-export function getRowValues(row: RowValue[], colDescs: PieColumnDescriptors) {
-  const { dimensionDesc, metricDesc } = colDescs;
-
-  const dimensionValue = row[dimensionDesc.index];
-
-  const metricValue = row[metricDesc.index] ?? 0;
-  if (typeof metricValue !== "number") {
-    throw new Error(
-      `Pie chart metric value (${metricValue}) should be a number`,
-    );
-  }
-
-  return { dimensionValue, metricValue };
-}
-
 export function getPieChartModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -78,67 +66,89 @@ export function getPieChartModel(
 ): PieChartModel {
   const [
     {
-      data: { rows },
+      data: { rows: dataRows },
     },
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
+  const rowIndiciesByKey = new Map<string | number, number>();
+  dataRows.forEach((row, index) => {
+    const key = getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]);
+
+    if (rowIndiciesByKey.has(key)) {
+      return;
+    }
+    rowIndiciesByKey.set(key, index);
+  });
+
+  const aggregatedRows = getAggregatedRows(
+    dataRows,
+    colDescs.dimensionDesc.index,
+    colDescs.metricDesc.index,
+    showWarning,
+    colDescs.dimensionDesc.column,
+  );
+
+  const rowValuesByKey = new Map<string | number, number>();
+  aggregatedRows.map(row =>
+    rowValuesByKey.set(
+      getKeyFromDimensionValue(row[colDescs.dimensionDesc.index]),
+      getNumberOr(row[colDescs.metricDesc.index], 0),
+    ),
+  );
+
+  const pieRows = settings["pie.rows"];
+  if (pieRows == null) {
+    throw Error("missing `pie.rows` setting");
+  }
+
+  const visiblePieRows = pieRows.filter(row => row.enabled && !row.hidden);
+
+  const pieRowsWithValues = visiblePieRows.map(pieRow => {
+    const value = rowValuesByKey.get(pieRow.key);
+    if (value === undefined) {
+      throw Error(`No row values found for key ${pieRow.key}`);
+    }
+
+    return {
+      ...pieRow,
+      value,
+    };
+  });
+
   // We allow negative values if every single metric value is negative or 0
   // (`isNonPositive` = true). If the values are mixed between positives and
   // negatives, we'll simply ignore the negatives in all calculations.
-  const isNonPositive = rows.every(
-    row => getRowValues(row, colDescs).metricValue <= 0,
-  );
+  const isNonPositive =
+    pieRowsWithValues.every(row => row.value <= 0) &&
+    !pieRowsWithValues.every(row => row.value === 0);
 
-  const total = rows.reduce((currTotal, row) => {
-    const metricValue = getRowValues(row, colDescs).metricValue;
-    if (!isNonPositive && metricValue < 0) {
+  const total = pieRowsWithValues.reduce((currTotal, { value }) => {
+    if (!isNonPositive && value < 0) {
       showWarning?.(pieNegativesWarning().text);
       return currTotal;
     }
 
-    return currTotal + metricValue;
+    return currTotal + value;
   }, 0);
 
-  const [slices, others] = _.chain(rows)
-    .map((row, index): PieSliceData => {
-      const { dimensionValue, metricValue } = getRowValues(row, colDescs);
-
-      if (!settings["pie.colors"]) {
-        throw Error("missing `pie.colors` setting");
-      }
-      // older viz settings can have hsl values that need to be converted since
-      // batik does not support hsl
-      const color = Color(settings["pie.colors"][String(dimensionValue)]).hex();
-
-      let key: string | number;
-      if (dimensionValue == null) {
-        key = NULL_DISPLAY_VALUE;
-      } else if (typeof dimensionValue === "boolean") {
-        key = String(dimensionValue);
-      } else {
-        key = dimensionValue;
-      }
-
+  const [slices, others] = _.chain(pieRowsWithValues)
+    .map(({ value, color, key, name, isOther }): PieSliceData => {
       return {
         key,
-        value: isNonPositive ? -1 * metricValue : metricValue,
-        displayValue: metricValue,
-        normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale
-        rowIndex: index,
+        name,
+        value: isNonPositive ? -1 * value : value,
+        displayValue: value,
+        normalizedPercentage: value / total, // slice percentage values are normalized to 0-1 scale
+        rowIndex: rowIndiciesByKey.get(key),
         color,
-        isOther: false,
+        isOther,
         noHover: false,
         includeInLegend: true,
       };
     })
-    .filter(slice => isNonPositive || slice.value >= 0)
-    .partition(
-      slice =>
-        slice != null &&
-        slice.normalizedPercentage >=
-          (settings["pie.slice_threshold"] ?? 0) / 100, // stored setting for "pie.slice_threshold" is on 0-100 scale to match user input
-    )
+    .filter(slice => isNonPositive || slice.value > 0)
+    .partition(slice => slice != null && !slice.isOther)
     .value();
 
   // We don't show the grey other slice if there isn't more than one slice to
@@ -153,6 +163,7 @@ export function getPieChartModel(
   if (otherTotal > 0) {
     slices.push({
       key: OTHER_SLICE_KEY,
+      name: OTHER_SLICE_KEY,
       value: otherTotal,
       displayValue: otherTotal,
       normalizedPercentage: otherTotal / total,
@@ -175,6 +186,7 @@ export function getPieChartModel(
   if (slices.length === 0) {
     slices.push({
       key: OTHER_SLICE_KEY,
+      name: OTHER_SLICE_KEY,
       value: 1,
       displayValue: 0,
       normalizedPercentage: 0,

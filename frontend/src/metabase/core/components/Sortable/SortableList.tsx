@@ -6,7 +6,7 @@ import type {
 } from "@dnd-kit/core";
 import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
 import GrabberS from "metabase/css/components/grabber.module.css";
@@ -27,7 +27,11 @@ export type RenderItemProps<T> = {
 type useSortableListProps<T> = {
   items: T[];
   getId: (item: T) => ItemId;
-  renderItem: ({ item, id, isDragOverlay }: RenderItemProps<T>) => JSX.Element;
+  renderItem: ({
+    item,
+    id,
+    isDragOverlay,
+  }: RenderItemProps<T>) => JSX.Element | null;
   onSortStart?: (event: DragStartEvent) => void;
   onSortEnd?: ({ id, newIndex }: DragEndEvent) => void;
   sensors?: SensorDescriptor<any>[];

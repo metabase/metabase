@@ -49,21 +49,21 @@
 (defspec sorted-take-test-size
   (prop/for-all [coll (gen/list (gen/tuple gen/small-integer gen/string))
                  size (gen/fmap inc gen/nat)]
-                (= (vec (take-last size (sort coll)))
-                   (transduce (map identity)
-                              (u/sorted-take size compare)
-                              coll))))
+    (= (vec (take-last size (sort coll)))
+       (transduce (map identity)
+                  (u/sorted-take size compare)
+                  coll))))
 
 (defspec sorted-take-test-comparator
   (prop/for-all [coll (gen/list (gen/fmap (fn [x] {:score x}) gen/small-integer))
                  size (gen/fmap inc gen/nat)]
-                (let [coll    (shuffle coll)
-                      kompare (fn [{score-1 :score} {score-2 :score}]
-                                (compare score-1 score-2))]
-                  (= (vec (take-last size (sort-by identity kompare coll)))
-                     (transduce (map identity)
-                                (u/sorted-take size kompare)
-                                coll)))))
+    (let [coll    (shuffle coll)
+          kompare (fn [{score-1 :score} {score-2 :score}]
+                    (compare score-1 score-2))]
+      (= (vec (take-last size (sort-by identity kompare coll)))
+         (transduce (map identity)
+                    (u/sorted-take size kompare)
+                    coll)))))
 
 (deftest ^:parallel full-exception-chain-test
   (testing "Not an Exception"

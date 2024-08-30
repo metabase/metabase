@@ -183,13 +183,13 @@
    unique-name-fn                :- ::lib.metadata.calculation/unique-name-fn
    {:keys [include-late-exprs?]} :- [:map [:include-late-exprs? {:optional true} :boolean]]]
   (not-empty
-    (for [[clause metadata] (map vector
-                                 (:expressions (lib.util/query-stage query stage-number))
-                                 (lib.expression/expressions-metadata query stage-number))
+   (for [[clause metadata] (map vector
+                                (:expressions (lib.util/query-stage query stage-number))
+                                (lib.expression/expressions-metadata query stage-number))
           ;; Only include "late" expressions when required.
           ;; "Late" expressions those like :offset which can't be used within the same query stage, like aggregations.
-          :when (or include-late-exprs?
-                    (not (lib.util.match/match-one clause :offset)))]
+         :when (or include-late-exprs?
+                   (not (lib.util.match/match-one clause :offset)))]
      (let [base-type (:base-type metadata)]
        (-> (assoc metadata
                   :lib/source               :source/expressions
@@ -276,10 +276,10 @@
   (let [query            (ensure-previous-stages-have-metadata query stage-number)
         existing-columns (existing-visible-columns query stage-number options)]
     (->> (concat
-           existing-columns
+          existing-columns
            ;; add implicitly joinable columns if desired
-           (when include-implicitly-joinable?
-             (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
+          (when include-implicitly-joinable?
+            (lib.metadata.calculation/implicitly-joinable-columns query stage-number existing-columns unique-name-fn)))
          vec)))
 
 ;;; Return results metadata about the expected columns in an MBQL query stage. If the query has
@@ -393,3 +393,24 @@
       ;; Otherwise append a stage and return the new query and updated stage number.
       (let [query (append-stage query)]
         [query (lib.util/next-stage-number query stage-number)]))))
+
+(defn- ensure-legacy-filter-stage
+  [query]
+  (let [inner-query (:query query)]
+    (cond-> query
+      (and (:aggregation inner-query)
+           (:breakout inner-query))
+      (assoc :query {:source-query inner-query}))))
+
+(defn ensure-filter-stage
+  "Adds an empty stage to `query` if its last stage contains both breakouts and aggregations.
+
+  This is so that parameters can address both the stage before and after the aggregation.
+  Adding filters to the result at stage -1 will filter after the summary, filters added at
+  stage -2 filter before the summary."
+  [query]
+  (if (#{:query :native} (lib.util/normalized-query-type query))
+    (ensure-legacy-filter-stage query)
+    (cond-> query
+      (and (lib.breakout/breakouts query) (lib.aggregation/aggregations query))
+      append-stage)))

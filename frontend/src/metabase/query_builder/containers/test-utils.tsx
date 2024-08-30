@@ -4,23 +4,23 @@ import type { ComponentPropsWithoutRef } from "react";
 import { IndexRoute, Route } from "react-router";
 
 import {
+  setupAdhocQueryMetadataEndpoint,
   setupAlertsEndpoints,
   setupBookmarksEndpoints,
   setupCardDataset,
   setupCardQueryEndpoints,
+  setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupFieldValuesEndpoints,
   setupModelIndexEndpoints,
+  setupPropertiesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
+  setupRecentViewsEndpoints,
   setupSearchEndpoints,
   setupTimelinesEndpoints,
-  setupPropertiesEndpoints,
-  setupRecentViewsEndpoints,
-  setupRecentViewsAndSelectionsEndpoints,
-  setupCardQueryMetadataEndpoint,
-  setupAdhocQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,

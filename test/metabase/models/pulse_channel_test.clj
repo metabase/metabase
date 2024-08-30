@@ -2,20 +2,16 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase.models.collection :refer [Collection]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-   [metabase.models.serialization :as serdes]
    [metabase.task :as task]
    [metabase.task.send-pulses :as task.send-pulses]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import
-   (java.time LocalDateTime)))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -156,22 +152,28 @@
       (update :entity_id boolean)
       (m/dissoc-in [:details :emails])))
 
+(def default-pulse-channel
+  {:enabled        true
+   :entity_id      true
+   :channel_type   :email
+   :schedule_type  :daily
+   :schedule_hour  18
+   :schedule_day   nil
+   :schedule_frame nil
+   :recipients     []
+   :channel_id     nil})
+
 ;; create-pulse-channel!
 (deftest create-pulse-channel!-test
   (mt/with-premium-features #{}
     (t2.with-temp/with-temp [Pulse {:keys [id]}]
       (mt/with-model-cleanup [Pulse]
         (testing "disabled"
-          (is (= {:enabled        false
-                  :entity_id      true
-                  :channel_type   :email
-                  :schedule_type  :daily
-                  :schedule_hour  18
-                  :schedule_day   nil
-                  :schedule_frame nil
-                  :recipients     [(user-details :crowberto)
-                                   {:email "foo@bar.com"}
-                                   (user-details :rasta)]}
+          (is (= (merge default-pulse-channel
+                        {:enabled false
+                         :recipients [(user-details :crowberto)
+                                      {:email "foo@bar.com"}
+                                      (user-details :rasta)]})
                  (create-channel-then-select!
                   {:pulse_id      id
                    :enabled       false
@@ -182,16 +184,10 @@
                                    {:id (mt/user->id :rasta)}
                                    {:id (mt/user->id :crowberto)}]}))))
         (testing "email"
-          (is (= {:enabled        true
-                  :entity_id      true
-                  :channel_type   :email
-                  :schedule_type  :daily
-                  :schedule_hour  18
-                  :schedule_day   nil
-                  :schedule_frame nil
-                  :recipients     [(user-details :crowberto)
-                                   {:email "foo@bar.com"}
-                                   (user-details :rasta)]}
+          (is (= (merge default-pulse-channel
+                        {:recipients [(user-details :crowberto)
+                                      {:email "foo@bar.com"}
+                                      (user-details :rasta)]})
                  (create-channel-then-select!
                   {:pulse_id      id
                    :enabled       true
@@ -203,38 +199,25 @@
                                    {:id (mt/user->id :crowberto)}]}))))
 
         (testing "slack"
-          (is (= {:enabled        true
-                  :entity_id      true
-                  :channel_type   :slack
-                  :schedule_type  :hourly
-                  :schedule_hour  nil
-                  :schedule_day   nil
-                  :schedule_frame nil
-                  :recipients     []
-                  :details        {:something "random"}}
+          (is (= (merge default-pulse-channel
+                        {:channel_type :slack
+                         :schedule_type :hourly :schedule_hour nil
+                         :details {:channel "#general"}})
                  (create-channel-then-select!
                   {:pulse_id      id
                    :enabled       true
                    :channel_type  :slack
                    :schedule_type :hourly
-                   :details       {:something "random"}
-                   :recipients    [{:email "foo@bar.com"}
-                                   {:id (mt/user->id :rasta)}
-                                   {:id (mt/user->id :crowberto)}]}))))))))
+                   :details       {:channel "#general"}
+                   :recipients    []}))))))))
 
 (deftest update-pulse-channel!-test
   (mt/with-premium-features #{}
     (t2.with-temp/with-temp [Pulse {pulse-id :id}]
       (testing "simple starting case where we modify the schedule hour and add a recipient"
         (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
-          (is (= {:enabled        true
-                  :entity_id      true
-                  :channel_type   :email
-                  :schedule_type  :daily
-                  :schedule_hour  18
-                  :schedule_day   nil
-                  :schedule_frame nil
-                  :recipients     [{:email "foo@bar.com"}]}
+          (is (= (merge default-pulse-channel
+                        {:recipients [{:email "foo@bar.com"}]})
                  (update-channel-then-select!
                   {:id            channel-id
                    :enabled       true
@@ -245,14 +228,12 @@
 
       (testing "monthly schedules require a schedule_frame and can optionally omit they schedule_day"
         (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
-          (is (= {:enabled        true
-                  :entity_id      true
-                  :channel_type  :email
-                  :schedule_type :monthly
-                  :schedule_hour 8
-                  :schedule_day  nil
-                  :schedule_frame :mid
-                  :recipients    [{:email "foo@bar.com"} (user-details :rasta)]}
+          (is (= (merge default-pulse-channel
+                        {:recipients     [{:email "foo@bar.com"} (user-details :rasta)]
+                         :channel_type   :email
+                         :schedule_type  :monthly
+                         :schedule_frame :mid
+                         :schedule_hour  8})
                  (update-channel-then-select!
                   {:id             channel-id
                    :enabled        true
@@ -265,14 +246,12 @@
 
       (testing "weekly schedule should have a day in it, show that we can get full users"
         (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
-          (is (= {:enabled        true
-                  :entity_id      true
-                  :channel_type   :email
-                  :schedule_type  :weekly
-                  :schedule_hour  8
-                  :schedule_day   "mon"
-                  :schedule_frame nil
-                  :recipients     [{:email "foo@bar.com"} (user-details :rasta)]}
+          (is (= (merge default-pulse-channel
+                        {:recipients    [{:email "foo@bar.com"} (user-details :rasta)]
+                         :channel_type  :email
+                         :schedule_type :weekly
+                         :schedule_hour 8
+                         :schedule_day  "mon"})
                  (update-channel-then-select!
                   {:id            channel-id
                    :enabled       true
@@ -285,14 +264,12 @@
       (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
         (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
           (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
-          (is (= {:enabled       true
-                  :entity_id     true
-                  :channel_type  :email
-                  :schedule_type :hourly
-                  :schedule_hour nil
-                  :schedule_day  nil
-                  :schedule_frame nil
-                  :recipients    [(user-details :crowberto)]}
+          (is (= (merge default-pulse-channel
+                        {:recipients    [(user-details :crowberto)]
+                         :channel_type  :email
+                         :schedule_type :hourly
+                         :schedule_hour nil
+                         :schedule_day  nil})
                  (update-channel-then-select!
                   {:id            channel-id
                    :enabled       true
@@ -304,15 +281,13 @@
 
       (testing "custom details for channels that need it"
         (t2.with-temp/with-temp [PulseChannel {channel-id :id} {:pulse_id pulse-id}]
-          (is (= {:enabled       true
-                  :entity_id     true
-                  :channel_type  :email
-                  :schedule_type :daily
-                  :schedule_hour 12
-                  :schedule_day  nil
-                  :schedule_frame nil
-                  :recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
-                  :details       {:channel "#metabaserocks"}}
+          (is (= (merge default-pulse-channel
+                        {:recipients    [{:email "foo@bar.com"} {:email "blah@bar.com"}]
+                         :details       {:channel "#metabaserocks"}
+                         :channel_type  :email
+                         :schedule_type :daily
+                         :schedule_hour 12
+                         :schedule_day  nil})
                  (update-channel-then-select!
                   {:id            channel-id
                    :enabled       true
@@ -387,20 +362,6 @@
            (pulse-channel/validate-email-domains {:recipients [{:email "rasta@example.com"
                                                                 :id    (mt/user->id :rasta)}]}))))))
 
-(deftest identity-hash-test
-  (testing "Pulse channel hashes are composed of the pulse's hash, the channel type, and the details and the collection hash"
-    (mt/with-premium-features #{}
-      (let [now (LocalDateTime/of 2022 9 1 12 34 56)]
-        (mt/with-temp [Collection   coll  {:name "field-db" :location "/" :created_at now}
-                       Pulse        pulse {:name "my pulse" :collection_id (:id coll) :created_at now}
-                       PulseChannel chan  {:pulse_id     (:id pulse)
-                                           :channel_type :email
-                                           :details      {:emails ["cam@test.com"]}
-                                           :created_at   now}]
-          (is (= "2f5f0269"
-                 (serdes/raw-hash [(serdes/identity-hash pulse) :email {:emails ["cam@test.com"]} now])
-                 (serdes/identity-hash chan))))))))
-
 (defn pulse->trigger-info
   [pulse-id schedule-map pc-ids]
   {:key      (.getName ^org.quartz.TriggerKey (#'task.send-pulses/send-pulse-trigger-key pulse-id schedule-map))
@@ -431,7 +392,7 @@
 
 (defmacro with-send-pulse-setup!
   [& body]
-  `(mt/with-temp-scheduler
+  `(mt/with-temp-scheduler!
      (task/init! ::task.send-pulses/SendPulses)
      ~@body))
 

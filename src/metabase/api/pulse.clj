@@ -135,14 +135,14 @@
                     :dashboard_id        dashboard_id
                     :parameters          parameters}]
     (t2/with-transaction [_conn]
-     ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
-     ;; check that and fix it if needed
-     (api/maybe-reconcile-collection-position! pulse-data)
-     ;; ok, now create the Pulse
-     (let [pulse (api/check-500
-                  (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data))]
-       (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
-       pulse))))
+      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+      ;; check that and fix it if needed
+      (api/maybe-reconcile-collection-position! pulse-data)
+      ;; ok, now create the Pulse
+      (let [pulse (api/check-500
+                   (pulse/create-pulse! (map pulse/card->ref cards) channels pulse-data))]
+        (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+        pulse))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have read permissions for its collection,
@@ -150,11 +150,11 @@
   [id]
   {id ms/PositiveInt}
   (api/let-404 [pulse (pulse/retrieve-pulse id)]
-   (api/check-403 (mi/can-read? pulse))
-   (-> pulse
-       maybe-filter-pulse-recipients
-       maybe-strip-sensitive-metadata
-       (t2/hydrate :can_write))))
+    (api/check-403 (mi/can-read? pulse))
+    (-> pulse
+        maybe-filter-pulse-recipients
+        maybe-strip-sensitive-metadata
+        (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients
   "Sandboxed users and users using connection impersonation can't read the full recipient list for a pulse, so we need
@@ -186,9 +186,9 @@
    parameters    [:maybe [:sequential ms/Map]]}
   ;; do various perms checks
   (try
-   (validation/check-has-application-permission :monitoring)
-   (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-application-permission :subscription false)))
+    (validation/check-has-application-permission :monitoring)
+    (catch clojure.lang.ExceptionInfo _e
+      (validation/check-has-application-permission :subscription false)))
 
   (let [pulse-before-update (api/write-check (pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
@@ -214,12 +214,12 @@
       (t2/with-transaction [_conn]
        ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
        ;; depending on what changed.
-       (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+        (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
        ;; ok, now update the Pulse
-       (pulse/update-pulse!
-        (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                           :archived :parameters])
-               :id id)))))
+        (pulse/update-pulse!
+         (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                            :archived :parameters])
+                :id id)))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
@@ -229,7 +229,8 @@
   (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
-                       (assoc-in [:email :configured] (email/email-configured?)))]
+                       (assoc-in [:email :configured] (email/email-configured?))
+                       (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
                  (premium-features/sandboxed-or-impersonated-user?)
                  (dissoc chan-types :slack)
@@ -290,13 +291,13 @@
    :headers {"Content-Type" "text/html"}
    :body    (preview/style-tag-from-inline-styles
              (html5
-               [:head
-                [:meta {:charset "utf-8"}]
-                [:link {:nonce "%NONCE%" ;; this will be str/replaced by 'style-tag-nonce-middleware
-                        :rel  "stylesheet"
-                        :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
-               [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
-                (preview/render-dashboard-to-html id)]))})
+              [:head
+               [:meta {:charset "utf-8"}]
+               [:link {:nonce "%NONCE%" ;; this will be str/replaced by 'style-tag-nonce-middleware
+                       :rel  "stylesheet"
+                       :href "https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"}]]
+              [:body [:h2 (format "Backend Artifacts Preview for Dashboard %s" id)]
+               (preview/render-dashboard-to-html id)]))})
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -340,9 +341,9 @@
    dashboard_id        [:maybe ms/PositiveInt]}
   ;; Check permissions on cards that exist. Placeholders don't matter.
   (check-card-read-permissions
-    (remove (fn [{:keys [id display]}]
-              (and (nil? id)
-                   (= "placeholder" display))) cards))
+   (remove (fn [{:keys [id display]}]
+             (and (nil? id)
+                  (= "placeholder" display))) cards))
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))

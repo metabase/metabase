@@ -14,7 +14,10 @@ import {
 } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import type { PieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import type { PieChartModel } from "metabase/visualizations/echarts/pie/model/types";
-import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
+import {
+  getMarkerColorClass,
+  useClickedStateTooltipSync,
+} from "metabase/visualizations/echarts/tooltip";
 import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
@@ -35,7 +38,7 @@ export const getTooltipModel = (
 
   const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
     slice => ({
-      name: formatters.formatDimension(slice.data.key),
+      name: slice.data.name,
       value: slice.data.displayValue,
       color: hoveredOther ? undefined : slice.data.color,
       formatter: formatters.formatMetric,
@@ -174,6 +177,8 @@ export function useChartEvents(
     },
     [chart, hoveredIndex],
   );
+
+  useClickedStateTooltipSync(chartRef.current, props.clicked);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [

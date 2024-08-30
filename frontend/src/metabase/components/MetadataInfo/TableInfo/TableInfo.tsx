@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
@@ -8,11 +8,11 @@ import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import {
+  AbsoluteContainer,
   Description,
   EmptyDescription,
-  LoadingSpinner,
-  AbsoluteContainer,
   Fade,
+  LoadingSpinner,
 } from "../MetadataInfo.styled";
 
 import ColumnCount from "./ColumnCount";

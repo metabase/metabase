@@ -6,10 +6,13 @@ import type {
   ApiKey,
   Bookmark,
   Card,
+  CardId,
+  CardQueryMetadata,
   Collection,
   CollectionItem,
   CollectionItemModel,
   Dashboard,
+  DashboardQueryMetadata,
   DashboardSubscription,
   Database,
   DatabaseXray,
@@ -19,8 +22,10 @@ import type {
   ForeignKey,
   GroupListQuery,
   ListDashboardsResponse,
-  NativeQuerySnippet,
   ModelCacheRefreshStatus,
+  ModelIndex,
+  NativeQuerySnippet,
+  NotificationChannel,
   PopularItem,
   RecentItem,
   Revision,
@@ -32,10 +37,6 @@ import type {
   Timeline,
   TimelineEvent,
   UserInfo,
-  DashboardQueryMetadata,
-  CardQueryMetadata,
-  CardId,
-  ModelIndex,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -203,6 +204,21 @@ export function provideModelIndexListTags(
   return [
     listTag("model-index"),
     ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+  ];
+}
+
+export function provideChannelTags(
+  channel: NotificationChannel,
+): TagDescription<TagType>[] {
+  return [idTag("channel", channel.id)];
+}
+
+export function provideChannelListTags(
+  channels: NotificationChannel[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("channel"),
+    ...channels.flatMap(channel => provideChannelTags(channel)),
   ];
 }
 
@@ -433,6 +449,10 @@ export function provideSubscriptionListTags(
     listTag("subscription"),
     ...subscriptions.flatMap(provideSubscriptionTags),
   ];
+}
+
+export function provideSubscriptionChannelListTags(): TagDescription<TagType>[] {
+  return [listTag("subscription-channel")];
 }
 
 export function provideSubscriptionTags(

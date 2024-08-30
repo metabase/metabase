@@ -52,7 +52,7 @@
         (let [query (limit/disable-max-results (:dataset_query card))]
           (ddl.i/refresh! (:engine database) database definition query))))
     (unpersist! [_ database persisted-info]
-     (ddl.i/unpersist! (:engine database) database persisted-info))))
+      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
@@ -114,7 +114,7 @@
   [task-type db-id thunk]
   (task-history/with-task-history {:task            task-type
                                    :db_id           db-id
-                                   :on-success-info (fn [task-details]
+                                   :on-success-info (fn [_update-map task-details]
                                                       (let [error (error-details task-details)]
                                                         (when (and error (= "persist-refresh" task-type))
                                                           (send-persist-refresh-email-if-error! db-id task-details))
@@ -290,37 +290,35 @@
   "Return a cron schedule that fires every `hours` hours."
   [cron-spec]
   (cron/schedule
-    (cron/cron-schedule cron-spec)
-    (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
-                                                 (qp.timezone/system-timezone-id)
-                                                 "UTC")))
-    (cron/with-misfire-handling-instruction-do-nothing)))
+   (cron/cron-schedule cron-spec)
+   (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
+                                                (qp.timezone/system-timezone-id)
+                                                "UTC")))
+   (cron/with-misfire-handling-instruction-do-nothing)))
 
 (comment
   (let [[start-hour start-minute] (map parse-long (str/split "00:00" #":"))
         hours 1]
 
-     (if (= 24 hours)
-         (format "0 %d %d * * ? *" start-minute start-hour)
-         (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
-
-
+    (if (= 24 hours)
+      (format "0 %d %d * * ? *" start-minute start-hour)
+      (format "0 %d %d/%d * * ? *" start-minute start-hour hours))))
 
 (def ^:private prune-scheduled-trigger
   (triggers/build
-    (triggers/with-description "Prune deletable PersistInfo once per hour")
-    (triggers/with-identity prune-scheduled-trigger-key)
-    (triggers/for-job (jobs/key prune-job-key))
-    (triggers/start-now)
-    (triggers/with-schedule
-      (cron-schedule "0 0 0/1 * * ? *"))))
+   (triggers/with-description "Prune deletable PersistInfo once per hour")
+   (triggers/with-identity prune-scheduled-trigger-key)
+   (triggers/for-job (jobs/key prune-job-key))
+   (triggers/start-now)
+   (triggers/with-schedule
+    (cron-schedule "0 0 0/1 * * ? *"))))
 
 (def ^:private prune-once-trigger
   (triggers/build
-    (triggers/with-description "Prune deletable PersistInfo now")
-    (triggers/with-identity prune-once-trigger-key)
-    (triggers/for-job (jobs/key prune-job-key))
-    (triggers/start-now)))
+   (triggers/with-description "Prune deletable PersistInfo now")
+   (triggers/with-identity prune-once-trigger-key)
+   (triggers/for-job (jobs/key prune-job-key))
+   (triggers/start-now)))
 
 (defn- database-trigger ^org.quartz.CronTrigger [database cron-spec]
   (triggers/build
@@ -331,7 +329,7 @@
    (triggers/for-job (jobs/key refresh-job-key))
    (triggers/start-now)
    (triggers/with-schedule
-     (cron-schedule cron-spec))))
+    (cron-schedule cron-spec))))
 
 (defn- individual-trigger [persisted-info]
   (triggers/build
@@ -375,7 +373,6 @@
                             (:card_id persisted-info)
                             (.. ^Trigger tggr getKey getName)))))))
          ;; other errors?
-
 
 (defn job-info-by-db-id
   "Fetch all database-ids that have a refresh job scheduled."

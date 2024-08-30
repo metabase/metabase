@@ -1,35 +1,33 @@
 import cx from "classnames";
-import type { ReactElement, ReactNode } from "react";
-import { useState } from "react";
+import { type ReactElement, type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import {
   SdkError,
   SdkLoader,
 } from "embedding-sdk/components/private/PublicComponentWrapper";
-import { getDefaultVizHeight } from "embedding-sdk/lib/default-height";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Group, Stack } from "metabase/ui";
 
 import {
   BackButton,
-  FilterBar,
-  QuestionResetButton,
-  Title,
   Filter,
+  FilterBar,
   FilterButton,
-  Summarize,
-  SummarizeButton,
   Notebook,
   NotebookButton,
+  QuestionResetButton,
   QuestionVisualization,
+  Summarize,
+  SummarizeButton,
+  Title,
 } from "./InteractiveQuestion/components";
 import { useInteractiveQuestionContext } from "./InteractiveQuestion/context";
 
-interface InteractiveQuestionResultProps {
+export interface InteractiveQuestionResultProps {
   height?: string | number;
   withResetButton?: boolean;
-  withTitle: boolean;
+  withTitle?: boolean;
   customTitle?: ReactNode;
 }
 
@@ -72,9 +70,6 @@ export const InteractiveQuestionResult = ({
 
   const { question, queryResults, isQuestionLoading } =
     useInteractiveQuestionContext();
-
-  const card = question?.card();
-  const defaultHeight = card ? getDefaultVizHeight(card.display) : undefined;
 
   let content;
 
@@ -131,7 +126,7 @@ export const InteractiveQuestionResult = ({
   return (
     <Box
       className={cx(CS.flexFull, CS.fullWidth)}
-      h={height ?? defaultHeight}
+      h={height ?? "100%"}
       bg="var(--mb-color-bg-question)"
     >
       {content}

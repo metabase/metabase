@@ -27,4 +27,4 @@
 
     (testing "works with custom end-limit"
       (is (= "ab...ra"
-            (u.str/mask "abracadabra" 2 2))))))
+             (u.str/mask "abracadabra" 2 2))))))

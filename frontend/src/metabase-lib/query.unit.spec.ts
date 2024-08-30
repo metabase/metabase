@@ -1,10 +1,10 @@
 import * as Lib from "metabase-lib";
 
 import {
-  createQuery,
   DEFAULT_QUERY,
   SAMPLE_DATABASE,
   SAMPLE_METADATA,
+  createQuery,
 } from "./test-helpers";
 
 describe("fromLegacyQuery", () => {

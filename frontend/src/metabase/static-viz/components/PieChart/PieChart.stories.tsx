@@ -3,8 +3,8 @@ import type { ComponentStory } from "@storybook/react";
 import { color } from "metabase/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
 import {
-  measureTextWidth,
   measureTextHeight,
+  measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
@@ -73,6 +73,13 @@ HideLegend.args = {
 export const HideTotal = Template.bind({});
 HideTotal.args = {
   rawSeries: data.hideTotal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const ReorderedRenamedSlices = Template.bind({});
+ReorderedRenamedSlices.args = {
+  rawSeries: data.reorderedRenamedSlices as any,
   dashcardSettings: {},
   renderingContext,
 };
@@ -234,13 +241,6 @@ SingleDimension.args = {
 export const LongDimensionName = Template.bind({});
 LongDimensionName.args = {
   rawSeries: data.longDimensionName as any,
-  dashcardSettings: {},
-  renderingContext,
-};
-
-export const SortedMetricCol = Template.bind({});
-SortedMetricCol.args = {
-  rawSeries: data.sortedMetricCol as any,
   dashcardSettings: {},
   renderingContext,
 };

@@ -1,5 +1,5 @@
 import { mockSettings } from "__support__/settings";
-import { screen, render } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 import { createMockColumn } from "metabase-types/api/mocks";
 
 import type { OptionsType } from "./types";
@@ -51,6 +51,16 @@ describe("link", () => {
       screen.getByText(content => content.endsWith("bar")),
     ).toBeInTheDocument();
     expect(screen.getByText("23.12")).toBeInTheDocument();
+  });
+
+  it("should not apply prefix or suffix to null values", () => {
+    setup(null, {
+      prefix: "foo ",
+      suffix: " bar",
+    });
+
+    const anyContent = screen.queryByText(/./);
+    expect(anyContent).not.toBeInTheDocument();
   });
 
   it("should trim values to specified decimals", () => {

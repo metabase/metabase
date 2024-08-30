@@ -1,4 +1,4 @@
-import { t, jt } from "ttag";
+import { jt, t } from "ttag";
 
 import { BoldCode } from "metabase/components/Code";
 import Link from "metabase/core/components/Link";
@@ -16,7 +16,7 @@ interface ImpersonationWarningProps {
 export const ImpersonationWarning = ({
   database,
 }: ImpersonationWarningProps) => {
-  const databaseUser = database.details.user;
+  const databaseUser = database.details && database.details.user;
   const isRedshift = database.engine === "redshift";
 
   // eslint-disable-next-line no-literal-metabase-strings -- Metabase settings

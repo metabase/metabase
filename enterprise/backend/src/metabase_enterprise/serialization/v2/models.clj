@@ -5,7 +5,8 @@
   ["Database"
    "Field"
    "Segment"
-   "Table"])
+   "Table"
+   "Channel"])
 
 (def content
   "Content model types"
@@ -52,9 +53,9 @@
    "GroupTableAccessPolicy"
    "HTTPAction"
    "ImplicitAction"
-   "LoginHistory"
    "LegacyMetric"
    "LegacyMetricImportantField"
+   "LoginHistory"
    "ModelIndex"
    "ModelIndexValue"
    "ModerationReview"

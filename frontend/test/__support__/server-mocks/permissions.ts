@@ -2,8 +2,8 @@ import fetchMock from "fetch-mock";
 
 import type {
   CollectionPermissionsGraph,
-  Group,
   Database,
+  Group,
 } from "metabase-types/api";
 import { createMockPermissionsGraph } from "metabase-types/api/mocks/permissions";
 

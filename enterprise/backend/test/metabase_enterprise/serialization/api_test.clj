@@ -136,6 +136,7 @@
         (is (= known-files
                (set (.list (io/file api.serialization/parent-dir)))))))))
 
+#_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest export-import-test
   (testing "Serialization API e2e"
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]

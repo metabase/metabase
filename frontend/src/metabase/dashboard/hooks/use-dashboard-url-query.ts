@@ -14,9 +14,9 @@ import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/param
 import { selectTab } from "../actions";
 import {
   getDashboard,
-  getValuePopulatedParameters,
   getSelectedTab,
   getTabs,
+  getValuePopulatedParameters,
 } from "../selectors";
 import { createTabSlug } from "../utils";
 
@@ -122,7 +122,7 @@ export function useDashboardUrlQuery(
   }, [router, location, selectedTab, dispatch]);
 }
 
-const QUERY_PARAMS_ALLOW_LIST = ["objectId"];
+const QUERY_PARAMS_ALLOW_LIST = ["objectId", "locale"];
 
 function parseTabId(location: Location) {
   const slug = location.query?.tab;

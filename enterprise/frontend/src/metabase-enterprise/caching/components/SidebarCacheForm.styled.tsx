@@ -1,8 +1,8 @@
 import styled from "@emotion/styled";
 
 import {
-  StyledFormButtonsGroup,
   FormBox,
+  StyledFormButtonsGroup,
 } from "metabase/admin/performance/components/StrategyForm.styled";
 import { Group } from "metabase/ui";
 

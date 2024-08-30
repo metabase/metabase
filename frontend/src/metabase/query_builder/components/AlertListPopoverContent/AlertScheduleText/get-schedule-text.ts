@@ -3,8 +3,8 @@ import _ from "underscore";
 
 import {
   AM_PM_OPTIONS,
-  getDayOfWeekOptions,
   HOUR_OPTIONS,
+  getDayOfWeekOptions,
 } from "metabase/lib/date-time";
 import type { Channel } from "metabase-types/api";
 

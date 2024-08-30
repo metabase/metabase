@@ -1,7 +1,7 @@
 import type {
+  BarSeriesOption,
   CustomSeriesOption,
   LineSeriesOption,
-  BarSeriesOption,
   ScatterSeriesOption,
 } from "echarts/charts";
 

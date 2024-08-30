@@ -1,9 +1,9 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
-import { t, ngettext, msgid } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
 import { parseTimestamp } from "metabase/lib/time";
-import { numberToWord, compareVersions } from "metabase/lib/utils";
+import { compareVersions, numberToWord } from "metabase/lib/utils";
 import { getDocsUrlForVersion } from "metabase/selectors/settings";
 import type {
   PasswordComplexity,

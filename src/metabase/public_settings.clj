@@ -95,7 +95,7 @@
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of {0}."
-    (application-name-for-setting-descriptions))
+                (application-name-for-setting-descriptions))
   :default    "Metabase"
   :audit      :getter
   :visibility :settings-manager
@@ -163,8 +163,8 @@
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
   (deferred-tru
-    (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
-         "so changing it could break functionality or get you locked out of this instance."))
+   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+        "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :audit      :getter
   :getter     (fn []
@@ -185,9 +185,9 @@
 
 (defsetting site-locale
   (deferred-tru
-    (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
-         "Users can individually override this default language from their own account settings.")
-    (application-name-for-setting-descriptions))
+   (str "The default language for all users across the {0} UI, system emails, pulses, and alerts. "
+        "Users can individually override this default language from their own account settings.")
+   (application-name-for-setting-descriptions))
   :default    "en"
   :visibility :public
   :export?    true
@@ -209,10 +209,9 @@
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help {0} improve."
-    (application-name-for-setting-descriptions))
+                (application-name-for-setting-descriptions))
   :type       :boolean
   :default    true
-  :encryption :never
   :visibility :public
   :audit      :getter)
 
@@ -530,10 +529,10 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting help-link
   (deferred-tru
-    (str
-     "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
-     "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
-     "or be hidden if it is not set."))
+   (str
+    "Keyword setting to control whitelabeling of the help link. Valid values are `:metabase`, `:hidden`, and "
+    "`:custom`. If `:custom` is set, the help link will use the URL specified in the `help-link-custom-destination`, "
+    "or be hidden if it is not set."))
   :type       :keyword
   :audit      :getter
   :visibility :public
@@ -595,8 +594,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting breakout-bins-num
   (deferred-tru
-    (str "When using the default binning strategy and a number of bins is not provided, "
-         "this number will be used as the default."))
+   (str "When using the default binning strategy and a number of bins is not provided, "
+        "this number will be used as the default."))
   :type    :integer
   :export? true
   :default 8
@@ -604,8 +603,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting breakout-bin-width
   (deferred-tru
-    (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
-         "this number will be used as the default bin width (in degrees)."))
+   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+        "this number will be used as the default bin width (in degrees)."))
   :type    :double
   :default 10.0
   :audit   :getter)
@@ -628,8 +627,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-data
   (deferred-tru
-    (str "Whether or not to display data on the homepage. "
-         "Admins might turn this off in order to direct users to better content than raw data"))
+   (str "Whether or not to display data on the homepage. "
+        "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -638,8 +637,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-xrays
   (deferred-tru
-    (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
-         "pinned. Admins might hide this to direct users to better content than raw data"))
+   (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -648,8 +647,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-homepage-pin-message
   (deferred-tru
-    (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
-         "pinned. Admins might hide this to direct users to better content than raw data"))
+   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated
@@ -746,6 +745,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :embedding                      (premium-features/hide-embed-branding?)
                       :hosting                        (premium-features/is-hosted?)
                       :official_collections           (premium-features/enable-official-collections?)
+                      :query_reference_validation     (premium-features/enable-query-reference-validation?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
                       :scim                           (premium-features/enable-scim?)
                       :session_timeout_config         (premium-features/enable-session-timeout-config?)
@@ -776,9 +776,9 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting start-of-week
   (deferred-tru
-    (str "This will affect things like grouping by week or filtering in GUI queries. "
-         "It won''t affect most SQL queries, "
-         "although it is used to set the WEEK_START session variable in Snowflake."))
+   (str "This will affect things like grouping by week or filtering in GUI queries. "
+        "It won''t affect most SQL queries, "
+        "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :export?    true
   :type       :keyword
@@ -808,8 +808,8 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting show-database-syncing-modal
   (deferred-tru
-    (str "Whether an introductory modal should be shown after the next database connection is added. "
-         "Defaults to false if any non-default database has already finished syncing for this instance."))
+   (str "Whether an introductory modal should be shown after the next database connection is added. "
+        "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :audit      :never
@@ -826,54 +826,6 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defn- not-handling-api-request?
   []
   (nil? @api/*current-user*))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Deprecated uploads settings begin
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
-;; to migrate to the new way to set uploads settings.
-
-(defsetting uploads-enabled
-  (deferred-tru "Whether or not uploads are enabled")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :boolean
-  :default    false
-  :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
-
-(defsetting uploads-database-id
-  (deferred-tru "Database ID for uploads")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :integer
-  :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
-
-(defsetting uploads-schema-name
-  (deferred-tru "Schema name for uploads")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :string
-  :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
-
-(defsetting uploads-table-prefix
-  (deferred-tru "Prefix for upload table names")
-  :deprecated "0.50.0"
-  :visibility :internal
-  :export?    false
-  :type       :string
-  :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
-  :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Deprecated uploads settings end
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defsetting uploads-settings
   (deferred-tru "Upload settings")
@@ -947,5 +899,52 @@ See [fonts](../configuring-metabase/fonts.md).")
   (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
   :visibility :internal
   :export?    true
+  :type       :integer)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings begin
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; These settings were removed in 50.0 and will be erased from the code in 53.0. They have been left here to explain how
+;; to migrate to the new way to set uploads settings.
+
+(defsetting uploads-enabled
+  (deferred-tru "Whether or not uploads are enabled")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :boolean
+  :default    false
+  :getter     (fn [] (throw (Exception. "uploads-enabled has been removed; use 'uploads_enabled' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
+
+(defsetting uploads-database-id
+  (deferred-tru "Database ID for uploads")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
   :type       :integer
-  :doc false)
+  :getter     (fn [] (throw (Exception. "uploads-database-id has been removed; use 'uploads_enabled' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
+
+(defsetting uploads-schema-name
+  (deferred-tru "Schema name for uploads")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :string
+  :getter     (fn [] (throw (Exception. "uploads-schema-name has been removed; use 'uploads_schema_name' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
+
+(defsetting uploads-table-prefix
+  (deferred-tru "Prefix for upload table names")
+  :deprecated "0.50.0"
+  :visibility :internal
+  :export?    false
+  :type       :string
+  :getter     (fn [] (throw (Exception. "uploads-table-prefix has been removed; use 'uploads_table_prefix' on the database instead")))
+  :setter     (fn [_] (log/warn "'uploads-table-prefix' has been removed; use 'uploads_table_prefix' on the database instead")))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Deprecated uploads settings end
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

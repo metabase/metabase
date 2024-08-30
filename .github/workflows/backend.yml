@@ -12,9 +12,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
-env:
-  CLJ_KONDO_VERSION: "2023.09.07"
-
 jobs:
   files-changed:
     name: Check which files changed
@@ -70,23 +67,12 @@ jobs:
       (needs.files-changed.outputs.backend_all == 'true' || needs.static-viz-files-changed.outputs.static_viz == 'true')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
-    env:
-      DOWNLOAD_URL: https://github.com/clj-kondo/clj-kondo/releases/download
     steps:
       - uses: actions/checkout@v4
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
           m2-cache-key: 'kondo'
-      - name: Install clj-kondo
-        run: |
-          curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
-          curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip.sha256
-          cat clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip.sha256 >> SHA256sum.txt
-          echo " clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip" >> SHA256sum.txt
-          sha256sum -c SHA256sum.txt
-          unzip -d /usr/local/bin clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
-      - run: clj-kondo --version
       - name: Run clj-kondo
         run: ./bin/kondo.sh
 
@@ -268,3 +254,18 @@ jobs:
     steps:
       - run: |
           echo "Didn't run due to conditional filtering"
+
+  be-cljfmt:
+    needs: [files-changed]
+    if: |
+      !cancelled() && needs.files-changed.outputs.backend_all == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: 'cljfmt'
+      - name: Run cljfmt
+        run: clojure -T:cljfmt check

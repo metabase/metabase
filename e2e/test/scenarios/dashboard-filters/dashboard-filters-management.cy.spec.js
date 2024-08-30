@@ -1,14 +1,14 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  restore,
-  filterWidget,
   editDashboard,
-  saveDashboard,
-  visitDashboard,
-  sidebar,
+  filterWidget,
   getDashboardCard,
-  updateDashboardCards,
   popover,
+  restore,
+  saveDashboard,
+  sidebar,
+  updateDashboardCards,
+  visitDashboard,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -166,7 +166,7 @@ describe("scenarios > dashboard > filters > management", () => {
       cy.log("verify ID doesn't render operator select");
       sidebar().findAllByRole("searchbox").should("have.length", 1);
 
-      changeFilterType("Time");
+      changeFilterType("Date picker");
 
       cy.log("verify Date default value: All Options");
       verifyOperatorValue("All Options");
@@ -374,7 +374,7 @@ function selectFilter(name) {
 }
 
 function changeFilterType(type) {
-  sidebar().findByText("Filter type").next().click();
+  sidebar().findByText("Filter or parameter type").next().click();
   popover().findByText(type).click();
 }
 

@@ -1,12 +1,12 @@
-import { type Ref, forwardRef, type HTMLAttributes } from "react";
+import { type HTMLAttributes, type Ref, forwardRef } from "react";
 
 import {
   ActionIcon,
+  type ActionIconProps,
   Center,
   Icon,
-  Tooltip,
-  type ActionIconProps,
   type IconName,
+  Tooltip,
 } from "metabase/ui";
 
 export type ViewFooterButtonProps = {
@@ -17,12 +17,12 @@ export type ViewFooterButtonProps = {
 
 export const ViewFooterButton = forwardRef(function _ViewFooterButton(
   { icon, tooltipLabel, ...actionIconProps }: ViewFooterButtonProps,
-  ref: Ref<HTMLButtonElement>,
+  ref: Ref<HTMLDivElement>,
 ) {
   return (
     <Tooltip label={tooltipLabel}>
-      <Center>
-        <ActionIcon ref={ref} variant="viewFooter" {...actionIconProps}>
+      <Center ref={ref}>
+        <ActionIcon variant="viewFooter" {...actionIconProps}>
           <Icon size={18} name={icon} />
         </ActionIcon>
       </Center>

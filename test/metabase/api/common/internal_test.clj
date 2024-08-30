@@ -209,9 +209,9 @@
              (:body (post! "/post/closed-test-address" {:id "1" :tags [] :a 1 :b 2}))))
 
       (testing "malli schema message are localized"
-        (mt/with-mock-i18n-bundles  {"es" {:messages
-                                           {"value must be a non-blank string."
-                                            "el valor debe ser una cadena que no esté en blanco."}}}
+        (mt/with-mock-i18n-bundles!  {"es" {:messages
+                                            {"value must be a non-blank string."
+                                             "el valor debe ser una cadena que no esté en blanco."}}}
           (mt/with-temporary-setting-values [site-locale "es"]
             (is (= {:errors {:address "el valor debe ser una cadena que no esté en blanco."},
                                                                                             ;; TODO remove .'s from ms schemas
@@ -309,21 +309,21 @@
 
 (deftest route-param-regex-test
   (no-route-regexes
-   (are [param expected] (= expected
-                            (internal/route-param-regex param))
-     :fish    nil
-     :id      [:id "#[0-9]+"]
-     :card-id [:card-id "#[0-9]+"])))
+    (are [param expected] (= expected
+                             (internal/route-param-regex param))
+      :fish    nil
+      :id      [:id "#[0-9]+"]
+      :card-id [:card-id "#[0-9]+"])))
 
 (deftest route-arg-keywords-test
   (no-route-regexes
-   (are [route expected] (= expected
-                            (internal/route-arg-keywords route))
-     "/"             []
-     "/:id"          [:id]
-     "/:id/card"     [:id]
-     "/:id/etc/:org" [:id :org]
-     "/:card-id"     [:card-id])))
+    (are [route expected] (= expected
+                             (internal/route-arg-keywords route))
+      "/"             []
+      "/:id"          [:id]
+      "/:id/card"     [:id]
+      "/:id/etc/:org" [:id :org]
+      "/:card-id"     [:card-id])))
 
 (deftest add-route-param-schema-test
   (are [route expected] (= expected

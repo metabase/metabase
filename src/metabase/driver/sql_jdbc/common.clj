@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.common
   (:require
    [clojure.string :as str]
+   [honey.sql :as sql]
    [metabase.util :as u]))
 
 (def ^:private valid-separator-styles #{:url :comma :semicolon})
@@ -72,7 +73,7 @@
   {:pre [(or (nil? additional-options) (string? additional-options))
          (contains? valid-separator-styles separator-style)
          (or (nil? name-value-separator?) (and (string? name-value-separator?)
-                                            (= 1 (count name-value-separator?))))
+                                               (= 1 (count name-value-separator?))))
          (or (nil? lowercase-keys?) (boolean? lowercase-keys?))]}
   (if (str/blank? additional-options)
     {}
@@ -85,3 +86,10 @@
                         [(k-fn k) v]))
           kvs       (map kv-fn pairs)]
       (into {} kvs))))
+
+(defn quote-columns
+  "Used to quote column names when building HoneySQL queries, in case they look like function calls."
+  [dialect columns]
+  (binding [sql/*dialect* (sql/get-dialect dialect)]
+    (for [c columns]
+      [:raw (sql/format-entity c)])))

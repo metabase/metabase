@@ -38,27 +38,32 @@
   (max fail-wait-ms (wait-proportional time-taken-ms)))
 
 (defn- analyzer-loop* [stop-after next-card-id-fn]
-  (loop [remaining stop-after]
-    (when (public-settings/query-analysis-enabled)
+  (try
+    (loop [remaining stop-after]
       (let [card-or-id (next-card-id-fn)
             card-id    (u/the-id card-or-id)
             timer      (u/start-timer)
             card       (query-analysis/->analyzable card-or-id)]
-        (if (failure-map/non-retryable? card)
-          (log/warnf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
-          (try
-            (query-analysis/analyze-card! card)
-            (failure-map/track-success! card)
-            (let [sleep-ms (wait-proportional (u/since-ms timer))]
-              (log/infof "Waiting %s millis before analysing further cards after finishing Card %s" sleep-ms card-id)
-              (Thread/sleep sleep-ms))
-            (catch Exception e
-              (log/errorf e "Error analysing and updating query for Card %s" card-id)
-              (failure-map/track-failure! card)
-              (Thread/sleep (wait-fail (u/since-ms timer))))))
-        (cond
-          (nil? remaining) (recur nil)
-          (> remaining 1) (recur (dec remaining)))))))
+        (when (public-settings/query-analysis-enabled)
+          (if (failure-map/non-retryable? card)
+            (log/warnf "Skipping analysis of Card %s as its query has caused failures in the past." card-id)
+            (try
+              (query-analysis/analyze!* card)
+              (failure-map/track-success! card)
+              (let [taken-ms (Math/ceil (u/since-ms timer))
+                    sleep-ms (wait-proportional taken-ms)]
+                (log/debugf "Query analysis for Card %s took %sms (incl. persisting)" card-id taken-ms)
+                (log/debugf "Waiting %sms before analysing further cards" sleep-ms)
+                (Thread/sleep sleep-ms))
+              (catch Exception e
+                (log/errorf e "Error analysing and updating query for Card %s" card-id)
+                (failure-map/track-failure! card)
+                (Thread/sleep (wait-fail (u/since-ms timer))))))
+          (cond
+            (nil? remaining) (recur nil)
+            (> remaining 1)  (recur (dec remaining))))))
+    (catch Exception e
+      (log/error e "Unhandled error when attempting to analyse the next card in the queue"))))
 
 (defn- analyzer-loop!
   ([]

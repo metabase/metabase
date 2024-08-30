@@ -70,7 +70,7 @@
        (cellfn nil)
        (cellfn
         [:div {:style (style/style {:font-family             "Lato"
-                                    :font-size               "13px" #_ "0.875em"
+                                    :font-size               "13px" #_"0.875em"
                                     :font-weight             "400"
                                     :font-style              "normal"
                                     :color                   "#4c5773"

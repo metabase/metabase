@@ -3,11 +3,11 @@ import { useMemo } from "react";
 import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { useDatabaseListQuery } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { default as QBNotebook } from "metabase/query_builder/components/notebook/Notebook";
 import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/query_builder/utils/question";
+import { Notebook as QBNotebook } from "metabase/querying/notebook/components/Notebook";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -40,7 +40,8 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           question={question}
           isDirty={isDirty}
           isRunnable={isRunnable}
-          isResultDirty={isDirty}
+          // the visualization button relies on this boolean
+          isResultDirty={true}
           reportTimezone={reportTimezone}
           readOnly={false}
           updateQuestion={async (nextQuestion: Question) =>

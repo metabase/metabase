@@ -17,7 +17,7 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
-   #_{:clj-kondo/ignore [:discouraged-namespace]}
+   ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (mu/defn- query-type :- [:enum :query :native :internal :mbql/query]
@@ -245,4 +245,4 @@
   `(do-with-qp-setup
     ~query
     (^:once fn* [~query-binding]
-     ~@body)))
+      ~@body)))

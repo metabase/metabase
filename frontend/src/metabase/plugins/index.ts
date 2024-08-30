@@ -10,12 +10,16 @@ import _ from "underscore";
 import type { AnySchema } from "yup";
 
 import noResultsSource from "assets/img/no_results.svg";
-import { strategies } from "metabase/admin/performance/constants/complex";
+import {
+  getPerformanceTabMetadata,
+  strategies,
+} from "metabase/admin/performance/constants/complex";
+import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
+  type DataPermission,
   DataPermissionValue,
   type DatabaseEntityId,
-  type DataPermission,
   type EntityId,
   type PermissionSubject,
 } from "metabase/admin/permissions/types";
@@ -32,15 +36,16 @@ import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
-  Database as DatabaseType,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
   Collection,
   CollectionAuthorityLevelConfig,
   CollectionEssentials,
+  CollectionId,
   CollectionInstanceAnaltyicsConfig,
   Dashboard,
+  Database as DatabaseType,
   Dataset,
   Group,
   GroupPermissions,
@@ -82,6 +87,11 @@ export const PLUGIN_ADMIN_TOOLS = {
   EXTRA_ROUTES: [],
 };
 
+export const PLUGIN_ADMIN_TROUBLESHOOTING = {
+  EXTRA_ROUTES: [] as ReactNode[],
+  GET_EXTRA_NAV: (): ReactNode[] => [],
+};
+
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES: ((
   sections: typeof ADMIN_SETTINGS_SECTIONS,
@@ -96,6 +106,8 @@ export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS = {
 export const PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS = {
   impersonated: [],
 };
+
+export const PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS = [];
 
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES = [];
 export const PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES = [];
@@ -133,7 +145,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     | ((
         permissions: GroupsPermissions,
         groupId: number,
-        { databaseId }: DatabaseEntityId,
+        entityId: EntityId,
         value: any,
         database: Database,
         permission: DataPermission,
@@ -194,26 +206,32 @@ export const PLUGIN_LDAP_FORM_FIELDS = {
 // Otherwise, the user is logged in via SSO and should hide first name, last name, and email field in profile settings metabase#23298.
 export const PLUGIN_IS_PASSWORD_USER: ((user: User) => boolean)[] = [];
 
+const defaultLandingPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const defaultLoginPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const getLoadingMessage = (isSlow: boolean) =>
+  isSlow ? t`Waiting for results...` : t`Doing science...`;
+
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
   canWhitelabel: (_state: State) => false,
-  getLoadingMessageFactory: (_state: State) => (isSlow: boolean) =>
-    isSlow ? t`Waiting for results...` : t`Doing science...`,
+  getLoadingMessageFactory: (_state: State) => getLoadingMessage,
   getIsWhiteLabeling: (_state: State) => false,
   // eslint-disable-next-line no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
   getApplicationName: (_state: State) => "Metabase",
   getShowMetabaseLinks: (_state: State) => true,
   getLoginPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLoginPageIllustration;
   },
   getLandingPageIllustration: (_state: State): IllustrationValue => {
-    return {
-      src: "app/img/bridge.svg",
-      isDefault: true,
-    };
+    return defaultLandingPageIllustration;
   },
   getNoDataIllustration: (_state: State): string => {
     return noResultsSource;
@@ -265,6 +283,10 @@ type CleanUpMenuItem = {
 
 export type ItemWithCollection = { collection: CollectionEssentials };
 
+type GetCollectionIdType = (
+  sourceCollectionId?: CollectionId | null,
+) => CollectionId | null;
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -278,9 +300,7 @@ export const PLUGIN_COLLECTIONS = {
     _: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
-  getInstanceAnalyticsCustomCollection: (
-    _collections: Collection[],
-  ): Collection | null => null,
+  useGetDefaultCollectionId: null as GetCollectionIdType | null,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (
@@ -362,7 +382,8 @@ export const PLUGIN_MODERATION = {
 
 export type InvalidateNowButtonProps = {
   targetId: number;
-  targetModel: CacheableModel;
+  /** The type of object that the target is */
+  targetModel: ModelWithClearableCache;
   targetName: string;
 };
 
@@ -392,6 +413,9 @@ export const PLUGIN_CACHING = {
   canOverrideRootStrategy: false,
   /** Metadata describing the different kinds of strategies */
   strategies: strategies,
+  DashboardAndQuestionCachingTab: PluginPlaceholder as any,
+  StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
+  getTabMetadata: getPerformanceTabMetadata,
 };
 
 export const PLUGIN_REDUCERS: {

@@ -184,8 +184,8 @@
   (testing "select-keys-when"
     (is (= {:a 100, :b nil, :d 200}
            (u/select-keys-when {:a 100, :b nil, :d 200, :e nil}
-             :present #{:a :b :c}
-             :non-nil #{:d :e :f})))))
+                               :present #{:a :b :c}
+                               :non-nil #{:d :e :f})))))
 
 (deftest ^:parallel order-of-magnitude-test
   (are [n expected] (= expected
@@ -271,6 +271,13 @@
     "IBIS" "Ibis"
     "Ibis" "Ibis"))
 
+(deftest ^:parallel truncate-test
+  (are [s n expected] (= expected
+                         (u/truncate s n))
+    "string" 10 "string"
+    "string" 3  "str"
+    "string" 0  ""))
+
 #?(:clj
    (deftest capitalize-en-turkish-test
      (mt/with-locale "tr"
@@ -297,16 +304,16 @@
 #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/small-integer)]
-                (let [result (u/pick-first pos? coll)]
-                  (or (and (nil? result)
-                           (every? (complement pos?) coll))
-                      (let [[x ys] result
-                            [non-pos [m & rest]] (split-with (complement pos?) coll)]
-                        (and (vector? result)
-                             (= (count result) 2)
-                             (pos? x)
-                             (= x m)
-                             (= ys (concat non-pos rest))))))))
+    (let [result (u/pick-first pos? coll)]
+      (or (and (nil? result)
+               (every? (complement pos?) coll))
+          (let [[x ys] result
+                [non-pos [m & rest]] (split-with (complement pos?) coll)]
+            (and (vector? result)
+                 (= (count result) 2)
+                 (pos? x)
+                 (= x m)
+                 (= ys (concat non-pos rest))))))))
 
 (deftest ^:parallel normalize-map-test
   (testing "nil and empty maps return empty maps"
@@ -500,14 +507,14 @@
                   3))))
      (testing "case-enum works"
        (is (= 2 (u/case-enum Month/MAY
-                  Month/APRIL 1
-                  Month/MAY   2
-                  3))))
+                             Month/APRIL 1
+                             Month/MAY   2
+                             3))))
      (testing "checks for type of cases"
        (is (thrown? Exception #"`case-enum` only works.*"
                     (u/case-enum Month/JANUARY
-                      Month/JANUARY    1
-                      DayOfWeek/SUNDAY 2))))))
+                                 Month/JANUARY    1
+                                 DayOfWeek/SUNDAY 2))))))
 
 (deftest ^:parallel truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]

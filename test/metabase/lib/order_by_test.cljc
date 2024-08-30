@@ -1,5 +1,6 @@
 (ns metabase.lib.order-by-test
   (:require
+   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
    [medley.core :as m]
    [metabase.lib.card :as lib.card]
@@ -12,8 +13,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
-   [metabase.util :as u]
-   #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))))
+   [metabase.util :as u]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -173,13 +173,13 @@
           breakout-col (m/find-first #(= (:lib/source %) :source/expressions)
                                      (lib/breakoutable-columns query 0))
           query (lib/breakout query breakout-col)]
-    (are [query] (=? [:desc {} [:expression
-                                {:base-type :type/Integer, :effective-type :type/Integer}
-                                "Category ID + 1"]]
-                     (get-in (lib/order-by query 0 (first (lib/orderable-columns query 0)) :desc)
-                             [:stages 0 :order-by 0]))
-      query
-      (lib/append-stage query)))))
+      (are [query] (=? [:desc {} [:expression
+                                  {:base-type :type/Integer, :effective-type :type/Integer}
+                                  "Category ID + 1"]]
+                       (get-in (lib/order-by query 0 (first (lib/orderable-columns query 0)) :desc)
+                               [:stages 0 :order-by 0]))
+        query
+        (lib/append-stage query)))))
 
 (deftest ^:parallel orderable-columns-test
   (let [query lib.tu/venues-query]
@@ -309,8 +309,8 @@
                     (lib/join (-> (lib/join-clause
                                    (meta/table-metadata :categories)
                                    [(lib/=
-                                      (meta/field-metadata :venues :category-id)
-                                      (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                                     (meta/field-metadata :venues :category-id)
+                                     (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                                   (lib/with-join-alias "Cat")
                                   (lib/with-join-fields :all))))]
       (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
@@ -495,8 +495,8 @@
               (lib/join (-> (lib/join-clause
                              (meta/table-metadata :categories)
                              [(lib/=
-                                (meta/field-metadata :venues :category-id)
-                                (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
+                               (meta/field-metadata :venues :category-id)
+                               (lib/with-join-alias (meta/field-metadata :categories :id) "Cat"))])
                             (lib/with-join-alias "Cat")
                             (lib/with-join-fields :all)))
               (lib/with-fields [(meta/field-metadata :venues :id)
@@ -654,7 +654,7 @@
     (let [query lib.tu/venues-query
           query (-> query
                     (lib/order-by (m/find-first #(= (:id %) (meta/id :categories :name))
-                                   (lib/orderable-columns query))))]
+                                                (lib/orderable-columns query))))]
       (is (=? {:stages [{:order-by [[:asc {} [:field
                                               {:source-field (meta/id :venues :category-id)}
                                               (meta/id :categories :name)]]]}]}

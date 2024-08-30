@@ -28,7 +28,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
-   [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -158,10 +157,10 @@
 (defmethod mi/can-read? Pulse
   [notification]
   (if (is-alert? notification)
-   (mi/current-user-has-full-permissions? :read notification)
-   (or api/*is-superuser?*
-       (or (current-user-is-creator? notification)
-           (current-user-is-recipient? notification)))))
+    (mi/current-user-has-full-permissions? :read notification)
+    (or api/*is-superuser?*
+        (or (current-user-is-creator? notification)
+            (current-user-is-recipient? notification)))))
 
 ;; Non-admins should be able to create subscriptions, and update subscriptions that they created, but not edit anyone
 ;; else's subscriptions (except for unsubscribing themselves, which uses a custom API).
@@ -173,10 +172,6 @@
         (and (mi/current-user-has-full-permissions? :read notification)
              (current-user-is-creator? notification)))))
 
-(defmethod serdes/hash-fields Pulse
-  [_pulse]
-  [:name (serdes/hydrated-hash :collection) :created_at])
-
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def AlertConditions
@@ -187,38 +182,38 @@
   "Schema for the map we use to internally represent the base elements of a Card used for Notifications. id is not
   required since the card may be a placeholder."
   (mu/with-api-error-message
-    [:map
-     [:include_csv                        ms/BooleanValue]
-     [:include_xls                        ms/BooleanValue]
-     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
-     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
+   [:map
+    [:include_csv                        ms/BooleanValue]
+    [:include_xls                        ms/BooleanValue]
+    [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
+    [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
 
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
   presence there."
   (mu/with-api-error-message
-    [:merge CardBase
-     [:map
-      [:id ms/PositiveInt]]]
-    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
+   [:merge CardBase
+    [:map
+     [:id ms/PositiveInt]]]
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
 
 (def HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
   additional information used by the UI to display it from `Card`. This is a superset of `CardRef` and is coercible to
   a `CardRef`"
   (mu/with-api-error-message
-    [:merge CardRef
-     [:map
-      [:name               [:maybe string?]]
-      [:description        [:maybe string?]]
-      [:display            [:maybe ms/KeywordOrString]]
-      [:collection_id      [:maybe ms/PositiveInt]]
-      [:dashboard_id       [:maybe ms/PositiveInt]]
-      [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
-    (deferred-tru "value must be a map with the following keys `({0})`"
-        (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
-                        "dashboard_id" "parameter_mappings"]))))
+   [:merge CardRef
+    [:map
+     [:name               [:maybe string?]]
+     [:description        [:maybe string?]]
+     [:display            [:maybe ms/KeywordOrString]]
+     [:collection_id      [:maybe ms/PositiveInt]]
+     [:dashboard_id       [:maybe ms/PositiveInt]]
+     [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
+   (deferred-tru "value must be a map with the following keys `({0})`"
+                 (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
+                                 "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
   "Schema for functions accepting either a `HybridPulseCard`, `CardRef`, or `CardBase`."
@@ -430,7 +425,6 @@
    :format_rows       (get card :format_rows true)
    :dashboard_card_id (get card :dashboard_card_id nil)})
 
-
 ;;; ------------------------------------------ Other Persistence Functions -------------------------------------------
 
 (mu/defn update-notification-cards!
@@ -456,54 +450,45 @@
                              card-refs)]
       (t2/insert! PulseCard cards))))
 
-(defn- create-update-delete-channel!
-  "Utility function used by [[update-notification-channels!]] which determines how to properly update a single pulse
-  channel."
-  [notification-or-id new-channel existing-channel]
-  ;; NOTE that we force the :id of the channel being updated to the :id we *know* from our
-  ;;      existing list of PulseChannels pulled from the db to ensure we affect the right record
-  (let [channel (when new-channel
-                  (assoc new-channel
-                         :pulse_id       (u/the-id notification-or-id)
-                         :id             (:id existing-channel)
-                         :enabled        (:enabled new-channel)
-                         :channel_type   (keyword (:channel_type new-channel))
-                         :schedule_type  (keyword (:schedule_type new-channel))
-                         :schedule_frame (keyword (:schedule_frame new-channel))))]
-    (cond
-      ;; 1. in channels, NOT in db-channels = CREATE
-      (and channel (not existing-channel))  (pulse-channel/create-pulse-channel! channel)
-      ;; 2. NOT in channels, in db-channels = DELETE
-      (and (nil? channel) existing-channel) (t2/delete! PulseChannel :id (:id existing-channel))
-      ;; 3. in channels, in db-channels = UPDATE
-      (and channel existing-channel)        (pulse-channel/update-pulse-channel! channel)
-      ;; 4. NOT in channels, NOT in db-channels = NO-OP
-      :else                                 nil)))
-
 (mu/defn update-notification-channels!
   "Update the PulseChannels for a given `notification-or-id`. `channels` should be a definitive collection of *all* of
   the channels for the Notification.
 
-   * If a channel in the list has no existing `PulseChannel` object, one will be created.
+    * If a channel in the list has no existing `PulseChannel` object, one will be created.
 
-   * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
+    * If an existing `PulseChannel` has no corresponding entry in `channels`, it will be deleted.
 
-   * All previously existing channels will be updated with their most recent information."
+    * All previously existing channels will be updated with their most recent information."
   [notification-or-id channels :- [:sequential :map]]
-  (let [new-channels   (group-by (comp keyword :channel_type) channels)
-        old-channels   (group-by (comp keyword :channel_type) (t2/select PulseChannel
-                                                                :pulse_id (u/the-id notification-or-id)))
-        handle-channel #(create-update-delete-channel! (u/the-id notification-or-id)
-                                                       (first (get new-channels %))
-                                                       (first (get old-channels %)))]
-    (assert (zero? (count (get new-channels nil)))
-      "Cannot have channels without a :channel_type attribute")
-    ;; don't automatically archive this Pulse if we end up deleting its last PulseChannel -- we're probably replacing
-    ;; it with a new one immediately thereafter.
+  (let [existing-channels   (t2/select :model/PulseChannel :pulse_id (u/the-id notification-or-id))
+        channels            (map-indexed
+                             (fn [idx channel]
+                               (assoc channel
+                                      :channel_type   (keyword (:channel_type channel))
+                                      :schedule_type  (keyword (:schedule_type channel))
+                                      :schedule_frame (keyword (:schedule_frame channel))
+                                      :pulse_id       (u/the-id notification-or-id)
+                                      ;; for "new channels" we assign it with an negative id so that
+                                      ;; row-diff will treat it as :to-create
+                                      :id             (or
+                                                       (:id channel)
+                                                       ;; new channel
+                                                       (- (inc idx)))))
+                             channels)
+        {:keys [to-create
+                to-update
+                to-delete]} (u/row-diff existing-channels
+                                        channels
+                                        {:to-compare #(dissoc % :created_at :updated_at)})]
+    (doseq [channel to-create]
+      (pulse-channel/create-pulse-channel! channel))
+    (doseq [channel to-update]
+      (assert (:id channel) "Cannot update a PulseChannel without an :id")
+      (pulse-channel/update-pulse-channel! channel))
     (binding [pulse-channel/*archive-parent-pulse-when-last-channel-is-deleted* false]
-      ;; for each of our possible channel types call our handler function
-      (doseq [[channel-type] pulse-channel/channel-types]
-        (handle-channel channel-type)))))
+      (when (seq to-delete)
+        (assert (every? :id to-delete) "Cannot delete a PulseChannel without an :id")
+        (t2/delete! PulseChannel :id [:in (map :id to-delete)])))))
 
 (mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
@@ -520,7 +505,6 @@
   PulseCards, PulseChannels, and PulseChannelRecipients.
 
   Returns the newly created Pulse, or throws an Exception."
-  {:style/indent 2}
   [cards    :- [:sequential [:map-of :keyword :any]]
    channels :- [:sequential [:map-of :keyword :any]]
    kvs      :- [:map
@@ -549,8 +533,8 @@
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
   (t2/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
-    :pulse_id (u/the-id notification-or-id)
-    {:order-by [[:position :asc]]}))
+             :pulse_id (u/the-id notification-or-id)
+             {:order-by [[:position :asc]]}))
 
 (mu/defn- card-refs-have-changed? :- :boolean
   [notification-or-id new-card-refs :- [:sequential CardRef]]
@@ -577,9 +561,9 @@
                     [:archived            {:optional true} boolean?]
                     [:parameters          {:optional true} [:maybe [:sequential :map]]]]]
   (t2/update! Pulse (u/the-id notification)
-    (u/select-keys-when notification
-      :present [:collection_id :collection_position :archived]
-      :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
+              (u/select-keys-when notification
+                                  :present [:collection_id :collection_position :archived]
+                                  :non-nil [:name :alert_condition :alert_above_goal :alert_first_only :skip_if_empty :parameters]))
   ;; update Cards if the 'refs' have changed
   (when (contains? notification :cards)
     (update-notification-cards-if-changed! notification (map card->ref (:cards notification))))
@@ -615,22 +599,3 @@
   ;; fetch the fully updated pulse, log an update event, and return it
   (u/prog1 (retrieve-alert (u/the-id alert))
     (events/publish-event! :event/alert-update {:object <> :user-id api/*current-user-id*})))
-
-;;; ------------------------------------------------- Serialization --------------------------------------------------
-
-(defmethod serdes/extract-one "Pulse"
-  [_model-name _opts pulse]
-  (cond-> (serdes/extract-one-basics "Pulse" pulse)
-    (:collection_id pulse) (update :collection_id serdes/*export-fk* 'Collection)
-    (:dashboard_id  pulse) (update :dashboard_id  serdes/*export-fk* 'Dashboard)
-    true                   (update :creator_id    serdes/*export-user*)))
-
-(defmethod serdes/load-xform "Pulse" [pulse]
-  (cond-> (serdes/load-xform-basics pulse)
-      true                   (update :creator_id    serdes/*import-user*)
-      (:collection_id pulse) (update :collection_id serdes/*import-fk* 'Collection)
-      (:dashboard_id  pulse) (update :dashboard_id  serdes/*import-fk* 'Dashboard)))
-
-(defmethod serdes/dependencies "Pulse" [{:keys [collection_id dashboard_id]}]
-  (filterv some? [(when collection_id [{:model "Collection" :id collection_id}])
-                  (when dashboard_id  [{:model "Dashboard"  :id dashboard_id}])]))

@@ -49,7 +49,6 @@
                               :model    :model/Dashboard
                               :model-id (u/id object)})))
 
-
 (derive ::table-event ::event)
 (derive :event/table-manual-scan ::table-event)
 
@@ -222,5 +221,13 @@
 (derive :event/cache-config-update ::cache-config-changed-event)
 
 (methodical/defmethod events/publish-event! ::cache-config-changed-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+(derive ::channel-event ::event)
+(derive :event/channel-create ::channel-event)
+(derive :event/channel-update ::channel-event)
+
+(methodical/defmethod events/publish-event! ::channel-event
   [topic event]
   (audit-log/record-event! topic event))

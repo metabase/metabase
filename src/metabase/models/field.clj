@@ -38,7 +38,6 @@
     :sensitive      ; Strict removal of field from all places except data model listing.  queries should error if someone attempts to access.
     :retired})      ; For fields that no longer exist in the physical db.  automatically set by Metabase.  QP should error if encountered in a query.
 
-
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (def Field
@@ -186,7 +185,6 @@
 (defmethod serdes/hash-fields :model/Field
   [_field]
   [:name (serdes/hydrated-hash :table)])
-
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -357,7 +355,7 @@
 ;; a trio of strings with schema maybe nil.
 (defmethod serdes/generate-path "Field" [_ {table_id :table_id field :name}]
   (let [table (when (number? table_id)
-                   (t2/select-one 'Table :id table_id))
+                (t2/select-one 'Table :id table_id))
         db    (when table
                 (t2/select-one-fn :name 'Database :id (:db_id table)))
         [db schema table] (if (number? table_id)

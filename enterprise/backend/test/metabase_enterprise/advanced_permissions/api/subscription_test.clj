@@ -19,10 +19,10 @@
   Use it when we need to isolate a user's permissions during tests."
   [& body]
   `(try
-    (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
-    ~@body
-    (finally
-     (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
+     (perms/revoke-application-permissions! (perms-group/all-users) :subscription)
+     ~@body
+     (finally
+       (perms/grant-application-permissions! (perms-group/all-users) :subscription))))
 
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"
@@ -80,9 +80,9 @@
          user  [group]]
         (mt/with-temp [Card {card-id :id} {}]
           (letfn [(add-pulse-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
-                                                                :pulse   {:creator_id (u/the-id user)}
-                                                                :channel :email}]
+                    (pulse-test/with-pulse-for-card [the-pulse {:card          card-id
+                                                                :pulse         {:creator_id (u/the-id user)}
+                                                                :pulse-channel :email}]
                       (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
                             channel     (api.alert/email-channel the-pulse)
                             new-channel (assoc channel :recipients (conj (:recipients channel) (mt/fetch-user :lucky)))
@@ -91,9 +91,9 @@
                           (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
 
                   (remove-pulse-recipient [req-user status]
-                    (pulse-test/with-pulse-for-card [the-pulse {:card    card-id
-                                                                :pulse   {:creator_id (u/the-id user)}
-                                                                :channel :email}]
+                    (pulse-test/with-pulse-for-card [the-pulse {:card          card-id
+                                                                :pulse         {:creator_id (u/the-id user)}
+                                                                :pulse-channel :email}]
                       ;; manually add another user as recipient
                       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id (:id user)
                                                                         :pulse_channel_id

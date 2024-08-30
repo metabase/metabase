@@ -313,8 +313,8 @@
 (defn recursive-connection?
   "Whether or not we are in a recursive call to [[do-with-connection-with-options]]. If we are, you shouldn't set
   Connection options AGAIN, as that may override previous options that we don't want to override."
-  []
   {:added "0.47.0"}
+  []
   (pos? *connection-recursion-depth*))
 
 (mu/defn do-with-resolved-connection
@@ -657,8 +657,8 @@
         ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
         ;; state
         #_:original_name #_(.getColumnName rsmeta i)
-        #_:jdbc_type #_ (u/ignore-exceptions
-                          (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
+        #_:jdbc_type #_(u/ignore-exceptions
+                         (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
         :base_type     (or base-type :type/*)
         :database_type db-type-name}))
    (column-range rsmeta)))
@@ -755,7 +755,7 @@
            (with-open [stmt          (statement-or-prepared-statement driver conn sql params nil)
                        ^ResultSet rs (try
                                        (let [max-rows 0] ; 0 means no limit
-                                          (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
+                                         (execute-statement-or-prepared-statement! driver stmt max-rows params sql))
                                        (catch Throwable e
                                          (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
                                                          {:driver driver
@@ -787,7 +787,6 @@
       (throw (ex-info (tru "Error executing write query: {0}" (ex-message e))
                       {:sql sql, :params params, :type qp.error-type/invalid-query}
                       e)))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |
