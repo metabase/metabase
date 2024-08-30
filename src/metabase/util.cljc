@@ -185,6 +185,11 @@
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
 
+(defn truncate
+  "Truncate a string to `n` characters."
+  [s n]
+  (subs s 0 (min (count s) n)))
+
 (defn regex->str
   "Returns the contents of a regex as a string.
 
@@ -834,17 +839,16 @@
   return a map of 3 keys: `:to-create`, `:to-update`, `:to-delete`.
 
   Where:
-  - `:to-create` is a list of maps that ids in `new-rows`
+  - `:to-create` is a list of maps that has ids only in `new-rows`
   - `:to-delete` is a list of maps that has ids only in `current-rows`
   - `:to-skip`   is a list of identical maps that has ids in both lists
   - `:to-update` is a list of different maps that has ids in both lists
 
   Optional arguments:
   - `id-fn` - function to get row-matching identifiers
-  - `to-compare` - function to get rows into a comparable state
-  "
+  - `to-compare` - function to get rows into a comparable state"
   [current-rows new-rows & {:keys [id-fn to-compare]
-                            :or   {id-fn   :id
+                            :or   {id-fn      :id
                                    to-compare identity}}]
   (let [[delete-ids
          create-ids

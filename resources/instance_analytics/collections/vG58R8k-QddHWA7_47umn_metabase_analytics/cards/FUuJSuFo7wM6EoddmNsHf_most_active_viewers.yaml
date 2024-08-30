@@ -9,7 +9,6 @@ collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
 collection_position: null
 query_type: query
-cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
 - Internal Metabase Database
@@ -128,7 +127,11 @@ result_metadata:
     - v_view_log
     - user_id
   - base-type: type/Integer
-  fk_target_field_id: 739
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_fields
+  - active
   id:
   - Internal Metabase Database
   - public
@@ -153,6 +156,8 @@ visualization_settings:
       show_mini_bar: true
     '["name","full_name"]':
       column_title: Person Name
+    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+    : column_title: User
   table.cell_column: model_id
   table.columns:
   - enabled: true
@@ -184,6 +189,7 @@ serdes/meta:
 - id: FUuJSuFo7wM6EoddmNsHf
   label: most_active_viewers
   model: Card
-initially_published_at: null
+archived_directly: false
 metabase_version: null
+source_card_id: P6Ityjj7igswKh4NgZZjz
 type: question
