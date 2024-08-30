@@ -116,12 +116,17 @@ export const BrowseCubes = () => {
         }
       };
 
-      await updateCubeData({
-        payload,
-        companyName
-      })
+      if( companyName !== undefined) {
+        await updateCubeData({
+          payload,
+          companyName
+        })
+  
+        await syncDbSchema()
+      } else {
+        console.warn('companyName not found',companyName)
+      }
 
-      await syncDbSchema()
 
     } catch (error) {
       throw error;

@@ -9167,6 +9167,26 @@ databaseChangeLog:
                   type: text
                   constraints:
                     nullable: true
+  - changeSet:
+      id: v53.2024-08-29T10:30:00
+      author: jordigiam
+      comment: Add card_id column to postcheckpoints
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms: postgresql, h2
+        - not:
+            - columnExists:
+                tableName: postcheckpoints
+                columnName: card_id
+      changes:
+        - addColumn:
+            tableName: postcheckpoints
+            columns:
+              - column:
+                  name: card_id
+                  type: number
+                  constraints:
+                    nullable: true
 
 
 

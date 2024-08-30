@@ -20,6 +20,8 @@ export const HomeLayout = () => {
   const [selectedChatHistory, setSelectedChatHistory] = useState([]);
   const [selectedThreadId, setSelectedThreadId] = useState(null);
   const [selectedChatType, setSelectedChatType] = useState("default");
+  const [selectedChatHistoryType, setSelectedChatHistoryType] = useState("dataAgent");
+  const [oldCardId, setOldCardId] = useState(null);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -30,10 +32,13 @@ export const HomeLayout = () => {
   useEffect(() => {
     if (window.location.pathname === "/") {
       setSelectedChatType("default");
+      setSelectedChatHistoryType("dataAgent")
     } else if (window.location.pathname === "/browse/insights") {
       setSelectedChatType("insights");
+      setSelectedChatHistoryType("getInsights")
     } else if (window.location.pathname === "/browse/chat") {
       setSelectedChatType("default");
+      setSelectedChatHistoryType("dataAgent")
     }
   }, [window.location.pathname]);
 
@@ -85,6 +90,7 @@ export const HomeLayout = () => {
                   selectedMessages={selectedChatHistory}
                   selectedThreadId={selectedThreadId}
                   chatType={selectedChatType}
+                  oldCardId={oldCardId}
                 />
               </Stack>
               <Stack
@@ -95,7 +101,8 @@ export const HomeLayout = () => {
                 <ChatHistory
                   setSelectedChatHistory={setSelectedChatHistory}
                   setThreadId={setSelectedThreadId}
-                  type="dataAgent"
+                  type={selectedChatHistoryType}
+                  setOldCardId={setOldCardId}
                 />
               </Stack>
             </Flex>

@@ -4,9 +4,10 @@ import CS from "metabase/css/core/index.css";
 import cx from "classnames";
 import { Box, Button, Icon, Textarea, Loader, Flex } from "metabase/ui";
 import VisualizationResult from "metabase/query_builder/components/VisualizationResult";
+import { MonospaceErrorDisplay } from "../ErrorDetails/ErrorDetails.styled";
 import { Skeleton } from "metabase/ui";
 
-const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick, card, defaultQuestion, result, openModal }) => {
+const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeButtons, onApproveClick, onDenyClick, card, defaultQuestion, result, openModal, insightsList, showError }) => {
   const messageEndRef = useRef(null);
 
   useEffect(() => {
@@ -61,10 +62,16 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
                  alignItems: "center",
                }}
              >
-               <div style={{display:"flex", flexDirection: "column", justifyContent:"center", alignItems: "center"}}>
-                <span>Please wait till results are loaded...</span>
-                <Loader/>
-               </div>
+               {showError ? (
+                 <MonospaceErrorDisplay>
+                 Sorry there was some issue loading the result
+               </MonospaceErrorDisplay>
+               ) : (
+                 <div style={{display:"flex", flexDirection: "column", justifyContent:"center", alignItems: "center"}}>
+                   <span>Please wait till results are loaded...</span>
+                   <Loader/>
+                 </div>
+               )}
              </Skeleton>
              
             ):(
@@ -142,6 +149,48 @@ const ChatMessageList = ({ messages, isLoading, onFeedbackClick, approvalChangeB
           )}
         </div>
       ))}
+      {/* Insights Section */}
+      {insightsList && insightsList.length > 0 && (
+        <div style={{ marginTop: "2rem" }}>
+          <h2 style={{ marginBottom: "1rem" }}>Insights</h2>
+          {insightsList.map((insight, index) => (
+            <div key={index} style={{ marginBottom: "2rem" }}>
+              <div style={{ marginBottom: "1rem" }}>
+                <strong>Insight:</strong> {insight.insightExplanation}
+              </div>
+              <div
+                style={{
+                  padding: "16px",
+                  overflow: "hidden",
+                  height: "400px",
+                  width: "auto",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  border: "1px solid #E0E0E0",
+                  borderRadius: "8px",
+                  backgroundColor: "#F8FAFD",
+                }}
+              >
+                <VisualizationResult
+                  question={insight.defaultQuestion}
+                  isDirty={false}
+                  queryBuilderMode={"view"}
+                  result={insight.queryCard}
+                  className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+                  rawSeries={[{ card: insight.card, data: insight.queryCard && insight.queryCard.data }]}
+                  isRunning={false}
+                  navigateToNewCardInsideQB={null}
+                  onNavigateBack={() => console.log('back')}
+                  timelineEvents={[]}
+                  selectedTimelineEventIds={[]}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
       <div ref={messageEndRef} />
     </div>
   );
