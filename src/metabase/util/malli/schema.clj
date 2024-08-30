@@ -198,6 +198,12 @@
     [:fn u/email?]]
    (deferred-tru "value must be a valid email address.")))
 
+(def Url
+  "Schema for a valid URL string."
+  (mu/with-api-error-message
+   [:fn u/url?]
+   (deferred-tru "value must be a valid URL.")))
+
 (def ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
   (mu/with-api-error-message

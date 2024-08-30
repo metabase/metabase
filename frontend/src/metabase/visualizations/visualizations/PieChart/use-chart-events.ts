@@ -38,7 +38,7 @@ export const getTooltipModel = (
 
   const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
     slice => ({
-      name: formatters.formatDimension(slice.data.key),
+      name: slice.data.name,
       value: slice.data.displayValue,
       color: hoveredOther ? undefined : slice.data.color,
       formatter: formatters.formatMetric,

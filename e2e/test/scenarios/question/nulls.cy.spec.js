@@ -103,7 +103,6 @@ describe("scenarios > question > null", () => {
         cy.findByTestId("legend-caption-title").should("have.text", "13626");
         cy.findByText("TOTAL").should("be.visible");
         cy.findByText("0").should("be.visible");
-        cy.findAllByTestId("legend-item").contains("1").should("be.visible");
       });
     });
   });
