@@ -77,7 +77,7 @@ const QuestionEditorInner = () => {
 
 export const QuestionEditor = ({
   questionId,
-  enableSave = true,
+  enableSave,
   plugins,
 }: InteractiveQuestionProps) => (
   <InteractiveQuestion

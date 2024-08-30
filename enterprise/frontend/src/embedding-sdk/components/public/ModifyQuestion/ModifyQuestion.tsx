@@ -7,6 +7,11 @@ type ModifyQuestionProps = InteractiveQuestionProps;
 export const ModifyQuestion = ({
   questionId,
   plugins,
+  enableSave,
 }: ModifyQuestionProps = {}) => (
-  <QuestionEditor questionId={questionId} plugins={plugins} />
+  <QuestionEditor
+    questionId={questionId}
+    plugins={plugins}
+    enableSave={enableSave}
+  />
 );
