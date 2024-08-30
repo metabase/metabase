@@ -41,7 +41,10 @@ export const cardApi = Api.injectEndpoints({
         noEvent: ignore_error,
       }),
       providesTags: card => (card ? provideCardTags(card) : []),
-      transformResponse: (response: any) => ({ ...response, dashboard_id: 34 }),
+      transformResponse: (response: any) => ({
+        ...response,
+        dashboard_id: (window as any).dashboard_id ?? 34,
+      }),
     }),
     getCardQueryMetadata: builder.query<CardQueryMetadata, CardId>({
       query: id => ({
