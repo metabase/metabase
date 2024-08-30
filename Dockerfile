@@ -14,8 +14,6 @@ ARG REACT_APP_SEMANTIC
 ENV REACT_APP_SEMANTIC=${REACT_APP_SEMANTIC}
 ARG HOSTNAME_APP
 ENV HOSTNAME_APP=${HOSTNAME_APP}
-ARG SERVICE_APP
-ENV SERVICE_APP=${SERVICE_APP}
 WORKDIR /home/node
 
 RUN apt-get update && apt-get upgrade -y && apt-get install openjdk-11-jdk curl git -y \

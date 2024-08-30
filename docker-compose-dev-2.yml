@@ -1,6 +1,6 @@
 version: "3"
 services:
-  omnibase:
+  omnibase_dev_2:
     build:
       context: .
       dockerfile: Dockerfile
@@ -24,10 +24,10 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.omnibase.rule=Host(`${HOSTNAME_APP}`)"
-      - "traefik.http.routers.omnibase.entrypoints=websecure"
-      - "traefik.http.routers.omnibase.tls.certResolver=letsencrypt"
-      - "traefik.http.services.omnibase.loadbalancer.server.port=3000"
+      - "traefik.http.routers.omnibase_dev_2.rule=Host(`${HOSTNAME_APP}`)"
+      - "traefik.http.routers.omnibase_dev_2.entrypoints=websecure"
+      - "traefik.http.routers.omnibase_dev_2.tls.certResolver=letsencrypt"
+      - "traefik.http.services.omnibase_dev_2.loadbalancer.server.port=3000"
 networks:
   dokploy-network:
     external: true
