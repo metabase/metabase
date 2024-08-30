@@ -90,34 +90,6 @@ export const StaticEmbeddingOptionCard = () => {
   );
 };
 
-export function EmbeddingSdkOptionCard() {
-  const isEmbeddingEnabled = useSetting("enable-embedding");
-  const isEE = PLUGIN_EMBEDDING.isEnabled();
-
-  return (
-    <EmbeddingOption
-      icon={
-        <SdkIcon
-          className={cx(EmbeddingOptionStyle.icon, {
-            [EmbeddingOptionStyle.disabled]: !isEmbeddingEnabled,
-          })}
-        />
-      }
-      title={t`Embedding SDK for React`}
-      label={t`PRO & ENTERPRISE`}
-      description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
-    >
-      <BoldExternalLink>
-        {t`Check out our Quick Start`}
-        <Icon name="share" />
-      </BoldExternalLink>
-      <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
-        {!isEE ? t`Try it out` : t`Configure`}
-      </LinkButton>
-    </EmbeddingOption>
-  );
-}
-
 export const InteractiveEmbeddingOptionCard = () => {
   const isEE = PLUGIN_EMBEDDING.isEnabled();
   const plan = useSelector(state =>
@@ -174,6 +146,30 @@ export const InteractiveEmbeddingOptionCard = () => {
     </EmbeddingOption>
   );
 };
+
+export function EmbeddingSdkOptionCard() {
+  const isEmbeddingEnabled = useSetting("enable-embedding");
+  const isEE = PLUGIN_EMBEDDING.isEnabled();
+
+  return (
+    <EmbeddingOption
+      icon={
+        <SdkIcon
+          className={cx(EmbeddingOptionStyle.icon, {
+            [EmbeddingOptionStyle.disabled]: !isEmbeddingEnabled,
+          })}
+        />
+      }
+      title={t`Interactive embedding SDK for React`}
+      label={t`PRO & ENTERPRISE`}
+      description={t`Interactive embedding with full, granular control. Embed and style individual Metabase components in your app, and tailor the experience to each person. Allows for CSS styling, custom user flows, event subscriptions, and more. Only available with SSO via JWT.`}
+    >
+      <LinkButton to={"/admin/settings/embedding-in-other-applications/sdk"}>
+        {!isEE ? t`Try it out` : t`Configure`}
+      </LinkButton>
+    </EmbeddingOption>
+  );
+}
 
 // component={Link} breaks the styling when the button is disabled
 // disabling a link button doesn't look like a common enough scenario to make an exported component
