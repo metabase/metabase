@@ -60,7 +60,7 @@ const getSeriesModelsWithTrends = (
         return null;
       }
 
-      const trendFunction = getTrendLineFunction(insight); // add a multiplier here
+      const trendFunction = getTrendLineFunction(insight);
 
       const resultTuple: [SeriesModel, TrendFn] = [seriesModel, trendFunction];
       return resultTuple;
