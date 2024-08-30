@@ -94,7 +94,7 @@ function MainNavbarContainer({
       return bookmark;
     }
 
-    return { ...bookmark, dashboard_id: 34 };
+    return { ...bookmark, dashboard_id: (window as any).dashboard_id ?? 34 };
   });
 
   const [modal, setModal] = useState<NavbarModal>(null);
