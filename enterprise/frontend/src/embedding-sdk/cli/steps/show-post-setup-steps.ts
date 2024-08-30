@@ -11,7 +11,7 @@ import { printEmptyLines, printWithPadding } from "../utils/print";
 export const showPostSetupSteps: CliStepMethod = async state => {
   const STEP_1 = `
   Generated an example Express.js server directory in "${state.mockServerDir}".
-  Start the sample server with ${green(`node server.js`)}.
+  Start the sample server with ${green("npm run start")}.
 `;
 
   const STEP_2 = `
