@@ -10,7 +10,6 @@ import { Modal } from "metabase/ui";
 import type {
   RecentContexts,
   RecentItem,
-  SearchModel,
   SearchRequest,
   SearchResult,
   SearchResultId,
@@ -26,8 +25,9 @@ import type {
 } from "../../types";
 import {
   computeInitialTabId,
+  getFolderModels,
+  getSearchModels,
   getSearchTabText,
-  isSearchModel,
 } from "../../utils";
 import {
   EntityPickerSearchInput,
@@ -135,11 +135,8 @@ export function EntityPickerModal<
 
   const { open } = useModalOpen();
 
-  const tabModels = useMemo((): SearchModel[] => {
-    return passedTabs.flatMap(({ model }) => {
-      return model && isSearchModel(model) ? [model] : [];
-    });
-  }, [passedTabs]);
+  const searchModels = useMemo(() => getSearchModels(passedTabs), [passedTabs]);
+  const folderModels = useMemo(() => getFolderModels(passedTabs), [passedTabs]);
 
   const filteredRecents = useMemo(() => {
     if (!recentItems) {
@@ -147,13 +144,13 @@ export function EntityPickerModal<
     }
 
     const relevantModelRecents = recentItems.filter(recentItem => {
-      return tabModels.includes(recentItem.model);
+      return searchModels.includes(recentItem.model);
     });
 
     return recentFilter
       ? recentFilter(relevantModelRecents)
       : relevantModelRecents;
-  }, [recentItems, tabModels, recentFilter]);
+  }, [recentItems, searchModels, recentFilter]);
 
   const tabs: EntityPickerTab<Id, Model, Item>[] = useMemo(() => {
     const computedTabs: EntityPickerTab<Id, Model, Item>[] = [];
@@ -169,6 +166,7 @@ export function EntityPickerModal<
       computedTabs.push({
         id: RECENTS_TAB_ID,
         model: null,
+        folderModels: [],
         displayName: t`Recents`,
         icon: "clock",
         render: ({ onItemSelect }) => (
@@ -188,6 +186,7 @@ export function EntityPickerModal<
       computedTabs.push({
         id: SEARCH_TAB_ID,
         model: null,
+        folderModels: [],
         displayName: getSearchTabText(searchResults, searchQuery),
         icon: "search",
         render: ({ onItemSelect }) => (
@@ -236,14 +235,18 @@ export function EntityPickerModal<
 
   const handleSelectItem = useCallback(
     (item: Item) => {
-      // TODO: if is folder
-      setTabFolderState(state => ({
-        ...state,
-        [selectedTabId]: item,
-      }));
+      const isFolder = folderModels.includes(item.model);
+
+      if (isFolder) {
+        setTabFolderState(state => ({
+          ...state,
+          [selectedTabId]: item,
+        }));
+      }
+
       onItemSelect(item);
     },
-    [selectedTabId, onItemSelect],
+    [folderModels, selectedTabId, onItemSelect],
   );
 
   useEffect(() => {
@@ -296,7 +299,7 @@ export function EntityPickerModal<
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (
               <EntityPickerSearchInput
-                models={tabModels}
+                models={searchModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}

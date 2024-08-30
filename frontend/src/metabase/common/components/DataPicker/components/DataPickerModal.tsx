@@ -132,6 +132,7 @@ export const DataPickerModal = ({
         id: "models-tab",
         displayName: t`Models`,
         model: "dataset" as const,
+        folderModels: ["collection" as const],
         icon: "model",
         render: ({ onItemSelect }) => (
           <QuestionPicker
@@ -154,6 +155,7 @@ export const DataPickerModal = ({
         id: "metrics-tab",
         displayName: t`Metrics`,
         model: "metric" as const,
+        folderModels: ["collection" as const],
         icon: "metric",
         render: ({ onItemSelect }) => (
           <QuestionPicker
@@ -176,6 +178,7 @@ export const DataPickerModal = ({
         id: "tables-tab",
         displayName: t`Tables`,
         model: "table" as const,
+        folderModels: ["database" as const, "schema" as const],
         icon: "table",
         render: ({ onItemSelect }) => (
           <TablePicker
@@ -192,6 +195,7 @@ export const DataPickerModal = ({
         id: "questions-tab",
         displayName: t`Saved questions`,
         model: "card" as const,
+        folderModels: ["collection" as const],
         icon: "folder",
         render: ({ onItemSelect }) => (
           <QuestionPicker

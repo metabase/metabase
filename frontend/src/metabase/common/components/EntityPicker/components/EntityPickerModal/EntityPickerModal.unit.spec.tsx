@@ -24,7 +24,7 @@ import type { EntityPickerModalOptions } from "./EntityPickerModal";
 import { EntityPickerModal } from "./EntityPickerModal";
 
 type SampleId = number;
-type SampleModel = "card" | "table";
+type SampleModel = "card" | "table" | "collection";
 type SampleItem = TypeWithModel<SampleId, SampleModel>;
 type SampleTab = EntityPickerTab<SampleId, SampleModel, SampleItem>;
 
@@ -53,6 +53,7 @@ const TEST_CARD_TAB: SampleTab = {
   icon: "audit",
   displayName: "All the foo",
   model: "card",
+  folderModels: ["collection" as const],
   render: () => <TestPicker name="foo" />,
 };
 
@@ -61,6 +62,7 @@ const TEST_TABLE_TAB: SampleTab = {
   icon: "audit",
   displayName: "All the bar",
   model: "table",
+  folderModels: ["collection" as const],
   render: () => <TestPicker name="bar" />,
 };
 

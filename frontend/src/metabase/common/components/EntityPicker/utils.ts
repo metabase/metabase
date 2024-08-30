@@ -97,6 +97,28 @@ export function getSearchTabText(
   );
 }
 
-export const isSearchModel = (model: string): model is SearchModel => {
+export const getSearchModels = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  tabs: EntityPickerTab<Id, Model, Item>[],
+): SearchModel[] => {
+  return tabs.flatMap(({ model }) => {
+    return model && isSearchModel(model) ? [model] : [];
+  });
+};
+
+export const getFolderModels = <
+  Id extends SearchResultId,
+  Model extends string,
+  Item extends TypeWithModel<Id, Model>,
+>(
+  tabs: EntityPickerTab<Id, Model, Item>[],
+): Model[] => {
+  return tabs.flatMap(({ folderModels }) => folderModels);
+};
+
+const isSearchModel = (model: string): model is SearchModel => {
   return SEARCH_MODELS.some(searchModel => searchModel === model);
 };

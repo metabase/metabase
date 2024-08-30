@@ -94,6 +94,7 @@ export const QuestionPickerModal = ({
       id: "questions-tab",
       displayName: t`Questions`,
       model: "card" as const,
+      folderModels: ["collection" as const],
       icon: "table",
       render: ({ onItemSelect }) => (
         <QuestionPicker
@@ -108,6 +109,7 @@ export const QuestionPickerModal = ({
       id: "models-tab",
       displayName: t`Models`,
       model: "dataset" as const,
+      folderModels: ["collection" as const],
       icon: "model",
       render: ({ onItemSelect }) => (
         <QuestionPicker
@@ -122,6 +124,7 @@ export const QuestionPickerModal = ({
       id: "metrics-tab",
       displayName: t`Metrics`,
       model: "metric" as const,
+      folderModels: ["collection" as const],
       icon: "metric",
       render: ({ onItemSelect }) => (
         <QuestionPicker
