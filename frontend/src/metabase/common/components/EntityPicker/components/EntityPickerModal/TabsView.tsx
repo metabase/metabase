@@ -71,13 +71,13 @@ export const TabsView = <
 
       {tabs.map(tab => {
         const { id } = tab;
-        const hasBeenOpened = previouslyOpenedTabs.includes(id);
         const isOpen = selectedTabId === id;
+        const wasOpen = previouslyOpenedTabs.includes(id);
         /**
          * Optimization due to keepMounted: do not render tabs that were never open.
          * This prevents data loading requests from unopened tabs being fired.
          */
-        const shouldRender = isOpen || hasBeenOpened;
+        const shouldRender = isOpen || wasOpen;
 
         return (
           <Tabs.Panel
