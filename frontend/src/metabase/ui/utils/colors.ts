@@ -19,7 +19,7 @@ const ORIGINAL_COLORS = [
   "yellow",
   "orange",
   "teal",
-];
+] as const;
 
 const CUSTOM_COLORS = [
   "bg-black",
@@ -59,3 +59,8 @@ export function getThemeColors(): Record<string, ColorShades> {
     ),
   };
 }
+
+export type MantineColor =
+  | typeof CUSTOM_COLORS[number]
+  | typeof ORIGINAL_COLORS[number]
+  | (string & unknown);

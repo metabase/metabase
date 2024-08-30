@@ -19,5 +19,5 @@ export type FormValues = {
 };
 
 export type SaveQuestionFormProps = {
-  onCancel: () => void;
+  onCancel?: () => void;
 };

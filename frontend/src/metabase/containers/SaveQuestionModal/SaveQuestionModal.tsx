@@ -27,7 +27,7 @@ export const SaveQuestionModal = ({
     multiStep={multiStep}
     initialCollectionId={initialCollectionId}
   >
-    <Modal.Root onClose={onCancel} opened={true} padding="40px">
+    <Modal.Root onClose={() => onCancel?.()} opened={true} padding="40px">
       <Modal.Overlay />
       <Modal.Content data-testid="save-question-modal">
         <Modal.Header>

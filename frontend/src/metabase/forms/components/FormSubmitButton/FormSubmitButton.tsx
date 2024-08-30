@@ -1,8 +1,8 @@
 import type { ReactNode, Ref } from "react";
-import { forwardRef } from "react";
+import { forwardRef, useEffect } from "react";
 import { t } from "ttag";
 
-import type { ButtonProps } from "metabase/ui";
+import type { ButtonProps, MantineColor } from "metabase/ui";
 import { Button } from "metabase/ui";
 
 import type { FormStatus } from "../../contexts";
@@ -13,6 +13,7 @@ export interface FormSubmitButtonProps extends Omit<ButtonProps, "children"> {
   activeLabel?: ReactNode;
   successLabel?: ReactNode;
   failedLabel?: ReactNode;
+  onSuccess?: () => void;
 }
 
 export const FormSubmitButton = forwardRef(function FormSubmitButton(
@@ -23,6 +24,7 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
     failedLabel,
     disabled,
     color,
+    onSuccess,
     ...props
   }: FormSubmitButtonProps,
   ref: Ref<HTMLButtonElement>,
@@ -36,6 +38,12 @@ export const FormSubmitButton = forwardRef(function FormSubmitButton(
     failedLabel,
   });
   const submitColor = getSubmitButtonColor(status, { color });
+
+  useEffect(() => {
+    if (status === "fulfilled") {
+      onSuccess?.();
+    }
+  }, [onSuccess, status]);
 
   return (
     <Button
@@ -55,7 +63,7 @@ type SubmitButtonColorOpts = Pick<FormSubmitButtonProps, "color">;
 const getSubmitButtonColor = (
   status: FormStatus | undefined,
   { color }: SubmitButtonColorOpts,
-) => {
+): MantineColor | undefined => {
   switch (status) {
     case "fulfilled":
       return "success";
