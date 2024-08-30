@@ -137,6 +137,10 @@ export function tooltipHeader() {
   return cy.findByTestId("echarts-tooltip-header");
 }
 
+function tooltipFooter() {
+  return cy.findByTestId("echarts-tooltip-footer");
+}
+
 export function assertTooltipRow(
   name,
   { color, value, secondaryValue, index } = {},
@@ -162,7 +166,21 @@ export function assertTooltipRow(
     });
 }
 
-export function assertEChartsTooltip({ header, rows, blurAfter }) {
+function assertTooltipFooter({ name, value, secondaryValue }) {
+  tooltipFooter().within(() => {
+    if (name) {
+      cy.findByText(name);
+    }
+    if (value) {
+      cy.findByText(value);
+    }
+    if (secondaryValue) {
+      cy.findByText(secondaryValue);
+    }
+  });
+}
+
+export function assertEChartsTooltip({ header, rows, footer, blurAfter }) {
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);
@@ -173,6 +191,10 @@ export function assertEChartsTooltip({ header, rows, blurAfter }) {
         const { name, ...rest } = row;
         assertTooltipRow(name, rest);
       });
+    }
+
+    if (footer != null) {
+      assertTooltipFooter(footer);
     }
   });
 
