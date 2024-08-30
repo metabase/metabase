@@ -79,7 +79,7 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
   );
 
   const handleFolderSelect = useCallback(
-    ({ folder }: { folder: DataPickerFolderItem }) => {
+    (folder: DataPickerFolderItem) => {
       if (folder.model === "database") {
         if (dbId === folder.id) {
           setSchemaName(schemas?.length === 1 ? schemas[0] : undefined);
@@ -99,7 +99,7 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
     [dbId, schemas, onItemSelect],
   );
 
-  const handleItemSelect = useCallback(
+  const handleTableSelect = useCallback(
     (item: DataPickerValueItem) => {
       setTableId(item.id);
       onItemSelect(item);
@@ -124,7 +124,7 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
             isCurrentLevel={!schemaName || (schemas?.length === 1 && !tableId)}
             isLoading={isLoadingDatabases}
             selectedItem={selectedDbItem}
-            onClick={folder => handleFolderSelect({ folder })}
+            onClick={handleFolderSelect}
           />
         )}
 
@@ -135,7 +135,7 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
             isLoading={isLoadingSchemas}
             schemas={isLoadingSchemas ? undefined : schemas}
             selectedItem={selectedSchemaItem}
-            onClick={folder => handleFolderSelect({ folder })}
+            onClick={handleFolderSelect}
           />
         )}
 
@@ -146,7 +146,7 @@ export const TablePicker = ({ databaseId, value, onItemSelect }: Props) => {
             isLoading={isLoadingTables}
             selectedItem={selectedTableItem}
             tables={isLoadingTables ? undefined : tables}
-            onClick={handleItemSelect}
+            onClick={handleTableSelect}
           />
         )}
       </Flex>
