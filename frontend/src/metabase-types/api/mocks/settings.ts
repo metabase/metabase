@@ -167,6 +167,7 @@ export const createMockSettings = (
   "email-smtp-username": null,
   "email-smtp-password": null,
   "embedding-app-origin": "",
+  "embedding-app-origins-sdk": "",
   "enable-embedding": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
