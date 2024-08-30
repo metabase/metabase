@@ -933,3 +933,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :visibility :internal
   :export?    true
   :type       :integer)
+
+(defsetting temp-native-pivot-exports
+  (deferred-tru "Enable pivot tables in xlsx exports. This is a temporary env var that will be superceded in 51 by (#46995)")
+  :visibility :internal
+  :export?    true
+  :default    false
+  :type       :boolean)
